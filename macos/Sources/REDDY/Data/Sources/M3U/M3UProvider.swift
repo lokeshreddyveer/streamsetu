@@ -72,6 +72,15 @@ final class M3UProvider: SourceProvider, @unchecked Sendable {
             guard let ref = source.credentialRef, let secret = try credentials.load(ref: ref)?.url ?? Optional(source.baseURL),
                   let url = URL(string: secret) else { throw SourceError.credentialsMissing }
             baseURL = url
+            // One stream, not a playlist: it is a channel of its own and nothing is downloaded.
+            if SourceDetector.isDirectStream(url) {
+                var used: [String: Int] = [:]
+                let name = source.name.isEmpty ? (url.host ?? "Stream") : source.name
+                let ch = Self.makeChannel(M3UEntry(name: name, url: url.absoluteString), source: source, order: 0, used: &used)
+                let one = Loaded(channels: [ch], movies: [], categories: [], epgURLs: [], skipped: 0)
+                lock.withLock { loaded = one }
+                return one
+            }
             do {
                 var request = http.builder.get(url)
                 headers.apply(to: &request)

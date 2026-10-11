@@ -9,10 +9,19 @@ struct AddPlaylistSheet: View {
     @Environment(IOSRouter.self) private var router
     @State private var vm = AddSourceViewModel()
     @State private var importing = false
+    @State private var pasted = ""
+    @State private var finder = HDHomeRunDiscovery()
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    HStack {
+                        TextField("Paste any address", text: $pasted).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                            .onChange(of: pasted) { _, v in vm.paste(v) }
+                        Button { if let t = UIPasteboard.general.string { pasted = t } } label: { Image(systemName: "doc.on.clipboard") }.buttonStyle(.borderless).accessibilityLabel("Paste")
+                    }
+                } footer: { Text(vm.detectionNote ?? "Paste a playlist link, an Xtream or media server address, or a single stream, and the form fills itself in.") }.listRowBackground(ColorTokens.surface)
                 Section {
                     Picker("Type", selection: $vm.kind) { ForEach(AddSourceKind.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
                 }.listRowBackground(ColorTokens.surface)
@@ -22,13 +31,19 @@ struct AddPlaylistSheet: View {
                     case .stalker:
                         TextField("Portal address (http://host/c/)", text: $vm.server).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                         TextField("MAC address (00:1A:79:XX:XX:XX)", text: $vm.username).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                    case .stream:
+                        TextField("Stream address (https://, rtsp://, udp://, srt://)", text: $vm.url).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                     case .hdhomerun:
                         TextField("Tuner address (192.168.1.50)", text: $vm.server).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        Button { finder.start() } label: { HStack { if finder.searching { ProgressView() }; Label(finder.searching ? "Looking…" : "Find Tuners on This Network", systemImage: "dot.radiowaves.left.and.right") } }.disabled(finder.searching)
+                        ForEach(finder.tuners) { t in
+                            Button { vm.server = t.host; if vm.name.isEmpty { vm.name = t.name } } label: { Label("\(t.name) · \(t.host)", systemImage: "tv.and.mediabox") }
+                        }
                     case .plex:
                         TextField("Server address (http://host:32400)", text: $vm.server).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                         SecureField("Access token", text: $vm.password)
-                    case .xtream, .jellyfin, .emby, .tvheadend:
-                        TextField(vm.kind == .xtream ? "Server (http://host:port)" : (vm.kind == .tvheadend ? "Server (http://host:9981)" : "Server (http://host:8096)"), text: $vm.server).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    case .xtream, .jellyfin, .emby, .tvheadend, .enigma2:
+                        TextField(vm.kind == .xtream ? "Server (http://host:port)" : (vm.kind == .tvheadend ? "Server (http://host:9981)" : (vm.kind == .enigma2 ? "Receiver (http://receiver-ip)" : "Server (http://host:8096)")), text: $vm.server).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                         TextField("Username", text: $vm.username).textInputAutocapitalization(.never).autocorrectionDisabled()
                         SecureField("Password", text: $vm.password)
                     case .m3uURL:

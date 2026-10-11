@@ -33,6 +33,9 @@ final class SourceManager: @unchecked Sendable {
             else { throw SourceError.credentialsMissing }
             provider = MediaServerProvider(source: source, flavor: source.type == .emby ? .emby : .jellyfin, user: user, pass: pass,
                                            session: MediaSession(encoded: creds.url), http: http, credentials: secure.store, headers: headersStore.headers(for: source.id))
+        case .enigma2:
+            let c = secure.credentials(for: source)
+            provider = Enigma2Provider(source: source, user: c?.username, pass: c?.password, http: http, headers: headersStore.headers(for: source.id))
         case .plex:
             guard let token = secure.credentials(for: source)?.password, !token.isEmpty else { throw SourceError.credentialsMissing }
             provider = PlexProvider(source: source, token: token, http: http, headers: headersStore.headers(for: source.id))
@@ -161,6 +164,22 @@ final class SourceManager: @unchecked Sendable {
         }
     }
 
+    /// An Enigma2 receiver (OpenWebif). The login is optional: many receivers have none.
+    func addEnigma2(name: String, server: String, username: String, password: String) async throws -> PlaylistSource {
+        let base = try SourceURLValidator.validateXtreamServer(server)
+        let ref = try secure.save(Credentials(username: username.isEmpty ? nil : username, password: password.isEmpty ? nil : password))
+        var source = PlaylistSource(name: name.nilIfEmpty ?? URL(string: base)?.host ?? "Receiver", type: .enigma2, baseURL: base, credentialRef: ref)
+        do {
+            source.capabilities = try await Enigma2Provider(source: source, user: username.isEmpty ? nil : username, pass: password.isEmpty ? nil : password, http: http).validate()
+            try catalog.save(source: source)
+            try catalog.saveCapabilities(source.capabilities, sourceID: source.id)
+            return source
+        } catch {
+            secure.remove(ref: ref)
+            throw error
+        }
+    }
+
     /// Plex: the server's address and an access token (the account's X-Plex-Token).
     func addPlex(name: String, server: String, token: String) async throws -> PlaylistSource {
         let base = try SourceURLValidator.validateXtreamServer(server)
@@ -191,6 +210,15 @@ final class SourceManager: @unchecked Sendable {
     }
 
     private func catalog_source(_ id: UUID) -> PlaylistSource? { try? catalog.source(id: id) }
+
+    /// One stream address (HLS, TS, MP4, RTSP, UDP, SRT...) as a playlist of a single channel. The address, which may carry a login, goes to the vault.
+    func addStream(name: String, url: String) throws -> PlaylistSource {
+        let v = try SourceURLValidator.validateStream(url)
+        let ref = try secure.save(Credentials(url: v.full))
+        let source = PlaylistSource(name: name.nilIfEmpty ?? URL(string: v.full)?.host ?? "Stream", type: .m3uRemote, baseURL: v.display, credentialRef: ref)
+        try catalog.save(source: source)
+        return source
+    }
 
     func addM3U(name: String, url: String) throws -> PlaylistSource {
         let v = try SourceURLValidator.validateRemote(url)
@@ -281,7 +309,7 @@ final class SourceManager: @unchecked Sendable {
     func hasCredentials(_ s: PlaylistSource) -> Bool {
         switch s.type {
         case .m3uLocal: return true
-        case .xtream, .jellyfin, .emby, .stalker, .plex, .m3uRemote: return s.credentialRef != nil && secure.credentials(for: s) != nil
+        case .xtream, .jellyfin, .emby, .stalker, .plex, .enigma2, .m3uRemote: return s.credentialRef != nil && secure.credentials(for: s) != nil
         }
     }
 

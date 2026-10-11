@@ -58,6 +58,10 @@
 	</dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>StreamSetu uses Face ID to unlock the app when you turn on App Lock.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_hdhomerun._tcp</string>
+	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>StreamSetu plays streams from servers you add, including ones on your home network.</string>
 	<key>UIApplicationSceneManifest</key>

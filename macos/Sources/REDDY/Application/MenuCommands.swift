@@ -12,6 +12,7 @@ struct MenuCommands: Commands {
             Button("Refresh All Playlists") { state?.syncAll() }.keyboardShortcut("r")
         }
         CommandGroup(replacing: .help) {
+            Button("Send Feedback…") { openWindow(id: "feedback") }
             Button("Keyboard Shortcuts") { openWindow(id: "shortcuts") }.keyboardShortcut("/", modifiers: .command)
         }
         CommandMenu("Navigate") {

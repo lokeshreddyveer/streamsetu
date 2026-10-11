@@ -26,7 +26,8 @@ enum SelfTest {
     @MainActor static func run(_ path: String) {
         Task { @MainActor in
             var r = Report()
-            let url = URL(fileURLWithPath: path)
+            // A network address (to time a real stream) or a file.
+            let url = path.contains("://") ? (URL(string: path) ?? URL(fileURLWithPath: path)) : URL(fileURLWithPath: path)
 
             // 1. database opens and migrates to the newest schema
             do {
@@ -92,13 +93,14 @@ enum SelfTest {
     @MainActor private static func exercise(_ engine: any PlaybackEngine, url: URL, live: Bool, _ r: inout Report) async {
         let name = engine.kind.rawValue
         let req = PlaybackRequest(itemID: "selftest-\(name)", kind: live ? .channel : .movie, sourceID: UUID(), title: "Self-test", url: url, isLive: live)
+        let began = Date()
         do { try await engine.load(req) } catch { r.fail("\(name): load threw \(error)"); return }
-        let end = Date().addingTimeInterval(15)
+        let end = Date().addingTimeInterval(25)
         while Date() < end, !(engine.state == .playing && engine.position > 0.8) {
             if case .failed(let e) = engine.state { r.fail("\(name): failed \(e.kind) \(e.detail ?? "")"); return }
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
-        r.check(engine.state == .playing && engine.position > 0.8, "\(name): plays (position \(String(format: "%.1f", engine.position)) s)")
+        r.check(engine.state == .playing && engine.position > 0.8, "\(name): plays (position \(String(format: "%.1f", engine.position)) s, \(String(format: "%.1f", Date().timeIntervalSince(began))) s from load to playing; stalls so far: \(engine.metrics.stallCount))")
         // controls that reach into the engine
         engine.setVolume(0.5); engine.setMuted(true); engine.setRate(1.25); engine.setRate(1)
         engine.setAudioDelay(0.1); engine.setSubtitleDelay(0.2)

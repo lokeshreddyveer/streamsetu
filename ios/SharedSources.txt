@@ -50,6 +50,9 @@ Data/Sources/XMLTV/XMLTVParser.swift
 Data/Sources/M3U/JSONPlaylist.swift
 Data/Sources/MediaServer/MediaServerMapper.swift
 Data/Sources/MediaServer/MediaServerProvider.swift
+Data/Sources/Enigma2/Enigma2Provider.swift
+Services/SourceDetector.swift
+Services/HDHomeRunDiscovery.swift
 Data/Sources/Plex/PlexMapper.swift
 Data/Sources/Plex/PlexProvider.swift
 Data/Sources/Stalker/StalkerMapper.swift
@@ -170,6 +173,7 @@ Services/SourceManager.swift
 Services/StatisticsService.swift
 Services/StorageService.swift
 Services/TitleDetails.swift
+Services/FeedbackMessage.swift
 Services/VPNMonitor.swift
 Services/ICloudRestore.swift
 Services/CrashReports.swift

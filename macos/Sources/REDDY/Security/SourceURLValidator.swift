@@ -37,6 +37,15 @@ enum SourceURLValidator {
         return base
     }
 
+    /// A single stream address: any scheme the players open, not only web addresses.
+    static func validateStream(_ raw: String) throws -> (full: String, display: String) {
+        let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { throw SourceValidationError.empty }
+        guard t.count <= 4096, let c = URLComponents(string: t), let scheme = c.scheme?.lowercased(), let host = c.host, !host.isEmpty else { throw SourceValidationError.invalid }
+        guard playableSchemes.contains(scheme) else { throw SourceValidationError.unsupportedScheme }
+        return (t, CredentialRedactor.redact("\(scheme)://\(host)" + (c.port.map { ":\($0)" } ?? "") + c.path))
+    }
+
     static func validateLocalFile(_ url: URL) throws {
         guard FileManager.default.isReadableFile(atPath: url.path) else { throw SourceValidationError.fileMissing }
         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0

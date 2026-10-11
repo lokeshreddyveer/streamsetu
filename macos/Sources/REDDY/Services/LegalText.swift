@@ -116,4 +116,5 @@ The source code of the LGPL and GPL components is available from the project sit
 The StreamSetu web player uses **hls.js** (Apache 2.0) and **mpegts.js** (Apache 2.0), and **Next.js** and **React** (MIT).
 
 """#
+    static let contactEmail = "contact@lokeshreddy.dev"
 }

@@ -35,6 +35,16 @@ struct AddSourceUseCase: Sendable {
         await sync.start(sourceID: s.id)
         return s
     }
+    func enigma2(name: String, server: String, username: String, password: String) async throws -> PlaylistSource {
+        let s = try await sources.addEnigma2(name: name, server: server, username: username, password: password)
+        await sync.start(sourceID: s.id)
+        return s
+    }
+    func stream(name: String, url: String) async throws -> PlaylistSource {
+        let s = try sources.addStream(name: name, url: url)
+        await sync.start(sourceID: s.id)
+        return s
+    }
     func m3u(name: String, url: String) async throws -> PlaylistSource {
         let s = try sources.addM3U(name: name, url: url)
         await sync.start(sourceID: s.id)

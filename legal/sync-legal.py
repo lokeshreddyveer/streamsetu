@@ -20,6 +20,7 @@ for n in docs:
     body = render(n)
     outputs[repo / "web" / "content" / "legal" / f"{n}.md"] = body
     swift.append(f'    static let {n} = #"""\n{body}\n"""#')
+swift.append(f'    static let contactEmail = "{meta["CONTACT_EMAIL"]}"')
 swift.append("}")
 outputs[repo / "macos/Sources/REDDY/Services/LegalText.swift"] = "\n".join(swift) + "\n"
 

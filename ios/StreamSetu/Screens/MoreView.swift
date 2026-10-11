@@ -159,8 +159,14 @@ struct AboutView: View {
                 Text("StreamSetu plays playlists and Xtream accounts you add yourself. It includes no channels or content, has no accounts, and keeps everything on this device.").font(.callout)
             }.listRowBackground(ColorTokens.surface)
             Section {
+                NavigationLink { FeedbackView() } label: { Label("Send Feedback", systemImage: "envelope") }
                 NavigationLink { CrashReportsView() } label: { Label("Crash Reports", systemImage: "ladybug") }
             }.listRowBackground(ColorTokens.surface)
+            if let t = UserDefaults.standard.dictionary(forKey: "startup.timings") as? [String: Int], !t.isEmpty {
+                Section("Last launch") {
+                    ForEach(["library opened", "library read", "ready"], id: \.self) { k in if let ms = t[k] { LabeledContent(k.capitalized, value: String(format: "%.2f s", Double(ms) / 1000)) } }
+                }.listRowBackground(ColorTokens.surface)
+            }
             Section("Legal") {
                 ForEach(LegalPage.allCases) { page in
                     NavigationLink { LegalView(page: page).navigationTitle(page.title).navigationBarTitleDisplayMode(.inline) } label: { Text(page.title) }

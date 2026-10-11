@@ -32,6 +32,7 @@
     <key>NSHighResolutionCapable</key><true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
     <key>NSHumanReadableCopyright</key><string>Copyright © 2026 StreamSetu. All rights reserved.</string>
+    <key>NSBonjourServices</key><array><string>_hdhomerun._tcp</string></array>
     <key>NSLocalNetworkUsageDescription</key><string>StreamSetu connects to the IPTV servers you add, which may be on your local network.</string>
     <!-- IPTV providers commonly serve plain http. Arbitrary loads are required for user-supplied provider addresses. -->
     <key>NSAppTransportSecurity</key>

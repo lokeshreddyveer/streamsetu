@@ -50,6 +50,9 @@ final class IOSCoordinator {
         if booting { while container == nil, case .starting = phase { try? await Task.sleep(nanoseconds: 100_000_000) }; return }
         guard container == nil else { return }
         booting = true
+        let clock = ContinuousClock(), began = clock.now
+        var marks: [String: Int] = [:]
+        func mark(_ name: String) { let d = began.duration(to: clock.now); marks[name] = Int(d.components.seconds * 1000 + d.components.attoseconds / 1_000_000_000_000_000) }
         do {
             // Playback category: sound plays with the silent switch on, and continues in the background and in Picture in Picture.
             // (Activating the session can block, so it is done off the main thread.)
@@ -59,18 +62,22 @@ final class IOSCoordinator {
                 try? session.setActive(true)
             }
             let c = try AppContainer()
+            mark("library opened")
             container = c
             let s = AppState(container: c)
             state = s
             c.parental.onChange = { [weak s] in s?.reloadFolders(); s?.catalogVersion += 1 }
             await s.start()
+            mark("library read")
             c.onCloudChange = { [weak s] r in
                 s?.reload(); s?.catalogVersion += 1
                 for id in r.newSources { if let u = UUID(uuidString: id) { s?.sync(u) } }
             }
-            await c.startCloudIfEnabled()
             Task.detached { [artwork = c.artwork] in await artwork.trim() }
-            phase = .ready
+            mark("ready")
+            UserDefaults.standard.set(marks, forKey: "startup.timings")
+            phase = .ready                                  // the app opens now; iCloud starts in the background, it is never waited for
+            Task { await c.startCloudIfEnabled() }
             c.autoBackup.runIfDue()
             resumeLastChannelIfWanted(c, s)
         } catch {

@@ -23,6 +23,11 @@ struct ReddyApp: App {
             if let c = coordinator.container { PlayerWindowView(playback: c.playback).reddyTheme(c.settings).scrollIndicators(.hidden) }
         }
 
+        Window("Send Feedback", id: "feedback") {
+            if let c = coordinator.container { FeedbackWindow().environment(\.container, c).reddyTheme(c.settings) }
+        }
+        .windowResizability(.contentSize)
+
         Window("Keyboard Shortcuts", id: "shortcuts") {
             if let c = coordinator.container { ShortcutsView().reddyTheme(c.settings).scrollIndicators(.hidden) }
         }

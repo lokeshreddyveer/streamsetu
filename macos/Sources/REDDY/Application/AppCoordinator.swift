@@ -34,11 +34,11 @@ final class AppCoordinator {
                 s?.reload(); s?.catalogVersion += 1
                 for id in r.newSources { if let u = UUID(uuidString: id) { s?.sync(u) } }          // a playlist added on another device: load it here too
             }
-            await c.startCloudIfEnabled()
             if !migrated.isEmpty { s.toasts.show("Moved \(migrated.count) source\(migrated.count == 1 ? "" : "s") into the new library", symbol: "arrow.right.circle.fill", kind: .info) }
             if migrated.isEmpty == false { s.syncAll() }
             Task.detached { [artwork = c.artwork] in await artwork.trim() }
-            phase = .ready
+            phase = .ready                                  // the app opens now; iCloud starts in the background, it is never waited for
+            Task { await c.startCloudIfEnabled() }
             c.autoBackup.runIfDue()
             resumeLastChannelIfWanted(c, s)
         } catch {

@@ -7,9 +7,10 @@ enum SourceType: String, Codable, Sendable, CaseIterable {
     case jellyfin, emby
     case stalker
     case plex
+    case enigma2
 
     /// Types that sign in with a saved login (as opposed to a link or a file).
-    var hasLogin: Bool { self == .xtream || self == .jellyfin || self == .emby || self == .plex || self == .stalker }
+    var hasLogin: Bool { self == .xtream || self == .jellyfin || self == .emby || self == .plex || self == .stalker || self == .enigma2 }
 
     var title: String {
         switch self {
@@ -20,6 +21,7 @@ enum SourceType: String, Codable, Sendable, CaseIterable {
         case .emby: "Emby"
         case .stalker: "Stalker / MAG portal"
         case .plex: "Plex"
+        case .enigma2: "Enigma2 receiver"
         }
     }
 }
