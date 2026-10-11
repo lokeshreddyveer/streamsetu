@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key><string>StreamSetu</string>
+    <key>CFBundleDisplayName</key><string>StreamSetu</string>
+    <key>CFBundleIdentifier</key><string>app.streamsetu.mac</string>
+    <key>CFBundleExecutable</key><string>StreamSetu</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>__VERSION__</string>
+    <key>CFBundleVersion</key><string>__BUILD__</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>LSApplicationCategoryType</key><string>public.app-category.entertainment</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key><string>StreamSetu link</string>
+            <key>CFBundleURLSchemes</key><array><string>streamsetu</string></array>
+        </dict>
+    </array>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key><string>IPTV playlist</string>
+            <key>CFBundleTypeRole</key><string>Viewer</string>
+            <key>LSHandlerRank</key><string>Alternate</string>
+            <key>CFBundleTypeExtensions</key><array><string>m3u</string><string>m3u8</string></array>
+        </dict>
+    </array>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+    <key>NSHumanReadableCopyright</key><string>Copyright © 2026 StreamSetu. All rights reserved.</string>
+    <key>NSLocalNetworkUsageDescription</key><string>StreamSetu connects to the IPTV servers you add, which may be on your local network.</string>
+    <!-- IPTV providers commonly serve plain http. Arbitrary loads are required for user-supplied provider addresses. -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key><true/>
+    </dict>
+</dict>
+</plist>

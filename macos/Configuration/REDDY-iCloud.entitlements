@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Developer ID build with iCloud sync. Only valid together with Configuration/StreamSetu.provisionprofile, which
+         Scripts/sign-app.sh embeds; macOS refuses to launch an app that claims these without a matching profile. -->
+    <key>com.apple.security.cs.disable-library-validation</key><true/>
+    <key>com.apple.application-identifier</key><string>X4MH29QNRS.app.streamsetu.mac</string>
+    <key>com.apple.developer.team-identifier</key><string>X4MH29QNRS</string>
+    <key>com.apple.developer.icloud-container-identifiers</key>
+    <array><string>iCloud.app.streamsetu</string></array>
+    <key>com.apple.developer.icloud-services</key>
+    <array><string>CloudKit</string></array>
+    <key>com.apple.developer.icloud-container-environment</key><string>Production</string>
+    <key>keychain-access-groups</key>
+    <array><string>X4MH29QNRS.app.streamsetu.mac</string></array>
+</dict>
+</plist>

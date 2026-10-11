@@ -1,0 +1,11 @@
+# Enforced when SwiftLint is installed (brew install swiftlint).
+included: [Sources, Tests]
+disabled_rules: [line_length, identifier_name, type_body_length, file_length, function_body_length, cyclomatic_complexity, nesting, force_cast]
+opt_in_rules: [empty_count, first_where, sorted_first_last, contains_over_first_not_nil]
+custom_rules:
+  domain_has_no_swiftui:
+    name: "Domain and Data layers must not import SwiftUI"
+    regex: "^import SwiftUI"
+    included: ".*/(Domain|Data|Services|Playback|Security)/.*\\.swift"
+    message: "Keep SwiftUI out of the domain, data, service and playback layers."
+    severity: error

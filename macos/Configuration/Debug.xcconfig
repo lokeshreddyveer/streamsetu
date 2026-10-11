@@ -1,0 +1,11 @@
+// For an Xcode project wrapping this package. SwiftPM (Package.swift) is the source of truth.
+PRODUCT_NAME = StreamSetu
+PRODUCT_BUNDLE_IDENTIFIER = app.streamsetu.mac
+MACOSX_DEPLOYMENT_TARGET = 14.0
+SWIFT_VERSION = 6.0
+SWIFT_STRICT_CONCURRENCY = complete
+ENABLE_HARDENED_RUNTIME = YES
+CODE_SIGN_ENTITLEMENTS = Configuration/REDDY.entitlements
+INFOPLIST_FILE = Configuration/Info.plist
+SWIFT_OPTIMIZATION_LEVEL = -Onone
+ONLY_ACTIVE_ARCH = YES

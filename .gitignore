@@ -1,0 +1,24 @@
+.DS_Store
+# build output
+macos/.build*/
+macos/.swiftpm/
+macos/dist/
+macos/third_party/
+ios/build/
+**/DerivedData/
+**/xcuserdata/
+*.xcarchive
+# signing material and local secrets
+*.provisionprofile
+*.mobileprovision
+*.p12
+*.pem
+.env*
+# website
+web/node_modules/
+web/.next/
+web/tsconfig.tsbuildinfo
+# local databases
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

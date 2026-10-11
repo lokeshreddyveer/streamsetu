@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- iCloud sync: one CloudKit container shared by the iPhone, iPad and Mac apps. -->
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array><string>iCloud.app.streamsetu</string></array>
+	<key>com.apple.developer.icloud-services</key>
+	<array><string>CloudKit</string></array>
+	<!-- Lets iCloud wake the app to deliver changes made on another device. -->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

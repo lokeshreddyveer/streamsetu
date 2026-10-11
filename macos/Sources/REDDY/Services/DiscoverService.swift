@@ -1,0 +1,130 @@
+import Foundation
+
+/// A movie or a series, as shown on cards, rails and the featured banner.
+enum LibraryItem: Identifiable, Hashable, Sendable {
+    case movie(Movie), series(Series)
+
+    var id: String { switch self { case .movie(let m): m.id; case .series(let s): s.id } }
+    var title: String { switch self { case .movie(let m): m.title; case .series(let s): s.title } }
+    var year: Int? { switch self { case .movie(let m): m.releaseYear; case .series(let s): s.releaseYear } }
+    var genre: String? { switch self { case .movie(let m): m.genre ?? m.categoryName; case .series(let s): s.genre ?? s.categoryName } }
+    var posterURL: String? { switch self { case .movie(let m): m.posterURL; case .series(let s): s.posterURL } }
+    var backdropURL: String? { switch self { case .movie(let m): m.backdropURL; case .series(let s): s.backdropURL } }
+    var overview: String? { switch self { case .movie(let m): m.overview; case .series(let s): s.overview } }
+    var isSeries: Bool { if case .series = self { true } else { false } }
+    var kind: ContentKind { isSeries ? .series : .movie }
+    var sourceID: UUID { switch self { case .movie(let m): m.sourceID; case .series(let s): s.sourceID } }
+    var durationSeconds: Double? { if case .movie(let m) = self { m.durationSeconds } else { nil } }
+}
+
+struct DiscoverShelf: Identifiable, Sendable {
+    let id: String
+    let title: String
+    /// What the shelf is really based on. Never claims chart data, provider affiliation or availability.
+    let caption: String
+    let items: [LibraryItem]
+    var ranked = false
+}
+
+struct DiscoverContent: Sendable {
+    var hero: LibraryItem?
+    var shelves: [DiscoverShelf]
+}
+
+/// Builds the Discover page from the playlist's own data. Shelves that have nothing to show are omitted.
+final class DiscoverService: Sendable {
+    #if os(macOS)
+    static let thisDevice = "this Mac"
+    #else
+    static let thisDevice = "this device"
+    #endif
+
+    let catalog: CatalogRepository
+    let history: HistoryRepository
+
+    init(catalog: CatalogRepository, history: HistoryRepository) { self.catalog = catalog; self.history = history }
+
+    static let providerShelves: [(title: String, keywords: [String], phrases: [String])] = [
+        ("Netflix", ["netflix"], []),
+        ("Prime Video", ["prime", "amazon", "primevideo"], ["prime video"]),
+        ("Apple TV+", ["appletv"], ["apple tv"]),
+    ]
+    static let indianKeywords: Set<String> = ["indian", "india", "hindi", "telugu", "tamil", "malayalam", "kannada", "bengali", "marathi", "punjabi", "gujarati", "bollywood", "tollywood"]
+
+    func build(sourceID: UUID?, now: Date = Date()) throws -> DiscoverContent {
+        let size = 14
+        func items(_ movies: [Movie], _ series: [Series]) -> [LibraryItem] { movies.map { .movie($0) } + series.map { .series($0) } }
+        var shelves: [DiscoverShelf] = []
+
+        let recentMovies = try catalog.movies(VODQuery(sourceID: sourceID, sort: .recentlyAdded, limit: size))
+        let recentSeries = try catalog.series(VODQuery(sourceID: sourceID, sort: .recentlyAdded, limit: size))
+
+        // Trending in Your Library: what is actually being played here, else what was added last.
+        let played = try history.mostPlayed(kinds: [.movie, .episode], since: now.addingTimeInterval(-30 * 86400), limit: size * 2)
+        var trending: [LibraryItem] = []
+        var seen = Set<String>()
+        for p in played {
+            if let m = try catalog.movie(id: p.itemID), sourceID == nil || m.sourceID == sourceID, seen.insert(m.id).inserted { trending.append(.movie(m)) }
+            else if let e = try catalog.episode(id: p.itemID), let s = try catalog.seriesItem(id: e.seriesID), sourceID == nil || s.sourceID == sourceID, seen.insert(s.id).inserted { trending.append(.series(s)) }
+            if trending.count == size { break }
+        }
+        let mixed = zip(recentMovies, recentSeries).flatMap { [LibraryItem.movie($0), .series($1)] }
+        if trending.count >= 6 {
+            shelves.append(DiscoverShelf(id: "trending", title: "Trending in Your Library", caption: "Most played on \(Self.thisDevice) in the last 30 days", items: trending))
+        } else if !(trending.isEmpty && mixed.isEmpty) {
+            // Too little play history to rank: lead with what was played, then fill with the newest additions.
+            let ids = Set(trending.map(\.id))
+            let fill = mixed.filter { !ids.contains($0.id) }
+            let caption = trending.isEmpty ? "Nothing played yet · showing what was added most recently" : "Played here first, then the newest additions"
+            shelves.append(DiscoverShelf(id: "trending", title: "Trending in Your Library", caption: caption, items: Array((trending + fill).prefix(size))))
+        }
+
+        let topMovies = try catalog.movies(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { (Double($0.rating ?? "") ?? 0) > 0 }.prefix(size)
+        if !topMovies.isEmpty { shelves.append(DiscoverShelf(id: "top-movies", title: "Top Movies This Week", caption: "Ranked by your provider's ratings · not a chart", items: items(Array(topMovies), []), ranked: true)) }
+        let topShows = try catalog.series(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { (Double($0.rating ?? "") ?? 0) > 0 }.prefix(size)
+        if !topShows.isEmpty { shelves.append(DiscoverShelf(id: "top-shows", title: "Top Shows This Week", caption: "Ranked by your provider's ratings · not a chart", items: items([], Array(topShows)), ranked: true)) }
+
+        // Provider and regional shelves come from categories that really exist in this playlist.
+        let movieCats = try catalog.categories(sourceID: sourceID, kind: .movie, includeHidden: false).filter { $0.itemCount > 0 }
+        let seriesCats = try catalog.categories(sourceID: sourceID, kind: .series, includeHidden: false).filter { $0.itemCount > 0 }
+        for def in Self.providerShelves {
+            let m = movieCats.filter { Self.matches($0.name, keywords: Set(def.keywords), phrases: def.phrases) }
+            let s = seriesCats.filter { Self.matches($0.name, keywords: Set(def.keywords), phrases: def.phrases) }
+            if let shelf = try categoryShelf(id: def.title, title: def.title, movieCats: m, seriesCats: s, size: size) { shelves.append(shelf) }
+        }
+        let im = movieCats.filter { Self.matches($0.name, keywords: Self.indianKeywords, phrases: []) }
+        let isr = seriesCats.filter { Self.matches($0.name, keywords: Self.indianKeywords, phrases: []) }
+        if let shelf = try categoryShelf(id: "indian", title: "Indian Entertainment", movieCats: im, seriesCats: isr, size: size) { shelves.append(shelf) }
+
+        // Prefer an item with artwork; otherwise the newest one (the banner draws a tinted placeholder).
+        let hero = recentMovies.first { $0.backdropURL != nil || $0.posterURL != nil }.map { LibraryItem.movie($0) }
+            ?? recentSeries.first { $0.backdropURL != nil || $0.posterURL != nil }.map { LibraryItem.series($0) }
+            ?? recentMovies.first.map { LibraryItem.movie($0) } ?? recentSeries.first.map { LibraryItem.series($0) }
+        return DiscoverContent(hero: hero, shelves: shelves)
+    }
+
+    /// Items from the largest matching categories, newest first. nil when nothing matches.
+    private func categoryShelf(id: String, title: String, movieCats: [CatalogCategory], seriesCats: [CatalogCategory], size: Int) throws -> DiscoverShelf? {
+        guard !(movieCats.isEmpty && seriesCats.isEmpty) else { return nil }
+        let topM = movieCats.sorted { $0.itemCount > $1.itemCount }.prefix(2), topS = seriesCats.sorted { $0.itemCount > $1.itemCount }.prefix(2)
+        var movies: [Movie] = [], series: [Series] = []
+        for c in topM { movies += try catalog.movies(VODQuery(sourceID: c.sourceID, categoryID: c.id, sort: .recentlyAdded, limit: size)) }
+        for c in topS { series += try catalog.series(VODQuery(sourceID: c.sourceID, categoryID: c.id, sort: .recentlyAdded, limit: size)) }
+        let merged: [LibraryItem] = {
+            var out: [LibraryItem] = [], m = movies.makeIterator(), s = series.makeIterator()
+            while out.count < size { let a = m.next(), b = s.next(); if a == nil && b == nil { break }; if let a { out.append(.movie(a)) }; if let b, out.count < size { out.append(.series(b)) } }
+            return out
+        }()
+        guard !merged.isEmpty else { return nil }
+        let names = (Array(topM) + Array(topS)).map(\.name).uniqued(by: { $0 }).prefix(2).map { "“\($0)”" }.joined(separator: ", ")
+        return DiscoverShelf(id: id, title: title, caption: "From your playlist's \(names) \(names.contains(",") ? "categories" : "category")", items: merged)
+    }
+
+    /// Whole-word / whole-phrase match on a normalized category name ("Apple TV+" → "apple tv plus").
+    static func matches(_ name: String, keywords: Set<String>, phrases: [String]) -> Bool {
+        let norm = MetadataNormalizer.normalize(name)
+        let tokens = Set(norm.split(separator: " ").map(String.init))
+        if !tokens.isDisjoint(with: keywords) { return true }
+        return phrases.contains { norm.contains($0) }
+    }
+}
