@@ -3,6 +3,8 @@ import Foundation
 enum NetworkError: Error, LocalizedError, Sendable {
     case invalidURL
     case offline
+    /// The name of the server could not be turned into an address, while the internet itself may be fine. Often a DNS filter.
+    case nameNotFound(host: String?)
     case timeout
     case http(status: Int, retryAfter: TimeInterval?)
     case tooLarge(limit: Int64)
@@ -14,6 +16,8 @@ enum NetworkError: Error, LocalizedError, Sendable {
         switch self {
         case .invalidURL: "The address is not valid."
         case .offline: "No internet connection. Check your connection and try again."
+        case .nameNotFound(let host):
+            "The server name\(host.map { " \"\($0)\"" } ?? "") couldn't be found. If you use a DNS ad-blocker or filter (Pi-hole, AdGuard, NextDNS), a VPN with its own DNS, or a content-filtering profile, allow that name or turn it off for StreamSetu, then try again."
         case .timeout: "The server took too long to respond."
         case .http(let status, _):
             switch status {
@@ -32,7 +36,7 @@ enum NetworkError: Error, LocalizedError, Sendable {
 
     var isRetryable: Bool {
         switch self {
-        case .timeout, .offline: true
+        case .timeout, .offline, .nameNotFound: true
         case .http(let s, _): s == 408 || s == 429 || (500...599).contains(s)
         default: false
         }
@@ -51,8 +55,10 @@ enum NetworkError: Error, LocalizedError, Sendable {
             switch ns.code {
             case NSURLErrorCancelled: return .cancelled
             case NSURLErrorTimedOut: return .timeout
-            case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorCannotFindHost,
-                 NSURLErrorCannotConnectToHost, NSURLErrorDNSLookupFailed: return .offline
+            case NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed:
+                let failing = (ns.userInfo[NSURLErrorFailingURLErrorKey] as? URL) ?? (ns.userInfo[NSURLErrorFailingURLStringErrorKey] as? String).flatMap(URL.init(string:))
+                return .nameNotFound(host: failing?.host)
+            case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorCannotConnectToHost: return .offline
             case NSURLErrorBadURL, NSURLErrorUnsupportedURL: return .invalidURL
             default: break
             }

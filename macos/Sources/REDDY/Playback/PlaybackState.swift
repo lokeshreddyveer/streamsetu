@@ -2,7 +2,7 @@ import Foundation
 
 struct PlaybackError: Error, Equatable, Sendable {
     enum Kind: String, Sendable {
-        case network, timeout, authorization, unsupportedFormat, providerUnavailable, notFound, engineUnavailable, unknown
+        case network, nameLookup, timeout, authorization, unsupportedFormat, providerUnavailable, notFound, engineUnavailable, unknown
     }
     let kind: Kind
     let detail: String?
@@ -13,6 +13,7 @@ struct PlaybackError: Error, Equatable, Sendable {
     var message: String {
         switch kind {
         case .network: "Network unavailable. Check your connection and try again."
+        case .nameLookup: "The server's name couldn't be found\(detail.map { " (\($0))" } ?? ""). Your internet may be fine."
         case .timeout: "The stream took too long to start. Try again."
         case .authorization: "Your streaming provider rejected the playback request."
         case .unsupportedFormat: "This stream format is not supported by the selected playback engine."
@@ -26,6 +27,7 @@ struct PlaybackError: Error, Equatable, Sendable {
     /// What to try next, in plain words. Shown under the message so a failure always comes with a way forward.
     var advice: String {
         switch kind {
+        case .nameLookup: "If you use a DNS ad-blocker or filter (Pi-hole, AdGuard, NextDNS), a VPN with its own DNS, or a content-filtering profile, allow this server name or turn it off for StreamSetu. Switching to your network's normal DNS also works."
         case .network: "Check your Wi-Fi or mobile data. If other apps work, your provider's server may be down."
         case .timeout: "Live streams can be slow to start. Try again, or choose the Smooth buffering profile in Settings > Playback."
         case .authorization: "Your login may have expired, or too many devices are using the account. Check the playlist's login."
@@ -38,7 +40,7 @@ struct PlaybackError: Error, Equatable, Sendable {
     }
 
     /// Network-ish failures are worth a bounded retry. Authorization and format problems are not.
-    var isTransient: Bool { [.network, .timeout, .providerUnavailable, .unknown].contains(kind) }
+    var isTransient: Bool { [.network, .nameLookup, .timeout, .providerUnavailable, .unknown].contains(kind) }
 
     static func classify(_ error: Error, httpStatus: Int? = nil) -> PlaybackError {
         if let s = httpStatus { return fromHTTP(s) }
@@ -46,6 +48,7 @@ struct PlaybackError: Error, Equatable, Sendable {
         if let ne = error as? NetworkError {
             switch ne {
             case .offline: return .init(.network)
+            case .nameNotFound(let host): return .init(.nameLookup, detail: host)
             case .timeout: return .init(.timeout)
             case .http(let s, _): return fromHTTP(s)
             default: return .init(.unknown, detail: ne.errorDescription)
@@ -55,9 +58,12 @@ struct PlaybackError: Error, Equatable, Sendable {
         switch ns.domain {
         case NSURLErrorDomain:
             switch ns.code {
-            case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDNSLookupFailed: return .init(.network)
+            case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost: return .init(.network)
+            case NSURLErrorDNSLookupFailed, NSURLErrorCannotFindHost:
+                let failing = (ns.userInfo[NSURLErrorFailingURLErrorKey] as? URL) ?? (ns.userInfo[NSURLErrorFailingURLStringErrorKey] as? String).flatMap(URL.init(string:))
+                return .init(.nameLookup, detail: failing?.host)
             case NSURLErrorTimedOut: return .init(.timeout)
-            case NSURLErrorCannotConnectToHost, NSURLErrorCannotFindHost: return .init(.providerUnavailable)
+            case NSURLErrorCannotConnectToHost: return .init(.providerUnavailable)
             case NSURLErrorUserAuthenticationRequired, NSURLErrorNoPermissionsToReadFile: return .init(.authorization)
             default: break
             }

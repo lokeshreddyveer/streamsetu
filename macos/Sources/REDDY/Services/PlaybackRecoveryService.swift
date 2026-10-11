@@ -25,8 +25,9 @@ struct PlaybackRecoveryService: Sendable {
             return .giveUp
         case .notFound:
             return attempt == 0 ? .retry(after: 0.5, reResolve: true) : .giveUp
-        case .network, .timeout, .providerUnavailable, .unknown:
-            guard attempt < (error.kind == .unknown ? min(1, maxRetries) : maxRetries) else { return .giveUp }
+        case .network, .nameLookup, .timeout, .providerUnavailable, .unknown:
+            // A name that cannot be found rarely fixes itself in seconds (a DNS filter), so it gets one retry, then the explanation.
+            guard attempt < (error.kind == .unknown || error.kind == .nameLookup ? min(1, maxRetries) : maxRetries) else { return .giveUp }
             return .retry(after: min(maxDelay, baseDelay * pow(2, Double(attempt))), reResolve: true)
         }
     }

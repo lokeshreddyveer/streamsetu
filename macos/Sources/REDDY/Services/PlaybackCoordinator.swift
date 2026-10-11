@@ -94,6 +94,7 @@ final class PlaybackCoordinator {
 
     private var engine: any PlaybackEngine
     private var startTask: Task<Void, Never>?
+    private var watchdogTask: Task<Void, Never>?
     private var recoveryTask: Task<Void, Never>?
     private var ticker: Task<Void, Never>?
     private var stateTasks: [PlaybackEngineKind: Task<Void, Never>] = [:]
@@ -593,6 +594,7 @@ final class PlaybackCoordinator {
         #endif
         engine.setMuted(isMuted); engine.setVolume(effectiveVolume); engine.setRate(rate)
         state = .resolving
+        watchStart(request, generation: gen)
         startTask = Task { [weak self] in
             guard let self else { return }
             do { try await self.engine.load(request) }
@@ -600,6 +602,29 @@ final class PlaybackCoordinator {
                 guard gen == self.generation else { return }
                 self.handleFailure(PlaybackError.classify(error, httpStatus: self.engine.lastHTTPStatus))
             }
+        }
+    }
+
+    /// If nothing has played 20 seconds after a start, finds out why (a blocked or missing server name, or a server nothing can connect to)
+    /// and says so, instead of leaving the spinner turning. It never touches the stream, and does nothing for a stream that is just slow.
+    private func watchStart(_ request: PlaybackRequest, generation gen: Int) {
+        watchdogTask?.cancel()
+        watchdogTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            guard let self, !Task.isCancelled, gen == self.generation, !self.recordedPlay, self.state != .playing, self.state != .paused else { return }
+            let verdict = await StartDiagnosis.diagnose(request.url)
+            guard !Task.isCancelled, gen == self.generation, self.state != .playing else { return }
+            guard let error = verdict else {
+                // The name resolves and the server answers, yet nothing has played: try the other player once.
+                if self.attempt == 0, let alt = EngineSelector.fallback(from: self.activeEngine, available: self.factory.available) {
+                    self.diagnostics.record("start watchdog: no start after 20 s, trying \(alt.rawValue)")
+                    self.attempt += 1
+                    self.start(request, engineOverride: alt)
+                }
+                return
+            }
+            self.diagnostics.record("start watchdog: \(error.kind.rawValue) \(error.detail ?? "")")
+            self.handleFailure(error)
         }
     }
 
@@ -785,7 +810,7 @@ final class PlaybackCoordinator {
     }
 
     private func cancelWork() {
-        startTask?.cancel(); recoveryTask?.cancel(); stableTask?.cancel(); ticker?.cancel(); ticker = nil
+        startTask?.cancel(); recoveryTask?.cancel(); stableTask?.cancel(); watchdogTask?.cancel(); ticker?.cancel(); ticker = nil
         generation += 1
     }
 
