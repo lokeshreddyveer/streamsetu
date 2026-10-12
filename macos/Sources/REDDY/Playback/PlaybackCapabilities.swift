@@ -39,26 +39,39 @@ struct PlaybackCapabilities: Sendable {
 
 /// Capability-based detection: the URL's scheme, extension and path hints decide the container, not blind trust in a filename.
 enum StreamCapabilities {
+    /// The one list of file types, used by the player chooser, the paste importer and the messages, so they cannot disagree.
+    static let hlsExtensions: Set<String> = ["m3u8", "m3u"]
+    static let mp4Extensions: Set<String> = ["mp4", "m4v", "mov"]
+    static let mkvExtensions: Set<String> = ["mkv", "webm", "avi", "wmv", "flv", "mpg", "mpeg", "vob", "ogv", "3gp"]     // Apple's player cannot open these; MPV can
+    static let transportStreamExtensions: Set<String> = ["ts", "mts", "m2ts"]
+    static let audioExtensions: Set<String> = ["mp3", "aac", "ogg", "opus", "flac", "m4a"]
+    static let schemesForMPV: Set<String> = ["rtsp", "rtsps", "rtmp", "rtmps", "rtmpt", "udp", "rtp", "srt", "mms", "mmsh"]
+
+    /// A single media file (not a playlist): the player plays it instead of reading it as a list.
+    static func isMediaFile(extension ext: String) -> Bool {
+        let e = ext.lowercased()
+        return mp4Extensions.contains(e) || mkvExtensions.contains(e) || transportStreamExtensions.contains(e) || audioExtensions.contains(e)
+    }
+
     static func container(for url: URL, isLive: Bool = false) -> StreamContainer {
         let scheme = url.scheme?.lowercased() ?? ""
-        if ["rtsp", "rtsps", "rtmp", "rtmps", "rtmpt", "udp", "rtp", "srt", "mms", "mmsh"].contains(scheme) { return .rtsp }     // only MPV opens these
+        if schemesForMPV.contains(scheme) { return .rtsp }     // only MPV opens these
         let path = url.path.lowercased()
         let ext = (path as NSString).pathExtension
-        switch ext {
-        case "m3u8", "m3u": return .hls
-        case "mp4", "m4v", "mov": return .mp4
-        case "mkv", "webm", "avi", "wmv", "flv", "mpg", "mpeg", "vob", "ogv", "3gp": return .mkv     // Apple's player cannot open these; MPV can
-        case "mpd": return .dash
-        case "ts", "mts", "m2ts": return .mpegTS
-        default: break
-        }
+        if hlsExtensions.contains(ext) { return .hls }
+        if mp4Extensions.contains(ext) { return .mp4 }
+        if mkvExtensions.contains(ext) { return .mkv }
+        if ext == "mpd" { return .dash }
+        if transportStreamExtensions.contains(ext) { return .mpegTS }
         if path.contains("/live/") || isLive { return .mpegTS }       // Xtream-style live endpoints without a useful extension
         return .unknown
     }
 }
 
 enum EngineSelector {
-    #if os(macOS)
+    /// Live MPEG-TS goes to MPV wherever MPV is available: it reads the stream directly (one connection, any codec) and starts in about two
+    /// seconds, where Apple's player needs a local relay and cannot play HEVC or MP2 audio in live TS. Apple's player is the backup.
+    #if os(macOS) || STREAMSETU_MPV
     static let preferMPVForTransportStream = true
     #else
     static let preferMPVForTransportStream = false

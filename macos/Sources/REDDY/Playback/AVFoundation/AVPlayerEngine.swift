@@ -27,6 +27,7 @@ final class AVPlayerEngine: PlaybackEngine {
 
     private var observer: AVPlayerObserver?
     private var bridge: TSBridge?
+    private var traceTicks = 0
     private var request: PlaybackRequest?
     private var userPaused = false
     private var pendingStart: TimeInterval = 0
@@ -137,8 +138,14 @@ final class AVPlayerEngine: PlaybackEngine {
     }
 
     private func fail(_ error: Error) {
+        if Trace.on, let item = player.currentItem {
+            for ev in item.errorLog()?.events ?? [] { Trace.log("AVPlayer errorLog status=\(ev.errorStatusCode) domain=\(ev.errorDomain) comment=\(ev.errorComment ?? "-") uri=\(ev.uri.flatMap(URL.init(string:)).map(Trace.describe) ?? "-")") }
+            Trace.log("AVPlayer item status=\(item.status.rawValue) bridge http=\(bridge?.httpStatus.map(String.init) ?? "-")")
+        }
         let status = bridge?.httpStatus
-        let e = PlaybackError.classify(error, httpStatus: (status != nil && status != 200) ? status : nil)
+        let e = bridge?.receivedNothing == true
+            ? PlaybackError(.providerBusy)
+            : PlaybackError.classify(error, httpStatus: (status != nil && status != 200) ? status : nil)
         lastHTTPStatus = bridge?.httpStatus
         Log.playback.error("AVPlayer failed: \(e.kind.rawValue) \(e.detail ?? "")")
         send(.failed(e))
@@ -146,6 +153,12 @@ final class AVPlayerEngine: PlaybackEngine {
 
     private func onReadyToPlay() async {
         guard let item = player.currentItem else { return }
+        if let why = bridge?.unsupportedVideo {
+            // Apple's player would play sound with no picture. Say so, so the other player takes over.
+            Trace.log("AVPlayer cannot show this channel: \(why)")
+            fail(PlaybackError(.unsupportedFormat, detail: "Apple's player can't show this channel's video (\(why))."))
+            return
+        }
         let generation = loadGeneration
         await loadQualities(item)
         audioGroup = try? await item.asset.loadMediaSelectionGroup(for: .audible)
@@ -161,14 +174,22 @@ final class AVPlayerEngine: PlaybackEngine {
                 let code = String(fourCC: CMFormatDescriptionGetMediaSubType(desc))
                 if t.mediaType == .video { metrics.videoCodec = code; metrics.frameRate = Double((try? await t.load(.nominalFrameRate)) ?? 0) }
                 if t.mediaType == .audio { metrics.audioCodec = code }
+                if Trace.on {
+                    let playable = (try? await t.load(.isPlayable)).map(String.init) ?? "?"
+                    let natural = (try? await t.load(.naturalSize)).map { "\(Int($0.width))x\(Int($0.height))" } ?? "?"
+                    Trace.log("AVPlayer track \(t.mediaType.rawValue) codec=\(code) playable=\(playable) size=\(natural)")
+                }
             }
         }
+        Trace.log("AVPlayer ready presentationSize=\(Int(item.presentationSize.width))x\(Int(item.presentationSize.height)) video=\(metrics.videoCodec ?? "-") audio=\(metrics.audioCodec ?? "-")")
     }
 
     private func updateMetrics() {
         guard let item = player.currentItem else { return }
         let size = item.presentationSize
         metrics.width = Int(size.width); metrics.height = Int(size.height)
+        traceTicks += 1
+        if Trace.on, traceTicks % 8 == 0 { Trace.log("AVPlayer tick pos=\(String(format: "%.1f", player.currentTime().seconds)) size=\(Int(size.width))x\(Int(size.height)) rate=\(player.rate) stalls=\(buffering.stalls) bufferedAhead=\(String(format: "%.1f", metrics.bufferedAheadSeconds ?? 0))") }
         if let e = item.accessLog()?.events.last {
             metrics.observedBitrate = e.observedBitrate
             metrics.indicatedBitrate = e.indicatedBitrate

@@ -67,16 +67,17 @@ final class MPVHostView: UIView {
         super.layoutSubviews()
         CATransaction.begin(); CATransaction.setDisableActions(true)
         videoLayer?.frame = bounds
+        Trace.log("MPVHostView layout bounds=\(Int(bounds.width))x\(Int(bounds.height)) inWindow=\(window != nil) hidden=\(videoLayer?.isHidden ?? true) hasContents=\(videoLayer?.contents != nil)")
         CATransaction.commit()
     }
 }
 
 struct MPVSurface: UIViewRepresentable {
-    let layer: AVSampleBufferDisplayLayer
+    let layer: CALayer
     var fill: Bool
     func makeUIView(context: Context) -> MPVHostView { let v = MPVHostView(); v.backgroundColor = .black; v.videoLayer = layer; return v }
     func updateUIView(_ v: MPVHostView, context: Context) {
-        layer.videoGravity = fill ? .resizeAspectFill : .resizeAspect
+        layer.contentsGravity = fill ? .resizeAspectFill : .resizeAspect
         if v.videoLayer !== layer { v.videoLayer = layer }
     }
 }
@@ -118,7 +119,7 @@ struct PlayerScreen: View {
                     .onTapGesture(count: 2) { location in doubleTap(at: location.x, width: geo.size.width) }
                     .onTapGesture { toggleControls() }
                 #if STREAMSETU_MPV
-                if playback.activeEngine == .mpv, let mpv = playback.mpvLayer {
+                if playback.activeEngine == .mpv, let mpv = playback.mpvSurface {
                     MPVSurface(layer: mpv, fill: fill).ignoresSafeArea().contentShape(Rectangle())
                         .onTapGesture(count: 2) { location in doubleTap(at: location.x, width: geo.size.width) }
                         .onTapGesture { toggleControls() }

@@ -58,6 +58,7 @@ Data/Sources/Plex/PlexProvider.swift
 Data/Sources/Stalker/StalkerMapper.swift
 Data/Sources/Stalker/StalkerProvider.swift
 Playback/PortalLink.swift
+Playback/StartDiagnosis.swift
 Data/Sources/Xtream/XtreamClient.swift
 Data/Sources/Xtream/XtreamDTO.swift
 Data/Sources/Xtream/XtreamErrors.swift
@@ -190,4 +191,5 @@ Utilities/CollectionExtensions.swift
 Utilities/DurationFormatter.swift
 Utilities/Logger.swift
 Utilities/MemoryPressureGuard.swift
+Utilities/Trace.swift
 Utilities/URLUtilities.swift

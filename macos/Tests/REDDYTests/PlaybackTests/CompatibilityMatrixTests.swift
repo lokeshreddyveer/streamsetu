@@ -34,7 +34,7 @@ import Foundation
     }
 
     @Test func everyFailureKindHasAMessageAndSomethingToTry() {
-        let kinds: [PlaybackError.Kind] = [.network, .nameLookup, .timeout, .authorization, .unsupportedFormat, .providerUnavailable, .notFound, .engineUnavailable, .unknown]
+        let kinds: [PlaybackError.Kind] = [.network, .nameLookup, .providerBusy, .timeout, .authorization, .unsupportedFormat, .providerUnavailable, .notFound, .engineUnavailable, .unknown]
         for k in kinds {
             let e = PlaybackError(k)
             #expect(!e.message.isEmpty && !e.advice.isEmpty)
@@ -98,5 +98,101 @@ import Foundation
 
     @Test func streamsWithoutAHostAreLeftAlone() async {
         #expect(await StartDiagnosis.diagnose(URL(string: "portal-link://stream?kind=channel")!) == nil || true)
+    }
+}
+
+
+@Suite struct ProviderBusyTests {
+    @Test func aBusyProviderIsRetriedWithGrowingWaitsThenGivenUp() {
+        let r = PlaybackRecoveryService()
+        var waits: [TimeInterval] = []
+        for attempt in 0..<6 {
+            if case .retry(let after, _) = r.decide(error: PlaybackError(.providerBusy), attempt: attempt, current: .avPlayer, available: [.avPlayer], isLive: true) { waits.append(after) }
+        }
+        #expect(waits == [3, 5, 8, 12])
+        #expect(PlaybackError(.providerBusy).message.contains("no video") && PlaybackError(.providerBusy).advice.contains("one stream at a time"))
+        #expect(PlaybackError(.providerBusy).isTransient)
+    }
+}
+
+@Suite struct FormatFallbackTests {
+    @Test func anUnreadableFormatSwitchesPlayerOnceThenStops() {
+        let r = PlaybackRecoveryService()
+        #expect(r.decide(error: PlaybackError(.unsupportedFormat), attempt: 0, current: .avPlayer, available: [.avPlayer, .mpv], isLive: true) == .switchEngine(.mpv))
+        #expect(r.decide(error: PlaybackError(.unsupportedFormat), attempt: 1, current: .mpv, available: [.avPlayer, .mpv], isLive: true) == .giveUp)
+        #expect(r.decide(error: PlaybackError(.unsupportedFormat), attempt: 0, current: .avPlayer, available: [.avPlayer], isLive: true) == .giveUp)
+    }
+}
+
+@Suite struct MPEGAudioDetectionTests {
+    /// A TS packet holding a PAT, a PMT (H.264 on 256, MPEG audio on 257), or an audio PES whose first frame has the given layer bits.
+    private func packet(pid: Int, pusi: Bool = true, payload: [UInt8]) -> Data {
+        var p = [UInt8](repeating: 0xFF, count: 188)
+        p[0] = 0x47; p[1] = UInt8((pusi ? 0x40 : 0) | ((pid >> 8) & 0x1F)); p[2] = UInt8(pid & 0xFF); p[3] = 0x10
+        for (i, b) in payload.enumerated() { p[4 + i] = b }
+        return Data(p)
+    }
+
+    private func stream(layerBits: UInt8) -> TSSegmenter {
+        var s = TSSegmenter()
+        // PAT: program 1 -> PMT PID 4096
+        s.ingest(packet(pid: 0, payload: [0, 0x00, 0xB0, 0x0D, 0, 1, 0xC1, 0, 0, 0, 1, 0xF0, 0x00, 0, 0, 0, 0]))
+        // PMT: video type 0x1B on 256, audio type 0x03 on 257
+        s.ingest(packet(pid: 4096, payload: [0, 0x02, 0xB0, 0x17, 0, 1, 0xC1, 0, 0, 0xE1, 0x00, 0xF0, 0x00, 0x1B, 0xE1, 0x00, 0xF0, 0x00, 0x03, 0xE1, 0x01, 0xF0, 0x00, 0, 0, 0, 0]))
+        // a video PES start so the segmenter is past the stream tables
+        s.ingest(packet(pid: 256, payload: [0, 0, 1, 0xE0, 0, 0, 0x80, 0, 0]))
+        // audio PES: header (9 bytes, no extra), then the MPEG audio frame header 0xFF 0xFx
+        s.ingest(packet(pid: 257, payload: [0, 0, 1, 0xC0, 0, 0, 0x80, 0, 0, 0xFF, 0xE0 | (layerBits << 1) | 1, 0x90, 0]))
+        return s
+    }
+
+    @Test func layerTwoAudioIsFlagged() { #expect(stream(layerBits: 2).audioIsMPEGLayerII) }
+    @Test func layerOneAudioIsFlagged() { #expect(stream(layerBits: 3).audioIsMPEGLayerII) }
+    @Test func mp3AudioIsNotFlagged() { #expect(!stream(layerBits: 1).audioIsMPEGLayerII) }
+    @Test func streamTypesAreListed() {
+        let s = stream(layerBits: 1)
+        #expect(s.streamTypes.map(\.type) == [0x1B, 0x03] && s.videoPID == 256)
+    }
+}
+
+@Suite struct WrappedNetworkErrorTests {
+    private func wrapped(_ inner: Int) -> NSError {
+        NSError(domain: NSURLErrorDomain, code: NSURLErrorUnknown, userInfo: [NSUnderlyingErrorKey: NSError(domain: NSURLErrorDomain, code: inner)])
+    }
+
+    @Test func aWrappedTimeoutOrDroppedConnectionIsRetriedLikeOne() {
+        #expect(PlaybackError.classify(wrapped(NSURLErrorTimedOut)).kind == .timeout)
+        #expect(PlaybackError.classify(wrapped(NSURLErrorNetworkConnectionLost)).kind == .network)
+        #expect(PlaybackError.classify(NSError(domain: NSURLErrorDomain, code: NSURLErrorUnknown)).kind == .unknown)
+        let r = PlaybackRecoveryService()
+        #expect(r.decide(error: PlaybackError.classify(wrapped(NSURLErrorTimedOut)), attempt: 2, current: .avPlayer, available: [.avPlayer], isLive: false) != .giveUp)
+    }
+}
+
+@Suite struct ConsistencyRuleTests {
+    private func channel(_ id: String) -> Channel {
+        Channel(id: id, sourceID: UUID(), providerID: id, name: id, normalizedName: id, categoryID: nil, categoryName: nil, logoURL: nil, epgID: nil,
+                language: nil, country: nil, resolutionHint: nil, sortOrder: 0, streamRef: id, groupKey: nil)
+    }
+
+    @Test func aBusyProviderOrBlockedNameDoesNotTriggerOtherQualityCopies() {
+        let v = [(variant: channel("hd"), label: "HD"), (variant: channel("4k"), label: "4K")]
+        for kind: PlaybackError.Kind in [.providerBusy, .nameLookup, .authorization, .engineUnavailable] {
+            #expect(VariantFallback.next(variants: v, tried: ["hd"], errorKind: kind) == nil, "\(kind) must not try another copy")
+        }
+        for kind: PlaybackError.Kind in [.unsupportedFormat, .providerUnavailable, .notFound, .unknown, .network, .timeout] {
+            #expect(VariantFallback.next(variants: v, tried: ["hd"], errorKind: kind)?.variant.id == "4k", "\(kind) may try another copy")
+        }
+    }
+
+    @Test func oneListOfFileTypesDrivesEveryDecision() {
+        for ext in StreamCapabilities.mkvExtensions {
+            #expect(StreamCapabilities.container(for: URL(string: "http://h/a.\(ext)")!) == .mkv)
+            #expect(SourceDetector.isDirectStream(URL(string: "http://h/a.\(ext)")!))
+        }
+        for ext in StreamCapabilities.mp4Extensions { #expect(StreamCapabilities.container(for: URL(string: "http://h/a.\(ext)")!) == .mp4) }
+        for ext in StreamCapabilities.transportStreamExtensions { #expect(StreamCapabilities.container(for: URL(string: "http://h/a.\(ext)")!) == .mpegTS) }
+        #expect(!StreamCapabilities.isMediaFile(extension: "m3u8") && !StreamCapabilities.isMediaFile(extension: "php") && StreamCapabilities.isMediaFile(extension: "MP3"))
+        for scheme in StreamCapabilities.schemesForMPV { #expect(SourceURLValidator.playableSchemes.contains(scheme)) }
     }
 }

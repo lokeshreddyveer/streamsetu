@@ -2,7 +2,7 @@ import Foundation
 
 struct PlaybackError: Error, Equatable, Sendable {
     enum Kind: String, Sendable {
-        case network, nameLookup, timeout, authorization, unsupportedFormat, providerUnavailable, notFound, engineUnavailable, unknown
+        case network, nameLookup, providerBusy, timeout, authorization, unsupportedFormat, providerUnavailable, notFound, engineUnavailable, unknown
     }
     let kind: Kind
     let detail: String?
@@ -13,6 +13,7 @@ struct PlaybackError: Error, Equatable, Sendable {
     var message: String {
         switch kind {
         case .network: "Network unavailable. Check your connection and try again."
+        case .providerBusy: "The provider accepted the request but sent no video."
         case .nameLookup: "The server's name couldn't be found\(detail.map { " (\($0))" } ?? ""). Your internet may be fine."
         case .timeout: "The stream took too long to start. Try again."
         case .authorization: "Your streaming provider rejected the playback request."
@@ -27,6 +28,7 @@ struct PlaybackError: Error, Equatable, Sendable {
     /// What to try next, in plain words. Shown under the message so a failure always comes with a way forward.
     var advice: String {
         switch kind {
+        case .providerBusy: "Most providers allow only one stream at a time, and your previous stream may still be closing on their side. Wait a few seconds; StreamSetu keeps trying. If it keeps happening, stop the stream on your other devices (a TV, another phone, Multi-View)."
         case .nameLookup: "If you use a DNS ad-blocker or filter (Pi-hole, AdGuard, NextDNS), a VPN with its own DNS, or a content-filtering profile, allow this server name or turn it off for StreamSetu. Switching to your network's normal DNS also works."
         case .network: "Check your Wi-Fi or mobile data. If other apps work, your provider's server may be down."
         case .timeout: "Live streams can be slow to start. Try again, or choose the Smooth buffering profile in Settings > Playback."
@@ -40,9 +42,12 @@ struct PlaybackError: Error, Equatable, Sendable {
     }
 
     /// Network-ish failures are worth a bounded retry. Authorization and format problems are not.
-    var isTransient: Bool { [.network, .nameLookup, .timeout, .providerUnavailable, .unknown].contains(kind) }
+    var isTransient: Bool { [.network, .nameLookup, .providerBusy, .timeout, .providerUnavailable, .unknown].contains(kind) }
 
     static func classify(_ error: Error, httpStatus: Int? = nil) -> PlaybackError {
+        let raw = error as NSError
+        let failingHost = ((raw.userInfo[NSURLErrorFailingURLErrorKey] as? URL) ?? (raw.userInfo[NSURLErrorFailingURLStringErrorKey] as? String).flatMap(URL.init(string:)))?.host
+        Trace.log("classify raw error domain=\(raw.domain) code=\(raw.code) http=\(httpStatus.map(String.init) ?? "-") \(raw.localizedDescription) underlying=\((raw.userInfo[NSUnderlyingErrorKey] as? NSError).map { "\($0.domain) \($0.code)" } ?? "-") failingHost=\(failingHost ?? "-")")
         if let s = httpStatus { return fromHTTP(s) }
         if let pe = error as? PlaybackError { return pe }
         if let ne = error as? NetworkError {
@@ -64,6 +69,9 @@ struct PlaybackError: Error, Equatable, Sendable {
                 return .init(.nameLookup, detail: failing?.host)
             case NSURLErrorTimedOut: return .init(.timeout)
             case NSURLErrorCannotConnectToHost: return .init(.providerUnavailable)
+            case NSURLErrorUnknown, NSURLErrorBadServerResponse:
+                // AVPlayer wraps the real network error one level down (a timeout, a dropped connection): classify that.
+                if let u = ns.userInfo[NSUnderlyingErrorKey] as? NSError, u.domain == NSURLErrorDomain, u.code != ns.code { return classify(u) }
             case NSURLErrorUserAuthenticationRequired, NSURLErrorNoPermissionsToReadFile: return .init(.authorization)
             default: break
             }
@@ -79,6 +87,7 @@ struct PlaybackError: Error, Equatable, Sendable {
             case -12660, -12661: return .init(.authorization)                    // HTTP 403 / 401
             case -12938, -12939: return .init(.notFound)                         // HTTP 404-ish
             case -12642, -12645, -12643: return .init(.unsupportedFormat)
+            case 1718449215, 1718449207: return .init(.unsupportedFormat, detail: "Apple's player cannot read this video or audio format (\(ns.code)).")   // 'fmt?'
             case -12889, -12885, -12886: return .init(.providerUnavailable)
             default: break
             }

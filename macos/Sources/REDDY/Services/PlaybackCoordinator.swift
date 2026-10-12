@@ -99,6 +99,7 @@ final class PlaybackCoordinator {
     private var ticker: Task<Void, Never>?
     private var stateTasks: [PlaybackEngineKind: Task<Void, Never>] = [:]
     private var attempt = 0
+    private var switchedEngine = false
     private var sessionID: Int64?
     private var recordedPlay = false
     private var stableTask: Task<Void, Never>?
@@ -166,6 +167,8 @@ final class PlaybackCoordinator {
     var avPlayer: AVPlayer { factory.avEngine.player }
     #if os(macOS) || STREAMSETU_MPV
     var mpvLayer: AVSampleBufferDisplayLayer? { factory.mpvEngine?.displayLayer }
+    /// What the iPhone and iPad show MPV's video on (a plain layer; see MPVPlayerEngine.surfaceLayer).
+    var mpvSurface: CALayer? { factory.mpvEngine?.surfaceLayer }
     #endif
     var availableEngines: Set<PlaybackEngineKind> { factory.available }
     /// What an engine supports, or nil when that engine can't run on this Mac.
@@ -438,8 +441,7 @@ final class PlaybackCoordinator {
         channelEnginePreference = pref
         channelPrefs.update(id) { $0.engine = pref?.rawValue }
         guard let r = current else { return }
-        let kind = EngineSelector.select(container: StreamCapabilities.container(for: r.url, isLive: r.isLive), preference: settings.enginePreference,
-                                         playlistPreference: settings.engineOverride(for: r.sourceID), channelPreference: pref, available: factory.available)
+        let kind = chooseEngine(for: r, channelPreference: pref)
         if kind != activeEngine { switchEngine(kind) }
     }
 
@@ -528,6 +530,7 @@ final class PlaybackCoordinator {
 
     private func begin(_ resolve: @escaping () throws -> PlaybackRequest) {
         state = .resolving
+        switchedEngine = false
         do {
             let request = try resolve()
             current = request
@@ -564,6 +567,12 @@ final class PlaybackCoordinator {
         }
     }
 
+    /// The one place that decides which player a stream goes to (the most specific choice wins: channel, then playlist, then the app setting).
+    private func chooseEngine(for request: PlaybackRequest, channelPreference: PlaybackEnginePreference?) -> PlaybackEngineKind {
+        EngineSelector.select(container: StreamCapabilities.container(for: request.url, isLive: request.isLive), preference: settings.enginePreference,
+                              playlistPreference: settings.engineOverride(for: request.sourceID), channelPreference: channelPreference, available: factory.available)
+    }
+
     private func start(_ request: PlaybackRequest, engineOverride: PlaybackEngineKind? = nil) {
         if request.url.scheme == PortalLink.scheme { startAfterResolvingLink(request, engineOverride: engineOverride); return }
         generation += 1
@@ -571,8 +580,8 @@ final class PlaybackCoordinator {
         startTask?.cancel(); recoveryTask?.cancel()
         current = request
         let container = StreamCapabilities.container(for: request.url, isLive: request.isLive)
-        let kind = engineOverride ?? EngineSelector.select(container: container, preference: settings.enginePreference, playlistPreference: settings.engineOverride(for: request.sourceID),
-                                       channelPreference: request.isLive ? channelEnginePreference : nil, available: factory.available)
+        let kind = engineOverride ?? chooseEngine(for: request, channelPreference: request.isLive ? channelEnginePreference : nil)
+        Trace.log("start \(request.kind.rawValue) live=\(request.isLive) \(Trace.describe(request.url)) container=\(container) engine=\(kind.rawValue) (was \(activeEngine.rawValue)) attempt=\(attempt) preference=\(settings.enginePreference)")
         if kind != activeEngine { switchTo(kind) }
         let buffering = settings.bufferingOverride(for: request.sourceID) ?? settings.bufferingMode
         engine.bufferingMode = buffering
@@ -614,15 +623,7 @@ final class PlaybackCoordinator {
             guard let self, !Task.isCancelled, gen == self.generation, !self.recordedPlay, self.state != .playing, self.state != .paused else { return }
             let verdict = await StartDiagnosis.diagnose(request.url)
             guard !Task.isCancelled, gen == self.generation, self.state != .playing else { return }
-            guard let error = verdict else {
-                // The name resolves and the server answers, yet nothing has played: try the other player once.
-                if self.attempt == 0, let alt = EngineSelector.fallback(from: self.activeEngine, available: self.factory.available) {
-                    self.diagnostics.record("start watchdog: no start after 20 s, trying \(alt.rawValue)")
-                    self.attempt += 1
-                    self.start(request, engineOverride: alt)
-                }
-                return
-            }
+            guard let error = verdict else { return }       // reachable and resolving: leave the stream alone, however slow
             self.diagnostics.record("start watchdog: \(error.kind.rawValue) \(error.detail ?? "")")
             self.handleFailure(error)
         }
@@ -648,6 +649,7 @@ final class PlaybackCoordinator {
 
     private func engineChanged(_ s: PlaybackState, from kind: PlaybackEngineKind) {
         guard kind == activeEngine else { return }
+        Trace.log("state \(kind.rawValue): \(s)")
         state = s
         switch s {
         case .playing:
@@ -686,12 +688,16 @@ final class PlaybackCoordinator {
 
     private func handleFailure(_ error: PlaybackError) {
         guard let r = current else { state = .failed(error); return }
-        let action = recovery.decide(error: error, attempt: attempt, current: activeEngine, available: factory.available, isLive: r.isLive)
+        // Provider retries (a busy or erroring server) must not use up the one allowed switch to the other player, so that decision is counted apart.
+        let isFormat = error.kind == .unsupportedFormat || error.kind == .engineUnavailable
+        let decisionAttempt = isFormat ? (switchedEngine ? max(attempt, 1) : 0) : attempt
+        let action = recovery.decide(error: error, attempt: decisionAttempt, current: activeEngine, available: factory.available, isLive: r.isLive)
+        Trace.log("failure \(error.kind.rawValue) detail=\(error.detail ?? "-") attempt=\(attempt) action=\(action)")
         diagnostics.record("playback \(error.kind.rawValue) attempt \(attempt): \(error.detail ?? "")")
         switch action {
         case .retry(let delay, _):
             attempt += 1
-            statusMessage = "Reconnecting… (\(attempt)/\(recovery.maxRetries))"
+            statusMessage = error.kind == .providerBusy ? "The provider is still closing your last stream. Trying again… (\(attempt)/4)" : "Reconnecting… (\(attempt)/\(recovery.maxRetries))"
             state = .recovering
             recoveryTask?.cancel()
             recoveryTask = Task { [weak self] in
@@ -701,6 +707,13 @@ final class PlaybackCoordinator {
             }
         case .switchEngine(let kind):
             attempt += 1
+            switchedEngine = true
+            // A channel Apple's player cannot read stays that way: remember the other player for it, so the next visit starts there at once.
+            if r.isLive, error.kind == .unsupportedFormat, let id = currentChannel?.id {
+                let pref: PlaybackEnginePreference = kind == .mpv ? .mpv : .avPlayer
+                channelEnginePreference = pref
+                channelPrefs.update(id) { $0.engine = pref.rawValue }
+            }
             statusMessage = "Trying \(kind.rawValue)…"
             var req = r
             if !r.isLive { req.startPosition = position }

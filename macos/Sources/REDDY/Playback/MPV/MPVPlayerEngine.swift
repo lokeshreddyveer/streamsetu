@@ -18,6 +18,10 @@ final class MPVPlayerEngine: PlaybackEngine {
     var qualityPreference: VideoQualityPreference = .automatic
     var configuration = MPVConfiguration()
     let displayLayer = AVSampleBufferDisplayLayer()
+    /// iPhone and iPad show MPV's frames by handing each finished frame's surface to a plain layer. (The sample-buffer display layer
+    /// was fed fine on iOS but showed nothing; this path has no timing or format negotiation to go wrong.)
+    let surfaceLayer = CALayer()
+    private let ciContext = CIContext()
     private(set) var lastHTTPStatus: Int?
     private(set) var metrics = PlaybackMetrics(engine: .mpv)
 
@@ -38,11 +42,14 @@ final class MPVPlayerEngine: PlaybackEngine {
     private final class Core: @unchecked Sendable {
         let ctx: OpaquePointer
         var render: OpaquePointer?
+        nonisolated(unsafe) var tracedFrames = 0
         let renderQueue = DispatchQueue(label: "app.reddy.mpv.render", qos: .userInteractive)
         var layer: AVSampleBufferDisplayLayer?
         /// Taken on the main actor once, so the render thread never touches the layer's main-actor property.
         nonisolated(unsafe) var renderer: AVSampleBufferVideoRenderer?
-        var latest: CGImage?
+        nonisolated(unsafe) var surface: CALayer?
+        /// The newest frame, kept as the buffer it was drawn into; a picture is only made from it when a screenshot is asked for.
+        nonisolated(unsafe) var latestBuffer: CVPixelBuffer?
         var stopped = false
         /// Signalled when the event thread has left `mpv_wait_event` for good. The context may only be destroyed after that.
         let eventThreadDone = DispatchSemaphore(value: 0)
@@ -54,6 +61,9 @@ final class MPVPlayerEngine: PlaybackEngine {
         (stateUpdates, continuation) = AsyncStream.makeStream(of: PlaybackState.self, bufferingPolicy: .bufferingNewest(8))
         displayLayer.videoGravity = .resizeAspect
         displayLayer.backgroundColor = CGColor(red: 0, green: 0, blue: 0, alpha: 1)
+        surfaceLayer.backgroundColor = CGColor(red: 0, green: 0, blue: 0, alpha: 1)
+        surfaceLayer.contentsGravity = .resizeAspect
+        surfaceLayer.isOpaque = true
     }
 
     private func send(_ e: PlaybackEvent) {
@@ -76,6 +86,7 @@ final class MPVPlayerEngine: PlaybackEngine {
         let core = Core(ctx: ctx)
         core.layer = displayLayer
         core.renderer = displayLayer.sampleBufferRenderer
+        core.surface = surfaceLayer
         self.core = core
         var cfg = configuration
         cfg.lowLatency = bufferingMode == .lowLatency
@@ -150,6 +161,7 @@ final class MPVPlayerEngine: PlaybackEngine {
         lib.terminateDestroy?(core.ctx)
         self.core = nil
         displayLayer.sampleBufferRenderer.flush(removingDisplayedImage: true)
+        CATransaction.begin(); CATransaction.setDisableActions(true); surfaceLayer.contents = nil; CATransaction.commit()
     }
 
     // MARK: rendering (software)
@@ -170,6 +182,15 @@ final class MPVPlayerEngine: PlaybackEngine {
         }, box.toOpaque())
     }
 
+    /// A frame's surface and the layer it goes on, moved to the main thread in one piece.
+    private struct SurfaceBox: @unchecked Sendable { let io: IOSurfaceRef; let layer: CALayer }
+
+    #if os(iOS)
+    nonisolated private static let trcPath = "CALayer(IOSurface)"
+    #else
+    nonisolated private static let trcPath = "AVSampleBufferDisplayLayer"
+    #endif
+
     nonisolated private static func renderFrame(_ core: Core) {
         let lib = MPVLibrary.shared
         guard !core.stopped, let render = core.render else { return }
@@ -177,7 +198,11 @@ final class MPVPlayerEngine: PlaybackEngine {
         var w: Int64 = 0, h: Int64 = 0
         _ = lib.getProperty?(core.ctx, "dwidth", MPVConst.formatInt64, &w)
         _ = lib.getProperty?(core.ctx, "dheight", MPVConst.formatInt64, &h)
-        guard w > 0, h > 0, w * h < 40_000_000 else { return }
+        #if os(iOS)
+        // Never draw more than 1920 pixels across on a phone: a 4K picture would cost four times the work for no visible gain.
+        if max(w, h) > 1920 { let k = 1920.0 / Double(max(w, h)); w = Int64(Double(w) * k) & ~1; h = Int64(Double(h) * k) & ~1 }
+        #endif
+        guard w > 0, h > 0, w * h < 40_000_000 else { Trace.log("mpv render skipped: size \(w)x\(h)"); return }
 
         var pb: CVPixelBuffer?
         CVPixelBufferCreate(nil, Int(w), Int(h), kCVPixelFormatType_32BGRA, [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &pb)
@@ -196,9 +221,27 @@ final class MPVPlayerEngine: PlaybackEngine {
                           mpv_render_param(type: 0, data: nil)]
             rc = params.withUnsafeMutableBufferPointer { lib.renderRender?(render, UnsafeMutableRawPointer($0.baseAddress)) } ?? -1
         }
+        var brightness = -1.0
+        if Trace.on, rc >= 0, core.tracedFrames == 0 || (core.tracedFrames + 1) % 120 == 0, let base = CVPixelBufferGetBaseAddress(pb) {
+            // Mean brightness of 400 sampled pixels (0 = black, 255 = white), to tell a black picture from a picture that is not shown.
+            var total = 0.0, n = 0.0
+            let bytes = base.assumingMemoryBound(to: UInt8.self), rowBytes = CVPixelBufferGetBytesPerRow(pb)
+            for yi in 0..<20 { for xi in 0..<20 {
+                let px = bytes + (Int(h) * (yi * 2 + 1) / 41) * rowBytes + (Int(w) * (xi * 2 + 1) / 41) * 4
+                total += (Double(px[0]) + Double(px[1]) + Double(px[2])) / 3; n += 1
+            } }
+            brightness = total / n
+        }
         CVPixelBufferUnlockBaseAddress(pb, [])
-        guard rc >= 0 else { return }
+        guard rc >= 0 else { Trace.log("mpv render FAILED rc=\(rc) size=\(w)x\(h)"); return }
 
+        core.latestBuffer = pb
+        #if os(iOS)
+        if let io = CVPixelBufferGetIOSurface(pb)?.takeUnretainedValue(), let layer = core.surface {
+            let box = SurfaceBox(io: io, layer: layer)
+            DispatchQueue.main.async { CATransaction.begin(); CATransaction.setDisableActions(true); box.layer.contents = box.io; CATransaction.commit() }
+        }
+        #else
         var fd: CMVideoFormatDescription?
         CMVideoFormatDescriptionCreateForImageBuffer(allocator: nil, imageBuffer: pb, formatDescriptionOut: &fd)
         guard let fd else { return }
@@ -210,7 +253,13 @@ final class MPVPlayerEngine: PlaybackEngine {
             att.first?[kCMSampleAttachmentKey_DisplayImmediately] = true
         }
         core.renderer?.enqueue(sb)
-        core.latest = CIContext().createCGImage(CIImage(cvPixelBuffer: pb), from: CGRect(x: 0, y: 0, width: Int(w), height: Int(h)))
+        #endif
+        if Trace.on {
+            core.tracedFrames += 1
+            if core.tracedFrames == 1 || core.tracedFrames % 120 == 0 {
+                Trace.log("mpv frame #\(core.tracedFrames) \(w)x\(h) brightness=\(String(format: "%.1f", brightness)) path=\(Self.trcPath)")
+            }
+        }
     }
 
     // MARK: events & polling
@@ -261,17 +310,24 @@ final class MPVPlayerEngine: PlaybackEngine {
         switch e.id {
         case MPVConst.evFileLoaded: send(.buffering)
         case MPVConst.evPlaybackRestart:
+            if Trace.on { Trace.log("mpv playback-restart video=\(string("video-format") ?? "-") size=\(int("width") ?? 0)x\(int("height") ?? 0) hwdec=\(string("hwdec-current") ?? "-") pix=\(string("video-params/pixelformat") ?? "-") gamma=\(string("video-params/gamma") ?? "-") primaries=\(string("video-params/primaries") ?? "-") fps=\(double("container-fps").map { String(format: "%.1f", $0) } ?? "-") audio=\(string("audio-codec-name") ?? "-") dropped=\(int("frame-drop-count") ?? 0)") }
             buffering.playing(); metrics.startupSeconds = metrics.startupSeconds ?? buffering.startupSeconds
             if userPaused { send(.pause) } else { send(.ready) }
         case MPVConst.evLog:
+            if Trace.on, let t = e.text { Trace.log("mpv: \(t.trimmingCharacters(in: .whitespacesAndNewlines))") }
             if let t = e.text, let status = [401, 403, 404, 405, 429, 500, 502, 503].first(where: { t.contains("HTTP error \($0)") || t.contains(" \($0) ") && t.contains("HTTP") }) { lastHTTPStatus = status }
         case MPVConst.evEndFile:
             switch e.reason {
             case MPVConst.endEOF:
                 if request?.isLive == true { send(.failed(PlaybackError(.network, detail: "The live stream ended."))) } else { send(.reachedEnd) }
             case MPVConst.endError:
+                Trace.log("mpv end-file error code=\(e.error) (\(lib.errorMessage(e.error))) lastHTTP=\(lastHTTPStatus.map(String.init) ?? "-")")
                 let err: PlaybackError
                 if let s = lastHTTPStatus { err = .fromHTTP(s) }
+                else if (e.error == MPVConst.errUnknownFormat || e.error == MPVConst.errNothingToPlay), request?.isLive == true, request?.url.scheme?.hasPrefix("http") == true {
+                    // MPV reads any live format, so "nothing to play" on a live web stream means the server sent nothing: its connection limit, not a codec.
+                    err = PlaybackError(.providerBusy)
+                }
                 else if e.error == MPVConst.errUnknownFormat || e.error == MPVConst.errNothingToPlay { err = PlaybackError(.unsupportedFormat) }
                 else if e.error == MPVConst.errLoadingFailed { err = PlaybackError(.providerUnavailable) }
                 else { err = PlaybackError(.unknown, detail: lib.errorMessage(e.error)) }
@@ -345,7 +401,10 @@ final class MPVPlayerEngine: PlaybackEngine {
         _ = lib.setProperty?(c.ctx, "sub-shadow-offset", style.outline ? "1" : "0")
     }
 
-    func screenshot() -> CGImage? { core?.latest }
+    func screenshot() -> CGImage? {
+        guard let pb = core?.latestBuffer else { return nil }
+        return ciContext.createCGImage(CIImage(cvPixelBuffer: pb), from: CGRect(x: 0, y: 0, width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb)))
+    }
 
     /// Loads a subtitle file and switches to it. mpv detects the text encoding itself (`sub-codepage`), so older files in
     /// Windows-1252, ISO-8859 and similar still show their accents.

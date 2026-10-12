@@ -14,6 +14,12 @@ struct TSSegmenter: Sendable {
     private(set) var segments: [Segment] = []
     private(set) var nextSeq = 0
     private(set) var videoPID = -1
+    /// Every elementary stream the PMT declared: (stream type, PID). Types: 0x02 MPEG-2 video, 0x1B H.264, 0x24 HEVC, 0x03/0x04 MPEG audio, 0x0F AAC, 0x81 AC-3, 0x87 E-AC-3.
+    private(set) var streamTypes: [(type: Int, pid: Int)] = []
+    /// True once the first audio frame turned out to be MPEG Layer I or II, which Apple's player cannot play (Layer III, "MP3", is fine).
+    private(set) var audioIsMPEGLayerII = false
+    private var audioPID = -1
+    private var audioChecked = false
     private(set) var droppedBytes = 0
     private var carry = Data()
     private var pat: Data?, pmt: Data?
@@ -59,17 +65,29 @@ struct TSSegmenter: Sendable {
                 let progInfo = (Int(p[base + 10] & 0x0F) << 8) | Int(p[base + 11])
                 var i = base + 12 + progInfo
                 let end = min(base + 3 + sectionLen - 4, 188)
+                streamTypes = []
                 while i + 5 <= end {
                     let type = p[i]
                     let epid = (Int(p[i + 1] & 0x1F) << 8) | Int(p[i + 2])
                     let esInfo = (Int(p[i + 3] & 0x0F) << 8) | Int(p[i + 4])
-                    if [0x01, 0x02, 0x10, 0x1B, 0x24].contains(type) { videoPID = epid; break }
+                    streamTypes.append((Int(type), epid))
+                    if (type == 0x03 || type == 0x04), audioPID < 0 { audioPID = epid }
+                    if [0x01, 0x02, 0x10, 0x1B, 0x24].contains(type), videoPID < 0 { videoPID = epid }
                     i += 5 + esInfo
                 }
             }
         }
 
         guard let pat, let pmt, videoPID >= 0 else { return }       // wait for the stream tables
+
+        // The first audio frame says which MPEG audio layer this is: header 0xFFE.., layer in bits 1-2 of the next byte.
+        if !audioChecked, pid == audioPID, pusi, hasPayload, payload + 9 < 188, p[payload] == 0, p[payload + 1] == 0, p[payload + 2] == 1 {
+            let start = payload + 9 + Int(p[payload + 8])
+            if start + 2 <= 188 {
+                audioChecked = true
+                if p[start] == 0xFF, p[start + 1] & 0xE0 == 0xE0 { audioIsMPEGLayerII = ((p[start + 1] >> 1) & 3) != 1 }
+            }
+        }
 
         if pid == videoPID, pusi {
             let rai = afc & 2 != 0 && p[4] > 0 && (p[5] & 0x40) != 0
@@ -139,10 +157,25 @@ final class TSBridge: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     private var segmenter = TSSegmenter()
     private var _failure: String?
     private var _status: Int?
+    private var _bytes = 0
+    private var _ended = false
+    private var _tracedSegments = 0
 
     var failure: String? { q.sync { _failure } }
     /// HTTP status of the upstream stream request, once known.
     var httpStatus: Int? { q.sync { _status } }
+    /// Set when the stream carries video Apple's player cannot show inside live TS (HEVC, MPEG-2): it would play the sound and no picture.
+    var unsupportedVideo: String? {
+        q.sync {
+            let types = segmenter.streamTypes.map(\.type)
+            if types.contains(0x24) { return "HEVC video in a live stream" }
+            if types.contains(0x02) || types.contains(0x01) { return "MPEG-2 video in a live stream" }
+            if segmenter.audioIsMPEGLayerII { return "MPEG Layer II (MP2) audio in a live stream" }
+            return nil
+        }
+    }
+    /// The provider answered 200 and then closed the connection without a single byte of video: usually its one-connection limit.
+    var receivedNothing: Bool { q.sync { _ended && _bytes == 0 && _status == 200 } }
 
     private let headers: [String: String]
 
@@ -202,16 +235,32 @@ final class TSBridge: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     func urlSession(_ s: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
                     completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         if let h = response as? HTTPURLResponse {
+            Trace.log("bridge upstream HTTP \(h.statusCode) content-type=\(h.value(forHTTPHeaderField: "Content-Type") ?? "-") length=\(h.value(forHTTPHeaderField: "Content-Length") ?? "-")")
             _status = h.statusCode
             if h.statusCode != 200 { _failure = "The server refused the stream (HTTP \(h.statusCode))."; completionHandler(.cancel); return }
         }
         completionHandler(.allow)
     }
 
-    func urlSession(_ s: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) { segmenter.ingest(data) }
+    func urlSession(_ s: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        if Trace.on {
+            if _bytes == 0 {
+                let looksText = data.prefix(64).allSatisfy { ($0 >= 32 && $0 < 127) || $0 == 10 || $0 == 13 || $0 == 9 }
+                Trace.log("bridge first bytes: \(data.count) B, first=0x\(String(format: "%02X", data.first ?? 0)), \(looksText ? "TEXT: " + String(decoding: data.prefix(160), as: UTF8.self).replacingOccurrences(of: "\n", with: " ") : "binary")")
+            }
+        }
+        _bytes += data.count
+        segmenter.ingest(data)
+        if Trace.on, segmenter.nextSeq != _tracedSegments {
+            _tracedSegments = segmenter.nextSeq
+            Trace.log("bridge segments=\(segmenter.nextSeq) videoPID=\(segmenter.videoPID) bytes=\(_bytes) dropped=\(segmenter.droppedBytes) streams=\(segmenter.streamTypes.map { String(format: "0x%02X", $0.type) }.joined(separator: ","))")
+        }
+    }
 
     func urlSession(_ s: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        if !stopped, _failure == nil { _failure = error?.localizedDescription ?? "The stream ended." }
+        Trace.log("bridge upstream ended: error=\(error.map { "\(($0 as NSError).domain) \(($0 as NSError).code) \($0.localizedDescription)" } ?? "none") bytes=\(_bytes) segments=\(segmenter.nextSeq) stopped=\(stopped)")
+        if !stopped { _ended = true }
+        if !stopped, _failure == nil { _failure = _bytes == 0 ? "The server accepted the connection but sent no video. This is usually a connection limit, an expired account, or a blocked server." : (error?.localizedDescription ?? "The stream ended.") }
     }
 
     // MARK: localhost HTTP server

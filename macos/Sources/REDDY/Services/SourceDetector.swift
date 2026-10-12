@@ -13,8 +13,6 @@ struct DetectedSource: Equatable, Sendable {
 }
 
 enum SourceDetector {
-    static let videoExtensions: Set<String> = ["ts", "mts", "m2ts", "mp4", "m4v", "mov", "mkv", "webm", "avi", "wmv", "flv", "mpg", "mpeg", "vob", "ogv", "3gp"]
-    static let audioExtensions: Set<String> = ["mp3", "aac", "ogg", "opus", "flac", "m4a"]
 
     static func detect(_ raw: String) -> DetectedSource? {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -56,7 +54,7 @@ enum SourceDetector {
             return DetectedSource(kind: .hdhomerun, server: c.host ?? "", note: "Looks like an HDHomeRun tuner.")
         }
         if ext == "json" { return DetectedSource(kind: .m3uURL, url: text, note: "Looks like a JSON playlist.") }
-        if videoExtensions.contains(ext) || audioExtensions.contains(ext) { return DetectedSource(kind: .stream, url: text, note: "Looks like a single stream address.") }
+        if StreamCapabilities.isMediaFile(extension: ext) { return DetectedSource(kind: .stream, url: text, note: "Looks like a single stream address.") }
         if ["m3u", "m3u8"].contains(ext) || query["type"] == "m3u" || query["type"] == "m3u_plus" || path.contains("playlist") {
             return DetectedSource(kind: .m3uURL, url: text, note: "Looks like an M3U playlist link.")
         }
@@ -67,7 +65,6 @@ enum SourceDetector {
     static func isDirectStream(_ url: URL) -> Bool {
         let scheme = url.scheme?.lowercased() ?? ""
         if !["http", "https"].contains(scheme) { return SourceURLValidator.playableSchemes.contains(scheme) }
-        let ext = url.pathExtension.lowercased()
-        return videoExtensions.contains(ext) || audioExtensions.contains(ext)
+        return StreamCapabilities.isMediaFile(extension: url.pathExtension)
     }
 }

@@ -25,6 +25,11 @@ struct PlaybackRecoveryService: Sendable {
             return .giveUp
         case .notFound:
             return attempt == 0 ? .retry(after: 0.5, reResolve: true) : .giveUp
+        case .providerBusy:
+            // The provider still counts the previous stream. It lets go after a few seconds, so wait longer each time (about 30 s in all).
+            let waits: [TimeInterval] = [3, 5, 8, 12]
+            guard attempt < waits.count else { return .giveUp }
+            return .retry(after: waits[attempt], reResolve: true)
         case .network, .nameLookup, .timeout, .providerUnavailable, .unknown:
             // A name that cannot be found rarely fixes itself in seconds (a DNS filter), so it gets one retry, then the explanation.
             guard attempt < (error.kind == .unknown || error.kind == .nameLookup ? min(1, maxRetries) : maxRetries) else { return .giveUp }
