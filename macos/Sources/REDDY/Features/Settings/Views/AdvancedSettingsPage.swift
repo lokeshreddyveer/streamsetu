@@ -87,7 +87,9 @@ struct AdvancedSettingsPage: View {
             SettingsValueRow(title: "MPV version", value: vm.about.mpvVersion ?? "Not installed")
             SettingsValueRow(title: "FFmpeg version", value: vm.about.ffmpegVersion ?? "Not installed")
             SettingsValueRow(title: "Database schema", value: "v\(vm.about.schemaVersion)")
-            SettingsRow(title: "Updates", detail: "StreamSetu has no built-in updater. Install a new version from a new download.") { EmptyView() }
+            SettingsRow(title: "Updates", detail: AppUpdater.shared.isAvailable ? "StreamSetu checks for new versions by itself and asks before installing one." : "Automatic updates are not part of this build.") {
+                Button("Check for Updates…") { AppUpdater.shared.checkForUpdates() }.disabled(!AppUpdater.shared.isAvailable)
+            }
             SettingsActions {
                 Button { WindowManager.revealInFinder(StorageService.applicationSupport) } label: { Label("Show Data Folder", systemImage: "folder") }
                 Button { NSWorkspace.shared.open(CrashReports.folder) } label: { Label("Crash Reports (\(CrashReports.list().count))", systemImage: "ladybug") }

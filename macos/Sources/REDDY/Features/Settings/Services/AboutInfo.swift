@@ -30,6 +30,6 @@ struct AboutInfo: Sendable {
     • REDDY sends no analytics or telemetry.
 
     Update notice
-    • REDDY has no built-in updater. A new version is installed from a new download.
+    • StreamSetu checks the public release page for new versions and asks before installing one. Only the version number is requested; nothing about you is sent.
     """
 }
