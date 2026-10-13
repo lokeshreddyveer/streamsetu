@@ -24,6 +24,8 @@ final class AppContainer {
     let favorites: FavoritesService
     let history: HistoryService
     let discover: DiscoverService
+    /// Fixes misspelt searches from the words in the library (built the first time it is needed).
+    let spelling: SpellingIndex
     let featured: FeaturedService
     let details: DetailService
     let artwork: ArtworkService
@@ -78,6 +80,7 @@ final class AppContainer {
         favorites = FavoritesService(repo: favoritesRepo, catalog: catalog)
         history = HistoryService(repo: historyRepo, catalog: catalog)
         discover = DiscoverService(catalog: catalog, history: historyRepo)
+        spelling = SpellingIndex(db: db)
         details = DetailService(catalog: catalog, indexer: indexer, sources: sources)
         featured = FeaturedService(catalog: catalog, details: details)
         artwork = ArtworkService(cache: ImageCache(root: StorageService.caches, http: http))

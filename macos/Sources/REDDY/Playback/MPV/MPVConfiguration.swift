@@ -39,6 +39,7 @@ struct MPVConfiguration: Sendable {
             ("terminal", "no"),
             ("osc", "no"),
             ("keep-open", "yes"),
+            ("volume-max", "130"),
             ("cache", "yes"),
             ("demuxer-max-bytes", "64MiB"),
             ("cache-secs", String(cacheSeconds)),

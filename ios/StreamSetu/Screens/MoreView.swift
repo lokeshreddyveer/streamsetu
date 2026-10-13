@@ -11,6 +11,7 @@ struct MoreView: View {
             List {
                 Section {
                     NavigationLink { FavouritesView() } label: { Label("Favourites", systemImage: "heart") }
+                    NavigationLink { WatchLaterView() } label: { Label("Watch Later", systemImage: "bookmark") }
                     NavigationLink { CollectionsView() } label: { Label("Collections", systemImage: "square.stack") }
                     NavigationLink { HistoryView() } label: { Label("Watch History", systemImage: "clock.arrow.circlepath") }
                 }.listRowBackground(ColorTokens.surface)
@@ -104,6 +105,7 @@ struct HistoryView: View {
 
 struct PlaybackSettingsView: View {
     @Environment(AppSettings.self) private var settings
+    @State private var confirmMPV = false
 
     var body: some View {
         @Bindable var s = settings
@@ -119,9 +121,12 @@ struct PlaybackSettingsView: View {
             }.listRowBackground(ColorTokens.surface)
             if AppEngineChoice.available {
                 Section {
-                    Picker("Player", selection: $s.enginePreference) { ForEach(PlaybackEnginePreference.allCases) { Text($0.rawValue).tag($0) } }
+                    Picker("Player", selection: Binding(get: { settings.enginePreference },
+                                                        set: { new in if new == .mpv, settings.enginePreference != .mpv { confirmMPV = true } else { settings.enginePreference = new } })) {
+                        ForEach(PlaybackEnginePreference.allCases) { Text($0.rawValue).tag($0) }
+                    }
                 } header: { Text("Player engine") } footer: {
-                    Text("Automatic uses Apple's player and switches to MPV for formats it can't open (MKV, RTSP, AVI). MPV doesn't support Picture in Picture.")
+                    Text("Automatic uses Apple's player for movies, episodes and HLS, and MPV for live TV and for formats Apple's player can't open (MKV, RTSP, AVI). MPV doesn't support Picture in Picture or AirPlay.")
                 }.listRowBackground(ColorTokens.surface)
             }
             Section("Picture quality") {
@@ -140,6 +145,12 @@ struct PlaybackSettingsView: View {
             }.listRowBackground(ColorTokens.surface)
         }
         .navigationTitle("Playback").themed("Playback")
+        .alert("Switch to MPV?", isPresented: $confirmMPV) {
+            Button("Use MPV") { settings.enginePreference = .mpv }
+            Button("Keep Apple's Player", role: .cancel) {}
+        } message: {
+            Text("MPV can open movies faster and plays formats Apple's player can't. But with MPV there is no Picture in Picture and no AirPlay, the picture is drawn by the app, which can use more battery, and some titles may behave differently. Live TV already uses MPV. You can switch back here at any time.")
+        }
     }
 }
 
@@ -185,6 +196,7 @@ struct SettingsView: View {
             List {
                 Section("Viewing") {
                     NavigationLink { PlaybackSettingsView() } label: { Label("Playback", systemImage: "play.rectangle") }
+                    NavigationLink { PlaybackHealthView() } label: { Label("Playback Health", systemImage: "waveform.path.ecg") }
                     NavigationLink { AppearanceView() } label: { Label("Appearance", systemImage: "paintpalette") }
                     NavigationLink { ParentalView() } label: { Label("Parental Controls", systemImage: "lock.shield") }
                 }.listRowBackground(ColorTokens.surface)

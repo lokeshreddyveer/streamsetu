@@ -13,7 +13,7 @@ final class MPVPlayerEngine: PlaybackEngine {
     let kind = PlaybackEngineKind.mpv
     let capabilities = PlaybackCapabilities(containers: [.hls, .mp4, .mpegTS, .mkv, .rtsp, .dash], pictureInPicture: false, airPlay: false, screenshot: true,
                                             audioDelay: true, audioProcessing: true, subtitleDelay: true, subtitlePosition: true,
-                                            externalSubtitles: true, liveRewind: true, pictureAdjustments: true)
+                                            externalSubtitles: true, liveRewind: true, pictureAdjustments: true, chapters: true, abLoop: true, frameStep: true, volumeBoost: true)
     var bufferingMode: BufferingMode = .automatic
     var qualityPreference: VideoQualityPreference = .automatic
     var configuration = MPVConfiguration()
@@ -21,6 +21,10 @@ final class MPVPlayerEngine: PlaybackEngine {
     /// iPhone and iPad show MPV's frames by handing each finished frame's surface to a plain layer. (The sample-buffer display layer
     /// was fed fine on iOS but showed nothing; this path has no timing or format negotiation to go wrong.)
     let surfaceLayer = CALayer()
+    /// While a live web stream plays on a phone, the local relay that fetches it for MPV (see TSBridge.Mode.raw).
+    private var relay: TSBridge?
+    /// The last "Connection to tcp://HOST:PORT failed: …" mpv logged: which server could not be reached, and why.
+    private var lastConnectFailure: (host: String, reason: String)?
     private let ciContext = CIContext()
     private(set) var lastHTTPStatus: Int?
     private(set) var metrics = PlaybackMetrics(engine: .mpv)
@@ -48,6 +52,8 @@ final class MPVPlayerEngine: PlaybackEngine {
         /// Taken on the main actor once, so the render thread never touches the layer's main-actor property.
         nonisolated(unsafe) var renderer: AVSampleBufferVideoRenderer?
         nonisolated(unsafe) var surface: CALayer?
+        /// While Picture in Picture is on, finished frames also go to the sample-buffer layer that feeds it (iPhone and iPad only).
+        nonisolated(unsafe) var pipFeed = false
         /// The newest frame, kept as the buffer it was drawn into; a picture is only made from it when a screenshot is asked for.
         nonisolated(unsafe) var latestBuffer: CVPixelBuffer?
         var stopped = false
@@ -77,9 +83,10 @@ final class MPVPlayerEngine: PlaybackEngine {
         guard lib.isAvailable else { let e = PlaybackError(.engineUnavailable); send(.startResolving); send(.failed(e)); throw e }
         teardown()
         self.request = request
-        lastHTTPStatus = nil; userPaused = false
+        lastHTTPStatus = nil; userPaused = false; lastConnectFailure = nil; loadBegan = Date()
         send(.startResolving); send(.resolved)
         metrics = PlaybackMetrics(engine: .mpv, container: StreamCapabilities.container(for: request.url, isLive: request.isLive), host: request.url.host ?? "")
+        loadedLive = request.isLive; steppedUp = false
         buffering.reset()
 
         guard let create = lib.create, let ctx = create() else { throw fail(PlaybackError(.engineUnavailable)) }
@@ -100,9 +107,35 @@ final class MPVPlayerEngine: PlaybackEngine {
         try createRenderContext(core)
         startEventLoop(core)
 
-        var args: [String] = ["loadfile", request.url.absoluteString, "replace"]
+        var target = request.url
+        if Self.shouldRelay(request) {
+            // The system's network stack fetches the stream; MPV reads it from this device. A failure to start falls back to MPV's own connection.
+            let r = TSBridge(source: request.url, headers: request.headers, mode: .raw)
+            if let local = try? await r.start() { relay = r; target = local; Trace.log("relay on for \(Trace.describe(request.url)) -> \(local.absoluteString)") }
+            else { r.stop(); Trace.log("relay could not start; MPV connects directly") }
+        }
+        var args: [String] = ["loadfile", target.absoluteString, "replace"]
         if request.startPosition > 5, !request.isLive { args += ["-1", "start=\(Int(request.startPosition))"] }
         try run(args, core: core)
+    }
+
+    /// Live web streams of MPEG-TS go through the relay on iPhone and iPad (set STREAMSETU_RELAY=1 to try it on a Mac).
+    static func shouldRelay(_ r: PlaybackRequest) -> Bool {
+        #if os(iOS)
+        let on = ProcessInfo.processInfo.environment["STREAMSETU_RELAY"] != "0"
+        #else
+        let on = ProcessInfo.processInfo.environment["STREAMSETU_RELAY"] == "1"
+        #endif
+        guard on, r.isLive, ["http", "https"].contains(r.url.scheme?.lowercased() ?? "") else { return false }
+        return StreamCapabilities.container(for: r.url, isLive: true) == .mpegTS
+    }
+
+    /// Reads "[tcp] Connection to tcp://host:80 failed: Can't assign requested address" into the host and the reason.
+    nonisolated static func connectFailure(in line: String) -> (host: String, reason: String)? {
+        guard let r = line.range(of: "Connection to tcp://"), let end = line.range(of: " failed: ", range: r.upperBound..<line.endIndex) else { return nil }
+        let hostPort = line[r.upperBound..<end.lowerBound]
+        let host = hostPort.split(separator: ":").first.map(String.init) ?? String(hostPort)
+        return (host, String(line[end.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     private func fail(_ e: PlaybackError) -> PlaybackError { send(.failed(e)); return e }
@@ -138,11 +171,12 @@ final class MPVPlayerEngine: PlaybackEngine {
         if userPaused { send(.pause) }
     }
 
-    func setVolume(_ v: Double) { if let c = core { _ = lib.setProperty?(c.ctx, "volume", String(Int(min(1, max(0, v)) * 100))) } }
+    func setVolume(_ v: Double) { if let c = core { _ = lib.setProperty?(c.ctx, "volume", String(Int(min(1.3, max(0, v)) * 100))) } }
     func setMuted(_ m: Bool) { if let c = core { _ = lib.setProperty?(c.ctx, "mute", m ? "yes" : "no") } }
     func setRate(_ r: Double) { if let c = core { _ = lib.setProperty?(c.ctx, "speed", String(r)) } }
 
     private func teardown() {
+        relay?.stop(); relay = nil
         workers.forEach { $0.cancel() }; workers = []
         guard let core else { return }
         core.stopped = true
@@ -241,6 +275,7 @@ final class MPVPlayerEngine: PlaybackEngine {
             let box = SurfaceBox(io: io, layer: layer)
             DispatchQueue.main.async { CATransaction.begin(); CATransaction.setDisableActions(true); box.layer.contents = box.io; CATransaction.commit() }
         }
+        if core.pipFeed { enqueueForPiP(pb, core) }
         #else
         var fd: CMVideoFormatDescription?
         CMVideoFormatDescriptionCreateForImageBuffer(allocator: nil, imageBuffer: pb, formatDescriptionOut: &fd)
@@ -254,12 +289,37 @@ final class MPVPlayerEngine: PlaybackEngine {
         }
         core.renderer?.enqueue(sb)
         #endif
-        if Trace.on {
-            core.tracedFrames += 1
-            if core.tracedFrames == 1 || core.tracedFrames % 120 == 0 {
+        core.tracedFrames += 1
+        if core.tracedFrames == 1 || (Trace.on && core.tracedFrames % 120 == 0) {
+            do {
                 Trace.log("mpv frame #\(core.tracedFrames) \(w)x\(h) brightness=\(String(format: "%.1f", brightness)) path=\(Self.trcPath)")
             }
         }
+    }
+
+    #if os(iOS)
+    /// The same frame, as a sample buffer for the layer behind Picture in Picture.
+    nonisolated private static func enqueueForPiP(_ pb: CVPixelBuffer, _ core: Core) {
+        var fd: CMVideoFormatDescription?
+        CMVideoFormatDescriptionCreateForImageBuffer(allocator: nil, imageBuffer: pb, formatDescriptionOut: &fd)
+        guard let fd else { return }
+        var timing = CMSampleTimingInfo(duration: .invalid, presentationTimeStamp: CMClockGetTime(CMClockGetHostTimeClock()), decodeTimeStamp: .invalid)
+        var sb: CMSampleBuffer?
+        CMSampleBufferCreateReadyWithImageBuffer(allocator: nil, imageBuffer: pb, formatDescription: fd, sampleTiming: &timing, sampleBufferOut: &sb)
+        guard let sb else { return }
+        if let att = CMSampleBufferGetSampleAttachmentsArray(sb, createIfNecessary: true) as? [NSMutableDictionary] {
+            att.first?[kCMSampleAttachmentKey_DisplayImmediately] = true
+        }
+        core.renderer?.enqueue(sb)
+    }
+    #endif
+
+    /// Starts or stops feeding frames to the Picture in Picture layer.
+    func setPiPFeed(_ on: Bool) {
+        #if os(iOS)
+        core?.pipFeed = on
+        if !on { displayLayer.sampleBufferRenderer.flush(removingDisplayedImage: true) }
+        #endif
     }
 
     // MARK: events & polling
@@ -310,11 +370,14 @@ final class MPVPlayerEngine: PlaybackEngine {
         switch e.id {
         case MPVConst.evFileLoaded: send(.buffering)
         case MPVConst.evPlaybackRestart:
-            if Trace.on { Trace.log("mpv playback-restart video=\(string("video-format") ?? "-") size=\(int("width") ?? 0)x\(int("height") ?? 0) hwdec=\(string("hwdec-current") ?? "-") pix=\(string("video-params/pixelformat") ?? "-") gamma=\(string("video-params/gamma") ?? "-") primaries=\(string("video-params/primaries") ?? "-") fps=\(double("container-fps").map { String(format: "%.1f", $0) } ?? "-") audio=\(string("audio-codec-name") ?? "-") dropped=\(int("frame-drop-count") ?? 0)") }
+            do { Trace.log("mpv playback-restart video=\(string("video-format") ?? "-") size=\(int("width") ?? 0)x\(int("height") ?? 0) hwdec=\(string("hwdec-current") ?? "-") pix=\(string("video-params/pixelformat") ?? "-") gamma=\(string("video-params/gamma") ?? "-") primaries=\(string("video-params/primaries") ?? "-") fps=\(double("container-fps").map { String(format: "%.1f", $0) } ?? "-") audio=\(string("audio-codec-name") ?? "-") dropped=\(int("frame-drop-count") ?? 0)") }
             buffering.playing(); metrics.startupSeconds = metrics.startupSeconds ?? buffering.startupSeconds
             if userPaused { send(.pause) } else { send(.ready) }
         case MPVConst.evLog:
-            if Trace.on, let t = e.text { Trace.log("mpv: \(t.trimmingCharacters(in: .whitespacesAndNewlines))") }
+            if let t = e.text {
+                Trace.log("mpv: \(t.trimmingCharacters(in: .whitespacesAndNewlines))")
+                if let f = Self.connectFailure(in: t) { lastConnectFailure = f }
+            }
             if let t = e.text, let status = [401, 403, 404, 405, 429, 500, 502, 503].first(where: { t.contains("HTTP error \($0)") || t.contains(" \($0) ") && t.contains("HTTP") }) { lastHTTPStatus = status }
         case MPVConst.evEndFile:
             switch e.reason {
@@ -323,9 +386,18 @@ final class MPVPlayerEngine: PlaybackEngine {
             case MPVConst.endError:
                 Trace.log("mpv end-file error code=\(e.error) (\(lib.errorMessage(e.error))) lastHTTP=\(lastHTTPStatus.map(String.init) ?? "-")")
                 let err: PlaybackError
-                if let s = lastHTTPStatus { err = .fromHTTP(s) }
+                if let r = relay, r.receivedNothing { err = PlaybackError(.providerBusy) }                           // the provider sent no video at all
+                else if let r = relay, let st = r.httpStatus, st != 200 { err = .fromHTTP(st) }
+                else if let f = lastConnectFailure, PlaybackError.unreachableAddressReasons.contains(where: { f.reason.contains($0) }) { err = PlaybackError(.nameLookup, detail: f.host) }
+                else if let s = lastHTTPStatus { err = .fromHTTP(s) }
                 else if (e.error == MPVConst.errUnknownFormat || e.error == MPVConst.errNothingToPlay), request?.isLive == true, request?.url.scheme?.hasPrefix("http") == true {
                     // MPV reads any live format, so "nothing to play" on a live web stream means the server sent nothing: its connection limit, not a codec.
+                    err = PlaybackError(.providerBusy)
+                }
+                else if (e.error == MPVConst.errUnknownFormat || e.error == MPVConst.errNothingToPlay), request?.isLive == false, request?.url.scheme?.hasPrefix("http") == true,
+                        Date().timeIntervalSince(loadBegan) < 0.6 {
+                    // A movie "recognised" as nothing within a fraction of a second never received a byte (reaching the provider takes longer than that):
+                    // it answered with an empty reply, which is a title it isn't serving, not a format MPV cannot read.
                     err = PlaybackError(.providerBusy)
                 }
                 else if e.error == MPVConst.errUnknownFormat || e.error == MPVConst.errNothingToPlay { err = PlaybackError(.unsupportedFormat) }
@@ -369,6 +441,20 @@ final class MPVPlayerEngine: PlaybackEngine {
         if flag("paused-for-cache") == true, state == .playing { buffering.bufferingBegan(); send(.buffering) }
         else if flag("paused-for-cache") == false, state == .buffering, !userPaused, int("dwidth") != nil { buffering.playing(); send(.ready) }
         metrics.stallCount = buffering.stalls; metrics.totalStallSeconds = buffering.stalledSeconds
+        if buffering.stalls >= 2, !loadedLive, !steppedUp, bufferingMode == .automatic { stepUpBuffering() }
+    }
+
+    private var loadedLive = false
+    private var steppedUp = false
+    private var loadBegan = Date()
+
+    /// A movie or episode that has run dry twice is on a line slower than its bitrate. Restarting after 1.5 s of data would only stall
+    /// again, so it now waits for a deeper buffer (the Stability values) between pauses. Changed while playing, no restart.
+    private func stepUpBuffering() {
+        guard let c = core else { return }
+        steppedUp = true
+        for (k, v) in [("cache-secs", "60"), ("demuxer-readahead-secs", "60"), ("demuxer-max-bytes", "192MiB"), ("cache-pause-wait", "8")] { _ = lib.setProperty?(c.ctx, k, v) }
+        Trace.log("buffering stepped up after \(buffering.stalls) stalls (60 s buffer, resume after 8 s)")
     }
 
     var position: TimeInterval { double("time-pos") ?? 0 }
@@ -404,6 +490,31 @@ final class MPVPlayerEngine: PlaybackEngine {
     func screenshot() -> CGImage? {
         guard let pb = core?.latestBuffer else { return nil }
         return ciContext.createCGImage(CIImage(cvPixelBuffer: pb), from: CGRect(x: 0, y: 0, width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb)))
+    }
+
+    func chapters() -> [PlaybackChapter] {
+        let n = int("chapter-list/count") ?? 0
+        guard n > 1 else { return [] }
+        return (0..<min(n, 200)).compactMap { i in
+            guard let t = double("chapter-list/\(i)/time") else { return nil }
+            let title = string("chapter-list/\(i)/title")?.trimmingCharacters(in: .whitespaces)
+            return PlaybackChapter(time: t, title: (title?.isEmpty == false ? title! : "Chapter \(i + 1)"))
+        }
+    }
+
+    func setLoop(start: Double?, end: Double?) {
+        guard let c = core else { return }
+        _ = lib.setProperty?(c.ctx, "ab-loop-a", start.map { String($0) } ?? "no")
+        _ = lib.setProperty?(c.ctx, "ab-loop-b", end.map { String($0) } ?? "no")
+    }
+
+    func frameStep(forward: Bool) {
+        guard let c = core else { return }
+        var cStrings: [UnsafePointer<CChar>?] = [forward ? "frame-step" : "frame-back-step", nil].map { $0.flatMap { UnsafePointer(strdup($0)) } }
+        defer { for p in cStrings { free(UnsafeMutableRawPointer(mutating: p)) } }
+        _ = cStrings.withUnsafeMutableBufferPointer { lib.command?(c.ctx, $0.baseAddress) }
+        userPaused = true
+        send(.pause)
     }
 
     /// Loads a subtitle file and switches to it. mpv detects the text encoding itself (`sub-codepage`), so older files in

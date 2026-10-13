@@ -100,10 +100,21 @@ final class PlaybackCoordinator {
     private var stateTasks: [PlaybackEngineKind: Task<Void, Never>] = [:]
     private var attempt = 0
     private var switchedEngine = false
+    private let pacer = ConnectionPacer()
+    /// The provider whose live stream is open right now (nil when nothing live is open).
+    private var openLiveSource: UUID?
     private var sessionID: Int64?
     private var recordedPlay = false
     private var stableTask: Task<Void, Never>?
     private var lastSavedAt = Date.distantPast
+    /// When the person asked for what is playing now: the start-time statistics measure from here, retries included.
+    private var tapAt = Date()
+    /// When the provider last refused each movie or episode for good, so an immediate second attempt does not wait through every retry again.
+    private var refusedAt: [String: Date] = [:]
+    /// Watches the connection during playback (see NetworkRecovery). True while a stream waits for the internet to come back.
+    private let network = NetworkWatch()
+    private(set) var waitingForNetwork = false
+    private var switchCheckTask: Task<Void, Never>?
     private var previousChannel: Channel?
     private var currentMovie: Movie?
     private var currentEpisode: (Episode, Series)?
@@ -123,9 +134,47 @@ final class PlaybackCoordinator {
         engine.setVolume(effectiveVolume)
         observe(engine)
         observeSleepAndWake()
+        observeNetwork()
     }
 
     // MARK: sleep and wake
+
+    // MARK: connection changes
+
+    private func observeNetwork() {
+        network.onChange = { [weak self] old, new in self?.networkChanged(from: old, to: new) }
+        network.start()
+    }
+
+    private func networkChanged(from old: NetworkLink, to new: NetworkLink) {
+        Trace.log("network \(old) -> \(new)")
+        switch NetworkRecovery.reaction(from: old, to: new, state: state, hasStream: current != nil) {
+        case .ignore: break
+        case .markOffline: waitForNetwork()
+        case .resume:
+            waitingForNetwork = false; statusMessage = nil
+            attempt = 0
+            reResolveAndStart()
+        case .checkAfterSwitch:
+            // Connections made on the old network are dead. A stream that is playing carries on; one that is stuck starts again.
+            switchCheckTask?.cancel()
+            switchCheckTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                guard let self, !Task.isCancelled, self.current != nil, NetworkRecovery.shouldRestartAfterSwitch(state: self.state) else { return }
+                Trace.log("network switch: stream was stuck, starting it again")
+                self.attempt = 0
+                self.reResolveAndStart()
+            }
+        }
+    }
+
+    /// Offline: waiting costs nothing and retries only waste attempts, so the stream waits and starts again when the connection returns.
+    private func waitForNetwork() {
+        waitingForNetwork = true
+        statusMessage = "No internet connection. It will continue when the connection is back."
+        recoveryTask?.cancel()
+        state = .recovering
+    }
 
     /// The Mac going to sleep drops network connections, so a live stream that was running is dead on wake. Remember whether
     /// something was running, and on wake reconnect it (a live stream afresh, a movie from where it was).
@@ -252,7 +301,9 @@ final class PlaybackCoordinator {
         cancelWork()
         endSession(outcome: "stopped", error: nil)
         engine.stop()
+        if let src = openLiveSource { pacer.closed(src); openLiveSource = nil }
         current = nil; currentChannel = nil; currentMovie = nil; currentEpisode = nil; upNext = nil
+        waitingForNetwork = false; switchCheckTask?.cancel()
         state = .idle; position = 0; duration = nil; statusMessage = nil; audioTracks = []; subtitleTracks = []; isAudioOnly = false; playingSince = nil
         isFullscreen = false; isExpanded = false; restoreExpandedAfterFullscreen = false; showChannelSwitcher = false; cancelNumberEntry()
     }
@@ -265,6 +316,7 @@ final class PlaybackCoordinator {
 
     func retryNow() {
         guard let r = current else { return }
+        tapAt = Date()
         attempt = 0
         start(r)
     }
@@ -424,7 +476,24 @@ final class PlaybackCoordinator {
         play(episode: e, series: s)
     }
 
-    private func applyVolume() { engine.setVolume(effectiveVolume) }
+    private func applyVolume() { engine.setVolume(effectiveVolume * (volumeBoost && engine.capabilities.volumeBoost ? 1.3 : 1)) }
+
+    /// Plays louder than the system volume (up to 130%) on engines that can. Off by default; it can distort loud audio.
+    var volumeBoost = false { didSet { applyVolume() } }
+    /// The current file's chapters (empty when it has none, or the engine can't list them).
+    private(set) var chapters: [PlaybackChapter] = []
+    var hasPreviousChannel: Bool { previousChannel != nil }
+    /// The series and episode now playing, for an episode list.
+    var currentSeries: Series? { currentEpisode?.1 }
+    var currentEpisodeID: String? { currentEpisode?.0.id }
+    /// Goes back to the channel watched before this one.
+    func playPreviousChannel() { lastChannel() }
+    #if os(macOS) || STREAMSETU_MPV
+    /// Starts or stops feeding the Picture in Picture layer (MPV on iPhone and iPad).
+    func setPiPFeed(_ on: Bool) { factory.mpvEngine?.setPiPFeed(on) }
+    #endif
+    func setLoop(start: Double?, end: Double?) { engine.setLoop(start: start, end: end) }
+    func frameStep(forward: Bool) { engine.frameStep(forward: forward); state = .paused }
 
     /// Louder or quieter for the channel being watched, from −50 to +50 points. Remembered for next time.
     func setChannelVolumeTrim(_ trim: Double) {
@@ -529,6 +598,7 @@ final class PlaybackCoordinator {
     }
 
     private func begin(_ resolve: @escaping () throws -> PlaybackRequest) {
+        tapAt = Date()
         state = .resolving
         switchedEngine = false
         do {
@@ -575,6 +645,7 @@ final class PlaybackCoordinator {
 
     private func start(_ request: PlaybackRequest, engineOverride: PlaybackEngineKind? = nil) {
         if request.url.scheme == PortalLink.scheme { startAfterResolvingLink(request, engineOverride: engineOverride); return }
+        if !network.isOnline { current = request; waitForNetwork(); return }
         generation += 1
         let gen = generation
         startTask?.cancel(); recoveryTask?.cancel()
@@ -604,8 +675,17 @@ final class PlaybackCoordinator {
         engine.setMuted(isMuted); engine.setVolume(effectiveVolume); engine.setRate(rate)
         state = .resolving
         watchStart(request, generation: gen)
+        // Opening a live stream right after closing another on the same provider can be refused (one-connection plans), so the wait is
+        // learned per provider. Quick channel flicking never connects to the channels it passes over: their start is cancelled while waiting.
+        let previousLive = openLiveSource
+        if let previous = previousLive { pacer.closed(previous) }
+        // A movie opened straight after a channel of the same provider meets the same one-connection limit, so it waits the same short while.
+        let wait = request.isLive || previousLive == request.sourceID ? pacer.delay(for: request.sourceID) : 0
+        openLiveSource = request.isLive ? request.sourceID : nil
+        if wait > 0 { Trace.log("pacing: waiting \(String(format: "%.1f", wait)) s before connecting") }
         startTask = Task { [weak self] in
             guard let self else { return }
+            if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)); guard !Task.isCancelled, gen == self.generation else { return } }
             do { try await self.engine.load(request) }
             catch {
                 guard gen == self.generation else { return }
@@ -653,8 +733,22 @@ final class PlaybackCoordinator {
         state = s
         switch s {
         case .playing:
-            statusMessage = nil
-            if !recordedPlay { recordedPlay = true; onFirstPlay() }
+            statusMessage = nil; waitingForNetwork = false
+            if let id = current?.itemID { refusedAt[id] = nil }
+            if !recordedPlay, let src = current?.sourceID, current?.isLive == true { pacer.recordSuccess(src) }
+            if !recordedPlay {
+                recordedPlay = true; onFirstPlay()
+                if let r = current { StartStats.shared.recordStart(source: r.sourceID, engine: activeEngine, live: r.isLive, seconds: Date().timeIntervalSince(tapAt)) }
+                // Audio and subtitle tracks can arrive a little after the picture starts: look again a few times.
+                let gen = generation
+                Task { [weak self] in
+                    for wait in [1.0, 2.5, 5.0] {
+                        try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+                        guard let self, gen == self.generation else { return }
+                        self.refreshTracks()
+                    }
+                }
+            }
             startTicker()
             markStableAfterDelay()
             refreshTracks()
@@ -688,16 +782,20 @@ final class PlaybackCoordinator {
 
     private func handleFailure(_ error: PlaybackError) {
         guard let r = current else { state = .failed(error); return }
+        if NetworkRecovery.waitsForConnection(kind: error.kind, online: network.isOnline) { waitForNetwork(); return }
         // Provider retries (a busy or erroring server) must not use up the one allowed switch to the other player, so that decision is counted apart.
         let isFormat = error.kind == .unsupportedFormat || error.kind == .engineUnavailable
         let decisionAttempt = isFormat ? (switchedEngine ? max(attempt, 1) : 0) : attempt
-        let action = recovery.decide(error: error, attempt: decisionAttempt, current: activeEngine, available: factory.available, isLive: r.isLive)
+        let recentlyRefused = !r.isLive && (refusedAt[r.itemID].map { Date().timeIntervalSince($0) < 600 } ?? false)
+        let action = recovery.decide(error: error, attempt: decisionAttempt, current: activeEngine, available: factory.available, isLive: r.isLive, recentlyRefused: recentlyRefused)
+        if error.kind == .providerBusy, !r.isLive, action == .giveUp { refusedAt[r.itemID] = Date() }
+        if error.kind == .providerBusy { pacer.recordBusy(r.sourceID) }
         Trace.log("failure \(error.kind.rawValue) detail=\(error.detail ?? "-") attempt=\(attempt) action=\(action)")
         diagnostics.record("playback \(error.kind.rawValue) attempt \(attempt): \(error.detail ?? "")")
         switch action {
         case .retry(let delay, _):
             attempt += 1
-            statusMessage = error.kind == .providerBusy ? "The provider is still closing your last stream. Trying again… (\(attempt)/4)" : "Reconnecting… (\(attempt)/\(recovery.maxRetries))"
+            statusMessage = error.kind == .providerBusy ? "The provider is still closing your last stream. Trying again… (\(attempt)/\(PlaybackRecoveryService.busyWaits(isLive: r.isLive, recentlyRefused: recentlyRefused).count))" : "Reconnecting… (\(attempt)/\(recovery.maxRetries))"
             state = .recovering
             recoveryTask?.cancel()
             recoveryTask = Task { [weak self] in
@@ -728,6 +826,9 @@ final class PlaybackCoordinator {
             } else { statusMessage = error.message }
             state = .failed(error)
             endSession(outcome: "failed", error: error.detail ?? error.kind.rawValue)
+            StartStats.shared.recordFailure(source: r.sourceID, engine: activeEngine, live: r.isLive)
+            // Sent only if sharing is on (it is by default, and the person is told on first launch); throttled; low priority; after the stream has already failed.
+            DiagnosticsUploader.shared.playbackFailed()
         }
     }
 
@@ -792,14 +893,22 @@ final class PlaybackCoordinator {
     func persistProgress() { saveProgress(force: true) }
 
     private func saveProgress(force: Bool) {
-        guard settings.rememberPosition, let r = current, !r.isLive, !r.isCatchup, let d = duration, d > 0, position > 1 else { return }
+        guard settings.rememberPosition, let r = current, !r.isLive, !r.isCatchup else { return }
+        // Read the engine itself, not only the copy the ticker refreshes twice a second, so a save made as playback stops or switches is current.
+        let pos = max(position, engine.position)
+        guard let d = duration ?? engine.duration, d > 0, pos > 1 else {
+            if force { Trace.log("progress not saved: position \(Int(pos)) s, length \(duration.map { String(Int($0)) } ?? "unknown")") }
+            return
+        }
         lastSavedAt = Date()
-        try? historyRepo.saveProgress(WatchProgress(itemID: r.itemID, kind: r.kind, seriesID: r.seriesID, positionSeconds: position,
+        try? historyRepo.saveProgress(WatchProgress(itemID: r.itemID, kind: r.kind, seriesID: r.seriesID, positionSeconds: pos,
                                                    durationSeconds: d, updatedAt: Date(), completed: false))
+        Trace.log("progress saved: \(Int(pos)) s of \(Int(d)) s\(force ? " (on leaving)" : "")")
     }
 
     private func refreshTracks() {
         qualityOptions = engine.qualityOptions(); selectedQualityID = engine.selectedQualityID
+        chapters = engine.chapters()
         audioTracks = engine.availableAudioTracks()
         subtitleTracks = engine.availableSubtitleTracks()
         guard !appliedPreferredTracks, !audioTracks.isEmpty || !subtitleTracks.isEmpty else { return }

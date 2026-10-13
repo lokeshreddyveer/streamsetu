@@ -14,9 +14,13 @@ let testLinkFlags: [LinkerSetting] = cltTesting
 let package = Package(
     name: "REDDY",
     platforms: [.macOS(.v14)],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.0"),
+    ],
     targets: [
         .executableTarget(
             name: "REDDY",
+            dependencies: [.product(name: "Sparkle", package: "Sparkle")],
             path: "Sources/REDDY",
             exclude: ["Resources/README.txt"],
             swiftSettings: [.swiftLanguageMode(.v6)]

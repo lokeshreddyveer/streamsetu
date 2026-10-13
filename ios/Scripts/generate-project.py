@@ -15,7 +15,7 @@ APP_DIR = "StreamSetu"
 PROJECT = "StreamSetu"
 BUNDLE_ID = "app.streamsetu.ios"
 DEPLOYMENT = "18.0"
-VERSION = "0.1.0"
+VERSION = "0.3.0"
 BUILD = "1"
 
 

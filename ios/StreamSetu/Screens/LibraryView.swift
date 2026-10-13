@@ -8,6 +8,9 @@ final class LibraryModel {
     var categories: [CatalogCategory] = []
     var categoryID: String?
     var query = ""
+    /// Everything, only favourites, or only what was saved to watch later.
+    enum Shelf: String, CaseIterable { case all, favourites, watchLater }
+    var shelf: Shelf = .all
     var sort: VODSort = .recentlyAdded
     var total = 0
     var loading = false
@@ -18,28 +21,47 @@ final class LibraryModel {
 
     var canLoadMore: Bool { items.count < total }
 
+    /// Set when a search found nothing as typed and a corrected spelling did: the words actually searched for.
+    var correctedTo: String?
+
     func reload(_ c: AppContainer, source: UUID?) async {
         generation += 1
         let gen = generation
         loading = true
-        let r = await fetch(c, source: source, offset: 0)
+        var r = await fetch(c, source: source, offset: 0, term: query)
+        var fixed: String?
+        let typed = query
+        if r.items.isEmpty, !typed.trimmingCharacters(in: .whitespaces).isEmpty,
+           let alt = await Task.detached(operation: { c.spelling.correct(typed) }).value {
+            let again = await fetch(c, source: source, offset: 0, term: alt)
+            if !again.items.isEmpty { r = again; fixed = alt }
+        }
         guard gen == generation else { return }
-        items = r.items; total = r.total; categories = r.categories; loading = false
+        items = r.items; total = r.total; categories = r.categories; correctedTo = fixed; loading = false
     }
 
     func loadMore(_ c: AppContainer, source: UUID?) async {
         guard canLoadMore, !loading else { return }
         let gen = generation
         loading = true
-        let r = await fetch(c, source: source, offset: items.count)
+        let r = await fetch(c, source: source, offset: items.count, term: correctedTo ?? query)
         guard gen == generation else { return }
         items += r.items; loading = false
     }
 
-    private func fetch(_ c: AppContainer, source: UUID?, offset: Int) async -> (items: [LibraryItem], total: Int, categories: [CatalogCategory]) {
-        let kind = kind, category = categoryID, term = query, sort = sort, page = page
+    private func fetch(_ c: AppContainer, source: UUID?, offset: Int, term: String) async -> (items: [LibraryItem], total: Int, categories: [CatalogCategory]) {
+        let kind = kind, category = categoryID, sort = sort, page = page, shelf = shelf
+        let parsed = SmartQueryParser.parse(term)           // "hindi movies 2024": the year is a filter and "movies" is not part of the title
         return await Task.detached {
-            let q = VODQuery(sourceID: source, categoryID: category, search: term, sort: sort, limit: page, offset: offset)
+            var q = VODQuery(sourceID: source, categoryID: category, search: parsed.text, sort: sort, limit: page, offset: offset)
+            q.year = parsed.year
+            switch shelf {
+            case .all: break
+            case .favourites: q.favoritesOnly = true
+            case .watchLater:
+                let saved = ((try? c.favoritesRepo.collectionItems(id: AppState.watchLaterListID)) ?? []).filter { $0.kind == kind }.map(\.itemID).reversed()
+                q.ids = saved.isEmpty ? ["-none-"] : Array(saved)
+            }
             let cats = offset == 0 ? ((try? c.catalog.categories(sourceID: source, kind: kind, includeHidden: false)) ?? []) : []
             if kind == .movie {
                 return (((try? c.catalog.movies(q)) ?? []).map { .movie($0) }, (try? c.catalog.countMovies(q)) ?? 0, cats)
@@ -56,8 +78,10 @@ struct LibraryView: View {
     @Environment(\.container) private var container
     @State private var model: LibraryModel
     @State private var lockedPick: String?
+    @State private var featured: [LibraryItem] = []
 
     init(kind: ContentKind) { self.kind = kind; _model = State(initialValue: LibraryModel(kind: kind)) }
+
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var posterWidth: CGFloat { sizeClass == .regular ? 150 : 110 }
@@ -67,13 +91,17 @@ struct LibraryView: View {
         NavigationStack {
             ScrollView {
                 if model.items.isEmpty, !model.loading {
-                    EmptyState(symbol: kind == .movie ? "film" : "rectangle.stack", title: model.query.isEmpty ? "Nothing here" : "No matches",
+                    EmptyState(symbol: model.shelf == .watchLater ? "bookmark" : model.shelf == .favourites ? "heart" : (kind == .movie ? "film" : "rectangle.stack"), title: model.query.isEmpty ? (model.shelf == .watchLater ? "Nothing saved yet" : model.shelf == .favourites ? "No favourites yet" : "Nothing here") : "No matches",
                                message: model.query.isEmpty ? (state.isSyncing ? "Titles appear when the playlist has been read." : "This playlist has no \(kind == .movie ? "movies" : "series") in this folder.") : nil)
                 }
+                // The same slideshow as Home, only of movies (or only of series); hidden while searching or inside one folder.
+                if !featured.isEmpty, model.query.isEmpty, model.categoryID == nil, model.shelf == .all { FeaturedBanner(items: featured, height: sizeClass == .regular ? 300 : 220).padding(.top, 4) }
+                ShelfChips(selection: $model.shelf)
+                if let fixed = model.correctedTo { CorrectedNote(original: model.query, corrected: fixed).padding(.top, 4) }
                 if model.total > 0 { Text("\(model.total.formatted()) titles").appFont(12).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16) }
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(model.items) { item in
-                        NavigationLink(value: item) { PosterCard(item: item, width: posterWidth) }.buttonStyle(.press)
+                        NavigationLink(value: item) { PosterCard(item: item, width: posterWidth) }.buttonStyle(.press).contextMenu { TitleMenu(item: item) }
                             .task { if item.id == model.items.last?.id, let c = container { await model.loadMore(c, source: state.activeSourceID) } }
                     }
                 }
@@ -81,11 +109,11 @@ struct LibraryView: View {
                 if model.loading { ProgressView().padding() }
             }
             .navigationTitle(kind == .movie ? "Movies" : "Series").themed(kind == .movie ? "Movies" : "Series")
-            .searchable(text: $model.query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search \(kind == .movie ? "movies" : "series")")
             .navigationDestination(for: LibraryItem.self) { DetailView(item: $0) }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { SyncIndicator() }
                 TrailingPills {
+                    NavigationLink { SearchView(embedded: true, tab: kind == .movie ? .movies : .series) } label: { Image(systemName: "magnifyingglass").pillIcon() }.accessibilityLabel("Search")
                     Menu {
                         Picker("Sort", selection: $model.sort) { ForEach(VODSort.allCases) { Text($0.rawValue).tag($0) } }
                     } label: { Image(systemName: "arrow.up.arrow.down.circle").pillIcon() }.accessibilityLabel("Sort")
@@ -104,11 +132,42 @@ struct LibraryView: View {
             .miniPlayerInset()
             .sheet(isPresented: Binding(get: { lockedPick != nil }, set: { if !$0 { lockedPick = nil } })) { UnlockSheet { model.categoryID = lockedPick } }
         }
-        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(model.sort.rawValue)") { if let c = container { await model.reload(c, source: state.activeSourceID) } }
+        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(model.sort.rawValue)-\(model.shelf.rawValue)-\(state.watchLaterIDs.count)-\(state.favoriteIDs.count)") { if let c = container { await model.reload(c, source: state.activeSourceID) } }
+        .task(id: "featured-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") {
+            guard let c = container else { return }
+            let source = state.activeSourceID, kind = kind
+            featured = await Task.detached { (try? c.discover.featured(sourceID: source, kinds: [kind], count: 6, seed: FeaturedPicker.launchSeed ^ (kind == .movie ? 0x51 : 0xA3))) ?? [] }.value
+        }
         .task(id: model.query) {
             guard let c = container else { return }
             try? await Task.sleep(nanoseconds: 250_000_000)
             if !Task.isCancelled { await model.reload(c, source: state.activeSourceID) }
         }
+    }
+}
+
+
+/// All, Favourites and Watch Later as a row of chips under the banner.
+struct ShelfChips: View {
+    @Binding var selection: LibraryModel.Shelf
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                chip("All", "square.grid.2x2", .all)
+                chip("Favourites", "heart.fill", .favourites)
+                chip("Watch Later", "bookmark.fill", .watchLater)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 6)
+        }
+    }
+
+    private func chip(_ title: String, _ symbol: String, _ shelf: LibraryModel.Shelf) -> some View {
+        let on = selection == shelf
+        return Button { selection = shelf } label: {
+            Label(title, systemImage: symbol).appFont(13, .medium).lineLimit(1).padding(.horizontal, 12).frame(minHeight: 36)
+                .background(on ? AnyShapeStyle(ColorTokens.accentDefault) : AnyShapeStyle(.thinMaterial), in: Capsule())
+                .foregroundStyle(on ? Color.white : Color.primary)
+        }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
     }
 }

@@ -80,6 +80,24 @@ protocol PlaybackEngine: AnyObject {
     /// End of what is buffered, in the stream's own time, when the engine keeps a rewindable live buffer. Nil otherwise.
     var liveBufferEnd: TimeInterval? { get }
     func setPicture(_ picture: PictureAdjustments)
+    /// The file's chapters, when it has any and the engine can list them.
+    func chapters() -> [PlaybackChapter]
+    /// Repeats the part of the stream between two positions (nil clears it).
+    func setLoop(start: Double?, end: Double?)
+    /// Moves one frame forward or back and pauses.
+    func frameStep(forward: Bool)
+}
+
+struct PlaybackChapter: Identifiable, Equatable, Sendable {
+    let time: Double
+    let title: String
+    var id: Double { time }
+}
+
+extension PlaybackEngine {
+    func chapters() -> [PlaybackChapter] { [] }
+    func setLoop(start: Double?, end: Double?) {}
+    func frameStep(forward: Bool) {}
 }
 
 /// Colour controls, each from −100 to +100 (0 = unchanged). Only MPV can apply them.

@@ -58,6 +58,8 @@
 	</dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>StreamSetu uses Face ID to unlock the app when you turn on App Lock.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>StreamSetu saves a picture from a video to your photos only when you tap Save Frame.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_hdhomerun._tcp</string>

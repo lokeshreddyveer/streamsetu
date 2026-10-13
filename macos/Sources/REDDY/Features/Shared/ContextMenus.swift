@@ -69,6 +69,7 @@ struct MovieContextMenu: View {
         Button("Play") { container?.playback.play(movie: movie) }
         Button("Details") { router.open(movie: movie) }
         Button(state.isFavorite(movie.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(movie.id, kind: .movie) }
+        Button(state.isWatchLater(movie.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(movie.id, kind: .movie) }
         CollectionMenu(itemID: movie.id, kind: .movie)
         Divider()
         Button("Hide") { try? container?.favoritesRepo.hide(movie.id, kind: "movie"); state.catalogVersion += 1 }
@@ -83,6 +84,7 @@ struct SeriesContextMenu: View {
     var body: some View {
         Button("Details") { router.open(series: series) }
         Button(state.isFavorite(series.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(series.id, kind: .series) }
+        Button(state.isWatchLater(series.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(series.id, kind: .series) }
         CollectionMenu(itemID: series.id, kind: .series)
         Divider()
         Button("Hide") { try? container?.favoritesRepo.hide(series.id, kind: "series"); state.catalogVersion += 1 }

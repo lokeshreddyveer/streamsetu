@@ -10,7 +10,7 @@ enum AppTab: String, CaseIterable, Identifiable, Sendable {
 
 /// Fixed shortcuts pinned at the top of a tab's sidebar.
 enum Shortcut: String, Hashable, Sendable {
-    case discover, continueWatching, recentlyWatched, watchHistory, favorites, collections
+    case discover, continueWatching, recentlyWatched, watchHistory, favorites, watchLater, collections
     case featured, allMovies, recentlyAdded, library, allChannels, statistics
 
     var title: String {
@@ -20,6 +20,7 @@ enum Shortcut: String, Hashable, Sendable {
         case .recentlyWatched: "Recently Watched"
         case .watchHistory: "Watch History"
         case .favorites: "Favorites"
+        case .watchLater: "Watch Later"
         case .collections: "Collections"
         case .featured: "Featured"
         case .allMovies: "All Movies"
@@ -37,6 +38,7 @@ enum Shortcut: String, Hashable, Sendable {
         case .recentlyWatched, .recentlyAdded: "clock.arrow.circlepath"
         case .watchHistory: "list.bullet"
         case .favorites: "heart"
+        case .watchLater: "bookmark"
         case .collections, .allMovies, .library: "square.grid.2x2"
         case .allChannels: "list.bullet"
         case .statistics: "chart.bar"
@@ -45,9 +47,9 @@ enum Shortcut: String, Hashable, Sendable {
 
     static func pinned(for tab: AppTab) -> [Shortcut] {
         switch tab {
-        case .home: [.discover, .continueWatching, .recentlyWatched, .watchHistory, .favorites, .collections, .statistics]
-        case .movies: [.featured, .allMovies, .recentlyAdded, .continueWatching, .favorites]
-        case .series: [.library, .recentlyAdded, .continueWatching, .favorites]
+        case .home: [.discover, .continueWatching, .recentlyWatched, .watchHistory, .favorites, .watchLater, .collections, .statistics]
+        case .movies: [.featured, .allMovies, .recentlyAdded, .continueWatching, .favorites, .watchLater]
+        case .series: [.library, .recentlyAdded, .continueWatching, .favorites, .watchLater]
         case .liveTV: [.allChannels, .recentlyAdded, .recentlyWatched, .favorites]
         case .guide: [.allChannels, .favorites]
         }

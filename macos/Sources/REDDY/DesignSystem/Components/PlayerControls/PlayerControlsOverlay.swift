@@ -21,6 +21,13 @@ struct PlayerControlsOverlay: View {
     @State private var size: CGSize = .zero
     @State private var lastDrag: CGSize = .zero
     @State private var overControls = false
+    /// A–B repeat points, in seconds (MPV).
+    @State private var loopA: Double?
+    @State private var loopB: Double?
+    /// "Resumed at 42:10 · Start over", shown for a few seconds when a movie continues where it stopped.
+    @State private var resumedAt: Double?
+    @State private var resumeShownFor: String?
+    @State private var upNextDismissedFor: String?
     /// True while any menu is open, so the controls never vanish from under it.
     @State private var menuOpen = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -46,6 +53,11 @@ struct PlayerControlsOverlay: View {
                 bufferingHint.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top).padding(.top, 70)
             }
             if showDiagnostics || settings.showDiagnosticsOverlay { DiagnosticsOverlay(metrics: playback.metrics).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(.top, 56).padding(Spacing.lg).allowsHitTesting(false) }
+            if !(visible || !playback.state.isPlaying), playback.state.isPlaying { detailsLine.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading).padding(10).allowsHitTesting(false).transition(.opacity) }
+            if let at = resumedAt, !playback.isLive { resumeCard(at).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(.top, 70).padding(.trailing, 16).transition(.opacity) }
+            if let next = playback.upNext, !playback.isLive, let d = playback.duration, d > 60, d - playback.position < 30, upNextDismissedFor != playback.current?.itemID, playback.state.isPlaying {
+                upNextCard(next).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(.bottom, 110).padding(.trailing, 16).transition(.opacity)
+            }
             VStack(spacing: 0) {
                 topBar
                 Spacer()
@@ -60,7 +72,14 @@ struct PlayerControlsOverlay: View {
         }
         .animation(reduceMotion ? nil : AnimationTokens.page, value: playback.showChannelSwitcher)
         .onAppear { reveal() }
-        .onChange(of: playback.state) { _, _ in reveal() }
+        .onChange(of: playback.state) { _, new in
+            reveal()
+            if new == .playing, !playback.isLive, let r = playback.current, r.startPosition > 5, resumeShownFor != r.itemID {
+                resumeShownFor = r.itemID; withAnimation { resumedAt = r.startPosition }
+                Task { try? await Task.sleep(nanoseconds: 7_000_000_000); withAnimation { resumedAt = nil } }
+            }
+        }
+        .onChange(of: playback.current?.itemID) { _, _ in loopA = nil; loopB = nil; resumedAt = nil }
         .onReceive(NotificationCenter.default.publisher(for: NSMenu.didBeginTrackingNotification)) { _ in menuOpen = true; visible = true }
         .onReceive(NotificationCenter.default.publisher(for: NSMenu.didEndTrackingNotification)) { _ in menuOpen = false; reveal() }
     }
@@ -188,6 +207,7 @@ struct PlayerControlsOverlay: View {
             HStack(spacing: 10) {
                 Text(DurationFormatter.clock(playback.position)).font(Typography.timestamp)
                 SeekBar(position: playback.position, duration: d) { playback.seek(to: $0) }
+                Text("Ends " + Date().addingTimeInterval(max(0, d - playback.position) / max(0.25, playback.rate)).formatted(date: .omitted, time: .shortened)).font(Typography.timestamp).foregroundStyle(.white.opacity(0.7))
                 Text("-" + DurationFormatter.clock(max(0, d - playback.position))).font(Typography.timestamp)
             }.foregroundStyle(.white.opacity(0.85))
         }
@@ -279,6 +299,7 @@ struct PlayerControlsOverlay: View {
         if playback.activeEngine == .avPlayer { AirPlayButton().frame(width: 32, height: 32) }
         sleepMenu
         if playback.capabilities.pictureAdjustments { pictureButton }
+        if hasTools { toolsMenu }
         if playback.screenshotSupported { IconButton(symbol: "camera", help: "Save screenshot") { saveScreenshot() } }
         IconButton(symbol: "info.circle", help: "Stream info", active: showDiagnostics) { showDiagnostics.toggle() }
     }
@@ -303,10 +324,78 @@ struct PlayerControlsOverlay: View {
                 ForEach(SleepTimer.presets, id: \.self) { m in Button("Stop after \(m) minutes") { playback.startSleepTimer(minutes: m) } }
                 if playback.sleepTimer != nil { Divider(); Button("Cancel Sleep Timer") { playback.cancelSleepTimer() } }
             }
+            if hasTools { Menu("More Tools") { toolItems } }
             if playback.screenshotSupported { Button("Save Screenshot") { saveScreenshot() } }
             Button(showDiagnostics ? "Hide Stream Info" : "Show Stream Info") { showDiagnostics.toggle() }
         } label: { chip("ellipsis") }
         .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("More controls").accessibilityLabel("More controls")
+    }
+
+    // MARK: tools only some players have
+
+    private var hasTools: Bool { playback.capabilities.chapters || playback.capabilities.abLoop || playback.capabilities.frameStep || playback.capabilities.volumeBoost }
+
+    private var toolsMenu: some View {
+        Menu { toolItems } label: { chip("wand.and.stars") }
+            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Chapters, repeat, frame step, volume boost").accessibilityLabel("More tools")
+    }
+
+    @ViewBuilder private var toolItems: some View {
+        if !playback.chapters.isEmpty {
+            Section("Chapters") { ForEach(playback.chapters) { c in Button("\(c.title)  \(DurationFormatter.clock(c.time))") { playback.seek(to: c.time) } } }
+        }
+        if !playback.isLive, playback.capabilities.abLoop {
+            Section("Repeat a part") {
+                Button(loopA == nil ? "Set start here" : "Start: \(DurationFormatter.clock(loopA!))") { loopA = playback.position; applyLoop() }
+                Button(loopB == nil ? "Set end here" : "End: \(DurationFormatter.clock(loopB!))") { loopB = playback.position; applyLoop() }.disabled(loopA == nil)
+                if loopA != nil || loopB != nil { Button("Clear repeat") { loopA = nil; loopB = nil; applyLoop() } }
+            }
+        }
+        if playback.capabilities.frameStep {
+            Section("Frame by frame") {
+                Button("Back one frame") { playback.frameStep(forward: false) }
+                Button("Forward one frame") { playback.frameStep(forward: true) }
+            }
+        }
+        if playback.capabilities.volumeBoost {
+            Toggle("Volume boost (up to 130%)", isOn: Binding(get: { playback.volumeBoost }, set: { playback.volumeBoost = $0 }))
+        }
+    }
+
+    private func applyLoop() { playback.setLoop(start: loopA, end: loopA != nil && loopB != nil ? loopB : nil) }
+
+    // MARK: cards and the quiet line
+
+    /// One small faint line along the bottom edge while the controls are hidden: picture size, format and sound.
+    private var detailsLine: some View {
+        let m = playback.metrics
+        let audio = playback.audioTracks.first(where: { $0.isSelected }) ?? playback.audioTracks.first
+        let name: String? = audio.flatMap { PlayerMath.isGenericTrackLabel($0.label) ? nil : $0.label } ?? m.audioCodec.map { PlayerMath.audioCodecLabel($0) }
+        let parts: [String?] = [m.height > 0 ? PlayerMath.qualityLabel(width: m.width, height: m.height) : nil, m.videoCodec.map { PlayerMath.videoCodecLabel($0) }, name]
+        return Text(parts.compactMap { $0 }.joined(separator: " · ")).font(.system(size: 11, weight: .medium)).monospacedDigit()
+            .foregroundStyle(.white.opacity(0.7)).padding(.horizontal, 8).padding(.vertical, 3).background(.black.opacity(0.35), in: Capsule())
+    }
+
+    private func resumeCard(_ at: Double) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.clockwise.circle")
+            Text("Resumed at \(DurationFormatter.clock(at))").font(Typography.bodyMedium)
+            Button("Start over") { playback.seek(to: 0); withAnimation { resumedAt = nil } }.buttonStyle(.plain).foregroundStyle(ColorTokens.accentDefault).font(Typography.bodyMedium)
+            Button { withAnimation { resumedAt = nil } } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .bold)) }.buttonStyle(.plain).foregroundStyle(.white.opacity(0.7))
+        }
+        .foregroundStyle(.white).padding(.horizontal, 14).padding(.vertical, 8).background(.black.opacity(0.72), in: Capsule())
+    }
+
+    private func upNextCard(_ e: Episode) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Up next").font(Typography.caption).foregroundStyle(.white.opacity(0.7))
+                Text("S\(e.seasonNumber) E\(e.episodeNumber) · \(e.title)").font(Typography.bodyMedium).lineLimit(1)
+            }
+            PrimaryButton(title: "Play now", symbol: "play.fill") { playback.playNextEpisode() }
+            Button { upNextDismissedFor = playback.current?.itemID } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .bold)) }.buttonStyle(.plain).foregroundStyle(.white.opacity(0.7))
+        }
+        .foregroundStyle(.white).padding(.horizontal, 14).padding(.vertical, 10).background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func chip(_ symbol: String) -> some View {

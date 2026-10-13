@@ -62,7 +62,7 @@ struct SyncTable: Sendable {
         let now = "((julianday('now') - 2440587.5) * 86400.0)"
         for t in all {
             let when = "WHEN (SELECT applying FROM sync_flags) = 0"
-            let put: (String) -> String = { prefix in "INSERT OR REPLACE INTO sync_outbox(tbl, key, ts) VALUES('\(t.name)', \(t.key(prefix)), \(now));" }
+            let put: (String) -> String = { prefix in "INSERT INTO sync_outbox(tbl, key, ts) VALUES('\(t.name)', \(t.key(prefix)), \(now)) ON CONFLICT(tbl, key) DO UPDATE SET ts = excluded.ts;" }
             sql += "CREATE TRIGGER IF NOT EXISTS sync_\(t.name)_ai AFTER INSERT ON \(t.name) \(when) BEGIN \(put("NEW")) END;\n"
             let of = t.watched.map { " OF " + $0.joined(separator: ", ") } ?? ""
             sql += "CREATE TRIGGER IF NOT EXISTS sync_\(t.name)_au AFTER UPDATE\(of) ON \(t.name) \(when) BEGIN \(put("OLD")) \(put("NEW")) END;\n"

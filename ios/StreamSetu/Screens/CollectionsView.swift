@@ -4,6 +4,8 @@ import SwiftUI
 struct CollectionMenu: View {
     let itemID: String
     let kind: ContentKind
+    /// What this is called on screen: a Group for channels, a Collection for movies and series.
+    private var noun: String { kind == .channel ? "Group" : "Collection" }
     @Environment(\.container) private var container
     @Environment(AppState.self) private var state
     @State private var naming = false
@@ -14,9 +16,9 @@ struct CollectionMenu: View {
         Menu {
             ForEach(cols) { c in Button(c.name) { add(c) } }
             if !cols.isEmpty { Divider() }
-            Button("New Collection…", systemImage: "plus") { naming = true }
-        } label: { Label("Add to Collection", systemImage: "square.stack") }
-        .alert("New Collection", isPresented: $naming) {
+            Button("New \(noun)…", systemImage: "plus") { naming = true }
+        } label: { Label("Add to \(noun)", systemImage: kind == .channel ? "folder.badge.plus" : "square.stack") }
+        .alert("New \(noun)", isPresented: $naming) {
             TextField("Name", text: $newName)
             Button("Create") {
                 if let col = try? container?.favoritesRepo.createCollection(name: newName.trimmingCharacters(in: .whitespaces)) { add(col) }

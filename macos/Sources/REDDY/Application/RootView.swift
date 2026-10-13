@@ -112,6 +112,7 @@ struct MainShell: View {
         .animation(AnimationTokens.page, value: router.isSearching)
         .environment(\.container, container).environment(\.artwork, container.artwork)
         .reddyTheme(container.settings)
+        .loggingNotice()
         .onChange(of: router.tab) { _, _ in folderQuery = "" }
         .onChange(of: container.settings.hideEmptyFolders) { _, _ in state.reloadFolders() }
         .onChange(of: router.selection) { _, _ in router.clearSearch(); search.clear() }

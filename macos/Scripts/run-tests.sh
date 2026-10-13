@@ -3,8 +3,19 @@
 # Swift Testing host (Command Line Tools only).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# The tests make many throwaway databases ("reddy-*") in the system temp folder and do not remove them: they once filled the disk (tens of
+# thousands of files, gigabytes). So every run removes what it created, whatever the outcome.
+STAMP="$(mktemp)"
+cleanup() {
+  for dir in "${TMPDIR:-/tmp}" "$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || true)"; do
+    [ -d "$dir" ] && find "$dir" -maxdepth 1 -name 'reddy-*' -newer "$STAMP" -exec rm -rf {} + 2>/dev/null || true
+  done
+  rm -f "$STAMP"
+}
+trap cleanup EXIT
 if xcode-select -p 2>/dev/null | grep -q "Xcode.app"; then
-  exec swift test "$@"
+  swift test "$@"
+  exit $?
 fi
 swift build --build-tests >/dev/null
 RUNNER="$(mktemp -d)/test-runner"

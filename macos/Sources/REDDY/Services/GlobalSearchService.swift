@@ -95,6 +95,13 @@ struct GlobalSearchResults: Sendable {
     }
     func count(for tab: SearchTab) -> Int { tab.kinds.reduce(0) { $0 + (byKind[$1]?.count ?? 0) } }
     var isEmpty: Bool { byKind.values.allSatisfy(\.isEmpty) }
+
+    /// The same results with only the ones that pass `test` (used to narrow by a year typed in the search).
+    func keeping(_ test: (SearchResult) -> Bool) -> GlobalSearchResults {
+        var copy = self
+        for (kind, list) in byKind { copy.byKind[kind] = list.filter(test) }
+        return copy
+    }
 }
 
 // MARK: - Service

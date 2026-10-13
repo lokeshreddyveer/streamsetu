@@ -12,6 +12,9 @@ final class AppState {
     var loaded = false
     /// Single source of truth for hearts across every screen.
     private(set) var favoriteIDs: Set<String> = []
+    /// Movies and series saved to watch later. A built-in list, kept with the person's other lists.
+    private(set) var watchLaterIDs: Set<String> = []
+    nonisolated static let watchLaterListID = "watch-later"
     let toasts = ToastCenter()
     /// The playlist all content is scoped to. Persisted across launches; the start *page* never is.
     private(set) var activeSourceID: UUID?
@@ -54,6 +57,27 @@ final class AppState {
         try? container.favoritesRepo.setFavorite(id, kind: kind, on: on)
         if on { favoriteIDs.insert(id) } else { favoriteIDs.remove(id) }
         return on
+    }
+
+    func isWatchLater(_ id: String) -> Bool { watchLaterIDs.contains(id) }
+
+    @discardableResult
+    func toggleWatchLater(_ id: String, kind: ContentKind) -> Bool {
+        let on = !watchLaterIDs.contains(id)
+        if on {
+            // The list is created the first time something is saved to it (a deleted one comes back the same way).
+            try? container.db.write { c in try c.execute("INSERT OR IGNORE INTO collections(id, name, created_at) VALUES(?,?,?)", [Self.watchLaterListID, "Watch Later", Date()]) }
+            try? container.favoritesRepo.add(itemID: id, kind: kind, toCollection: Self.watchLaterListID)
+            watchLaterIDs.insert(id)
+        } else {
+            try? container.favoritesRepo.remove(itemID: id, fromCollection: Self.watchLaterListID)
+            watchLaterIDs.remove(id)
+        }
+        return on
+    }
+
+    func reloadWatchLater() {
+        watchLaterIDs = Set(((try? container.favoritesRepo.collectionItems(id: Self.watchLaterListID)) ?? []).map(\.itemID))
     }
 
     func reloadFavorites() {
@@ -131,6 +155,7 @@ final class AppState {
 
     func reload() {
         reloadFavorites()
+        reloadWatchLater()
         sources = (try? container.catalog.sources()) ?? []
         validateActiveSource()
         counts = (try? container.catalog.counts(sourceID: activeSourceID)) ?? CatalogCounts()

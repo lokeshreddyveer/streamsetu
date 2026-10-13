@@ -32,6 +32,7 @@ struct SeriesDetailView: View {
                             PrimaryButton(title: playTitle(t, p), symbol: "play.fill") { c.playback.play(episode: t, series: s); router.closeDetail() }
                         }
                         FavoriteButton(isFavorite: state.isFavorite(s.id)) { state.toggleFavorite(s.id, kind: .series) }
+            WatchLaterButton(isSaved: state.isWatchLater(s.id)) { state.toggleWatchLater(s.id, kind: .series) }
                         Menu { CollectionMenu(itemID: s.id, kind: .series) } label: { Label("My List", systemImage: "plus") }.menuStyle(.button).buttonStyle(SecondaryButtonStyle()).fixedSize()
                         Spacer()
                         if let d = vm.detail, d.seasons.count > 0 {

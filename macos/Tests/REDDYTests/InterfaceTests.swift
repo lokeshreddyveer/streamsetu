@@ -20,7 +20,7 @@ import Foundation
         #expect(SidebarModel.filter(folders, query: "  ").count == folders.count)
         #expect(SidebarModel.filter(folders, query: "zzz").isEmpty)
         // the pinned shortcuts come from a different source and never depend on the query
-        #expect(SidebarModel.pinned(for: .movies).count == 5)
+        #expect(SidebarModel.pinned(for: .movies).count == 6)
     }
 
     @Test func emptyFoldersAreNotListed() {

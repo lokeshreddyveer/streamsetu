@@ -7,6 +7,9 @@ struct MenuCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            Button("Check for Updates…") { AppUpdater.shared.checkForUpdates() }.disabled(!AppUpdater.shared.isAvailable)
+        }
         CommandGroup(replacing: .newItem) {
             Button("Add Playlist…") { router.modal = .addPlaylist }.keyboardShortcut("n")
             Button("Refresh All Playlists") { state?.syncAll() }.keyboardShortcut("r")

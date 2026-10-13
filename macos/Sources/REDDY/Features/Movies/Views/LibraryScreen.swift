@@ -86,15 +86,16 @@ struct LibraryScreen: View {
         case .folder(let id): state.folderName(id) ?? (kind == .movie ? "Movies" : "Series")
         }
     }
-    private var emptySymbol: String { selection == .shortcut(.favorites) ? "heart" : selection == .shortcut(.continueWatching) ? "play.circle" : "film" }
+    private var emptySymbol: String { selection == .shortcut(.favorites) ? "heart" : selection == .shortcut(.watchLater) ? "bookmark" : selection == .shortcut(.continueWatching) ? "play.circle" : "film" }
     private var emptyTitle: String {
         if !vm.search.isEmpty { return "No matches" }
-        switch selection { case .shortcut(.favorites): return "No favorites yet"; case .shortcut(.continueWatching): return "Nothing to continue"; default: return "No \(vm.noun) here" }
+        switch selection { case .shortcut(.favorites): return "No favorites yet"; case .shortcut(.watchLater): return "Nothing saved for later"; case .shortcut(.continueWatching): return "Nothing to continue"; default: return "No \(vm.noun) here" }
     }
     private var emptyMessage: String {
         if !vm.search.isEmpty { return "Nothing matches “\(vm.search)”." }
         switch selection {
         case .shortcut(.favorites): return "Save a title from its details to find it here."
+        case .shortcut(.watchLater): return "Tap the bookmark on a title's details to keep it here for later."
         case .shortcut(.continueWatching): return kind == .movie ? "Movies you start but don't finish appear here." : "Series you're partway through appear here."
         default: return "This folder is empty, or the playlist hasn't finished updating."
         }
@@ -109,6 +110,7 @@ struct LibraryScreen: View {
         Button("Play") { play(item) }
         Button("View details") { open(item) }
         Button(state.isFavorite(item.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(item.id, kind: item.kind) }
+        Button(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(item.id, kind: item.kind); if selection == .shortcut(.watchLater) { Task { await vm.reset(container!, selection: selection, source: state.activeSourceID) } } }
         CollectionMenu(itemID: item.id, kind: item.kind)
         Divider()
         Button("Hide") { try? container?.favoritesRepo.hide(item.id, kind: item.kind.rawValue); state.catalogVersion += 1 }

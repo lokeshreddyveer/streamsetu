@@ -11,6 +11,7 @@ struct HomeScreen: View {
         case .shortcut(.watchHistory): WatchHistoryPage()
         case .shortcut(.statistics): StatisticsPage()
         case .shortcut(.favorites): FavoritesPage()
+        case .shortcut(.watchLater): WatchLaterPage()
         case .shortcut(.collections): CollectionsPage()
         default: DiscoverPage()
         }
@@ -58,6 +59,7 @@ struct LibraryItemCard: View {
                 Button("Play") { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item) } }
                 Button("View details") { PlayActions.open(item, router: router) }
                 Button(state.isFavorite(item.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(item.id, kind: item.kind) }
+                Button(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(item.id, kind: item.kind) }
                 CollectionMenu(itemID: item.id, kind: item.kind)
                 if let removal { Divider(); Button(removal.title, role: .destructive, action: removal.action) }
             }
@@ -488,6 +490,38 @@ struct FavoritesPage: View {
             let sid = state.activeSourceID
             let r = await Task.detached { ((try? c.favorites.channels(sourceID: sid)) ?? [], (try? c.favorites.movies(sourceID: sid)) ?? [], (try? c.favorites.series(sourceID: sid)) ?? []) }.value
             channels = r.0; movies = r.1; series = r.2; loaded = true
+        }
+    }
+}
+
+// MARK: - Watch Later
+
+/// Movies and series saved to watch later, newest first.
+struct WatchLaterPage: View {
+    @Environment(\.container) private var container
+    @Environment(AppState.self) private var state
+    @State private var items: [LibraryItem] = []
+    @State private var loaded = false
+
+    var body: some View {
+        PageScroll(title: "Watch Later") {
+            if !loaded { ProgressView().controlSize(.small) }
+            else if items.isEmpty {
+                EmptyStateView(symbol: "bookmark", title: "Nothing saved for later", message: "Tap the bookmark on a movie or series to keep it here.")
+            } else {
+                ItemGrid(items: items) { item, w in LibraryItemCard(item: item, width: w) }
+            }
+        }
+        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(state.watchLaterIDs.count)") {
+            guard let c = container else { return }
+            let sid = state.activeSourceID
+            items = await Task.detached { () -> [LibraryItem] in
+                ((try? c.favoritesRepo.collectionItems(id: AppState.watchLaterListID)) ?? []).reversed().compactMap { entry -> LibraryItem? in
+                    if entry.kind == .series { return (try? c.catalog.seriesItem(id: entry.itemID)).flatMap { $0 }.flatMap { sid == nil || $0.sourceID == sid ? .series($0) : nil } }
+                    return (try? c.catalog.movie(id: entry.itemID)).flatMap { $0 }.flatMap { sid == nil || $0.sourceID == sid ? .movie($0) : nil }
+                }
+            }.value
+            loaded = true
         }
     }
 }

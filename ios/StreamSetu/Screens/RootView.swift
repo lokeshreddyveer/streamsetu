@@ -7,6 +7,8 @@ struct RootView: View {
     @Environment(\.container) private var container
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var visited: Set<IOSRouter.Tab> = []
+    /// How tall the floating bar (and the mini player above it) is right now, so every scrolling page can leave that much room at its end.
+    @State private var barHeight: CGFloat = 0
 
     /// iPhone: five screens, so Movies and Series stay on the bar instead of falling into "More". The system tab bar is not used at
     /// all (it keeps a grey strip behind a custom bar); this switches between the screens itself and draws the floating bar.
@@ -26,8 +28,12 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.18), value: router.tab)
         .onAppear { visited.insert(router.tab) }
         .onChange(of: router.tab) { _, t in visited.insert(t) }
-        .safeAreaInset(edge: .bottom, spacing: 6) {
+        // Pages pushed from a tab (Settings and its sub-pages, details) do not inherit a safe-area inset placed around the tabs, so their last
+        // row slid under the bar. A bottom margin on every scrolling page does reach them, and follows the bar as the mini player comes and goes.
+        .contentMargins(.bottom, barHeight, for: .scrollContent)
+        .overlay(alignment: .bottom) {
             VStack(spacing: 6) { MiniPlayerBar(); CompactTabBar(selection: $router.tab) }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height + 6 } action: { barHeight = $0 }
         }
     }
 
@@ -52,6 +58,7 @@ struct RootView: View {
                 compactTabs        // iPad gets the same screens and floating bar as iPhone
             }
         }
+        .loggingNotice()
         .background(ColorTokens.background)
         .onChange(of: contrast, initial: true) { _, c in ThemeStore.state.systemContrast = c == .increased }
         .dynamicTypeSize(...DynamicTypeSize.accessibility2)      // the layouts hold up to here; larger sizes would break them

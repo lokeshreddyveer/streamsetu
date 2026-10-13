@@ -9,6 +9,8 @@ struct FeedbackWindow: View {
     @State private var includeDiagnostics = true
     @State private var diagnostics: String?
     @State private var note: String?
+    @State private var shareAutomatically = DiagnosticsUploader.shared.isEnabled
+    @State private var sharingNow = false
 
     private var message: FeedbackMessage { FeedbackMessage(kind: kind, text: text, diagnostics: includeDiagnostics ? diagnostics : nil) }
 
@@ -29,16 +31,34 @@ struct FeedbackWindow: View {
                     }.font(Typography.caption)
                 }
             }
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle("Share playback logs automatically", isOn: $shareAutomatically)
+                    .onChange(of: shareAutomatically) { _, on in DiagnosticsUploader.shared.isEnabled = on }
+                Text("On by default. When a stream fails for good, StreamSetu sends the recent playback log to the developer: what was tried, which player, error codes, your app and macOS version and Mac model. Server names are replaced with server-1, server-2… Never logins, passwords, playlist names, titles or stream addresses. Kept for 30 days.")
+                    .font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
+                SecondaryButton(title: sharingNow ? "Sending…" : "Send My Log Now", symbol: "paperplane") { sendLogNow() }.disabled(sharingNow)
+            }
             if let note { Text(note).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary) }
             HStack {
                 Text("Opens your mail app, addressed to \(FeedbackMessage.address). Nothing is sent until you press Send there.").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
                 Spacer()
+                SecondaryButton(title: "Clear Playback Log", symbol: "trash") { PlaybackLog.shared.clear(); Task { await loadDiagnostics() }; note = "Playback log cleared." }
                 SecondaryButton(title: "Copy", symbol: "doc.on.doc") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(message.fullText, forType: .string); note = "Copied." }
                 PrimaryButton(title: "Send by Email", symbol: "envelope") { send() }
             }
         }
         .padding(Spacing.section).frame(width: 560).background(ColorTokens.background)
         .task { await loadDiagnostics() }
+    }
+
+    private func sendLogNow() {
+        sharingNow = true; note = nil
+        let typed = text
+        Task {
+            let ok = await DiagnosticsUploader.shared.send(trigger: "manual", note: typed)
+            sharingNow = false
+            note = ok ? "Log sent. Thank you." : "Couldn't send the log. Check your connection and try again."
+        }
     }
 
     private func send() {

@@ -63,6 +63,7 @@ struct MovieDetailView: View {
                 PrimaryButton(title: "Play", symbol: "play.fill") { container?.playback.play(movie: m); router.closeDetail() }
             }
             FavoriteButton(isFavorite: state.isFavorite(m.id)) { state.toggleFavorite(m.id, kind: .movie) }
+            WatchLaterButton(isSaved: state.isWatchLater(m.id)) { state.toggleWatchLater(m.id, kind: .movie) }
             Menu { CollectionMenu(itemID: m.id, kind: .movie) } label: { Label("My List", systemImage: "plus") }.menuStyle(.button).buttonStyle(SecondaryButtonStyle()).fixedSize()
             if progress != nil {
                 IconButton(symbol: "checkmark.circle", help: "Mark as watched") { try? container?.historyRepo.markWatched(itemID: m.id, kind: .movie, seriesID: nil, duration: m.durationSeconds ?? 1); reloadProgress() }

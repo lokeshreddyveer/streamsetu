@@ -155,6 +155,31 @@ struct ChannelRow: View {
     }
 }
 
+/// A channel as a small tile: its logo (or initials), name and what is on now.
+struct ChannelTile: View {
+    let channel: Channel
+    var programme: EPGProgram?
+    var isPlaying = false
+    var isFavorite = false
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ZStack(alignment: .topTrailing) {
+                ChannelLogo(url: channel.logoURL, name: channel.name, size: 56)
+                if isFavorite { Image(systemName: "heart.fill").appFont(9).foregroundStyle(.pink).padding(2).offset(x: 6, y: -4) }
+            }
+            Text(channel.name).appFont(11, .medium).lineLimit(2).multilineTextAlignment(.center).frame(maxWidth: .infinity)
+            if let p = programme { Text(p.title).appFont(9).foregroundStyle(.secondary).lineLimit(1) }
+        }
+        .padding(.vertical, 10).padding(.horizontal, 6)
+        .frame(maxWidth: .infinity, minHeight: 112)
+        .background(ColorTokens.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(isPlaying ? ColorTokens.accentDefault : Color.white.opacity(0.06), lineWidth: isPlaying ? 2 : 1))
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// Starting playback from anywhere in the app.
 @MainActor enum Play {
     static func channel(_ c: Channel, queue: [Channel], _ container: AppContainer) {
@@ -190,6 +215,8 @@ struct OptionalStack<Content: View>: View {
 /// the top of the screen (no blur); the screen's name floats over the content as a small pill.
 struct Themed: ViewModifier {
     var title: String?
+    /// Put the title pill in the left corner of the top bar instead of the system's centre slot (which squeezes it when there are many buttons).
+    var corner = false
     func body(content: Content) -> some View {
         content
             .scrollContentBackground(.hidden)
@@ -197,7 +224,14 @@ struct Themed: ViewModifier {
             .background(ColorTokens.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .clearTopBar()
-            .toolbar { if let title { ToolbarItem(placement: .principal) { TitlePill(text: title) } } }
+            .toolbar {
+                if let title {
+                    if corner {
+                        if #available(iOS 26.0, *) { ToolbarItem(placement: .topBarLeading) { TitlePill(text: title) }.sharedBackgroundVisibility(.hidden) }
+                        else { ToolbarItem(placement: .topBarLeading) { TitlePill(text: title) } }
+                    } else { ToolbarItem(placement: .principal) { TitlePill(text: title) } }
+                }
+            }
     }
 }
 
@@ -242,7 +276,7 @@ extension View {
     }
     /// Hides the system tab bar for this screen (the iPhone draws its own).
     func withoutSystemTabBar() -> some View { toolbarVisibility(.hidden, for: .tabBar) }
-    func themed(_ title: String? = nil) -> some View { modifier(Themed(title: title)) }
+    func themed(_ title: String? = nil, corner: Bool = false) -> some View { modifier(Themed(title: title, corner: corner)) }
 }
 
 /// A banner for the top of a scrolling page. The picture is taller than its frame, so as the page scrolls up it can slip down at

@@ -29,6 +29,10 @@
             <key>CFBundleTypeExtensions</key><array><string>m3u</string><string>m3u8</string></array>
         </dict>
     </array>
+    <key>SUFeedURL</key><string>https://raw.githubusercontent.com/lokeshreddyveer/streamsetu-releases/main/appcast.xml</string>
+    <key>SUPublicEDKey</key><string>4DehN3EMGzztmFkF2H4vucejhtH2lQIqrwZ5BX4ZzLY=</string>
+    <key>SUEnableAutomaticChecks</key><true/>
+    <key>SUAutomaticallyUpdate</key><false/>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
     <key>NSHumanReadableCopyright</key><string>Copyright © 2026 StreamSetu. All rights reserved.</string>

@@ -82,6 +82,10 @@ final class DiagnosticsService: @unchecked Sendable {
             for (k, v) in categories.sorted(by: { $0.value > $1.value }) { lines.append("  \(k): \(v)") }
             lines += errs.suffix(15).map { "  " + $0 }
         }
+        lines.append("")
+        lines.append("RECENT PLAYBACK LOG (newest last)")
+        let log = PlaybackLog.shared.tail(lines: 120)
+        lines += log.isEmpty ? ["  empty"] : log.map { "  " + $0 }
         return CredentialRedactor.redact(lines.joined(separator: "\n"))
     }
 

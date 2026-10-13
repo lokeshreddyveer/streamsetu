@@ -14,7 +14,7 @@ struct PlaybackError: Error, Equatable, Sendable {
         switch kind {
         case .network: "Network unavailable. Check your connection and try again."
         case .providerBusy: "The provider accepted the request but sent no video."
-        case .nameLookup: "The server's name couldn't be found\(detail.map { " (\($0))" } ?? ""). Your internet may be fine."
+        case .nameLookup: "This network can't reach the stream's server\(detail.map { " (\($0))" } ?? ""). Your internet may be fine."
         case .timeout: "The stream took too long to start. Try again."
         case .authorization: "Your streaming provider rejected the playback request."
         case .unsupportedFormat: "This stream format is not supported by the selected playback engine."
@@ -28,8 +28,8 @@ struct PlaybackError: Error, Equatable, Sendable {
     /// What to try next, in plain words. Shown under the message so a failure always comes with a way forward.
     var advice: String {
         switch kind {
-        case .providerBusy: "Most providers allow only one stream at a time, and your previous stream may still be closing on their side. Wait a few seconds; StreamSetu keeps trying. If it keeps happening, stop the stream on your other devices (a TV, another phone, Multi-View)."
-        case .nameLookup: "If you use a DNS ad-blocker or filter (Pi-hole, AdGuard, NextDNS), a VPN with its own DNS, or a content-filtering profile, allow this server name or turn it off for StreamSetu. Switching to your network's normal DNS also works."
+        case .providerBusy: "If other titles play, your provider isn't serving this one right now: try again later, or pick another version of it. Otherwise: most providers allow only one stream at a time, and your previous stream may still be closing on their side. Wait a few seconds; StreamSetu keeps trying. If it keeps happening, stop the stream on your other devices (a TV, another phone, Multi-View)."
+        case .nameLookup: "A DNS ad-blocker or filter (Pi-hole, AdGuard, NextDNS, a DNS profile or Private Relay) often blocks the changing server names providers use. Turn it off for IPTV, allow the name shown, or try another network. StreamSetu keeps trying other servers."
         case .network: "Check your Wi-Fi or mobile data. If other apps work, your provider's server may be down."
         case .timeout: "Live streams can be slow to start. Try again, or choose the Smooth buffering profile in Settings > Playback."
         case .authorization: "Your login may have expired, or too many devices are using the account. Check the playlist's login."
@@ -43,6 +43,10 @@ struct PlaybackError: Error, Equatable, Sendable {
 
     /// Network-ish failures are worth a bounded retry. Authorization and format problems are not.
     var isTransient: Bool { [.network, .nameLookup, .providerBusy, .timeout, .providerUnavailable, .unknown].contains(kind) }
+
+    /// What the system says when a connection goes to an address that cannot be used: a DNS filter answering 0.0.0.0 for a blocked name, or an
+    /// IPv4-only server reached from a network without IPv4.
+    static let unreachableAddressReasons = ["Can't assign requested address", "Network is unreachable", "No route to host"]
 
     static func classify(_ error: Error, httpStatus: Int? = nil) -> PlaybackError {
         let raw = error as NSError
@@ -64,14 +68,19 @@ struct PlaybackError: Error, Equatable, Sendable {
         case NSURLErrorDomain:
             switch ns.code {
             case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost: return .init(.network)
+            case NSURLErrorBadURL:
+                // Our own stream addresses are well formed, so a "bad URL" is the provider's redirect leading somewhere unusable (a blocked name).
+                let failing = (ns.userInfo[NSURLErrorFailingURLErrorKey] as? URL) ?? (ns.userInfo[NSURLErrorFailingURLStringErrorKey] as? String).flatMap(URL.init(string:))
+                return .init(.nameLookup, detail: failing?.host)
             case NSURLErrorDNSLookupFailed, NSURLErrorCannotFindHost:
                 let failing = (ns.userInfo[NSURLErrorFailingURLErrorKey] as? URL) ?? (ns.userInfo[NSURLErrorFailingURLStringErrorKey] as? String).flatMap(URL.init(string:))
                 return .init(.nameLookup, detail: failing?.host)
             case NSURLErrorTimedOut: return .init(.timeout)
             case NSURLErrorCannotConnectToHost: return .init(.providerUnavailable)
+            case NSURLErrorResourceUnavailable: return .init(.providerUnavailable)        // right after a cancelled try: the provider still holds the old connection
             case NSURLErrorUnknown, NSURLErrorBadServerResponse:
                 // AVPlayer wraps the real network error one level down (a timeout, a dropped connection): classify that.
-                if let u = ns.userInfo[NSUnderlyingErrorKey] as? NSError, u.domain == NSURLErrorDomain, u.code != ns.code { return classify(u) }
+                if let u = ns.userInfo[NSUnderlyingErrorKey] as? NSError, u.domain == NSURLErrorDomain || u.domain == "CoreMediaErrorDomain", u.code != ns.code { return classify(u) }
             case NSURLErrorUserAuthenticationRequired, NSURLErrorNoPermissionsToReadFile: return .init(.authorization)
             default: break
             }
@@ -85,12 +94,17 @@ struct PlaybackError: Error, Equatable, Sendable {
         case "CoreMediaErrorDomain":
             switch ns.code {
             case -12660, -12661: return .init(.authorization)                    // HTTP 403 / 401
-            case -12938, -12939: return .init(.notFound)                         // HTTP 404-ish
+            case -12938: return .init(.notFound)                                 // HTTP 404-ish
+            case -12939: return .init(.providerBusy)                             // "byte range and no content length - error code is 200": the provider's empty reply while it still holds the last stream
             case -12642, -12645, -12643: return .init(.unsupportedFormat)
+            case -16848: return .init(.timeout, detail: "Apple's player gave up opening this file (-16848).")     // MP4 movies it opened fine on the next try, ~30 s later
             case 1718449215, 1718449207: return .init(.unsupportedFormat, detail: "Apple's player cannot read this video or audio format (\(ns.code)).")   // 'fmt?'
             case -12889, -12885, -12886: return .init(.providerUnavailable)
             default: break
             }
+        case NSOSStatusErrorDomain:
+            // The same CoreMedia codes, reported bare by the first request of a session.
+            if ns.code == -12939 { return .init(.providerBusy) }
         default: break
         }
         return .init(.unknown, detail: error.localizedDescription)

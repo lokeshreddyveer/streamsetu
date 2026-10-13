@@ -42,6 +42,12 @@ else
   iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 fi
 
+# Sparkle (automatic updates): the framework ships inside the app and the program looks for it there.
+SPARKLE="$(ls -d .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-*/Sparkle.framework | head -1)"
+[ -d "$SPARKLE" ] || { echo "✘ Sparkle.framework not found. Run: swift package resolve"; exit 1; }
+cp -R "$SPARKLE" "$APP/Contents/Frameworks/"
+install_name_tool -add_rpath @executable_path/../Frameworks "$APP/Contents/MacOS/StreamSetu" 2>/dev/null || true
+
 if [ "${REDDY_BUNDLE_MPV:-0}" = "1" ]; then Scripts/bundle-libmpv.sh "$APP"; fi
 rmdir "$APP/Contents/Frameworks" 2>/dev/null || true
 

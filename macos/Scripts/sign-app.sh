@@ -5,8 +5,16 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${SIGN_IDENTITY:?Set SIGN_IDENTITY to your 'Developer ID Application: …' certificate name}"
 APP="${1:-dist/StreamSetu.app}"
+# Sparkle's pieces, innermost first (its documented order), before the generic pass below.
+SP="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
+if [ -d "$SP" ]; then
+  for x in "$SP/XPCServices/Installer.xpc" "$SP/XPCServices/Downloader.xpc" "$SP/Autoupdate" "$SP/Updater.app"; do
+    [ -e "$x" ] && codesign --force --timestamp --options runtime --preserve-metadata=entitlements --sign "$SIGN_IDENTITY" "$x"
+  done
+  codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$APP/Contents/Frameworks/Sparkle.framework"
+fi
 # sign nested code first (bundled libraries), then the app
-find "$APP/Contents/Frameworks" -type f \( -name "*.dylib" -o -perm +111 \) 2>/dev/null | while read -r f; do
+find "$APP/Contents/Frameworks" -maxdepth 1 -type f \( -name "*.dylib" -o -perm +111 \) 2>/dev/null | while read -r f; do
   codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$f"
 done
 ENTITLEMENTS="Configuration/REDDY.entitlements"

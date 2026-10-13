@@ -6,8 +6,12 @@ struct HomeView: View {
     @Environment(IOSRouter.self) private var router
     @Environment(\.container) private var container
     @State private var content: DiscoverContent?
+    @State private var featured: [LibraryItem] = []
     @State private var resume: [ContinueItem] = []
     @State private var recentChannels: [Channel] = []
+    @State private var topChannels: [Channel] = []
+    @State private var upNext: [HistoryService.UpNextEntry] = []
+    @State private var watchLater: [LibraryItem] = []
     @State private var nowPlaying: [String: String] = [:]
     @State private var scrollY: CGFloat = 0
     @State private var loaded = false
@@ -18,7 +22,7 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    if let hero = content?.hero { HeroCard(item: hero, height: wide ? 340 : 260, scrollY: scrollY) }
+                    if !featured.isEmpty { FeaturedBanner(items: featured, height: wide ? 340 : 260, scrollY: scrollY) }
                     if !resume.isEmpty {
                         Shelf(title: "Continue Watching") {
                             ForEach(resume) { r in
@@ -26,10 +30,41 @@ struct HomeView: View {
                             }
                         }
                     }
+                    if !upNext.isEmpty {
+                        Shelf(title: "Up Next") {
+                            ForEach(upNext) { u in
+                                Button { if let container { Play.episode(u.episode, u.series, container) } } label: {
+                                    WideCard(title: u.series.title, subtitle: "S\(u.episode.seasonNumber) E\(u.episode.episodeNumber) · \(u.episode.title)",
+                                             imageURL: u.episode.imageURL ?? u.series.backdropURL ?? u.series.posterURL,
+                                             progress: nil, width: wide ? 320 : 240)
+                                }.buttonStyle(.press)
+                            }
+                        }
+                    }
+                    if !watchLater.isEmpty {
+                        Shelf(title: "Watch Later") {
+                            ForEach(watchLater) { item in
+                                NavigationLink(value: item) { PosterCard(item: item, width: wide ? 160 : 120) }.buttonStyle(.press).contextMenu { TitleMenu(item: item) }
+                            }
+                        }
+                    }
                     if !recentChannels.isEmpty {
                         Shelf(title: "Recently Watched Channels") {
                             ForEach(recentChannels) { c in
                                 Button { if let container { Play.channel(c, queue: recentChannels, container) } } label: {
+                                    VStack(spacing: 4) {
+                                        ChannelLogo(url: c.logoURL, name: c.name, size: wide ? 96 : 72)
+                                        Text(c.name).appFont(11, .semibold).lineLimit(1).frame(width: wide ? 110 : 84)
+                                        if let p = nowPlaying[c.id] { Text(p).appFont(10).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center).frame(width: wide ? 110 : 84) }
+                                    }
+                                }.buttonStyle(.press)
+                            }
+                        }
+                    }
+                    if !topChannels.isEmpty {
+                        Shelf(title: "Your Channels") {
+                            ForEach(topChannels) { c in
+                                Button { if let container { Play.channel(c, queue: topChannels, container) } } label: {
                                     VStack(spacing: 4) {
                                         ChannelLogo(url: c.logoURL, name: c.name, size: wide ? 96 : 72)
                                         Text(c.name).appFont(11, .semibold).lineLimit(1).frame(width: wide ? 110 : 84)
@@ -65,12 +100,21 @@ struct HomeView: View {
             .refreshable { state.syncAll() }
             .miniPlayerInset()
         }
-        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") { await load() }
+        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(state.watchLaterIDs.count)") { await load() }
+        // Back from the player: Continue Watching and Recently Watched Channels show what was just played (not before, so nothing runs while it plays).
+        .onChange(of: container?.playback.isExpanded ?? false) { old, now in if old && !now { Task { await load() } } }
     }
 
     private func load() async {
         guard let c = container else { return }
         let source = state.activeSourceID
+        watchLater = await Task.detached { () -> [LibraryItem] in
+            ((try? c.favoritesRepo.collectionItems(id: AppState.watchLaterListID)) ?? []).reversed().prefix(20).compactMap { entry -> LibraryItem? in
+                if entry.kind == .series { return (try? c.catalog.seriesItem(id: entry.itemID)).flatMap { $0 }.map { .series($0) } }
+                return (try? c.catalog.movie(id: entry.itemID)).flatMap { $0 }.map { .movie($0) }
+            }
+        }.value
+        featured = await Task.detached { (try? c.discover.featured(sourceID: source, kinds: [.movie, .series], count: 6, seed: FeaturedPicker.launchSeed)) ?? [] }.value
         let (built, items, channels, now) = await Task.detached { () -> (DiscoverContent?, [ContinueItem], [Channel], [String: String]) in
             let chans = (try? c.history.recentChannels(limit: 12, sourceID: source)) ?? []
             let at = Date()
@@ -78,7 +122,8 @@ struct HomeView: View {
             return (try? c.discover.build(sourceID: source), (try? c.history.continueWatching(limit: 12, sourceID: source)) ?? [], chans,
                     guide.compactMapValues { $0.first { $0.isLive(at: at) }?.title })
         }.value
-        content = built; resume = items; recentChannels = channels; nowPlaying = now; loaded = true
+        let (next, top) = await Task.detached { ((try? c.history.upNext(sourceID: source)) ?? [], (try? c.history.mostWatchedChannels(sourceID: source)) ?? []) }.value
+        content = built; resume = items; recentChannels = channels; nowPlaying = now; upNext = next; topChannels = top; loaded = true
     }
 
     /// "Resume · 45m left" (or the episode, for a series).
@@ -98,35 +143,6 @@ struct HomeView: View {
     }
 }
 
-private struct HeroCard: View {
-    let item: LibraryItem
-    var height: CGFloat = 260
-    var scrollY: CGFloat = 0
-
-    var body: some View {
-        NavigationLink(value: item) {
-            ZStack(alignment: .bottomLeading) {
-                ParallaxBanner(height: height, scrollY: scrollY) {
-                    ArtworkImage(url: item.backdropURL ?? item.posterURL, kind: .backdrop, contentMode: .fill, symbol: "film")
-                }
-                LinearGradient(colors: [.clear, .black.opacity(0.35), .black.opacity(0.88)], startPoint: .top, endPoint: .bottom)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(item.title).appFont(height > 280 ? 30 : 22, .bold).lineLimit(2)
-                    HStack(spacing: 8) {
-                        if !item.detailLine.isEmpty { Text(item.detailLine) }
-                        if let r = item.ratingValue { Label(String(format: "%.1f", r), systemImage: "star.fill").labelStyle(.titleAndIcon).foregroundStyle(.yellow) }
-                    }.appFont(12, .medium).foregroundStyle(.white.opacity(0.8))
-                    if let o = item.overview, !o.isEmpty { Text(o).appFont(13).foregroundStyle(.white.opacity(0.78)).lineLimit(2) }
-                    Label("Play", systemImage: "play.fill").appFont(13, .semibold).foregroundStyle(.black)
-                        .padding(.horizontal, 16).padding(.vertical, 7).background(.white, in: Capsule()).padding(.top, 2)
-                }.padding(16)
-            }
-            .frame(height: height)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous)).padding(.horizontal, 16)
-        }
-        .buttonStyle(.press)
-    }
-}
 
 /// A small spinner while a playlist is being read, so a long first sync never looks stuck.
 struct SyncIndicator: View {

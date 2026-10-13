@@ -43,6 +43,8 @@ struct DetailView: View {
                         }
                         Button { state.toggleFavorite(item.id, kind: item.kind) } label: { Image(systemName: state.isFavorite(item.id) ? "heart.fill" : "heart").frame(width: 24, height: 24).symbolEffect(.bounce, value: state.isFavorite(item.id)) }
                             .buttonStyle(.bordered).controlSize(.large).tint(state.isFavorite(item.id) ? .pink : nil).accessibilityLabel(state.isFavorite(item.id) ? "Remove from favourites" : "Add to favourites")
+                        Button { state.toggleWatchLater(item.id, kind: item.kind) } label: { Image(systemName: state.isWatchLater(item.id) ? "bookmark.fill" : "bookmark").frame(width: 24, height: 24).symbolEffect(.bounce, value: state.isWatchLater(item.id)) }
+                            .buttonStyle(.bordered).controlSize(.large).tint(state.isWatchLater(item.id) ? .orange : nil).accessibilityLabel(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later")
                     }
                     if let overview = (movie?.overview ?? detail?.series.overview ?? item.overview), !overview.isEmpty {
                         Text(overview).appFont(14).foregroundStyle(.white.opacity(0.85))

@@ -83,4 +83,40 @@ final class HistoryService: Sendable {
         if let lastDone = eps.lastIndex(where: { prog[$0.id]?.completed == true }) { return lastDone + 1 < eps.count ? eps[lastDone + 1] : eps.last }
         return eps.first
     }
+
+    // MARK: Home rows
+
+    struct UpNextEntry: Identifiable, Sendable {
+        let series: Series
+        let episode: Episode
+        let lastWatched: Date
+        var id: String { episode.id }
+    }
+
+    /// The next episode of each series being watched: for the episode played most recently in a series, when that episode was finished, the
+    /// one after it. A half-watched episode is not here (it is under Continue Watching), and neither is an episode already watched.
+    func upNext(limit: Int = 12, sourceID: UUID? = nil) throws -> [UpNextEntry] {
+        var seen = Set<String>(), out: [UpNextEntry] = []
+        for e in try repo.watchLog(limit: 800) where e.kind == .episode {
+            guard let ep = try catalog.episode(id: e.itemID), seen.insert(ep.seriesID).inserted,
+                  let series = try catalog.seriesItem(id: ep.seriesID), sourceID == nil || series.sourceID == sourceID,
+                  try repo.progress(for: ep.id)?.completed == true,
+                  let next = try nextEpisode(after: ep), try repo.progress(for: next.id)?.completed != true else { continue }
+            out.append(UpNextEntry(series: series, episode: next, lastWatched: e.playedAt))
+            if out.count == limit { break }
+        }
+        return out
+    }
+
+    /// The channels watched most in the last 30 days (at least twice), most watched first.
+    func mostWatchedChannels(limit: Int = 12, sourceID: UUID? = nil, now: Date = Date()) throws -> [Channel] {
+        let ranked = try repo.mostPlayed(kinds: [.channel], since: now.addingTimeInterval(-30 * 86400), limit: limit * 3)
+        var out: [Channel] = []
+        for r in ranked where r.plays >= 2 {
+            guard let c = try catalog.channel(id: r.itemID), sourceID == nil || c.sourceID == sourceID else { continue }
+            out.append(c)
+            if out.count == limit { break }
+        }
+        return out
+    }
 }

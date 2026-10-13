@@ -43,6 +43,8 @@ final class LibraryBrowserViewModel {
     private let pageSize = 120
     private var generation = 0
     private var searchTask: Task<Void, Never>?
+    /// The titles saved to watch later, for the Watch Later folder.
+    private var watchLaterIDs: [String] = []
 
     init(kind: ContentKind) { self.kind = kind }
 
@@ -54,6 +56,7 @@ final class LibraryBrowserViewModel {
         switch selection {
         case .folder(let id): q.categoryID = id
         case .shortcut(.favorites): q.favoritesOnly = true
+        case .shortcut(.watchLater): q.ids = watchLaterIDs.isEmpty ? ["-none-"] : watchLaterIDs
         case .shortcut(.recentlyAdded): q.sort = .recentlyAdded
         default: break
         }
@@ -65,6 +68,7 @@ final class LibraryBrowserViewModel {
         let gen = generation, kind = self.kind
         loading = true
         if case .shortcut(.continueWatching) = selection { await loadContinue(c, source: source, gen: gen); return }
+        if case .shortcut(.watchLater) = selection { watchLaterIDs = await Task.detached { Self.savedIDs(c, kind: kind) }.value }
         let found = await Task.detached { (try? c.catalog.metadataCoverage(kind: kind, sourceID: source)) ?? VODMetadataCoverage() }.value
         coverage = found
         if !sort.isSupported(by: found, kind: kind) { sort = .recentlyAdded }               // a stored choice the data can't support
@@ -109,6 +113,11 @@ final class LibraryBrowserViewModel {
         }.value
         guard gen == generation else { return }
         items += page; hasMore = page.count == pageSize; loading = false
+    }
+
+    /// Saved titles of this kind, newest saved first.
+    nonisolated private static func savedIDs(_ c: AppContainer, kind: ContentKind) -> [String] {
+        ((try? c.favoritesRepo.collectionItems(id: AppState.watchLaterListID)) ?? []).filter { $0.kind == kind }.map(\.itemID).reversed()
     }
 
     /// Debounced; a newer keystroke cancels the pending query.

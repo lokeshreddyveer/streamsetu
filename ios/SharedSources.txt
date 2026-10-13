@@ -20,6 +20,7 @@ Data/Database/Schema/SchemaV6.swift
 Data/Database/Schema/SchemaV7.swift
 Data/Database/Schema/SchemaV8.swift
 Data/Database/Schema/SchemaV9.swift
+Data/Database/Schema/SchemaV10.swift
 Data/Indexing/CatalogIndexer.swift
 Data/Indexing/ChannelDeduplicator.swift
 Data/Indexing/IndexHealthMonitor.swift
@@ -65,6 +66,7 @@ Data/Sources/Xtream/XtreamErrors.swift
 Data/Sources/Xtream/XtreamMapper.swift
 Data/Sources/Xtream/XtreamProvider.swift
 DesignSystem/Components/LockScreen.swift
+DesignSystem/Components/LoggingNotice.swift
 DesignSystem/Components/LegalView.swift
 DesignSystem/Components/Images/ArtworkImage.swift
 DesignSystem/Components/PlayerControls/AudioOnlyBackdrop.swift
@@ -134,6 +136,7 @@ Playback/MPV/MPVPlayerEngine.swift
 Playback/MultiView.swift
 Playback/NowPlayingService.swift
 Playback/PlaybackCapabilities.swift
+Playback/PlayerMath.swift
 Playback/PlaybackEngineFactory.swift
 Playback/PlaybackMetrics.swift
 Playback/PlaybackState.swift
@@ -159,21 +162,27 @@ Services/CategoryDiagnosticsService.swift
 Services/ChannelHealthService.swift
 Services/DetailService.swift
 Services/DiagnosticsService.swift
+Services/DiagnosticsUploader.swift
 Services/DiscoverService.swift
+Services/FeaturedPicker.swift
 Services/EPGSyncService.swift
 Services/FavoritesService.swift
 Services/FeaturedService.swift
 Services/GlobalSearchService.swift
 Services/HistoryService.swift
 Services/MetadataMatchService.swift
+Services/NetworkWatch.swift
 Services/PlaybackCoordinator.swift
+Services/StartStats.swift
 Services/PlaybackRecoveryService.swift
 Services/ReminderService.swift
 Services/SearchService.swift
+Services/SmartSearch.swift
 Services/SourceManager.swift
 Services/StatisticsService.swift
 Services/StorageService.swift
 Services/TitleDetails.swift
+Services/ConnectionPacer.swift
 Services/FeedbackMessage.swift
 Services/VPNMonitor.swift
 Services/ICloudRestore.swift
@@ -192,4 +201,5 @@ Utilities/DurationFormatter.swift
 Utilities/Logger.swift
 Utilities/MemoryPressureGuard.swift
 Utilities/Trace.swift
+Utilities/PlaybackLog.swift
 Utilities/URLUtilities.swift

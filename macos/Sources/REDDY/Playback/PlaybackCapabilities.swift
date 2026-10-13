@@ -35,6 +35,11 @@ struct PlaybackCapabilities: Sendable {
     /// Can pause and rewind a live stream from its own buffer.
     var liveRewind = false
     var pictureAdjustments = false
+    var chapters = false
+    var abLoop = false
+    var frameStep = false
+    /// Can play louder than the system volume (up to 130%).
+    var volumeBoost = false
 }
 
 /// Capability-based detection: the URL's scheme, extension and path hints decide the container, not blind trust in a filename.
