@@ -122,6 +122,7 @@ final class IOSCoordinator {
     /// `streamsetu://add?url=…` opens the Add Playlist form (it never adds anything by itself); a playlist file opened from
     /// Files does the same; `streamsetu://search?q=…` opens Search.
     func open(_ url: URL) {
+        if url.isFileURL, LocalMedia.isVideo(url.lastPathComponent) { FilesPlayer.open(url, container: container); return }
         if url.isFileURL { router.pendingAdd = .file(url); router.presentAdd = true; return }
         switch DeepLink.parse(url) {
         case .addPlaylist(let address, let name)?: router.pendingAdd = .address(address, name: name); router.presentAdd = true

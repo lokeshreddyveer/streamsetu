@@ -265,6 +265,31 @@ final class PlaybackCoordinator {
         begin { try self.resolver.resolve(movie: movie, resume: shouldResume) }
     }
 
+    /// A video from Files, Photos, a folder or a WebDAV server. It plays like a movie that belongs to no playlist, and its position is remembered.
+    /// With subtitle files beside it, the player that can show them (MPV) is used.
+    func play(file url: URL, title: String, headers: [String: String] = [:], subtitles: [URL] = [], resume: Bool? = nil) {
+        reset(for: .movie)
+        currentMovie = nil
+        let id = LocalMedia.itemID(url.isFileURL ? url.lastPathComponent + "|" + url.path : url.absoluteString)
+        var request = PlaybackRequest(itemID: id, kind: .movie, sourceID: LocalMedia.sourceID, title: title, url: url, isLive: false)
+        request.headers = headers
+        if resume ?? settings.resumeAutomatically, let p = try? historyRepo.progress(for: id), !p.completed, p.positionSeconds > 10 { request.startPosition = p.positionSeconds }
+        tapAt = Date()
+        state = .resolving
+        switchedEngine = false
+        current = request
+        loadLayout(for: id)
+        let wantsSubtitles = !subtitles.isEmpty && factory.available.contains(.mpv)
+        start(request, engineOverride: wantsSubtitles ? .mpv : nil)
+        if !subtitles.isEmpty {
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                guard let self, self.current?.itemID == id else { return }
+                for sub in subtitles { self.loadSubtitleFile(sub) }
+            }
+        }
+    }
+
     func play(episode: Episode, series: Series, resume: Bool? = nil) {
         reset(for: .episode)
         currentEpisode = (episode, series)

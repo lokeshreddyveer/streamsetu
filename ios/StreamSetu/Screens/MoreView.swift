@@ -14,6 +14,7 @@ struct MoreView: View {
                     NavigationLink { WatchLaterView() } label: { Label("Watch Later", systemImage: "bookmark") }
                     NavigationLink { CollectionsView() } label: { Label("Collections", systemImage: "square.stack") }
                     NavigationLink { HistoryView() } label: { Label("Watch History", systemImage: "clock.arrow.circlepath") }
+                    NavigationLink { FilesView() } label: { Label("Files and Servers", systemImage: "externaldrive") }
                 }.listRowBackground(ColorTokens.surface)
                 Section { NavigationLink { StatisticsView() } label: { Label("Statistics", systemImage: "chart.bar") } }.listRowBackground(ColorTokens.surface)
             }

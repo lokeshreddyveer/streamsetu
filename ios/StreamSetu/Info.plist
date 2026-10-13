@@ -21,6 +21,36 @@
 				<string>public.plain-text</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Video</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.movie</string>
+				<string>public.audiovisual-content</string>
+				<string>org.matroska.mkv</string>
+				<string>public.avi-movie-extra</string>
+			</array>
+		</dict>
+	</array>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key><string>org.matroska.mkv</string>
+			<key>UTTypeDescription</key><string>Matroska video</string>
+			<key>UTTypeConformsTo</key><array><string>public.movie</string></array>
+			<key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>mkv</string></array></dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key><string>public.avi-movie-extra</string>
+			<key>UTTypeDescription</key><string>AVI video</string>
+			<key>UTTypeConformsTo</key><array><string>public.movie</string></array>
+			<key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>avi</string></array></dict>
+		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
@@ -50,7 +80,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<false/>
+	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

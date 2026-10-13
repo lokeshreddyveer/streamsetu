@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MenuCommands: Commands {
     let router: AppRouter
@@ -12,6 +13,8 @@ struct MenuCommands: Commands {
         }
         CommandGroup(replacing: .newItem) {
             Button("Add Playlist…") { router.modal = .addPlaylist }.keyboardShortcut("n")
+            Button("Open Video File…") { openVideoFile() }.keyboardShortcut("o")
+            Button("Files and Servers…") { openWindow(id: "files") }
             Button("Refresh All Playlists") { state?.syncAll() }.keyboardShortcut("r")
         }
         CommandGroup(replacing: .help) {
@@ -46,5 +49,14 @@ struct MenuCommands: Commands {
             Divider()
             Button("Stop") { playback?.stop() }.keyboardShortcut(".").disabled(playback?.isActive != true)
         }
+    }
+
+    private func openVideoFile() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false; panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.movie, .audiovisualContent, .item]
+        guard panel.runModal() == .OK, let url = panel.url, let playback else { return }
+        playback.play(file: url, title: LocalMedia.title(fromFileName: url.lastPathComponent), subtitles: LocalMedia.sidecarURLs(for: url))
+        playback.isExpanded = true
     }
 }

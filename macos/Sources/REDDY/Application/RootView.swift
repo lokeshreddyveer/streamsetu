@@ -164,6 +164,7 @@ struct MainShell: View {
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
                     guard let url else { return }
                     Task { @MainActor in
+                        if url.isFileURL, LocalMedia.isVideo(url.lastPathComponent) { FilesPlayer.open(url, container: container); return }
                         if let p = PendingAdd.fromFile(url) ?? PendingAdd.fromText(url.absoluteString) { present(p) }
                         else { state.toasts.show("That isn't a playlist file or link.", symbol: "exclamationmark.triangle", kind: .warning) }
                     }
@@ -184,6 +185,7 @@ struct MainShell: View {
 
     /// `streamsetu://…` links (also reachable from Shortcuts' "Open URL") and playlist files opened with StreamSetu.
     private func handleOpen(_ url: URL) {
+        if url.isFileURL, LocalMedia.isVideo(url.lastPathComponent) { FilesPlayer.open(url, container: container); return }
         if url.isFileURL {
             if let p = PendingAdd.fromFile(url) { present(p) } else { state.toasts.show("StreamSetu can't open that kind of file.", symbol: "exclamationmark.triangle", kind: .warning) }
             return
@@ -323,7 +325,7 @@ struct MainShell: View {
         guard let req = p.current else { return }
         let c = container
         switch req.kind {
-        case .movie: if let m = try? c.catalog.movie(id: req.itemID) { router.open(movie: m) }
+        case .movie: if let m = try? c.catalog.movie(id: req.itemID) { router.open(movie: m) } else { p.isExpanded = true }
         case .episode, .series:
             let sid = req.seriesID ?? req.itemID
             if let s = try? c.catalog.seriesItem(id: sid) { router.open(series: s) }
