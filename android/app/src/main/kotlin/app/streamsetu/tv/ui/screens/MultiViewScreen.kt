@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import app.streamsetu.core.data.repo.toModel
 import app.streamsetu.core.model.Channel
 import app.streamsetu.core.model.ChannelPlayable
 import app.streamsetu.core.playback.BufferingMode
@@ -101,7 +102,15 @@ fun MultiViewScreen(c: AppContainer, onClose: () -> Unit, onFullScreen: (Channel
     }
 
     if (picking) {
-        val choices = remember { (c.queue.filterIsInstance<ChannelPlayable>().map { it.channel }).filter { ch -> tiles.none { it.channel.id == ch.id } }.take(200) }
+        // The list the player was started from; when that is just one channel, the channels of the same connection.
+        var pool by remember { mutableStateOf(c.queue.filterIsInstance<ChannelPlayable>().map { it.channel }) }
+        LaunchedEffect(Unit) {
+            if (pool.size <= 1) {
+                val source = tiles.firstOrNull()?.channel?.sourceId ?: c.sources.all().firstOrNull { !it.draft && it.channelCount > 0 }?.id
+                if (source != null) { val hidden = c.db.extras().hiddenChannelIds().toSet(); pool = c.db.catalog().managerChannels(source, "", 300).filter { it.id !in hidden }.map { it.toModel() } }
+            }
+        }
+        val choices = pool.filter { ch -> tiles.none { it.channel.id == ch.id } }.take(200)
         Sheet("Add a channel", if (choices.isEmpty()) listOf(SheetItem("No other channels in this list", null, false) {}) else choices.map { ch -> SheetItem(ch.name, null, false) { addTile(ch) } }, onClose = { picking = false }, subtitle = "From the list you were watching")
     }
     menuFor?.let { i ->
