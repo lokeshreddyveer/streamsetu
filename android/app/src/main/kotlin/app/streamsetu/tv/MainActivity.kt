@@ -55,6 +55,16 @@ class MainActivity : ComponentActivity() {
         val uri = intent?.data ?: return
         if (uri.scheme != "streamsetu" || uri.host != "play") return
         val c = container
+        // A link from the home screen's Continue watching row (or a reminder) names the exact item.
+        uri.getQueryParameter("id")?.let { id ->
+            c.appScope.launch {
+                val item: app.streamsetu.core.model.Playable? = c.catalog.movie(id)?.let { app.streamsetu.core.model.MoviePlayable(it) }
+                    ?: c.catalog.episode(id)?.let { ep -> c.catalog.series(ep.seriesId)?.let { s -> app.streamsetu.core.model.EpisodePlayable(ep, s) } }
+                    ?: c.catalog.channel(id)?.let { app.streamsetu.core.model.ChannelPlayable(it) }
+                if (item != null) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { play(c, nav, item) }
+            }
+            return
+        }
         uri.getQueryParameter("engine")?.let { e -> c.settings.setEngine(app.streamsetu.core.playback.EnginePreference.entries.firstOrNull { it.name.equals(e, true) || (e == "auto" && it.name == "AUTOMATIC") } ?: app.streamsetu.core.playback.EnginePreference.AUTOMATIC) }
         val q = uri.getQueryParameter("q") ?: return
         c.appScope.launch {
@@ -196,7 +206,8 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                 when (val o = top) {
                     is Overlay.MovieDetail -> app.streamsetu.tv.ui.screens.detail.MovieDetailScreen(o.movie, c, nav)
                     is Overlay.SeriesDetail -> app.streamsetu.tv.ui.screens.detail.SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
-                    is Overlay.Player -> PlayerScreen(c, onClose = { closePlayer(c, nav) })
+                    is Overlay.Player -> PlayerScreen(c, onClose = { closePlayer(c, nav) }, onMultiView = { openMultiView(c, nav) })
+                    is Overlay.MultiView -> app.streamsetu.tv.ui.screens.MultiViewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> nav.close(); play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch), c.queue.ifEmpty { listOf(app.streamsetu.core.model.ChannelPlayable(ch)) }) })
                     is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                     is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav)
                 }
@@ -263,6 +274,14 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
 fun closePlayer(c: AppContainer, nav: Navigator) {
     if (nav.liveFullscreen && nav.tab == Tab.LIVE) nav.liveFullscreen = false else { c.playback.stop(); nav.liveFullscreen = false }
     nav.close()
+}
+
+/** Hands the channel playing now over to Multi-View: the player closes and its stream stops (so a one-connection provider is free for the tiles). */
+fun openMultiView(c: AppContainer, nav: Navigator) {
+    c.multiViewStart = listOfNotNull((c.playback.current.value as? app.streamsetu.core.model.ChannelPlayable)?.channel)
+    nav.close()
+    c.playback.stop()
+    nav.open(Overlay.MultiView)
 }
 
 /** Plays something and shows the player on top. */

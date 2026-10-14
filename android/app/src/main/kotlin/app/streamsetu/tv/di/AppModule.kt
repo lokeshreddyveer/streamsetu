@@ -62,7 +62,7 @@ object AppModule {
     @Provides @Singleton
     fun playback(@ApplicationContext c: Context, resolver: StreamResolver, settings: AppSettings, user: UserRepository, db: AppDatabase, sync: SyncService, sources: SourceRepository, stats: app.streamsetu.core.data.repo.StatisticsRepository): PlaybackController = PlaybackController(
         c, resolver, settings,
-        onProgress = { item, pos, dur -> user.saveProgress(item.id, kindOf(item), (item as? EpisodePlayable)?.series?.id, pos, dur) },
+        onProgress = { item, pos, dur -> user.saveProgress(item.id, kindOf(item), (item as? EpisodePlayable)?.series?.id, pos, dur); app.streamsetu.tv.WatchNext.update(c, item, pos, dur) },
         onStarted = { item -> user.recordPlay(item.id, kindOf(item), item.title) },
         onWatched = { item, ms ->
             // Time is added up per channel, movie and series (an episode counts for its series), for the Statistics page.

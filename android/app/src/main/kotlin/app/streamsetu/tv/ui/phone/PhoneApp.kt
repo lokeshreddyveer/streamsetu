@@ -44,6 +44,7 @@ fun PhoneApp(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     BackHandler(enabled = true) {
         when {
             nav.top == Overlay.Player -> leavePlayer(c, nav)
+            nav.top == Overlay.MultiView -> nav.close()
             nav.overlays.isNotEmpty() -> nav.close()
             base is Base.Setup || base is Base.Combined -> nav.base = Base.ChooseLibrary
             base == Base.ChooseLibrary || base == Base.Welcome -> onExit()
@@ -67,7 +68,8 @@ fun PhoneApp(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
             when (val o = top) {
                 is Overlay.MovieDetail -> PhoneMovieDetail(o.movie, c, nav)
                 is Overlay.SeriesDetail -> PhoneSeriesDetail(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
-                is Overlay.Player -> PhonePlayer(c, onClose = { closePlayer(c, nav) }, onMinimize = { minimizePlayer(c, nav) })
+                is Overlay.Player -> PhonePlayer(c, onClose = { closePlayer(c, nav) }, onMinimize = { minimizePlayer(c, nav) }, onMultiView = { app.streamsetu.tv.openMultiView(c, nav) })
+                is Overlay.MultiView -> app.streamsetu.tv.ui.screens.MultiViewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> nav.close(); app.streamsetu.tv.play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch), c.queue.ifEmpty { listOf(app.streamsetu.core.model.ChannelPlayable(ch)) }) })
                 is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                 is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav)
             }

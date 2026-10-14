@@ -86,6 +86,8 @@ interface PlayerEngine {
     fun diagnostics(): Map<String, String>
     fun setSpeed(speed: Float)
     fun setAspect(mode: AspectMode)
+    /** 0 to 1. Used by Multi-View, where one picture at a time has sound. */
+    fun setVolume(volume: Float) {}
     /** Off while only the sound is wanted (the app is in the background, or the mini player is showing): the picture stops being decoded. */
     fun setVideoEnabled(enabled: Boolean) {}
     /** Loads a subtitle file or address for the stream playing now. False when this engine cannot. */

@@ -31,6 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                 db.execSQL("CREATE TABLE IF NOT EXISTS watch_time (day INTEGER NOT NULL, hour INTEGER NOT NULL, itemId TEXT NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL, ms INTEGER NOT NULL, PRIMARY KEY(day, hour, itemId))")
                 db.execSQL("CREATE TABLE IF NOT EXISTS channel_prefs (channelId TEXT NOT NULL, hidden INTEGER NOT NULL, name TEXT, epgId TEXT, PRIMARY KEY(channelId))")
+                db.execSQL("ALTER TABLE overrides ADD COLUMN plot TEXT")
                 db.execSQL("CREATE TABLE IF NOT EXISTS reminders (id TEXT NOT NULL, channelId TEXT NOT NULL, channelName TEXT NOT NULL, title TEXT NOT NULL, startMs INTEGER NOT NULL, PRIMARY KEY(id))")
             }
         }

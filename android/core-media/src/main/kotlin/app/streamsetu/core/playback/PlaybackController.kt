@@ -107,6 +107,28 @@ class PlaybackController(
     fun setAudioDelay(ms: Long): Boolean = (_engine.value?.setAudioDelay(ms) == true).also { if (it) _audioDelay.value = ms }
     fun addSubtitle(address: String, label: String): Boolean = _engine.value?.addSubtitle(address, label) == true
 
+    // ---- Skip intro ----
+    private val introPrefs = appContext.getSharedPreferences("intro", Context.MODE_PRIVATE)
+    private fun introKey(item: Playable) = ((item as? app.streamsetu.core.model.EpisodePlayable)?.series?.id) ?: item.id
+
+    /**
+     * Where the opening ends for the episode playing now: what the person's own skip taught the app for this series, else a default of 90 seconds. Null for anything that
+     * is not an episode, or once the opening is over. The app has no chapter data from providers, so it learns from the first skip in a series.
+     */
+    fun introEndMs(): Long? {
+        val item = _current.value as? app.streamsetu.core.model.EpisodePlayable ?: return null
+        val learned = introPrefs.getLong(introKey(item), 0L)
+        return IntroSkip.target(positionMs, if (learned > 0) learned else null)
+    }
+
+    fun skipIntro() { val end = introEndMs() ?: return; userSeeked = true; _engine.value?.seekTo(end) }
+
+    /** A forward jump early in an episode is taken as skipping the opening: where it landed is remembered for the rest of the series. */
+    private fun maybeLearnIntro(fromMs: Long, toMs: Long) {
+        val item = _current.value as? app.streamsetu.core.model.EpisodePlayable ?: return
+        if (IntroSkip.isOpeningSkip(fromMs, toMs)) introPrefs.edit().putLong(introKey(item), toMs).apply()
+    }
+
     /** A picture of the frame on screen, or null when the player cannot give one. */
     fun snapshot(done: (android.graphics.Bitmap?) -> Unit) { val v = _engine.value?.view(appContext); if (v == null) done(null) else FrameGrab.grab(v, done) }
     /** Providers that allow one connection (from the account's own answer, or learned from a refusal): a new stream waits until the old one is closed. */
@@ -307,7 +329,10 @@ class PlaybackController(
 
     fun retryNow() { attempt = 0; switchedEngine = false; _state.value = PlaybackState.Resolving; restart() }
     fun togglePause() { val e = _engine.value ?: return; if (e.isPlaying) e.pause() else e.play() }
-    fun seekBy(deltaMs: Long) { val e = _engine.value ?: return; userSeeked = true; if (_current.value?.isLive == false) e.seekTo((e.positionMs + deltaMs).coerceIn(0, e.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE)) }
+    fun seekBy(deltaMs: Long) {
+        val e = _engine.value ?: return; userSeeked = true
+        if (_current.value?.isLive == false) { val to = (e.positionMs + deltaMs).coerceIn(0, e.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE); maybeLearnIntro(e.positionMs, to); e.seekTo(to) }
+    }
     val positionMs: Long get() = _engine.value?.positionMs ?: 0
     val durationMs: Long get() = _engine.value?.durationMs ?: 0
     val engineKind: EngineKind? get() = _engine.value?.kind
@@ -403,4 +428,22 @@ class PlaybackController(
         val n = connectivity.activeNetwork ?: return false
         return connectivity.getNetworkCapabilities(n)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
     }
+}
+
+
+/** The rules for the Skip intro button, kept apart from the player so they can be tested. */
+object IntroSkip {
+    const val DEFAULT_MS = 90_000L
+    /** The opening is only offered near the start of an episode. */
+    const val WINDOW_MS = 5 * 60_000L
+    private const val MIN_JUMP_MS = 25_000L
+
+    /** Where to jump to from [positionMs], or null when the button should not show: too early (the first seconds), or past the opening. */
+    fun target(positionMs: Long, learnedMs: Long?): Long? {
+        val end = learnedMs ?: DEFAULT_MS
+        return if (positionMs in 3_000 until (end - 2_000).coerceAtLeast(3_001) && positionMs < WINDOW_MS) end else null
+    }
+
+    /** True for a forward jump of at least 25 seconds that starts and ends inside the first five minutes. */
+    fun isOpeningSkip(fromMs: Long, toMs: Long) = fromMs < WINDOW_MS && toMs <= WINDOW_MS && toMs - fromMs >= MIN_JUMP_MS
 }

@@ -26,6 +26,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -62,7 +71,7 @@ private fun clock(ms: Long): String {
  * Turn the phone to fill the screen; the controls follow.
  */
 @Composable
-fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = onClose) {
+fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = onClose, onMultiView: () -> Unit = {}) {
     val playback = c.playback
     val state by playback.state.collectAsState()
     val current by playback.current.collectAsState()
@@ -130,6 +139,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
 
     Box(
         Modifier.fillMaxSize().background(Color.Black)
+            .semantics { onClick(label = if (controls) "Hide the controls" else "Show the controls") { if (controls) controls = false else poke(); true } }
             .pointerInput(live, skip) {
                 detectTapGestures(
                     onTap = { if (controls) controls = false else poke() },
@@ -178,6 +188,9 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
                 Label("${if (flash == 1) "+" else "−"}$skip s", Ph.small, Color.White, FontWeight.SemiBold)
             }
         }
+        // The opening of an episode: one tap jumps past it (the length is learned from the person's own skips in the series).
+        val introEnd = remember(position, item) { if (live) null else playback.introEndMs() }
+        if (introEnd != null && !failed) PillButton("Skip intro", { playback.skipIntro(); poke() }, Modifier.align(Alignment.BottomEnd).windowInsetsPadding(WindowInsets.systemBars).padding(end = 16.dp, bottom = if (controls) 132.dp else 36.dp), icon = Icons.Filled.SkipNext)
         if (hint.isNotEmpty()) Label(hint, Ph.body, Color.White, FontWeight.SemiBold, modifier = Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.statusBars).padding(top = 64.dp).background(Color(0x99000000), RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 8.dp))
         if (resumedFrom > 0 && position in 1..(resumedFrom + 8000) && !controls) Label("Resumed at ${clock(resumedFrom)}", Ph.small, Ink, modifier = Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp).background(Color(0x99000000), RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 6.dp))
 
@@ -292,6 +305,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
                     android.widget.Toast.makeText(context, if (where != null) "Saved in $where" else "A picture could not be taken from this stream", android.widget.Toast.LENGTH_SHORT).show()
                 }
             })
+            if (live) add(SheetItem("Multi-View", Icons.Filled.GridView, false, "Several channels at once") { onMultiView() })
             if (live && c.previousLive != null) add(SheetItem("Last channel", Icons.Filled.History) { c.lastChannel() })
             if (android.os.Build.VERSION.SDK_INT >= 26) add(SheetItem("Picture in picture", Icons.Filled.PictureInPictureAlt) { (context as? Activity)?.enterPictureInPictureMode(android.app.PictureInPictureParams.Builder().build()) })
             add(SheetItem("Close player", Icons.Filled.Close) { onClose() })
@@ -302,7 +316,11 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
 
 @Composable
 private fun BigButton(icon: androidx.compose.ui.graphics.vector.ImageVector, size: Int, onClick: () -> Unit) {
-    Box(Modifier.size(size.dp).clip(CircleShape).background(Color(0x55000000)).clickable(onClick = onClick), Alignment.Center) { Icon(icon, Color.White, (size * 0.6f).dp) }
+    val label = when (icon) {
+        Icons.Filled.PlayArrow -> "Play"; Icons.Filled.Pause -> "Pause"; Icons.Filled.SkipNext -> "Next"; Icons.Filled.SkipPrevious -> "Previous"
+        Icons.Filled.Replay10 -> "Skip back"; Icons.Filled.Forward10 -> "Skip forward"; else -> "Button"
+    }
+    Box(Modifier.size(size.dp).clip(CircleShape).background(Color(0x55000000)).semantics { contentDescription = label; role = Role.Button }.clickable(onClick = onClick), Alignment.Center) { Icon(icon, Color.White, (size * 0.6f).dp) }
 }
 
 /** A seek bar you can tap or drag. The thumb grows while it is held. */
@@ -313,6 +331,11 @@ private fun SeekBar(frac: Float, modifier: Modifier, onStart: () -> Unit, onChan
     var last by remember { mutableFloatStateOf(frac) }
     Box(
         modifier.height(40.dp)
+            .semantics {
+                contentDescription = "Seek bar"; stateDescription = "${(frac * 100).toInt()} percent"
+                progressBarRangeInfo = ProgressBarRangeInfo(frac.coerceIn(0f, 1f), 0f..1f)
+                setProgress { v -> onStart(); onEnd(v.coerceIn(0f, 1f)); true }
+            }
             .pointerInput(Unit) { detectTapGestures { o -> val f = (o.x / width).coerceIn(0f, 1f); onStart(); onEnd(f) } }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(

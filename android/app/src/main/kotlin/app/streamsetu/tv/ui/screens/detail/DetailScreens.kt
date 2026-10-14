@@ -52,7 +52,7 @@ private fun Backdrop(url: String?, title: String, dim: Float = 0.9f) {
 @Composable
 fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
     val overrides by c.collections.overrides.collectAsState(initial = emptyMap())
-    val movie = overrides[movie0.id]?.let { o -> movie0.copy(title = o.title ?: movie0.title, posterUrl = o.posterUrl ?: movie0.posterUrl) } ?: movie0
+    val movie = overrides[movie0.id]?.let { o -> movie0.copy(title = o.title ?: movie0.title, posterUrl = o.posterUrl ?: movie0.posterUrl, plot = movie0.plot ?: o.plot) } ?: movie0
     var editing by remember { mutableStateOf(false) }
     val favs by c.user.favouriteIds(UserRepository.FAVOURITES).collectAsState(initial = emptySet())
     val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsState(initial = emptySet())
@@ -143,7 +143,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
     val progress by vm.progress.collectAsState()
     val series0 = vm.series
     val overrides by c.collections.overrides.collectAsState(initial = emptyMap())
-    val s = overrides[series0.id]?.let { o -> series0.copy(title = o.title ?: series0.title, posterUrl = o.posterUrl ?: series0.posterUrl) } ?: series0
+    val s = overrides[series0.id]?.let { o -> series0.copy(title = o.title ?: series0.title, posterUrl = o.posterUrl ?: series0.posterUrl, plot = series0.plot ?: o.plot) } ?: series0
     var editing by remember { mutableStateOf(false) }
     val favs by c.user.favouriteIds(UserRepository.FAVOURITES).collectAsState(initial = emptySet())
     val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsState(initial = emptySet())

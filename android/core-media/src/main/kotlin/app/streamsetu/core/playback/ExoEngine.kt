@@ -116,6 +116,8 @@ class ExoEngine(context: Context) : PlayerEngine {
     override fun setAspect(mode: AspectMode) { aspect = mode; viewRef?.resizeMode = resizeFor(mode) }
     override fun setSpeed(speed: Float) { player?.setPlaybackSpeed(speed) }
 
+    override fun setVolume(volume: Float) { player?.volume = volume.coerceIn(0f, 1f) }
+
     override fun setVideoEnabled(enabled: Boolean) {
         val p = player ?: return
         p.trackSelectionParameters = p.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !enabled).build()

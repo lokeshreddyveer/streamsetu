@@ -142,7 +142,7 @@ data class CollectionItemEntity(val collectionId: String, val itemId: String, va
 
 /** A local correction to what the provider calls something. The provider's own data is never changed. */
 @Entity(tableName = "overrides")
-data class OverrideEntity(@PrimaryKey val itemId: String, val title: String?, val posterUrl: String?)
+data class OverrideEntity(@PrimaryKey val itemId: String, val title: String?, val posterUrl: String?, val plot: String? = null)
 
 /** Guide channel names, so a channel without a usable guide id can be matched to its programmes by name. */
 @Entity(tableName = "epg_channels")

@@ -50,13 +50,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun Label(text: String, size: TextUnit = Tokens.body, color: Color = Tokens.text, weight: FontWeight = FontWeight.Normal,
           maxLines: Int = 1, modifier: Modifier = Modifier, letterSpacing: TextUnit = TextUnit.Unspecified) {
-    BasicText(text, modifier, style = TextStyle(color = color, fontSize = size, fontWeight = weight, letterSpacing = letterSpacing), maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+    BasicText(app.streamsetu.tv.ui.i18n.I18n.tr(text), modifier, style = TextStyle(color = color, fontSize = size, fontWeight = weight, letterSpacing = letterSpacing), maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 }
 
 /** Small spaced capitals, as in the Mac sidebar and banners ("DISCOVER · FROM YOUR LIBRARY"). */
 @Composable
 fun Eyebrow(text: String, modifier: Modifier = Modifier, color: Color = Tokens.textTertiary) =
-    Label(text.uppercase(), Tokens.eyebrow, color, FontWeight.Bold, modifier = modifier, letterSpacing = 1.4.sp)
+    Label(app.streamsetu.tv.ui.i18n.I18n.tr(text).uppercase(), Tokens.eyebrow, color, FontWeight.Bold, modifier = modifier, letterSpacing = 1.4.sp)
 
 /** False while a full-screen page covers the screen, so the page underneath cannot take the remote's focus. */
 val LocalFocusEnabled = androidx.compose.runtime.compositionLocalOf { true }

@@ -30,6 +30,8 @@ sealed interface Base {
 /** Screens that cover the whole window. */
 sealed interface Overlay {
     data object Player : Overlay
+    /** Several live channels at once, one with sound. */
+    data object MultiView : Overlay
     data class SeriesDetail(val series: Series) : Overlay
     data class MovieDetail(val movie: Movie) : Overlay
     data class ManageLibrary(val entry: LibraryEntry) : Overlay

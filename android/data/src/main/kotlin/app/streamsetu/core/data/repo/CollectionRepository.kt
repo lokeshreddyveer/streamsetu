@@ -19,7 +19,7 @@ class CollectionRepository(private val db: AppDatabase) {
     suspend fun containing(itemId: String): Set<String> = dao.collectionsOf(itemId).toSet()
 
     // ---- Local corrections ----
-    val overrides: Flow<Map<String, ItemOverride>> = dao.overrides().map { l -> l.associate { it.itemId to ItemOverride(it.title, it.posterUrl) } }
+    val overrides: Flow<Map<String, ItemOverride>> = dao.overrides().map { l -> l.associate { it.itemId to ItemOverride(it.title, it.posterUrl, it.plot) } }
     suspend fun setOverride(itemId: String, title: String?, posterUrl: String?) {
         if (title.isNullOrBlank() && posterUrl.isNullOrBlank()) dao.clearOverride(itemId) else dao.putOverride(OverrideEntity(itemId, title?.trim()?.ifBlank { null }, posterUrl?.trim()?.ifBlank { null }))
     }

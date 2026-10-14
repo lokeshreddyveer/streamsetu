@@ -65,7 +65,7 @@ private val InkDim = Color(0xB3FFFFFF)
  * digits type a channel number; Back asks before leaving.
  */
 @Composable
-fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
+fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit = {}) {
     val playback = c.playback
     val state by playback.state.collectAsState()
     val current by playback.current.collectAsState()
@@ -302,6 +302,8 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
                             items(eps, key = { "ep" + it.id }) { ep -> TextOption("${ep.episode.number}.  ${ep.episode.title}", ep.id == item?.id, if (ep.id == item?.id) Modifier.focusRequester(selectedReq) else Modifier) { c.play(ep, c.queue); closePanel() } }
                         }
                         PanelKind.MORE -> {
+                            if (live) item { TextOption("Multi-View", false, Modifier) { onMultiView() } }
+                            if (!live && playback.introEndMs() != null) item { TextOption("Skip intro", false, Modifier.focusRequester(selectedReq)) { playback.skipIntro(); closePanel() } }
                             if (!live && resumedFrom > 0) item { TextOption("Start over", false, Modifier.focusRequester(selectedReq)) { playback.startOver(); closePanel() } }
                             item { TextOption("Sleep timer: " + if (sleepAt > 0) "on (30 min)" else "off", false, if (live || resumedFrom <= 0) Modifier.focusRequester(selectedReq) else Modifier) { sleepAt = if (sleepAt == 0L) System.currentTimeMillis() + 30 * 60_000L else 0L; closePanel() } }
                             if (live && item != null) item { TextOption(if (item.id in favourites) "Remove from favorites" else "Add to favorites", false, Modifier) { scope.launch { c.user.setFavourite(item.id, ContentKind.CHANNEL, item.id !in favourites) }; closePanel() } }

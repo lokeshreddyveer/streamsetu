@@ -52,6 +52,8 @@ class AppContainer @Inject constructor(
     /** What the player plays next: the channels of the list it was started from, or the episodes of a series. */
     var queue: List<Playable> = emptyList()
     var queueIndex: Int = 0
+    /** The channels Multi-View opens with (set by the player when it hands over). */
+    var multiViewStart: List<app.streamsetu.core.model.Channel> = emptyList()
 
     init {
         appScope.launch { runCatching { db.catalog().deleteDividers() } }      // divider rows read by an earlier version
@@ -142,6 +144,15 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             if (container.settings.refreshOnStart.value) container.sources.all().filter { !it.draft && it.enabled }.forEach { s ->
                 if (container.playback.current.value == null) runCatching { container.syncWithGuide(s.id) }
             }
+        }
+        container.appScope.launch {
+            // The language chosen in Settings (Appearance), now and whenever it changes.
+            container.ui.language.collect { setting -> kotlinx.coroutines.withContext(Dispatchers.Main) { app.streamsetu.tv.ui.i18n.I18n.apply(this@StreamSetuApp, setting) } }
+        }
+        container.appScope.launch {
+            // The theme and accent chosen in Settings (Appearance) apply to every screen, now and whenever they change.
+            kotlinx.coroutines.flow.combine(container.ui.theme, container.ui.accent) { t, a -> app.streamsetu.tv.ui.theme.Theme.of(t) to app.streamsetu.tv.ui.theme.Accent.of(a) }
+                .collect { (t, a) -> kotlinx.coroutines.withContext(Dispatchers.Main) { app.streamsetu.tv.ui.theme.Tokens.apply(t, a) } }
         }
         container.appScope.launch {
             // The proxy chosen in Settings applies to every request, now and whenever it changes.

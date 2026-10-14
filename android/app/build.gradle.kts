@@ -79,5 +79,6 @@ dependencies {
     implementation(libs.workmanager)
     implementation(libs.zxing)
     testImplementation(libs.junit)
+    testImplementation("org.json:json:20240303")
     implementation(libs.profileinstaller)       // installs the precompiled start-up profile (ours and Compose's) so the first scroll is not the slow one
 }

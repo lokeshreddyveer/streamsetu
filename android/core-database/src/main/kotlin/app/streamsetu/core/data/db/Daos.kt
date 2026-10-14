@@ -202,6 +202,10 @@ interface ExtrasDao {
     @Query("SELECT * FROM collection_items") suspend fun allCollectionItems(): List<CollectionItemEntity>
     @Query("SELECT * FROM collections") suspend fun allCollections(): List<CollectionEntity>
 
+    // Titles with no picture that no correction covers yet (for TMDB)
+    @Query("SELECT * FROM movies WHERE (posterUrl IS NULL OR posterUrl = '') AND id NOT IN (SELECT itemId FROM overrides) LIMIT :n") suspend fun moviesWithoutPoster(n: Int): List<MovieEntity>
+    @Query("SELECT * FROM series WHERE (posterUrl IS NULL OR posterUrl = '') AND id NOT IN (SELECT itemId FROM overrides) LIMIT :n") suspend fun seriesWithoutPoster(n: Int): List<SeriesEntity>
+
     // Overrides
     @Query("SELECT * FROM overrides") fun overrides(): Flow<List<OverrideEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putOverride(o: OverrideEntity)

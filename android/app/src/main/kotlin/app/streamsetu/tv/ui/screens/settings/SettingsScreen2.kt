@@ -144,11 +144,26 @@ fun AppearanceSettings(c: AppContainer) {
     val poster by ui.posterSize.collectAsState(); val meta by ui.showPosterMeta.collectAsState(); val banner by ui.bannerEnabled.collectAsState(); val secs by ui.bannerSeconds.collectAsState()
     val shortcuts by ui.showShortcuts.collectAsState(); val anim by ui.animation.collectAsState(); val dwell by s.foldersOpenOnFocus.collectAsState(); val contrast by ui.highContrastFocus.collectAsState()
     SettingGroup("Look") {
-        InfoRow("Theme", "Dark", "The only theme; it suits a TV in a dim room.")
+        val themeName by ui.theme.collectAsState(); val accentName by ui.accent.collectAsState()
+        val languageName by ui.language.collectAsState()
+        ChoiceRow("Language", "The language of the app's own text. Titles and descriptions come from your provider and stay as they are. Some text is still in English.", app.streamsetu.tv.ui.i18n.I18n.languages, languageName) { ui.setLanguage(it) }
+        ChoiceRow("Theme", "The colour of pages and cards.", app.streamsetu.tv.ui.theme.Theme.entries.map { it.name to it.label }, themeName) { ui.setTheme(it) }
+        ChoiceRow("Accent colour", "Highlights, selected items and primary buttons.", app.streamsetu.tv.ui.theme.Accent.entries.map { it.name to it.label }, accentName) { ui.setAccent(it) }
         ChoiceRow("Poster size", options = PosterSize.entries.map { it to it.label }, value = poster) { ui.setPosterSize(it) }
         ToggleRow("Show the year under posters", on = meta) { ui.setShowPosterMeta(it) }
         ToggleRow("High-contrast focus", "A thicker white frame around whatever the remote is on.", contrast) { ui.setHighContrastFocus(it) }
         ChoiceRow("Animation", options = AnimationLevel.entries.map { it to it.label }, value = anim) { ui.setAnimation(it) }
+    }
+    SettingGroup("Artwork from TMDB", "Fills in pictures and descriptions your provider left out, using your own free API key from themoviedb.org. Only titles without a picture are looked up, and what is found is kept on this device. This product uses the TMDB API but is not endorsed or certified by TMDB.") {
+        var tmdbKey by remember { mutableStateOf(c.credentials.load("tmdb.key").orEmpty()) }
+        var working by remember { mutableStateOf(false) }; var status by remember { mutableStateOf<String?>(null) }
+        val scope = rememberCoroutineScope()
+        val tmdb = remember { app.streamsetu.core.data.repo.TmdbService(c.db) { c.credentials.load("tmdb.key") } }
+        TvTextField(tmdbKey, { tmdbKey = it.trim(); if (tmdbKey.isEmpty()) c.credentials.delete("tmdb.key") else c.credentials.save("tmdb.key", tmdbKey) }, "TMDB API key", Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), secret = true)
+        ActionRow("Fetch missing artwork now", status ?: "Looks up to 150 titles at a time. Run it again for more.", if (working) "Working…" else "Fetch", confirm = false, enabled = !working && tmdbKey.isNotBlank(), reason = "Enter your TMDB API key first.") {
+            working = true; status = "Starting…"
+            scope.launch { status = runCatching { tmdb.fillMissing(150) { d, t -> status = "$d of $t looked up…" } }.fold({ "Found artwork for $it titles." }, { it.message ?: "That did not work." }); working = false }
+        }
     }
     SettingGroup("Banner and shortcuts") {
         ToggleRow("Featured banner slideshow", "The large picture at the top of Home, Movies and Series. Off: no banner.", banner) { ui.setBannerEnabled(it) }

@@ -13,6 +13,20 @@ class UiPrefs(context: Context) {
 
     private fun <T> flow(v: T) = MutableStateFlow(v)
 
+    private val _language = flow(prefs.getString("language", "SYSTEM") ?: "SYSTEM")
+    /** SYSTEM, en, hi or te: the language of the app's own text. */
+    val language: StateFlow<String> = _language
+    fun setLanguage(v: String) { prefs.edit().putString("language", v).apply(); _language.value = v }
+
+    private val _theme = flow(prefs.getString("theme", "OBSIDIAN") ?: "OBSIDIAN")
+    /** OBSIDIAN, AMOLED, MIDNIGHT, SLATE or FOREST: the page and card colours. */
+    val theme: StateFlow<String> = _theme
+    fun setTheme(v: String) { prefs.edit().putString("theme", v).apply(); _theme.value = v }
+    private val _accent = flow(prefs.getString("accent", "CYAN") ?: "CYAN")
+    /** CYAN, GOLD, VIOLET, GREEN, ROSE or BLUE: the colour of highlights and primary buttons. */
+    val accent: StateFlow<String> = _accent
+    fun setAccent(v: String) { prefs.edit().putString("accent", v).apply(); _accent.value = v }
+
     private val _poster = flow(PosterSize.entries.firstOrNull { it.name == prefs.getString("poster", null) } ?: PosterSize.STANDARD)
     val posterSize: StateFlow<PosterSize> = _poster
     fun setPosterSize(v: PosterSize) { prefs.edit().putString("poster", v.name).apply(); _poster.value = v }

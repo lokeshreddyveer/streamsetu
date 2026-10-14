@@ -18,6 +18,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -226,7 +229,7 @@ fun PhoneSearch(c: AppContainer, nav: Navigator) {
                     BasicTextField(q, { q = it }, Modifier.fillMaxWidth().focusRequester(focus), singleLine = true, textStyle = TextStyle(color = Tokens.text, fontSize = Ph.body), cursorBrush = SolidColor(Tokens.accent),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { remember(); keyboard?.hide() }))
                 }
-                if (q.isNotEmpty()) Icon(Icons.Filled.Close, Tokens.textSecondary, 18.dp, Modifier.clickable { q = "" })
+                if (q.isNotEmpty()) Icon(Icons.Filled.Close, Tokens.textSecondary, 18.dp, Modifier.semantics { contentDescription = "Clear the search"; role = androidx.compose.ui.semantics.Role.Button }.clickable { q = "" })
             }
         }
         when {

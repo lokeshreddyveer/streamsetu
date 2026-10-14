@@ -61,4 +61,4 @@ data class SourceCapabilities(val guide: Boolean, val guideChannels: Int, val ca
 enum class SmartRule(val label: String) { UNWATCHED("Unwatched"), UNWATCHED_FAVORITES("Unwatched favorites"), NEW_30D("Added in the last 30 days") }
 
 data class UserCollection(val id: String, val name: String, val scope: ContentKind)
-data class ItemOverride(val title: String?, val posterUrl: String?)
+data class ItemOverride(val title: String?, val posterUrl: String?, val plot: String? = null)

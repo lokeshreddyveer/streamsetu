@@ -15,6 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -58,13 +64,13 @@ fun Icon(icon: ImageVector, tint: Color = Tokens.text, size: Dp = 24.dp, modifie
 /** A round icon button with a 48 dp touch target. */
 @Composable
 fun IconTap(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, tint: Color = Tokens.text, filled: Boolean = false) {
-    Box(modifier.size(48.dp).clip(CircleShape).then(if (filled) Modifier.background(Color(0x40FFFFFF)) else Modifier).clickable(onClick = onClick), Alignment.Center) { Icon(icon, tint, 24.dp) }
+    Box(modifier.size(48.dp).clip(CircleShape).then(if (filled) Modifier.background(Color(0x40FFFFFF)) else Modifier).semantics { contentDescription = label; role = Role.Button }.clickable(onClick = onClick), Alignment.Center) { Icon(icon, tint, 24.dp) }
 }
 
 @Composable
 fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null) {
     Row(
-        modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (selected) Tokens.accent else Tokens.elevated).clickable(onClick = onClick).padding(horizontal = 14.dp),
+        modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (selected) Tokens.accent else Tokens.elevated).semantics { this.selected = selected; role = Role.Button }.clickable(onClick = onClick).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (icon != null) Icon(icon, if (selected) Color(0xFF04141A) else Tokens.textSecondary, 16.dp)
@@ -115,7 +121,7 @@ fun PhoneWide(title: String, subtitle: String?, imageUrl: String?, onClick: () -
 @Composable
 fun SectionHeader(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
     Row(modifier.fillMaxWidth().padding(horizontal = Ph.gutter), verticalAlignment = Alignment.CenterVertically) {
-        Label(text, Ph.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Label(text, Ph.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.weight(1f).semantics { heading() })
         if (action != null) Box(Modifier.clickable(onClick = onAction).padding(vertical = 8.dp, horizontal = 4.dp)) { Label(action, Ph.small, Tokens.accent, FontWeight.Medium) }
     }
 }
@@ -156,7 +162,7 @@ fun PhoneTopBar(title: String, modifier: Modifier = Modifier, leading: (@Composa
 /** A round outlined button for the top bar. */
 @Composable
 fun RoundTap(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0xFF14161B)).border(1.dp, Tokens.lineStrong, CircleShape).clickable(onClick = onClick), Alignment.Center) { Icon(icon, Tokens.text, 22.dp) }
+    Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0xFF14161B)).border(1.dp, Tokens.lineStrong, CircleShape).semantics { contentDescription = label; role = Role.Button }.clickable(onClick = onClick), Alignment.Center) { Icon(icon, Tokens.text, 22.dp) }
 }
 
 /** The featured title: a rounded card with the picture, the title, a line of facts, a short story and a Play button, with dots for the other titles. It turns by itself. */

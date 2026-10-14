@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "ae8e75a790229e88a3d8a8bf59faf457",
+    "identityHash": "1d018d196981fc71cfd80b2baa2d8834",
     "entities": [
       {
         "tableName": "sources",
@@ -1032,7 +1032,7 @@
       },
       {
         "tableName": "overrides",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`itemId` TEXT NOT NULL, `title` TEXT, `posterUrl` TEXT, PRIMARY KEY(`itemId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`itemId` TEXT NOT NULL, `title` TEXT, `posterUrl` TEXT, `plot` TEXT, PRIMARY KEY(`itemId`))",
         "fields": [
           {
             "fieldPath": "itemId",
@@ -1049,6 +1049,12 @@
           {
             "fieldPath": "posterUrl",
             "columnName": "posterUrl",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "plot",
+            "columnName": "plot",
             "affinity": "TEXT",
             "notNull": false
           }
@@ -1226,7 +1232,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ae8e75a790229e88a3d8a8bf59faf457')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1d018d196981fc71cfd80b2baa2d8834')"
     ]
   }
 }
