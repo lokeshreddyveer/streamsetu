@@ -65,6 +65,7 @@ import app.streamsetu.tv.ui.screens.settings.SettingsPanel
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** The guide as a list that suits a phone held upright: each channel with what is on now, how far through it is, and what comes next. Tap a channel to watch; tap a programme for its details. */
 @Composable
@@ -114,8 +115,17 @@ fun PhoneGuide(c: AppContainer, nav: Navigator, vm: GuideViewModel = hiltViewMod
             }
         }
     }
+    val remindScope = rememberCoroutineScope()
+    val remindContext = LocalContext.current
+    val askNotifications = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
     detail?.let { (ch, p) ->
-        Sheet(p.title, listOf(SheetItem("Watch ${ch.name}", Icons.Filled.PlayArrow) { play(c, nav, ChannelPlayable(ch)) }),
+        Sheet(p.title, buildList {
+            add(SheetItem("Watch ${ch.name}", Icons.Filled.PlayArrow) { play(c, nav, ChannelPlayable(ch)) })
+            if (p.startMs > System.currentTimeMillis() + 2 * 60_000L) add(SheetItem("Remind me", Icons.Filled.Notifications) {
+                if (android.os.Build.VERSION.SDK_INT >= 33 && remindContext.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                remindScope.launch { val ok = app.streamsetu.tv.Reminders.schedule(c, remindContext, ch, p); android.widget.Toast.makeText(remindContext, if (ok) "You will be reminded a minute before" else "That starts too soon to remind", android.widget.Toast.LENGTH_SHORT).show() }
+            })
+        },
             onClose = { detail = null }, subtitle = "${time.format(Date(p.startMs))} – ${time.format(Date(p.endMs))}" + (p.description?.takeIf { it.isNotBlank() }?.let { "\n$it" } ?: ""))
     }
 }

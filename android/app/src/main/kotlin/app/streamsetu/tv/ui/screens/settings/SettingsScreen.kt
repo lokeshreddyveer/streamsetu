@@ -40,6 +40,8 @@ enum class Category(val title: String, val subtitle: String, val icon: ImageVect
     AUDIO("Audio", "Language, surround and track memory", Icons.Filled.VolumeUp),
     SUBTITLES("Subtitles & Accessibility", "Subtitle style, motion and contrast", Icons.Filled.Subtitles),
     LIVE("Live TV", "Channel keys, numbers and guide time", Icons.Filled.LiveTv),
+    CHANNELS("Channel Manager", "Hide, rename and check channels", Icons.Filled.Tune),
+    STATISTICS("Statistics", "What you have watched", Icons.Filled.BarChart),
     LIBRARIES("Libraries & Folders", "Connections, combined libraries, folders", Icons.Filled.Layers),
     SEARCH("Search & Catalog", "Sorting, search history and the index", Icons.Filled.Search),
     FAVOURITES("Favorites & History", "Lists, history and Home rows", Icons.Filled.Favorite),
@@ -105,7 +107,9 @@ fun SettingsPanel(current: Category, c: AppContainer, nav: Navigator) {
         Category.VIDEO -> VideoSettings(c)
         Category.AUDIO -> AudioSettings(c)
         Category.SUBTITLES -> SubtitleSettings(c)
-        Category.LIVE -> LiveSettings(c)
+        Category.LIVE -> { LiveSettings(c); RemindersSettings(c) }
+        Category.CHANNELS -> ChannelManagerSettings(c)
+        Category.STATISTICS -> StatisticsSettings(c)
         Category.LIBRARIES -> LibrarySettings(c, nav)
         Category.SEARCH -> SearchSettings(c)
         Category.FAVOURITES -> FavouriteSettings(c)
@@ -159,12 +163,22 @@ fun PlaybackSettings(c: AppContainer) {
             if (conns.size > 1) ChoiceRow("Live buffer for ${src.name}", "Overrides the global Live TV buffer for this connection.", listOf<Pair<BufferingMode?, String>>(null to "Use global default", BufferingMode.LOW_LATENCY to "Low latency", BufferingMode.AUTOMATIC to "Balanced", BufferingMode.LARGE to "Stable"), s.liveBufferFor(src.id)) { s.setLiveBufferFor(src.id, it); tick++ }
         }
     }
+    SettingGroup("Network proxy", "Streams and playlists go through the proxy; devices on your own network (a tuner, a NAS, a media server) never do. MPV can use an HTTP proxy only; with a SOCKS proxy it connects directly.") {
+        val pk by s.proxyKind.collectAsState(); val ph by s.proxyHost.collectAsState(); val pp by s.proxyPort.collectAsState()
+        ChoiceRow("Proxy", options = listOf("NONE" to "None", "HTTP" to "HTTP", "SOCKS" to "SOCKS"), value = pk) { s.setProxyKind(it) }
+        if (pk != "NONE") {
+            app.streamsetu.tv.ui.components.TvTextField(ph, { s.setProxyHost(it) }, "Proxy host (name or address)", Modifier.fillMaxWidth())
+            app.streamsetu.tv.ui.components.TvTextField(if (pp > 0) pp.toString() else "", { s.setProxyPort(it.filter { c -> c.isDigit() }.take(5).toIntOrNull() ?: 0) }, "Proxy port", Modifier.fillMaxWidth())
+        }
+    }
     SettingGroup("Movies and series") {
         ToggleRow("Remember playback position", "Saves where you stop so Continue Watching works.", remember) { s.setRememberPosition(it) }
         ToggleRow("Resume automatically", "Continue a partly watched title where it stopped.", resume && remember, enabled = remember, reason = "Turn on Remember playback position first.") { s.setResumeAutomatically(it) }
         ChoiceRow("Skip interval", "How far Left and Right jump while watching.", listOf(5 to "5 seconds", 10 to "10 seconds", 15 to "15 seconds", 30 to "30 seconds"), seek) { s.setSeekSeconds(it) }
         val confirmLeave by s.confirmLeavingPlayer.collectAsState()
         ToggleRow("Ask before leaving the player", "Back shows Continue watching or Exit instead of leaving at once.", confirmLeave) { s.setConfirmLeavingPlayer(it) }
+        val bgAudio by s.backgroundAudio.collectAsState()
+        ToggleRow("Keep playing when I leave the app", "The sound carries on with the screen off or in another app, with controls on the lock screen and in the notification shade.", bgAudio) { s.setBackgroundAudio(it) }
         ToggleRow("Play the next episode automatically", "Only continues to the very next episode; it never plays across a missing one.", next) { s.setPlayNext(it) }
     }
     SettingGroup("Recovery", "Switching to a different provider stream is always a choice you make (Choose Stream). It never happens by itself.") {

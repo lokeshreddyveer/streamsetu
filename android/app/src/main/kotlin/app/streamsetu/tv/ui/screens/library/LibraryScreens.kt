@@ -177,6 +177,13 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
         MenuAction("M3U URL", Icons.Filled.Link) { nav.base = Base.Setup(SourceType.M3U) },
         MenuAction("Stalker / Ministra portal", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.STALKER) },
         MenuAction("Import M3U file", Icons.Filled.Description) { nav.base = Base.Setup(SourceType.LOCAL_FILE) },
+        MenuAction("Jellyfin", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.JELLYFIN) },
+        MenuAction("Emby", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.EMBY) },
+        MenuAction("Plex", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.PLEX) },
+        MenuAction("HDHomeRun tuner", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.HDHOMERUN) },
+        MenuAction("TVHeadend", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.TVHEADEND) },
+        MenuAction("Enigma2 receiver", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.ENIGMA2) },
+        MenuAction("WebDAV share", Icons.Filled.Folder) { nav.base = Base.Setup(SourceType.WEBDAV) },
         MenuAction("Combine libraries", Icons.Filled.Layers) { nav.base = Base.Combined() },
     ), onClose = { addMenu = false })
 }
@@ -233,7 +240,7 @@ private fun QuickTile(title: String, sub: String, icon: ImageVector, bg: Color, 
     }
 }
 
-private fun typeOf(e: LibraryEntry) = when (e.typeLabel) { "Stalker portal" -> SourceType.STALKER; "M3U URL" -> SourceType.M3U; "Local M3U file" -> SourceType.LOCAL_FILE; else -> SourceType.XTREAM }
+private fun typeOf(e: LibraryEntry) = SourceType.fromLabel(e.typeLabel)
 
 @Composable
 private fun LibraryRow(e: LibraryEntry, isInitial: Boolean, initialFocus: FocusRequester, nav: Navigator, vm: LibraryViewModel, onPreview: () -> Unit, onFocused: () -> Unit) {
@@ -319,7 +326,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
     val context = LocalContext.current
     LaunchedEffect(draftId) {
         vm.resetTest()
-        if (draftId != null) vm.draft(draftId)?.let { (s, pw) -> form = LibraryViewModel.Form(s.name, s.address, s.username.orEmpty(), pw.orEmpty(), s.userAgent.orEmpty()) }
+        if (draftId != null) vm.draft(draftId)?.let { (s, pw) -> form = LibraryViewModel.Form(s.name, s.address, s.username.orEmpty(), pw.orEmpty(), s.userAgent.orEmpty(), vm.headersFor(draftId)) }
         delay(150); runCatching { first.requestFocus() }
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -329,18 +336,25 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
         }
     }
     var phoneOpen by remember { mutableStateOf(false) }
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            form = form.copy(address = uri.toString(), name = form.name.ifBlank { Uri.decode(uri.lastPathSegment.orEmpty()).substringAfterLast(':').substringAfterLast('/') })
+        }
+    }
     val canTest = when (type) {
-        SourceType.XTREAM -> form.address.isNotBlank() && form.user.isNotBlank() && form.password.isNotBlank()
+        SourceType.XTREAM, SourceType.TVHEADEND, SourceType.JELLYFIN, SourceType.EMBY -> form.address.isNotBlank() && form.user.isNotBlank() && form.password.isNotBlank()
+        SourceType.PLEX -> form.address.isNotBlank() && form.password.isNotBlank()
         SourceType.STALKER -> form.address.isNotBlank() && Regex("""^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$""").matches(form.user.trim())
         else -> form.address.isNotBlank()
     }
-    val title = when (type) { SourceType.XTREAM -> "Add Xtream Connection"; SourceType.M3U -> "Add M3U URL"; SourceType.LOCAL_FILE -> "Add Local M3U File"; SourceType.STALKER -> "Add Stalker Portal" }
+    val title = when (type) { SourceType.XTREAM -> "Add Xtream Connection"; SourceType.M3U -> "Add M3U URL"; SourceType.LOCAL_FILE -> "Add Local M3U File"; SourceType.STALKER -> "Add Stalker Portal"; else -> "Add ${type.label}" }
 
     val passed = test as? LibraryViewModel.Test.Passed
     if (passed != null) {
         val open = remember { FocusRequester() }
         LaunchedEffect(Unit) { delay(150); runCatching { open.requestFocus() } }
-        Column(Modifier.fillMaxSize().padding(horizontal = 120.dp, vertical = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)) {
+        Column(Modifier.fillMaxSize().screenPadding(), verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)) {
             Label("Connection verified", Tokens.display, Tokens.text, FontWeight.Bold)
             Label(passed.name, Tokens.heading, Tokens.accent, FontWeight.SemiBold)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { StatTile(Icons.Filled.LiveTv, "Live TV", passed.channels); StatTile(Icons.Filled.Movie, "Movies", passed.movies); StatTile(Icons.Filled.VideoLibrary, "Series", passed.series) }
@@ -356,10 +370,37 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
     }
 
     if (phoneOpen) PhoneSetupDialog(onFilled = { t, f -> form = f; vm.resetTest() }, onClose = { phoneOpen = false })
-    Column(Modifier.fillMaxSize().padding(horizontal = 120.dp, vertical = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxSize().screenPadding(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Label(title, Tokens.display, Tokens.text, FontWeight.Bold)
         TvTextField(form.name, { form = form.copy(name = it) }, "Name (optional)", Modifier.widthIn(max = 640.dp).fillMaxWidth().focusRequester(first))
         when (type) {
+            SourceType.HDHOMERUN -> {
+                TvTextField(form.address, { form = form.copy(address = it) }, "Tuner address (192.168.1.50 or hdhomerun.local)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
+                Label("Channels are read from the tuner on your network. Run a channel scan in the tuner's own setup first.", Tokens.small, Tokens.textTertiary)
+            }
+            SourceType.TVHEADEND -> LoginFields(form, "Server (http://host:9981)", "User name", "Password") { form = it }
+            SourceType.ENIGMA2 -> {
+                LoginFields(form, "Receiver address (http://192.168.1.60)", "User name (only if the receiver asks)", "Password") { form = it }
+                Label("Needs OpenWebif on the receiver. Streams play from its own stream port (8001).", Tokens.small, Tokens.textTertiary)
+            }
+            SourceType.JELLYFIN, SourceType.EMBY -> {
+                LoginFields(form, "Server (http://host:8096)", "User name", "Password") { form = it }
+                Label("Movies and series from the server's libraries. Live TV is not read.", Tokens.small, Tokens.textTertiary)
+            }
+            SourceType.PLEX -> {
+                TvTextField(form.address, { form = form.copy(address = it) }, "Server (http://host:32400)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
+                TvTextField(form.password, { form = form.copy(password = it) }, "Access token (X-Plex-Token)", Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = true)
+                Label("Movies and shows from the server's libraries. Find the token in Plex Web: Get Info, View XML, the address ends in X-Plex-Token=…", Tokens.small, Tokens.textTertiary, maxLines = 3)
+            }
+            SourceType.WEBDAV -> {
+                LoginFields(form, "Share address (https://host/remote.php/dav/files/me/)", "User name (optional)", "Password (optional)") { form = it }
+                Label("Video files in the share and its folders (four levels deep) appear as movies.", Tokens.small, Tokens.textTertiary)
+            }
+            SourceType.LOCAL_FOLDER -> {
+                Label(if (form.address.isBlank()) "No folder chosen" else "Chosen: " + Uri.decode(Uri.parse(form.address).lastPathSegment.orEmpty()).substringAfterLast(':'), Tokens.body, Tokens.textSecondary)
+                TvButton("Choose Folder…", { folderPicker.launch(null) }, icon = Icons.Filled.Folder)
+                Label("Video files in the folder and its sub-folders appear as movies.", Tokens.small, Tokens.textTertiary)
+            }
             SourceType.XTREAM -> {
                 TvTextField(form.address, { form = form.copy(address = it) }, "Server address (http://host:port)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
                 TvTextField(form.user, { form = form.copy(user = it) }, "User name", Modifier.widthIn(max = 640.dp).fillMaxWidth())
@@ -376,7 +417,10 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
                 TvButton("Choose File…", { picker.launch(arrayOf("*/*")) }, icon = Icons.Filled.Folder)
             }
         }
-        if (type != SourceType.LOCAL_FILE) TvTextField(form.userAgent, { form = form.copy(userAgent = it) }, "User-Agent (optional, if your provider needs one)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
+        if (type != SourceType.LOCAL_FILE && type != SourceType.LOCAL_FOLDER) {
+            TvTextField(form.userAgent, { form = form.copy(userAgent = it) }, "User-Agent (optional, if your provider needs one)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
+            TvTextField(form.headers, { form = form.copy(headers = it) }, "Extra headers (optional): Name: value || Name: value", Modifier.widthIn(max = 640.dp).fillMaxWidth())
+        }
         (test as? LibraryViewModel.Test.Failed)?.let { Label(it.message, Tokens.body, Tokens.danger, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp)) }
         message?.let { Label(it, Tokens.body, Tokens.textSecondary) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -403,7 +447,7 @@ fun CombinedScreen(editing: LibraryEntry?, nav: Navigator, vm: LibraryViewModel 
         if (editing != null) chosen = vm.memberIds(editing).toSet()
         delay(150); runCatching { first.requestFocus() }
     }
-    Column(Modifier.fillMaxSize().padding(horizontal = 120.dp, vertical = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxSize().screenPadding(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Label(if (editing == null) "Create Combined Library" else "Edit Combined Library", Tokens.display, Tokens.text, FontWeight.Bold)
         Label("Choose the connections to show together. Nothing is copied; each keeps its own catalog.", Tokens.body, Tokens.textSecondary)
         TvTextField(name, { name = it }, "Library name", Modifier.widthIn(max = 640.dp).fillMaxWidth())
@@ -578,3 +622,19 @@ fun LogoReveal(reduced: Boolean, onDone: () -> Unit) {
     }
 }
 
+
+
+/** The page margins of a full-screen form: wide on a television, narrow and clear of the status and navigation bars on a phone. */
+@Composable
+private fun Modifier.screenPadding(): Modifier =
+    if (app.streamsetu.tv.ui.phone.isPhoneDevice(LocalContext.current)) this.windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = 20.dp, vertical = 16.dp)
+    else this.padding(horizontal = 120.dp, vertical = Tokens.safeVertical)
+
+
+/** The three fields of a connection that signs in with a server address, a user name and a password. */
+@Composable
+private fun LoginFields(form: LibraryViewModel.Form, addressHint: String, userHint: String, passwordHint: String, onChange: (LibraryViewModel.Form) -> Unit) {
+    TvTextField(form.address, { onChange(form.copy(address = it)) }, addressHint, Modifier.widthIn(max = 640.dp).fillMaxWidth())
+    TvTextField(form.user, { onChange(form.copy(user = it)) }, userHint, Modifier.widthIn(max = 640.dp).fillMaxWidth())
+    TvTextField(form.password, { onChange(form.copy(password = it)) }, passwordHint, Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = true)
+}

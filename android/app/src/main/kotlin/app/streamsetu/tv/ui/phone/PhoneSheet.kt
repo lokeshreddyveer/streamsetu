@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import app.streamsetu.tv.ui.components.Label
 import app.streamsetu.tv.ui.theme.Tokens
 
-data class SheetItem(val label: String, val icon: ImageVector? = null, val selected: Boolean = false, val detail: String? = null, val enabled: Boolean = true, val onClick: () -> Unit)
+data class SheetItem(val label: String, val icon: ImageVector? = null, val selected: Boolean = false, val detail: String? = null, val enabled: Boolean = true, val stays: Boolean = false, val onClick: () -> Unit)
 
 /** A sheet that slides up from the bottom: a title and a list of things to tap. Tapping outside it, or Back, closes it. */
 @Composable
@@ -50,7 +50,7 @@ fun Sheet(title: String, items: List<SheetItem>, onClose: () -> Unit, subtitle: 
                 LazyColumn(Modifier.heightIn(max = 460.dp)) {
                     items(items) { it ->
                         Row(
-                            Modifier.fillMaxWidth().then(if (it.enabled) Modifier.clickable { it.onClick(); onClose() } else Modifier).padding(horizontal = 20.dp, vertical = 12.dp),
+                            Modifier.fillMaxWidth().then(if (it.enabled) Modifier.clickable { it.onClick(); if (!it.stays) onClose() } else Modifier).padding(horizontal = 20.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
                         ) {
                             if (it.icon != null) Icon(it.icon, if (it.enabled) Tokens.textSecondary else Tokens.textTertiary, 22.dp)

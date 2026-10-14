@@ -35,14 +35,18 @@ interface CatalogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putChannels(list: List<ChannelEntity>)
     @Query("DELETE FROM channels WHERE sourceId = :sourceId") suspend fun clearChannels(sourceId: String)
     @Query("DELETE FROM channels WHERE name LIKE '%####%' OR name LIKE '%====%' OR name LIKE '%----%' OR name LIKE '%****%' OR TRIM(name) = ''") suspend fun deleteDividers(): Int
-    @Query("SELECT * FROM channels WHERE categoryId = :categoryId ORDER BY sortOrder, name") fun channelsIn(categoryId: String): Flow<List<ChannelEntity>>
-    @Query("SELECT * FROM channels WHERE sourceId IN (:sources) ORDER BY sortOrder, name LIMIT :limit") fun allChannels(limit: Int, sources: List<String>): Flow<List<ChannelEntity>>
+    @Query("SELECT * FROM channels WHERE categoryId = :categoryId AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name") fun channelsIn(categoryId: String): Flow<List<ChannelEntity>>
+    @Query("SELECT * FROM channels WHERE sourceId IN (:sources) AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name LIMIT :limit") fun allChannels(limit: Int, sources: List<String>): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE id = :id") suspend fun channel(id: String): ChannelEntity?
+    /** Every channel of one connection, hidden ones too, for the Channel Manager. */
+    @Query("SELECT * FROM channels WHERE sourceId = :sourceId AND name LIKE '%' || :q || '%' ORDER BY sortOrder, name LIMIT :limit") suspend fun managerChannels(sourceId: String, q: String, limit: Int): List<ChannelEntity>
     @Query("SELECT * FROM channels WHERE sourceId = :sourceId AND name = :name LIMIT 1") suspend fun channelByName(sourceId: String, name: String): ChannelEntity?
     @Query("SELECT * FROM movies WHERE sourceId = :sourceId AND title = :title LIMIT 1") suspend fun movieByTitle(sourceId: String, title: String): MovieEntity?
     @Query("SELECT * FROM channels WHERE id IN (:ids)") suspend fun channelsByIds(ids: List<String>): List<ChannelEntity>
-    @Query("SELECT * FROM channels WHERE sourceId IN (:sources) AND name LIKE '%' || :q || '%' ORDER BY name LIMIT :limit") suspend fun searchChannels(q: String, limit: Int, sources: List<String>): List<ChannelEntity>
-    @Query("SELECT COUNT(*) FROM channels WHERE sourceId IN (:sources)") fun channelCount(sources: List<String>): Flow<Int>
+    /** Like [channelsByIds], without the channels the person hid (for search results). */
+    @Query("SELECT * FROM channels WHERE id IN (:ids) AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1)") suspend fun visibleChannelsByIds(ids: List<String>): List<ChannelEntity>
+    @Query("SELECT * FROM channels WHERE sourceId IN (:sources) AND name LIKE '%' || :q || '%' AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY name LIMIT :limit") suspend fun searchChannels(q: String, limit: Int, sources: List<String>): List<ChannelEntity>
+    @Query("SELECT COUNT(*) FROM channels WHERE sourceId IN (:sources) AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1)") fun channelCount(sources: List<String>): Flow<Int>
 
     // Movies
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putMovies(list: List<MovieEntity>)
@@ -71,7 +75,7 @@ interface CatalogDao {
     @Query("SELECT * FROM series WHERE sourceId IN (:sources) AND title LIKE '%' || :q || '%' ORDER BY title LIMIT :limit") suspend fun searchSeries(q: String, limit: Int, sources: List<String>): List<SeriesEntity>
     @Query("SELECT categoryId AS folderId, COUNT(*) AS n FROM movies WHERE sourceId IN (:sources) GROUP BY categoryId") fun movieFolderCounts(sources: List<String>): Flow<List<FolderCount>>
     @Query("SELECT categoryId AS folderId, COUNT(*) AS n FROM series WHERE sourceId IN (:sources) GROUP BY categoryId") fun seriesFolderCounts(sources: List<String>): Flow<List<FolderCount>>
-    @Query("SELECT categoryId AS folderId, COUNT(*) AS n FROM channels WHERE sourceId IN (:sources) GROUP BY categoryId") fun channelFolderCounts(sources: List<String>): Flow<List<FolderCount>>
+    @Query("SELECT categoryId AS folderId, COUNT(*) AS n FROM channels WHERE sourceId IN (:sources) AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) GROUP BY categoryId") fun channelFolderCounts(sources: List<String>): Flow<List<FolderCount>>
 
     // Episodes
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putEpisodes(list: List<EpisodeEntity>)
@@ -202,6 +206,29 @@ interface ExtrasDao {
     @Query("SELECT * FROM overrides") fun overrides(): Flow<List<OverrideEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putOverride(o: OverrideEntity)
     @Query("DELETE FROM overrides WHERE itemId = :id") suspend fun clearOverride(id: String)
+
+    // Watch time
+    @Query("INSERT INTO watch_time(day, hour, itemId, kind, title, ms) VALUES(:day, :hour, :itemId, :kind, :title, :ms) ON CONFLICT(day, hour, itemId) DO UPDATE SET ms = ms + :ms")
+    suspend fun addWatchTime(day: Long, hour: Int, itemId: String, kind: String, title: String, ms: Long)
+    @Query("SELECT * FROM watch_time WHERE day >= :fromDay") suspend fun watchTimeSince(fromDay: Long): List<WatchTimeEntity>
+    @Query("DELETE FROM watch_time") suspend fun clearWatchTime()
+
+    // What the person changed about channels
+    @Query("SELECT * FROM channel_prefs") fun channelPrefs(): Flow<List<ChannelPrefEntity>>
+    @Query("SELECT * FROM channel_prefs") suspend fun channelPrefsNow(): List<ChannelPrefEntity>
+    @Query("SELECT * FROM channel_prefs WHERE channelId = :id") suspend fun channelPref(id: String): ChannelPrefEntity?
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putChannelPref(p: ChannelPrefEntity)
+    @Query("DELETE FROM channel_prefs WHERE channelId = :id") suspend fun clearChannelPref(id: String)
+    @Query("SELECT channelId FROM channel_prefs WHERE hidden = 1") suspend fun hiddenChannelIds(): List<String>
+    @Query("UPDATE channels SET name = :name WHERE id = :id") suspend fun setChannelName(id: String, name: String)
+    @Query("UPDATE channels SET epgId = :epgId WHERE id = :id") suspend fun setChannelEpg(id: String, epgId: String?)
+
+    // Reminders
+    @Query("SELECT * FROM reminders ORDER BY startMs") fun reminders(): Flow<List<ReminderEntity>>
+    @Query("SELECT * FROM reminders ORDER BY startMs") suspend fun remindersNow(): List<ReminderEntity>
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putReminder(r: ReminderEntity)
+    @Query("DELETE FROM reminders WHERE id = :id") suspend fun deleteReminder(id: String)
+    @Query("DELETE FROM reminders WHERE startMs < :before") suspend fun pruneReminders(before: Long)
 
     // Guide channel names
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putEpgChannels(list: List<EpgChannelEntity>)

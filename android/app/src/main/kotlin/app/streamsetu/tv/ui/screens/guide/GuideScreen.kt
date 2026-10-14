@@ -152,8 +152,10 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
 
     details?.let { (ch, p) ->
         val fav = ch.id in vm.favs.collectAsState().value
+        val scope = rememberCoroutineScope(); val context = androidx.compose.ui.platform.LocalContext.current
         ContextMenu(p.title, "${ch.name}  ·  ${clock(p.startMs)} – ${clock(p.endMs)}" + (p.description?.takeIf { it.isNotBlank() }?.let { "\n$it" } ?: ""), buildList {
             add(MenuAction(if (p.isLive(now)) "Watch now" else "Watch channel", Icons.Filled.PlayArrow) { play(c, nav, ChannelPlayable(ch), rows.orEmpty().map { ChannelPlayable(it.channel) }) })
+            if (p.startMs > now + 2 * 60_000L) add(MenuAction("Remind me", Icons.Filled.Notifications) { scope.launch { app.streamsetu.tv.Reminders.schedule(c, context, ch, p) } })
             add(MenuAction(if (fav) "Remove channel from Favorites" else "Add channel to Favorites", Icons.Filled.Favorite) { vm.toggleFavourite(ch) })
             if (ch.catchupDays > 0 && p.startMs < now && p.startMs > now - ch.catchupDays * 86_400_000L) add(MenuAction("Watch from the start (catch-up)", Icons.Filled.History) { play(c, nav, CatchUpPlayable(ch, p.title, p.startMs - vm.offsetMin.value * 60_000L, p.endMs - vm.offsetMin.value * 60_000L)) })
             else if (ch.catchupDays > 0 && p.startMs <= now - ch.catchupDays * 86_400_000L) add(MenuAction("Too old for catch-up (${ch.catchupDays} days)", Icons.Filled.History, enabled = false) {})

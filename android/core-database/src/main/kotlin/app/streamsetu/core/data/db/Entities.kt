@@ -147,3 +147,16 @@ data class OverrideEntity(@PrimaryKey val itemId: String, val title: String?, va
 /** Guide channel names, so a channel without a usable guide id can be matched to its programmes by name. */
 @Entity(tableName = "epg_channels")
 data class EpgChannelEntity(@PrimaryKey val epgId: String, val nameNorm: String)
+
+
+/** Time spent watching, in one-hour slots of one day for one item, so the Statistics page can add it up any way it likes. Stays on the device. */
+@Entity(tableName = "watch_time", primaryKeys = ["day", "hour", "itemId"])
+data class WatchTimeEntity(val day: Long, val hour: Int, val itemId: String, val kind: String, val title: String, val ms: Long)
+
+/** What the person changed about a channel: hidden, renamed, or tied to another guide channel. Kept apart from the channel rows so a refresh does not lose it. */
+@Entity(tableName = "channel_prefs")
+data class ChannelPrefEntity(@PrimaryKey val channelId: String, val hidden: Boolean = false, val name: String? = null, val epgId: String? = null)
+
+/** A reminder for a programme that has not started. */
+@Entity(tableName = "reminders")
+data class ReminderEntity(@PrimaryKey val id: String, val channelId: String, val channelName: String, val title: String, val startMs: Long)

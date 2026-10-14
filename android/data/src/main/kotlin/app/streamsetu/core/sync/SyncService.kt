@@ -6,6 +6,7 @@ import app.streamsetu.core.data.db.*
 import app.streamsetu.core.data.repo.toEntity
 import app.streamsetu.core.data.repo.SourceRepository
 import app.streamsetu.core.model.*
+import app.streamsetu.core.net.*
 import app.streamsetu.core.net.Http
 import app.streamsetu.core.parse.*
 import app.streamsetu.core.security.CredentialStore
@@ -15,7 +16,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 
 /** Reads a playlist into the database. Old rows of that playlist are replaced only after the new ones were read successfully. */
-class SyncService(private val db: AppDatabase, private val sources: SourceRepository, private val credentials: CredentialStore, private val resolver: app.streamsetu.core.net.StreamResolver? = null, private val openLocal: (String) -> java.io.InputStream = { error("This device cannot open local files.") }) {
+class SyncService(private val db: AppDatabase, private val sources: SourceRepository, private val credentials: CredentialStore, private val resolver: app.streamsetu.core.net.StreamResolver? = null, private val openLocal: (String) -> java.io.InputStream = { error("This device cannot open local files.") }, private val listFolder: (String) -> List<FoundVideo> = { error("This device cannot read folders.") }) {
+    private val sessions = MediaSessions(credentials)
+    private val plex = PlexClient()
+    private val dav = WebDavClient()
 
     data class Result(val channels: Int, val movies: Int, val series: Int)
 
@@ -27,6 +31,13 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
                 SourceType.M3U, SourceType.LOCAL_FILE -> syncM3u(source)
                 SourceType.XTREAM -> syncXtream(source)
                 SourceType.STALKER -> syncStalker(source)
+                SourceType.HDHOMERUN -> syncHdHomeRun(source)
+                SourceType.TVHEADEND -> syncTvHeadend(source)
+                SourceType.ENIGMA2 -> syncEnigma2(source)
+                SourceType.JELLYFIN, SourceType.EMBY -> syncMediaServer(source)
+                SourceType.PLEX -> syncPlex(source)
+                SourceType.WEBDAV -> syncWebDav(source)
+                SourceType.LOCAL_FOLDER -> syncFolder(source)
             }
             sources.setStatus(sourceId, SyncStatus.OK)
             sources.setCounts(sourceId, r.channels, r.movies, r.series)
@@ -40,7 +51,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
 
     // ---- M3U -------------------------------------------------------------------------------------------------
 
-    private suspend fun syncM3u(s: Source): Result {
+    private suspend fun syncM3u(s: Source, address: String = s.address, headers: Map<String, String> = emptyMap()): Result {
         val categories = LinkedHashMap<String, CategoryEntity>()
         val channels = ArrayList<ChannelEntity>(); val movies = ArrayList<MovieEntity>()
         var order = 0
@@ -68,11 +79,78 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
                 }
         }
         if (s.type == SourceType.LOCAL_FILE) openLocal(s.address).bufferedReader().useLines { read(it) }
-        else Http.get(s.address, s.userAgent) { resp -> resp.body!!.charStream().buffered().useLines { read(it) } }
+        else Http.get(address, s.userAgent, headers) { resp -> resp.body!!.charStream().buffered().useLines { read(it) } }
         if (channels.isEmpty() && movies.isEmpty()) error("That playlist has no channels or movies.")
         replace(s.id, categories.values.toList(), channels, movies, emptyList())
         if (s.epgUrl == null && guideUrl != null) db.sources().upsert(s.copy(epgUrl = guideUrl).toEntity())
         return Result(channels.size, movies.size, 0)
+    }
+
+    // ---- Tuners and receivers on the local network --------------------------------------------------------------
+
+    private suspend fun syncHdHomeRun(s: Source): Result {
+        val text = Http.text(HdHomeRun.lineupUrl(s.address), s.userAgent)
+        val cat = HdHomeRun.parse(s, text)
+        if (cat.channels.isEmpty()) error("The tuner has no channels. Run a channel scan in its own setup page first.")
+        replace(s.id, cat.categories, cat.channels, emptyList(), emptyList())
+        return Result(cat.channels.size, 0, 0)
+    }
+
+    private suspend fun syncTvHeadend(s: Source): Result {
+        val headers = loginHeaders(s)
+        val r = syncM3u(s, TvHeadend.playlistUrl(s.address), headers)
+        if (s.epgUrl == null) db.sources().upsert(s.copy(epgUrl = TvHeadend.guideUrl(s.address)).toEntity())
+        return r
+    }
+
+    private suspend fun syncEnigma2(s: Source): Result {
+        val text = Http.text(Enigma2.base(s.address) + "/api/getallservices", s.userAgent, loginHeaders(s))
+        val cat = Enigma2.parse(s, text)
+        replace(s.id, cat.categories, cat.channels, emptyList(), emptyList())
+        return Result(cat.channels.size, 0, 0)
+    }
+
+    /** A Basic login for devices that use one; empty when the connection has no user name. */
+    private fun loginHeaders(s: Source): Map<String, String> {
+        val user = s.username?.takeIf { it.isNotBlank() } ?: return emptyMap()
+        return mapOf("Authorization" to Http.basic(user, credentials.load(SourceRepository.credentialRef(s.id)).orEmpty()))
+    }
+
+    // ---- Jellyfin, Emby, Plex ------------------------------------------------------------------------------------
+
+    private suspend fun syncMediaServer(s: Source): Result {
+        sessions.get(s, renew = true)                    // a fresh sign-in tells the person at once if the login is wrong
+        val c = sessions.with(s) { sessions.client.catalog(s, it) }
+        if (c.movies.isEmpty() && c.series.isEmpty()) error("The server signed in but has no movies or shows for this account.")
+        replace(s.id, c.categories, emptyList(), c.movies, c.series)
+        return Result(0, c.movies.size, c.series.size)
+    }
+
+    private suspend fun syncPlex(s: Source): Result {
+        val token = credentials.load(SourceRepository.credentialRef(s.id)).orEmpty()
+        if (token.isBlank()) error("Plex needs an access token. Put it in the password field.")
+        val c = plex.catalog(s, token)
+        if (c.movies.isEmpty() && c.series.isEmpty()) error("The server has no movies or shows for this account.")
+        replace(s.id, c.categories, emptyList(), c.movies, c.series)
+        return Result(0, c.movies.size, c.series.size)
+    }
+
+    // ---- Files: WebDAV and a folder on this device ----------------------------------------------------------------
+
+    private suspend fun syncWebDav(s: Source): Result {
+        val found = dav.crawl(s, loginHeaders(s))
+        if (found.isEmpty()) error("No video files were found on the share.")
+        val (cats, movies) = VideoFiles.catalog(s, found) { "dav:${it.path}" }
+        replace(s.id, cats, emptyList(), movies, emptyList())
+        return Result(0, movies.size, 0)
+    }
+
+    private suspend fun syncFolder(s: Source): Result {
+        val found = listFolder(s.address)
+        if (found.isEmpty()) error("No video files were found in that folder.")
+        val (cats, movies) = VideoFiles.catalog(s, found) { it.path }          // the address of the file itself (content://…)
+        replace(s.id, cats, emptyList(), movies, emptyList())
+        return Result(0, movies.size, 0)
     }
 
     // ---- Stalker / Ministra: live TV ---------------------------------------------------------------------------
@@ -145,6 +223,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
     /** A series' episodes are read when the person opens it. */
     suspend fun loadEpisodes(series: Series): Int = withContext(Dispatchers.IO) {
         val src = sources.get(series.sourceId) ?: return@withContext 0
+        if (src.type == SourceType.JELLYFIN || src.type == SourceType.EMBY || src.type == SourceType.PLEX) return@withContext loadMediaEpisodes(src, series)
         if (src.type != SourceType.XTREAM) return@withContext 0
         val pass = credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()
         val obj = Xtream.parseObject(Http.text(Xtream.api(src.address, src.username.orEmpty(), pass, "get_series_info", "&series_id=${series.providerId}"))) ?: return@withContext 0
@@ -169,6 +248,18 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             if (fresh.isNotEmpty()) db.extras().putNewEpisodes(fresh.map { app.streamsetu.core.data.db.NewEpisodeEntity(it.id, series.id, System.currentTimeMillis()) })
         }
         out.size
+    }
+
+    private suspend fun loadMediaEpisodes(src: Source, series: Series): Int {
+        val rows = if (src.type == SourceType.PLEX) plex.episodes(src, credentials.load(SourceRepository.credentialRef(src.id)).orEmpty(), series.providerId, series.id)
+                   else sessions.with(src) { sessions.client.episodes(src, it, series.providerId, series.id) }
+        val known = db.extras().episodeIds(series.id).toSet()
+        db.catalog().putEpisodes(rows)
+        if (known.isNotEmpty() && series.id in db.extras().seriesWithProgress()) {
+            val fresh = rows.filter { it.id !in known }
+            if (fresh.isNotEmpty()) db.extras().putNewEpisodes(fresh.map { app.streamsetu.core.data.db.NewEpisodeEntity(it.id, series.id, System.currentTimeMillis()) })
+        }
+        return rows.size
     }
 
     data class MovieInfo(val plot: String?, val cast: String?, val director: String?, val genre: String?, val duration: String?, val backdrop: String?, val releaseDate: String?)
@@ -220,6 +311,11 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             mv.forEach { hits += app.streamsetu.core.data.db.SearchHit("MOVIE", it.id, sourceId, it.categoryId, it.title) }
             sr.forEach { hits += app.streamsetu.core.data.db.SearchHit("SERIES", it.id, sourceId, it.categoryId, it.title) }
             hits.chunked(2000).forEach { app.streamsetu.core.data.db.SearchIndex.insert(raw, it) }
+            // What the person set on channels (names, guide ids) is put back onto the fresh rows.
+            db.extras().channelPrefsNow().forEach { p ->
+                p.name?.let { db.extras().setChannelName(p.channelId, it) }
+                p.epgId?.let { db.extras().setChannelEpg(p.channelId, it) }
+            }
         }
     }
 }

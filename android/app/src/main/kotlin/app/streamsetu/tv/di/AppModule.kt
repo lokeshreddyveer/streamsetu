@@ -42,12 +42,16 @@ object AppModule {
     @Provides @Singleton fun epg(db: AppDatabase) = EpgService(db)
     @Provides @Singleton fun parental(@ApplicationContext c: Context) = ParentalControls(c)
     @Provides @Singleton fun maintenance(@ApplicationContext c: Context, db: AppDatabase, sources: SourceRepository, library: app.streamsetu.core.data.repo.LibraryRepository) = app.streamsetu.core.data.repo.MaintenanceService(c, db, sources, library) { coil.Coil.imageLoader(c).memoryCache?.clear() }
+    @Provides @Singleton fun statistics(db: AppDatabase) = app.streamsetu.core.data.repo.StatisticsRepository(db)
+    @Provides @Singleton fun channelPrefs(db: AppDatabase) = app.streamsetu.core.data.repo.ChannelPrefs(db)
     @Provides @Singleton fun collections(db: AppDatabase) = app.streamsetu.core.data.repo.CollectionRepository(db)
     @Provides @Singleton fun uiPrefs(@ApplicationContext c: Context) = app.streamsetu.core.settings.UiPrefs(c)
     @Provides @Singleton fun settings(@ApplicationContext c: Context) = AppSettings(c)
     @Provides @Singleton fun resolver(sources: SourceRepository, credentials: CredentialStore, @ApplicationContext c: Context) = StreamResolver(sources, credentials, c)
     @Provides @Singleton fun sync(db: AppDatabase, sources: SourceRepository, credentials: CredentialStore, resolver: StreamResolver, @ApplicationContext c: Context) =
-        SyncService(db, sources, credentials, resolver) { uri -> c.contentResolver.openInputStream(android.net.Uri.parse(uri)) ?: error("That file could not be opened.") }
+        SyncService(db, sources, credentials, resolver,
+            openLocal = { uri -> c.contentResolver.openInputStream(android.net.Uri.parse(uri)) ?: error("That file could not be opened.") },
+            listFolder = { tree -> app.streamsetu.tv.LocalFolder.list(c, tree) })
 
     @Provides @Singleton fun globalSearch(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository, folders: app.streamsetu.core.data.repo.FolderRepository, collections: app.streamsetu.core.data.repo.CollectionRepository, search: app.streamsetu.core.data.repo.SearchRepository, sources: SourceRepository) =
         app.streamsetu.core.data.repo.GlobalSearch(db, library, folders, collections, search) { id -> sources.get(id)?.name }
@@ -56,14 +60,23 @@ object AppModule {
         app.streamsetu.tv.update.UpdateManager(c, settings, scope, isBusy = { playback.current.value != null })
 
     @Provides @Singleton
-    fun playback(@ApplicationContext c: Context, resolver: StreamResolver, settings: AppSettings, user: UserRepository, db: AppDatabase, sync: SyncService, sources: SourceRepository): PlaybackController = PlaybackController(
+    fun playback(@ApplicationContext c: Context, resolver: StreamResolver, settings: AppSettings, user: UserRepository, db: AppDatabase, sync: SyncService, sources: SourceRepository, stats: app.streamsetu.core.data.repo.StatisticsRepository): PlaybackController = PlaybackController(
         c, resolver, settings,
         onProgress = { item, pos, dur -> user.saveProgress(item.id, kindOf(item), (item as? EpisodePlayable)?.series?.id, pos, dur) },
         onStarted = { item -> user.recordPlay(item.id, kindOf(item), item.title) },
+        onWatched = { item, ms ->
+            // Time is added up per channel, movie and series (an episode counts for its series), for the Statistics page.
+            when (item) {
+                is EpisodePlayable -> stats.record(item.series.id, "SERIES", item.series.title, ms)
+                is MoviePlayable -> stats.record(item.id, "MOVIE", item.title, ms)
+                is ChannelPlayable -> stats.record(item.id, "CHANNEL", item.title, ms)
+                else -> {}
+            }
+        },
         refreshStream = { item ->
             // Only playlists (M3U) carry addresses that can expire; Xtream addresses are built fresh from the login each time.
             val src = sources.get(item.sourceId)
-            if (src == null || src.type == SourceType.XTREAM || src.type == SourceType.STALKER) null
+            if (src == null || (src.type != SourceType.M3U && src.type != SourceType.TVHEADEND)) null
             else { runCatching { sync.sync(src.id) }.getOrNull()
                 when (item) {
                     is ChannelPlayable -> db.catalog().channelByName(src.id, item.channel.name)?.let { e -> ChannelPlayable(e.toModel()) }

@@ -134,7 +134,7 @@ class GlobalSearch(
                 epgIds.chunked(400).forEach { chunk ->
                     raw.query("SELECT epgId, id FROM channels WHERE epgId IN (${chunk.joinToString(",") { "?" }}) AND sourceId IN ($ph)", (chunk + sources).toTypedArray()).use { c -> while (c.moveToNext()) byEpg.putIfAbsent(c.getString(0), c.getString(1)) }
                 }
-                val channels = db.catalog().channelsByIds(byEpg.values.toList()).associate { it.id to it.toModel() }
+                val channels = db.catalog().visibleChannelsByIds(byEpg.values.toList()).associate { it.id to it.toModel() }
                 val fmt = SimpleDateFormat("EEE h:mm a", Locale.getDefault())
                 put(SearchKind.PROGRAMME, progs.mapNotNull { (eid, start, title) ->
                     val ch = byEpg[eid]?.let { channels[it] } ?: return@mapNotNull null

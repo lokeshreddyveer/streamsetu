@@ -65,7 +65,7 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
         val c = db.catalog()
         var movies = if (ContentKind.MOVIE in scope.kinds) c.moviesByIds(ids(ContentKind.MOVIE)).map { it.toModel() } else emptyList()
         var series = if (ContentKind.SERIES in scope.kinds) c.seriesByIds(ids(ContentKind.SERIES)).map { it.toModel() } else emptyList()
-        val channels = if (ContentKind.CHANNEL in scope.kinds) c.channelsByIds(ids(ContentKind.CHANNEL)).map { it.toModel() } else emptyList()
+        val channels = if (ContentKind.CHANNEL in scope.kinds) c.visibleChannelsByIds(ids(ContentKind.CHANNEL)).map { it.toModel() } else emptyList()
         if (scope.year != null) { movies = movies.filter { it.year == scope.year }; series = series.filter { it.year == scope.year } }
         SearchResults(channels.sortedBy { order[it.id] }, movies.sortedBy { order[it.id] }, series.sortedBy { order[it.id] })
     }

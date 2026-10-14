@@ -198,3 +198,26 @@ fun Empty(title: String, message: String, modifier: Modifier = Modifier) {
         Label(message, Ph.small, Tokens.textSecondary, maxLines = 3)
     }
 }
+
+/** The strip above the tab bar while something plays and the picture is closed: what it is, play or pause, and stop. Tap it to bring the picture back. */
+@Composable
+fun MiniPlayer(c: app.streamsetu.tv.AppContainer, onOpen: () -> Unit) {
+    val item by c.playback.current.collectAsState()
+    val state by c.playback.state.collectAsState()
+    val shown = item ?: return
+    val playing = state == app.streamsetu.core.playback.PlaybackState.Playing || state == app.streamsetu.core.playback.PlaybackState.Buffering
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xF21B2030)).clickable(onClick = onOpen).padding(start = 10.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(Tokens.card)) {
+            if (shown.artworkUrl.isNullOrBlank()) PosterPlaceholder(shown.title, Modifier.fillMaxSize()) else AsyncImage(shown.artworkUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        }
+        Column(Modifier.weight(1f)) {
+            Label(if (shown is app.streamsetu.core.model.EpisodePlayable) shown.series.title else shown.title, Ph.small, Tokens.text, FontWeight.SemiBold)
+            Label(if (shown.isLive) (if (playing) "Live" else "Paused") else if (playing) "Playing" else "Paused", Ph.caption, Tokens.textSecondary)
+        }
+        IconTap(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, if (playing) "Pause" else "Play", { c.playback.togglePause() })
+        IconTap(Icons.Filled.Close, "Stop", { c.playback.stop() })
+    }
+}

@@ -7,6 +7,11 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Lets the app hand a downloaded update to the system installer (which still asks the person to confirm). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Sound that carries on when the app is left, with controls on the lock screen. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- A TV needs no touch screen and no leanback; phones and tablets may install it too. -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -46,6 +51,11 @@
                 <data android:scheme="streamsetu" android:host="play" />
             </intent-filter>
         </activity>
+        <receiver android:name=".ReminderReceiver" android:exported="false" />
+        <receiver android:name=".BootReceiver" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter>
+        </receiver>
+        <service android:name=".PlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.updates"

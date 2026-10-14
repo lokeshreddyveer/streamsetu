@@ -9,8 +9,9 @@ import androidx.room.RoomDatabase
     entities = [SourceEntity::class, CategoryEntity::class, ChannelEntity::class, MovieEntity::class, SeriesEntity::class,
         EpisodeEntity::class, EpgEntity::class, FavoriteEntity::class, ProgressEntity::class, WatchLogEntity::class,
         LibraryEntity::class, LibraryMemberEntity::class, FolderPrefEntity::class,
-        NewEpisodeEntity::class, CollectionEntity::class, CollectionItemEntity::class, OverrideEntity::class, EpgChannelEntity::class],
-    version = 5,
+        NewEpisodeEntity::class, CollectionEntity::class, CollectionItemEntity::class, OverrideEntity::class, EpgChannelEntity::class,
+        WatchTimeEntity::class, ChannelPrefEntity::class, ReminderEntity::class],
+    version = 6,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -25,6 +26,15 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         /** Adds drafts and cached counts to playlists, combined libraries, and folder arrangements. Nothing existing is touched. */
+        /** Watch time for the Statistics page, what the person changed about channels, and programme reminders. */
+        val MIGRATION_5_6 = object : androidx.room.migration.Migration(5, 6) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS watch_time (day INTEGER NOT NULL, hour INTEGER NOT NULL, itemId TEXT NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL, ms INTEGER NOT NULL, PRIMARY KEY(day, hour, itemId))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS channel_prefs (channelId TEXT NOT NULL, hidden INTEGER NOT NULL, name TEXT, epgId TEXT, PRIMARY KEY(channelId))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS reminders (id TEXT NOT NULL, channelId TEXT NOT NULL, channelName TEXT NOT NULL, title TEXT NOT NULL, startMs INTEGER NOT NULL, PRIMARY KEY(id))")
+            }
+        }
+
         /** A custom User-Agent per connection, and a radio flag on channels. */
         val MIGRATION_4_5 = object : androidx.room.migration.Migration(4, 5) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
@@ -73,7 +83,7 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         fun open(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, "streamsetu.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            Room.databaseBuilder(context, AppDatabase::class.java, "streamsetu.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db) }
                     override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db) }

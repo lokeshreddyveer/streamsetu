@@ -29,9 +29,21 @@ fun PhoneApp(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     val noLibrary = entries.none { it.usable }
     val base = if (nav.base == Base.ChooseLibrary && noLibrary && entries.none { it.kind == LibraryEntry.Kind.CONNECTION }) Base.Welcome else nav.base
 
+    // Android 13 and later asks before a notification can be shown; the lock-screen controls need one. It is asked once, when something first plays.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val askNotifications = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    val playing by c.playback.current.collectAsState()
+    LaunchedEffect(playing != null) {
+        if (playing != null && android.os.Build.VERSION.SDK_INT >= 33 && c.settings.backgroundAudio.value &&
+            context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            val prefs = context.getSharedPreferences("ui", android.content.Context.MODE_PRIVATE)
+            if (!prefs.getBoolean("askedNotifications", false)) { prefs.edit().putBoolean("askedNotifications", true).apply(); askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
+        }
+    }
+
     BackHandler(enabled = true) {
         when {
-            nav.top == Overlay.Player -> closePlayer(c, nav)
+            nav.top == Overlay.Player -> leavePlayer(c, nav)
             nav.overlays.isNotEmpty() -> nav.close()
             base is Base.Setup || base is Base.Combined -> nav.base = Base.ChooseLibrary
             base == Base.ChooseLibrary || base == Base.Welcome -> onExit()
@@ -55,12 +67,24 @@ fun PhoneApp(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
             when (val o = top) {
                 is Overlay.MovieDetail -> PhoneMovieDetail(o.movie, c, nav)
                 is Overlay.SeriesDetail -> PhoneSeriesDetail(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
-                is Overlay.Player -> PhonePlayer(c, onClose = { closePlayer(c, nav) })
+                is Overlay.Player -> PhonePlayer(c, onClose = { closePlayer(c, nav) }, onMinimize = { minimizePlayer(c, nav) })
                 is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                 is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav)
             }
         }
     }
+}
+
+/** Back from the player: a radio station keeps playing as sound (the mini player shows); anything else stops, as before. */
+private fun leavePlayer(c: AppContainer, nav: Navigator) {
+    val item = c.playback.current.value
+    if (item is app.streamsetu.core.model.ChannelPlayable && item.channel.isRadio && c.settings.backgroundAudio.value) minimizePlayer(c, nav) else closePlayer(c, nav)
+}
+
+/** Closes the picture but leaves the sound playing, with the mini player above the tab bar. */
+private fun minimizePlayer(c: AppContainer, nav: Navigator) {
+    if (c.playback.current.value == null) { nav.close(); return }
+    c.playback.setMinimized(true); nav.liveFullscreen = false; nav.close()
 }
 
 @Composable
@@ -78,6 +102,9 @@ private fun PhoneShell(c: AppContainer, nav: Navigator) {
             }
         }
         // The bar is hidden behind the player and detail pages, which cover the window.
-        if (nav.overlays.isEmpty()) PhoneTabBar(nav.tab) { nav.tab = it }
+        if (nav.overlays.isEmpty()) {
+            MiniPlayer(c) { nav.open(Overlay.Player) }
+            PhoneTabBar(nav.tab) { nav.tab = it }
+        }
     }
 }

@@ -46,7 +46,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.onSizeChanged
 import kotlin.math.abs
 
-private enum class Panel { AUDIO, SUBS, SPEED, PICTURE, ENGINE, EPISODES, CHANNELS, MORE }
+private enum class Panel { AUDIO, SUBS, SPEED, PICTURE, ENGINE, EPISODES, CHANNELS, MORE, SLEEP, SYNC }
 
 private val Ink = Color(0xFFF2F2F2)
 private val InkDim = Color(0xB3FFFFFF)
@@ -62,7 +62,7 @@ private fun clock(ms: Long): String {
  * Turn the phone to fill the screen; the controls follow.
  */
 @Composable
-fun PhonePlayer(c: AppContainer, onClose: () -> Unit) {
+fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = onClose) {
     val playback = c.playback
     val state by playback.state.collectAsState()
     val current by playback.current.collectAsState()
@@ -72,6 +72,9 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit) {
     val audio by playback.audioTracks.collectAsState()
     val subs by playback.subtitleTracks.collectAsState()
     val favourites by c.user.favouriteIds().collectAsState(initial = emptySet())
+    val sleepAt by playback.sleepEndsAt.collectAsState()
+    val subDelay by playback.subtitleDelayMs.collectAsState()
+    val audioDelay by playback.audioDelayMs.collectAsState()
     val item = current
     val live = item?.isLive == true
     val skip = c.settings.seekSeconds.collectAsState().value
@@ -88,6 +91,18 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit) {
     var flash by remember { mutableStateOf<Int?>(null) }   // -1 left, +1 right
 
     fun poke() { controls = true; tick++ }
+    // Opening the player brings the picture back after the mini player; the player closes itself when the sleep timer (or anything else) stops playback.
+    LaunchedEffect(Unit) { playback.setMinimized(false) }
+    LaunchedEffect(item) { if (item == null) onClose() }
+    val pickSubtitle = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            val name = uri.lastPathSegment?.substringAfterLast('/')?.substringAfterLast(':') ?: "subtitles.srt"
+            val file = java.io.File(context.cacheDir, "subtitles").also { it.mkdirs() }.let { dir -> java.io.File(dir, name.ifBlank { "subtitles.srt" }) }
+            val ok = runCatching { context.contentResolver.openInputStream(uri)?.use { i -> file.outputStream().use { o -> i.copyTo(o) } }; true }.getOrDefault(false)
+            val added = ok && playback.addSubtitle("file://" + file.absolutePath, file.nameWithoutExtension)
+            android.widget.Toast.makeText(context, if (added) "Subtitles added" else "Those subtitles could not be loaded", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
     fun seekTo(ms: Long) { playback.seekBy(ms.coerceIn(0, duration.takeIf { it > 0 } ?: Long.MAX_VALUE) - playback.positionMs) }
 
     // Full screen: hide the system bars, keep the screen on. Both are put back when the player closes.
@@ -202,6 +217,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit) {
                 // Top: back, title, more.
                 Row(Modifier.align(Alignment.TopStart).fillMaxWidth().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout)).padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconTap(Icons.Filled.ArrowBack, "Back", onClose)
+                    IconTap(Icons.Filled.KeyboardArrowDown, "Minimize", onMinimize)
                     Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
                         Label(if (item is EpisodePlayable) item.series.title else item?.title.orEmpty(), Ph.body, Ink, FontWeight.SemiBold)
                         if (item is EpisodePlayable) Label("Season ${item.episode.season}  ·  Episode ${item.episode.number}  ·  ${item.episode.title}", Ph.caption, InkDim)
@@ -247,7 +263,17 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit) {
     val close = { panel = null }
     when (panel) {
         Panel.AUDIO -> Sheet("Audio", if (audio.isEmpty()) listOf(SheetItem("Only one audio track", null, true) {}) else audio.map { t -> SheetItem(t.label, null, t.selected) { playback.selectAudio(t.id) } }, close)
-        Panel.SUBS -> Sheet("Subtitles", listOf(SheetItem("Off", null, subs.none { it.selected }) { playback.selectSubtitle(null) }) + subs.map { t -> SheetItem(t.label, null, t.selected) { playback.selectSubtitle(t.id) } }, close)
+        Panel.SUBS -> Sheet("Subtitles", listOf(SheetItem("Off", null, subs.none { it.selected }) { playback.selectSubtitle(null) }) + subs.map { t -> SheetItem(t.label, null, t.selected) { playback.selectSubtitle(t.id) } } +
+            listOf(SheetItem("Add subtitles from a file…", Icons.Filled.NoteAdd) { pickSubtitle.launch(arrayOf("*/*")) }, SheetItem("Subtitle and sound timing…", Icons.Filled.Sync) { panel = Panel.SYNC }.copy(stays = true)), close)
+        Panel.SLEEP -> Sheet("Sleep timer", listOf(15, 30, 45, 60, 90, 120).map { m -> SheetItem("$m minutes", null, false) { playback.startSleepTimer(m); android.widget.Toast.makeText(context, "Playback will stop in $m minutes", android.widget.Toast.LENGTH_SHORT).show() } } +
+            (if (sleepAt > 0) listOf(SheetItem("Turn off", Icons.Filled.Close) { playback.startSleepTimer(0) }) else emptyList()), close,
+            subtitle = if (sleepAt > 0) "Stops in ${((sleepAt - System.currentTimeMillis()) / 60_000 + 1).coerceAtLeast(1)} min" else null)
+        Panel.SYNC -> Sheet("Timing", if (!playback.canDelay) listOf(SheetItem("Switch to the MPV player", Icons.Filled.Tune, false, "Only MPV can move subtitles and sound") { if (EngineKind.MPV in playback.available) playback.switchEngine(EngineKind.MPV) }) else listOf(
+            SheetItem("Subtitles earlier (−0.5 s)", null, false, "Now ${"%+.1f".format(subDelay / 1000.0)} s", stays = true) { playback.setSubtitleDelay(subDelay - 500) },
+            SheetItem("Subtitles later (+0.5 s)", null, false, "Now ${"%+.1f".format(subDelay / 1000.0)} s", stays = true) { playback.setSubtitleDelay(subDelay + 500) },
+            SheetItem("Sound earlier (−0.1 s)", null, false, "Now ${"%+.1f".format(audioDelay / 1000.0)} s", stays = true) { playback.setAudioDelay(audioDelay - 100) },
+            SheetItem("Sound later (+0.1 s)", null, false, "Now ${"%+.1f".format(audioDelay / 1000.0)} s", stays = true) { playback.setAudioDelay(audioDelay + 100) },
+            SheetItem("Reset both", Icons.Filled.Replay) { playback.setSubtitleDelay(0); playback.setAudioDelay(0) }), close)
         Panel.SPEED -> Sheet("Speed", listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f).map { v -> SheetItem(if (v == 1f) "Normal" else "${v}×", null, v == speed) { playback.setSpeed(v) } }, close)
         Panel.PICTURE -> Sheet("Picture", AspectMode.entries.map { m -> SheetItem(m.label, null, m == aspect) { playback.setAspect(m) } }, close)
         Panel.ENGINE -> Sheet("Player", playback.available.toList().map { k -> SheetItem(k.label, null, k == playback.engineKind, if (k == EngineKind.MPV) "MKV, AVI and unusual formats" else "HLS, MP4 and transport streams") { playback.switchEngine(k) } }, close, subtitle = "Switching retries this same stream.")
@@ -259,6 +285,13 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit) {
         Panel.MORE -> Sheet("More", buildList {
             if (!live && resumedFrom > 0) add(SheetItem("Start over", Icons.Filled.Replay) { playback.startOver() })
             add(SheetItem("Stream information: " + if (c.settings.showStreamInfo.value) "on" else "off", Icons.Filled.Info) { c.settings.setShowStreamInfo(!c.settings.showStreamInfo.value) })
+            add(SheetItem(if (sleepAt > 0) "Sleep timer: ${((sleepAt - System.currentTimeMillis()) / 60_000 + 1).coerceAtLeast(1)} min left" else "Sleep timer", Icons.Filled.Bedtime) { panel = Panel.SLEEP }.copy(stays = true))
+            add(SheetItem("Save a picture of this frame", Icons.Filled.PhotoCamera) {
+                playback.snapshot { bmp ->
+                    val where = bmp?.let { app.streamsetu.tv.Screenshots.save(context, it, item?.title.orEmpty()) }
+                    android.widget.Toast.makeText(context, if (where != null) "Saved in $where" else "A picture could not be taken from this stream", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            })
             if (live && c.previousLive != null) add(SheetItem("Last channel", Icons.Filled.History) { c.lastChannel() })
             if (android.os.Build.VERSION.SDK_INT >= 26) add(SheetItem("Picture in picture", Icons.Filled.PictureInPictureAlt) { (context as? Activity)?.enterPictureInPictureMode(android.app.PictureInPictureParams.Builder().build()) })
             add(SheetItem("Close player", Icons.Filled.Close) { onClose() })

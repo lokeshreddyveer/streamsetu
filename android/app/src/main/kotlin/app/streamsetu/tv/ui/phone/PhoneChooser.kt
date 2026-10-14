@@ -30,7 +30,7 @@ import app.streamsetu.tv.ui.components.Loading
 import app.streamsetu.tv.ui.screens.library.LibraryViewModel
 import app.streamsetu.tv.ui.theme.Tokens
 
-private fun typeOf(e: LibraryEntry) = when (e.typeLabel) { "Stalker portal" -> SourceType.STALKER; "M3U URL" -> SourceType.M3U; "Local M3U file" -> SourceType.LOCAL_FILE; else -> SourceType.XTREAM }
+private fun typeOf(e: LibraryEntry) = SourceType.fromLabel(e.typeLabel)
 
 /** The first screen of every launch: pick the library to open. A tap opens it; the three dots manage it. */
 @Composable
@@ -59,7 +59,7 @@ fun PhoneChooser(c: AppContainer, nav: Navigator, vm: LibraryViewModel = hiltVie
             item {
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF131314)).clickable { addMenu = true }.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Tile(Icons.Filled.Add, Color(0xFF2A2A2C), Color.White)
-                    Column(Modifier.weight(1f)) { Label("Add a library", Ph.body, Tokens.text, FontWeight.SemiBold); Label("Xtream Codes, M3U link or file, Stalker", Ph.caption, Tokens.textSecondary) }
+                    Column(Modifier.weight(1f)) { Label("Add a library", Ph.body, Tokens.text, FontWeight.SemiBold); Label("Xtream, M3U, Jellyfin, Emby, Plex, tuners, WebDAV, folders", Ph.caption, Tokens.textSecondary) }
                 }
             }
         }
@@ -70,6 +70,14 @@ fun PhoneChooser(c: AppContainer, nav: Navigator, vm: LibraryViewModel = hiltVie
         SheetItem("M3U link", Icons.Filled.Link) { nav.base = Base.Setup(SourceType.M3U) },
         SheetItem("Stalker / Ministra portal", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.STALKER) },
         SheetItem("M3U file from this phone", Icons.Filled.Description) { nav.base = Base.Setup(SourceType.LOCAL_FILE) },
+        SheetItem("Jellyfin", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.JELLYFIN) },
+        SheetItem("Emby", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.EMBY) },
+        SheetItem("Plex", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.PLEX) },
+        SheetItem("HDHomeRun tuner", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.HDHOMERUN) },
+        SheetItem("TVHeadend", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.TVHEADEND) },
+        SheetItem("Enigma2 receiver", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.ENIGMA2) },
+        SheetItem("WebDAV share", Icons.Filled.Folder) { nav.base = Base.Setup(SourceType.WEBDAV) },
+        SheetItem("Videos in a folder on this phone", Icons.Filled.Folder) { nav.base = Base.Setup(SourceType.LOCAL_FOLDER) },
         SheetItem("Combine libraries", Icons.Filled.Layers) { nav.base = Base.Combined() },
     ), onClose = { addMenu = false })
     menuFor?.let { e -> Sheet(e.name, buildList {

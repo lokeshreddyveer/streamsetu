@@ -25,14 +25,38 @@ class StreamResolver(private val sources: SourceRepository, private val credenti
     override suspend fun userAgent(sourceId: String): String? = sources.get(sourceId)?.userAgent?.takeIf { it.isNotBlank() }
 
     private val stalker = StalkerClient()
+    private val sessions = MediaSessions(credentials)
+    private val plex = PlexClient()
+    private val dav = WebDavClient()
+    private val headerPrefs = context.applicationContext.getSharedPreferences("source-headers", Context.MODE_PRIVATE)
+
+    /** Extra request headers the person set for a connection, one "Name: value" per line. */
+    fun customHeadersText(sourceId: String): String = headerPrefs.getString("h.$sourceId", "").orEmpty()
+    fun setCustomHeaders(sourceId: String, text: String) { headerPrefs.edit().apply { if (text.isBlank()) remove("h.$sourceId") else putString("h.$sourceId", text.trim()) }.apply() }
+
+    override suspend fun headers(sourceId: String): Map<String, String> {
+        val out = LinkedHashMap(parseHeaders(customHeadersText(sourceId)))
+        val s = sources.get(sourceId) ?: return out
+        val user = s.username?.takeIf { it.isNotBlank() }
+        if (user != null && (s.type == SourceType.TVHEADEND || s.type == SourceType.ENIGMA2 || s.type == SourceType.WEBDAV) && out.keys.none { it.equals("Authorization", true) })
+            out["Authorization"] = Http.basic(user, credentials.load(SourceRepository.credentialRef(s.id)).orEmpty())
+        return out
+    }
 
     override suspend fun resolve(sourceId: String, streamRef: String): String? {
         if (streamRef.startsWith("stalker:")) {
             val src = sources.get(sourceId) ?: return null
             return withContext(Dispatchers.IO) { runCatching { stalker.link(src, streamRef.removePrefix("stalker:")) }.getOrNull() }
         }
+        if (streamRef.startsWith("content://") || streamRef.startsWith("file://")) return streamRef
         if (streamRef.startsWith("http://") || streamRef.startsWith("https://") || streamRef.startsWith("rtmp") || streamRef.startsWith("rtsp")) return streamRef
         val s = sources.get(sourceId) ?: return null
+        when {
+            streamRef.startsWith("jf:") -> return withContext(Dispatchers.IO) { runCatching { sessions.with(s) { sessions.client.streamUrl(s, it, streamRef) } }.getOrNull() }
+            streamRef.startsWith("plex:") -> return plex.streamUrl(s, credentials.load(SourceRepository.credentialRef(s.id)).orEmpty(), streamRef)
+            streamRef.startsWith("dav:") -> return dav.streamUrl(s, streamRef)
+            streamRef.startsWith("e2:") -> return Enigma2.streamUrl(s.address, streamRef)
+        }
         if (s.type != SourceType.XTREAM) return null
         val pass = credentials.load(SourceRepository.credentialRef(s.id)) ?: return null
         if (streamRef.startsWith("timeshift:")) {
@@ -70,6 +94,10 @@ class StreamResolver(private val sources: SourceRepository, private val credenti
     fun remember(sourceId: String, formats: List<String>) { if (formats.isNotEmpty()) prefs.edit().putString(sourceId, formats.joinToString(",")).apply() }
 
     companion object {
+        /** "Name: value" lines to a map; blank and malformed lines are ignored. */
+        fun parseHeaders(text: String): Map<String, String> = text.lines().mapNotNull { l -> val i = l.indexOf(':'); if (i <= 0) null else l.substring(0, i).trim() to l.substring(i + 1).trim() }
+            .filter { (k, v) -> k.isNotEmpty() && v.isNotEmpty() && k.none { it.isWhitespace() } }.toMap()
+
         /** HLS when the account allows it, otherwise MPEG-TS; an account that does not say gets what the playlist stored. */
         fun pickLiveFormat(allowed: List<String>, stored: String): String = when {
             allowed.isEmpty() -> stored.ifBlank { "m3u8" }

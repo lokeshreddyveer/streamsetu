@@ -222,6 +222,8 @@ fun StorageSettings(c: AppContainer) {
         ActionRow("Remove obsolete catalog data", "Removes episodes of series that no longer exist, then compacts the database. Safe.", "Clean", confirm = false) { scope.launch { val n = c.maintenance.cleanObsolete(); db = c.maintenance.databaseBytes(); msg = "Removed $n obsolete entries." } }
     }
     SettingGroup("Backup", "A backup holds favorites, Watch Later, folder arrangements, resume positions, history and settings. It never holds logins, playlist links or stream addresses.") {
+        val auto by c.settings.automaticBackups.collectAsState()
+        ToggleRow("Back up automatically", "About once a week, keeping the last five. They are saved in the same place and can be restored the same way.", auto) { c.settings.setAutomaticBackups(it); app.streamsetu.tv.AutoBackupWorker.schedule(context, it) }
         ActionRow("Create a backup", "Saved in ${dir.absolutePath.substringAfter("Android/")}.", "Back up", confirm = false) { scope.launch {
             val f = File(dir, "streamsetu-" + java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US).format(Date()) + ".json")
             runCatching { f.writeText(c.maintenance.exportBackup()) }.onSuccess { files = dir.listFiles { x -> x.extension == "json" }?.sortedByDescending { it.lastModified() }.orEmpty(); msg = "Backup saved: ${f.name}" }.onFailure { msg = "The backup could not be saved: ${it.message}" }

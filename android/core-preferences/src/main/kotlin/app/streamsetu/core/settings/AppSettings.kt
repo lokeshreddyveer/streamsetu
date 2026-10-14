@@ -154,6 +154,31 @@ class AppSettings(context: Context) {
         get() = prefs.getString("updateSkipped", "").orEmpty()
         set(v) { prefs.edit().putString("updateSkipped", v).apply() }
 
+    // ---- Background audio and backups ----
+    private val isTelevision = context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK) || context.packageManager.hasSystemFeature("amazon.hardware.fire_tv")
+    private val _bgAudio = flow(prefs.getBoolean("bgAudio", !isTelevision))
+    /** On (the default on a phone): leaving the app keeps the sound playing, with controls on the lock screen and in the notification shade. */
+    val backgroundAudio: StateFlow<Boolean> = _bgAudio
+    fun setBackgroundAudio(v: Boolean) { prefs.edit().putBoolean("bgAudio", v).apply(); _bgAudio.value = v }
+    private val _autoBackup = flow(prefs.getBoolean("autoBackup", true))
+    /** On: a backup is saved about once a week and the last five are kept. */
+    val automaticBackups: StateFlow<Boolean> = _autoBackup
+    fun setAutomaticBackups(v: Boolean) { prefs.edit().putBoolean("autoBackup", v).apply(); _autoBackup.value = v }
+
+    // ---- Network proxy ----
+    private val _proxyKind = flow(prefs.getString("proxyKind", "NONE") ?: "NONE")
+    /** NONE, HTTP or SOCKS. Streams and playlist reads go through it; addresses on the local network never do. */
+    val proxyKind: StateFlow<String> = _proxyKind
+    private val _proxyHost = flow(prefs.getString("proxyHost", "") ?: "")
+    val proxyHost: StateFlow<String> = _proxyHost
+    private val _proxyPort = flow(prefs.getInt("proxyPort", 0))
+    val proxyPort: StateFlow<Int> = _proxyPort
+    fun setProxyKind(v: String) { prefs.edit().putString("proxyKind", v).apply(); _proxyKind.value = v }
+    fun setProxyHost(v: String) { prefs.edit().putString("proxyHost", v.trim()).apply(); _proxyHost.value = v.trim() }
+    fun setProxyPort(v: Int) { prefs.edit().putInt("proxyPort", v).apply(); _proxyPort.value = v }
+    /** "http://host:port" for MPV, which can only use an HTTP proxy; null when none is set or it is a SOCKS one. */
+    val mpvProxy: String? get() = if (_proxyKind.value == "HTTP" && _proxyHost.value.isNotBlank() && _proxyPort.value in 1..65535) "http://${_proxyHost.value}:${_proxyPort.value}" else null
+
     // ---- Folders and privacy ----
     private val _dwell = flow(prefs.getBoolean("folderDwell", true))
     /** On: resting on a folder opens it after a moment. Off: it opens only when OK is pressed. */

@@ -95,6 +95,7 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
         MPVLib.setPropertyString("sub-font-size", (55 * st.scale).toInt().toString())
         MPVLib.setPropertyString("sub-border-size", if (st.outline) "3" else "0")
         MPVLib.setPropertyString("sub-back-color", if (st.darkBackground) "#B3000000" else "#00000000")
+        MPVLib.setPropertyString("http-proxy", request.options.httpProxy ?: "")
         MPVLib.setPropertyString("pause", "no")
         if (request.startMs > 5_000) MPVLib.command(arrayOf("loadfile", request.url, "replace", "-1", "start=${request.startMs / 1000}"))
         else MPVLib.command(arrayOf("loadfile", request.url, "replace"))
@@ -110,6 +111,14 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
             AspectMode.ZOOM -> { MPVLib.setPropertyDouble("panscan", 1.0); MPVLib.setPropertyDouble("video-zoom", 0.2) }
         }
     }
+
+    override fun setVideoEnabled(enabled: Boolean) { if (initialised) MPVLib.setPropertyString("vid", if (enabled) "auto" else "no") }
+    override fun addSubtitle(address: String, label: String): Boolean {
+        if (!initialised) return false
+        MPVLib.command(arrayOf("sub-add", address.removePrefix("file://"), "select", label)); return true
+    }
+    override fun setSubtitleDelay(ms: Long): Boolean { if (!initialised) return false; MPVLib.setPropertyDouble("sub-delay", ms / 1000.0); return true }
+    override fun setAudioDelay(ms: Long): Boolean { if (!initialised) return false; MPVLib.setPropertyDouble("audio-delay", ms / 1000.0); return true }
 
     override fun play() { if (initialised) MPVLib.setPropertyBoolean("pause", false) }
     override fun pause() { if (initialised) MPVLib.setPropertyBoolean("pause", true) }

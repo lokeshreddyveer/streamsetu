@@ -30,6 +30,8 @@ class PlaybackController(
     private val policy: RecoveryPolicy = RecoveryPolicy(),
     private val onProgress: suspend (Playable, positionMs: Long, durationMs: Long) -> Unit = { _, _, _ -> },
     private val onStarted: suspend (Playable) -> Unit = {},
+    /** Told every few seconds how long the current item has really been playing (for the Statistics page). */
+    private val onWatched: suspend (Playable, ms: Long) -> Unit = { _, _ -> },
     /** Asked once when a stream is refused or gone: returns the same item with a fresh address (an expired playlist link), or null when it cannot. */
     private val refreshStream: suspend (Playable) -> Playable? = { null },
 ) {
@@ -64,6 +66,49 @@ class PlaybackController(
     val resumedFrom: StateFlow<Long> = _resumedFrom.asStateFlow()
     private var bufferingSince = 0L
     private var attempt = 0
+
+    // ---- Sleep timer ----
+    private val _sleepEndsAt = MutableStateFlow(0L)
+    /** When the sleep timer will stop playback (milliseconds since 1970), or 0 when it is off. */
+    val sleepEndsAt: StateFlow<Long> = _sleepEndsAt.asStateFlow()
+    private var sleepJob: Job? = null
+    /** Stops playback after [minutes]; 0 turns the timer off. */
+    fun startSleepTimer(minutes: Int) {
+        sleepJob?.cancel()
+        if (minutes <= 0) { _sleepEndsAt.value = 0; return }
+        val end = System.currentTimeMillis() + minutes * 60_000L
+        _sleepEndsAt.value = end
+        sleepJob = scope.launch { while (System.currentTimeMillis() < end) delay(1000); _sleepEndsAt.value = 0; stop() }
+    }
+
+    // ---- Sound only: the app is in the background, or the mini player is showing ----
+    private val _audioOnly = MutableStateFlow(false)
+    val audioOnly: StateFlow<Boolean> = _audioOnly.asStateFlow()
+    private var minimized = false
+    private var backgroundHold = false
+    private var appliedAudioOnly = false
+    private fun applyAudioOnly() {
+        val on = minimized || backgroundHold
+        _audioOnly.value = on
+        _engine.value?.setVideoEnabled(!on)
+        appliedAudioOnly = true
+    }
+    /** The mini player is showing instead of the picture: only the sound plays. */
+    fun setMinimized(on: Boolean) { minimized = on; applyAudioOnly() }
+
+    // ---- Subtitles from a file, and the delay of subtitles and sound ----
+    private val _subtitleDelay = MutableStateFlow(0L)
+    val subtitleDelayMs: StateFlow<Long> = _subtitleDelay.asStateFlow()
+    private val _audioDelay = MutableStateFlow(0L)
+    val audioDelayMs: StateFlow<Long> = _audioDelay.asStateFlow()
+    /** True when the player in use can move subtitles and sound (MPV can; ExoPlayer cannot). */
+    val canDelay: Boolean get() = _engine.value?.kind == EngineKind.MPV
+    fun setSubtitleDelay(ms: Long): Boolean = (_engine.value?.setSubtitleDelay(ms) == true).also { if (it) _subtitleDelay.value = ms }
+    fun setAudioDelay(ms: Long): Boolean = (_engine.value?.setAudioDelay(ms) == true).also { if (it) _audioDelay.value = ms }
+    fun addSubtitle(address: String, label: String): Boolean = _engine.value?.addSubtitle(address, label) == true
+
+    /** A picture of the frame on screen, or null when the player cannot give one. */
+    fun snapshot(done: (android.graphics.Bitmap?) -> Unit) { val v = _engine.value?.view(appContext); if (v == null) done(null) else FrameGrab.grab(v, done) }
     /** Providers that allow one connection (from the account's own answer, or learned from a refusal): a new stream waits until the old one is closed. */
     private val strict = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private fun isStrict(sourceId: String) = sourceId in strict || appContext.getSharedPreferences("account-formats", Context.MODE_PRIVATE).getInt("max.$sourceId", 0) == 1
@@ -107,6 +152,7 @@ class PlaybackController(
         sessionId++; sessionVerified = false; userSeeked = false
         _aspect.value = runCatching { AspectMode.valueOf(settings.defaultAspect.value) }.getOrDefault(AspectMode.FIT)
         _speed.value = 1f
+        _subtitleDelay.value = 0; _audioDelay.value = 0; appliedAudioOnly = false
         _current.value = item
         _state.value = PlaybackState.Resolving
         _audio.value = emptyList(); _subtitles.value = emptyList()
@@ -123,7 +169,8 @@ class PlaybackController(
         if (url == null) { _state.value = PlaybackState.Failed(PlaybackError(ErrorKind.NOT_FOUND, "The playlist for this item is gone or has no login.")); return }
         val container = StreamContainer.of(url, item.isLive)
         val preference = settings.engineFor(item.sourceId) ?: settings.enginePreference.value
-        val kind = forced ?: EngineSelector.select(container, preference, available)
+        // A file on this device is opened through Android's content system, which only ExoPlayer can do.
+        val kind = forced ?: if (url.startsWith("content://")) EngineKind.EXOPLAYER else EngineSelector.select(container, preference, available)
         android.util.Log.i("Playback", "start ${if (item.isLive) "live" else "vod"} '${item.title}' container=$container engine=${kind.label} (preference=${preference.label}) host=${runCatching { java.net.URI(url).host }.getOrNull()}")
         val next = engineFor(kind)
         val previous = _engine.value
@@ -134,8 +181,9 @@ class PlaybackController(
         val buffering = if (item.isLive) settings.liveBufferFor(item.sourceId) ?: settings.liveBuffering.value else settings.vodBuffering.value
         val scale = when (settings.subtitleSize.value) { "SMALL" -> 0.8f; "LARGE" -> 1.3f; "XLARGE" -> 1.6f; else -> 1f }
         val ua = resolver.userAgent(item.sourceId)
-        next.load(EngineRequest(url, if (ua != null) mapOf("User-Agent" to ua) else emptyMap(), startPositionMs, item.isLive, buffering,
-            EngineOptions(settings.decoderFallback.value, settings.surroundPassthrough.value, SubtitleStyle(scale, settings.subtitleBackground.value == "DARK", settings.subtitleOutline.value))))
+        val extra = resolver.headers(item.sourceId)
+        next.load(EngineRequest(url, (if (ua != null) mapOf("User-Agent" to ua) else emptyMap()) + extra, startPositionMs, item.isLive, buffering,
+            EngineOptions(settings.decoderFallback.value, settings.surroundPassthrough.value, SubtitleStyle(scale, settings.subtitleBackground.value == "DARK", settings.subtitleOutline.value), settings.mpvProxy.takeIf { !app.streamsetu.core.net.Http.isLocal(runCatching { java.net.URI(url).host }.getOrNull().orEmpty()) })))
         if (!loggedStart) { loggedStart = true; onStarted(item) }
     }
 
@@ -143,7 +191,7 @@ class PlaybackController(
         android.util.Log.i("Playback", "${_engine.value?.kind?.label}: $ev pos=${positionMs / 1000}s dur=${durationMs / 1000}s")
         when (ev) {
             EngineEvent.Buffering -> { if (bufferingSince == 0L) bufferingSince = System.currentTimeMillis(); if (_state.value !is PlaybackState.Retrying) _state.value = PlaybackState.Buffering }
-            is EngineEvent.Ready -> { sessionVerified = true; bufferingSince = 0L; if (!firstFrameLogged) { firstFrameLogged = true; lastStartupMs = System.currentTimeMillis() - startedAt; android.util.Log.i("Playback", "first picture after $lastStartupMs ms (${_engine.value?.kind?.label})") }; attempt = 0; _state.value = if (ev.playing) PlaybackState.Playing else PlaybackState.Paused; refreshTracks() }
+            is EngineEvent.Ready -> { sessionVerified = true; bufferingSince = 0L; if (!firstFrameLogged) { firstFrameLogged = true; lastStartupMs = System.currentTimeMillis() - startedAt; android.util.Log.i("Playback", "first picture after $lastStartupMs ms (${_engine.value?.kind?.label})") }; attempt = 0; _state.value = if (ev.playing) PlaybackState.Playing else PlaybackState.Paused; if (!appliedAudioOnly && _audioOnly.value) applyAudioOnly(); refreshTracks() }
             EngineEvent.Ended -> { _state.value = PlaybackState.Ended; onEnded() }
             EngineEvent.TracksChanged -> refreshTracks()
             is EngineEvent.Error -> handleError(ev.error)
@@ -228,6 +276,21 @@ class PlaybackController(
     }
     init { watchStalls() }
 
+    /** Counts the time something is really playing, in small slices. */
+    private fun watchClock() {
+        scope.launch {
+            var last = System.currentTimeMillis()
+            while (true) {
+                delay(5000)
+                val now = System.currentTimeMillis()
+                val item = _current.value
+                if (item != null && _state.value == PlaybackState.Playing) runCatching { onWatched(item, now - last) }
+                last = now
+            }
+        }
+    }
+    init { watchClock() }
+
     fun setSpeed(s: Float) { _speed.value = s; _engine.value?.setSpeed(s) }
     fun setAspect(m: AspectMode) { _aspect.value = m; _engine.value?.setAspect(m) }
     fun startOver() { userSeeked = true; _engine.value?.seekTo(0); _resumedFrom.value = 0 }
@@ -292,6 +355,8 @@ class PlaybackController(
     }
 
     fun stop() {
+        sleepJob?.cancel(); _sleepEndsAt.value = 0
+        minimized = false; backgroundHold = false; _audioOnly.value = false
         saveProgress()
         job?.cancel(); progressJob?.cancel()
         _current.value?.let { closedAt[it.sourceId] = System.currentTimeMillis() }
@@ -310,6 +375,9 @@ class PlaybackController(
         val item = _current.value ?: return
         saveProgress()
         backgroundJob?.cancel()
+        // With background audio on, whatever is playing carries on as sound only (the notification and lock screen then have the controls).
+        val st = _state.value
+        if (settings.backgroundAudio.value && (st == PlaybackState.Playing || st == PlaybackState.Buffering || st == PlaybackState.Resolving || st is PlaybackState.Retrying)) { backgroundHold = true; applyAudioOnly(); return }
         if (item.isLive) {
             backgroundJob = scope.launch {
                 delay(20_000)
@@ -323,6 +391,7 @@ class PlaybackController(
     /** The app is back: a live channel that was closed starts again; a movie that was paused by leaving carries on from where it was. */
     fun onForeground() {
         backgroundJob?.cancel()
+        if (backgroundHold) { backgroundHold = false; applyAudioOnly() }
         val item = restoreItem
         if (item != null) { restoreItem = null; play(item, restorePosition); return }
         if (pausedByLifecycle) { pausedByLifecycle = false; _engine.value?.play() }

@@ -46,6 +46,8 @@ class AppContainer @Inject constructor(
     val playback: PlaybackController,
     val updates: app.streamsetu.tv.update.UpdateManager,
     val globalSearch: app.streamsetu.core.data.repo.GlobalSearch,
+    val stats: app.streamsetu.core.data.repo.StatisticsRepository,
+    val channelPrefs: app.streamsetu.core.data.repo.ChannelPrefs,
 ) {
     /** What the player plays next: the channels of the list it was started from, or the episodes of a series. */
     var queue: List<Playable> = emptyList()
@@ -83,7 +85,7 @@ class AppContainer @Inject constructor(
                 val pass = credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()
                 "${app.streamsetu.core.parse.Xtream.normalizeHost(src.address)}/xmltv.php?username=${src.username.orEmpty()}&password=$pass"
             } else null
-            epg.refresh(src, fallback)
+            epg.refresh(src, fallback, resolver.headers(src.id))
         }
         return r
     }
@@ -142,9 +144,22 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             }
         }
         container.appScope.launch {
+            // The proxy chosen in Settings applies to every request, now and whenever it changes.
+            kotlinx.coroutines.flow.combine(container.settings.proxyKind, container.settings.proxyHost, container.settings.proxyPort) { k, h, p -> app.streamsetu.core.net.Http.makeProxy(k, h, p) }
+                .collect { app.streamsetu.core.net.Http.proxy = it }
+        }
+        container.appScope.launch {
             // Once a day, a little after start and never while something plays: is there a newer release? (Settings, About, Updates.)
             kotlinx.coroutines.delay(20_000)
             container.updates.checkIfDue()
+        }
+        if (app.streamsetu.tv.ui.phone.isPhoneDevice(this)) container.appScope.launch {
+            // Phones: while something plays, the media service keeps it alive in the background and shows the lock-screen controls.
+            var running = false
+            container.playback.current.collect { item ->
+                if (item != null && !running) { running = true; PlaybackService.start(this@StreamSetuApp) }
+                if (item == null) running = false
+            }
         }
         container.appScope.launch {
             container.playback.state.collect { st ->
@@ -155,5 +170,6 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
         // Re-asserts the background refresh the person chose (a no-op when it is already scheduled).
         val hours = getSharedPreferences("settings", MODE_PRIVATE).getInt("bgSyncHours", 0)
         CatalogSyncWorker.schedule(this, hours)
+        AutoBackupWorker.schedule(this, container.settings.automaticBackups.value)
     }
 }

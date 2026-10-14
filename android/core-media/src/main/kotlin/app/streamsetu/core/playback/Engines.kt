@@ -49,7 +49,7 @@ enum class AspectMode(val label: String) { FIT("Fit"), FILL("Fill"), ZOOM("Zoom"
 data class SubtitleStyle(val scale: Float = 1f, val darkBackground: Boolean = false, val outline: Boolean = true)
 
 /** Choices that need the player to be built a certain way. */
-data class EngineOptions(val decoderFallback: Boolean = true, val passthrough: Boolean = true, val subtitles: SubtitleStyle = SubtitleStyle())
+data class EngineOptions(val decoderFallback: Boolean = true, val passthrough: Boolean = true, val subtitles: SubtitleStyle = SubtitleStyle(), val httpProxy: String? = null)
 
 data class EngineRequest(val url: String, val headers: Map<String, String>, val startMs: Long, val live: Boolean, val buffering: BufferingMode, val options: EngineOptions = EngineOptions())
 
@@ -86,4 +86,33 @@ interface PlayerEngine {
     fun diagnostics(): Map<String, String>
     fun setSpeed(speed: Float)
     fun setAspect(mode: AspectMode)
+    /** Off while only the sound is wanted (the app is in the background, or the mini player is showing): the picture stops being decoded. */
+    fun setVideoEnabled(enabled: Boolean) {}
+    /** Loads a subtitle file or address for the stream playing now. False when this engine cannot. */
+    fun addSubtitle(address: String, label: String): Boolean = false
+    /** Moves the subtitles later (positive) or earlier (negative). False when this engine cannot. */
+    fun setSubtitleDelay(ms: Long): Boolean = false
+    /** Moves the sound later (positive) or earlier (negative) against the picture. False when this engine cannot. */
+    fun setAudioDelay(ms: Long): Boolean = false
+}
+
+/** Takes a picture of the frame on screen from the player's surface. */
+object FrameGrab {
+    private fun find(v: View): android.view.View? {
+        if (v is android.view.SurfaceView || v is android.view.TextureView) return v
+        if (v is android.view.ViewGroup) for (i in 0 until v.childCount) find(v.getChildAt(i))?.let { return it }
+        return null
+    }
+
+    fun grab(root: View, done: (android.graphics.Bitmap?) -> Unit) {
+        when (val v = find(root)) {
+            is android.view.TextureView -> done(runCatching { v.bitmap }.getOrNull())
+            is android.view.SurfaceView -> {
+                if (android.os.Build.VERSION.SDK_INT < 24 || v.width <= 0 || v.height <= 0) { done(null); return }
+                val bmp = android.graphics.Bitmap.createBitmap(v.width, v.height, android.graphics.Bitmap.Config.ARGB_8888)
+                runCatching { android.view.PixelCopy.request(v, bmp, { code -> done(if (code == android.view.PixelCopy.SUCCESS) bmp else null) }, android.os.Handler(android.os.Looper.getMainLooper())) }.onFailure { done(null) }
+            }
+            else -> done(null)
+        }
+    }
 }

@@ -36,10 +36,10 @@ class ExoEngine(context: Context) : PlayerEngine {
     private var currentHeaders: Map<String, String> = emptyMap()
 
     private fun ensurePlayer(mode: BufferingMode): ExoPlayer {
-        val key = listOf(mode, options.decoderFallback, options.passthrough, userAgent)
+        val key = listOf(mode, options.decoderFallback, options.passthrough, userAgent, currentHeaders)
         if (player != null && builtFor == key) return player!!
         player?.release()
-        val factory = OkHttpDataSource.Factory(Http.client).setUserAgent(userAgent ?: Http.USER_AGENT)
+        val factory = OkHttpDataSource.Factory(Http.client).setUserAgent(userAgent ?: Http.USER_AGENT).setDefaultRequestProperties(currentHeaders.filterKeys { !it.equals("User-Agent", true) })
         // IPTV transport streams are often cut mid-frame and start between keyframes: these flags let ExoPlayer start and recover on them.
         val extractors = DefaultExtractorsFactory()
             .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS)
@@ -53,7 +53,7 @@ class ExoEngine(context: Context) : PlayerEngine {
                 else androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).setEnableFloatOutput(enableFloatOutput).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams).build()
         }.setEnableDecoderFallback(options.decoderFallback).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
         val p = ExoPlayer.Builder(appContext, renderers)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(factory, extractors).setLiveTargetOffsetMs(mode.liveOffsetMs))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(androidx.media3.datasource.DefaultDataSource.Factory(appContext, factory), extractors).setLiveTargetOffsetMs(mode.liveOffsetMs))
             .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(mode.minMs, mode.maxMs, mode.startMs, mode.rebufferMs).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(30_000, true).build())
             .setHandleAudioBecomingNoisy(true)
             .build()
@@ -103,9 +103,9 @@ class ExoEngine(context: Context) : PlayerEngine {
     override fun load(request: EngineRequest) {
         options = request.options
         userAgent = request.headers["User-Agent"]
+        currentHeaders = request.headers.filterKeys { !it.equals("User-Agent", true) }
         val p = ensurePlayer(request.buffering)
         applySubtitleStyle()
-        currentHeaders = request.headers
         p.setMediaItem(MediaItem.fromUri(request.url), if (request.startMs > 5_000) request.startMs else C.TIME_UNSET)
         p.prepare()
         p.playWhenReady = true
@@ -115,6 +115,28 @@ class ExoEngine(context: Context) : PlayerEngine {
     private fun resizeFor(m: AspectMode) = when (m) { AspectMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT; AspectMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL; AspectMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM }
     override fun setAspect(mode: AspectMode) { aspect = mode; viewRef?.resizeMode = resizeFor(mode) }
     override fun setSpeed(speed: Float) { player?.setPlaybackSpeed(speed) }
+
+    override fun setVideoEnabled(enabled: Boolean) {
+        val p = player ?: return
+        p.trackSelectionParameters = p.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !enabled).build()
+    }
+
+    /** ExoPlayer takes a subtitle as part of the media item, so the stream is set up again at the same place. */
+    override fun addSubtitle(address: String, label: String): Boolean {
+        val p = player ?: return false
+        val current = p.currentMediaItem ?: return false
+        val mime = when (address.substringBefore('?').substringAfterLast('.').lowercase()) {
+            "vtt" -> androidx.media3.common.MimeTypes.TEXT_VTT
+            "ass", "ssa" -> androidx.media3.common.MimeTypes.TEXT_SSA
+            "ttml", "xml", "dfxp" -> androidx.media3.common.MimeTypes.APPLICATION_TTML
+            else -> androidx.media3.common.MimeTypes.APPLICATION_SUBRIP
+        }
+        val sub = MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(address)).setMimeType(mime).setLabel(label).setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build()
+        val item = current.buildUpon().setSubtitleConfigurations(current.localConfiguration?.subtitleConfigurations.orEmpty() + sub).build()
+        val at = p.currentPosition
+        p.setMediaItem(item, at); p.prepare(); p.playWhenReady = true
+        return true
+    }
 
     override fun play() { player?.play() }
     override fun pause() { player?.pause() }

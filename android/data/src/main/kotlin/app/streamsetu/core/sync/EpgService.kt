@@ -12,13 +12,13 @@ import java.util.zip.GZIPInputStream
 
 /** Keeps a short window of the programme guide: from now to about two days ahead. */
 class EpgService(private val db: AppDatabase) {
-    suspend fun refresh(source: Source, fallbackUrl: String?): Int = withContext(Dispatchers.IO) {
+    suspend fun refresh(source: Source, fallbackUrl: String?, headers: Map<String, String> = emptyMap()): Int = withContext(Dispatchers.IO) {
         val url = source.epgUrl ?: fallbackUrl ?: return@withContext 0
         val now = System.currentTimeMillis()
         var kept = 0
         val batch = ArrayList<EpgEntity>()
         val names = LinkedHashMap<String, String>()
-        Http.get(url) { resp ->
+        Http.get(url, source.userAgent, headers) { resp ->
             val raw = resp.body!!.byteStream().buffered()
             val input = if (url.endsWith(".gz")) GZIPInputStream(raw) else raw
             XmltvParser.parse(input, now - 3600_000, now + 48 * 3600_000, onChannel = { id, name -> names.putIfAbsent(name, id) }) { p ->
