@@ -1,0 +1,146 @@
+package app.streamsetu.core.sync
+
+import androidx.room.withTransaction
+import app.streamsetu.core.data.db.*
+import app.streamsetu.core.data.repo.SourceRepository
+import app.streamsetu.core.model.*
+import app.streamsetu.core.net.Http
+import app.streamsetu.core.parse.*
+import app.streamsetu.core.security.CredentialStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+
+/** Reads a playlist into the database. Old rows of that playlist are replaced only after the new ones were read successfully. */
+class SyncService(private val db: AppDatabase, private val sources: SourceRepository, private val credentials: CredentialStore) {
+
+    data class Result(val channels: Int, val movies: Int, val series: Int)
+
+    suspend fun sync(sourceId: String): Result = withContext(Dispatchers.IO) {
+        val source = sources.get(sourceId) ?: error("That playlist no longer exists.")
+        sources.setStatus(sourceId, SyncStatus.SYNCING, source.lastSyncAt)
+        try {
+            val r = when (source.type) {
+                SourceType.M3U -> syncM3u(source)
+                SourceType.XTREAM -> syncXtream(source)
+            }
+            sources.setStatus(sourceId, SyncStatus.OK)
+            r
+        } catch (e: Throwable) {
+            sources.setStatus(sourceId, SyncStatus.FAILED, source.lastSyncAt)
+            throw e
+        }
+    }
+
+    // ---- M3U -------------------------------------------------------------------------------------------------
+
+    private suspend fun syncM3u(s: Source): Result {
+        val categories = LinkedHashMap<String, CategoryEntity>()
+        val channels = ArrayList<ChannelEntity>(); val movies = ArrayList<MovieEntity>()
+        var order = 0
+        fun category(name: String?, kind: ContentKind): String? {
+            val n = name ?: return null
+            val id = "${s.id}:${kind.name}:$n"
+            categories.getOrPut(id) { CategoryEntity(id, s.id, kind.name, n, categories.size) }
+            return id
+        }
+        Http.get(s.address) { resp ->
+            resp.body!!.charStream().buffered().useLines { lines ->
+                M3uParser.parse(lines) { e ->
+                    order++
+                    when (e.kind) {
+                        ContentKind.CHANNEL -> channels += ChannelEntity(
+                            id = "${s.id}:ch:${stableId(e)}", sourceId = s.id, categoryId = category(e.group ?: "Other", ContentKind.CHANNEL), name = e.name,
+                            number = e.channelNumber, logoUrl = e.logo, streamRef = e.url, epgId = e.tvgId ?: e.tvgName, catchupDays = e.catchupDays, sortOrder = order,
+                        )
+                        ContentKind.MOVIE -> movies += MovieEntity(
+                            id = "${s.id}:mv:${stableId(e)}", sourceId = s.id, categoryId = category(e.group ?: "Movies", ContentKind.MOVIE), title = e.name,
+                            posterUrl = e.logo, year = null, rating = null, plot = null, streamRef = e.url, addedAt = order.toLong(),
+                        )
+                        else -> {}      // series episodes inside an M3U are not grouped into series
+                    }
+                }
+            }
+        }
+        if (channels.isEmpty() && movies.isEmpty()) error("That playlist has no channels or movies.")
+        replace(s.id, categories.values.toList(), channels, movies, emptyList())
+        return Result(channels.size, movies.size, 0)
+    }
+
+    private fun stableId(e: M3uEntry) = (e.tvgId ?: "") + "|" + e.name + "|" + e.url.hashCode()
+
+    // ---- Xtream ----------------------------------------------------------------------------------------------
+
+    private suspend fun syncXtream(s: Source): Result {
+        val user = s.username.orEmpty()
+        val pass = credentials.load(SourceRepository.credentialRef(s.id)).orEmpty()
+        val host = s.address
+        fun fetch(action: String) = Xtream.parseArray(Http.text(Xtream.api(host, user, pass, action)))
+
+        val auth = Xtream.parseObject(Http.text(Xtream.api(host, user, pass)))
+        val info = auth?.get("user_info") as? JsonObject
+        if (info == null || info.int("auth") == 0) error("The server refused the login. Check the user name and password.")
+
+        val categories = ArrayList<CategoryEntity>()
+        fun cats(action: String, kind: ContentKind) = fetch(action).forEachIndexed { i, o ->
+            val id = o.str("category_id") ?: return@forEachIndexed
+            categories += CategoryEntity("${s.id}:${kind.name}:$id", s.id, kind.name, o.str("category_name") ?: "Category $id", i)
+        }
+        cats("get_live_categories", ContentKind.CHANNEL); cats("get_vod_categories", ContentKind.MOVIE); cats("get_series_categories", ContentKind.SERIES)
+
+        val channels = fetch("get_live_streams").mapIndexedNotNull { i, o ->
+            val id = o.str("stream_id") ?: return@mapIndexedNotNull null
+            ChannelEntity("${s.id}:ch:$id", s.id, o.str("category_id")?.let { "${s.id}:CHANNEL:$it" }, o.str("name") ?: "Channel $id", o.int("num"),
+                o.str("stream_icon"), "live:$id:m3u8", o.str("epg_channel_id"), o.int("tv_archive_duration") ?: 0, i)
+        }
+        val movies = fetch("get_vod_streams").mapNotNull { o ->
+            val id = o.str("stream_id") ?: return@mapNotNull null
+            MovieEntity("${s.id}:mv:$id", s.id, o.str("category_id")?.let { "${s.id}:MOVIE:$it" }, o.str("name") ?: "Movie $id", o.str("stream_icon"),
+                year(o.str("year") ?: o.str("releaseDate")), o.str("rating"), null, "movie:$id:${o.str("container_extension") ?: "mp4"}", o.str("added")?.toLongOrNull() ?: 0)
+        }
+        val series = fetch("get_series").mapNotNull { o ->
+            val id = o.str("series_id") ?: return@mapNotNull null
+            SeriesEntity("${s.id}:sr:$id", s.id, o.str("category_id")?.let { "${s.id}:SERIES:$it" }, o.str("name") ?: "Series $id", o.str("cover"),
+                (o["backdrop_path"] as? kotlinx.serialization.json.JsonArray)?.firstOrNull()?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content },
+                year(o.str("year") ?: o.str("releaseDate")), o.str("rating"), o.str("plot"), id)
+        }
+        replace(s.id, categories, channels, movies, series)
+        return Result(channels.size, movies.size, series.size)
+    }
+
+    /** A series' episodes are read when the person opens it. */
+    suspend fun loadEpisodes(series: Series): Int = withContext(Dispatchers.IO) {
+        val src = sources.get(series.sourceId) ?: return@withContext 0
+        if (src.type != SourceType.XTREAM) return@withContext 0
+        val pass = credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()
+        val obj = Xtream.parseObject(Http.text(Xtream.api(src.address, src.username.orEmpty(), pass, "get_series_info", "&series_id=${series.providerId}"))) ?: return@withContext 0
+        val seasons = obj["episodes"] as? JsonObject ?: return@withContext 0
+        val out = ArrayList<EpisodeEntity>()
+        for ((seasonKey, list) in seasons) {
+            val arr = list as? kotlinx.serialization.json.JsonArray ?: continue
+            for (el in arr) {
+                val e = el as? JsonObject ?: continue
+                val id = e.str("id") ?: continue
+                val info = e["info"] as? JsonObject
+                out += EpisodeEntity("${series.sourceId}:ep:$id", series.id, e.int("season") ?: seasonKey.toIntOrNull() ?: 1, e.int("episode_num") ?: 0,
+                    e.str("title") ?: "Episode ${e.str("episode_num")}", info?.str("plot"), info?.str("movie_image"), info?.int("duration_secs"),
+                    "series:$id:${e.str("container_extension") ?: "mp4"}")
+            }
+        }
+        db.catalog().putEpisodes(out)
+        out.size
+    }
+
+    private fun year(s: String?) = s?.take(4)?.toIntOrNull()
+
+    private suspend fun replace(sourceId: String, cats: List<CategoryEntity>, ch: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>) {
+        db.withTransaction {
+            val c = db.catalog()
+            c.clearCategories(sourceId); c.clearChannels(sourceId); c.clearMovies(sourceId); c.clearSeries(sourceId)
+            cats.chunked(500).forEach { c.putCategories(it) }
+            ch.chunked(500).forEach { c.putChannels(it) }
+            mv.chunked(500).forEach { c.putMovies(it) }
+            sr.chunked(500).forEach { c.putSeries(it) }
+        }
+    }
+}

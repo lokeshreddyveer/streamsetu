@@ -1,0 +1,2 @@
+-keep class androidx.media3.** { *; }
+-dontwarn org.slf4j.**
