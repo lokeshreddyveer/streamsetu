@@ -241,6 +241,17 @@ struct PlaylistsView: View {
         OptionalStack(embedded: embedded) {
             List {
                 Section {
+                    if state.canCombinePlaylists {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("All Playlists")
+                                Text("Channels, movies and series from every playlist together").font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if state.showsAllPlaylists { Image(systemName: "checkmark.circle.fill").foregroundStyle(ColorTokens.accentDefault).accessibilityLabel("Active") }
+                            else { Button("Use") { state.switchToAllPlaylists() }.buttonStyle(.bordered).controlSize(.small) }
+                        }
+                    }
                     ForEach(state.sources) { s in
                         NavigationLink { PlaylistDetailView(sourceID: s.id) } label: {
                             HStack {

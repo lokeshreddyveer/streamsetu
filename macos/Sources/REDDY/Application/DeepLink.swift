@@ -5,6 +5,8 @@ import Foundation
 enum DeepLink: Equatable {
     case addPlaylist(address: String, name: String?)
     case playChannel(name: String)
+    case playMovie(title: String)
+    case findSeries(title: String)
     case openTab(AppTab)
     case search(String)
     case sleep(minutes: Int)
@@ -14,7 +16,7 @@ enum DeepLink: Equatable {
 
     static let scheme = "streamsetu"
 
-    /// streamsetu://add?url=…&name=…   play?channel=…   open?tab=live   search?q=…   sleep?minutes=45   pause | resume | stop | next | previous | last
+    /// streamsetu://add?url=…&name=…   play?channel=…   watch?movie=…   watch?series=…   open?tab=live   search?q=…   sleep?minutes=45   pause | resume | stop | next | previous | last
     static func parse(_ url: URL) -> DeepLink? {
         guard url.scheme?.lowercased() == scheme else { return nil }
         let comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
@@ -28,6 +30,10 @@ enum DeepLink: Equatable {
         case "play":
             guard let name = value("channel"), !name.isEmpty, name.count <= 120 else { return nil }
             return .playChannel(name: name)
+        case "watch":
+            if let m = value("movie"), !m.isEmpty, m.count <= 120 { return .playMovie(title: m) }
+            if let t = value("series"), !t.isEmpty, t.count <= 120 { return .findSeries(title: t) }
+            return nil
         case "open":
             let tabs: [String: AppTab] = ["home": .home, "live": .liveTV, "livetv": .liveTV, "movies": .movies, "series": .series, "guide": .guide, "tvguide": .guide]
             guard let t = value("tab")?.lowercased().replacingOccurrences(of: " ", with: ""), let tab = tabs[t] else { return nil }

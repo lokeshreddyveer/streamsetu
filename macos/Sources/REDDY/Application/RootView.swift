@@ -207,6 +207,21 @@ struct MainShell: View {
             case .last: playback.lastChannel()
             }
         case .playChannel(let name): playChannel(named: name)
+        case .playMovie(let title): playMovie(titled: title)
+        case .findSeries(let title): router.navigate(.series); router.searchQuery = title; search.term = title; search.schedule()
+        }
+    }
+
+    private func playMovie(titled title: String) {
+        let sid = state.activeSourceID, c = container
+        Task { @MainActor in
+            let found = await Task.detached { () -> Movie? in
+                let list = (try? c.catalog.movies(VODQuery(sourceID: sid, search: title, limit: 50))) ?? []
+                let wanted = MetadataNormalizer.normalize(title)
+                return list.first(where: { MetadataNormalizer.normalize($0.title) == wanted }) ?? list.first
+            }.value
+            if let movie = found { c.playback.play(movie: movie) }
+            else { state.toasts.show("No movie named “\(title)”.", symbol: "magnifyingglass", kind: .warning) }
         }
     }
 
@@ -234,16 +249,16 @@ struct MainShell: View {
             folders: state.folderEntries(for: tab),
             selection: router.selection,
             collapsed: router.sidebarCollapsed,
-            playlistName: state.activeSource?.name,
-            playlists: state.sources.filter(\.enabled).map { PlaylistEntry(id: $0.id, name: $0.name) },
-            activePlaylistID: state.activeSourceID,
+            playlistName: state.libraryName,
+            playlists: (state.canCombinePlaylists ? [PlaylistEntry(id: AppState.allPlaylistsID, name: "All Playlists")] : []) + state.sources.filter(\.enabled).map { PlaylistEntry(id: $0.id, name: $0.name) },
+            activePlaylistID: state.showsAllPlaylists ? AppState.allPlaylistsID : state.activeSourceID,
             playlistMenuOpen: router.playlistMenuOpen,
             folderSectionTitle: tab == .home ? "Folders" : tab == .liveTV || tab == .guide ? "Groups" : "Folders")
         return ReddySidebar(state: vs, folderQuery: $folderQuery,
                             onSelect: { router.select($0) },
                             onToggleCollapse: { withAnimation(.smooth(duration: 0.28)) { router.sidebarCollapsed.toggle() } },
                             onTogglePlaylistMenu: { router.accountMenuOpen = false; router.playlistMenuOpen.toggle() },
-                            onSwitchPlaylist: { router.playlistMenuOpen = false; state.switchPlaylist($0) },
+                            onSwitchPlaylist: { router.playlistMenuOpen = false; if $0 == AppState.allPlaylistsID { state.switchToAllPlaylists() } else { state.switchPlaylist($0) } },
                             onAddPlaylist: { router.playlistMenuOpen = false; router.modal = .addPlaylist },
                             onReorder: { state.reorderFolders(tab: tab, entryIDs: $0) },
                             onHideFolder: { state.hideFolder($0) },
@@ -257,7 +272,7 @@ struct MainShell: View {
     }
 
     private var initials: String {
-        let n = state.activeSource?.name ?? "R"
+        let n = state.libraryName ?? "R"
         return String(n.prefix(2)).uppercased()
     }
 
@@ -272,7 +287,7 @@ struct MainShell: View {
                 .zIndex(2)
         }
         if router.accountMenuOpen {
-            VStack { HStack { Spacer(); ReddyAccountMenu(name: state.activeSource?.name ?? "StreamSetu",
+            VStack { HStack { Spacer(); ReddyAccountMenu(name: state.libraryName ?? "StreamSetu",
                                                          onPlaylists: { router.closeMenus(); router.modal = .playlists },
                                                          onChannelManager: { router.closeMenus(); router.modal = .channelManager },
                                                          onAbout: { router.closeMenus(); router.modal = .about },

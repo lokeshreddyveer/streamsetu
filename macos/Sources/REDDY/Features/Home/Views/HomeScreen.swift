@@ -139,7 +139,7 @@ struct DiscoverPage: View {
         GeometryReader { g in
             VStack(alignment: .leading, spacing: 10) {
                 PageHead(title: "Discover")
-                if state.activeSource != nil, !slides.isEmpty {
+                if state.hasLibrary, !slides.isEmpty {
                     FeaturedSlideshow(slides: slides, kicker: "DISCOVER · FROM YOUR LIBRARY", height: FeaturedLayout.bannerHeight(contentHeight: g.size.height),
                                       onPlay: { play($0.item) }, onInfo: { PlayActions.open($0.item, router: router) })
                 }
@@ -153,7 +153,7 @@ struct DiscoverPage: View {
             .padding(.horizontal, LayoutTokens.gutter).padding(.top, 10)
         }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") {
-            guard let c = container, state.activeSource != nil else { loaded = true; return }
+            guard let c = container, state.hasLibrary else { loaded = true; return }
             let sid = state.activeSourceID
             let built = await Task.detached { try? c.discover.build(sourceID: sid) }.value
             content = built; loaded = true
@@ -161,14 +161,14 @@ struct DiscoverPage: View {
         // Keyed on the playlist and the day (and on whether content exists yet), not on filters or refreshes: choosing a
         // filter or a catalog update never rebuilds or restarts the slideshow.
         .task(id: slideshowKey) {
-            guard let c = container, let content, state.activeSource != nil else { return }
+            guard let c = container, let content, state.hasLibrary else { return }
             let built = await c.featured.discoverSlides(ranked: DiscoverFilter.slideshowOrder(content.shelves), sourceID: state.activeSourceID)
             if !built.isEmpty || slides.isEmpty { slides = built }
         }
     }
 
     @ViewBuilder private var rails: some View {
-        if state.activeSource == nil {
+        if !state.hasLibrary {
             EmptyStateView(symbol: "list.bullet.rectangle", title: "No playlist yet", message: "Add a playlist to start watching.", actionTitle: "Add playlist") { router.modal = .addPlaylist }.frame(height: 300)
         } else if !loaded {
             HStack(spacing: 11) { ForEach(0..<7, id: \.self) { _ in SkeletonBlock(width: 150, height: 218, radius: 8) } }

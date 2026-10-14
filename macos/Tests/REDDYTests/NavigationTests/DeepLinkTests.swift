@@ -8,6 +8,7 @@ import Foundation
     @Test func everySupportedLinkParses() {
         #expect(link("streamsetu://add?url=https%3A%2F%2Fexample.com%2Flist.m3u&name=Mine") == .addPlaylist(address: "https://example.com/list.m3u", name: "Mine"))
         #expect(link("streamsetu://play?channel=BBC%20One%20HD") == .playChannel(name: "BBC One HD"))
+        #expect(link("streamsetu://watch?movie=Heat") == .playMovie(title: "Heat") && link("streamsetu://watch?series=The%20Bear") == .findSeries(title: "The Bear"))
         #expect(link("streamsetu://open?tab=live") == .openTab(.liveTV) && link("streamsetu://open?tab=TV%20Guide") == .openTab(.guide))
         #expect(link("streamsetu://search?q=football") == .search("football"))
         #expect(link("streamsetu://sleep?minutes=45") == .sleep(minutes: 45))
@@ -20,6 +21,7 @@ import Foundation
         #expect(link("streamsetu://add?url=javascript:alert(1)") == nil)
         #expect(link("streamsetu://add?url=file:///etc/passwd") == nil)
         #expect(link("streamsetu://add") == nil && link("streamsetu://play") == nil && link("streamsetu://play?channel=") == nil)
+        #expect(link("streamsetu://watch") == nil && link("streamsetu://watch?movie=") == nil)
         #expect(link("streamsetu://sleep?minutes=0") == nil && link("streamsetu://sleep?minutes=9999") == nil && link("streamsetu://sleep?minutes=abc") == nil)
         #expect(link("streamsetu://open?tab=settings") == nil && link("streamsetu://delete") == nil && link("streamsetu://remove?all=1") == nil, "nothing destructive exists")
         #expect(link("streamsetu://add?url=http://x\(String(repeating: "a", count: 2100))") == nil)

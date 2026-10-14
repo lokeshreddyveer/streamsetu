@@ -2,11 +2,14 @@ import SwiftUI
 import UIKit
 import AVFoundation
 import Observation
+import BackgroundTasks
 
 @main
 struct StreamSetuApp: App {
     @State private var coordinator = IOSCoordinator.shared
     @Environment(\.scenePhase) private var scenePhase
+
+    init() { BackgroundRefresh.register() }
 
     var body: some Scene {
         WindowGroup {
@@ -114,7 +117,8 @@ final class IOSCoordinator {
             // Covered as soon as the app stops being active, so the app switcher never shows the library while it is locked.
             lockWindow.show(lock.enabled && (lock.isLocked || phase != .active), lock: lock)
         }
-        if phase == .background { container?.playback.persistProgress() }
+        if phase == .background { container?.playback.persistProgress(); BackgroundRefresh.schedule() }
+        if phase == .active, let c = container { Task { await c.scheduler.appOpened() } }
         if phase == .active { container?.cloud.poke(); Task { await container?.cloud.syncNow() } }
         if phase == .background { container?.cloud.poke() }
     }
@@ -129,7 +133,38 @@ final class IOSCoordinator {
         case .search(let q)?: router.query = q; router.go(.search)
         case .openTab(let t)?: router.go(IOSRouter.Tab(t))
         case .remote(let command)?: remote(command)
+        case .playChannel(let name)?: playChannel(named: name)
+        case .playMovie(let title)?: playMovie(titled: title)
+        case .findSeries(let title)?: router.query = title; router.go(.search)
+        case .sleep(let m)?: container?.playback.startSleepTimer(minutes: m)
         default: break
+        }
+    }
+
+    private func playChannel(named name: String) {
+        guard let c = container else { return }
+        let sid = state?.activeSourceID
+        Task { @MainActor in
+            let found = await Task.detached { () -> (Channel, [Channel])? in
+                let list = (try? c.catalog.channels(ChannelQuery(sourceID: sid, search: name, collapseVariants: true, limit: 200))) ?? []
+                let wanted = MetadataNormalizer.normalize(name)
+                guard let best = list.first(where: { MetadataNormalizer.normalize($0.name) == wanted }) ?? list.first else { return nil }
+                return (best, list)
+            }.value
+            if let (channel, queue) = found { Play.channel(channel, queue: queue, c) }
+        }
+    }
+
+    private func playMovie(titled title: String) {
+        guard let c = container else { return }
+        let sid = state?.activeSourceID
+        Task { @MainActor in
+            let found = await Task.detached { () -> Movie? in
+                let list = (try? c.catalog.movies(VODQuery(sourceID: sid, search: title, limit: 50))) ?? []
+                let wanted = MetadataNormalizer.normalize(title)
+                return list.first(where: { MetadataNormalizer.normalize($0.title) == wanted }) ?? list.first
+            }.value
+            if let movie = found { Play.movie(movie, c) }
         }
     }
 

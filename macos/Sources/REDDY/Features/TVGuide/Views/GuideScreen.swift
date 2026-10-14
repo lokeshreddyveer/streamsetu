@@ -31,7 +31,7 @@ struct GuideScreen: View {
         VStack(spacing: 0) {
             toolbar
             Rectangle().fill(ColorTokens.line).frame(height: 1)
-            if state.activeSource == nil {
+            if !state.hasLibrary {
                 EmptyStateView(symbol: "list.bullet.rectangle", title: "No playlist", message: "Add a playlist to see its guide.", actionTitle: "Add playlist") { router.modal = .addPlaylist }
             } else if vm.loading { LoadingView(label: "Loading guide…") }
             else if vm.channels.isEmpty { empty }

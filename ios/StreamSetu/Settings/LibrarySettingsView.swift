@@ -9,6 +9,7 @@ struct LibrarySettingsView: View {
         Form {
             Section("Refreshing") {
                 Picker("Playlists", selection: $s.catalogRefresh) { ForEach(RefreshInterval.allCases) { Text($0.rawValue).tag($0) } }
+                Toggle("Refresh when the app opens", isOn: $s.refreshOnOpen)
                 Picker("Programme guide", selection: $s.guideRefresh) { ForEach(RefreshInterval.allCases) { Text($0.rawValue).tag($0) } }
                 Picker("Keep past programmes", selection: $s.guideRetentionDays) { Text("3 hours").tag(0); Text("1 day").tag(1); Text("3 days").tag(3); Text("7 days").tag(7) }
             }.listRowBackground(ColorTokens.surface)

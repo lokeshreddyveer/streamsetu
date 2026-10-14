@@ -28,6 +28,10 @@ final class AppState {
     let toasts = ToastCenter()
     /// The playlist all content is scoped to. Persisted across launches; the start *page* never is.
     private(set) var activeSourceID: UUID?
+    /// "All Playlists": the library shows every enabled playlist together. [activeSourceID] is nil then, which the catalog reads as "no filter".
+    private(set) var showsAllPlaylists = false
+    /// Stands for "All Playlists" in the playlist pickers.
+    static let allPlaylistsID = UUID(uuidString: "00000000-0000-0000-0000-0000000000A1")!
     /// Folder (category) entries for the active playlist, per kind. Never contains demo or invented folders.
     private(set) var folders: [ContentKind: [SidebarEntry]] = [:]
     private let defaults: UserDefaults
@@ -99,11 +103,27 @@ final class AppState {
     }
 
     var activeSource: PlaylistSource? { sources.first { $0.id == activeSourceID } }
+    /// A playlist (or all of them) is open, as opposed to nothing being set up.
+    var hasLibrary: Bool { activeSource != nil || showsAllPlaylists }
+    /// Combining needs at least two playlists that are switched on.
+    var canCombinePlaylists: Bool { sources.filter(\.enabled).count >= 2 }
+    var libraryName: String? { showsAllPlaylists ? "All Playlists" : activeSource?.name }
+
+    /// Shows every enabled playlist together. Playback is stopped, as it is for any switch.
+    func switchToAllPlaylists() {
+        guard canCombinePlaylists, !showsAllPlaylists else { return }
+        container.playback.stop()
+        showsAllPlaylists = true; activeSourceID = nil
+        defaults.set("all", forKey: "activePlaylist")
+        catalogVersion += 1
+        toasts.show("Showing all playlists together", symbol: "checkmark.circle.fill", kind: .success)
+    }
 
     /// Switches the active playlist. Playback from the previous playlist is stopped, as content is scoped per playlist.
     func switchPlaylist(_ id: UUID) {
-        guard id != activeSourceID, sources.contains(where: { $0.id == id }) else { return }
+        guard id != activeSourceID || showsAllPlaylists, sources.contains(where: { $0.id == id }) else { return }
         container.playback.stop()
+        showsAllPlaylists = false
         activeSourceID = id
         defaults.set(id.uuidString, forKey: "activePlaylist")
         catalogVersion += 1
@@ -112,6 +132,8 @@ final class AppState {
 
     private func validateActiveSource() {
         let enabled = sources.filter(\.enabled)
+        if showsAllPlaylists || defaults.string(forKey: "activePlaylist") == "all", enabled.count >= 2 { showsAllPlaylists = true; activeSourceID = nil; return }
+        showsAllPlaylists = false
         if let id = activeSourceID, enabled.contains(where: { $0.id == id }) { return }
         let saved = defaults.string(forKey: "activePlaylist").flatMap(UUID.init(uuidString:))
         activeSourceID = enabled.first { $0.id == saved }?.id ?? enabled.first?.id

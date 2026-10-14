@@ -49,7 +49,7 @@ struct LiveTVScreen: View {
 
     private var channelColumn: some View {
         VStack(spacing: 0) {
-            if state.activeSource == nil {
+            if !state.hasLibrary {
                 EmptyStateView(symbol: "list.bullet.rectangle", title: "No playlist", message: "Add a playlist to watch live TV.", actionTitle: "Add playlist") { router.modal = .addPlaylist }
             } else if vm.loading {
                 VStack(spacing: 6) { ForEach(0..<9, id: \.self) { _ in SkeletonBlock(height: 40, radius: 7) } }.padding(.horizontal, 8)

@@ -164,10 +164,11 @@ final class AppContainer {
     func applySettings() {
         scheduler.holdWhile { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } }
         scheduler.setCatalogInterval(settings.catalogRefresh.seconds)
+        scheduler.setRefreshOnOpen(settings.refreshOnOpen)
         http.setProxy(settings.proxy.isActive ? settings.proxy : nil)
         epgSync.configure(refreshInterval: settings.guideRefresh.seconds, pastRetentionDays: settings.guideRetentionDays)
         withObservationTracking {
-            _ = settings.catalogRefresh; _ = settings.guideRefresh; _ = settings.guideRetentionDays; _ = settings.proxyKind; _ = settings.proxyHost; _ = settings.proxyPort
+            _ = settings.catalogRefresh; _ = settings.refreshOnOpen; _ = settings.guideRefresh; _ = settings.guideRetentionDays; _ = settings.proxyKind; _ = settings.proxyHost; _ = settings.proxyPort
         } onChange: { [weak self] in
             Task { @MainActor in self?.applySettings() }
         }

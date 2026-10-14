@@ -30,6 +30,8 @@ final class AppSettings {
     var defaultChannelSort: ChannelSortPreference { didSet { save(defaultChannelSort.rawValue, "chansort") } }
     var rememberFolders: Bool { didSet { save(rememberFolders, "rememberfolders") } }
     var remindersEnabled: Bool { didSet { save(remindersEnabled, "reminders") } }
+    /// Refresh playlists that are more than an hour old each time the app is opened, whatever the schedule says.
+    var refreshOnOpen: Bool { didSet { save(refreshOnOpen, "refreshonopen") } }
     /// Start the channel that was playing when REDDY was last closed. Off by default: nothing plays until asked.
     /// Keep a rewindable buffer for live TV so it can be paused and wound back (MPV).
     var liveRewind: Bool { didSet { save(liveRewind, "liverewind") } }
@@ -181,6 +183,7 @@ final class AppSettings {
         defaultChannelSort = get("chansort", .provider)
         rememberFolders = bool("rememberfolders", true)
         remindersEnabled = bool("reminders", true)
+        refreshOnOpen = bool("refreshonopen", true)
         resumeLastChannel = bool("resumelast", false)
         autoBackup = bool("autobackup", true)
         lastAutoBackup = defaults.object(forKey: "settings.lastautobackup") as? Date
@@ -245,7 +248,7 @@ final class AppSettings {
     func resetAll() {
         resetAppearance(); resetPlayback()
         clickBehavior = Defaults.click; collapseDuplicates = true; hideEmptyFolders = false
-        defaultLibrarySort = .recentlyAdded; defaultChannelSort = .provider; rememberFolders = true; remindersEnabled = true; resumeLastChannel = false
+        defaultLibrarySort = .recentlyAdded; defaultChannelSort = .provider; rememberFolders = true; remindersEnabled = true; refreshOnOpen = true; resumeLastChannel = false
         catalogRefresh = Defaults.catalogRefresh; guideRefresh = Defaults.guideRefresh; guideRetentionDays = Defaults.guideRetentionDays
         guideHoursVisible = Defaults.guideHours; volume = Defaults.volume
     }
@@ -276,7 +279,7 @@ final class AppSettings {
     private func copy(from o: AppSettings) {
         theme = o.theme; customTheme = o.customTheme; accent = o.accent; density = o.density; reduceMotion = o.reduceMotion; sidebarLaunch = o.sidebarLaunch; clickBehavior = o.clickBehavior
         collapseDuplicates = o.collapseDuplicates; hideEmptyFolders = o.hideEmptyFolders; defaultLibrarySort = o.defaultLibrarySort
-        defaultChannelSort = o.defaultChannelSort; rememberFolders = o.rememberFolders; remindersEnabled = o.remindersEnabled; resumeLastChannel = o.resumeLastChannel
+        defaultChannelSort = o.defaultChannelSort; rememberFolders = o.rememberFolders; remindersEnabled = o.remindersEnabled; refreshOnOpen = o.refreshOnOpen; resumeLastChannel = o.resumeLastChannel
         enginePreference = o.enginePreference; hardwareDecoding = o.hardwareDecoding; deinterlace = o.deinterlace; videoQuality = o.videoQuality
         bufferingMode = o.bufferingMode; audioProcessing = o.audioProcessing; preferredAudioLanguage = o.preferredAudioLanguage
         preferredSubtitleLanguage = o.preferredSubtitleLanguage; subtitlesByDefault = o.subtitlesByDefault; subtitleSize = o.subtitleSize
@@ -288,13 +291,13 @@ final class AppSettings {
 
     /// Preferences that make sense to carry to another Mac. Output devices are machine-specific and are left out.
     nonisolated static let knownKeys: Set<String> = [
-        "theme", "customtheme", "accent", "density", "reducemotion", "highcontrast", "sidebarlaunch", "click", "collapse", "hideemptyfolders", "libsort", "chansort", "rememberfolders", "reminders", "resumelast",
+        "theme", "customtheme", "accent", "density", "reducemotion", "highcontrast", "sidebarlaunch", "click", "collapse", "hideemptyfolders", "libsort", "chansort", "rememberfolders", "reminders", "refreshonopen", "resumelast",
         "engine", "hwdec2", "deinterlace2", "quality", "buffering", "alang", "audioproc", "slang", "subsdefault", "subsize", "subbg", "subcolor", "subpos",
         "autonext", "rememberpos", "autoresume", "diagoverlay", "rendering", "downmix", "suboutline", "tonemapping", "liverewind", "autobackup", "catalogrefresh", "guiderefresh", "guideretention", "guidehours",
     ].reduce(into: Set<String>()) { $0.insert("settings." + $1) }
 
     private static func typedValue(_ key: String, _ s: String) -> Any? {
-        let bools: Set<String> = ["reducemotion", "collapse", "hideemptyfolders", "rememberfolders", "reminders", "resumelast", "subsdefault", "autonext", "rememberpos", "autoresume", "diagoverlay", "downmix", "suboutline", "liverewind", "autobackup"].reduce(into: Set<String>()) { $0.insert("settings." + $1) }
+        let bools: Set<String> = ["reducemotion", "collapse", "hideemptyfolders", "rememberfolders", "reminders", "refreshonopen", "resumelast", "subsdefault", "autonext", "rememberpos", "autoresume", "diagoverlay", "downmix", "suboutline", "liverewind", "autobackup"].reduce(into: Set<String>()) { $0.insert("settings." + $1) }
         if bools.contains(key) { return s == "true" || s == "1" ? true : (s == "false" || s == "0" ? false : nil) }
         switch key.dropFirst("settings.".count) {
         case "subsize": return Double(s).map { clamp($0, 60...200) }

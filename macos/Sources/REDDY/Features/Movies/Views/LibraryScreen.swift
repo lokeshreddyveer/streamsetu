@@ -57,7 +57,7 @@ struct LibraryScreen: View {
     }
 
     @ViewBuilder private func content(_ layout: PosterGridLayout.Result) -> some View {
-        if state.activeSource == nil {
+        if !state.hasLibrary {
             EmptyStateView(symbol: "list.bullet.rectangle", title: "No playlist yet", message: "Add a playlist to start watching.", actionTitle: "Add playlist") { router.modal = .addPlaylist }.frame(height: 280)
         } else if vm.items.isEmpty && vm.loading {
             LazyVGrid(columns: Array(repeating: GridItem(.fixed(layout.cardWidth), spacing: 12, alignment: .top), count: layout.columns), alignment: .leading, spacing: 16) {

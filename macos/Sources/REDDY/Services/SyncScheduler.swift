@@ -15,6 +15,10 @@ final class SyncScheduler: @unchecked Sendable {
     /// nil means manual: the scheduler never starts a sync on its own.
     var catalogInterval: TimeInterval? { lock.withLock { interval } }
     func setCatalogInterval(_ i: TimeInterval?) { lock.withLock { interval = i } }
+    private var refreshOnOpen = true
+    func setRefreshOnOpen(_ on: Bool) { lock.withLock { refreshOnOpen = on } }
+    /// How old a playlist has to be before opening the app refreshes it.
+    static let openStaleness: TimeInterval = 3600
     let checkEvery: TimeInterval
     /// Asked before every automatic refresh. While a stream is playing the answer is true and the refresh waits for the next check:
     /// reading a big playlist or guide competes with the stream for network and processor time.
@@ -32,6 +36,7 @@ final class SyncScheduler: @unchecked Sendable {
     func start() {
         guard loop == nil else { return }
         loop = Task { [weak self] in
+            await self?.appOpened()
             while !Task.isCancelled {
                 await self?.checkNow()
                 try? await Task.sleep(nanoseconds: UInt64((self?.checkEvery ?? 900) * 1_000_000_000))
@@ -40,6 +45,16 @@ final class SyncScheduler: @unchecked Sendable {
     }
 
     func stop() { loop?.cancel(); loop = nil }
+
+    /// The app was opened (or came back to the front): playlists older than an hour are refreshed even when the schedule is Manual.
+    /// Like every automatic refresh it waits while a stream is playing and does nothing on a constrained network.
+    func appOpened() async {
+        let (isConstrained, isOnline, wanted) = lock.withLock { (constrained, online, refreshOnOpen) }
+        guard wanted, isOnline, !isConstrained else { return }
+        if let busy = lock.withLock({ hold }), await busy() { return }
+        guard let all = try? catalog.sources() else { return }
+        for s in Self.dueSources(all, now: Date(), interval: Self.openStaleness) { await sync.start(sourceID: s.id) }
+    }
 
     /// Which sources are due, given their last successful sync and the staleness window.
     static func dueSources(_ sources: [PlaylistSource], now: Date, interval: TimeInterval) -> [PlaylistSource] {
@@ -50,14 +65,17 @@ final class SyncScheduler: @unchecked Sendable {
         }
     }
 
-    func checkNow() async {
+    /// With [wait], returns only when the refreshes it started have finished (a background task has to know when it is done).
+    func checkNow(wait: Bool = false) async {
         let (isConstrained, isOnline) = lock.withLock { (constrained, online) }
         guard let interval = catalogInterval else { return }     // manual refresh only
         guard isOnline, !isConstrained else { return }          // reduce activity on constrained / expensive networks
         if let busy = lock.withLock({ hold }), await busy() { return }     // never while a stream is playing
         guard let all = try? catalog.sources() else { return }
+        var started: [Task<Void, Never>] = []
         for s in Self.dueSources(all, now: Date(), interval: interval) {
-            await sync.start(sourceID: s.id)
+            if let t = await sync.start(sourceID: s.id) { started.append(t) }
         }
+        if wait { for t in started { await t.value } }
     }
 }

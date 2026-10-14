@@ -34,6 +34,9 @@ struct LibrarySettingsPage: View {
                 SettingsRow(title: "Refresh automatically", detail: "How often playlists are refreshed. Fresh enough catalogs are skipped.") {
                     Picker("Refresh automatically", selection: $s.catalogRefresh) { ForEach(RefreshInterval.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
+                SettingsRow(title: "Refresh when the app opens", detail: "Playlists more than an hour old are refreshed as the app opens, even when the schedule above is Manual.") {
+                    Toggle("", isOn: $s.refreshOnOpen).labelsHidden().toggleStyle(.switch)
+                }
                 SettingsValueRow(title: "Current state", value: syncState, tone: state.isSyncing ? .warning : .normal, divider: !state.sources.isEmpty)
                 syncList
                 SettingsActions {
