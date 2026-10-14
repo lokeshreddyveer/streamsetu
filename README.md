@@ -149,7 +149,7 @@ Use the tab bar at the bottom: Home, Live TV, Movies, Series and More. Tap a pos
 
 ## What each app does
 
-A tick means the app has it today. A dash means it does not. This table was written from the code of each app, not from memory.
+A tick means the app has it today. A dash means it does not have it yet. The table was checked against the code of each app, and a feature I could not confirm for every app is left out rather than guessed. The Android phone layout is new, and it does not yet have a sleep timer or the TV Guide's full grid in portrait (the guide turns the phone sideways).
 
 | | Mac | iPhone | iPad | Android phone / tablet | Fire TV / Android TV |
 |---|:-:|:-:|:-:|:-:|:-:|
@@ -161,7 +161,6 @@ A tick means the app has it today. A dash means it does not. This table was writ
 | Jellyfin, Emby, Plex | ✓ | ✓ | ✓ | – | – |
 | Enigma2 receiver | ✓ | – | – | – | – |
 | WebDAV server and local video files | ✓ | – | – | – | – |
-| Combine several connections into one library | ✓ | – | – | ✓ | ✓ |
 | Custom User-Agent per connection | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Watching** | | | | | |
 | Live TV with groups and channel numbers | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -172,10 +171,9 @@ A tick means the app has it today. A dash means it does not. This table was writ
 | Multi-View (several channels at once) | ✓ | ✓ | ✓ | – | – |
 | Picture in Picture | ✓ | ✓ | ✓ | ✓ | – |
 | AirPlay | ✓ | ✓ | ✓ | – | – |
-| Sleep timer sheet in the player | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Sleep timer | ✓ | ✓ | ✓ | – | ✓ |
 | Swipe to change channel | – | ✓ | ✓ | – | – |
 | Touch gestures in the player (double-tap skip, brightness, volume) | – | ✓ | ✓ | ✓ | – |
-| Typing a channel number | ✓ | – | – | – | ✓ |
 | Player engines | AVPlayer + mpv | AVPlayer | AVPlayer | ExoPlayer + mpv | ExoPlayer + mpv |
 | **Your library** | | | | | |
 | Favorites, Watch Later, Recently Watched, Continue Watching | ✓ | ✓ | ✓ | ✓ | ✓ |
