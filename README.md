@@ -174,7 +174,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Sleep timer | ✓ | ✓ | ✓ | – | ✓ |
 | Swipe to change channel | – | ✓ | ✓ | – | – |
 | Touch gestures in the player (double-tap skip, brightness, volume) | – | ✓ | ✓ | ✓ | – |
-| Player engines | AVPlayer + mpv | AVPlayer | AVPlayer | ExoPlayer + mpv | ExoPlayer + mpv |
+| Player engines | AVPlayer + mpv | AVPlayer + mpv | AVPlayer + mpv | ExoPlayer + mpv | ExoPlayer + mpv |
 | **Your library** | | | | | |
 | Favorites, Watch Later, Recently Watched, Continue Watching | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Collections of your own | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -190,7 +190,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Siri and Shortcuts actions | – | ✓ | ✓ | – | – |
 | Updates itself | ✓ (Sparkle) | TestFlight | TestFlight | download the new APK | download the new APK |
 
-The iPad runs the iPhone app, laid out for the larger screen. Android phones and tablets run the same app as the Fire TV, with a touch layout chosen automatically when the device is not a television.
+The iPad runs the iPhone app, laid out for the larger screen. On the Apple apps, Picture in Picture and AirPlay work for streams AVPlayer plays; a stream played by mpv does not support them. Android phones and tablets run the same app as the Fire TV, with a touch layout chosen automatically when the device is not a television.
 
 ### iCloud sync
 
@@ -266,8 +266,8 @@ On the Mac, iPhone and iPad, **iCloud sync** keeps your setup the same on every 
 | | Mac | iPhone and iPad | Android phone / tablet and Fire TV / Android TV |
 |---|---|---|---|
 | Language | Swift, SwiftUI, AppKit | Swift, SwiftUI | Kotlin, Jetpack Compose |
-| Players | AVPlayer and mpv | AVPlayer | Media3 ExoPlayer and mpv |
-| Formats | HLS, MP4, MKV, AVI and more through mpv | HLS, MP4 and what AVPlayer plays (no MKV or AVI) | HLS, MP4, DASH, MPEG-TS, plus MKV and AVI through mpv |
+| Players | AVPlayer and mpv | AVPlayer and mpv (MPVKit) | Media3 ExoPlayer and mpv |
+| Formats | HLS and MP4 through AVPlayer; MKV, AVI, DASH, RTSP and unusual codecs through mpv | The same as the Mac | HLS, MP4, DASH and MPEG-TS through ExoPlayer; MKV, AVI and unusual formats through mpv |
 | Minimum | macOS 14 | iOS 18 | Android 5.1 (mpv needs Android 8) |
 
 The Fire TV app has been developed and tested on a Fire TV Stick 4K (Fire OS 7). The Android phone layout has been tried on one Samsung phone running Android 16. Other devices should work but have not all been tested.
