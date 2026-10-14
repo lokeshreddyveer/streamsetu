@@ -163,6 +163,16 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
             },
     ) {
         EngineSurface(c, Modifier.fillMaxSize())
+        // A radio station has no picture: its logo and name fill the screen so it does not look like a broken video.
+        (item as? ChannelPlayable)?.channel?.takeIf { it.isRadio }?.let { ch ->
+            Box(Modifier.fillMaxSize().background(Color(0xFF05080D)), Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    ChannelLogo(ch.logoUrl, ch.name, 180.dp)
+                    Label(ch.name, Tokens.display, Ink, FontWeight.SemiBold)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Image(Icons.Filled.Radio, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(InkDim)); Label("Radio", Tokens.body, InkDim) }
+                }
+            }
+        }
 
         val showInfo by c.settings.showStreamInfo.collectAsState()
         if (showInfo) {

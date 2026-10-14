@@ -19,7 +19,7 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
     fun open(entry: LibraryEntry, then: () -> Unit) = viewModelScope.launch { c.library.open(entry); then() }
 
     /** What a connection form holds while it is being filled in or tested. */
-    data class Form(val name: String = "", val address: String = "", val user: String = "", val password: String = "")
+    data class Form(val name: String = "", val address: String = "", val user: String = "", val password: String = "", val userAgent: String = "")
 
     sealed interface Test {
         data object Idle : Test
@@ -38,7 +38,7 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
     fun saveDraft(type: SourceType, draftId: String?, f: Form, then: (String) -> Unit) = viewModelScope.launch {
         val saved = c.sources.add(
             Source(id = draftId.orEmpty(), name = f.name.ifBlank { f.address.trim().substringAfter("://").substringBefore('/').take(30).ifBlank { "Unfinished connection" } }, type = type,
-                address = f.address.trim(), username = f.user.trim().ifBlank { null }, draft = true),
+                address = f.address.trim(), username = f.user.trim().ifBlank { null }, draft = true, userAgent = f.userAgent.trim().ifBlank { null }),
             f.password.trim().ifBlank { null },
         )
         then(saved.id)
@@ -54,7 +54,7 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
         viewModelScope.launch {
             _test.value = Test.Running
             val label = f.name.ifBlank { f.address.trim().substringAfter("://").substringBefore('/').substringAfterLast('/').take(30).ifBlank { "My connection" } }
-            val saved = c.sources.add(Source(id = draftId.orEmpty(), name = label, type = type, address = f.address.trim(), username = f.user.trim().ifBlank { null }, draft = true), f.password.trim().ifBlank { null })
+            val saved = c.sources.add(Source(id = draftId.orEmpty(), name = label, type = type, address = f.address.trim(), username = f.user.trim().ifBlank { null }, draft = true, userAgent = f.userAgent.trim().ifBlank { null }), f.password.trim().ifBlank { null })
             runCatching { c.syncWithGuide(saved.id) }
                 .onSuccess { r ->
                     if (r.channels + r.movies + r.series == 0) _test.value = Test.Failed("The sign-in worked but the provider returned nothing to watch. Check that the subscription is active.").also { c.sources.setError(saved.id, "Nothing to watch") }

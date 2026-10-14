@@ -128,6 +128,13 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
         super.onCreate()
         CrashReporter.install(this, runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?")
         container.appScope.launch {
+            // "Refresh on app start": after the screen has settled, each connection is read once, one after another, and never while something plays.
+            kotlinx.coroutines.delay(6000)
+            if (container.settings.refreshOnStart.value) container.sources.all().filter { !it.draft && it.enabled }.forEach { s ->
+                if (container.playback.current.value == null) runCatching { container.syncWithGuide(s.id) }
+            }
+        }
+        container.appScope.launch {
             container.playback.state.collect { st ->
                 val busy = st == app.streamsetu.core.playback.PlaybackState.Playing || st == app.streamsetu.core.playback.PlaybackState.Buffering
                 images.maxRequests = if (busy) 4 else 16; images.maxRequestsPerHost = if (busy) 2 else 6

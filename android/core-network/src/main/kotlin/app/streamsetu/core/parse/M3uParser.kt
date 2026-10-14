@@ -13,6 +13,7 @@ data class M3uEntry(
     val channelNumber: Int?,
     val catchupDays: Int,
     val kind: ContentKind,
+    val radio: Boolean = false,
 )
 
 /**
@@ -69,6 +70,7 @@ object M3uParser {
             channelNumber = (attrs["tvg-chno"] ?: attrs["channel-number"])?.toIntOrNull(),
             catchupDays = attrs["catchup-days"]?.toIntOrNull() ?: 0,
             kind = classify(url, group),
+            radio = attrs["radio"]?.equals("true", ignoreCase = true) == true,
         )
     }
 

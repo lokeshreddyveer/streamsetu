@@ -175,6 +175,7 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
     if (addMenu) ContextMenu("Add a library", null, listOf(
         MenuAction("Xtream Codes", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.XTREAM) },
         MenuAction("M3U URL", Icons.Filled.Link) { nav.base = Base.Setup(SourceType.M3U) },
+        MenuAction("Stalker / Ministra portal", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.STALKER) },
         MenuAction("Import M3U file", Icons.Filled.Description) { nav.base = Base.Setup(SourceType.LOCAL_FILE) },
         MenuAction("Combine libraries", Icons.Filled.Layers) { nav.base = Base.Combined() },
     ), onClose = { addMenu = false })
@@ -232,7 +233,7 @@ private fun QuickTile(title: String, sub: String, icon: ImageVector, bg: Color, 
     }
 }
 
-private fun typeOf(e: LibraryEntry) = when (e.typeLabel) { "M3U URL" -> SourceType.M3U; "Local M3U file" -> SourceType.LOCAL_FILE; else -> SourceType.XTREAM }
+private fun typeOf(e: LibraryEntry) = when (e.typeLabel) { "Stalker portal" -> SourceType.STALKER; "M3U URL" -> SourceType.M3U; "Local M3U file" -> SourceType.LOCAL_FILE; else -> SourceType.XTREAM }
 
 @Composable
 private fun LibraryRow(e: LibraryEntry, isInitial: Boolean, initialFocus: FocusRequester, nav: Navigator, vm: LibraryViewModel, onPreview: () -> Unit, onFocused: () -> Unit) {
@@ -287,6 +288,7 @@ fun WelcomeScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
             SetupCard("Xtream Codes", "Server, user name and password", Icons.Filled.Dns, Modifier.focusRequester(first)) { nav.base = Base.Setup(SourceType.XTREAM) }
             SetupCard("M3U URL", "A playlist link", Icons.Filled.Link, Modifier) { nav.base = Base.Setup(SourceType.M3U) }
             SetupCard("Local M3U File", "A playlist file on this device", Icons.Filled.Folder, Modifier) { nav.base = Base.Setup(SourceType.LOCAL_FILE) }
+            SetupCard("Stalker Portal", "Portal address and MAC", Icons.Filled.Router, Modifier) { nav.base = Base.Setup(SourceType.STALKER) }
         }
         if (drafts.isNotEmpty()) {
             Spacer(Modifier.height(22.dp))
@@ -317,7 +319,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
     val context = LocalContext.current
     LaunchedEffect(draftId) {
         vm.resetTest()
-        if (draftId != null) vm.draft(draftId)?.let { (s, pw) -> form = LibraryViewModel.Form(s.name, s.address, s.username.orEmpty(), pw.orEmpty()) }
+        if (draftId != null) vm.draft(draftId)?.let { (s, pw) -> form = LibraryViewModel.Form(s.name, s.address, s.username.orEmpty(), pw.orEmpty(), s.userAgent.orEmpty()) }
         delay(150); runCatching { first.requestFocus() }
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -329,9 +331,10 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
     var phoneOpen by remember { mutableStateOf(false) }
     val canTest = when (type) {
         SourceType.XTREAM -> form.address.isNotBlank() && form.user.isNotBlank() && form.password.isNotBlank()
+        SourceType.STALKER -> form.address.isNotBlank() && Regex("""^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$""").matches(form.user.trim())
         else -> form.address.isNotBlank()
     }
-    val title = when (type) { SourceType.XTREAM -> "Add Xtream Connection"; SourceType.M3U -> "Add M3U URL"; SourceType.LOCAL_FILE -> "Add Local M3U File" }
+    val title = when (type) { SourceType.XTREAM -> "Add Xtream Connection"; SourceType.M3U -> "Add M3U URL"; SourceType.LOCAL_FILE -> "Add Local M3U File"; SourceType.STALKER -> "Add Stalker Portal" }
 
     val passed = test as? LibraryViewModel.Test.Passed
     if (passed != null) {
@@ -362,18 +365,24 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
                 TvTextField(form.user, { form = form.copy(user = it) }, "User name", Modifier.widthIn(max = 640.dp).fillMaxWidth())
                 TvTextField(form.password, { form = form.copy(password = it) }, "Password", Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = true)
             }
+            SourceType.STALKER -> {
+                TvTextField(form.address, { form = form.copy(address = it) }, "Portal address (http://host/c/)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
+                TvTextField(form.user, { form = form.copy(user = it) }, "MAC address (00:1A:79:xx:xx:xx)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
+                Label("Live TV is read from the portal. Movies and series from portals are not supported yet.", Tokens.small, Tokens.textTertiary)
+            }
             SourceType.M3U -> TvTextField(form.address, { form = form.copy(address = it) }, "Playlist link (http://…/playlist.m3u)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
             SourceType.LOCAL_FILE -> {
                 Label(if (form.address.isBlank()) "No file chosen" else "Chosen: ${Uri.parse(form.address).lastPathSegment?.substringAfterLast('/') ?: form.address}", Tokens.body, Tokens.textSecondary)
                 TvButton("Choose File…", { picker.launch(arrayOf("*/*")) }, icon = Icons.Filled.Folder)
             }
         }
+        if (type != SourceType.LOCAL_FILE) TvTextField(form.userAgent, { form = form.copy(userAgent = it) }, "User-Agent (optional, if your provider needs one)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
         (test as? LibraryViewModel.Test.Failed)?.let { Label(it.message, Tokens.body, Tokens.danger, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp)) }
         message?.let { Label(it, Tokens.body, Tokens.textSecondary) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             if (test is LibraryViewModel.Test.Running) { Spinner(); Label("Testing the connection and reading the catalog. This can take a minute for big lists…", Tokens.body, Tokens.textSecondary) }
             else {
-                if (type != SourceType.LOCAL_FILE) TvButton("Use my phone", { phoneOpen = true }, icon = Icons.Filled.PhoneAndroid)
+                if (type == SourceType.XTREAM || type == SourceType.M3U) TvButton("Use my phone", { phoneOpen = true }, icon = Icons.Filled.PhoneAndroid)
                 TvButton("Test Connection", { if (canTest) { message = null; vm.test(type, id, form) } else message = "Fill in the details first." }, icon = Icons.Filled.PlayArrow, primary = true)
                 TvButton("Save as Draft", { vm.saveDraft(type, id, form) { saved -> id = saved; message = "Saved. Finish it any time from Choose Your Library." } })
                 TvButton("Cancel", { nav.base = Base.ChooseLibrary })

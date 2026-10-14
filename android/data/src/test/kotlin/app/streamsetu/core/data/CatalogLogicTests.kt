@@ -59,6 +59,10 @@ class CatalogLogicTests {
         assertTrue(SortField.UPDATED in a && SortField.NEW_EPISODES in a)
         assertFalse(SortField.UPDATED in SortAvailability(false, false, false, false, seriesUpdated = true).offers(ContentKind.MOVIE))
     }
+    @Test fun m3uRadioFlagIsRead() {
+        val e = app.streamsetu.core.parse.M3uParser.parse("#EXTM3U\n#EXTINF:-1 tvg-id=\"r1\" radio=\"true\" group-title=\"Radio\",Jazz FM\nhttp://h/jazz\n#EXTINF:-1 tvg-id=\"t1\",News\nhttp://h/news\n")
+        assertTrue(e[0].radio); assertFalse(e[1].radio)
+    }
     @Test fun sortOffersOnlyWhatTheCatalogHas() {
         val none = SortAvailability(false, false, false, false).offers(ContentKind.MOVIE)
         assertFalse(SortField.YEAR in none); assertFalse(SortField.RATING in none); assertFalse(SortField.RECENTLY_WATCHED in none)

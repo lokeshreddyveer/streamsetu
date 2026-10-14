@@ -133,7 +133,8 @@ class PlaybackController(
         startedAt = System.currentTimeMillis()
         val buffering = if (item.isLive) settings.liveBufferFor(item.sourceId) ?: settings.liveBuffering.value else settings.vodBuffering.value
         val scale = when (settings.subtitleSize.value) { "SMALL" -> 0.8f; "LARGE" -> 1.3f; "XLARGE" -> 1.6f; else -> 1f }
-        next.load(EngineRequest(url, emptyMap(), startPositionMs, item.isLive, buffering,
+        val ua = resolver.userAgent(item.sourceId)
+        next.load(EngineRequest(url, if (ua != null) mapOf("User-Agent" to ua) else emptyMap(), startPositionMs, item.isLive, buffering,
             EngineOptions(settings.decoderFallback.value, settings.surroundPassthrough.value, SubtitleStyle(scale, settings.subtitleBackground.value == "DARK", settings.subtitleOutline.value))))
         if (!loggedStart) { loggedStart = true; onStarted(item) }
     }

@@ -22,7 +22,15 @@ import kotlinx.serialization.json.contentOrNull
 class StreamResolver(private val sources: SourceRepository, private val credentials: CredentialStore, private val context: Context) : app.streamsetu.core.playback.StreamUrlResolver {
     private val prefs = context.applicationContext.getSharedPreferences("account-formats", Context.MODE_PRIVATE)
 
+    override suspend fun userAgent(sourceId: String): String? = sources.get(sourceId)?.userAgent?.takeIf { it.isNotBlank() }
+
+    private val stalker = StalkerClient()
+
     override suspend fun resolve(sourceId: String, streamRef: String): String? {
+        if (streamRef.startsWith("stalker:")) {
+            val src = sources.get(sourceId) ?: return null
+            return withContext(Dispatchers.IO) { runCatching { stalker.link(src, streamRef.removePrefix("stalker:")) }.getOrNull() }
+        }
         if (streamRef.startsWith("http://") || streamRef.startsWith("https://") || streamRef.startsWith("rtmp") || streamRef.startsWith("rtsp")) return streamRef
         val s = sources.get(sourceId) ?: return null
         if (s.type != SourceType.XTREAM) return null

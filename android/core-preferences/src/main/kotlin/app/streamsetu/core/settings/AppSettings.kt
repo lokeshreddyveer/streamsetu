@@ -136,6 +136,11 @@ class AppSettings(context: Context) {
     val catchupZone: StateFlow<String> = _catchupZone
     fun setCatchupZone(v: String) { prefs.edit().putString("catchupZone", v).apply(); _catchupZone.value = v }
 
+    private val _refreshOnStart = flow(prefs.getBoolean("refreshOnStart", false))
+    /** On: every connection and its guide are read again when the app opens (never while something is playing). */
+    val refreshOnStart: StateFlow<Boolean> = _refreshOnStart
+    fun setRefreshOnStart(v: Boolean) { prefs.edit().putBoolean("refreshOnStart", v).apply(); _refreshOnStart.value = v }
+
     // ---- Folders and privacy ----
     private val _dwell = flow(prefs.getBoolean("folderDwell", true))
     /** On: resting on a folder opens it after a moment. Off: it opens only when OK is pressed. */

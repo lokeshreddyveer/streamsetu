@@ -24,6 +24,7 @@ data class SourceEntity(
     val seriesCount: Int = 0,
     val lastError: String? = null,
     val lastOpenedAt: Long = 0,
+    val userAgent: String? = null,
 )
 
 @Entity(tableName = "categories", primaryKeys = ["id"], indices = [Index("sourceId", "kind")])
@@ -42,6 +43,7 @@ data class ChannelEntity(
     val catchupDays: Int,
     val sortOrder: Int,
     val addedAt: Long = 0,
+    val isRadio: Boolean = false,
 )
 
 @Entity(tableName = "movies", indices = [Index("sourceId", "categoryId"), Index("title")])

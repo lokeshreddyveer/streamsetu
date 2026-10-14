@@ -57,7 +57,7 @@ object AppModule {
         refreshStream = { item ->
             // Only playlists (M3U) carry addresses that can expire; Xtream addresses are built fresh from the login each time.
             val src = sources.get(item.sourceId)
-            if (src == null || src.type == SourceType.XTREAM) null
+            if (src == null || src.type == SourceType.XTREAM || src.type == SourceType.STALKER) null
             else { runCatching { sync.sync(src.id) }.getOrNull()
                 when (item) {
                     is ChannelPlayable -> db.catalog().channelByName(src.id, item.channel.name)?.let { e -> ChannelPlayable(e.toModel()) }

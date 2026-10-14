@@ -34,7 +34,7 @@ class LibraryRepository(private val db: AppDatabase, context: Context, scope: Co
         val individual = bySource.values.map { s ->
             LibraryEntry(
                 id = "src:${s.id}", name = s.name, kind = if (s.draft) LibraryEntry.Kind.UNFINISHED else LibraryEntry.Kind.CONNECTION, sourceIds = listOf(s.id),
-                typeLabel = when (s.type) { SourceType.XTREAM -> "Xtream Codes"; SourceType.M3U -> "M3U URL"; SourceType.LOCAL_FILE -> "Local M3U file" },
+                typeLabel = when (s.type) { SourceType.XTREAM -> "Xtream Codes"; SourceType.M3U -> "M3U URL"; SourceType.LOCAL_FILE -> "Local M3U file"; SourceType.STALKER -> "Stalker portal" },
                 channelCount = s.channelCount, movieCount = s.movieCount, seriesCount = s.seriesCount, lastSyncAt = s.lastSyncAt, lastOpenedAt = s.lastOpenedAt,
                 health = when {
                     s.draft -> LibraryEntry.Health.UNFINISHED

@@ -27,7 +27,8 @@ class ExoEngine(context: Context) : PlayerEngine {
     override var onEvent: (EngineEvent) -> Unit = {}
 
     private var player: ExoPlayer? = null
-    private var builtFor: Triple<BufferingMode, Boolean, Boolean>? = null
+    private var builtFor: List<Any?>? = null
+    private var userAgent: String? = null
     private var options = EngineOptions()
     private var dropped = 0L
     private var decoderName = ""
@@ -35,10 +36,10 @@ class ExoEngine(context: Context) : PlayerEngine {
     private var currentHeaders: Map<String, String> = emptyMap()
 
     private fun ensurePlayer(mode: BufferingMode): ExoPlayer {
-        val key = Triple(mode, options.decoderFallback, options.passthrough)
+        val key = listOf(mode, options.decoderFallback, options.passthrough, userAgent)
         if (player != null && builtFor == key) return player!!
         player?.release()
-        val factory = OkHttpDataSource.Factory(Http.client).setUserAgent(Http.USER_AGENT)
+        val factory = OkHttpDataSource.Factory(Http.client).setUserAgent(userAgent ?: Http.USER_AGENT)
         // IPTV transport streams are often cut mid-frame and start between keyframes: these flags let ExoPlayer start and recover on them.
         val extractors = DefaultExtractorsFactory()
             .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS)
@@ -101,6 +102,7 @@ class ExoEngine(context: Context) : PlayerEngine {
 
     override fun load(request: EngineRequest) {
         options = request.options
+        userAgent = request.headers["User-Agent"]
         val p = ensurePlayer(request.buffering)
         applySubtitleStyle()
         currentHeaders = request.headers

@@ -26,6 +26,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             val r = when (source.type) {
                 SourceType.M3U, SourceType.LOCAL_FILE -> syncM3u(source)
                 SourceType.XTREAM -> syncXtream(source)
+                SourceType.STALKER -> syncStalker(source)
             }
             sources.setStatus(sourceId, SyncStatus.OK)
             sources.setCounts(sourceId, r.channels, r.movies, r.series)
@@ -56,7 +57,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
                     when (e.kind) {
                         ContentKind.CHANNEL -> if (!ChannelFilter.isDivider(e.name)) channels += ChannelEntity(
                             id = "${s.id}:ch:${stableId(e)}", sourceId = s.id, categoryId = category(e.group ?: "Other", ContentKind.CHANNEL), name = e.name,
-                            number = e.channelNumber, logoUrl = e.logo, streamRef = e.url, epgId = e.tvgId ?: e.tvgName, catchupDays = e.catchupDays, sortOrder = order,
+                            number = e.channelNumber, logoUrl = e.logo, streamRef = e.url, epgId = e.tvgId ?: e.tvgName, catchupDays = e.catchupDays, sortOrder = order, isRadio = e.radio,
                         )
                         ContentKind.MOVIE -> movies += MovieEntity(
                             id = "${s.id}:mv:${stableId(e)}", sourceId = s.id, categoryId = category(e.group ?: "Movies", ContentKind.MOVIE), title = e.name,
@@ -67,11 +68,31 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
                 }
         }
         if (s.type == SourceType.LOCAL_FILE) openLocal(s.address).bufferedReader().useLines { read(it) }
-        else Http.get(s.address) { resp -> resp.body!!.charStream().buffered().useLines { read(it) } }
+        else Http.get(s.address, s.userAgent) { resp -> resp.body!!.charStream().buffered().useLines { read(it) } }
         if (channels.isEmpty() && movies.isEmpty()) error("That playlist has no channels or movies.")
         replace(s.id, categories.values.toList(), channels, movies, emptyList())
         if (s.epgUrl == null && guideUrl != null) db.sources().upsert(s.copy(epgUrl = guideUrl).toEntity())
         return Result(channels.size, movies.size, 0)
+    }
+
+    // ---- Stalker / Ministra: live TV ---------------------------------------------------------------------------
+
+    private val stalker = app.streamsetu.core.net.StalkerClient()
+    val stalkerClient get() = stalker
+
+    private suspend fun syncStalker(s: Source): Result {
+        if (s.username.isNullOrBlank()) error("A Stalker portal needs the MAC address of the box it should act as.")
+        val genres = stalker.genres(s)
+        val channels = stalker.channels(s)
+        if (channels.isEmpty()) error("The portal signed in but returned no channels.")
+        val radioGenres = genres.filter { it.title.contains("radio", ignoreCase = true) }.map { it.id }.toSet()
+        val cats = genres.mapIndexed { i, g -> CategoryEntity("${s.id}:CHANNEL:${g.id}", s.id, ContentKind.CHANNEL.name, g.title, i) }
+        val rows = channels.mapIndexedNotNull { i, ch ->
+            if (ChannelFilter.isDivider(ch.name)) null
+            else ChannelEntity("${s.id}:ch:${ch.id}", s.id, ch.genreId?.takeIf { g -> genres.any { it.id == g } }?.let { "${s.id}:CHANNEL:$it" }, ch.name, ch.number, ch.logo, "stalker:${ch.cmd}", ch.epgId, 0, i, 0, ch.genreId in radioGenres)
+        }
+        replace(s.id, cats, rows, emptyList(), emptyList())
+        return Result(rows.size, 0, 0)
     }
 
     private fun stableId(e: M3uEntry) = (e.tvgId ?: "") + "|" + e.name + "|" + e.url.hashCode()
@@ -82,9 +103,9 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         val user = s.username.orEmpty()
         val pass = credentials.load(SourceRepository.credentialRef(s.id)).orEmpty()
         val host = s.address
-        fun fetch(action: String) = Xtream.parseArray(Http.text(Xtream.api(host, user, pass, action)))
+        fun fetch(action: String) = Xtream.parseArray(Http.text(Xtream.api(host, user, pass, action), s.userAgent))
 
-        val auth = Xtream.parseObject(Http.text(Xtream.api(host, user, pass)))
+        val auth = Xtream.parseObject(Http.text(Xtream.api(host, user, pass), s.userAgent))
         val info = auth?.get("user_info") as? JsonObject
         if (info == null || info.int("auth") == 0) error("The server refused the login. Check the user name and password.")
         info.str("max_connections")?.toIntOrNull()?.let { resolver?.rememberMaxConnections(s.id, it) }
@@ -95,13 +116,16 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             val id = o.str("category_id") ?: return@forEachIndexed
             categories += CategoryEntity("${s.id}:${kind.name}:$id", s.id, kind.name, o.str("category_name") ?: "Category $id", i)
         }
-        cats("get_live_categories", ContentKind.CHANNEL); cats("get_vod_categories", ContentKind.MOVIE); cats("get_series_categories", ContentKind.SERIES)
+        cats("get_live_categories", ContentKind.CHANNEL)
+        val radioCategories = categories.filter { it.kind == ContentKind.CHANNEL.name && it.name.contains("radio", ignoreCase = true) }.map { it.id }.toSet()
+         cats("get_vod_categories", ContentKind.MOVIE); cats("get_series_categories", ContentKind.SERIES)
 
         val channels = fetch("get_live_streams").mapIndexedNotNull { i, o ->
             val id = o.str("stream_id") ?: return@mapIndexedNotNull null
             if (ChannelFilter.isDivider(o.str("name").orEmpty())) return@mapIndexedNotNull null
             ChannelEntity("${s.id}:ch:$id", s.id, o.str("category_id")?.let { "${s.id}:CHANNEL:$it" }, o.str("name") ?: "Channel $id", o.int("num"),
-                o.str("stream_icon"), "live:$id:m3u8", o.str("epg_channel_id"), o.int("tv_archive_duration") ?: 0, i, o.str("added")?.toLongOrNull() ?: 0)
+                o.str("stream_icon"), "live:$id:m3u8", o.str("epg_channel_id"), o.int("tv_archive_duration") ?: 0, i, o.str("added")?.toLongOrNull() ?: 0,
+                radioCategories.contains("${s.id}:CHANNEL:" + o.str("category_id")))
         }
         val movies = fetch("get_vod_streams").mapNotNull { o ->
             val id = o.str("stream_id") ?: return@mapNotNull null

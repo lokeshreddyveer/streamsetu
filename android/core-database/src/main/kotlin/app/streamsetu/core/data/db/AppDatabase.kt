@@ -10,7 +10,7 @@ import androidx.room.RoomDatabase
         EpisodeEntity::class, EpgEntity::class, FavoriteEntity::class, ProgressEntity::class, WatchLogEntity::class,
         LibraryEntity::class, LibraryMemberEntity::class, FolderPrefEntity::class,
         NewEpisodeEntity::class, CollectionEntity::class, CollectionItemEntity::class, OverrideEntity::class, EpgChannelEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -25,6 +25,14 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         /** Adds drafts and cached counts to playlists, combined libraries, and folder arrangements. Nothing existing is touched. */
+        /** A custom User-Agent per connection, and a radio flag on channels. */
+        val MIGRATION_4_5 = object : androidx.room.migration.Migration(4, 5) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sources ADD COLUMN userAgent TEXT")
+                db.execSQL("ALTER TABLE channels ADD COLUMN isRadio INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         /** New-episode flags, collections, local overrides and guide channel names. Nothing existing is touched. */
         val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
@@ -65,7 +73,7 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         fun open(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, "streamsetu.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            Room.databaseBuilder(context, AppDatabase::class.java, "streamsetu.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db) }
                     override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db) }

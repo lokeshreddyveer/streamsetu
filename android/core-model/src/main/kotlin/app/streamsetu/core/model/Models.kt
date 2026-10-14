@@ -3,7 +3,7 @@ package app.streamsetu.core.model
 /** What a playlist entry is. */
 enum class ContentKind { CHANNEL, MOVIE, SERIES, EPISODE }
 
-enum class SourceType { M3U, XTREAM, LOCAL_FILE }
+enum class SourceType { M3U, XTREAM, LOCAL_FILE, STALKER }
 
 /** A playlist the person added. The password is never part of this class; it lives in the [app.streamsetu.core.security.CredentialStore]. */
 data class Source(
@@ -24,6 +24,8 @@ data class Source(
     val seriesCount: Int = 0,
     val lastError: String? = null,
     val lastOpenedAt: Long = 0,
+    /** Sent instead of the app's own name when this connection is read and played (some providers only answer a particular player). */
+    val userAgent: String? = null,
 )
 
 enum class SyncStatus { NEVER, SYNCING, OK, FAILED }
@@ -47,6 +49,8 @@ data class Channel(
     val streamRef: String,
     val epgId: String?,
     val catchupDays: Int = 0,
+    /** An audio-only station: played without a picture. */
+    val isRadio: Boolean = false,
 )
 
 data class Movie(

@@ -50,6 +50,8 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
     val hours by c.settings.backgroundSyncHours.collectAsState()
     val ctx = LocalContext.current
     SettingGroup("Catalog refresh", "A refresh also looks for new episodes of series you have started. It never runs while something is playing, and a failed read keeps the last good catalog.") {
+        val onStart by c.settings.refreshOnStart.collectAsState()
+        ToggleRow("Refresh when the app opens", "Reads every connection and its guide a few seconds after launch, one at a time, and never while something is playing.", onStart) { c.settings.setRefreshOnStart(it) }
         ChoiceRow("Refresh catalogs in the background", options = listOf(0 to "Only when I ask", 12 to "Every 12 hours", 24 to "Every day"), value = hours) { c.settings.setBackgroundSyncHours(it); app.streamsetu.tv.CatalogSyncWorker.schedule(ctx, it) }
     }
     SettingGroup("Libraries") {
