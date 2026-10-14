@@ -80,6 +80,9 @@ interface EpgDao {
     @Query("DELETE FROM epg") suspend fun clear()
     @Query("SELECT * FROM epg WHERE channelEpgId = :id AND endMs > :now ORDER BY startMs LIMIT :limit") suspend fun upcoming(id: String, now: Long, limit: Int): List<EpgEntity>
     @Query("SELECT * FROM epg WHERE channelEpgId IN (:ids) AND startMs <= :now AND endMs > :now") suspend fun nowFor(ids: List<String>, now: Long): List<EpgEntity>
+    @Query("SELECT * FROM epg WHERE channelEpgId IN (:ids) AND endMs > :from AND startMs < :to ORDER BY channelEpgId, startMs") suspend fun window(ids: List<String>, from: Long, to: Long): List<EpgEntity>
+    @Query("SELECT COUNT(*) FROM epg") suspend fun count(): Int
+    @Query("SELECT MAX(endMs) FROM epg") suspend fun lastEnd(): Long?
 }
 
 @Dao

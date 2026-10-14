@@ -54,4 +54,9 @@ class UiPrefs(context: Context) {
         return saved + default.filter { it !in saved }
     }
     fun setHomeOrder(order: List<String>) { prefs.edit().putString("homeOrder", order.joinToString(",")).apply() }
+
+    private val _epgOffset = flow(prefs.getInt("epgOffsetMin", 0))
+    /** Minutes added to every guide time, for a provider whose guide is shifted. */
+    val epgOffsetMinutes: StateFlow<Int> = _epgOffset
+    fun setEpgOffsetMinutes(v: Int) { prefs.edit().putInt("epgOffsetMin", v).apply(); _epgOffset.value = v }
 }

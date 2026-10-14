@@ -39,3 +39,9 @@ class EpgService(private val db: AppDatabase) {
 /** The programmes of a channel from now on, for the guide screen. */
 suspend fun EpgService.upcoming(db: AppDatabase, epgId: String, limit: Int = 3, now: Long = System.currentTimeMillis()): List<EpgProgram> =
     db.epg().upcoming(epgId, now, limit).map { EpgProgram(it.channelEpgId, it.startMs, it.endMs, it.title, it.description) }
+
+/** Programmes of the given guide ids that overlap [fromMs, toMs), grouped by guide id, for the TV Guide timeline. */
+suspend fun EpgService.window(db: AppDatabase, epgIds: List<String>, fromMs: Long, toMs: Long): Map<String, List<EpgProgram>> =
+    if (epgIds.isEmpty()) emptyMap() else epgIds.chunked(400).flatMap { db.epg().window(it, fromMs, toMs) }.map { EpgProgram(it.channelEpgId, it.startMs, it.endMs, it.title, it.description) }.groupBy { it.channelEpgId }
+
+suspend fun EpgService.programmeCount(db: AppDatabase): Int = db.epg().count()

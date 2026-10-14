@@ -117,3 +117,16 @@ fun SectionSearch(c: AppContainer, kind: ContentKind, onOpen: (Card) -> Unit, on
         }
     }
 }
+
+/** The global Search page: channels, movies and series of the open library. */
+@Composable
+fun SearchScreen(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
+    val entry = app.streamsetu.tv.ui.components.LocalContentEntry.current
+    Column(Modifier.fillMaxSize().padding(start = 16.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Label("Search", Tokens.pageTitle, Tokens.text, FontWeight.Bold)
+        SearchContent(c, setOf(ContentKind.CHANNEL, ContentKind.MOVIE, ContentKind.SERIES), Modifier.fillMaxSize(), entry = entry,
+            onChannel = { ch -> app.streamsetu.tv.play(c, nav, ChannelPlayable(ch)) },
+            onMovie = { m -> nav.open(app.streamsetu.tv.nav.Overlay.MovieDetail(m)) },
+            onSeries = { s -> nav.open(app.streamsetu.tv.nav.Overlay.SeriesDetail(s)) })
+    }
+}
