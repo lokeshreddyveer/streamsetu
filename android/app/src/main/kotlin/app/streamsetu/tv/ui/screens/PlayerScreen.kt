@@ -13,6 +13,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import app.streamsetu.core.ui.motion.Motion
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -150,7 +155,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
         // Status in the middle: loading, retrying, failed.
         Box(Modifier.align(Alignment.Center)) {
             when (val st = state) {
-                PlaybackState.Resolving, PlaybackState.Buffering -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) { Spinner(); Label("Loading…", Tokens.small, Color(0xCCFFFFFF)) }
+                PlaybackState.Resolving, PlaybackState.Buffering -> if (live || !barVisible) Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) { Spinner(); Label("Loading…", Tokens.small, Color(0xCCFFFFFF)) }
                 is PlaybackState.Retrying -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) { Spinner(); Label(if (st.attempt == 0) "Trying another player…" else "Trying again (${st.attempt}) in ${st.inSeconds} s…", Tokens.small, Color(0xCCFFFFFF)) }
                 is PlaybackState.Failed -> Column(Modifier.background(Color(0xE6101319), RoundedCornerShape(Tokens.radiusLarge)).padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Label("This stream did not play", Tokens.title, Tokens.text, FontWeight.Bold)
@@ -165,8 +170,8 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
                 else -> {}
             }
         }
-        if (seekFlash.isNotEmpty()) Box(Modifier.align(Alignment.Center).background(Color(0x99000000), RoundedCornerShape(50)).padding(horizontal = 18.dp, vertical = 8.dp)) { Label(seekFlash, Tokens.heading, Tokens.text, FontWeight.Bold) }
-        if (state == PlaybackState.Paused) Box(Modifier.align(Alignment.Center).size(72.dp).background(Color(0x99000000), CircleShape), Alignment.Center) { Image(Icons.Filled.PlayArrow, null, Modifier.size(40.dp), colorFilter = ColorFilter.tint(Color.White)) }
+        if (seekFlash.isNotEmpty()) Box(Modifier.align(Alignment.Center).offset(y = (-100).dp).background(Color(0x99000000), RoundedCornerShape(50)).padding(horizontal = 18.dp, vertical = 8.dp)) { Label(seekFlash, Tokens.heading, Tokens.text, FontWeight.Bold) }
+        if (state == PlaybackState.Paused && live) Box(Modifier.align(Alignment.Center).size(72.dp).background(Color(0x99000000), CircleShape), Alignment.Center) { Image(Icons.Filled.PlayArrow, null, Modifier.size(40.dp), colorFilter = ColorFilter.tint(Color.White)) }
         if (digits.isNotEmpty()) Box(Modifier.align(Alignment.TopEnd).padding(36.dp).background(Color(0xCC000000), RoundedCornerShape(10.dp)).padding(horizontal = 16.dp, vertical = 8.dp)) { Label(digits, Tokens.display, Tokens.accent, FontWeight.Bold) }
         if (resumedFrom > 0 && position in 1..(resumedFrom + 9000)) Box(Modifier.align(Alignment.TopCenter).padding(top = 72.dp).background(Color(0xCC101319), RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 7.dp)) { Label("Resumed at ${clock(resumedFrom)}  ·  ▼ then Start over to begin again", Tokens.small, Color.White) }
         if (upNextVisible && item is EpisodePlayable) {
@@ -175,6 +180,17 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
                 Eyebrow("Up next", color = Tokens.accent)
                 Label(next.title, Tokens.row, Color.White, FontWeight.SemiBold, modifier = Modifier.widthIn(max = 260.dp))
                 Label("OK to play now", Tokens.caption, Color(0xB3FFFFFF))
+            }
+        }
+
+        // Pause and skip sit in the middle of the screen, like a streaming app. The keys are the same: OK pauses, Left and Right skip.
+        if (barVisible && item != null && !live && state !is PlaybackState.Failed && state != PlaybackState.Ended) {
+            val busy = state == PlaybackState.Resolving || state == PlaybackState.Buffering || state is PlaybackState.Retrying
+            val skip = c.settings.seekSeconds.collectAsState().value
+            Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(36.dp), verticalAlignment = Alignment.CenterVertically) {
+                TransportButton(Icons.Filled.Replay, 56, label = "$skip", flash = seekFlash.startsWith("−"))
+                TransportButton(if (state == PlaybackState.Paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, 84, filled = true, busy = busy)
+                TransportButton(Icons.Filled.Replay, 56, label = "$skip", mirror = true, flash = seekFlash.startsWith("+"))
             }
         }
 
@@ -192,8 +208,8 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
                 Row(Modifier.fillMaxWidth().onFocusChanged { chipsFocused = it.hasFocus }.onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp) { toRoot(); true } else false }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val audioName = audio.firstOrNull { it.selected }?.label
                     val subName = subs.firstOrNull { it.selected }?.label ?: "Off"
-                    PlayerChip(Icons.Filled.Audiotrack, "Audio" + (audioName?.let { ": $it" } ?: ""), Modifier.focusRequester(chipsFirst)) { panel = PanelKind.AUDIO }
-                    PlayerChip(Icons.Filled.Subtitles, "Subtitles: $subName") { panel = PanelKind.SUBS }
+                    PlayerChip(Icons.Filled.Audiotrack, "Audio", Modifier.focusRequester(chipsFirst), value = audioName ?: "Default") { panel = PanelKind.AUDIO }
+                    PlayerChip(Icons.Filled.Subtitles, "Subtitles", value = subName) { panel = PanelKind.SUBS }
                     if (!live) PlayerChip(Icons.Filled.Speed, if (speed == 1f) "Speed" else "${speed}×") { panel = PanelKind.SPEED }
                     PlayerChip(Icons.Filled.AspectRatio, aspect.label) { panel = PanelKind.PICTURE }
                     PlayerChip(Icons.Filled.Tune, playback.engineKind?.label ?: "Player") { panel = PanelKind.ENGINE }
@@ -201,7 +217,6 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
                     if (live && c.queue.size > 1) PlayerChip(Icons.Filled.FormatListBulleted, "Channels") { panel = PanelKind.CHANNELS }
                     PlayerChip(Icons.Filled.MoreHoriz, "More") { panel = PanelKind.MORE }
                 }
-                Label(if (live) "▲ ▼ channel      ◀ channels      OK options      0–9 channel number      BACK close" else "◀ ▶ skip 10 s      OK pause      ▼ options      BACK close", Tokens.caption, Color(0x80FFFFFF), modifier = Modifier.padding(top = 8.dp))
             }
         }
 
@@ -213,17 +228,25 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
         panel?.let { kind ->
             val selectedReq = remember(kind) { FocusRequester() }
             LaunchedEffect(kind) { delay(120); runCatching { selectedReq.requestFocus() } }
-            Column(Modifier.align(Alignment.CenterEnd).padding(end = 24.dp).width(330.dp).fillMaxHeight(0.88f).background(Color(0xF2101319), RoundedCornerShape(Tokens.radiusLarge)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Label(kind.title, Tokens.heading, Tokens.text, FontWeight.Bold)
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(Modifier.align(Alignment.CenterEnd).padding(end = 24.dp).width(370.dp).fillMaxHeight(0.88f).background(Color(0xF0080808), RoundedCornerShape(22.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(Modifier.size(34.dp).clip(CircleShape).background(Color(0x1FFFFFFF)), Alignment.Center) {
+                        Image(when (kind) { PanelKind.AUDIO -> Icons.Filled.Audiotrack; PanelKind.SUBS -> Icons.Filled.Subtitles; PanelKind.SPEED -> Icons.Filled.Speed; PanelKind.PICTURE -> Icons.Filled.AspectRatio; PanelKind.ENGINE -> Icons.Filled.Tune; PanelKind.MORE -> Icons.Filled.MoreHoriz; PanelKind.CHANNELS -> Icons.Filled.FormatListBulleted }, null, Modifier.size(19.dp), colorFilter = ColorFilter.tint(Tokens.accent))
+                    }
+                    Column {
+                        Label(kind.title, Tokens.title, Color.White, FontWeight.Bold)
+                        Label(when (kind) { PanelKind.AUDIO -> "${audio.size} track${if (audio.size == 1) "" else "s"}"; PanelKind.SUBS -> "${subs.size} available"; PanelKind.ENGINE -> "Playing with ${playback.engineKind?.label ?: "-"}"; else -> " " }, Tokens.caption, Color(0x99FFFFFF))
+                    }
+                }
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     when (kind) {
                         PanelKind.AUDIO -> {
                             if (audio.isEmpty()) item { Label("Only one audio track.", Tokens.small, Tokens.textTertiary) }
-                            items(audio, key = { "a" + it.id }) { t -> OptionRow(t.label, t.selected, if (t.selected) selectedReq else null) { playback.selectAudio(t.id); closePanel() } }
+                            items(audio, key = { "a" + it.id }) { t -> OptionRow(t.label, t.selected, if (t.selected) selectedReq else null, t.language?.takeIf { it.isNotBlank() && !t.label.contains(it, true) }?.let { java.util.Locale(it).displayLanguage.ifBlank { it } }) { playback.selectAudio(t.id); closePanel() } }
                         }
                         PanelKind.SUBS -> {
                             item { OptionRow("Off", subs.none { it.selected }, if (subs.none { it.selected }) selectedReq else null) { playback.selectSubtitle(null); closePanel() } }
-                            items(subs, key = { "s" + it.id }) { t -> OptionRow(t.label, t.selected, if (t.selected) selectedReq else null) { playback.selectSubtitle(t.id); closePanel() } }
+                            items(subs, key = { "s" + it.id }) { t -> OptionRow(t.label, t.selected, if (t.selected) selectedReq else null, t.language?.takeIf { it.isNotBlank() && !t.label.contains(it, true) }?.let { java.util.Locale(it).displayLanguage.ifBlank { it } }) { playback.selectSubtitle(t.id); closePanel() } }
                         }
                         PanelKind.SPEED -> items(listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f), key = { "v$it" }) { v -> OptionRow(if (v == 1f) "Normal" else "${v}×", v == speed, if (v == speed) selectedReq else null) { playback.setSpeed(v); closePanel() } }
                         PanelKind.PICTURE -> items(AspectMode.entries, key = { "p" + it.name }) { m -> OptionRow(m.label, m == aspect, if (m == aspect) selectedReq else null) { playback.setAspect(m); closePanel() } }
@@ -250,21 +273,30 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
 }
 
 @Composable
-private fun PlayerChip(icon: ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color(0x40FFFFFF), focusedContainer = Color(0xFFFFFFFF), scaleOnFocus = 1.05f) { f ->
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Image(icon, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(if (f) Color.Black else Color.White))
-            Label(label, Tokens.small, if (f) Color.Black else Color.White, FontWeight.Medium, modifier = Modifier.widthIn(max = 200.dp))
+private fun PlayerChip(icon: ImageVector, label: String, modifier: Modifier = Modifier, value: String? = null, onClick: () -> Unit) {
+    Focusable(onClick, modifier, shape = RoundedCornerShape(16.dp), container = Color(0xB3101010), focusedContainer = Color.White, scaleOnFocus = 1.05f, hairline = true) { f ->
+        val ink = if (f) Color.Black else Color.White
+        Row(Modifier.padding(horizontal = 12.dp, vertical = if (value != null) 7.dp else 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.size(if (value != null) 30.dp else 22.dp).clip(CircleShape).background(if (value != null) (if (f) Color(0x14000000) else Color(0x24FFFFFF)) else Color.Transparent), Alignment.Center) {
+                Image(icon, null, Modifier.size(if (value != null) 18.dp else 20.dp), colorFilter = ColorFilter.tint(if (f) Color.Black else Tokens.accent))
+            }
+            if (value != null) Column {
+                Label(label.uppercase(), Tokens.eyebrow, if (f) Color(0x99000000) else Color(0x99FFFFFF), FontWeight.Bold, letterSpacing = 1.sp)
+                Label(value, Tokens.row, ink, FontWeight.SemiBold, modifier = Modifier.widthIn(max = 150.dp))
+            } else Label(label, Tokens.row, ink, FontWeight.Medium, modifier = Modifier.widthIn(max = 160.dp))
         }
     }
 }
 
 @Composable
-private fun OptionRow(label: String, selected: Boolean, requester: FocusRequester?, onClick: () -> Unit) {
-    Focusable(onClick, (if (requester != null) Modifier.focusRequester(requester) else Modifier).fillMaxWidth()) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-            Label(label, Tokens.row, if (selected) Tokens.accent else Tokens.text, modifier = Modifier.weight(1f))
-            if (selected) Image(Icons.Filled.Check, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Tokens.accent))
+private fun OptionRow(label: String, selected: Boolean, requester: FocusRequester?, detail: String? = null, onClick: () -> Unit) {
+    Focusable(onClick, (if (requester != null) Modifier.focusRequester(requester) else Modifier).fillMaxWidth(), shape = RoundedCornerShape(12.dp), container = if (selected) Tokens.accent.copy(alpha = 0.14f) else Color.Transparent, focusedContainer = Color.White, scaleOnFocus = 1.0f) { f ->
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Label(label, Tokens.heading, if (f) Color.Black else if (selected) Tokens.accent else Color.White, if (selected) FontWeight.SemiBold else FontWeight.Medium)
+                if (detail != null) Label(detail, Tokens.caption, if (f) Color(0x99000000) else Color(0x99FFFFFF))
+            }
+            if (selected) Box(Modifier.size(22.dp).background(if (f) Color.Black else Tokens.accent, CircleShape), Alignment.Center) { Image(Icons.Filled.Check, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(if (f) Color.White else Color.Black)) }
         }
     }
 }
@@ -273,21 +305,28 @@ private fun OptionRow(label: String, selected: Boolean, requester: FocusRequeste
 @Composable
 private fun VodControls(position: Long, duration: Long, playing: Boolean) {
     val frac = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
-    BoxWithConstraints(Modifier.fillMaxWidth().height(16.dp), contentAlignment = Alignment.CenterStart) {
-        Box(Modifier.fillMaxWidth().height(4.dp).background(Color(0x40FFFFFF), RoundedCornerShape(2.dp)))
-        Box(Modifier.fillMaxWidth(frac).height(4.dp).background(Tokens.playPill, RoundedCornerShape(2.dp)))
-        Box(Modifier.offset(x = (maxWidth * frac) - 7.dp).size(14.dp).background(Color.White, CircleShape))
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Label(clock(position), Tokens.body, Color.White, FontWeight.SemiBold, modifier = Modifier.widthIn(min = 52.dp))
+        // The bar: a soft track, the played part in the accent, and a round handle with a halo so it can be seen from the sofa.
+        BoxWithConstraints(Modifier.weight(1f).height(26.dp), contentAlignment = Alignment.CenterStart) {
+            Box(Modifier.fillMaxWidth().height(8.dp).background(Color(0x33FFFFFF), RoundedCornerShape(4.dp)))
+            Box(Modifier.fillMaxWidth(frac).height(8.dp).background(Brush.horizontalGradient(listOf(Tokens.accent.copy(alpha = 0.75f), Tokens.accent)), RoundedCornerShape(4.dp)))
+            Box(Modifier.offset(x = (maxWidth * frac) - 13.dp).size(26.dp).background(Tokens.accent.copy(alpha = 0.28f), CircleShape), Alignment.Center) { Box(Modifier.size(16.dp).background(Color.White, CircleShape)) }
+        }
+        Label("−" + clock((duration - position).coerceAtLeast(0)), Tokens.body, Color(0xCCFFFFFF), FontWeight.Medium, modifier = Modifier.widthIn(min = 60.dp))
     }
-    Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Label(clock(position), Tokens.small, Color.White, FontWeight.Medium)
-        Label("−" + clock((duration - position).coerceAtLeast(0)), Tokens.small, Color(0xCCFFFFFF))
-    }
-    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-        RoundIcon(Icons.Filled.Replay10, 40)
-        Spacer(Modifier.width(18.dp))
-        RoundIcon(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, 54, filled = true)
-        Spacer(Modifier.width(18.dp))
-        RoundIcon(Icons.Filled.Forward10, 40)
+}
+
+/** A round transport button in the middle of the screen. [flash] lights it for a moment when its key was just used. */
+@Composable
+private fun TransportButton(icon: ImageVector, size: Int, filled: Boolean = false, label: String? = null, mirror: Boolean = false, flash: Boolean = false, busy: Boolean = false) {
+    val scale by animateFloatAsState(if (flash) 1.14f else 1f, tween(Motion.FOCUS), label = "transport")
+    Box(Modifier.size(size.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(CircleShape).background(if (filled) Color.White else if (flash) Color(0x66FFFFFF) else Color(0x4D000000)), Alignment.Center) {
+        if (busy) Spinner()
+        else {
+            Image(icon, null, Modifier.size((size * if (filled) 0.56f else 0.62f).dp).graphicsLayer { if (mirror) scaleX = -1f }, colorFilter = ColorFilter.tint(if (filled) Color.Black else Color.White))
+            if (label != null) Label(label, Tokens.small, Color.White, FontWeight.Bold)
+        }
     }
 }
 
