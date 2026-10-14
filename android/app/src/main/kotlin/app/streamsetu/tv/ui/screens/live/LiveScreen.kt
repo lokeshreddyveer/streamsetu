@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +25,7 @@ import app.streamsetu.core.data.repo.UserRepository
 import app.streamsetu.core.model.*
 import app.streamsetu.core.playback.PlaybackState
 import app.streamsetu.core.sync.upcoming
+import app.streamsetu.core.sync.programmeCount
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.nav.Navigator
 import app.streamsetu.tv.nav.Overlay
@@ -140,6 +142,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
         c.play(ChannelPlayable(ch), groups.orEmpty().map { ChannelPlayable(it.rep) })
     }
 
+    androidx.compose.runtime.CompositionLocalProvider(LocalFocusRing provides Tokens.gold) {
     Row(Modifier.fillMaxSize()) {
         FolderPanel("Live TV", shortcuts, folders, browse, vm::select, vm, Modifier.weight(0.2f), entry = entry, selectOnDwell = c.settings.foldersOpenOnFocus.collectAsState().value, onRight = { runCatching { channelEntry.requestFocus() }.isSuccess })
 
@@ -161,15 +164,17 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
                     items(list.size, key = { list[it].rep.id }) { i ->
                         val grp = list[i]; val ch = grp.rep
                         val playing = live?.channel?.id == ch.id
-                        Focusable({ choose(ch) }, (if (i == 0) Modifier.focusRequester(channelEntry) else Modifier).fillMaxWidth(), scaleOnFocus = 1.0f, container = if (playing) Tokens.elevated else Tokens.card.copy(alpha = 0f), shape = RoundedCornerShape(8.dp), onLongClick = { menuFor = ch; menuVariants = grp.variants }) { f ->
-                            Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                ChannelLogo(ch.logoUrl, ch.name, 26.dp)
-                                Column(Modifier.weight(1f)) {
-                                    Label((if (showNumbers) ch.number?.let { "$it  " } else null).orEmpty() + ch.name, Tokens.row, if (playing) Tokens.accent else Tokens.text, FontWeight.Medium, maxLines = 2)
+                        Focusable({ choose(ch) }, (if (i == 0) Modifier.focusRequester(channelEntry) else Modifier).fillMaxWidth(), scaleOnFocus = 1.0f, container = if (playing) Color(0x33F5AD42) else Tokens.card.copy(alpha = 0f), shape = RoundedCornerShape(10.dp), ring = Tokens.gold, ringWidth = 2.5.dp, onLongClick = { menuFor = ch; menuVariants = grp.variants }) { f ->
+                            // [number] [logo] [name over what is on]: the number has its own narrow column so names line up, and a long name wraps to two lines instead of being cut.
+                            Row(Modifier.padding(horizontal = 8.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (showNumbers) Label(ch.number?.toString().orEmpty(), Tokens.caption, if (f || playing) Tokens.goldHighlight else Tokens.textTertiary, FontWeight.SemiBold, modifier = Modifier.width(26.dp))
+                                ChannelLogo(ch.logoUrl, ch.name, 28.dp)
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                    Label(ch.name, Tokens.small, if (playing) Tokens.goldHighlight else Tokens.text, if (playing || f) FontWeight.SemiBold else FontWeight.Medium, maxLines = 2)
                                     epgIds[ch.id]?.let { id -> now[id] }?.let { p -> Label(p.title, Tokens.caption, Tokens.textSecondary) }
                                 }
                                 if (grp.variants.size > 1) Label("+${grp.variants.size - 1}", Tokens.caption, Tokens.textTertiary)
-                                if (ch.id in favs) Image(Icons.Filled.Favorite, null, Modifier.size(11.dp), colorFilter = ColorFilter.tint(Tokens.accent))
+                                if (ch.id in favs) Image(Icons.Filled.Favorite, null, Modifier.size(12.dp), colorFilter = ColorFilter.tint(Tokens.gold))
                             }
                         }
                     }
@@ -193,6 +198,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
             }
             if (live != null) NowNext(live.channel, vm, c, nav, Modifier.weight(1f))
         }
+    }
     }
 
     if (sortOpen) SortSheet(ContentKind.CHANNEL, sort, avail, onApply = vm::applySort, onClose = { sortOpen = false })
@@ -231,6 +237,10 @@ private fun NowNext(ch: Channel, vm: LiveSectionViewModel, c: AppContainer, nav:
     val shift = c.ui.epgOffsetMinutes.collectAsState().value * 60_000L
     LaunchedEffect(ch.id, shift) { while (true) { programmes = vm.programmes(ch).map { it.copy(startMs = it.startMs + shift, endMs = it.endMs + shift) }; tick = System.currentTimeMillis(); delay(30_000) } }
     val nowP = programmes.firstOrNull { it.isLive(tick) }
+    // What the stream is doing right now, from the player: it fills the space under the picture with something useful.
+    var facts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var anyGuide by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(ch.id) { anyGuide = runCatching { c.epg.programmeCount(c.db) > 0 }.getOrNull(); while (true) { facts = c.playback.diagnostics(); delay(2500) } }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ChannelLogo(ch.logoUrl, ch.name, 36.dp)
@@ -240,9 +250,22 @@ private fun NowNext(ch: Channel, vm: LiveSectionViewModel, c: AppContainer, nav:
                     Label("${nowP.title}  ·  ${timeText(nowP.startMs)} – ${timeText(nowP.endMs)}", Tokens.body, Tokens.textSecondary, maxLines = 1)
                     val f = ((tick - nowP.startMs).toFloat() / (nowP.endMs - nowP.startMs)).coerceIn(0f, 1f)
                     Box(Modifier.fillMaxWidth().height(3.dp).background(Tokens.elevated, RoundedCornerShape(2.dp))) { Box(Modifier.fillMaxWidth(f).fillMaxHeight().background(Tokens.accent, RoundedCornerShape(2.dp))) }
-                } else Label(if (ch.epgId == null && programmes.isEmpty()) "No guide information for this channel." else "No guide information right now.", Tokens.small, Tokens.textTertiary)
+                } else Label("Live now", Tokens.small, Tokens.gold)
             }
             TvButton("Fullscreen", { nav.liveFullscreen = true; nav.open(Overlay.Player) }, icon = Icons.Filled.Fullscreen)
+        }
+        // Stream details chips
+        val chips = listOfNotNull(facts["Engine"], facts["Video"]?.takeIf { it != "none" }, facts["Audio"]?.takeIf { it != "none" }, facts["Buffered ahead"]?.let { "Buffer $it" })
+        if (chips.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { chips.forEach { t -> Label(t, Tokens.caption, Tokens.textSecondary, maxLines = 1, modifier = Modifier.background(Tokens.card, RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp)) } }
+        if (programmes.isEmpty()) {
+            // No guide for this channel: say why, and that the channel plays normally.
+            Row(Modifier.fillMaxWidth().background(Tokens.card, RoundedCornerShape(12.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Image(Icons.Filled.CalendarMonth, null, Modifier.size(26.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary))
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Label(if (anyGuide == false) "Your provider did not send a programme guide" else "This channel is not in the guide", Tokens.row, Tokens.text, FontWeight.SemiBold)
+                    Label(if (anyGuide == false) "Channels still play. Refresh the connection in Settings, Libraries & Folders, to check again." else "It plays normally. Guide data only covers channels the provider lists in it.", Tokens.small, Tokens.textSecondary, maxLines = 2)
+                }
+            }
         }
         if (programmes.isNotEmpty()) {
             Eyebrow("Guide", color = Tokens.textTertiary)

@@ -106,6 +106,7 @@ fun Focusable(
     scaleOnFocus: Float = app.streamsetu.core.ui.motion.Motion.CARD_FOCUS_SCALE,
     hairline: Boolean = false,
     ring: Color = Color.Unspecified,
+    ringWidth: androidx.compose.ui.unit.Dp = 1.5.dp,
     onFocus: (Boolean) -> Unit = {},
     onLongClick: (() -> Unit)? = null,
     /** The tone when the remote moves onto this, and when it is chosen. null = silent (a caller that plays its own sound). */
@@ -128,7 +129,7 @@ fun Focusable(
             // The ring is drawn, not added as a layer, so taking and losing focus does not rebuild the modifier chain.
             .drawWithContent {
                 drawContent()
-                if (focused) strokeOutline(shape.createOutline(size, layoutDirection, this), if (highContrast) Color.White else ringColor, (if (highContrast) 3.dp else 1.5.dp).toPx() * 2)
+                if (focused) strokeOutline(shape.createOutline(size, layoutDirection, this), if (highContrast) Color.White else ringColor, (if (highContrast) 3.dp else ringWidth).toPx() * 2)
                 else if (hairline) strokeOutline(shape.createOutline(size, layoutDirection, this), Tokens.line, 1.dp.toPx() * 2)
             }
             .focusRequester(own)
