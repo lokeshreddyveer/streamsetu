@@ -98,6 +98,8 @@ class MainActivity : ComponentActivity() {
 
     private val frames by lazy { app.streamsetu.core.ui.motion.FrameMonitor(this) }
 
+    override fun onResume() { super.onResume(); container.updates.resumeAfterPermission() }
+
     override fun onStart() {
         super.onStart()
         app.streamsetu.tv.UISound.resume()
@@ -188,6 +190,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
             }
         }
         if (showSplash) app.streamsetu.tv.ui.screens.library.LogoReveal(reduced) { showSplash = false; splashDone = true }
+        app.streamsetu.tv.ui.components.TvUpdatePrompt(c, suppress = nav.top != null || nav.base != Base.Shell)
         androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalInOverlay provides true) {
             nav.top?.let { top -> app.streamsetu.tv.ui.components.FadeIn(top) {
                 when (val o = top) {

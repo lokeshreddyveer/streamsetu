@@ -44,6 +44,8 @@ class AppContainer @Inject constructor(
     val resolver: StreamResolver,
     val sync: SyncService,
     val playback: PlaybackController,
+    val updates: app.streamsetu.tv.update.UpdateManager,
+    val globalSearch: app.streamsetu.core.data.repo.GlobalSearch,
 ) {
     /** What the player plays next: the channels of the list it was started from, or the episodes of a series. */
     var queue: List<Playable> = emptyList()
@@ -138,6 +140,11 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             if (container.settings.refreshOnStart.value) container.sources.all().filter { !it.draft && it.enabled }.forEach { s ->
                 if (container.playback.current.value == null) runCatching { container.syncWithGuide(s.id) }
             }
+        }
+        container.appScope.launch {
+            // Once a day, a little after start and never while something plays: is there a newer release? (Settings, About, Updates.)
+            kotlinx.coroutines.delay(20_000)
+            container.updates.checkIfDue()
         }
         container.appScope.launch {
             container.playback.state.collect { st ->

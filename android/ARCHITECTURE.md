@@ -127,3 +127,11 @@ On a Fire TV: Settings → My Fire TV → Developer Options → ADB debugging (a
 
 ## Verification status
 Unit tests: parsers, retry policy, parental words, divider rows, live-format choice.
+
+## In-app updates
+
+`app/.../update/UpdateManager.kt` checks the public GitHub release list (`android-v…` tags), downloads the file that suits the device (`StreamSetu-FireTV-…` on a television, `StreamSetu-Android-…` otherwise), checks its SHA-256 against the release notes and its signing key against the installed app, then hands it to the system installer through a `FileProvider`. The decisions (which release counts, which is newest, which file, which checksum) are in `data/.../update/UpdateLogic.kt` and are unit tested. It never installs silently. Build with `-PselfUpdate=false` for a store build, which switches the updater off. The `selftest` build type (debuggable, release key) can pretend to be an older version to try the flow on a device.
+
+## Search
+
+`data/.../repo/GlobalSearch.kt` is the one search for the Android phone and the Fire TV: the text index for channels, movies and series, plus episodes, guide programmes, folders and collections, grouped by kind. `SmartSearch.kt` reads "hindi movies 2024" and fixes misspellings from the library's own words (the same rules as the Mac and iPhone `GlobalSearchService`).

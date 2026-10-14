@@ -91,25 +91,31 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
                 Label(current.title, Tokens.pageTitle, Tokens.text, FontWeight.Bold)
                 Label(current.subtitle, Tokens.small, Tokens.textSecondary)
             }
-            when (current) {
-                Category.PLAYBACK -> PlaybackSettings(c)
-                Category.VIDEO -> VideoSettings(c)
-                Category.AUDIO -> AudioSettings(c)
-                Category.SUBTITLES -> SubtitleSettings(c)
-                Category.LIVE -> LiveSettings(c)
-                Category.LIBRARIES -> LibrarySettings(c, nav)
-                Category.SEARCH -> SearchSettings(c)
-                Category.FAVOURITES -> FavouriteSettings(c)
-                Category.APPEARANCE -> AppearanceSettings(c)
-                Category.PRIVACY -> PrivacySettings(c)
-                Category.STORAGE -> StorageSettings(c)
-                Category.DIAGNOSTICS -> DiagnosticsSettings(c)
-                Category.ABOUT -> AboutSettings(c)
-            }
+            SettingsPanel(current, c, nav)
         }
     }
 }
 
+
+/** The controls of one category. Shared by the remote layout (beside the list) and the phone layout (a page of its own). */
+@Composable
+fun SettingsPanel(current: Category, c: AppContainer, nav: Navigator) {
+    when (current) {
+        Category.PLAYBACK -> PlaybackSettings(c)
+        Category.VIDEO -> VideoSettings(c)
+        Category.AUDIO -> AudioSettings(c)
+        Category.SUBTITLES -> SubtitleSettings(c)
+        Category.LIVE -> LiveSettings(c)
+        Category.LIBRARIES -> LibrarySettings(c, nav)
+        Category.SEARCH -> SearchSettings(c)
+        Category.FAVOURITES -> FavouriteSettings(c)
+        Category.APPEARANCE -> AppearanceSettings(c)
+        Category.PRIVACY -> PrivacySettings(c)
+        Category.STORAGE -> StorageSettings(c)
+        Category.DIAGNOSTICS -> DiagnosticsSettings(c)
+        Category.ABOUT -> AboutSettings(c)
+    }
+}
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 

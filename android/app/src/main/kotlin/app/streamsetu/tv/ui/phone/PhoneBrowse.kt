@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.streamsetu.core.data.repo.UserRepository
+import app.streamsetu.core.data.repo.SearchTab
 import app.streamsetu.core.model.*
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.nav.Navigator
@@ -59,7 +60,7 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
     val banner by vm.banner.collectAsState()
     Column(Modifier.fillMaxSize()) {
         PhoneTopBar(title) {
-            RoundTap(Icons.Filled.Search, "Search") { nav.tab = Tab.SEARCH }
+            RoundTap(Icons.Filled.Search, "Search") { nav.openSearch(if (vm.kind == ContentKind.SERIES) SearchTab.SERIES else SearchTab.MOVIES) }
             RoundTap(Icons.Filled.Folder, "Folders") { folderSheet = true }
         }
         val list = cards
@@ -133,7 +134,7 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     Column(Modifier.fillMaxSize()) {
         PhoneTopBar("Live TV") {
             RoundTap(Icons.Filled.CalendarMonth, "TV Guide") { nav.tab = Tab.GUIDE }
-            RoundTap(Icons.Filled.Search, "Search") { nav.tab = Tab.SEARCH }
+            RoundTap(Icons.Filled.Search, "Search") { nav.openSearch(SearchTab.LIVE) }
         }
         LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item { Chip("All", browse == Browse.All, { vm.select(Browse.All) }, icon = Icons.Filled.GridView) }

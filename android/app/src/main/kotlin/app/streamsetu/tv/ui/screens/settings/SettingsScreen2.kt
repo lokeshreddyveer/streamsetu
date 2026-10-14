@@ -16,6 +16,7 @@ import app.streamsetu.tv.nav.Navigator
 import app.streamsetu.tv.ui.components.*
 import app.streamsetu.tv.ui.screens.home.HomeViewModel
 import app.streamsetu.tv.ui.theme.Tokens
+import app.streamsetu.tv.update.UpdateState
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.DateFormat
@@ -279,8 +280,8 @@ fun AboutSettings(c: AppContainer) {
     SettingGroup("StreamSetu") {
         InfoRow("Version", (pkg?.versionName ?: "?") + "  (build " + (pkg?.let { if (android.os.Build.VERSION.SDK_INT >= 28) it.longVersionCode else @Suppress("DEPRECATION") it.versionCode.toLong() } ?: 0) + ")")
         InfoRow("What it is", "A player for your own IPTV connections", "StreamSetu does not provide channels, movies, subscriptions or accounts.")
-        InfoRow("Updates", "Through your device's app store, or by installing a new file", "The app does not update itself.")
     }
+    UpdateSettings(c)
     SettingGroup("This device") {
         InfoRow("Device", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
         InfoRow("Android", "${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})", if (context.packageManager.hasSystemFeature("amazon.hardware.fire_tv")) "Amazon Fire TV" else null)
@@ -296,5 +297,39 @@ fun AboutSettings(c: AppContainer) {
     }
     SettingGroup("Support") {
         InfoRow("Something wrong?", "Export a diagnostic report", "Settings, Diagnostics. It contains no logins or provider addresses, so it is safe to share.")
+    }
+}
+
+
+/** Settings, About: check for a newer release, download it and open the installer. Nothing installs without the person confirming in the system installer. */
+@Composable
+fun UpdateSettings(c: AppContainer) {
+    val u = c.updates
+    if (!u.enabled) {
+        SettingGroup("Updates") { InfoRow("Updates", "Through your device\'s app store", "This build does not update itself.") }
+        return
+    }
+    val st by u.state.collectAsState()
+    val auto by c.settings.autoUpdateCheck.collectAsState()
+    val last = c.settings.lastUpdateCheckAt
+    SettingGroup("Updates", "Updates come from the StreamSetu releases on GitHub. A file is used only if its checksum matches the release notes and it is signed with the same key as this app. The system installer always asks you to confirm.") {
+        InfoRow("Installed version", u.installedVersion())
+        ToggleRow("Check for updates when the app opens", "Once a day, and never while something is playing. Only the release list is requested; nothing about you is sent.", auto) { c.settings.setAutoUpdateCheck(it) }
+        when (val s = st) {
+            is UpdateState.Checking -> InfoRow("Checking…", "")
+            is UpdateState.Downloading -> InfoRow("Downloading the update", "${s.percent}%", "Keep the app open until it finishes.")
+            is UpdateState.Available -> {
+                InfoRow("Version ${s.release.version} is available", "", s.asset.name + "  ·  " + "%.1f MB".format(s.asset.size / 1_048_576.0))
+                ActionRow("Download and install", "Downloads the file, checks it, then opens the installer.", "Download", confirm = false) { u.downloadAndInstall() }
+            }
+            is UpdateState.Ready -> ActionRow("Install version ${s.version}", "The update is downloaded and checked.", "Install", confirm = false) { u.install() }
+            is UpdateState.NeedsPermission -> {
+                InfoRow("One setting to allow", "", "Allow StreamSetu to install apps in the screen that opened, then come back and press Install.")
+                ActionRow("Install version ${s.version}", null, "Install", confirm = false) { u.install() }
+            }
+            is UpdateState.UpToDate -> { InfoRow("You are up to date", ""); ActionRow("Check again", null, "Check", confirm = false) { u.check(manual = true) } }
+            is UpdateState.Failed -> { ResultLine(s.message); ActionRow("Check for updates", null, "Check", confirm = false) { u.check(manual = true) } }
+            UpdateState.Idle -> ActionRow("Check for updates", if (last > 0) "Last checked " + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(last)) else null, "Check", confirm = false) { u.check(manual = true) }
+        }
     }
 }

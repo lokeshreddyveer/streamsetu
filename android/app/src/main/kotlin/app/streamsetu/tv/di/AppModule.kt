@@ -49,6 +49,12 @@ object AppModule {
     @Provides @Singleton fun sync(db: AppDatabase, sources: SourceRepository, credentials: CredentialStore, resolver: StreamResolver, @ApplicationContext c: Context) =
         SyncService(db, sources, credentials, resolver) { uri -> c.contentResolver.openInputStream(android.net.Uri.parse(uri)) ?: error("That file could not be opened.") }
 
+    @Provides @Singleton fun globalSearch(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository, folders: app.streamsetu.core.data.repo.FolderRepository, collections: app.streamsetu.core.data.repo.CollectionRepository, search: app.streamsetu.core.data.repo.SearchRepository, sources: SourceRepository) =
+        app.streamsetu.core.data.repo.GlobalSearch(db, library, folders, collections, search) { id -> sources.get(id)?.name }
+
+    @Provides @Singleton fun updates(@ApplicationContext c: Context, settings: AppSettings, scope: CoroutineScope, playback: PlaybackController) =
+        app.streamsetu.tv.update.UpdateManager(c, settings, scope, isBusy = { playback.current.value != null })
+
     @Provides @Singleton
     fun playback(@ApplicationContext c: Context, resolver: StreamResolver, settings: AppSettings, user: UserRepository, db: AppDatabase, sync: SyncService, sources: SourceRepository): PlaybackController = PlaybackController(
         c, resolver, settings,

@@ -141,6 +141,19 @@ class AppSettings(context: Context) {
     val refreshOnStart: StateFlow<Boolean> = _refreshOnStart
     fun setRefreshOnStart(v: Boolean) { prefs.edit().putBoolean("refreshOnStart", v).apply(); _refreshOnStart.value = v }
 
+    // ---- Updates ----
+    private val _autoUpdates = flow(prefs.getBoolean("autoUpdateCheck", true))
+    /** On: when the app opens (and nothing is playing) it asks GitHub whether a newer release exists. It never installs anything by itself. */
+    val autoUpdateCheck: StateFlow<Boolean> = _autoUpdates
+    fun setAutoUpdateCheck(v: Boolean) { prefs.edit().putBoolean("autoUpdateCheck", v).apply(); _autoUpdates.value = v }
+    var lastUpdateCheckAt: Long
+        get() = prefs.getLong("updateCheckedAt", 0L)
+        set(v) { prefs.edit().putLong("updateCheckedAt", v).apply() }
+    /** A version the person chose to skip: it is not offered again by the prompt (Settings still shows it). */
+    var skippedUpdate: String
+        get() = prefs.getString("updateSkipped", "").orEmpty()
+        set(v) { prefs.edit().putString("updateSkipped", v).apply() }
+
     // ---- Folders and privacy ----
     private val _dwell = flow(prefs.getBoolean("folderDwell", true))
     /** On: resting on a folder opens it after a moment. Off: it opens only when OK is pressed. */

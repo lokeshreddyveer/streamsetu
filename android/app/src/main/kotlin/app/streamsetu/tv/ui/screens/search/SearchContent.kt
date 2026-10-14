@@ -19,8 +19,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import app.streamsetu.core.data.repo.SearchResults
-import app.streamsetu.core.data.repo.SearchScope
+import app.streamsetu.core.data.repo.GlobalResults
+import app.streamsetu.core.data.repo.SearchItem
+import app.streamsetu.core.data.repo.SearchKind
+import app.streamsetu.core.data.repo.SearchTab
+import app.streamsetu.core.data.repo.SearchTarget
 import app.streamsetu.core.model.*
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.ui.components.*
@@ -29,30 +32,47 @@ import app.streamsetu.tv.ui.theme.Tokens
 import kotlinx.coroutines.delay
 
 /**
- * The search box and its results, shared by the global Search page and the Movies / Series search. Typing waits a moment (so each letter does not start a search),
- * and a newer text cancels the older search. Results come from the local index, so it works offline.
+ * The search box and its results, shared by the global Search page and the Movies / Series search. It uses the same engine as the iPhone app: "hindi movies 2024" works,
+ * a misspelt word is fixed when nothing matches (and the screen says what it searched for), and the results come in groups (Live TV, Movies, Series, Episodes, TV Guide,
+ * Folders, Collections). Typing waits a moment and a newer text cancels the older search. Results come from the local index, so it works offline.
  */
 @Composable
 fun SearchContent(
     c: AppContainer, kinds: Set<ContentKind>, modifier: Modifier = Modifier,
     onChannel: (Channel) -> Unit, onMovie: (Movie) -> Unit, onSeries: (Series) -> Unit, entry: FocusRequester? = null,
+    onEpisode: (Episode, Series) -> Unit = { _, _ -> }, onFolder: (ContentKind, String) -> Unit = { _, _ -> }, onCollection: (String, ContentKind) -> Unit = { _, _ -> },
 ) {
     var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<SearchResults?>(null) }
-    var suggestions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var results by remember { mutableStateOf<GlobalResults?>(null) }
     var typeFilter by remember { mutableStateOf<ContentKind?>(null) }
-    val recent by c.search.recent.collectAsState()
-    val scopeKinds = typeFilter?.let { setOf(it) } ?: kinds
+    // Opened from Movies, Series or Live TV: only that kind. Opened from the Search page: everything, with chips to narrow it.
+    val tab = when (typeFilter ?: kinds.singleOrNull()) { ContentKind.CHANNEL -> SearchTab.LIVE; ContentKind.MOVIE -> SearchTab.MOVIES; ContentKind.SERIES -> SearchTab.SERIES; else -> SearchTab.ALL }
+    val scopeKey = (kinds.singleOrNull()?.let { when (it) { ContentKind.CHANNEL -> SearchTab.LIVE; ContentKind.MOVIE -> SearchTab.MOVIES; else -> SearchTab.SERIES } } ?: SearchTab.ALL).name
+    var recent by remember { mutableStateOf(c.search.recentIn(scopeKey)) }
+    fun remember() { c.search.rememberIn(scopeKey, query); recent = c.search.recentIn(scopeKey) }
 
-    LaunchedEffect(query, scopeKinds) {
-        if (query.trim().length < 2) { results = null; suggestions = emptyList(); return@LaunchedEffect }
-        delay(130)
-        results = c.search.search(query, SearchScope(kinds = scopeKinds))
-        suggestions = c.search.suggestions(query)
+    LaunchedEffect(Unit) { c.globalSearch.warmUp() }
+    LaunchedEffect(query, tab) {
+        if (query.isBlank()) { results = null; return@LaunchedEffect }
+        results = null
+        delay(150)
+        results = runCatching { c.globalSearch.search(query, tab, if (tab == SearchTab.ALL) 12 else 60) }.getOrDefault(GlobalResults())
+    }
+    fun open(r: SearchItem) {
+        remember()
+        when (val t = r.target) {
+            is SearchTarget.PlayChannel -> onChannel(t.channel)
+            is SearchTarget.PlayProgramme -> onChannel(t.channel)
+            is SearchTarget.OpenMovie -> onMovie(t.movie)
+            is SearchTarget.OpenSeries -> onSeries(t.series)
+            is SearchTarget.PlayEpisode -> onEpisode(t.episode, t.series)
+            is SearchTarget.OpenFolder -> onFolder(t.kind, t.folderId)
+            is SearchTarget.OpenCollection -> onCollection(t.id, t.kind)
+        }
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TvTextField(query, { query = it }, "Search " + when { kinds.size == 1 && ContentKind.MOVIE in kinds -> "movies"; kinds.size == 1 && ContentKind.SERIES in kinds -> "series"; kinds.size == 1 -> "channels"; else -> "channels, movies and series" }, Modifier.widthIn(max = 640.dp).fillMaxWidth().then(if (entry != null) Modifier.focusRequester(entry) else Modifier))
+        TvTextField(query, { query = it }, if (tab == SearchTab.ALL) "Search channels, movies, series" else "Search " + tab.label.lowercase(), Modifier.widthIn(max = 520.dp), onDone = { remember() }, leadingIcon = Icons.Filled.Search)
         if (kinds.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             TypeChip("All", typeFilter == null) { typeFilter = null }
             if (ContentKind.CHANNEL in kinds) TypeChip("Live TV", typeFilter == ContentKind.CHANNEL) { typeFilter = ContentKind.CHANNEL }
@@ -61,24 +81,56 @@ fun SearchContent(
         }
         val r = results
         when {
-            query.trim().length < 2 -> LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            query.isBlank() -> LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (recent.isNotEmpty()) {
                     item { Eyebrow("Recent searches", Modifier.padding(vertical = 4.dp)) }
                     items(recent, key = { "r$it" }) { q -> SuggestionRow(q, Icons.Filled.History) { query = q } }
-                    item { TvButton("Clear history", { c.search.clearHistory() }, Modifier.padding(top = 6.dp), icon = Icons.Filled.Delete) }
-                } else item { Label("Type at least two letters. Search works offline, on what is already in your library.", Tokens.body, Tokens.textSecondary, maxLines = 2) }
+                    item { TvButton("Clear history", { c.search.clearIn(scopeKey); recent = emptyList() }, Modifier.padding(top = 6.dp), icon = Icons.Filled.Delete) }
+                } else item {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Label(if (tab == SearchTab.ALL) "Search your library" else "Search " + tab.label.lowercase(), Tokens.title, Tokens.text, FontWeight.SemiBold)
+                        Label(if (tab == SearchTab.ALL) "Channels, movies, series and episodes from every playlist. Works offline." else "Try a title, or something like \u201chindi movies 2024\u201d.", Tokens.body, Tokens.textSecondary, maxLines = 2)
+                    }
+                }
             }
             r == null -> Loading(Modifier.height(100.dp))
             r.isEmpty -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Label("No matches for “${query.trim()}”", Tokens.title, Tokens.text, FontWeight.SemiBold)
-                Label("Check the spelling, or try fewer words.", Tokens.body, Tokens.textSecondary)
+                Label("No results", Tokens.title, Tokens.text, FontWeight.SemiBold)
+                Label("Try fewer letters or another spelling.", Tokens.body, Tokens.textSecondary)
             }
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 30.dp)) {
-                if (suggestions.size > 1) item { LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { items(suggestions.take(5), key = { "s$it" }) { s -> TypeChip(s, false) { query = s } } } }
-                if (r.channels.isNotEmpty()) { item { SectionTitle("Live TV  ·  ${r.channels.size}") }; item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(r.channels, key = { it.id }) { ch -> ChannelCardSmall(ch) { c.search.remember(query); onChannel(ch) } } } } }
-                if (r.movies.isNotEmpty()) { item { SectionTitle("Movies  ·  ${r.movies.size}") }; item { LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(r.movies, key = { it.id }) { m -> PosterCard(m.title, m.posterUrl, { c.search.remember(query); onMovie(m) }, subtitle = m.year?.toString()) } } } }
-                if (r.series.isNotEmpty()) { item { SectionTitle("Series  ·  ${r.series.size}") }; item { LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(r.series, key = { it.id }) { s -> PosterCard(s.title, s.posterUrl, { c.search.remember(query); onSeries(s) }, subtitle = s.year?.toString()) } } } }
+                r.correctedTo?.let { fixed -> item { Label("Showing results for \u201c$fixed\u201d instead of \u201c${query.trim()}\u201d.", Tokens.small, Tokens.textSecondary, maxLines = 2) } }
+                SearchKind.entries.forEach { kind ->
+                    val rows = r.byKind[kind].orEmpty()
+                    if (rows.isEmpty()) return@forEach
+                    item(key = "t-${kind.name}") { SectionTitle("${kind.title}  ·  ${rows.size}") }
+                    when (kind) {
+                        SearchKind.CHANNEL -> item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(rows, key = { it.id }) { x -> ChannelCardSmall(x) { open(x) } } } }
+                        SearchKind.MOVIE, SearchKind.SERIES -> item {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                items(rows, key = { it.id }) { x ->
+                                    val rating = (x.target as? SearchTarget.OpenMovie)?.movie?.rating ?: (x.target as? SearchTarget.OpenSeries)?.series?.rating
+                                    PosterCard(x.title, x.artworkUrl, { open(x) }, subtitle = x.subtitle.substringBefore(" · ").ifBlank { null }, badge = app.streamsetu.tv.ui.screens.section.ratingBadge(rating))
+                                }
+                            }
+                        }
+                        else -> items(rows, key = { it.id }) { x -> ResultRow(x) { open(x) } }
+                    }
+                }
             }
+        }
+    }
+}
+
+/** An episode, a programme, a folder or a collection found by search, as one line. */
+@Composable
+private fun ResultRow(r: SearchItem, onClick: () -> Unit) = Focusable(onClick, Modifier.widthIn(max = 620.dp).fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
+    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        val icon = when (r.kind) { SearchKind.EPISODE -> Icons.Filled.PlayCircle; SearchKind.PROGRAMME -> Icons.Filled.CalendarMonth; SearchKind.FOLDER -> Icons.Filled.Folder; else -> Icons.Filled.Layers }
+        Image(icon, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(Tokens.accent))
+        Column(Modifier.weight(1f)) {
+            Label(r.title, Tokens.row, Tokens.text, FontWeight.Medium, maxLines = 1)
+            if (r.subtitle.isNotBlank()) Label(r.subtitle, Tokens.caption, Tokens.textSecondary, maxLines = 1)
         }
     }
 }
@@ -96,9 +148,9 @@ private fun SuggestionRow(text: String, icon: androidx.compose.ui.graphics.vecto
 }
 
 @Composable
-private fun ChannelCardSmall(ch: Channel, onClick: () -> Unit) = Focusable(onClick, Modifier.width(150.dp), scaleOnFocus = 1.03f) { _ ->
+private fun ChannelCardSmall(x: SearchItem, onClick: () -> Unit) = Focusable(onClick, Modifier.width(150.dp), scaleOnFocus = 1.03f) { _ ->
     Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        ChannelLogo(ch.logoUrl, ch.name, 40.dp); Label(ch.name, Tokens.small, Tokens.text, maxLines = 2)
+        ChannelLogo(x.artworkUrl, x.title, 40.dp); Label(x.title, Tokens.small, Tokens.text, maxLines = 2)
     }
 }
 
@@ -127,6 +179,9 @@ fun SearchScreen(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
         SearchContent(c, setOf(ContentKind.CHANNEL, ContentKind.MOVIE, ContentKind.SERIES), Modifier.fillMaxSize(), entry = entry,
             onChannel = { ch -> app.streamsetu.tv.play(c, nav, ChannelPlayable(ch)) },
             onMovie = { m -> nav.open(app.streamsetu.tv.nav.Overlay.MovieDetail(m)) },
-            onSeries = { s -> nav.open(app.streamsetu.tv.nav.Overlay.SeriesDetail(s)) })
+            onSeries = { s -> nav.open(app.streamsetu.tv.nav.Overlay.SeriesDetail(s)) },
+            onEpisode = { e, s -> app.streamsetu.tv.play(c, nav, EpisodePlayable(e, s)) },
+            onFolder = { k, id -> nav.openFolderTab(k, id) },
+            onCollection = { id, k -> nav.openCollection(k, id) })
     }
 }

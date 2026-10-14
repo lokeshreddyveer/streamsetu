@@ -214,7 +214,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | iCloud sync between your Apple devices | ✓ | ✓ | ✓ | – | – |
 | Backup and restore | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Siri and Shortcuts actions | – | ✓ | ✓ | – | – |
-| Updates itself | ✓ (Sparkle) | TestFlight | TestFlight | download the new APK | download the new APK |
+| Updates itself | ✓ (Sparkle) | TestFlight | TestFlight | ✓ (checks GitHub, asks before installing) | ✓ (checks GitHub, asks before installing) |
 
 The iPad runs the iPhone app, laid out for the larger screen. On the Apple apps, Picture in Picture and AirPlay work for streams AVPlayer plays; a stream played by mpv does not support them. Android phones and tablets run the same app as the Fire TV, with a touch layout chosen automatically when the device is not a television.
 
@@ -261,7 +261,7 @@ On the Mac, iPhone and iPad, **iCloud sync** keeps your setup the same on every 
 
 - **Folders** are the provider's own categories. You can search them, favorite, pin, reorder (up, down, first, last), hide, lock behind a PIN, give them a display name, and reset any of it. Nothing you do changes the provider's playlist; it is all stored on your device.
 - **Collections** of your own, and a shortcut row for Favorites, Watch Later, Recently Watched and Continue Watching.
-- **Search** runs on a local text index, so it works offline: prefix matching, accents and case ignored, typo-tolerant ranking, recent searches.
+- **Search** runs on a local text index, so it works offline. It reads queries the way you mean them ("hindi movies 2024" is Hindi titles from 2024), fixes a misspelt word from the words in your own library when nothing matches and says what it searched for, and groups results as Live TV, Movies, Series, Episodes, TV Guide programmes, Folders and Collections. It keeps recent searches for each screen. The iPhone, iPad, Mac, Android phone and Fire TV apps all search this way.
 - **Sorting** only offers orders the catalog can truly support (recently added, A–Z, release year, rating, recently watched, new episodes first…), remembered per section and per folder.
 
 ### Playback you can trust
@@ -281,6 +281,7 @@ On the Mac, iPhone and iPad, **iCloud sync** keeps your setup the same on every 
 
 ### Privacy and safety
 
+- The Android apps can check GitHub for a newer release (Settings, About, Updates). It is on by default, runs once a day, and only when nothing is playing. Only the public release list is requested, and nothing about you is sent. A downloaded file is used only if its checksum matches the release notes and it is signed with the same key as the installed app, and the system installer always asks you to confirm. You can turn the check off.
 - No account, no advertising, no analytics, no crash reporting sent anywhere.
 - Logins live in the system's secure storage (Android Keystore, Apple Keychain) and are never shown, logged or exported.
 - Diagnostic reports and backups remove addresses, user names, passwords and tokens.

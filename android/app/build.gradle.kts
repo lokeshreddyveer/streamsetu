@@ -21,6 +21,8 @@ android {
         // Override on the command line: -PappVersionCode=12 -PappVersionName=1.0.0
         versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
         versionName = (project.findProperty("appVersionName") as String?) ?: "0.2.0"
+        // In-app updating from GitHub releases. Turn it off (-PselfUpdate=false) for a build that goes through a store, which updates apps itself.
+        buildConfigField("boolean", "SELF_UPDATE", ((project.findProperty("selfUpdate") as String?) != "false").toString())
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }       // Fire TV and Android TV boxes are ARM
     }
     signingConfigs {
@@ -30,6 +32,13 @@ android {
         }
     }
     buildTypes {
+        // A debuggable build signed with the release key, for trying the in-app updater on a device without uninstalling. Not distributed.
+        create("selftest") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            isDebuggable = true; isMinifyEnabled = false; isShrinkResources = false
+            matchingFallbacks += "release"
+        }
         release {
             // With no keystore.properties the release build is signed with the debug key, so it can still be installed for testing; it must not be distributed.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
@@ -43,7 +52,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17"; freeCompilerArgs += "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi" }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
 }
 
 dependencies {

@@ -51,6 +51,10 @@ enum class SidebarMode { HIDDEN, COLLAPSED, EXPANDED }
 class Navigator {
     var base: Base by mutableStateOf(Base.ChooseLibrary)
     var tab by mutableStateOf(Tab.HOME)
+    /** What the open search covers, and the screen it was opened from (Back returns there). */
+    var searchScope by mutableStateOf(app.streamsetu.core.data.repo.SearchTab.ALL)
+    var searchFrom by mutableStateOf(Tab.HOME)
+    fun openSearch(scope: app.streamsetu.core.data.repo.SearchTab = app.streamsetu.core.data.repo.SearchTab.ALL) { searchScope = scope; searchFrom = if (tab == Tab.SEARCH) searchFrom else tab; tab = Tab.SEARCH }
     val overlays = mutableStateListOf<Overlay>()
     /** Set when something elsewhere (a Home tile) wants a section opened on one folder; the section takes it when it appears. */
     var pendingFolder: Pair<app.streamsetu.core.model.ContentKind, String>? = null

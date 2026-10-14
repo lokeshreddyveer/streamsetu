@@ -36,6 +36,7 @@ fun PhoneApp(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
             base is Base.Setup || base is Base.Combined -> nav.base = Base.ChooseLibrary
             base == Base.ChooseLibrary || base == Base.Welcome -> onExit()
             base == Base.Shell && nav.settingsFromChooser && nav.tab == Tab.SETTINGS -> { nav.settingsFromChooser = false; nav.toChooser() }
+            base == Base.Shell && nav.tab == Tab.SEARCH -> nav.tab = nav.searchFrom
             base == Base.Shell && nav.tab != Tab.HOME -> nav.tab = Tab.HOME
             else -> onExit()
         }
@@ -49,6 +50,7 @@ fun PhoneApp(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
             is Base.Combined -> app.streamsetu.tv.ui.screens.library.CombinedScreen(base.editing, nav)
             Base.Shell -> PhoneShell(c, nav)
         }
+        app.streamsetu.tv.ui.components.PhoneUpdatePrompt(c, suppress = nav.top != null || base != Base.Shell)
         nav.top?.let { top ->
             when (val o = top) {
                 is Overlay.MovieDetail -> PhoneMovieDetail(o.movie, c, nav)

@@ -67,7 +67,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             item {
-                PhoneTopBar("Home", leading = { RoundTap(Icons.Filled.Layers, "Libraries") { c.library.close(); nav.toChooser() } }) { RoundTap(Icons.Filled.Search, "Search") { nav.tab = Tab.SEARCH } }
+                PhoneTopBar("Home", leading = { RoundTap(Icons.Filled.Layers, "Libraries") { c.library.close(); nav.toChooser() } }) { RoundTap(Icons.Filled.Search, "Search") { nav.openSearch() } }
             }
             item {
                 PhoneBanner(banner,

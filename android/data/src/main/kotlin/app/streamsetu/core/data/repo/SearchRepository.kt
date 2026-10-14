@@ -28,6 +28,15 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
         val list = (listOf(q) + _recent.value.filter { !it.equals(q, true) }).take(10)
         prefs.edit().putString("recent", list.joinToString("\n")).apply(); _recent.value = list
     }
+    /** Recent searches kept apart for each screen they were made on (Home, Live TV, Movies, Series), newest first, as on the iPhone. */
+    fun recentIn(scope: String): List<String> = prefs.getString("recent.$scope", "").orEmpty().split('\n').filter { it.isNotBlank() }
+    fun rememberIn(scope: String, query: String) {
+        val q = query.trim(); if (q.length < 2) return
+        val list = (listOf(q) + recentIn(scope).filter { !it.equals(q, true) }).take(8)
+        prefs.edit().putString("recent.$scope", list.joinToString("\n")).apply()
+    }
+    fun clearIn(scope: String) { prefs.edit().remove("recent.$scope").apply() }
+
     fun clearHistory() { prefs.edit().remove("recent").apply(); _recent.value = emptyList() }
 
     suspend fun search(typed: String, scope: SearchScope = SearchScope(), limit: Int = 60): SearchResults = withContext(Dispatchers.IO) {
