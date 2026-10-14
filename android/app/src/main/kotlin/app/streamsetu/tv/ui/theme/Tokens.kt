@@ -12,6 +12,9 @@ object Tokens {
     val card = Color(0xFF151515)
     val elevated = Color(0xFF1E1E1E)
     val accent = Color(0xFF43DCE8)
+    /** The warm focus accent of the opening screen and Home. */
+    val gold = Color(0xFFF5AD42)
+    val goldHighlight = Color(0xFFFFCA76)
     val focusedSurface = Color(0xFF2A2A2A)
     val text = Color(0xFFF5F6F8)
     val textSecondary = Color(0xFFB8CCD8)
@@ -39,8 +42,8 @@ object Tokens {
     /** About 5 % of the screen on each side, kept clear of the edge (television-safe area). */
     val safeHorizontal = 48.dp
     val safeVertical = 27.dp
-    val sidebarCompact = 64.dp
-    val sidebarExpanded = 208.dp
+    val sidebarCompact = 76.dp
+    val sidebarExpanded = 240.dp
     val folderPanelWidth = 220.dp
 
     val display = 26.sp; val pageTitle = 21.sp; val title = 18.sp; val heading = 16.sp

@@ -37,6 +37,8 @@ class UserRepository(private val db: AppDatabase) {
     fun continueWatching(limit: Int = 20): Flow<List<WatchProgress>> = dao.continueWatching(limit).map { l -> l.map { it.toModel() } }
 
     suspend fun clearHistory() = dao.clearLog()
+    /** Takes one title out of Recently Watched. Its resume point and favorites are not touched. */
+    suspend fun removeFromRecent(itemId: String) = dao.deleteLogFor(itemId)
     suspend fun clearList(list: String) = dao.clearList(list)
     suspend fun clearAllProgress() = dao.clearAllProgress()
 

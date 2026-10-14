@@ -45,8 +45,9 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
             }
         }
     }
-    val banner: StateFlow<List<BannerItem>> = combine(featured, info) { list, infos ->
-        list.mapNotNull { p ->
+    val banner: StateFlow<List<BannerItem>> = combine(featured, info, c.user.favouriteIds(UserRepository.FAVOURITES)) { list, infos, favs ->
+        // Titles with a picture first, then favorites; a title that comes from two connections is one slide.
+        list.distinctBy { app.streamsetu.core.data.repo.SearchText.normalize(it.title) }.mapNotNull { p ->
             when (p) {
                 is MoviePlayable -> { val m = p.movie; val i = infos[m.id]
                     BannerItem(m.id, m.title, listOfNotNull(i?.genre?.takeIf { it.isNotBlank() }, m.year?.toString(), i?.duration?.takeIf { it.isNotBlank() }), (i?.plot ?: m.plot)?.takeIf { it.isNotBlank() },
@@ -56,9 +57,17 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
                 else -> null
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.map { items -> items.sortedByDescending { !it.imageUrl.isNullOrBlank() } }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     fun playableFor(bannerId: String): Playable? = featured.value.firstOrNull { it.id == bannerId }
 
+    val favouriteIds: StateFlow<Set<String>> = c.user.favouriteIds(UserRepository.FAVOURITES).stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+    val hiddenRows: StateFlow<Set<String>> = c.ui.homeHidden
+    val shortcutOrder: List<String> get() = c.ui.shortcutOrder("HOME", listOf("favorites", "later", "recent", "continue"))
+    fun moveShortcut(name: String, delta: Int) {
+        val l = shortcutOrder.toMutableList(); val i = l.indexOf(name); val j = i + delta
+        if (i < 0 || j !in l.indices) return
+        l.removeAt(i); l.add(j, name); c.ui.setShortcutOrder("HOME", l)
+    }
     val watchLaterIds: StateFlow<Set<String>> = c.user.favouriteIds(UserRepository.WATCH_LATER).stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
     fun toggleWatchLater(id: String, kind: ContentKind) = viewModelScope.launch { c.user.setFavourite(id, kind, id !in watchLaterIds.value, UserRepository.WATCH_LATER) }
 
@@ -114,11 +123,43 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     val recentMovies: StateFlow<List<Movie>> = c.browse.movies(Browse.RecentlyAdded, SortSpec(SortField.ADDED), 30).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val recentSeries: StateFlow<List<Series>> = c.browse.series(Browse.RecentlyAdded, SortSpec(SortField.ADDED), 30).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val collections: StateFlow<List<UserCollection>> = combine(c.collections.collections(ContentKind.MOVIE), c.collections.collections(ContentKind.SERIES)) { m, s -> m + s }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val categories: StateFlow<List<CategoryTile>> = combine(c.folders.folders(ContentKind.MOVIE), c.folders.folders(ContentKind.SERIES)) { m, s ->
         (m.filter { !it.pref.hidden && !it.pref.locked && it.count > 0 }.take(12).map { CategoryTile(ContentKind.MOVIE, it) } + s.filter { !it.pref.hidden && !it.pref.locked && it.count > 0 }.take(12).map { CategoryTile(ContentKind.SERIES, it) })
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val order: List<String> get() = c.ui.homeOrder(DEFAULT_ORDER)
+    /** Everything watched lately, whatever it is, newest first (the "Recently Watched" shortcut). */
+    val recentWatched: StateFlow<List<FavItem>> = combine(c.user.history(120), c.library.sourceIds) { log, lib -> log to lib }.mapLatest { (log, lib) ->
+        val seen = HashSet<String>(); val out = ArrayList<FavItem>()
+        for (h in log) {
+            val item: FavItem? = when (h.kind) {
+                "CHANNEL" -> c.catalog.channel(h.itemId)?.takeIf { it.sourceId in lib }?.let { FavItem.Ch(it) }
+                "MOVIE" -> c.catalog.movie(h.itemId)?.takeIf { it.sourceId in lib }?.let { FavItem.Mv(it) }
+                "EPISODE" -> c.catalog.episode(h.itemId)?.let { e -> c.catalog.series(e.seriesId)?.takeIf { it.sourceId in lib }?.let { FavItem.Sr(it) } }
+                else -> null
+            }
+            if (item != null && seen.add(item.id)) out += item
+            if (out.size >= 60) break
+        }
+        out
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val order: List<String> get() = visibleRows(c.ui.homeOrder(DEFAULT_ORDER), hiddenRows.value)
+
+    // ---- Actions behind the long-press menu (the screen only passes typed identities in) ----
+    fun setFavorite(id: String, kind: ContentKind, on: Boolean) = viewModelScope.launch { c.user.setFavourite(id, kind, on) }
+    fun setWatchLater(id: String, kind: ContentKind, on: Boolean) = viewModelScope.launch { c.user.setFavourite(id, kind, on, UserRepository.WATCH_LATER) }
+    fun setWatched(id: String, kind: ContentKind, seriesId: String?, watched: Boolean) = viewModelScope.launch { c.user.setWatched(id, kind, seriesId, watched) }
+    /** Takes a title out of Continue Watching: only its resume point goes; watch history stays. */
+    fun removeFromContinue(id: String) = viewModelScope.launch { c.user.clearResumePoint(id) }
+    fun removeFromRecent(id: String) = viewModelScope.launch { c.user.removeFromRecent(id) }
+    fun toggleFolderFavorite(t: CategoryTile) = viewModelScope.launch { c.folders.toggleFavorite(t.kind, t.folder) }
+    fun toggleFolderPinned(t: CategoryTile) = viewModelScope.launch { c.folders.togglePinned(t.kind, t.folder) }
+    fun hideFolder(t: CategoryTile) = viewModelScope.launch { c.folders.toggleHidden(t.kind, t.folder) }
+    suspend fun movieVariants(m: Movie) = c.search.movieVariants(m.title)
+    suspend fun seriesVariants(s: Series) = c.search.seriesVariants(s.title)
+    suspend fun hasGuide(ch: Channel): Boolean = runCatching { c.epg.resolve(listOf(ch))[ch.id] != null }.getOrDefault(false)
+    suspend fun progressOf(id: String): WatchProgress? = c.user.progress(id)
 
     fun nowPlayingCatalogReady() = c.library.sourceIds.value.isNotEmpty()
 

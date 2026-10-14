@@ -78,6 +78,12 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
             }
             Spacer(Modifier.height(4.dp))
         }
+        // The mark and name: the mark never moves; the name fades in as the panel widens.
+        Row(Modifier.height(48.dp).padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Image(painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)))
+            Label("StreamSetu", Tokens.heading, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 12.dp).graphicsLayer { alpha = labelAlpha })
+        }
+        Spacer(Modifier.height(4.dp))
         Main.forEach { SidebarEntry(it, selected, entry, labelAlpha, onSelect) }
         Box(Modifier.padding(vertical = 4.dp, horizontal = 10.dp).fillMaxWidth().height(1.dp).background(Color(0x1FFFFFFF)))
         Other.forEach { SidebarEntry(it, selected, entry, labelAlpha, onSelect) }
@@ -90,9 +96,9 @@ private fun SidebarEntry(t: Tab, selected: Tab, entry: FocusRequester, labelAlph
     Focusable({ onSelect(t) }, (if (isSel) Modifier.focusRequester(entry) else Modifier).fillMaxWidth().height(Row.dp), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color(0x26FFFFFF), shape = RoundedCornerShape(12.dp)) { f ->
         Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
             // The accent bar sits at the very left; the icon box is the same width in both states, so nothing shifts when the panel widens.
-            Box(Modifier.padding(start = 2.dp).width(3.dp).height(20.dp).background(if (isSel) Tokens.accent else Color.Transparent, RoundedCornerShape(2.dp)))
+            Box(Modifier.padding(start = 2.dp).width(3.dp).height(20.dp).background(if (isSel) Tokens.gold else Color.Transparent, RoundedCornerShape(2.dp)))
             Box(Modifier.width(IconBox.dp - 3.dp), Alignment.Center) {
-                Image(iconOf(t), nameOf(t), Modifier.size(22.dp), colorFilter = ColorFilter.tint(if (f || isSel) Color.White else Tokens.textSecondary))
+                Image(iconOf(t), nameOf(t), Modifier.size(22.dp), colorFilter = ColorFilter.tint(if (isSel) Tokens.gold else if (f) Color.White else Tokens.textSecondary))
             }
             Label(nameOf(t), Tokens.nav, if (f || isSel) Color.White else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.padding(start = 10.dp).graphicsLayer { alpha = labelAlpha })
         }

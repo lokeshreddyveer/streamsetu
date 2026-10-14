@@ -119,7 +119,9 @@ fun FavouriteSettings(c: AppContainer) {
         ActionRow("Clear watch history", "Removes Recently Watched. Resume positions and favorites stay.", "Clear", danger = true) { scope.launch { c.user.clearHistory(); msg = "Watch history cleared." } }
         ActionRow("Forget all resume positions", "Continue Watching empties; watched marks are removed too. Favorites and history stay.", "Forget", danger = true) { scope.launch { c.user.clearAllProgress(); msg = "Resume positions cleared." } }
     }
-    SettingGroup("Home rows", "Choose where each row sits on Home. A row with nothing in it is never shown.") {
+    val hiddenRows by c.ui.homeHidden.collectAsState()
+    SettingGroup("Home rows", "Choose where each row sits on Home, and which rows to show. A row with nothing in it is never shown.") {
+        order.forEach { id -> ToggleRow("Show: ${names[id] ?: id}", on = id !in hiddenRows) { c.ui.setHomeRowHidden(id, !it) } }
         order.forEachIndexed { i, id ->
             ChoiceRow(names[id] ?: id, options = (1..order.size).map { it to "Position $it" }, value = i + 1) { pos ->
                 val l = order.toMutableList(); l.removeAt(i); l.add(pos - 1, id); order = l; c.ui.setHomeOrder(l)

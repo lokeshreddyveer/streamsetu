@@ -64,4 +64,9 @@ class UiPrefs(context: Context) {
     /** Live TV shows one row for a channel that comes in several qualities or from several connections. */
     val groupDuplicates: StateFlow<Boolean> = _group
     fun setGroupDuplicates(v: Boolean) { prefs.edit().putBoolean("groupDuplicates", v).apply(); _group.value = v }
+
+    private val _homeHidden = flow(prefs.getString("homeHidden", "")!!.split(',').filter { it.isNotBlank() }.toSet())
+    /** Home rows the person turned off. */
+    val homeHidden: StateFlow<Set<String>> = _homeHidden
+    fun setHomeRowHidden(id: String, hidden: Boolean) { val n = if (hidden) _homeHidden.value + id else _homeHidden.value - id; prefs.edit().putString("homeHidden", n.joinToString(",")).apply(); _homeHidden.value = n }
 }

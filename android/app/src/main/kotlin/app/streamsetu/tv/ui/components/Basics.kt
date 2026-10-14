@@ -70,6 +70,9 @@ object LongPress {
     @Volatile var handler: Handler? = null
 }
 
+/** The colour of the focus frame. Home and the opening screen set it to gold; elsewhere it is the app accent. */
+val LocalFocusRing = androidx.compose.runtime.compositionLocalOf<Color> { Color.Unspecified }
+
 /** A thicker white focus frame for people who find the thin accent line hard to see. */
 val LocalHighContrast = androidx.compose.runtime.compositionLocalOf { false }
 
@@ -102,7 +105,7 @@ fun Focusable(
     focusedContainer: Color = Tokens.focusedSurface,
     scaleOnFocus: Float = app.streamsetu.core.ui.motion.Motion.CARD_FOCUS_SCALE,
     hairline: Boolean = false,
-    ring: Color = Tokens.accent,
+    ring: Color = Color.Unspecified,
     onFocus: (Boolean) -> Unit = {},
     onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
@@ -110,6 +113,7 @@ fun Focusable(
     var focused by remember { mutableStateOf(false) }
     val longClick by androidx.compose.runtime.rememberUpdatedState(onLongClick)
     val highContrast = LocalHighContrast.current
+    val ringColor = if (ring != Color.Unspecified) ring else LocalFocusRing.current.takeIf { it != Color.Unspecified } ?: Tokens.accent
     val enabled = LocalFocusEnabled.current
     val own = remember { FocusRequester() }
     val inOverlay = LocalInOverlay.current
@@ -121,7 +125,7 @@ fun Focusable(
             // The ring is drawn, not added as a layer, so taking and losing focus does not rebuild the modifier chain.
             .drawWithContent {
                 drawContent()
-                if (focused) strokeOutline(shape.createOutline(size, layoutDirection, this), if (highContrast) Color.White else ring, (if (highContrast) 3.dp else 1.5.dp).toPx() * 2)
+                if (focused) strokeOutline(shape.createOutline(size, layoutDirection, this), if (highContrast) Color.White else ringColor, (if (highContrast) 3.dp else 1.5.dp).toPx() * 2)
                 else if (hairline) strokeOutline(shape.createOutline(size, layoutDirection, this), Tokens.line, 1.dp.toPx() * 2)
             }
             .focusRequester(own)
@@ -180,9 +184,9 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
 
 /** A wide 16:9 card (Continue Watching). */
 @Composable
-fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, progress: Float = 0f, width: Dp = Tokens.landscapeWidth, badge: String? = null) {
+fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, progress: Float = 0f, width: Dp = Tokens.landscapeWidth, badge: String? = null, onLongClick: (() -> Unit)? = null) {
     Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f)) { _ ->
+        Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f), onLongClick = onLongClick) { _ ->
             PosterPlaceholder(title, Modifier.fillMaxSize())
             if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }

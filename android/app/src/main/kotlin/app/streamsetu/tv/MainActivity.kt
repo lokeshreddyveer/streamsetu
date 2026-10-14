@@ -173,6 +173,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                     is Overlay.SeriesDetail -> app.streamsetu.tv.ui.screens.detail.SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
                     is Overlay.Player -> PlayerScreen(c, onClose = { closePlayer(c, nav) })
                     is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
+                    is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav)
                 }
             } }
         }
@@ -190,6 +191,13 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
         kotlinx.coroutines.delay(220)
         repeat(8) { if (runCatching { contentEntry.requestFocus() }.isSuccess) return@LaunchedEffect; kotlinx.coroutines.delay(120) }
     }
+    // When a detail page, the player or a menu closes, the card that was under the remote gets it back.
+    val overlayOpen = nav.top != null
+    LaunchedEffect(overlayOpen) {
+        if (overlayOpen || nav.lastClosedAt == 0L) return@LaunchedEffect
+        val back = app.streamsetu.tv.ui.components.FocusMemory.last ?: return@LaunchedEffect
+        repeat(10) { kotlinx.coroutines.delay(120); if (runCatching { back.requestFocus() }.isSuccess) return@LaunchedEffect }
+    }
     // Back from a page's root (or Back on Home) sends the remote to the sidebar, once per request.
     LaunchedEffect(nav.sidebarFocusTick) {
         if (nav.sidebarFocusTick == 0) return@LaunchedEffect
@@ -197,6 +205,7 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
         repeat(8) { if (runCatching { sidebarEntry.requestFocus() }.isSuccess) return@LaunchedEffect; kotlinx.coroutines.delay(80) }
     }
     // One instance of the sidebar, in the layout beside the page. When it is HIDDEN it takes no width and is not composed, so it cannot take focus or keys.
+    androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalFocusRing provides if (nav.tab == Tab.HOME) app.streamsetu.tv.ui.theme.Tokens.gold else androidx.compose.ui.graphics.Color.Unspecified) {
     Row(Modifier.fillMaxSize()) {
         androidx.compose.animation.AnimatedVisibility(
             mode != app.streamsetu.tv.nav.SidebarMode.HIDDEN,
@@ -221,6 +230,7 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
                 }
             }
         }
+    }
     }
 }
 

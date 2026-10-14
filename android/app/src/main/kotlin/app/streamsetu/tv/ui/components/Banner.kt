@@ -63,6 +63,9 @@ fun FeaturedBanner(
     primaryEntry: FocusRequester? = null,
     startPadding: Dp = Tokens.screenPadding,
     intervalSeconds: Int = 9,
+    paused: Boolean = false,
+    isFavorite: (BannerItem) -> Boolean = { false },
+    onToggleFavorite: ((BannerItem) -> Unit)? = null,
 ) {
     if (items.isEmpty()) return
     val reduced = LocalReducedMotion.current
@@ -75,9 +78,10 @@ fun FeaturedBanner(
     val context = LocalContext.current
 
     // Rotate every few seconds, unless a key was pressed on the banner in the last 8 seconds. Reduced motion keeps the rotation but drops the fade (the picture just changes).
+    val pausedNow by rememberUpdatedState(paused)
     LaunchedEffect(items, intervalSeconds) {
         if (n < 2) return@LaunchedEffect
-        while (true) { delay(intervalSeconds * 1000L); if (System.currentTimeMillis() - lastKey > 8000) index = (index + 1) % n }
+        while (true) { delay(intervalSeconds * 1000L); if (!pausedNow && System.currentTimeMillis() - lastKey > 8000) index = (index + 1) % n }
     }
     // The next slide's picture is requested now, so the crossfade never waits on the network.
     LaunchedEffect(i, items) {
@@ -112,6 +116,7 @@ fun FeaturedBanner(
                 TvButton("Details", { onDetails(item) }, icon = Icons.Filled.Info)
                 val listed = isListed(item)
                 TvButton(if (listed) "Remove" else listedLabel, { onToggleListed(item) }, icon = if (listed) Icons.Filled.Check else Icons.Filled.Add)
+                if (onToggleFavorite != null) { val fav = isFavorite(item); TvButton(if (fav) "Favorited" else "Favorite", { onToggleFavorite(item) }, icon = if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder) }
             }
         }
         if (n > 1) Row(Modifier.align(Alignment.BottomEnd).padding(end = Tokens.screenPadding, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {

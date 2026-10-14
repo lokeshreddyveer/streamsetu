@@ -114,6 +114,7 @@ interface UserDao {
     @Query("SELECT * FROM watch_log WHERE kind = 'CHANNEL' ORDER BY playedAt DESC LIMIT :limit") fun recentChannelLog(limit: Int): Flow<List<WatchLogEntity>>
     @Query("SELECT * FROM watch_log ORDER BY playedAt DESC LIMIT :limit") fun history(limit: Int): Flow<List<WatchLogEntity>>
     @Query("DELETE FROM watch_log") suspend fun clearLog()
+    @Query("DELETE FROM watch_log WHERE itemId = :id") suspend fun deleteLogFor(id: String)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putLog(l: List<WatchLogEntity>)
     @Query("DELETE FROM watch_log WHERE id NOT IN (SELECT id FROM watch_log ORDER BY playedAt DESC LIMIT 500)") suspend fun trimLog()
     @Query("SELECT itemId, COUNT(*) AS plays FROM watch_log WHERE kind = 'CHANNEL' AND playedAt > :since GROUP BY itemId HAVING plays >= 2 ORDER BY plays DESC LIMIT :limit")

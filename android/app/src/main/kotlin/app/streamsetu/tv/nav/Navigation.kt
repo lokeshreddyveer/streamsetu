@@ -33,6 +33,8 @@ sealed interface Overlay {
     data class SeriesDetail(val series: Series) : Overlay
     data class MovieDetail(val movie: Movie) : Overlay
     data class ManageLibrary(val entry: LibraryEntry) : Overlay
+    /** A full list behind a Home shortcut: "favorites", "later", "recent" or "continue". */
+    data class Collection(val id: String) : Overlay
 }
 
 /** How the app-wide sidebar is shown. HIDDEN takes no width and cannot take focus. */
@@ -53,6 +55,12 @@ class Navigator {
     /** Set when something elsewhere (a Home tile) wants a section opened on one folder; the section takes it when it appears. */
     var pendingFolder: Pair<app.streamsetu.core.model.ContentKind, String>? = null
     fun openFolder(kind: app.streamsetu.core.model.ContentKind, folderId: String) { pendingFolder = kind to folderId; go(if (kind == app.streamsetu.core.model.ContentKind.MOVIE) Tab.MOVIES else Tab.SERIES) }
+
+    fun openFolderTab(kind: app.streamsetu.core.model.ContentKind, folderId: String) { pendingFolder = kind to folderId; go(when (kind) { app.streamsetu.core.model.ContentKind.MOVIE -> Tab.MOVIES; app.streamsetu.core.model.ContentKind.SERIES -> Tab.SERIES; else -> Tab.LIVE }) }
+
+    /** Set by Home so Movies or Series opens on one of the person's collections. */
+    var pendingCollection: Triple<app.streamsetu.core.model.ContentKind, String, Boolean>? = null
+    fun openCollection(kind: app.streamsetu.core.model.ContentKind, id: String) { pendingCollection = Triple(kind, id, true); go(if (kind == app.streamsetu.core.model.ContentKind.SERIES) Tab.SERIES else Tab.MOVIES) }
 
     /** True while a page other than Home has asked for the sidebar (Back from its root). */
     var sidebarRevealed by mutableStateOf(false)
