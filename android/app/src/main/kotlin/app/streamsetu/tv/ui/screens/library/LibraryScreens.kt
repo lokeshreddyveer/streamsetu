@@ -4,6 +4,9 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.shape.CircleShape
@@ -59,7 +62,10 @@ private fun healthColor(e: LibraryEntry) = when (e.health) {
 
 private fun lastSync(ms: Long) = if (ms <= 0) "Never" else DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(ms))
 
-private val Gold = Color(0xFFFFB347)
+private val Gold = Color(0xFFF6A72D)
+private val Amber = Color(0xFFFFBE62)
+private val Night = Color(0xFF05080D)
+private val Slate = Color(0xFFA9B6C8)
 
 /** The opening screen of every launch: the person picks which library to open; nothing opens by itself. */
 @Composable
@@ -73,28 +79,32 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
     val initialFocus = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     var addMenu by remember { mutableStateOf(false) }
+    var recentMenu by remember { mutableStateOf(false) }
     LaunchedEffect(initial) { if (initial != null && !focused) { delay(120); runCatching { initialFocus.requestFocus() } } }
     LaunchedEffect(initial) { if (previewId == null) previewId = initial }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF0A111B), Night))))
+    Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         // Top: the mark, and on the right the settings button and the clock.
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)))
             Spacer(Modifier.width(12.dp))
             Column {
-                Row { Label("Stream", Tokens.display, Tokens.text, FontWeight.Bold); Label("Setu", Tokens.display, Tokens.accent, FontWeight.Bold) }
-                Label("YOUR STREAMS. ONE HOME.", Tokens.eyebrow, Tokens.textTertiary, FontWeight.Medium, letterSpacing = 2.sp)
+                Row { Label("Stream", Tokens.display, Tokens.text, FontWeight.Bold); Label("Setu", Tokens.display, Gold, FontWeight.Bold) }
+                Label("YOUR STREAMS. ONE HOME.", Tokens.eyebrow, Slate, FontWeight.Medium, letterSpacing = 3.sp)
             }
             Spacer(Modifier.weight(1f))
-            Focusable({ nav.openSettingsFromChooser() }, Modifier, shape = RoundedCornerShape(50), container = Color(0x14FFFFFF), ring = Gold, scaleOnFocus = 1.06f) { f ->
-                Image(Icons.Filled.Settings, "Settings", Modifier.padding(11.dp).size(20.dp), colorFilter = ColorFilter.tint(if (f) Gold else Tokens.textSecondary))
-            }
+            UtilityButton(Icons.Filled.Search, "Search") { preview?.takeIf { it.usable }?.let { e -> vm.open(e) { nav.enterLibrary(); nav.go(app.streamsetu.tv.nav.Tab.SEARCH) } } ?: run { recentMenu = true } }
+            Spacer(Modifier.width(10.dp))
+            UtilityButton(Icons.Filled.History, "Recent libraries") { recentMenu = true }
+            Spacer(Modifier.width(10.dp))
+            UtilityButton(Icons.Filled.Settings, "Settings") { nav.openSettingsFromChooser() }
             Spacer(Modifier.width(18.dp))
             Clock()
         }
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             // Left: the libraries.
-            Column(Modifier.weight(0.31f).fillMaxHeight().background(Color(0xFF0B0B0C), RoundedCornerShape(22.dp)).border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(22.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(Modifier.weight(0.30f).fillMaxHeight().background(Color(0xCC0A1018), RoundedCornerShape(24.dp)).border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(22.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Label("Choose Your Library", Tokens.pageTitle, Tokens.text, FontWeight.Bold)
                 Label("Select a connection to start watching.", Tokens.small, Tokens.textSecondary, modifier = Modifier.padding(bottom = 6.dp))
                 if (list == null) Loading(Modifier.weight(1f)) else LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -116,18 +126,20 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
                 }
             }
             // Right: the selected library, from details kept on this device.
-            Column(Modifier.weight(0.69f).fillMaxHeight().clip(RoundedCornerShape(22.dp)).background(Color(0xFF080808)).border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(22.dp))) {
+            Column(Modifier.weight(0.70f).fillMaxHeight().clip(RoundedCornerShape(24.dp)).background(Color(0xFF070B11)).border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(24.dp))) {
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    // The lion fades in from the right, so the writing on the left stays easy to read.
-                    Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.align(Alignment.CenterEnd).fillMaxHeight().aspectRatio(1f).graphicsLayer { alpha = 0.5f }, contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.horizontalGradient(0f to Color(0xFF080808), 0.55f to Color(0xE6080808), 1f to Color(0x11080808))))
+                    HeroArt(Modifier.fillMaxSize())
+                    // The lion sits to the right with a warm glow; the left half stays dark so the writing is easy to read.
+                    Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.align(Alignment.CenterEnd).padding(end = 10.dp).fillMaxHeight(0.92f).aspectRatio(1f).clip(RoundedCornerShape(40.dp)).graphicsLayer { alpha = 0.92f }, contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.horizontalGradient(0f to Color(0xFF05080D), 0.5f to Color(0xE605080D), 1f to Color(0x0005080D))))
                     Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (preview == null) { Eyebrow("Selected library"); Label("No libraries yet", Tokens.display, Tokens.text, FontWeight.Bold); Label("Add a connection below to get started.", Tokens.body, Tokens.textSecondary) }
                         else {
-                            Eyebrow("Selected library")
-                            Label(preview.name, Tokens.display * 1.5f, Tokens.text, FontWeight.Bold, maxLines = 2)
-                            Label(when (preview.kind) { LibraryEntry.Kind.COMBINED -> "Movies, series and live television in one place."; LibraryEntry.Kind.UNFINISHED -> "Setup was not finished. Continue where you left off."; else -> "${preview.typeLabel}  ·  last read ${lastSync(preview.lastSyncAt)}" }, Tokens.body, Tokens.textSecondary, maxLines = 2)
+                            Eyebrow("Selected library", color = Slate)
+                            Label(preview.name, Tokens.display * 1.7f, Color(0xFFF5F7FA), FontWeight.Bold, maxLines = 2)
+                            Label(when (preview.kind) { LibraryEntry.Kind.COMBINED -> "Movies, series and live television in one place."; LibraryEntry.Kind.UNFINISHED -> "Setup was not finished. Continue where you left off."; else -> "${preview.typeLabel}  ·  last read ${lastSync(preview.lastSyncAt)}" }, Tokens.body, Slate, maxLines = 2)
                             Spacer(Modifier.weight(1f))
+                            if (preview.health == LibraryEntry.Health.LAST_READ_FAILED) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Box(Modifier.size(8.dp).background(Amber, CircleShape)); Label("Offline or needs attention: opening uses what is saved on this device.", Tokens.small, Amber) }
                             if (preview.kind != LibraryEntry.Kind.UNFINISHED) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 StatTile(Icons.Filled.LiveTv, "Channels", preview.channelCount); StatTile(Icons.Filled.Movie, "Movies", preview.movieCount)
                                 StatTile(Icons.Filled.VideoLibrary, "Series", preview.seriesCount); StatTile(Icons.Filled.Star, "Favorites", favouriteCount)
@@ -156,6 +168,10 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
             }
         }
     }
+    if (recentMenu) {
+        val recent = list.orEmpty().filter { it.usable && it.lastOpenedAt > 0 }.sortedByDescending { it.lastOpenedAt }.take(6)
+        ContextMenu("Recent libraries", "Opened most recently first", if (recent.isEmpty()) listOf(MenuAction("Nothing opened yet", Icons.Filled.History, enabled = false) {}) else recent.map { e -> MenuAction(e.name, Icons.Filled.PlayArrow) { vm.open(e) { nav.enterLibrary() } } }, onClose = { recentMenu = false })
+    }
     if (addMenu) ContextMenu("Add a library", null, listOf(
         MenuAction("Xtream Codes", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.XTREAM) },
         MenuAction("M3U URL", Icons.Filled.Link) { nav.base = Base.Setup(SourceType.M3U) },
@@ -180,7 +196,7 @@ private fun IconTile(icon: ImageVector, bg: Color, tint: Color, size: Int = 40) 
 
 @Composable
 private fun StatTile(icon: ImageVector, title: String, n: Int) {
-    Column(Modifier.width(112.dp).background(Color(0x8C101011), RoundedCornerShape(16.dp)).border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(16.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(Modifier.width(118.dp).background(Color(0x990A1018), RoundedCornerShape(18.dp)).border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(18.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Image(icon, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(Tokens.textSecondary))
         Label("%,d".format(n), Tokens.pageTitle, Tokens.text, FontWeight.Bold)
         Label(title, Tokens.small, Tokens.textSecondary)
@@ -190,7 +206,7 @@ private fun StatTile(icon: ImageVector, title: String, n: Int) {
 /** The main action: a wide white pill that glows gold when the remote is on it. */
 @Composable
 private fun BigPill(text: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color(0xFFE9EDF2), focusedContainer = Color.White, ring = Gold, scaleOnFocus = 1.04f) { _ ->
+    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color(0xFFDDE3EA), focusedContainer = Color.White, ring = Gold, scaleOnFocus = 1.03f) { _ ->
         Row(Modifier.fillMaxWidth().padding(vertical = 13.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             Image(icon, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Color.Black)); Spacer(Modifier.width(10.dp)); Label(text, Tokens.title, Color.Black, FontWeight.Bold)
         }
@@ -503,3 +519,53 @@ private fun QrCode(text: String, modifier: Modifier) {
         for (y in 0 until matrix.height) for (x in 0 until n) if (matrix[x, y]) drawRect(Color.Black, androidx.compose.ui.geometry.Offset(x * cell, y * cell), androidx.compose.ui.geometry.Size(cell + 0.5f, cell + 0.5f))
     }
 }
+
+
+@Composable
+private fun UtilityButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Focusable(onClick, Modifier, shape = CircleShape, container = Color(0x1AFFFFFF), focusedContainer = Color(0x33FFFFFF), ring = Gold, hairline = true, scaleOnFocus = 1.08f) { f ->
+        Image(icon, label, Modifier.padding(13.dp).size(22.dp), colorFilter = ColorFilter.tint(if (f) Amber else Color(0xFFF5F7FA)))
+    }
+}
+
+/** A dark mountain horizon under a warm sunset, drawn here so it needs no picture file. */
+@Composable
+private fun HeroArt(modifier: Modifier) {
+    androidx.compose.foundation.Canvas(modifier) {
+        val w = size.width; val h = size.height
+        drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF05080D), Color(0xFF1A1420), Color(0xFF6B3A1E), Color(0xFFF08A2E)), startY = 0f, endY = h * 0.62f))
+        drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0xCCFFC56B), Color(0x00FFC56B)), center = androidx.compose.ui.geometry.Offset(w * 0.78f, h * 0.55f), radius = h * 0.5f), radius = h * 0.5f, center = androidx.compose.ui.geometry.Offset(w * 0.78f, h * 0.55f))
+        fun ridge(color: Color, base: Float, amp: Float, seed: Int) {
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(0f, h)
+                var x = 0f
+                lineTo(0f, h * base)
+                while (x < w) { x += w / 14f; val k = ((x / w * 11f + seed) * 1.7f); lineTo(x, h * base - h * amp * (0.5f + 0.5f * kotlin.math.sin(k) * kotlin.math.cos(k * 0.6f))) }
+                lineTo(w, h); close()
+            }
+            drawPath(path, color)
+        }
+        ridge(Color(0xFF2A1A18), 0.80f, 0.16f, 1); ridge(Color(0xFF140E10), 0.88f, 0.12f, 4); ridge(Color(0xFF07090D), 0.95f, 0.08f, 7)
+    }
+}
+
+
+/** The opening animation: the mark fades in and rises a little, holds for a moment, then fades out into the library screen. Any key skips it. */
+@Composable
+fun LogoReveal(reduced: Boolean, onDone: () -> Unit) {
+    val a = remember { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0f) }
+    val root = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        runCatching { root.requestFocus() }
+        if (!reduced) a.animateTo(1f, androidx.compose.animation.core.tween(520, easing = app.streamsetu.core.ui.motion.Motion.Standard))
+        delay(if (reduced) 500 else 650)
+        a.animateTo(0f, androidx.compose.animation.core.tween(if (reduced) 0 else 320))
+        onDone()
+    }
+    Box(Modifier.fillMaxSize().background(Night).focusRequester(root).focusable().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) { onDone(); true } else false }, Alignment.Center) {
+        Column(Modifier.graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 18.dp.toPx() }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_wordmark), null, Modifier.height(190.dp))
+        }
+    }
+}
+

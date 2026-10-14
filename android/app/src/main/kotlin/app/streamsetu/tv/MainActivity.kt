@@ -107,8 +107,12 @@ inline fun <reified T : ViewModel> vm(key: String? = null, crossinline create: (
         @Suppress("UNCHECKED_CAST") override fun <V : ViewModel> create(modelClass: Class<V>): V = create() as V
     })
 
+/** The opening animation plays once per launch of the app, not every time the person returns to the chooser. */
+private var splashDone = false
+
 @Composable
 fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
+    var showSplash by remember { mutableStateOf(!splashDone) }
     val systemReduced = app.streamsetu.core.ui.motion.rememberReducedMotion()
     val animation by c.ui.animation.collectAsState()
     val reduced = systemReduced || animation != app.streamsetu.core.settings.AnimationLevel.FULL
@@ -161,6 +165,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                 }
             }
         }
+        if (showSplash) app.streamsetu.tv.ui.screens.library.LogoReveal(reduced) { showSplash = false; splashDone = true }
         androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalInOverlay provides true) {
             nav.top?.let { top -> app.streamsetu.tv.ui.components.FadeIn(top) {
                 when (val o = top) {
