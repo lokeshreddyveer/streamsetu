@@ -78,10 +78,19 @@ The artwork in these screenshots comes from the provider's own playlist. StreamS
 | Platform | What to get | Notes |
 |---|---|---|
 | **Mac** | `StreamSetu-x.y.z.dmg` from [Releases](../../releases) (look for `mac-v…`) | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
-| **Fire TV, Android TV, Android phones and tablets** | [`StreamSetu-FireTV-Android-0.6.2.apk`](../../releases/tag/android-v0.6.2) (or the latest `android-v…` release) | One APK signed with the StreamSetu release key. Android 5.1 or later. Shows a remote layout on a TV and a touch layout on a phone or tablet. |
+| **Fire TV and Android TV** | [`StreamSetu-FireTV-0.6.2.apk`](../../releases/download/android-v0.6.2/StreamSetu-FireTV-0.6.2.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
+| **Android phone and tablet** | [`StreamSetu-Android-0.6.2.apk`](../../releases/download/android-v0.6.2/StreamSetu-Android-0.6.2.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
 | **iPhone and iPad** | TestFlight | Ask for an invitation at contact@lokeshreddy.dev. |
 
-Every download has a SHA-256 checksum in its release notes. Verify it with `shasum -a 256 <file>`.
+The two Android files hold the same build, listed separately so each device has its own download. The app picks the remote or touch layout by itself. Every download has a SHA-256 checksum in its release notes. Verify it with `shasum -a 256 <file>`.
+
+Later releases are on the [Releases](../../releases) page (look for `android-v…`).
+
+### Installing on Android phone or tablet
+
+1. Download `StreamSetu-Android-0.6.2.apk` on the phone.
+2. Open it and, when asked, allow installs from your browser or files app.
+3. Open StreamSetu.
 
 ### Installing on Fire TV
 
