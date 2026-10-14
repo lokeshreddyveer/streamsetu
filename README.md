@@ -14,27 +14,48 @@ StreamSetu is a native player for the IPTV playlists and media servers you alrea
 
 ### Mac
 
-<p>
-  <img src="docs/screenshots/mac-home.png" alt="StreamSetu on Mac: Home with the Discover banner and Trending in Your Library" width="49%">
-  <img src="docs/screenshots/mac-series.png" alt="StreamSetu on Mac: Series with the folder list and poster grid" width="49%">
-</p>
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/screenshots/mac-home.png" alt="StreamSetu on Mac: Home with the Discover banner and Trending in Your Library" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/mac-series.png" alt="StreamSetu on Mac: Series with the folder list and poster grid" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Home</sub></td>
+    <td align="center"><sub>Series</sub></td>
+  </tr>
+</table>
 
 ### Fire TV and Android TV
 
-<p>
-  <img src="docs/screenshots/firetv-home-sidebar.png" alt="StreamSetu on Fire TV: Home with the sidebar open" width="32%">
-  <img src="docs/screenshots/firetv-movies.png" alt="StreamSetu on Fire TV: Movies with folders and posters" width="32%">
-  <img src="docs/screenshots/firetv-series.png" alt="StreamSetu on Fire TV: Series with a featured banner" width="32%">
-</p>
+<table>
+  <tr>
+    <td width="33%" valign="top"><img src="docs/screenshots/firetv-home-sidebar.png" alt="StreamSetu on Fire TV: Home with the sidebar open" width="100%"></td>
+    <td width="33%" valign="top"><img src="docs/screenshots/firetv-movies.png" alt="StreamSetu on Fire TV: Movies with folders and posters" width="100%"></td>
+    <td width="33%" valign="top"><img src="docs/screenshots/firetv-series.png" alt="StreamSetu on Fire TV: Series with a featured banner" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Home, sidebar open</sub></td>
+    <td align="center"><sub>Movies</sub></td>
+    <td align="center"><sub>Series</sub></td>
+  </tr>
+</table>
 
 ### iPhone
 
-<p>
-  <img src="docs/screenshots/ios-home.png" alt="StreamSetu on iPhone: Home" width="24%">
-  <img src="docs/screenshots/ios-live.png" alt="StreamSetu on iPhone: Live TV channel grid" width="24%">
-  <img src="docs/screenshots/ios-movies.png" alt="StreamSetu on iPhone: Movies" width="24%">
-  <img src="docs/screenshots/ios-series.png" alt="StreamSetu on iPhone: Series" width="24%">
-</p>
+<table>
+  <tr>
+    <td width="25%" valign="top"><img src="docs/screenshots/ios-home.png" alt="StreamSetu on iPhone: Home" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/ios-live.png" alt="StreamSetu on iPhone: Live TV channel grid" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/ios-movies.png" alt="StreamSetu on iPhone: Movies" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/ios-series.png" alt="StreamSetu on iPhone: Series" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Home</sub></td>
+    <td align="center"><sub>Live TV</sub></td>
+    <td align="center"><sub>Movies</sub></td>
+    <td align="center"><sub>Series</sub></td>
+  </tr>
+</table>
 
 The artwork in these screenshots comes from the provider's own playlist. StreamSetu ships no content.
 
