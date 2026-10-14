@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -92,7 +93,7 @@ private fun LazyListScope.rail(title: String, pad: PaddingValues, content: LazyL
 @Composable
 private fun HomeHeader(library: String, ok: Boolean, nav: Navigator, c: AppContainer) {
     Row(Modifier.fillMaxWidth().padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(22.dp).background(Tokens.accent, RoundedCornerShape(6.dp)), Alignment.Center) { Image(Icons.Filled.PlayArrow, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(androidx.compose.ui.graphics.Color(0xFF04141A))) }
+        Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(30.dp).clip(RoundedCornerShape(7.dp)))
         Spacer(Modifier.width(8.dp))
         Label("StreamSetu", Tokens.title, Tokens.text, FontWeight.Bold)
         Label("  ·  $library", Tokens.body, Tokens.textSecondary)

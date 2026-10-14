@@ -17,7 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.zIndex
+import androidx.compose.ui.draw.drawWithContent
 import app.streamsetu.core.ui.motion.focusScale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
@@ -75,6 +75,16 @@ val LocalInOverlay = androidx.compose.runtime.compositionLocalOf { false }
  * Anything the remote can land on. Flat like the Mac app: no outline at rest; when focused it lifts slightly and shows a thin accent ring
  * (a TV has no pointer, so the ring is the cursor).
  */
+/** Draws the edge of a shape (the focus ring). Half of the stroke falls outside the shape and is clipped, so the width is doubled by the caller. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.strokeOutline(o: androidx.compose.ui.graphics.Outline, color: Color, width: Float) {
+    val st = androidx.compose.ui.graphics.drawscope.Stroke(width)
+    when (o) {
+        is androidx.compose.ui.graphics.Outline.Rounded -> drawRoundRect(color, androidx.compose.ui.geometry.Offset(o.roundRect.left, o.roundRect.top), androidx.compose.ui.geometry.Size(o.roundRect.width, o.roundRect.height), o.roundRect.topLeftCornerRadius, style = st)
+        is androidx.compose.ui.graphics.Outline.Rectangle -> drawRect(color, androidx.compose.ui.geometry.Offset(o.rect.left, o.rect.top), androidx.compose.ui.geometry.Size(o.rect.width, o.rect.height), style = st)
+        is androidx.compose.ui.graphics.Outline.Generic -> drawPath(o.path, color, style = st)
+    }
+}
+
 @Composable
 fun Focusable(
     onClick: () -> Unit,
@@ -96,11 +106,15 @@ fun Focusable(
     val inOverlay = LocalInOverlay.current
     Box(
         modifier
-            .then(if (focused) Modifier.zIndex(1f) else Modifier)
             .focusScale(focused, scaleOnFocus)
             .clip(shape)
             .background(if (focused) focusedContainer else container)
-            .then(if (focused) Modifier.border(if (highContrast) BorderStroke(3.dp, Color.White) else BorderStroke(1.5.dp, Tokens.accent), shape) else if (hairline) Modifier.border(BorderStroke(1.dp, Tokens.line), shape) else Modifier)
+            // The ring is drawn, not added as a layer, so taking and losing focus does not rebuild the modifier chain.
+            .drawWithContent {
+                drawContent()
+                if (focused) strokeOutline(shape.createOutline(size, layoutDirection, this), if (highContrast) Color.White else Tokens.accent, (if (highContrast) 3.dp else 1.5.dp).toPx() * 2)
+                else if (hairline) strokeOutline(shape.createOutline(size, layoutDirection, this), Tokens.line, 1.dp.toPx() * 2)
+            }
             .focusRequester(own)
             .focusProperties { canFocus = enabled }
             .onFocusChanged {

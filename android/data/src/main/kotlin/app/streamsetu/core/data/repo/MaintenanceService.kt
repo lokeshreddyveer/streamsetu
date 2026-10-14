@@ -133,6 +133,7 @@ class MaintenanceService(private val context: Context, private val db: AppDataba
         sb.appendLine("Playback")
         playback.forEach { (k, v) -> sb.appendLine("  $k: $v") }
         sb.appendLine()
+        File(context.filesDir, "crashes").listFiles()?.sortedByDescending { it.lastModified() }?.take(3)?.let { crashes -> sb.appendLine("Recent crashes"); if (crashes.isEmpty()) sb.appendLine("  none") else crashes.forEach { f -> sb.appendLine("  ${f.name}"); runCatching { f.readLines().take(8) }.getOrDefault(emptyList()).forEach { l -> sb.appendLine("    " + redact(l)) } }; sb.appendLine() }
         sb.appendLine("Recent player errors")
         if (errors.isEmpty()) sb.appendLine("  none") else errors.forEach { sb.appendLine("  " + redact(it)) }
         sb.toString()

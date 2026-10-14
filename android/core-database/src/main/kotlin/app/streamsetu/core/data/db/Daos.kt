@@ -38,6 +38,8 @@ interface CatalogDao {
     @Query("SELECT * FROM channels WHERE categoryId = :categoryId ORDER BY sortOrder, name") fun channelsIn(categoryId: String): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE sourceId IN (:sources) ORDER BY sortOrder, name LIMIT :limit") fun allChannels(limit: Int, sources: List<String>): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE id = :id") suspend fun channel(id: String): ChannelEntity?
+    @Query("SELECT * FROM channels WHERE sourceId = :sourceId AND name = :name LIMIT 1") suspend fun channelByName(sourceId: String, name: String): ChannelEntity?
+    @Query("SELECT * FROM movies WHERE sourceId = :sourceId AND title = :title LIMIT 1") suspend fun movieByTitle(sourceId: String, title: String): MovieEntity?
     @Query("SELECT * FROM channels WHERE id IN (:ids)") suspend fun channelsByIds(ids: List<String>): List<ChannelEntity>
     @Query("SELECT * FROM channels WHERE sourceId IN (:sources) AND name LIKE '%' || :q || '%' ORDER BY name LIMIT :limit") suspend fun searchChannels(q: String, limit: Int, sources: List<String>): List<ChannelEntity>
     @Query("SELECT COUNT(*) FROM channels WHERE sourceId IN (:sources)") fun channelCount(sources: List<String>): Flow<Int>

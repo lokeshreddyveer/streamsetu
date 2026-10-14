@@ -30,6 +30,8 @@ class PlaybackController(
     private val policy: RecoveryPolicy = RecoveryPolicy(),
     private val onProgress: suspend (Playable, positionMs: Long, durationMs: Long) -> Unit = { _, _, _ -> },
     private val onStarted: suspend (Playable) -> Unit = {},
+    /** Asked once when a stream is refused or gone: returns the same item with a fresh address (an expired playlist link), or null when it cannot. */
+    private val refreshStream: suspend (Playable) -> Playable? = { null },
 ) {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -99,7 +101,7 @@ class PlaybackController(
         _current.value?.let { closedAt[it.sourceId] = System.currentTimeMillis() }
         saveProgress()
         job?.cancel()
-        attempt = 0; switchedEngine = false; appliedPreferredTracks = false; loggedStart = false; firstFrameLogged = false; bufferingSince = 0L
+        attempt = 0; switchedEngine = false; appliedPreferredTracks = false; loggedStart = false; firstFrameLogged = false; bufferingSince = 0L; refreshedOnce = false
         startPositionMs = if (item.isLive || !settings.resumeAutomatically.value) 0 else resumeAtMs
         _resumedFrom.value = if (startPositionMs > 30_000) startPositionMs else 0
         sessionId++; sessionVerified = false; userSeeked = false
@@ -159,7 +161,25 @@ class PlaybackController(
         job = scope.launch { startNow(item, forced ?: e?.kind?.takeIf { switchedEngine }) }
     }
 
+    private var refreshedOnce = false
+
     private fun handleError(error: PlaybackError) {
+        val item = _current.value ?: return
+        // An address that expired (login or "not found" on a link that used to work) is refreshed from the playlist once before anything else is tried.
+        if (!refreshedOnce && (error.kind == ErrorKind.AUTH || error.kind == ErrorKind.NOT_FOUND)) {
+            refreshedOnce = true
+            job?.cancel()
+            job = scope.launch {
+                val fresh = runCatching { refreshStream(item) }.getOrNull()
+                if (fresh != null && fresh.streamRef != item.streamRef) { android.util.Log.i("Playback", "stream address refreshed from the playlist"); _current.value = fresh; startNow(fresh, null) }
+                else recover(error)
+            }
+            return
+        }
+        recover(error)
+    }
+
+    private fun recover(error: PlaybackError) {
         val item = _current.value ?: return
         synchronized(errors) { errors.addFirst("${java.text.DateFormat.getTimeInstance(java.text.DateFormat.MEDIUM).format(java.util.Date())}  ${error.kind}: ${error.message.take(120)}"); while (errors.size > 20) errors.removeLast() }
         if (error.kind == ErrorKind.SERVER_REFUSED) strict.add(item.sourceId)

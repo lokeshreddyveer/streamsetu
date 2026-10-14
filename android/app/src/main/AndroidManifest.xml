@@ -13,7 +13,7 @@
     <application
         android:name=".StreamSetuApp"
         android:allowBackup="false"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/banner"
         android:label="@string/app_name"
         android:usesCleartextTraffic="true"

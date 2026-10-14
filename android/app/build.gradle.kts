@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+import java.util.Properties
+
+// Signing: put the key details in android/keystore.properties (never committed): storeFile, storePassword, keyAlias, keyPassword.
+val keystoreProps = Properties().also { p -> rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { p.load(it) } }
+
 android {
     namespace = "app.streamsetu.tv"
     compileSdk = 35
@@ -13,12 +18,21 @@ android {
         applicationId = "app.streamsetu.tv"
         minSdk = 22
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // Override on the command line: -PappVersionCode=12 -PappVersionName=1.0.0
+        versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
+        versionName = (project.findProperty("appVersionName") as String?) ?: "0.2.0"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }       // Fire TV and Android TV boxes are ARM
+    }
+    signingConfigs {
+        if (keystoreProps.containsKey("storeFile")) create("release") {
+            storeFile = rootProject.file(keystoreProps.getProperty("storeFile")); storePassword = keystoreProps.getProperty("storePassword")
+            keyAlias = keystoreProps.getProperty("keyAlias"); keyPassword = keystoreProps.getProperty("keyPassword")
+        }
     }
     buildTypes {
         release {
+            // With no keystore.properties the release build is signed with the debug key, so it can still be installed for testing; it must not be distributed.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -54,4 +68,5 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.workmanager)
+    implementation(libs.zxing)
 }

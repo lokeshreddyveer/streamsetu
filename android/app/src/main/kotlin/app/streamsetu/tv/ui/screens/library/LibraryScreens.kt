@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -126,7 +127,7 @@ private fun typeOf(e: LibraryEntry) = when (e.typeLabel) { "M3U URL" -> SourceTy
 
 @Composable
 private fun LogoRow() = Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-    Box(Modifier.size(28.dp).background(Tokens.accent, RoundedCornerShape(8.dp)), Alignment.Center) { Image(Icons.Filled.PlayArrow, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(Color(0xFF04141A))) }
+    Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(36.dp).clip(RoundedCornerShape(9.dp)))
     Label("StreamSetu", Tokens.title, Tokens.text, FontWeight.Bold)
 }
 
@@ -177,8 +178,8 @@ fun WelcomeScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(150); runCatching { first.requestFocus() } }
     Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Box(Modifier.size(54.dp).background(Tokens.accent, RoundedCornerShape(14.dp)), Alignment.Center) { Image(Icons.Filled.PlayArrow, null, Modifier.size(32.dp), colorFilter = ColorFilter.tint(Color(0xFF04141A))) }
-        Spacer(Modifier.height(14.dp))
+        Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_wordmark), null, Modifier.height(120.dp))
+        Spacer(Modifier.height(6.dp))
         Label("Welcome to StreamSetu", Tokens.display, Tokens.text, FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
         Label("A player for your own IPTV connection. Choose how you want to connect.", Tokens.body, Tokens.textSecondary)
@@ -230,6 +231,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
             form = form.copy(address = uri.toString(), name = form.name.ifBlank { uri.lastPathSegment?.substringAfterLast('/')?.substringBeforeLast('.').orEmpty() })
         }
     }
+    var phoneOpen by remember { mutableStateOf(false) }
     val canTest = when (type) {
         SourceType.XTREAM -> form.address.isNotBlank() && form.user.isNotBlank() && form.password.isNotBlank()
         else -> form.address.isNotBlank()
@@ -255,6 +257,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
         return
     }
 
+    if (phoneOpen) PhoneSetupDialog(onFilled = { t, f -> form = f; vm.resetTest() }, onClose = { phoneOpen = false })
     Column(Modifier.fillMaxSize().padding(horizontal = 120.dp, vertical = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Label(title, Tokens.display, Tokens.text, FontWeight.Bold)
         TvTextField(form.name, { form = form.copy(name = it) }, "Name (optional)", Modifier.widthIn(max = 640.dp).fillMaxWidth().focusRequester(first))
@@ -275,6 +278,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             if (test is LibraryViewModel.Test.Running) { Spinner(); Label("Testing the connection and reading the catalog. This can take a minute for big lists…", Tokens.body, Tokens.textSecondary) }
             else {
+                if (type != SourceType.LOCAL_FILE) TvButton("Use my phone", { phoneOpen = true }, icon = Icons.Filled.PhoneAndroid)
                 TvButton("Test Connection", { if (canTest) { message = null; vm.test(type, id, form) } else message = "Fill in the details first." }, icon = Icons.Filled.PlayArrow, primary = true)
                 TvButton("Save as Draft", { vm.saveDraft(type, id, form) { saved -> id = saved; message = "Saved. Finish it any time from Choose Your Library." } })
                 TvButton("Cancel", { nav.base = Base.ChooseLibrary })
@@ -369,5 +373,54 @@ private fun MenuRow(title: String, icon: ImageVector, modifier: Modifier = Modif
             Image(icon, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Tokens.accent))
             Label(title, Tokens.row, Tokens.text)
         }
+    }
+}
+
+/** Shows a QR code; the phone types the connection; the TV shows what arrived (never the password) and the person approves it. Then the form is filled in, ready to test. */
+@Composable
+fun PhoneSetupDialog(onFilled: (SourceType, LibraryViewModel.Form) -> Unit, onClose: () -> Unit) {
+    var received by remember { mutableStateOf<app.streamsetu.tv.PhoneSetup?>(null) }
+    var link by remember { mutableStateOf<String?>(null) }
+    var failed by remember { mutableStateOf(false) }
+    var left by remember { mutableIntStateOf(300) }
+    val server = remember { app.streamsetu.tv.PhoneSetupServer { received = it } }
+    DisposableEffect(Unit) { link = server.start(); failed = link == null; onDispose { server.stop() } }
+    LaunchedEffect(Unit) { while (true) { left = server.secondsLeft; delay(1000); if (left == 0) onClose() } }
+    val first = remember { FocusRequester() }
+    LaunchedEffect(received) { delay(120); runCatching { first.requestFocus() } }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize(), Alignment.Center) {
+            Column(Modifier.width(420.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val r = received
+                when {
+                    r != null -> {
+                        Label("Approve this connection?", Tokens.title, Tokens.text, FontWeight.Bold)
+                        Label(listOf(if (r.type == "m3u") "M3U link" else "Xtream login", r.name.ifBlank { null }).filterNotNull().joinToString("  ·  "), Tokens.body, Tokens.accent)
+                        Label(r.address.let { runCatching { java.net.URI(if ("://" in it) it else "http://$it").host }.getOrNull() ?: "address received" }, Tokens.body, Tokens.textSecondary)
+                        if (r.user.isNotBlank()) Label("User: ${r.user}   Password: received", Tokens.small, Tokens.textSecondary)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TvButton("Approve", { onFilled(if (r.type == "m3u") SourceType.M3U else SourceType.XTREAM, LibraryViewModel.Form(r.name, r.address, r.user, r.password)); onClose() }, Modifier.focusRequester(first), primary = true)
+                            TvButton("Decline", onClose)
+                        }
+                    }
+                    failed -> { Label("No home network found", Tokens.title, Tokens.text, FontWeight.Bold); Label("Connect the TV to Wi-Fi or Ethernet, or type it with the remote.", Tokens.body, Tokens.textSecondary, maxLines = 3); TvButton("Close", onClose, Modifier.focusRequester(first)) }
+                    else -> {
+                        Label("Scan with your phone", Tokens.title, Tokens.text, FontWeight.Bold)
+                        link?.let { u -> QrCode(u, Modifier.size(170.dp)); Label(u, Tokens.caption, Tokens.textSecondary, maxLines = 2) }
+                        Label("Valid for ${left / 60}:%02d. Works on your home network only.".format(left % 60), Tokens.small, Tokens.textTertiary)
+                        TvButton("Cancel", onClose, Modifier.focusRequester(first))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QrCode(text: String, modifier: Modifier) {
+    val matrix = remember(text) { com.google.zxing.qrcode.QRCodeWriter().encode(text, com.google.zxing.BarcodeFormat.QR_CODE, 0, 0, mapOf(com.google.zxing.EncodeHintType.MARGIN to 1)) }
+    androidx.compose.foundation.Canvas(modifier.background(Color.White)) {
+        val n = matrix.width; val cell = size.width / n
+        for (y in 0 until matrix.height) for (x in 0 until n) if (matrix[x, y]) drawRect(Color.Black, androidx.compose.ui.geometry.Offset(x * cell, y * cell), androidx.compose.ui.geometry.Size(cell + 0.5f, cell + 0.5f))
     }
 }

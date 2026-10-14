@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -61,13 +62,18 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        runCatching { frames.stop() }
         container.playback.onBackground()
         super.onStop()
     }
 
+    private val frames by lazy { app.streamsetu.core.ui.motion.FrameMonitor(this) }
+
     override fun onStart() {
         super.onStart()
         container.playback.onForeground()
+        // In a test build, frame timing is written to the log (adb logcat -s Motion) so smoothness can be measured, not guessed.
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) frames.start()
     }
 }
 
@@ -160,17 +166,9 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
             kotlinx.coroutines.delay(120)
         }
     }
-    Row(Modifier.fillMaxSize()) {
-        androidx.compose.animation.AnimatedVisibility(
-            sidebarVisible,
-            enter = androidx.compose.animation.expandHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR, easing = app.streamsetu.core.ui.motion.Motion.Standard)) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR)),
-            exit = androidx.compose.animation.shrinkHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR, easing = app.streamsetu.core.ui.motion.Motion.Exit)) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SHORT)),
-        ) {
-            app.streamsetu.tv.ui.components.Sidebar(nav.tab, onSelect = { t ->
-                if (t == Tab.LIBRARIES) { c.library.close(); nav.toChooser() } else nav.go(t)
-            }, entry = sidebarEntry)
-        }
-        Box(Modifier.weight(1f).fillMaxHeight()) {
+    Box(Modifier.fillMaxSize()) {
+        // The page keeps one fixed margin for the sidebar's narrow strip. The wide sidebar is drawn over the page, so opening it never re-lays-out the page.
+        Box(Modifier.fillMaxSize().padding(start = if (sidebarVisible) app.streamsetu.tv.ui.theme.Tokens.sidebarCompact else androidx.compose.ui.unit.Dp(0f))) {
             app.streamsetu.tv.ui.components.FadeIn(nav.tab) {
                 when (nav.tab) {
                     Tab.HOME -> app.streamsetu.tv.ui.screens.home.HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
@@ -184,6 +182,9 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
                 }
             }
         }
+        if (sidebarVisible) app.streamsetu.tv.ui.components.Sidebar(nav.tab, onSelect = { t ->
+            if (t == Tab.LIBRARIES) { c.library.close(); nav.toChooser() } else nav.go(t)
+        }, entry = sidebarEntry, modifier = Modifier.align(Alignment.CenterStart))
     }
 }
 

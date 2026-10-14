@@ -3,6 +3,7 @@ package app.streamsetu.tv.di
 import android.content.Context
 import app.streamsetu.core.data.db.AppDatabase
 import app.streamsetu.core.data.repo.CatalogRepository
+import app.streamsetu.core.data.repo.toModel
 import app.streamsetu.core.data.repo.ParentalControls
 import app.streamsetu.core.data.repo.SourceRepository
 import app.streamsetu.core.data.repo.UserRepository
@@ -49,10 +50,22 @@ object AppModule {
         SyncService(db, sources, credentials, resolver) { uri -> c.contentResolver.openInputStream(android.net.Uri.parse(uri)) ?: error("That file could not be opened.") }
 
     @Provides @Singleton
-    fun playback(@ApplicationContext c: Context, resolver: StreamResolver, settings: AppSettings, user: UserRepository): PlaybackController = PlaybackController(
+    fun playback(@ApplicationContext c: Context, resolver: StreamResolver, settings: AppSettings, user: UserRepository, db: AppDatabase, sync: SyncService, sources: SourceRepository): PlaybackController = PlaybackController(
         c, resolver, settings,
         onProgress = { item, pos, dur -> user.saveProgress(item.id, kindOf(item), (item as? EpisodePlayable)?.series?.id, pos, dur) },
         onStarted = { item -> user.recordPlay(item.id, kindOf(item), item.title) },
+        refreshStream = { item ->
+            // Only playlists (M3U) carry addresses that can expire; Xtream addresses are built fresh from the login each time.
+            val src = sources.get(item.sourceId)
+            if (src == null || src.type == SourceType.XTREAM) null
+            else { runCatching { sync.sync(src.id) }.getOrNull()
+                when (item) {
+                    is ChannelPlayable -> db.catalog().channelByName(src.id, item.channel.name)?.let { e -> ChannelPlayable(e.toModel()) }
+                    is MoviePlayable -> db.catalog().movieByTitle(src.id, item.movie.title)?.let { e -> MoviePlayable(e.toModel()) }
+                    else -> null
+                }
+            }
+        },
     )
 }
 

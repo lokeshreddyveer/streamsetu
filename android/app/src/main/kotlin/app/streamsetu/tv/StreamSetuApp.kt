@@ -111,9 +111,26 @@ class AppContainer @Inject constructor(
 }
 
 @HiltAndroidApp
-class StreamSetuApp : Application() {
+class StreamSetuApp : Application(), coil.ImageLoaderFactory {
+    @Inject lateinit var container: AppContainer
+    /** Artwork downloads share the connection with the video, so while something plays only a few run at once. */
+    private val images = okhttp3.Dispatcher().apply { maxRequests = 16; maxRequestsPerHost = 6 }
+
+    override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
+        .okHttpClient(okhttp3.OkHttpClient.Builder().dispatcher(images).build())
+        .diskCache { coil.disk.DiskCache.Builder().directory(java.io.File(cacheDir, "image_cache")).maxSizeBytes(160L * 1024 * 1024).build() }
+        .crossfade(false)
+        .build()
+
     override fun onCreate() {
         super.onCreate()
+        CrashReporter.install(this, runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?")
+        container.appScope.launch {
+            container.playback.state.collect { st ->
+                val busy = st == app.streamsetu.core.playback.PlaybackState.Playing || st == app.streamsetu.core.playback.PlaybackState.Buffering
+                images.maxRequests = if (busy) 4 else 16; images.maxRequestsPerHost = if (busy) 2 else 6
+            }
+        }
         // Re-asserts the background refresh the person chose (a no-op when it is already scheduled).
         val hours = getSharedPreferences("settings", MODE_PRIVATE).getInt("bgSyncHours", 0)
         CatalogSyncWorker.schedule(this, hours)

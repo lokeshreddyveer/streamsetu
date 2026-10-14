@@ -51,15 +51,15 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
         modifier.fillMaxHeight().width(width).clipToBounds()
             .background(Brush.horizontalGradient(listOf(Tokens.panel, Tokens.panel.copy(alpha = if (expanded) 0.96f else 0.7f))))
             .onFocusChanged { expanded = it.hasFocus }
-            .padding(vertical = Tokens.safeVertical, horizontal = 6.dp),
+            .padding(vertical = Tokens.safeVertical, horizontal = 8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
     ) {
         Tab.entries.forEach { t ->
             val isSel = t == selected
             Focusable({ onSelect(t) }, (if (isSel) Modifier.focusRequester(entry) else Modifier).fillMaxWidth(), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Tokens.focusedSurface, shape = RoundedCornerShape(10.dp)) { f ->
-                Row(Modifier.padding(horizontal = 7.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Image(iconOf(t), t.title, Modifier.size(16.dp), colorFilter = ColorFilter.tint(if (f || isSel) Tokens.accent else Tokens.textSecondary))
-                    Label(t.title, Tokens.nav, if (isSel) Tokens.text else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.graphicsLayer { alpha = labelAlpha })
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Image(iconOf(t), t.title, Modifier.size(24.dp), colorFilter = ColorFilter.tint(if (f || isSel) Tokens.accent else Tokens.textSecondary))
+                    Label(t.title, Tokens.heading, if (isSel) Tokens.text else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.graphicsLayer { alpha = labelAlpha })
                 }
             }
         }
