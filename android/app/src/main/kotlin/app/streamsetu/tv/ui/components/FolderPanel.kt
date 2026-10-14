@@ -92,6 +92,8 @@ fun FolderPanel(
     val selectedKey: Any? = when (selected) { is Browse.Folder -> "f:${selected.id}"; else -> shortcuts.firstOrNull { it.browse == selected }?.let { "s:${it.label}" } }
 
     BackHandler(enabled = reordering != null) { reordering = null }
+    // The open folder's row must exist for the remote to land on it: bring it into view when the panel appears or the selection changes.
+    LaunchedEffect(selectedKey) { val i = rows.indexOfFirst { (it is Shortcut && "s:${it.label}" == selectedKey) || (it is Folder && "f:${it.id}" == selectedKey) }; if (i > 3) runCatching { listState.scrollToItem(i - 2) } }
 
     fun open(f: Folder) {
         if (f.pref.locked && !actions.isUnlocked(f.id)) { if (actions.hasPin) pinFor = f else creatingPinFor = f }

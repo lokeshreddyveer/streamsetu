@@ -141,12 +141,26 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     }
 
     val density = androidx.compose.ui.platform.LocalDensity.current
+    // Never leave the screen without a valid focus target: if nothing holds the remote for a moment (a page was still being built, a focused item went away),
+    // it goes to the page's entry point, then the sidebar, then the first focusable thing on screen.
+    var anyFocus by remember { mutableStateOf(true) }
+    val rootFocus = androidx.compose.ui.platform.LocalFocusManager.current
+    LaunchedEffect(anyFocus, nav.top, nav.base, nav.tab, nav.sidebarFocused) {
+        if (anyFocus || nav.top != null || (nav.top == Overlay.Player)) return@LaunchedEffect
+        kotlinx.coroutines.delay(700)
+        repeat(6) {
+            val ok = (nav.base == Base.Shell && (runCatching { contentEntry.requestFocus() }.isSuccess || runCatching { sidebarEntry.requestFocus() }.isSuccess)) ||
+                runCatching { rootFocus.moveFocus(androidx.compose.ui.focus.FocusDirection.Enter) }.getOrDefault(false)
+            if (ok) { android.util.Log.i("Nav", "focus recovered on ${nav.base} ${nav.tab}"); return@LaunchedEffect }
+            kotlinx.coroutines.delay(250)
+        }
+    }
     androidx.compose.runtime.CompositionLocalProvider(
         app.streamsetu.core.ui.motion.LocalReducedMotion provides reduced,
         app.streamsetu.tv.ui.components.LocalHighContrast provides contrast,
         androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * textScale / 100f),
     ) {
-    Box(Modifier.fillMaxSize().background(Tokens.background)) {
+    Box(Modifier.fillMaxSize().background(Tokens.background).onFocusChanged { anyFocus = it.hasFocus }) {
         androidx.compose.runtime.CompositionLocalProvider(
             app.streamsetu.tv.ui.components.LocalFocusEnabled provides (nav.top == null),
             app.streamsetu.tv.ui.components.LocalContentEntry provides contentEntry,

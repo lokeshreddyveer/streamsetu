@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -88,7 +89,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                             "recent" -> Triple("Recently Watched", Icons.Filled.History, recent.size)
                             else -> Triple("Continue Watching", Icons.Filled.PlayArrow, resume.size)
                         }
-                        QuickCard(label, icon, n, { nav.open(Overlay.Collection(id)) }, { shortcutMenu = id })
+                        QuickCard(label, icon, n, { nav.open(Overlay.Collection(id)) }, { shortcutMenu = id }, if (id == vm.shortcutOrder.first() && !(bannerOn && banner.isNotEmpty()) && entry != null) Modifier.focusRequester(entry) else Modifier)
                     }
                 }
             }
@@ -188,8 +189,8 @@ private fun HeaderIcon(icon: ImageVector, label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun QuickCard(label: String, icon: ImageVector, count: Int, onClick: () -> Unit, onLong: () -> Unit) {
-    Focusable(onClick, Modifier.width(200.dp), shape = RoundedCornerShape(16.dp), container = Color(0xFF0B121B), scaleOnFocus = 1.03f, hairline = true, onLongClick = onLong) { f ->
+private fun QuickCard(label: String, icon: ImageVector, count: Int, onClick: () -> Unit, onLong: () -> Unit, extra: Modifier = Modifier) {
+    Focusable(onClick, extra.width(200.dp), shape = RoundedCornerShape(16.dp), container = Color(0xFF0B121B), scaleOnFocus = 1.03f, hairline = true, onLongClick = onLong) { f ->
         Row(Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF14202C)), Alignment.Center) { Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f) Tokens.goldHighlight else Tokens.gold)) }
             Column(Modifier.weight(1f)) { Label(label, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 1); Label(if (count == 0) "Empty" else "%,d item%s".format(count, if (count == 1) "" else "s"), Tokens.caption, Tokens.textSecondary) }
