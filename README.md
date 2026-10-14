@@ -10,6 +10,34 @@ StreamSetu is a native player for the IPTV playlists and media servers you alrea
 
 > StreamSetu is a player only. It provides **no channels, movies, series or subscriptions**, and it does not ship or link to any content. You bring your own legally obtained playlist or login.
 
+## Screenshots
+
+### Mac
+
+<p>
+  <img src="docs/screenshots/mac-home.png" alt="StreamSetu on Mac: Home with the Discover banner and Trending in Your Library" width="49%">
+  <img src="docs/screenshots/mac-series.png" alt="StreamSetu on Mac: Series with the folder list and poster grid" width="49%">
+</p>
+
+### Fire TV and Android TV
+
+<p>
+  <img src="docs/screenshots/firetv-home-sidebar.png" alt="StreamSetu on Fire TV: Home with the sidebar open" width="32%">
+  <img src="docs/screenshots/firetv-movies.png" alt="StreamSetu on Fire TV: Movies with folders and posters" width="32%">
+  <img src="docs/screenshots/firetv-series.png" alt="StreamSetu on Fire TV: Series with a featured banner" width="32%">
+</p>
+
+### iPhone
+
+<p>
+  <img src="docs/screenshots/ios-home.png" alt="StreamSetu on iPhone: Home" width="24%">
+  <img src="docs/screenshots/ios-live.png" alt="StreamSetu on iPhone: Live TV channel grid" width="24%">
+  <img src="docs/screenshots/ios-movies.png" alt="StreamSetu on iPhone: Movies" width="24%">
+  <img src="docs/screenshots/ios-series.png" alt="StreamSetu on iPhone: Series" width="24%">
+</p>
+
+The artwork in these screenshots comes from the provider's own playlist. StreamSetu ships no content.
+
 ## Download
 
 | Platform | What to get | Notes |
