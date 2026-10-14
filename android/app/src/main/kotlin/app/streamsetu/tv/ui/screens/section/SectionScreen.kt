@@ -115,7 +115,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                 Column(Modifier.weight(1f)) {
                     Label(title, Tokens.pageTitle, Tokens.text, FontWeight.Bold)
                     val n = cards?.size
-                    Label((if (n == null) "Loading…" else "%,d ${if (kind == ContentKind.MOVIE) "movies" else "series"}".format(n)) + "  ·  " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources") + (if (!sort.isDefault) "  ·  Sort: ${sort.field.label}" else ""), Tokens.small, Tokens.textSecondary)
+                    Label((if (n == null) "Loading…" else "%,d ${if (kind == ContentKind.MOVIE) "movies" else "series"}".format(n)) + "  ·  " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources") + (if (sort != SortSpec.defaultFor(kind)) "  ·  Sort: ${sort.field.label}" else "  ·  Newest first".takeIf { sort.field == SortField.ADDED && sort.ascending }.orEmpty()), Tokens.small, Tokens.textSecondary)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     ToolButton("Search", Icons.Filled.Search) { searchOpen = true }

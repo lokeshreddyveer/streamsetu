@@ -144,7 +144,7 @@ fun SortSheet(kind: ContentKind, current: SortSpec, availability: SortAvailabili
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TvButton("Apply", { onApply(draft); onClose() }, primary = true)
-                    TvButton("Reset", { draft = SortSpec() })
+                    TvButton("Reset", { draft = SortSpec.defaultFor(kind) })
                 }
             }
         }

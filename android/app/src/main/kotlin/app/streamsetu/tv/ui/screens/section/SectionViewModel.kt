@@ -53,7 +53,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
     val filter = MutableStateFlow(ContentFilter())
     var scrollIndex = 0
 
-    val sort: StateFlow<SortSpec> = browse.flatMapLatest { b -> c.browse.sort(kind, (b as? Browse.Folder)?.id) }.stateIn(viewModelScope, SharingStarted.Eagerly, SortSpec())
+    val sort: StateFlow<SortSpec> = browse.flatMapLatest { b -> c.browse.sort(kind, (b as? Browse.Folder)?.id) }.stateIn(viewModelScope, SharingStarted.Eagerly, SortSpec.defaultFor(kind))
     val availability = MutableStateFlow(SortAvailability(false, false, false, false))
     val sources: StateFlow<List<LibraryEntry>> = c.library.entries.map { all -> all.filter { it.kind == LibraryEntry.Kind.CONNECTION && it.id.removePrefix("src:") in c.library.sourceIds.value } }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 

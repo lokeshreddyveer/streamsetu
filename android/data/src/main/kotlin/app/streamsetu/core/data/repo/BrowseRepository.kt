@@ -20,7 +20,7 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
     /** The sort chosen for a section (Movies, Series, Live TV), or for one folder of it. Remembered on this device. */
     fun sort(kind: ContentKind, folderId: String? = null): MutableStateFlow<SortSpec> = synchronized(sortFlows) {
         val key = key(kind, folderId)
-        sortFlows.getOrPut(key) { MutableStateFlow(SortSpec.decode(prefs.getString(key, null) ?: if (folderId != null) prefs.getString(key(kind, null), null) else null)) }
+        sortFlows.getOrPut(key) { MutableStateFlow((prefs.getString(key, null) ?: if (folderId != null) prefs.getString(key(kind, null), null) else null)?.let { SortSpec.decode(it) } ?: SortSpec.defaultFor(kind)) }
     }
     fun setSort(kind: ContentKind, folderId: String?, spec: SortSpec) {
         prefs.edit().putString(key(kind, folderId), spec.encode()).apply(); sort(kind, folderId).value = spec
@@ -93,7 +93,7 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
         val primary = when (field) {
             SortField.PROVIDER -> "x.rowid ${dir("ASC")}"
             SortField.NAME -> "$title COLLATE NOCASE ${dir("ASC")}"
-            SortField.ADDED -> "x.addedAt ${dir("DESC")}"
+            SortField.ADDED -> "x.addedAt ${dir("DESC")}, x.rowid ${dir("DESC")}"       // a provider that sends no dates: the later in its list, the newer
             SortField.RECENTLY_WATCHED -> { joins.append(" LEFT JOIN (SELECT itemId, MAX(playedAt) AS lastPlayed FROM watch_log GROUP BY itemId) w ON w.itemId = x.id"); "(w.lastPlayed IS NULL) ASC, w.lastPlayed ${dir("DESC")}" }
             SortField.YEAR -> if (kind == ContentKind.CHANNEL) "x.rowid ASC" else "(x.year IS NULL) ASC, x.year ${dir("DESC")}"
             SortField.RATING -> if (kind == ContentKind.CHANNEL) "x.rowid ASC" else "(x.rating IS NULL OR x.rating = '' OR CAST(x.rating AS REAL) = 0) ASC, CAST(x.rating AS REAL) ${dir("DESC")}"
