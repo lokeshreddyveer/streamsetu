@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -20,6 +21,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.streamsetu.core.playback.PlaybackState
 import app.streamsetu.tv.nav.Navigator
+import app.streamsetu.tv.nav.Base
+import app.streamsetu.core.model.LibraryEntry
 import kotlinx.coroutines.launch
 import app.streamsetu.tv.nav.Overlay
 import app.streamsetu.tv.nav.Tab
@@ -73,80 +76,98 @@ inline fun <reified T : ViewModel> vm(key: String? = null, crossinline create: (
 
 @Composable
 fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
-    val topFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val reduced = app.streamsetu.core.ui.motion.rememberReducedMotion()
+    val entries by c.library.entries.collectAsState(initial = emptyList())
+    val playbackState by c.playback.state.collectAsState()
     val sidebarEntry = remember { androidx.compose.ui.focus.FocusRequester() }
     val contentEntry = remember { androidx.compose.ui.focus.FocusRequester() }
-    val contentFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-    var anyFocus by remember { mutableStateOf(false) }
-    var topBarFocused by remember { mutableStateOf(false) }
-    // The window may not be ready the first moment, so asking once is not enough: ask until something holds focus.
-    LaunchedEffect(nav.top == null) {
-        var tries = 0
-        while (!anyFocus && tries < 40 && nav.top == null) { runCatching { topFocus.requestFocus() }; kotlinx.coroutines.delay(150); tries++ }
-    }
-    val playbackState by c.playback.state.collectAsState()
-    val hasSources by c.sources.sources.collectAsState(initial = null)
+    val baseFocus = remember { androidx.compose.ui.focus.FocusRequester() }
 
-    // The player covers everything while something is playing.
-    val playing = playbackState != PlaybackState.Idle && nav.top == Overlay.Player
+    // No working library at all: the first-time welcome replaces the chooser.
+    val noLibrary = entries.none { it.usable }
+    val effectiveBase = if (nav.base == Base.ChooseLibrary && noLibrary && entries.none { it.kind == LibraryEntry.Kind.CONNECTION }) Base.Welcome else nav.base
+
     BackHandler(enabled = true) {
-        if (nav.top == Overlay.Player) { c.playback.stop(); nav.close() }
-        // Back from inside a page goes up to the top bar first; from the top bar it goes Home, then out of the app.
-        else if (nav.top == null && !topBarFocused && runCatching { topFocus.requestFocus() }.isSuccess) { }
-        else if (!nav.back()) onExit()
+        when {
+            nav.top == Overlay.Player -> { c.playback.stop(); nav.close() }
+            nav.overlays.isNotEmpty() -> nav.close()
+            effectiveBase is Base.Setup || effectiveBase is Base.Combined -> nav.base = Base.ChooseLibrary
+            effectiveBase == Base.ChooseLibrary || effectiveBase == Base.Welcome -> onExit()
+            !nav.back() -> onExit()
+        }
     }
 
-    Box(
-        Modifier.fillMaxSize().background(Tokens.background)
-            .onFocusChanged { anyFocus = it.hasFocus }
-            // If a key arrives while nothing is focused (it happens after the window regains focus), the first arrow press picks a place to start.
-            .onPreviewKeyEvent { e ->
-                val dpad = e.nativeKeyEvent.keyCode in listOf(android.view.KeyEvent.KEYCODE_DPAD_DOWN, android.view.KeyEvent.KEYCODE_DPAD_UP, android.view.KeyEvent.KEYCODE_DPAD_LEFT, android.view.KeyEvent.KEYCODE_DPAD_RIGHT, android.view.KeyEvent.KEYCODE_DPAD_CENTER)
-                if (!anyFocus && dpad && nav.top == null) { runCatching { topFocus.requestFocus() }; true } else false
-            },
-    ) {
-        // The page underneath stays alive while a full-screen page is open (so scroll and focus come back as they were); it just cannot take focus.
-        val baseFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-        LaunchedEffect(nav.top == null) { if (nav.top == null && nav.lastClosedAt > 0) { // Focus may be taken by something else for a moment after a page closes, so the remembered item is asked for until it holds focus.
-            repeat(10) {
-                kotlinx.coroutines.delay(150)
-                val back = app.streamsetu.tv.ui.components.FocusMemory.last
-                if (back == null) { runCatching { contentFocus.requestFocus() }; return@repeat }
-                val ok = runCatching { back.requestFocus() }
-                android.util.Log.i("FocusMem", "restore #$it ${ok.exceptionOrNull()?.javaClass?.simpleName ?: "ok"}")
-            } } }
-        androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalFocusEnabled provides (nav.top == null), app.streamsetu.tv.ui.components.LocalSidebarEntry provides sidebarEntry, app.streamsetu.tv.ui.components.LocalContentEntry provides contentEntry) {
-        // The page fills the screen; the top bar floats over it (transparent on Home, where the hero picture runs underneath).
-        Box(Modifier.fillMaxSize()) {
-            val onHome = nav.tab == Tab.HOME && hasSources?.isNotEmpty() == true
-            Box(Modifier.fillMaxSize().padding(top = if (onHome) androidx.compose.ui.unit.Dp(0f) else app.streamsetu.tv.ui.theme.Tokens.headerHeight).focusRequester(contentFocus)) {
-                when {
-                    hasSources == null -> {}
-                    hasSources!!.isEmpty() && nav.tab != Tab.SETTINGS -> FirstRun(onAdd = { nav.open(Overlay.AddPlaylist) })
-                    else -> app.streamsetu.tv.ui.components.FadeIn(nav.tab) { when (nav.tab) {
-                        Tab.HOME -> HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
-                        Tab.LIVE -> LiveScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
-                        Tab.GUIDE -> GuideScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
-                        Tab.MOVIES -> MoviesScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
-                        Tab.SERIES -> SeriesScreen(androidx.hilt.navigation.compose.hiltViewModel(), nav)
-                        Tab.SEARCH -> SearchScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
-                        Tab.SETTINGS -> SettingsScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
-                    } }
+    androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.core.ui.motion.LocalReducedMotion provides reduced) {
+    Box(Modifier.fillMaxSize().background(Tokens.background)) {
+        androidx.compose.runtime.CompositionLocalProvider(
+            app.streamsetu.tv.ui.components.LocalFocusEnabled provides (nav.top == null),
+            app.streamsetu.tv.ui.components.LocalContentEntry provides contentEntry,
+        ) {
+            androidx.compose.animation.AnimatedContent(
+                effectiveBase, Modifier.fillMaxSize(),
+                transitionSpec = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SCREEN)) togetherWith androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduced) 0 else 120)) },
+                label = "base",
+            ) { base ->
+                when (base) {
+                    Base.ChooseLibrary -> app.streamsetu.tv.ui.screens.library.ChooseLibraryScreen(nav)
+                    Base.Welcome -> app.streamsetu.tv.ui.screens.library.WelcomeScreen(nav)
+                    is Base.Setup -> app.streamsetu.tv.ui.screens.library.SetupScreen(base.type, base.draftId, nav)
+                    is Base.Combined -> app.streamsetu.tv.ui.screens.library.CombinedScreen(base.editing, nav)
+                    Base.Shell -> Shell(c, nav, sidebarEntry, contentEntry)
                 }
             }
-            TopBar(nav.tab, topFocus, transparent = onHome && nav.homeAtTop, onHasFocus = { topBarFocused = it }, canAutoSelect = { nav.canAutoSelect() }, onDown = { runCatching { contentEntry.requestFocus() }.isSuccess }, onSelect = { nav.tab = it })
-        }
         }
         androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalInOverlay provides true) {
-        nav.top?.let { top -> app.streamsetu.tv.ui.components.FadeIn(top) {
-        when (val o = top) {
-            is Overlay.AddPlaylist -> AddPlaylistScreen(androidx.hilt.navigation.compose.hiltViewModel(), onClose = { nav.close() })
-            is Overlay.MovieDetail -> MovieDetailScreen(o.movie, c, nav)
-            is Overlay.SeriesDetail -> SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
-            is Overlay.Player -> PlayerScreen(c, onClose = { c.playback.stop(); nav.close() })
-            null -> {}
+            nav.top?.let { top -> app.streamsetu.tv.ui.components.FadeIn(top) {
+                when (val o = top) {
+                    is Overlay.MovieDetail -> MovieDetailScreen(o.movie, c, nav)
+                    is Overlay.SeriesDetail -> SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
+                    is Overlay.Player -> PlayerScreen(c, onClose = { c.playback.stop(); nav.close() })
+                    is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
+                }
+            } }
         }
-        } }
+    }
+    }
+}
+
+/** An open library: the sidebar and the sections. Movies, Series and Live TV hide the sidebar and bring their own folder panel. */
+@Composable
+private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compose.ui.focus.FocusRequester, contentEntry: androidx.compose.ui.focus.FocusRequester) {
+    val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
+    val sidebarVisible = !nav.tab.fullScreenSection || nav.sidebarRevealed
+    // After a section opens, the remote goes to its entry point; after the sidebar is revealed, to the sidebar.
+    LaunchedEffect(nav.tab, nav.sidebarRevealed) {
+        kotlinx.coroutines.delay(if (nav.sidebarRevealed) 120 else 220)
+        repeat(8) {
+            val ok = runCatching { if (nav.sidebarRevealed) sidebarEntry.requestFocus() else contentEntry.requestFocus() }.isSuccess
+            if (ok) return@LaunchedEffect
+            kotlinx.coroutines.delay(120)
+        }
+    }
+    Row(Modifier.fillMaxSize()) {
+        androidx.compose.animation.AnimatedVisibility(
+            sidebarVisible,
+            enter = androidx.compose.animation.expandHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR, easing = app.streamsetu.core.ui.motion.Motion.Standard)) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR)),
+            exit = androidx.compose.animation.shrinkHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR, easing = app.streamsetu.core.ui.motion.Motion.Exit)) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SHORT)),
+        ) {
+            app.streamsetu.tv.ui.components.Sidebar(nav.tab, onSelect = { t ->
+                if (t == Tab.LIBRARIES) { c.library.close(); nav.toChooser() } else nav.go(t)
+            }, entry = sidebarEntry)
+        }
+        Box(Modifier.weight(1f).fillMaxHeight()) {
+            app.streamsetu.tv.ui.components.FadeIn(nav.tab) {
+                when (nav.tab) {
+                    Tab.HOME -> HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                    Tab.LIVE -> LiveScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                    Tab.GUIDE -> GuideScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                    Tab.MOVIES -> MoviesScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                    Tab.SERIES -> SeriesScreen(androidx.hilt.navigation.compose.hiltViewModel(), nav)
+                    Tab.SEARCH -> SearchScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                    Tab.SETTINGS -> SettingsScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                    Tab.LIBRARIES -> {}
+                }
+            }
         }
     }
 }

@@ -14,7 +14,7 @@ interface SourceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsert(s: SourceEntity)
     @Query("DELETE FROM sources WHERE id = :id") suspend fun delete(id: String)
     @Query("UPDATE sources SET status = :status, lastSyncAt = :at WHERE id = :id") suspend fun setStatus(id: String, status: String, at: Long)
-    @Query("UPDATE sources SET draft = 0, channelCount = :ch, movieCount = :mv, seriesCount = :sr, lastError = NULL WHERE id = :id") suspend fun setCounts(id: String, ch: Int, mv: Int, sr: Int)
+    @Query("UPDATE sources SET draft = CASE WHEN :ch + :mv + :sr = 0 THEN 1 ELSE 0 END, channelCount = :ch, movieCount = :mv, seriesCount = :sr, lastError = NULL WHERE id = :id") suspend fun setCounts(id: String, ch: Int, mv: Int, sr: Int)
     @Query("UPDATE sources SET lastError = :error WHERE id = :id") suspend fun setError(id: String, error: String?)
     @Query("UPDATE sources SET lastOpenedAt = :at WHERE id = :id") suspend fun touch(id: String, at: Long)
     @Query("UPDATE sources SET name = :name WHERE id = :id") suspend fun rename(id: String, name: String)

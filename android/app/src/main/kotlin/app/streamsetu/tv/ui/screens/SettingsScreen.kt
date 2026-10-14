@@ -153,7 +153,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.library(vm: SettingsV
                 Row(src.name, "${if (src.type == SourceType.XTREAM) "Xtream" else "M3U"} · ${statusText(src)}", "Refresh") { vm.sync(src) }
                 Row("Remove ${src.name}", "Deletes the playlist and its channels from this device.", "Remove") { vm.remove(src) }
             }
-            Row("Add a playlist", "An Xtream login or an M3U link.", "Add") { nav.open(Overlay.AddPlaylist) }
+            Row("Add a playlist", "An Xtream login or an M3U link.", "Add") { nav.base = app.streamsetu.tv.nav.Base.Setup(app.streamsetu.core.model.SourceType.XTREAM) }
         }
     }
 }

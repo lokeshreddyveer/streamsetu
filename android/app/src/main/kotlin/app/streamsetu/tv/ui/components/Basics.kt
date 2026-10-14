@@ -17,12 +17,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.zIndex
+import app.streamsetu.core.ui.motion.focusScale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -74,23 +78,25 @@ fun Focusable(
     modifier: Modifier = Modifier,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(Tokens.radius),
     container: Color = Tokens.card,
-    focusedContainer: Color = Tokens.elevated,
-    scaleOnFocus: Float = 1.05f,
+    focusedContainer: Color = Tokens.focusedSurface,
+    scaleOnFocus: Float = app.streamsetu.core.ui.motion.Motion.CARD_FOCUS_SCALE,
     hairline: Boolean = false,
     onFocus: (Boolean) -> Unit = {},
+    onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
+    var longHandled by remember { mutableStateOf(false) }
     val enabled = LocalFocusEnabled.current
     val own = remember { FocusRequester() }
     val inOverlay = LocalInOverlay.current
-    val scale by animateFloatAsState(if (focused) scaleOnFocus else 1f, label = "focus-scale")
     Box(
         modifier
-            .scale(scale)
+            .then(if (focused) Modifier.zIndex(1f) else Modifier)
+            .focusScale(focused, scaleOnFocus)
             .clip(shape)
             .background(if (focused) focusedContainer else container)
-            .then(if (focused) Modifier.border(BorderStroke(2.dp, Tokens.accent), shape) else if (hairline) Modifier.border(BorderStroke(1.dp, Tokens.line), shape) else Modifier)
+            .then(if (focused) Modifier.border(BorderStroke(1.5.dp, Tokens.accent), shape) else if (hairline) Modifier.border(BorderStroke(1.dp, Tokens.line), shape) else Modifier)
             .focusRequester(own)
             .focusProperties { canFocus = enabled }
             .onFocusChanged {
@@ -99,17 +105,29 @@ fun Focusable(
                 if (it.isFocused && enabled && !inOverlay) { FocusMemory.last = own; FocusMemory.lastHasFocus = true }
                 else if (!it.isFocused && FocusMemory.last === own) FocusMemory.lastHasFocus = false
             }
+            // Holding OK opens the context menu (long press); a short press still clicks.
+            .then(if (onLongClick == null) Modifier else Modifier.onPreviewKeyEvent { e ->
+                val select = e.key == androidx.compose.ui.input.key.Key.DirectionCenter || e.key == androidx.compose.ui.input.key.Key.Enter || e.key == androidx.compose.ui.input.key.Key.NumPadEnter
+                when {
+                    !select -> false
+                    e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.nativeKeyEvent.isLongPress -> { longHandled = true; onLongClick(); true }
+                    e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && longHandled -> true
+                    e.type == androidx.compose.ui.input.key.KeyEventType.KeyUp && longHandled -> { longHandled = false; true }
+                    else -> false
+                }
+            })
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
     ) { content(focused) }
 }
 
 @Composable
 fun TvButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, primary: Boolean = false, onFocus: (Boolean) -> Unit = {}) {
-    Focusable(onClick, modifier, onFocus = onFocus, shape = RoundedCornerShape(50), container = if (primary) Tokens.playPill else Tokens.elevated,
-        focusedContainer = if (primary) Tokens.playPill else Tokens.elevated.copy(alpha = 1f), scaleOnFocus = 1.05f) { _ ->
+    Focusable(onClick, modifier, onFocus = onFocus, shape = RoundedCornerShape(50), container = if (primary) Tokens.accent.copy(alpha = 0.88f) else Tokens.elevated,
+        focusedContainer = if (primary) Tokens.accent else Tokens.focusedSurface, scaleOnFocus = 1.04f) { _ ->
+        val ink = if (primary) Color(0xFF04141A) else Tokens.text
         Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (icon != null) Image(icon, null, Modifier.size(15.dp), colorFilter = ColorFilter.tint(Tokens.text))
-            Label(text, Tokens.row, Tokens.text, FontWeight.SemiBold)
+            if (icon != null) Image(icon, null, Modifier.size(15.dp), colorFilter = ColorFilter.tint(ink))
+            Label(text, Tokens.row, ink, FontWeight.SemiBold)
         }
     }
 }
@@ -130,7 +148,7 @@ fun PosterPlaceholder(title: String, modifier: Modifier = Modifier) {
 @Composable
 fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null, focusRequester: FocusRequester? = null) {
     Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(150f / 218f)) { _ ->
+        Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(2f / 3f), scaleOnFocus = app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE) { _ ->
             PosterPlaceholder(title, Modifier.fillMaxSize())
             if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
@@ -219,10 +237,11 @@ fun Loading(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize(), Alignment.Center) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Spinner(); Label("Loading…", Tokens.row, Tokens.textSecondary) } }
 }
 
-/** A short fade-and-rise when a page appears, so moving between sections feels smooth instead of cutting. The content is composed once; only its look animates. */
+/** A short fade-and-rise when a page appears, so moving between sections feels smooth instead of cutting. Alpha and translation only, and it stops at once under reduced motion. */
 @Composable
 fun FadeIn(key: Any, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val a = remember(key) { androidx.compose.animation.core.Animatable(0f) }
-    LaunchedEffect(key) { a.animateTo(1f, androidx.compose.animation.core.tween(260, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
-    Box(modifier.graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 14f; val sc = 0.985f + 0.015f * a.value; scaleX = sc; scaleY = sc }) { content() }
+    val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
+    val a = remember(key) { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0f) }
+    LaunchedEffect(key) { if (!reduced) a.animateTo(1f, androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.SCREEN, easing = app.streamsetu.core.ui.motion.Motion.Standard)) }
+    Box(modifier.graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 12.dp.toPx() }) { content() }
 }

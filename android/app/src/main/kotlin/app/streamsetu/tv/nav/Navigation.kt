@@ -5,58 +5,66 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import app.streamsetu.core.model.LibraryEntry
 import app.streamsetu.core.model.Movie
 import app.streamsetu.core.model.Series
+import app.streamsetu.core.model.SourceType
 
-/** The sections of the top bar, in the Mac app's order. Search and Settings are the two icons on the right. */
-enum class Tab(val title: String) { HOME("Home"), LIVE("Live TV"), MOVIES("Movies"), SERIES("Series"), GUIDE("TV Guide"), SEARCH("Search"), SETTINGS("Settings") }
+/** The sections reached from the sidebar. Movies, Series and Live TV take the whole screen with their own folder panel. */
+enum class Tab(val title: String, val fullScreenSection: Boolean = false) {
+    HOME("Home"), LIVE("Live TV", true), MOVIES("Movies", true), SERIES("Series", true), GUIDE("TV Guide"), SEARCH("Search"), LIBRARIES("Libraries"), SETTINGS("Settings")
+}
 
-/** A fixed shortcut at the top of a section's sidebar (the Mac's `Shortcut`). */
-enum class Pin(val id: String, val title: String) {
-    DISCOVER("discover", "Discover"), CONTINUE("continue", "Continue Watching"), RECENT("recent", "Recently Watched"), HISTORY("history", "Watch History"),
-    FAVOURITES("favorites", "Favorites"), WATCH_LATER("later", "Watch Later"), FEATURED("featured", "Featured"), ALL_MOVIES("all", "All Movies"),
-    RECENTLY_ADDED("added", "Recently Added"), LIBRARY("all", "Library"), ALL_CHANNELS("all", "All Channels");
-
-    companion object {
-        fun forTab(tab: Tab): List<Pin> = when (tab) {
-            Tab.HOME -> listOf(DISCOVER, CONTINUE, RECENT, HISTORY, FAVOURITES, WATCH_LATER)
-            Tab.MOVIES -> listOf(FEATURED, ALL_MOVIES, RECENTLY_ADDED, CONTINUE, FAVOURITES, WATCH_LATER)
-            Tab.SERIES -> listOf(LIBRARY, RECENTLY_ADDED, CONTINUE, FAVOURITES, WATCH_LATER)
-            Tab.LIVE -> listOf(ALL_CHANNELS, RECENT, FAVOURITES)
-            Tab.GUIDE -> listOf(ALL_CHANNELS, FAVOURITES)
-            else -> emptyList()
-        }
-    }
+/** What fills the screen under any overlay. */
+sealed interface Base {
+    /** Every launch starts here (or on Welcome when nothing is set up). */
+    data object ChooseLibrary : Base
+    data object Welcome : Base
+    /** Adding or finishing a connection. [draftId] resumes an unfinished one. */
+    data class Setup(val type: SourceType, val draftId: String? = null) : Base
+    data class Combined(val editing: LibraryEntry? = null) : Base
+    /** An open library: the sidebar and the sections. */
+    data object Shell : Base
 }
 
 /** Screens that cover the whole window. */
 sealed interface Overlay {
     data object Player : Overlay
-    data object AddPlaylist : Overlay
     data class SeriesDetail(val series: Series) : Overlay
     data class MovieDetail(val movie: Movie) : Overlay
+    data class ManageLibrary(val entry: LibraryEntry) : Overlay
 }
 
-/** What is on screen. Back closes the top overlay, then returns to Home, then leaves the app. */
+/**
+ * Where the person is. Back follows the hierarchy: an overlay closes; inside a section the section handles it (content → folders → sidebar);
+ * the sidebar goes Home; Home goes to the library chooser; the chooser is the root and leaves the app.
+ */
 @Stable
 class Navigator {
+    var base: Base by mutableStateOf(Base.ChooseLibrary)
     var tab by mutableStateOf(Tab.HOME)
-    /** True while Home shows its top picture (the top bar is see-through only then; scrolled, it turns solid so rows never run under its text). */
-    var homeAtTop by mutableStateOf(true)
     val overlays = mutableStateListOf<Overlay>()
+    /** True while the sidebar is shown on a full-screen section (revealed with Back from its folders). */
+    var sidebarRevealed by mutableStateOf(false)
 
     val top: Overlay? get() = overlays.lastOrNull()
-
     var lastClosedAt = 0L
+
     fun open(o: Overlay) { overlays += o }
     fun close() { if (overlays.isNotEmpty()) { overlays.removeAt(overlays.lastIndex); lastClosedAt = System.currentTimeMillis() } }
-    /** True when the top bar may switch sections by itself (not right after a page was closed and focus came back). */
-    fun canAutoSelect() = System.currentTimeMillis() - lastClosedAt > 1200
+
+    fun go(t: Tab) { tab = t; sidebarRevealed = false }
+
+    fun enterLibrary() { overlays.clear(); base = Base.Shell; tab = Tab.HOME; sidebarRevealed = false }
+    fun toChooser() { overlays.clear(); base = Base.ChooseLibrary; sidebarRevealed = false }
 
     /** True when back was used up inside the app; false when the app should close. */
     fun back(): Boolean = when {
         overlays.isNotEmpty() -> { close(); true }
-        tab != Tab.HOME -> { tab = Tab.HOME; true }
+        base is Base.Setup || base is Base.Combined || base is Base.Welcome && false -> { base = Base.ChooseLibrary; true }
+        base == Base.Shell && tab.fullScreenSection && !sidebarRevealed -> { sidebarRevealed = true; true }
+        base == Base.Shell && tab != Tab.HOME -> { go(Tab.HOME); true }
+        base == Base.Shell -> { toChooser(); true }
         else -> false
     }
 }
