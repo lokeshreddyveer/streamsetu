@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.foundation.focusGroup
@@ -70,8 +71,9 @@ inline fun <reified T : ViewModel> vm(key: String? = null, crossinline create: (
 
 @Composable
 fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
-    val contentFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val topFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val sidebarEntry = remember { androidx.compose.ui.focus.FocusRequester() }
+    val contentFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     var anyFocus by remember { mutableStateOf(false) }
     var topBarFocused by remember { mutableStateOf(false) }
     // The window may not be ready the first moment, so asking once is not enough: ask until something holds focus.
@@ -100,10 +102,13 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                 if (!anyFocus && dpad && nav.top == null) { runCatching { topFocus.requestFocus() }; true } else false
             },
     ) {
-        // While a full-screen page is open the page underneath is not shown, so nothing in it can take the remote's focus.
-        if (nav.top == null) Column(Modifier.fillMaxSize()) {
-            TopBar(nav.tab, topFocus, onHasFocus = { topBarFocused = it }, onSelect = { nav.tab = it })
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+        // The page underneath stays alive while a full-screen page is open (so scroll and focus come back as they were); it just cannot take focus.
+        val baseFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+        LaunchedEffect(nav.top == null) { if (nav.top == null && nav.lastClosedAt > 0) { kotlinx.coroutines.delay(150); val back = app.streamsetu.tv.ui.components.FocusMemory.last; if (back == null || runCatching { back.requestFocus() }.isFailure) runCatching { contentFocus.requestFocus() } } }
+        androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalFocusEnabled provides (nav.top == null), app.streamsetu.tv.ui.components.LocalSidebarEntry provides sidebarEntry) {
+        Column(Modifier.fillMaxSize()) {
+            TopBar(nav.tab, topFocus, onHasFocus = { topBarFocused = it }, canAutoSelect = { nav.canAutoSelect() }, onSelect = { nav.tab = it })
+            Box(Modifier.weight(1f).fillMaxWidth().focusRequester(contentFocus).focusRestorer()) {
                 when {
                     hasSources == null -> {}
                     hasSources!!.isEmpty() && nav.tab != Tab.SETTINGS -> FirstRun(onAdd = { nav.open(Overlay.AddPlaylist) })
@@ -119,12 +124,15 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                 }
             }
         }
+        }
+        androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalInOverlay provides true) {
         when (val o = nav.top) {
             is Overlay.AddPlaylist -> AddPlaylistScreen(vm { AddPlaylistViewModel(c) }, onClose = { nav.close() })
             is Overlay.MovieDetail -> MovieDetailScreen(o.movie, c, nav)
             is Overlay.SeriesDetail -> SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
             is Overlay.Player -> PlayerScreen(c, onClose = { c.playback.stop(); nav.close() })
             null -> {}
+        }
         }
     }
 }

@@ -55,7 +55,7 @@ private fun Discover(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val movies by vm.latestMovies.collectAsState()
     val series by vm.someSeries.collectAsState()
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 24.dp, top = 14.dp, end = Tokens.screenPadding, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 24.dp, top = 14.dp, end = Tokens.screenPadding, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (featured.isNotEmpty()) item {
             FeaturedBanner(featured, onOpen = { f -> if (f is SeriesFeature) nav.open(Overlay.SeriesDetail(f.series)) else if (f is MoviePlayable) nav.open(Overlay.MovieDetail(f.movie)) else play(c, nav, f) })
         }
@@ -88,7 +88,7 @@ fun MoviesPage(title: String, movies: List<Movie>, c: AppContainer, nav: Navigat
     PageFrame(title, "${movies.size} ${if (movies.size == 1) "movie" else "movies"}") {
         if (movies.isEmpty()) EmptyState("Nothing here yet", "Movies you add to $title appear here.")
         else LazyVerticalGrid(GridCells.Adaptive(Tokens.posterWidth), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(top = 4.dp, bottom = 28.dp), modifier = Modifier.focusRestorer()) {
-            items(movies, key = { it.id }) { m -> PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, subtitle = m.year?.toString()) }
+            items(movies, key = { it.id }) { m -> PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, subtitle = m.year?.toString(), badge = ratingBadge(m.rating)) }
         }
     }
 }
@@ -122,7 +122,7 @@ private fun HistoryPage(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
         else LazyColumn(Modifier.focusRestorer(), verticalArrangement = Arrangement.spacedBy(3.dp), contentPadding = PaddingValues(bottom = 28.dp)) {
             items(history, key = { it.id }) { h ->
                 Focusable({ vm.replay(h, c, nav) }, Modifier.fillMaxWidth(), scaleOnFocus = 1.01f, hairline = true) {
-                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.padding(horizontal = 10.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Label(h.title, Tokens.row, Tokens.text, FontWeight.Medium, modifier = Modifier.weight(1f))
                         Label(h.kind.lowercase().replaceFirstChar { it.uppercase() }, Tokens.small, Tokens.textTertiary)
                         Label(fmt.format(Date(h.playedAt)), Tokens.small, Tokens.textTertiary)
@@ -163,9 +163,9 @@ fun Shelf(title: String, content: androidx.compose.foundation.lazy.LazyListScope
 fun ChannelShelf(title: String, channels: List<Channel>, c: AppContainer, nav: Navigator) {
     Shelf(title) {
         items(channels, key = { it.id }) { ch ->
-            Focusable({ play(c, nav, ChannelPlayable(ch), channels.map { ChannelPlayable(it) }) }, Modifier.width(112.dp)) {
-                Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ChannelLogo(ch.logoUrl, ch.name, 52.dp)
+            Focusable({ play(c, nav, ChannelPlayable(ch), channels.map { ChannelPlayable(it) }) }, Modifier.width(88.dp)) {
+                Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ChannelLogo(ch.logoUrl, ch.name, 40.dp)
                     Label(ch.name, Tokens.small, Tokens.text, FontWeight.Medium)
                 }
             }
@@ -178,10 +178,13 @@ fun ChannelList(channels: List<Channel>, c: AppContainer, nav: Navigator) {
     LazyColumn(Modifier.focusRestorer(), verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = PaddingValues(bottom = 28.dp)) {
         items(channels, key = { it.id }) { ch ->
             Focusable({ play(c, nav, ChannelPlayable(ch), channels.map { ChannelPlayable(it) }) }, Modifier.fillMaxWidth(), scaleOnFocus = 1.01f, hairline = true) {
-                Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ChannelLogo(ch.logoUrl, ch.name, 38.dp); Label(ch.name, Tokens.row, Tokens.text, FontWeight.Medium)
+                Row(Modifier.padding(6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ChannelLogo(ch.logoUrl, ch.name, 28.dp); Label(ch.name, Tokens.row, Tokens.text, FontWeight.Medium)
                 }
             }
         }
     }
 }
+
+/** "★ 7.3" for a rating worth showing (providers send 0 or nothing when they do not know). */
+fun ratingBadge(r: String?): String? = r?.toDoubleOrNull()?.takeIf { it > 0.0 }?.let { "★ " + (if (it >= 10) "10" else String.format("%.1f", it)) }

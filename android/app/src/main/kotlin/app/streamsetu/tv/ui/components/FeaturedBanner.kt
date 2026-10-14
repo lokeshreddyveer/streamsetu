@@ -28,7 +28,7 @@ fun FeaturedBanner(items: List<Playable>, onOpen: (Playable) -> Unit, modifier: 
     LaunchedEffect(items) { while (true) { delay(7000); index = (index + 1) % items.size } }
     val item = items[index.coerceIn(0, items.lastIndex)]
     val shape = RoundedCornerShape(Tokens.radiusLarge)
-    Box(modifier.fillMaxWidth().height(220.dp).clip(shape).background(Tokens.card)) {
+    Box(modifier.fillMaxWidth().height(168.dp).clip(shape).background(Tokens.card)) {
         Crossfade(item, label = "banner") { it ->
             Box(Modifier.fillMaxSize()) {
                 PosterPlaceholder(it.title, Modifier.fillMaxSize())
@@ -37,7 +37,7 @@ fun FeaturedBanner(items: List<Playable>, onOpen: (Playable) -> Unit, modifier: 
         }
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xE60B0D12), Color(0x990B0D12), Color.Transparent))))
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xB30B0D12)))))
-        Column(Modifier.align(Alignment.BottomStart).padding(24.dp).widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.align(Alignment.BottomStart).padding(18.dp).widthIn(max = 480.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Eyebrow("DISCOVER · FROM YOUR LIBRARY", color = Tokens.accent)
             Label(item.title, Tokens.display, Tokens.text, FontWeight.SemiBold, maxLines = 2)
             Label(if (item is SeriesFeature) "Series" else "Movie", Tokens.small, Tokens.textSecondary)

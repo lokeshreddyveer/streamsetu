@@ -16,7 +16,7 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
     private val _featured = MutableStateFlow<List<Playable>>(emptyList())
     val featured: StateFlow<List<Playable>> = _featured
     // The mix is picked once the library has something in it (a playlist that was just read arrives after this screen opens).
-    init { viewModelScope.launch { c.catalog.latestMovies(1).collect { if (_featured.value.isEmpty() && it.isNotEmpty()) { val f = runCatching { c.catalog.featured(6) }.onFailure { e -> android.util.Log.e("Featured", "failed", e) }.getOrDefault(emptyList()); android.util.Log.i("Featured", "picked ${f.size}"); _featured.value = f } } } }
+    init { viewModelScope.launch { c.catalog.latestMovies(1).collect { if (_featured.value.isEmpty() && it.isNotEmpty()) { val f = runCatching { c.featured().take(6) }.onFailure { e -> android.util.Log.e("Featured", "failed", e) }.getOrDefault(emptyList()); android.util.Log.i("Featured", "picked ${f.size}"); _featured.value = f } } } }
 
     data class ResumeItem(val progress: WatchProgress, val playable: Playable)
 
@@ -81,7 +81,7 @@ class MoviesViewModel(private val c: AppContainer) : ViewModel() {
 
     /** The movies for a sidebar entry: "featured", "all", "added", "continue", "favorites", "later", or a folder id. */
     fun moviesFor(sel: String): Flow<List<Movie>> = when (sel) {
-        "featured" -> flow { emit(c.catalog.featured(30).filterIsInstance<MoviePlayable>().map { it.movie }) }
+        "featured" -> flow { emit(c.featured().filterIsInstance<MoviePlayable>().map { it.movie }) }
         "all" -> c.catalog.allMovies()
         "added" -> c.catalog.latestMovies(120)
         "continue" -> c.user.continueWatching(60).map { l -> c.catalog.moviesByIds(l.filter { it.kind == ContentKind.MOVIE }.map { it.itemId }) }

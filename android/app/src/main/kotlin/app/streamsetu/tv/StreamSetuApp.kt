@@ -56,9 +56,14 @@ class AppContainer(context: Context) {
         }
     }
 
+    private var featuredCache: List<Playable>? = null
+    /** The banner / Featured mix: picked once per launch (and again after a playlist is read), so it does not reshuffle when you come back to a page. */
+    suspend fun featured(): List<Playable> = featuredCache ?: catalog.featured(30).also { featuredCache = it }
+
     /** Reads a playlist, then its guide (a guide that cannot be read never fails the playlist). */
     suspend fun syncWithGuide(sourceId: String): SyncService.Result {
         val r = sync.sync(sourceId)
+        featuredCache = null
         runCatching {
             val src = sources.get(sourceId) ?: return@runCatching
             val fallback = if (src.type == SourceType.XTREAM) {

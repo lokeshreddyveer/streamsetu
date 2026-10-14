@@ -33,7 +33,9 @@ import kotlinx.coroutines.launch
 fun MoviesScreen(vm: MoviesViewModel, c: AppContainer, nav: Navigator) {
     val categories by vm.categories.collectAsState()
     var sel by rememberSaveable { mutableStateOf("featured") }
-    val movies by remember(sel) { vm.moviesFor(sel) }.collectAsState(initial = emptyList())
+    val moviesOrNull by remember(sel) { vm.moviesFor(sel) }.collectAsState(initial = null)
+    val movies = moviesOrNull ?: emptyList()
+    if (moviesOrNull == null && categories.isEmpty()) { Loading(); return }
     if (categories.isEmpty() && movies.isEmpty()) { EmptyState("No movies yet", "This playlist has no movies. Add one in Settings."); return }
     val title = Pin.forTab(Tab.MOVIES).firstOrNull { pinKey(it, Tab.MOVIES) == sel }?.title ?: categories.firstOrNull { it.id == sel }?.name ?: "Movies"
     Row(Modifier.fillMaxSize()) {
@@ -57,7 +59,9 @@ private fun pinKey(p: Pin, tab: Tab): String = when (p) {
 fun SeriesScreen(vm: SeriesViewModel, nav: Navigator) {
     val categories by vm.categories.collectAsState()
     var sel by rememberSaveable { mutableStateOf("all") }
-    val series by remember(sel) { vm.seriesFor(sel) }.collectAsState(initial = emptyList())
+    val seriesOrNull by remember(sel) { vm.seriesFor(sel) }.collectAsState(initial = null)
+    val series = seriesOrNull ?: emptyList()
+    if (seriesOrNull == null && categories.isEmpty()) { Loading(); return }
     if (categories.isEmpty() && series.isEmpty()) { EmptyState("No series yet", "This playlist has no series. Add an Xtream playlist in Settings."); return }
     val title = Pin.forTab(Tab.SERIES).firstOrNull { pinKey(it, Tab.SERIES) == sel }?.title ?: categories.firstOrNull { it.id == sel }?.name ?: "Series"
     Row(Modifier.fillMaxSize()) {
@@ -93,7 +97,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
         if (!s.backdropUrl.isNullOrBlank()) AsyncImage(s.backdropUrl, null, Modifier.fillMaxWidth().height(220.dp), contentScale = ContentScale.Crop, alpha = 0.35f)
         Column(Modifier.fillMaxSize().padding(start = Tokens.screenPadding, top = 24.dp, end = Tokens.screenPadding)) {
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                Box(Modifier.width(110.dp).aspectRatio(150f / 218f)) { PosterPlaceholder(s.title, Modifier.fillMaxSize()); if (!s.posterUrl.isNullOrBlank()) AsyncImage(s.posterUrl, s.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                Box(Modifier.width(86.dp).aspectRatio(150f / 218f)) { PosterPlaceholder(s.title, Modifier.fillMaxSize()); if (!s.posterUrl.isNullOrBlank()) AsyncImage(s.posterUrl, s.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Label(s.title, Tokens.display, Tokens.text, FontWeight.SemiBold, maxLines = 2)
                     Label(listOfNotNull("Series", s.year?.toString(), s.rating?.takeIf { it != "0" }?.let { "★ $it" }).joinToString(" · "), Tokens.small, Tokens.textSecondary)
@@ -141,19 +145,24 @@ fun MovieDetailScreen(movie: Movie, c: AppContainer, nav: Navigator) {
     val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsState(initial = emptySet())
     var progress by remember { mutableStateOf<WatchProgress?>(null) }
     LaunchedEffect(movie.id) { progress = c.user.progress(movie.id) }
+    var info by remember { mutableStateOf<app.streamsetu.core.sync.SyncService.MovieInfo?>(null) }
+    LaunchedEffect(movie.id) { info = runCatching { c.sync.movieInfo(movie) }.getOrNull() }
     val scope = rememberCoroutineScope()
     val first = remember { androidx.compose.ui.focus.FocusRequester() }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(150); runCatching { first.requestFocus() } }
     val resumable = progress?.takeIf { !it.completed && it.positionMs > 30_000 }
 
     Box(Modifier.fillMaxSize().background(Tokens.background)) {
-        if (!movie.posterUrl.isNullOrBlank()) AsyncImage(movie.posterUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.18f)
-        Row(Modifier.fillMaxSize().padding(horizontal = Tokens.screenPadding, vertical = 28.dp), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-            Box(Modifier.width(230.dp).aspectRatio(150f / 218f)) { PosterPlaceholder(movie.title, Modifier.fillMaxSize()); if (!movie.posterUrl.isNullOrBlank()) AsyncImage(movie.posterUrl, movie.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        val backdrop = info?.backdrop ?: movie.posterUrl
+        if (!backdrop.isNullOrBlank()) AsyncImage(backdrop, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.22f)
+        Row(Modifier.fillMaxSize().padding(horizontal = Tokens.screenPadding, vertical = 20.dp), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+            Box(Modifier.width(150.dp).aspectRatio(150f / 218f)) { PosterPlaceholder(movie.title, Modifier.fillMaxSize()); if (!movie.posterUrl.isNullOrBlank()) AsyncImage(movie.posterUrl, movie.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label(movie.title, Tokens.display, Tokens.text, FontWeight.SemiBold, maxLines = 2)
-                Label(listOfNotNull("Movie", movie.year?.toString(), movie.rating?.takeIf { it != "0" }?.let { "★ $it" }).joinToString(" · "), Tokens.small, Tokens.textSecondary)
-                movie.plot?.let { Label(it, Tokens.body, Tokens.textSecondary, maxLines = 5, modifier = Modifier.widthIn(max = 760.dp).padding(top = 4.dp)) }
+                Label(listOfNotNull("Movie", movie.year?.toString(), info?.genre, info?.duration?.takeIf { it.isNotBlank() && it != "00:00:00" }, movie.rating?.takeIf { it != "0" }?.let { "★ $it" }).joinToString(" · "), Tokens.small, Tokens.textSecondary)
+                (info?.plot ?: movie.plot)?.let { Label(it, Tokens.body, Tokens.textSecondary, maxLines = 6, modifier = Modifier.widthIn(max = 760.dp).padding(top = 4.dp)) }
+                info?.director?.let { Label("Director: $it", Tokens.small, Tokens.textTertiary, maxLines = 1) }
+                info?.cast?.let { Label("Cast: $it", Tokens.small, Tokens.textTertiary, maxLines = 2, modifier = Modifier.widthIn(max = 760.dp)) }
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (resumable != null) TvButton("Resume · ${(resumable.durationMs - resumable.positionMs) / 60000}m left", { play(c, nav, MoviePlayable(movie)) }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)

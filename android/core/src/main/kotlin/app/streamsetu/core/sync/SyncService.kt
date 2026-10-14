@@ -137,6 +137,23 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         out.size
     }
 
+    data class MovieInfo(val plot: String?, val cast: String?, val director: String?, val genre: String?, val duration: String?, val backdrop: String?, val releaseDate: String?)
+    private val movieInfoCache = java.util.concurrent.ConcurrentHashMap<String, MovieInfo>()
+
+    /** A movie's story, cast and so on, from the provider (`get_vod_info`). Remembered for the session. */
+    suspend fun movieInfo(movie: app.streamsetu.core.model.Movie): MovieInfo? = withContext(Dispatchers.IO) {
+        movieInfoCache[movie.id]?.let { return@withContext it }
+        val src = sources.get(movie.sourceId) ?: return@withContext null
+        if (src.type != SourceType.XTREAM) return@withContext null
+        val vodId = movie.streamRef.split(':').getOrNull(1) ?: return@withContext null
+        val pass = credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()
+        val obj = runCatching { Xtream.parseObject(Http.text(Xtream.api(src.address, src.username.orEmpty(), pass, "get_vod_info", "&vod_id=$vodId"))) }.getOrNull() ?: return@withContext null
+        val info = obj["info"] as? JsonObject ?: return@withContext null
+        val backdrop = ((info["backdrop_path"] as? kotlinx.serialization.json.JsonArray)?.firstOrNull() as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
+        MovieInfo(info.str("plot") ?: info.str("description"), info.str("cast") ?: info.str("actors"), info.str("director"), info.str("genre"),
+            info.str("duration"), backdrop, info.str("releasedate") ?: info.str("release_date")).also { movieInfoCache[movie.id] = it }
+    }
+
     private fun year(s: String?) = s?.take(4)?.toIntOrNull()
 
     private suspend fun replace(sourceId: String, cats: List<CategoryEntity>, ch: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>) {

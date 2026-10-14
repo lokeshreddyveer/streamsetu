@@ -45,8 +45,11 @@ class Navigator {
 
     val top: Overlay? get() = overlays.lastOrNull()
 
+    var lastClosedAt = 0L
     fun open(o: Overlay) { overlays += o }
-    fun close() { if (overlays.isNotEmpty()) overlays.removeAt(overlays.lastIndex) }
+    fun close() { if (overlays.isNotEmpty()) { overlays.removeAt(overlays.lastIndex); lastClosedAt = System.currentTimeMillis() } }
+    /** True when the top bar may switch sections by itself (not right after a page was closed and focus came back). */
+    fun canAutoSelect() = System.currentTimeMillis() - lastClosedAt > 1200
 
     /** True when back was used up inside the app; false when the app should close. */
     fun back(): Boolean = when {

@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,16 +36,16 @@ fun SettingsScreen(vm: SettingsViewModel, c: AppContainer, nav: Navigator) {
         Row(Modifier.fillMaxHeight().width(Tokens.sidebarWidth).background(Tokens.panel)) {
             Column(Modifier.weight(1f).padding(8.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 SettingsPage.entries.forEach { p ->
-                    Focusable({ page = p.name }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(Tokens.radiusSmall),
+                    Focusable({ page = p.name }, (if (p == current) (LocalSidebarEntry.current?.let { Modifier.focusRequester(it) } ?: Modifier) else Modifier).fillMaxWidth(), shape = RoundedCornerShape(Tokens.radiusSmall),
                         container = if (p == current) androidx.compose.ui.graphics.Color(0x0AFFFFFF) else androidx.compose.ui.graphics.Color.Transparent, focusedContainer = androidx.compose.ui.graphics.Color(0x1FFFFFFF), scaleOnFocus = 1.02f) { f ->
                         LaunchedEffect(f) { if (f && p != current) { kotlinx.coroutines.delay(250); page = p.name } }
-                        Label(p.title, Tokens.row, if (p == current || f) Tokens.accent else Tokens.textSecondary, if (p == current) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp))
+                        Label(p.title, Tokens.row, if (p == current || f) Tokens.accent else Tokens.textSecondary, if (p == current) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
                     }
                 }
             }
             Box(Modifier.fillMaxHeight().width(1.dp).background(Tokens.line))
         }
-        LazyColumn(Modifier.weight(1f).fillMaxHeight().focusRestorer(), contentPadding = PaddingValues(start = 24.dp, top = 16.dp, end = Tokens.screenPadding, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        LazyColumn(Modifier.weight(1f).fillMaxHeight().focusRestorer(), contentPadding = PaddingValues(start = 24.dp, top = 16.dp, end = Tokens.screenPadding, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { Label(current.title, Tokens.pageTitle, Tokens.text, FontWeight.SemiBold) }
             when (current) {
                 SettingsPage.GENERAL -> general(c)
@@ -71,7 +72,7 @@ private fun Group(title: String, footer: String? = null, content: @Composable Co
 @Composable
 private fun Row(title: String, detail: String? = null, value: String? = null, note: String? = null, onClick: () -> Unit = {}) {
     Focusable(onClick, Modifier.fillMaxWidth(), shape = RoundedCornerShape(Tokens.radiusSmall), container = androidx.compose.ui.graphics.Color.Transparent, scaleOnFocus = 1.01f) { f ->
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Column(Modifier.weight(1f)) {
                 Label(title, Tokens.row, Tokens.text, FontWeight.Medium)
                 if (detail != null) Label(detail, Tokens.caption, Tokens.textSecondary, maxLines = 2)
