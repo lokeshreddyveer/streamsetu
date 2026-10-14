@@ -3,7 +3,7 @@ package app.streamsetu.core.model
 /** What a playlist entry is. */
 enum class ContentKind { CHANNEL, MOVIE, SERIES, EPISODE }
 
-enum class SourceType { M3U, XTREAM }
+enum class SourceType { M3U, XTREAM, LOCAL_FILE }
 
 /** A playlist the person added. The password is never part of this class; it lives in the [app.streamsetu.core.security.CredentialStore]. */
 data class Source(
@@ -17,6 +17,13 @@ data class Source(
     val enabled: Boolean = true,
     val lastSyncAt: Long = 0,
     val status: SyncStatus = SyncStatus.NEVER,
+    /** Saved before it was tested; not a working library. */
+    val draft: Boolean = false,
+    val channelCount: Int = 0,
+    val movieCount: Int = 0,
+    val seriesCount: Int = 0,
+    val lastError: String? = null,
+    val lastOpenedAt: Long = 0,
 )
 
 enum class SyncStatus { NEVER, SYNCING, OK, FAILED }
@@ -147,4 +154,35 @@ data class EpisodePlayable(val episode: Episode, val series: Series) : Playable 
     override val streamRef get() = episode.streamRef
     override val isLive get() = false
     override val artworkUrl get() = episode.imageUrl ?: series.posterUrl
+}
+
+/** One row of the "Choose Your Library" screen. */
+data class LibraryEntry(
+    val id: String,
+    val name: String,
+    val kind: Kind,
+    /** The connections this library reads (one for a connection, several for a combined library). */
+    val sourceIds: List<String>,
+    val typeLabel: String,
+    val channelCount: Int,
+    val movieCount: Int,
+    val seriesCount: Int,
+    val lastSyncAt: Long,
+    val lastOpenedAt: Long,
+    val health: Health,
+) {
+    enum class Kind { COMBINED, CONNECTION, UNFINISHED }
+    enum class Health { OK, NEVER_READ, LAST_READ_FAILED, UNFINISHED }
+    /** Only a connection that was tested and read at least once (or a combined library of those) opens Home. */
+    val usable get() = kind != Kind.UNFINISHED && (channelCount + movieCount + seriesCount) > 0
+}
+
+/** The person's arrangement of a provider folder (see FolderPrefEntity). */
+data class FolderPref(
+    val favorite: Boolean = false, val pinned: Boolean = false, val hidden: Boolean = false, val locked: Boolean = false,
+    val alias: String? = null, val sortIndex: Int = -1,
+)
+
+data class Folder(val id: String, val sourceId: String, val providerName: String, val count: Int, val pref: FolderPref = FolderPref()) {
+    val title get() = pref.alias?.takeIf { it.isNotBlank() } ?: providerName
 }

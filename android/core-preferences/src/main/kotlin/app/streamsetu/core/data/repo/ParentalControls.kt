@@ -13,6 +13,19 @@ class ParentalControls(context: Context) {
 
     fun setHideAdult(on: Boolean) { prefs.edit().putBoolean(KEY, on).apply(); _hide.value = on }
 
+    /** A 4-digit PIN for locked folders. Only a salted hash is kept, on this device. */
+    val hasPin: Boolean get() = prefs.getString("pin_hash", null) != null
+    fun setPin(pin: String) {
+        val salt = java.util.UUID.randomUUID().toString()
+        prefs.edit().putString("pin_salt", salt).putString("pin_hash", hash(salt, pin)).apply()
+    }
+    fun clearPin() { prefs.edit().remove("pin_salt").remove("pin_hash").apply() }
+    fun checkPin(pin: String): Boolean {
+        val salt = prefs.getString("pin_salt", null) ?: return false
+        return hash(salt, pin) == prefs.getString("pin_hash", null)
+    }
+    private fun hash(salt: String, pin: String) = java.security.MessageDigest.getInstance("SHA-256").digest((salt + pin).toByteArray()).joinToString("") { "%02x".format(it) }
+
     fun visible(category: Category, hide: Boolean = _hide.value) = !hide || !isAdultName(category.name)
 
     companion object {

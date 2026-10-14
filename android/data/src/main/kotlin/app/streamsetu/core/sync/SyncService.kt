@@ -14,7 +14,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 
 /** Reads a playlist into the database. Old rows of that playlist are replaced only after the new ones were read successfully. */
-class SyncService(private val db: AppDatabase, private val sources: SourceRepository, private val credentials: CredentialStore, private val resolver: app.streamsetu.core.net.StreamResolver? = null) {
+class SyncService(private val db: AppDatabase, private val sources: SourceRepository, private val credentials: CredentialStore, private val resolver: app.streamsetu.core.net.StreamResolver? = null, private val openLocal: (String) -> java.io.InputStream = { error("This device cannot open local files.") }) {
 
     data class Result(val channels: Int, val movies: Int, val series: Int)
 
@@ -23,13 +23,15 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         sources.setStatus(sourceId, SyncStatus.SYNCING, source.lastSyncAt)
         try {
             val r = when (source.type) {
-                SourceType.M3U -> syncM3u(source)
+                SourceType.M3U, SourceType.LOCAL_FILE -> syncM3u(source)
                 SourceType.XTREAM -> syncXtream(source)
             }
             sources.setStatus(sourceId, SyncStatus.OK)
+            sources.setCounts(sourceId, r.channels, r.movies, r.series)
             r
         } catch (e: Throwable) {
             sources.setStatus(sourceId, SyncStatus.FAILED, source.lastSyncAt)
+            sources.setError(sourceId, e.message?.take(200))
             throw e
         }
     }
@@ -47,9 +49,8 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             return id
         }
         var guideUrl: String? = null
-        Http.get(s.address) { resp ->
-            resp.body!!.charStream().buffered().useLines { lines ->
-                M3uParser.parse(lines, onHeader = { guideUrl = it }) { e ->
+        val read: (kotlin.sequences.Sequence<String>) -> Unit = { lines ->
+            M3uParser.parse(lines, onHeader = { guideUrl = it }) { e ->
                     order++
                     when (e.kind) {
                         ContentKind.CHANNEL -> if (!ChannelFilter.isDivider(e.name)) channels += ChannelEntity(
@@ -63,8 +64,9 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
                         else -> {}      // series episodes inside an M3U are not grouped into series
                     }
                 }
-            }
         }
+        if (s.type == SourceType.LOCAL_FILE) openLocal(s.address).bufferedReader().useLines { read(it) }
+        else Http.get(s.address) { resp -> resp.body!!.charStream().buffered().useLines { read(it) } }
         if (channels.isEmpty() && movies.isEmpty()) error("That playlist has no channels or movies.")
         replace(s.id, categories.values.toList(), channels, movies, emptyList())
         if (s.epgUrl == null && guideUrl != null) db.sources().upsert(s.copy(epgUrl = guideUrl).toEntity())

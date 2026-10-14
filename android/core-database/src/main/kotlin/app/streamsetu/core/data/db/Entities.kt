@@ -16,6 +16,14 @@ data class SourceEntity(
     val lastSyncAt: Long,
     val status: String,
     val sortOrder: Int = 0,
+    /** Set aside before it was tested: not a working library yet. */
+    val draft: Boolean = false,
+    /** What the last good read found, so the library chooser can preview it without a network request. */
+    val channelCount: Int = 0,
+    val movieCount: Int = 0,
+    val seriesCount: Int = 0,
+    val lastError: String? = null,
+    val lastOpenedAt: Long = 0,
 )
 
 @Entity(tableName = "categories", primaryKeys = ["id"], indices = [Index("sourceId", "kind")])
@@ -95,3 +103,24 @@ data class ProgressEntity(
 
 @Entity(tableName = "watch_log", indices = [Index("playedAt")])
 data class WatchLogEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val itemId: String, val kind: String, val title: String, val playedAt: Long)
+
+/** A group of connections shown as one library. It holds no copy of their catalogs; screens read the members' records together. */
+@Entity(tableName = "libraries")
+data class LibraryEntity(@PrimaryKey val id: String, val name: String, val createdAt: Long, val lastOpenedAt: Long = 0)
+
+@Entity(tableName = "library_members", primaryKeys = ["libraryId", "sourceId"], indices = [Index("sourceId")])
+data class LibraryMemberEntity(val libraryId: String, val sourceId: String)
+
+/** The person's own arrangement of a provider folder. The provider's playlist is never changed. [scope] is CHANNEL, MOVIE or SERIES. */
+@Entity(tableName = "folder_prefs", primaryKeys = ["scope", "folderId"])
+data class FolderPrefEntity(
+    val scope: String,
+    val folderId: String,
+    val favorite: Boolean = false,
+    val pinned: Boolean = false,
+    val hidden: Boolean = false,
+    val locked: Boolean = false,
+    val alias: String? = null,
+    /** -1 = provider order. */
+    val sortIndex: Int = -1,
+)

@@ -30,6 +30,8 @@ class AppContainer @Inject constructor(
     val credentials: CredentialStore,
     val sources: SourceRepository,
     val catalog: CatalogRepository,
+    val library: app.streamsetu.core.data.repo.LibraryRepository,
+    val folders: app.streamsetu.core.data.repo.FolderRepository,
     val user: UserRepository,
     val epg: EpgService,
     val parental: ParentalControls,
