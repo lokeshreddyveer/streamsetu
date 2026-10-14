@@ -805,12 +805,40 @@ final class PlaybackCoordinator {
         }
     }
 
+    /// Items for which the secure name lookup was already tried in this run, so it is tried once.
+    private var secureDNSTried = Set<String>()
+
     private func handleFailure(_ error: PlaybackError) {
         guard let r = current else { state = .failed(error); return }
         if NetworkRecovery.waitsForConnection(kind: error.kind, online: network.isOnline) { waitForNetwork(); return }
         // Provider retries (a busy or erroring server) must not use up the one allowed switch to the other player, so that decision is counted apart.
         let isFormat = error.kind == .unsupportedFormat || error.kind == .engineUnavailable
         let decisionAttempt = isFormat ? (switchedEngine ? max(attempt, 1) : 0) : attempt
+        // This network cannot find the server's name: ask a public encrypted resolver once and connect by address with the MPV player.
+        if error.kind == .nameLookup, !secureDNSTried.contains(r.itemID), factory.available.contains(.mpv), let host = r.url.host, !SecureDNS.isIPAddress(host), r.url.scheme == "http" {
+            secureDNSTried.insert(r.itemID)
+            state = .recovering
+            statusMessage = "Looking for the server another way…"
+            diagnostics.record("secure DNS lookup for the server name")
+            recoveryTask?.cancel()
+            recoveryTask = Task { [weak self] in
+                let ip = await SecureDNS.resolve(host)
+                guard let self, !Task.isCancelled else { return }
+                if let ip, let rewritten = SecureDNS.rewrite(r.url, to: ip) {
+                    Trace.log("secure DNS found an address for the server; connecting directly")
+                    var req = r
+                    req.url = rewritten.url
+                    req.headers["Host"] = rewritten.hostHeader
+                    if !r.isLive { req.startPosition = max(self.position, r.startPosition) }
+                    self.start(req, engineOverride: .mpv)
+                } else {
+                    Trace.log("secure DNS found nothing")
+                    self.state = .failed(error); self.statusMessage = error.message
+                    self.endSession(outcome: "failed", error: error.detail ?? error.kind.rawValue)
+                }
+            }
+            return
+        }
         let recentlyRefused = !r.isLive && (refusedAt[r.itemID].map { Date().timeIntervalSince($0) < 600 } ?? false)
         let action = recovery.decide(error: error, attempt: decisionAttempt, current: activeEngine, available: factory.available, isLive: r.isLive, recentlyRefused: recentlyRefused)
         if error.kind == .providerBusy, !r.isLive, action == .giveUp { refusedAt[r.itemID] = Date() }

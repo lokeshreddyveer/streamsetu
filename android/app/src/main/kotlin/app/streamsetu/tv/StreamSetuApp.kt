@@ -29,6 +29,7 @@ class AppContainer(context: Context) {
     val user = UserRepository(db)
     val sync = SyncService(db, sources, credentials)
     val epg = EpgService(db)
+    val parental = app.streamsetu.core.data.repo.ParentalControls(context)
     val resolver = StreamResolver(sources, credentials)
 
     /** What the player plays next: the channels of the list it was started from, or the episodes of a series. */
@@ -40,6 +41,20 @@ class AppContainer(context: Context) {
         onProgress = { item, pos, dur -> user.saveProgress(item.id, kindOf(item), (item as? EpisodePlayable)?.series?.id, pos, dur) },
         onStarted = { item -> user.recordPlay(item.id, kindOf(item), item.title) },
     )
+
+    /** Reads a playlist, then its guide (a guide that cannot be read never fails the playlist). */
+    suspend fun syncWithGuide(sourceId: String): SyncService.Result {
+        val r = sync.sync(sourceId)
+        runCatching {
+            val src = sources.get(sourceId) ?: return@runCatching
+            val fallback = if (src.type == SourceType.XTREAM) {
+                val pass = credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()
+                "${app.streamsetu.core.parse.Xtream.normalizeHost(src.address)}/xmltv.php?username=${src.username.orEmpty()}&password=$pass"
+            } else null
+            epg.refresh(src, fallback)
+        }
+        return r
+    }
 
     fun play(item: Playable, queue: List<Playable> = listOf(item)) {
         this.queue = queue

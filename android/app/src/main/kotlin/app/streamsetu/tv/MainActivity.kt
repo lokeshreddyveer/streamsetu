@@ -62,11 +62,12 @@ fun StreamSetuTV(c: AppContainer, onExit: () -> Unit) {
                     else -> when (nav.tab) {
                         Tab.HOME -> HomeScreen(vm { HomeViewModel(c) }, c, nav)
                         Tab.LIVE -> LiveScreen(vm { LiveViewModel(c) }, c, nav)
+                        Tab.GUIDE -> GuideScreen(vm { GuideViewModel(c) }, c, nav)
                         Tab.FAVOURITES -> FavouritesScreen(vm { FavouritesViewModel(c) }, c, nav)
                         Tab.MOVIES -> MoviesScreen(vm { MoviesViewModel(c) }, c, nav)
                         Tab.SERIES -> SeriesScreen(vm { SeriesViewModel(c) }, nav)
                         Tab.SEARCH -> SearchScreen(vm { SearchViewModel(c) }, c, nav)
-                        Tab.SETTINGS -> SettingsScreen(vm { SettingsViewModel(c) }, nav)
+                        Tab.SETTINGS -> { val hide by c.parental.hideAdult.collectAsState(); SettingsScreen(vm { SettingsViewModel(c) }, nav, hide) { c.parental.setHideAdult(it) } }
                     }
                 }
             }

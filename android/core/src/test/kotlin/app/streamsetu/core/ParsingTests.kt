@@ -57,4 +57,15 @@ class ParsingTests {
         assertEquals(1_792_000_000_000L / 1000 * 0 + XmltvParser.parseTime("20261013180000 +0000"), XmltvParser.parseTime("20261013180000"))
         assertEquals(XmltvParser.parseTime("20261013180000 +0000") - 2 * 3600_000, XmltvParser.parseTime("20261013180000 +0200"))
     }
+
+    @Test fun adultCategoryNamesAreRecognised() {
+        for (n in listOf("XXX", "Adults 18+", "Adult Movies", "PORN HD")) assertTrue(n, app.streamsetu.core.data.repo.ParentalControls.isAdultName(n))
+        for (n in listOf("Sports", "Essex News", "Kids", "Sussex")) assertFalse(n, app.streamsetu.core.data.repo.ParentalControls.isAdultName(n))
+    }
+
+    @Test fun anM3uGuideAddressIsReadFromTheHeader() {
+        var found: String? = null
+        M3uParser.parse(sequenceOf("#EXTM3U url-tvg=\"http://g/epg.xml.gz,http://h/x.xml\"", "#EXTINF:-1,A", "http://s/1"), onHeader = { found = it }) {}
+        assertEquals("http://g/epg.xml.gz", found)
+    }
 }

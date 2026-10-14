@@ -8,7 +8,7 @@ import androidx.compose.runtime.setValue
 import app.streamsetu.core.model.Series
 
 /** The top-level places in the side rail. */
-enum class Tab(val title: String) { HOME("Home"), LIVE("Live TV"), FAVOURITES("Favourites"), MOVIES("Movies"), SERIES("Series"), SEARCH("Search"), SETTINGS("Settings") }
+enum class Tab(val title: String) { HOME("Home"), LIVE("Live TV"), GUIDE("Guide"), FAVOURITES("Favourites"), MOVIES("Movies"), SERIES("Series"), SEARCH("Search"), SETTINGS("Settings") }
 
 /** Screens that cover the whole window. */
 sealed interface Overlay {

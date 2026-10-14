@@ -60,6 +60,7 @@ Data/Sources/Stalker/StalkerMapper.swift
 Data/Sources/Stalker/StalkerProvider.swift
 Playback/PortalLink.swift
 Playback/StartDiagnosis.swift
+Playback/SecureDNS.swift
 Data/Sources/Xtream/XtreamClient.swift
 Data/Sources/Xtream/XtreamDTO.swift
 Data/Sources/Xtream/XtreamErrors.swift

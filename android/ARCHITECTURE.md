@@ -52,14 +52,17 @@ remote OK ─▶ AppContainer.play(item, queue) ─▶ StreamResolver ─▶ Pla
 OK shows the bar (and pauses a movie when the bar is already visible). Left/Right skip 10 s in a movie. Up/Down change channel in a live list
 (and step episodes in a series). Play/pause and fast-forward/rewind media keys work. Back closes the player.
 
-## Not built yet (planned, in this order)
-1. Guide screen (a grid of now/next), and catch-up.
-2. Favourites list screen and Watch Later (data layer is done).
-3. Audio / subtitle chooser in the player (the controller already exposes the tracks and `selectAudio` / `selectSubtitle`).
-4. Stalker portals, HDHomeRun, local files and WebDAV.
-5. MPV engine for MKV/AVI where ExoPlayer cannot decode.
-6. Parental controls, hidden categories, sleep timer.
-7. Update path: Amazon Appstore listing; sideload APK until then.
+## Built since the first version
+Guide screen (now and next per channel, from the XMLTV guide; M3U `url-tvg` and Xtream `xmltv.php` are read after each sync), Favourites tab
+(channels and Watch Later), audio / subtitle chooser (MENU), sleep timer, hide-adult-categories switch (on by default).
+
+## Not built yet
+1. Catch-up playback and a time-grid guide.
+2. PIN protection for the adult switch.
+3. Stalker portals, HDHomeRun, local files and WebDAV.
+4. MPV engine for MKV/AVI where ExoPlayer cannot decode (ExoPlayer plays most MKV and MP4; AVI and exotic codecs are the gap).
+5. Secure-DNS fallback for blocked server names (done on Apple; same idea fits `StreamResolver`).
+6. Amazon Appstore listing; sideload the APK until then.
 
 ## Build and test
 ```
@@ -71,4 +74,4 @@ adb connect <fire-tv-ip>:5555 && adb install -r app/build/outputs/apk/debug/app-
 On a Fire TV: Settings → My Fire TV → Developer Options → ADB debugging (and Apps from unknown sources) → on.
 
 ## Verification status
-Compiles; 11 unit tests pass (M3U/Xtream/XMLTV parsing, retry policy). Not yet run on a device or emulator.
+Compiles; 13 unit tests pass (M3U/Xtream/XMLTV parsing, retry policy, parental words). Not yet run on a device or emulator.

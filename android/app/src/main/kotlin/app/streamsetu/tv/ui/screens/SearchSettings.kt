@@ -58,7 +58,7 @@ fun SearchScreen(vm: SearchViewModel, c: AppContainer, nav: Navigator) {
 }
 
 @Composable
-fun SettingsScreen(vm: SettingsViewModel, nav: Navigator) {
+fun SettingsScreen(vm: SettingsViewModel, nav: Navigator, hideAdult: Boolean, onHideAdult: (Boolean) -> Unit) {
     val sources by vm.sources.collectAsState()
     val message by vm.message.collectAsState()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 36.dp, end = Tokens.screenPadding, bottom = 48.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -76,6 +76,8 @@ fun SettingsScreen(vm: SettingsViewModel, nav: Navigator) {
         }
         item { TvButton("Add a Playlist", { nav.open(Overlay.AddPlaylist) }, icon = Icons.Filled.Add, primary = true) }
         message?.let { item { Label(it, color = Tokens.accent) } }
+        item { Spacer(Modifier.height(12.dp)); SectionTitle("Parental") }
+        item { TvButton(if (hideAdult) "Adult categories: hidden" else "Adult categories: shown", { onHideAdult(!hideAdult) }) }
         item { Spacer(Modifier.height(20.dp)); SectionTitle("About") }
         item { Label("StreamSetu for Android TV and Fire TV · version 0.1.0", color = Tokens.muted) }
         item { Label("Your playlists and logins stay on this device.", Tokens.small, Tokens.muted) }

@@ -35,3 +35,7 @@ class EpgService(private val db: AppDatabase) {
         return epgIds.chunked(500).flatMap { db.epg().nowFor(it, now) }.associate { it.channelEpgId to EpgProgram(it.channelEpgId, it.startMs, it.endMs, it.title, it.description) }
     }
 }
+
+/** The programmes of a channel from now on, for the guide screen. */
+suspend fun EpgService.upcoming(db: AppDatabase, epgId: String, limit: Int = 3, now: Long = System.currentTimeMillis()): List<EpgProgram> =
+    db.epg().upcoming(epgId, now, limit).map { EpgProgram(it.channelEpgId, it.startMs, it.endMs, it.title, it.description) }

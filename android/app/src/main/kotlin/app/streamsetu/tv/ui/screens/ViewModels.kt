@@ -8,6 +8,7 @@ import app.streamsetu.tv.AppContainer
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import app.streamsetu.core.sync.upcoming
 
 /** What the Home screen shows. */
 class HomeViewModel(private val c: AppContainer) : ViewModel() {
@@ -39,7 +40,7 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveViewModel(private val c: AppContainer) : ViewModel() {
-    val categories: StateFlow<List<Category>> = c.catalog.categories(ContentKind.CHANNEL).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val categories: StateFlow<List<Category>> = combine(c.catalog.categories(ContentKind.CHANNEL), c.parental.hideAdult) { l, h -> l.filter { c.parental.visible(it, h) } }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     private val selected = MutableStateFlow<String?>(null)
     val selectedCategory: StateFlow<String?> = selected
     val favouriteIds: StateFlow<Set<String>> = c.user.favouriteIds().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
@@ -58,7 +59,7 @@ class LiveViewModel(private val c: AppContainer) : ViewModel() {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MoviesViewModel(private val c: AppContainer) : ViewModel() {
-    val categories: StateFlow<List<Category>> = c.catalog.categories(ContentKind.MOVIE).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val categories: StateFlow<List<Category>> = combine(c.catalog.categories(ContentKind.MOVIE), c.parental.hideAdult) { l, h -> l.filter { c.parental.visible(it, h) } }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     private val selected = MutableStateFlow<String?>(null)
     val selectedCategory: StateFlow<String?> = selected
     val movies: StateFlow<List<Movie>> = combine(selected, categories) { s, cats -> s ?: cats.firstOrNull()?.id }.distinctUntilChanged()
@@ -69,7 +70,7 @@ class MoviesViewModel(private val c: AppContainer) : ViewModel() {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SeriesViewModel(private val c: AppContainer) : ViewModel() {
-    val categories: StateFlow<List<Category>> = c.catalog.categories(ContentKind.SERIES).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val categories: StateFlow<List<Category>> = combine(c.catalog.categories(ContentKind.SERIES), c.parental.hideAdult) { l, h -> l.filter { c.parental.visible(it, h) } }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     private val selected = MutableStateFlow<String?>(null)
     val selectedCategory: StateFlow<String?> = selected
     val series: StateFlow<List<Series>> = combine(selected, categories) { s, cats -> s ?: cats.firstOrNull()?.id }.distinctUntilChanged()
@@ -112,7 +113,7 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
 
     fun sync(s: Source) = viewModelScope.launch {
         _message.value = "Reading ${s.name}…"
-        _message.value = runCatching { c.sync.sync(s.id) }
+        _message.value = runCatching { c.syncWithGuide(s.id) }
             .map { "Read ${it.channels} channels, ${it.movies} movies and ${it.series} series." }
             .getOrElse { it.message ?: "The playlist could not be read." }
     }
@@ -134,7 +135,7 @@ class AddPlaylistViewModel(private val c: AppContainer) : ViewModel() {
                     address = address.trim(), username = user.trim().ifBlank { null }),
                 password.ifBlank { null },
             )
-            runCatching { c.sync.sync(saved.id) }
+            runCatching { c.syncWithGuide(saved.id) }
                 .onSuccess { _busy.value = false; done() }
                 .onFailure { c.sources.remove(saved.id); _busy.value = false; _message.value = it.message ?: "The playlist could not be read." }
         }
@@ -147,4 +148,13 @@ class FavouritesViewModel(private val c: AppContainer) : ViewModel() {
     val watchLater: StateFlow<List<Movie>> = c.user.favouriteIds(app.streamsetu.core.data.repo.UserRepository.WATCH_LATER).map { ids -> ids.mapNotNull { c.catalog.movie(it) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     fun remove(ch: Channel) = viewModelScope.launch { c.user.setFavourite(ch.id, ContentKind.CHANNEL, false) }
+}
+
+class GuideViewModel(private val c: AppContainer) : ViewModel() {
+    data class Row(val channel: Channel, val programmes: List<EpgProgram>)
+
+    val rows: StateFlow<List<Row>> = c.catalog.allChannels(400).map { list ->
+        list.filter { it.epgId != null }.take(200).map { ch -> Row(ch, c.epg.upcoming(c.db, ch.epgId!!)) }
+            .filter { it.programmes.isNotEmpty() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 }

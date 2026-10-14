@@ -2,6 +2,7 @@ package app.streamsetu.core.sync
 
 import androidx.room.withTransaction
 import app.streamsetu.core.data.db.*
+import app.streamsetu.core.data.repo.toEntity
 import app.streamsetu.core.data.repo.SourceRepository
 import app.streamsetu.core.model.*
 import app.streamsetu.core.net.Http
@@ -44,9 +45,10 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             categories.getOrPut(id) { CategoryEntity(id, s.id, kind.name, n, categories.size) }
             return id
         }
+        var guideUrl: String? = null
         Http.get(s.address) { resp ->
             resp.body!!.charStream().buffered().useLines { lines ->
-                M3uParser.parse(lines) { e ->
+                M3uParser.parse(lines, onHeader = { guideUrl = it }) { e ->
                     order++
                     when (e.kind) {
                         ContentKind.CHANNEL -> channels += ChannelEntity(
@@ -64,6 +66,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         }
         if (channels.isEmpty() && movies.isEmpty()) error("That playlist has no channels or movies.")
         replace(s.id, categories.values.toList(), channels, movies, emptyList())
+        if (s.epgUrl == null && guideUrl != null) db.sources().upsert(s.copy(epgUrl = guideUrl).toEntity())
         return Result(channels.size, movies.size, 0)
     }
 

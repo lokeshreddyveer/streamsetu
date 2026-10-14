@@ -22,7 +22,10 @@ data class M3uEntry(
 object M3uParser {
     private val attr = Regex("""([A-Za-z0-9_-]+)="([^"]*)"""")
 
-    fun parse(lines: Sequence<String>, onEntry: (M3uEntry) -> Unit): Int {
+    private val guideAttr = Regex("""(?:url-tvg|x-tvg-url)="([^"]+)"""", RegexOption.IGNORE_CASE)
+
+    /** [onHeader] receives the guide address named in the `#EXTM3U` line, if any (the first of several). */
+    fun parse(lines: Sequence<String>, onHeader: (String) -> Unit = {}, onEntry: (M3uEntry) -> Unit): Int {
         var count = 0
         var info: String? = null
         var groupOverride: String? = null
@@ -30,6 +33,7 @@ object M3uParser {
             val line = raw.trim().removePrefix("﻿")
             when {
                 line.isEmpty() -> {}
+                line.startsWith("#EXTM3U", ignoreCase = true) -> guideAttr.find(line)?.groupValues?.get(1)?.split(',', ' ')?.firstOrNull { it.isNotBlank() }?.let(onHeader)
                 line.startsWith("#EXTINF", ignoreCase = true) -> info = line      // an #EXTGRP seen just before keeps applying
                 line.startsWith("#EXTGRP:", ignoreCase = true) -> groupOverride = line.substringAfter(':').trim()
                 line.startsWith("#") -> {}
