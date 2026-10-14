@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "StreamSetuTV"
-include(":core", ":app")
+include(":core-model", ":core-security", ":core-network", ":core-database", ":core-preferences", ":core-media", ":data", ":app")
