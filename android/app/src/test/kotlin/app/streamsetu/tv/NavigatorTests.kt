@@ -21,16 +21,37 @@ class NavigatorTests {
         assertTrue(n.back())
         assertEquals(SidebarMode.EXPANDED, n.sidebarMode); assertEquals(Tab.MOVIES, n.tab)
     }
-    @Test fun sidebarHidesAgainWhenTheRemoteLeavesIt() {
+    @Test fun theSidebarStaysOpenWhileFocusIsLostForAMoment() {
         val n = inLibrary(Tab.SERIES); n.back(); n.sidebarFocusChanged(true)
-        n.sidebarFocusChanged(false)
+        n.sidebarFocusChanged(false)                                 // focus is "nowhere" for an instant while it moves between two entries
+        assertEquals(SidebarMode.EXPANDED, n.sidebarMode)
+    }
+    @Test fun theSidebarClosesWhenTheRemoteHasArrivedInThePage() {
+        val n = inLibrary(Tab.SERIES); n.back(); n.sidebarFocusChanged(true)
+        n.sidebarFocusChanged(false); n.contentFocusChanged(true)
         assertEquals(SidebarMode.HIDDEN, n.sidebarMode)
     }
-    @Test fun backFromTheSidebarGoesHomeThenToTheChooserAndNeverExitsFromHome() {
+    @Test fun thePageGainingFocusDoesNotCloseTheSidebarWhileTheRemoteIsOnIt() {
         val n = inLibrary(Tab.LIVE); n.back(); n.sidebarFocusChanged(true)
-        assertTrue(n.back()); assertEquals(Tab.HOME, n.tab)
-        n.sidebarFocusChanged(true)
+        n.contentFocusChanged(true)
+        assertEquals(SidebarMode.EXPANDED, n.sidebarMode)
+    }
+    @Test fun backOnTheOpenSidebarClosesItAndLeavesThePageWhereItWas() {
+        val n = inLibrary(Tab.LIVE); n.back(); n.sidebarFocusChanged(true)
+        val before = n.restoreFocusTick
+        assertTrue(n.back())
+        assertEquals(Tab.LIVE, n.tab); assertEquals(SidebarMode.HIDDEN, n.sidebarMode); assertFalse(n.sidebarFocused)
+        assertEquals(before + 1, n.restoreFocusTick)                  // the page is asked to give the remote back where it was
+    }
+    @Test fun backFromHomesSidebarGoesToTheChooserAndNeverExitsFromHome() {
+        val n = inLibrary(); assertTrue(n.back()); n.sidebarFocusChanged(true)
+        assertEquals(SidebarMode.EXPANDED, n.sidebarMode)
         assertTrue(n.back()); assertEquals(Base.ChooseLibrary, n.base)
+    }
+    @Test fun backTwiceFromAPageOpensThenClosesTheSidebar() {
+        val n = inLibrary(Tab.MOVIES)
+        n.back(); n.sidebarFocusChanged(true); assertEquals(SidebarMode.EXPANDED, n.sidebarMode)
+        n.back(); assertEquals(SidebarMode.HIDDEN, n.sidebarMode); assertEquals(Tab.MOVIES, n.tab)
     }
     @Test fun anOverlayClosesBeforeAnythingElse() {
         val n = inLibrary(Tab.MOVIES); n.open(Overlay.Player)

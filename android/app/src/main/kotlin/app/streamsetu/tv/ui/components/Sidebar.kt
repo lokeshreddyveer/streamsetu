@@ -17,7 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -64,12 +66,17 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
     var lossJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val reduced = LocalReducedMotion.current
     val width by animateDpAsState(if (expanded) Tokens.sidebarExpanded else Tokens.sidebarCompact, if (reduced) snap() else tween(Motion.SIDEBAR, easing = Motion.Standard), label = "sidebarWidth")
-    val labelAlpha by animateFloatAsState(if (expanded) 1f else 0f, if (reduced) snap() else tween(Motion.SHORT), label = "sidebarLabels")
+    // The fade is read only where it is drawn (graphicsLayer), so it redraws the labels each frame without recomposing the entries.
+    val labelAlpha = animateFloatAsState(if (expanded) 1f else 0f, if (reduced) snap() else tween(Motion.SHORT), label = "sidebarLabels")
+    // One stable focus requester per entry. Up and Down go from entry to entry and stop at the ends; Left never leaves. Compose's own search would otherwise carry the remote
+    // out of the sidebar to whatever is below it in the page (the folder list), and the sidebar closes behind it.
+    val requesters = remember { (Main + Other).associateWith { FocusRequester() } }
+    val order = remember { Main + Other }
     val shape = if (floating) RoundedCornerShape(20.dp) else RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)
     Column(
         (if (floating) modifier.padding(start = 16.dp, top = Tokens.safeVertical, bottom = Tokens.safeVertical).wrapContentHeight() else modifier.fillMaxHeight().padding(vertical = Tokens.safeVertical))
             .width(width).clip(shape)
-            .background(Color(0xF2090909))
+            .background(Color(0xFF090909))
             // Moving between two entries can report "no focus" for an instant. Gaining focus is immediate; losing it only counts if it lasts, or the panel would hide itself mid-move.
             .onFocusChanged { st ->
                 android.util.Log.d("Nav", "sidebar hasFocus=${st.hasFocus} had=$hadFocus")
@@ -84,33 +91,39 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
             // The mark: the same spot whether the panel is narrow or wide.
             Row(Modifier.height(44.dp).padding(start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.Image(painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)))
-                Label("StreamSetu", Tokens.row, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 10.dp).graphicsLayer { alpha = labelAlpha })
+                Label("StreamSetu", Tokens.row, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 10.dp).graphicsLayer { alpha = labelAlpha.value })
             }
             Spacer(Modifier.height(4.dp))
         }
         // The mark and name: the mark never moves; the name fades in as the panel widens.
         Row(Modifier.height(40.dp).padding(start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Image(painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(28.dp).clip(RoundedCornerShape(9.dp)))
-            Label("StreamSetu", Tokens.heading, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 12.dp).graphicsLayer { alpha = labelAlpha })
+            Label("StreamSetu", Tokens.heading, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 12.dp).graphicsLayer { alpha = labelAlpha.value })
         }
         Spacer(Modifier.height(4.dp))
-        Main.forEach { SidebarEntry(it, selected, entry, labelAlpha, onSelect) }
-        Box(Modifier.padding(vertical = 4.dp, horizontal = 10.dp).fillMaxWidth().height(1.dp).background(Color(0x1FFFFFFF)))
-        Other.forEach { SidebarEntry(it, selected, entry, labelAlpha, onSelect) }
+        androidx.compose.runtime.CompositionLocalProvider(LocalInSidebar provides true) {
+            Main.forEach { SidebarEntry(it, selected, entry, labelAlpha, onSelect, requesters, order) }
+            Box(Modifier.padding(vertical = 4.dp, horizontal = 10.dp).fillMaxWidth().height(1.dp).background(Color(0x1FFFFFFF)))
+            Other.forEach { SidebarEntry(it, selected, entry, labelAlpha, onSelect, requesters, order) }
+        }
     }
 }
 
 @Composable
-private fun SidebarEntry(t: Tab, selected: Tab, entry: FocusRequester, labelAlpha: Float, onSelect: (Tab) -> Unit) {
+private fun SidebarEntry(t: Tab, selected: Tab, entry: FocusRequester, labelAlpha: State<Float>, onSelect: (Tab) -> Unit, requesters: Map<Tab, FocusRequester>, order: List<Tab>) {
     val isSel = t == selected
-    Focusable({ onSelect(t) }, (if (isSel) Modifier.focusRequester(entry) else Modifier).fillMaxWidth().height(Row.dp), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color(0x26FFFFFF), shape = RoundedCornerShape(12.dp), focusSound = app.streamsetu.tv.UISoundEvent.SIDEBAR_MOVE, selectSound = app.streamsetu.tv.UISoundEvent.NAVIGATE_FORWARD) { f ->
+    val i = order.indexOf(t)
+    val up = order.getOrNull(i - 1)?.let { requesters.getValue(it) } ?: FocusRequester.Cancel
+    val down = order.getOrNull(i + 1)?.let { requesters.getValue(it) } ?: FocusRequester.Cancel
+    Focusable({ onSelect(t) }, (if (isSel) Modifier.focusRequester(entry) else Modifier).focusRequester(requesters.getValue(t))
+        .focusProperties { this.up = up; this.down = down; this.left = FocusRequester.Cancel }.testTag("sidebar-${t.name}").fillMaxWidth().height(Row.dp), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color(0x26FFFFFF), shape = RoundedCornerShape(12.dp), focusSound = app.streamsetu.tv.UISoundEvent.SIDEBAR_MOVE, selectSound = app.streamsetu.tv.UISoundEvent.NAVIGATE_FORWARD) { f ->
         Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
             // The accent bar sits at the very left; the icon box is the same width in both states, so nothing shifts when the panel widens.
             Box(Modifier.padding(start = 2.dp).width(3.dp).height(20.dp).background(if (isSel) Tokens.gold else Color.Transparent, RoundedCornerShape(2.dp)))
             Box(Modifier.width(IconBox.dp - 3.dp), Alignment.Center) {
                 Image(iconOf(t), nameOf(t), Modifier.size(19.dp), colorFilter = ColorFilter.tint(if (isSel) Tokens.gold else if (f) Color.White else Tokens.textSecondary))
             }
-            Label(nameOf(t), Tokens.row, if (f || isSel) Color.White else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.padding(start = 10.dp).graphicsLayer { alpha = labelAlpha })
+            Label(nameOf(t), Tokens.row, if (f || isSel) Color.White else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.padding(start = 10.dp).graphicsLayer { alpha = labelAlpha.value })
         }
     }
 }

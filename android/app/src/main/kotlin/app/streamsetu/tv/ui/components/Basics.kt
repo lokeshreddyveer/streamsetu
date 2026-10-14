@@ -77,7 +77,14 @@ val LocalFocusRing = androidx.compose.runtime.compositionLocalOf<Color> { Color.
 val LocalHighContrast = androidx.compose.runtime.compositionLocalOf { false }
 
 /** The last thing on the base page that held focus, so closing a page (a movie, an episode list, the player) returns you to it. */
-object FocusMemory { var last: FocusRequester? = null; var lastHasFocus = false }
+object FocusMemory {
+    var last: FocusRequester? = null; var lastHasFocus = false
+    /** The last thing in the page itself (never a sidebar entry) that held focus: where the remote goes back to when the sidebar closes. */
+    var content: FocusRequester? = null
+}
+
+/** True inside the global sidebar: its entries are not remembered as the page's focus. */
+val LocalInSidebar = androidx.compose.runtime.compositionLocalOf { false }
 
 /** True inside a full-screen page (movie, series, add playlist, player): its buttons are not part of the remembered base page. */
 val LocalInOverlay = androidx.compose.runtime.compositionLocalOf { false }
@@ -121,6 +128,7 @@ fun Focusable(
     val enabled = LocalFocusEnabled.current
     val own = remember { FocusRequester() }
     val inOverlay = LocalInOverlay.current
+    val inSidebar = LocalInSidebar.current
     Box(
         modifier
             .focusScale(focused, scaleOnFocus)
@@ -141,6 +149,7 @@ fun Focusable(
                 // Holding OK is detected by the activity (it sees every key before anything else) and handed to whatever the remote is on.
                 if (it.isFocused) { if (longClick != null) LongPress.handler = LongPress.Handler(own) { longClick?.invoke() } else LongPress.handler = null }
                 else if (LongPress.handler?.owner === own) LongPress.handler = null
+                if (it.isFocused && enabled && !inOverlay && !inSidebar) FocusMemory.content = own
                 if (it.isFocused && enabled && !inOverlay) { FocusMemory.last = own; FocusMemory.lastHasFocus = true }
                 else if (!it.isFocused && FocusMemory.last === own) FocusMemory.lastHasFocus = false
             }

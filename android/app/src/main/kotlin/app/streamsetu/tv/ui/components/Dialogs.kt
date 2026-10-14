@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.streamsetu.core.model.*
@@ -34,8 +35,11 @@ fun ContextMenu(title: String, subtitle: String? = null, actions: List<MenuActio
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.MENU_OPEN); delay(80); runCatching { first.requestFocus() } }
     DisposableEffect(Unit) { onDispose { app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.MENU_CLOSE) } }
+    // This menu usually opens while OK is still held; see [SelectKeyGuard].
+    val guard = remember { SelectKeyGuard() }
+    LaunchedEffect(Unit) { while (!guard.armed) { delay(60); guard.tick() } }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) {
+        Box(Modifier.fillMaxSize().onPreviewKeyEvent { e -> SelectKeyGuard.isSelect(e) && guard.swallow(SelectKeyGuard.isDown(e)) }, Alignment.Center) {
             Column(Modifier.width(300.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Label(title, Tokens.title, Tokens.text, FontWeight.Bold)
                 if (subtitle != null) Label(subtitle, Tokens.small, Tokens.textSecondary)

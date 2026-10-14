@@ -72,6 +72,10 @@ class Navigator {
     var sidebarRevealed by mutableStateOf(false)
     /** True while the remote is on the sidebar. */
     var sidebarFocused by mutableStateOf(false)
+    /** True while the remote is somewhere in the page itself. The sidebar closes when the remote has really gone there, never because focus was lost for a moment. */
+    var contentFocused by mutableStateOf(false)
+    /** Bumped when the sidebar closes without choosing a page, so the remote goes back to where it was in the page. */
+    var restoreFocusTick by mutableStateOf(0)
     /** Bumped to send the remote to the sidebar. */
     var sidebarFocusTick by mutableStateOf(0)
     /** Bumped whenever the page should take the remote (a section was chosen). */
@@ -95,8 +99,20 @@ class Navigator {
 
     fun go(t: Tab) { tab = t; sidebarRevealed = false; sidebarFocused = false; contentFocusTick++ }
 
-    /** The remote left the sidebar: on a page other than Home it hides again. */
-    fun sidebarFocusChanged(has: Boolean) { sidebarFocused = has; if (!has && tab != Tab.HOME) sidebarRevealed = false }
+    /**
+     * The remote moved onto or off the sidebar. Losing focus does not hide the sidebar by itself (focus is lost for an instant while it moves between two entries,
+     * while the page builds, and while a list scrolls); it hides when the remote has actually arrived in the page ([contentFocusChanged]).
+     */
+    fun sidebarFocusChanged(has: Boolean) { sidebarFocused = has }
+
+    /** The remote moved into or out of the page. Arriving in the page while the sidebar is open (and the remote is not on it) closes the sidebar. */
+    fun contentFocusChanged(has: Boolean) {
+        contentFocused = has
+        if (has && !sidebarFocused && tab != Tab.HOME) sidebarRevealed = false
+    }
+
+    /** Closes the sidebar and sends the remote back to where it was in the page. */
+    fun closeSidebar() { sidebarRevealed = false; sidebarFocused = false; restoreFocusTick++ }
 
     /** True while Settings was opened from the library chooser: Back returns there. */
     var settingsFromChooser = false
@@ -114,7 +130,7 @@ class Navigator {
         base is Base.Setup || base is Base.Combined -> { base = Base.ChooseLibrary; true }
         base == Base.Shell && settingsFromChooser && tab == Tab.SETTINGS && !sidebarFocused -> { settingsFromChooser = false; toChooser(); true }
         base == Base.Shell && !sidebarFocused -> { revealSidebar(); true }
-        base == Base.Shell && tab != Tab.HOME -> { go(Tab.HOME); true }
+        base == Base.Shell && tab != Tab.HOME -> { closeSidebar(); true }      // Back on the open sidebar closes it; the page is where it was
         base == Base.Shell -> { toChooser(); true }
         else -> false
     }

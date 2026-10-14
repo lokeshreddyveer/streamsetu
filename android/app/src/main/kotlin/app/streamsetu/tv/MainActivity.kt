@@ -89,20 +89,19 @@ class MainActivity : ComponentActivity() {
     // Seen here, before any screen can take the key: after about half a second the thing the remote is on gets its long press, and the release that follows is swallowed
     // so it does not also count as a click. Works whether the remote repeats the key while held or not.
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
-    private var longFired = false
-    private val fireLong = Runnable { val h = app.streamsetu.tv.ui.components.LongPress.handler; if (h != null) { longFired = true; h.run() } }
+    private var pendingHold: Runnable? = null
+    private val hold = HoldToSelect(
+        hasHandler = { app.streamsetu.tv.ui.components.LongPress.handler != null },
+        schedule = { ms, run -> val r = Runnable { run() }; pendingHold = r; main.postDelayed(r, ms) },
+        cancel = { pendingHold?.let { main.removeCallbacks(it) }; pendingHold = null },
+        fire = { app.streamsetu.tv.ui.components.LongPress.handler?.run?.invoke() },
+    )
 
     override fun dispatchKeyEvent(e: android.view.KeyEvent): Boolean {
         if (e.action == android.view.KeyEvent.ACTION_DOWN && e.keyCode in android.view.KeyEvent.KEYCODE_DPAD_UP..android.view.KeyEvent.KEYCODE_DPAD_RIGHT) app.streamsetu.tv.UISound.noteDpad()
         val select = e.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || e.keyCode == android.view.KeyEvent.KEYCODE_ENTER || e.keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
         if (!select || nav.top == Overlay.Player) return super.dispatchKeyEvent(e)
-        when (e.action) {
-            android.view.KeyEvent.ACTION_DOWN -> {
-                if (e.repeatCount == 0) { longFired = false; main.removeCallbacks(fireLong); if (app.streamsetu.tv.ui.components.LongPress.handler != null) main.postDelayed(fireLong, 520) }
-                if (longFired) return true
-            }
-            android.view.KeyEvent.ACTION_UP -> { main.removeCallbacks(fireLong); if (longFired) { longFired = false; return true } }
-        }
+        if (hold.onSelect(e.action == android.view.KeyEvent.ACTION_DOWN, e.repeatCount)) return true
         return super.dispatchKeyEvent(e)
     }
 
@@ -166,7 +165,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     var anyFocus by remember { mutableStateOf(true) }
     val rootFocus = androidx.compose.ui.platform.LocalFocusManager.current
     LaunchedEffect(anyFocus, nav.top, nav.base, nav.tab, nav.sidebarFocused) {
-        if (anyFocus || nav.top != null || (nav.top == Overlay.Player)) return@LaunchedEffect
+        if (anyFocus || nav.top != null || nav.sidebarRevealed) return@LaunchedEffect
         kotlinx.coroutines.delay(700)
         repeat(6) {
             val ok = (nav.base == Base.Shell && (runCatching { contentEntry.requestFocus() }.isSuccess || runCatching { sidebarEntry.requestFocus() }.isSuccess)) ||
@@ -240,19 +239,23 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
         kotlinx.coroutines.delay(60)
         repeat(8) { if (runCatching { sidebarEntry.requestFocus() }.isSuccess) return@LaunchedEffect; kotlinx.coroutines.delay(80) }
     }
-    // One instance of the sidebar, in the layout beside the page. When it is HIDDEN it takes no width and is not composed, so it cannot take focus or keys.
-    androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalFocusRing provides if (nav.tab == Tab.HOME) app.streamsetu.tv.ui.theme.Tokens.gold else androidx.compose.ui.graphics.Color.Unspecified) {
-    Row(Modifier.fillMaxSize()) {
-        androidx.compose.animation.AnimatedVisibility(
-            mode != app.streamsetu.tv.nav.SidebarMode.HIDDEN,
-            enter = androidx.compose.animation.expandHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR, easing = app.streamsetu.core.ui.motion.Motion.Standard)) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR)),
-            exit = androidx.compose.animation.shrinkHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR, easing = app.streamsetu.core.ui.motion.Motion.Exit)) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SHORT)),
-        ) {
-            app.streamsetu.tv.ui.components.Sidebar(nav.tab, onSelect = { t ->
-                if (t == Tab.LIBRARIES) { c.library.close(); nav.toChooser() } else nav.go(t)
-            }, entry = sidebarEntry, expanded = mode == app.streamsetu.tv.nav.SidebarMode.EXPANDED, onFocusChange = nav::sidebarFocusChanged)
+    // Closing the sidebar with Back sends the remote back to where it was in the page.
+    LaunchedEffect(nav.restoreFocusTick) {
+        if (nav.restoreFocusTick == 0) return@LaunchedEffect
+        kotlinx.coroutines.delay(80)
+        repeat(8) { i ->
+            val target = (if (i < 3) app.streamsetu.tv.ui.components.FocusMemory.content else null) ?: contentEntry
+            if (runCatching { target.requestFocus() }.isSuccess) return@LaunchedEffect
+            kotlinx.coroutines.delay(100)
         }
-        Box(Modifier.weight(1f).fillMaxHeight()) {
+    }
+    // One instance of the sidebar. The page is laid out once: on Home it keeps a strip as wide as the collapsed sidebar, elsewhere it uses the whole width. The sidebar is drawn over the
+    // page and widens over it, so opening and closing it never makes the page measure itself again (which cost most of a frame on a Fire TV Stick). When it is HIDDEN it is not composed.
+    androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalFocusRing provides if (nav.tab == Tab.HOME) app.streamsetu.tv.ui.theme.Tokens.gold else androidx.compose.ui.graphics.Color.Unspecified) {
+    Box(Modifier.fillMaxSize()) {
+    Row(Modifier.fillMaxSize()) {
+        Spacer(Modifier.width(if (nav.tab == Tab.HOME && mode != app.streamsetu.tv.nav.SidebarMode.HIDDEN) Tokens.sidebarCompact else androidx.compose.ui.unit.Dp.Hairline))
+        Box(Modifier.weight(1f).fillMaxHeight().onFocusChanged { nav.contentFocusChanged(it.hasFocus) }) {
             app.streamsetu.tv.ui.components.FadeIn(nav.tab) {
                 when (nav.tab) {
                     Tab.HOME -> app.streamsetu.tv.ui.screens.home.HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
@@ -266,6 +269,17 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
                 }
             }
         }
+    }
+    // The sidebar, over the page.
+    androidx.compose.animation.AnimatedVisibility(
+        mode != app.streamsetu.tv.nav.SidebarMode.HIDDEN, Modifier.align(androidx.compose.ui.Alignment.CenterStart),
+        enter = androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR, easing = app.streamsetu.core.ui.motion.Motion.Standard)) { -it / 2 },
+        exit = androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR, easing = app.streamsetu.core.ui.motion.Motion.Exit)) { -it / 2 },
+    ) {
+        app.streamsetu.tv.ui.components.Sidebar(nav.tab, onSelect = { t ->
+            if (t == Tab.LIBRARIES) { c.library.close(); nav.toChooser() } else nav.go(t)
+        }, entry = sidebarEntry, expanded = mode == app.streamsetu.tv.nav.SidebarMode.EXPANDED, onFocusChange = nav::sidebarFocusChanged)
+    }
     }
     }
 }
