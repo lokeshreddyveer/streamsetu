@@ -30,6 +30,7 @@ import app.streamsetu.core.ui.motion.Motion
 import app.streamsetu.tv.ui.theme.Tokens
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 
 /** One slide of a featured banner. Everything shown comes from the catalog or the provider; nothing is made up. */
@@ -79,9 +80,13 @@ fun FeaturedBanner(
 
     // Rotate every few seconds, unless a key was pressed on the banner in the last 8 seconds. Reduced motion keeps the rotation but drops the fade (the picture just changes).
     val pausedNow by rememberUpdatedState(paused)
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(items, intervalSeconds) {
         if (n < 2) return@LaunchedEffect
-        while (true) { delay(intervalSeconds * 1000L); if (!pausedNow && System.currentTimeMillis() - lastKey > 8000) index = (index + 1) % n }
+        // The loop runs only while the app is on screen: it stops in the background and starts again on return.
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            while (true) { delay(intervalSeconds * 1000L); if (!pausedNow && System.currentTimeMillis() - lastKey > 8000) index = (index + 1) % n }
+        }
     }
     // The next slide's picture is requested now, so the crossfade never waits on the network.
     LaunchedEffect(i, items) {

@@ -207,11 +207,11 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
         }
     }
     menuFor?.let { ch ->
-        ContextMenu(ch.name, null, menuVariants.filter { it.id != ch.id }.map { v -> MenuAction("Version: ${qualityLabel(v.name)}  ·  ${v.name}", Icons.Filled.SwapHoriz) { c.play(ChannelPlayable(v), listOf(ChannelPlayable(v))) } } + listOf(
-            MenuAction("Watch", Icons.Filled.PlayArrow) { choose(ch) },
-            MenuAction("Watch fullscreen", Icons.Filled.Fullscreen) { c.play(ChannelPlayable(ch), groups.orEmpty().map { ChannelPlayable(it.rep) }); nav.liveFullscreen = true; nav.open(Overlay.Player) },
-            MenuAction(if (ch.id in favs) "Remove from Favorites" else "Add to Favorites", Icons.Filled.Favorite) { vm.toggleFavourite(ch) },
-        ), onClose = { menuFor = null })
+        val homeVm: app.streamsetu.tv.ui.screens.home.HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+        val extra = menuVariants.filter { it.id != ch.id }.map { v -> MenuAction("Version: ${qualityLabel(v.name)}  ·  ${v.name}", Icons.Filled.SwapHoriz) { c.play(ChannelPlayable(v), listOf(ChannelPlayable(v))) } } +
+            MenuAction("Watch fullscreen", Icons.Filled.Fullscreen) { c.play(ChannelPlayable(ch), groups.orEmpty().map { ChannelPlayable(it.rep) }); nav.liveFullscreen = true; nav.open(Overlay.Player) }
+        // Watch / favorites / guide / folder / information come from the shared menu; "Watch" here selects the channel in this screen's preview.
+        app.streamsetu.tv.ui.screens.home.HomeMenuHost(app.streamsetu.tv.ui.screens.home.HomeTarget.Live(ch), if (browse == Browse.Recent) app.streamsetu.tv.ui.screens.home.RowKind.RECENT_LIVE else app.streamsetu.tv.ui.screens.home.RowKind.OTHER, homeVm, c, nav, extra) { menuFor = null }
     }
 }
 

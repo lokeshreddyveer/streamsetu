@@ -158,6 +158,21 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     fun hideFolder(t: CategoryTile) = viewModelScope.launch { c.folders.toggleHidden(t.kind, t.folder) }
     suspend fun movieVariants(m: Movie) = c.search.movieVariants(m.title)
     suspend fun seriesVariants(s: Series) = c.search.seriesVariants(s.title)
+    /** The episodes of a series in order, the one to play next, and whether every episode is finished. Reads the episode list from the provider if it is not stored yet. */
+    suspend fun seriesPlan(series: Series): Triple<List<EpisodePlayable>, EpisodePlayable?, Boolean> {
+        var eps = c.catalog.episodesOnce(series.id)
+        if (eps.isEmpty()) { runCatching { c.sync.loadEpisodes(series) }; eps = c.catalog.episodesOnce(series.id) }
+        val progress = c.user.allProgress().first().filterValues { it.seriesId == series.id }
+        val plan = app.streamsetu.core.data.repo.EpisodePlan.of(eps, progress)
+        val queue = eps.sortedWith(compareBy({ it.season }, { it.number })).map { EpisodePlayable(it, series) }
+        val next = (plan.inProgress ?: plan.forward)?.takeIf { !plan.allFinished || plan.inProgress != null }?.let { EpisodePlayable(it, series) }
+        return Triple(queue, next, plan.allFinished)
+    }
+    fun setSeriesWatched(series: Series, watched: Boolean) = viewModelScope.launch {
+        var eps = c.catalog.episodesOnce(series.id)
+        if (eps.isEmpty()) { runCatching { c.sync.loadEpisodes(series) }; eps = c.catalog.episodesOnce(series.id) }
+        eps.forEach { c.user.setWatched(it.id, ContentKind.EPISODE, series.id, watched) }
+    }
     suspend fun hasGuide(ch: Channel): Boolean = runCatching { c.epg.resolve(listOf(ch))[ch.id] != null }.getOrDefault(false)
     suspend fun progressOf(id: String): WatchProgress? = c.user.progress(id)
 

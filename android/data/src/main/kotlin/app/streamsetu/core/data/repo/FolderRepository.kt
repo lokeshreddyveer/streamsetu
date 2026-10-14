@@ -55,15 +55,18 @@ class FolderRepository(private val db: AppDatabase, private val library: Library
     suspend fun toggleLocked(kind: ContentKind, f: Folder) = update(kind, f.id) { it.copy(locked = !it.locked) }
     suspend fun setAlias(kind: ContentKind, f: Folder, alias: String?) = update(kind, f.id) { it.copy(alias = alias?.trim()?.ifBlank { null }) }
 
-    /** Moves [f] one place up or down within the list as it is shown now, and saves that whole order. */
-    suspend fun move(kind: ContentKind, current: List<Folder>, f: Folder, delta: Int) {
-        val order = current.map { it.id }.toMutableList()
-        val i = order.indexOf(f.id); val j = i + delta
-        if (i < 0 || j !in order.indices) return
-        order.removeAt(i); order.add(j, f.id)
+    /** Moves [f] within the list as it is shown now (one place, or to either end) and saves that whole order in one transaction. Nothing else changes place. */
+    suspend fun moveTo(kind: ContentKind, current: List<Folder>, f: Folder, to: MoveTo) {
+        val order = FolderOrder.move(current.map { it.id }, f.id, to) ?: return
         val byId = current.associateBy { it.id }
         db.folders().putAll(order.mapIndexed { idx, id -> (byId[id]?.pref ?: FolderPref()).let { p -> FolderPrefEntity(scopeName(kind), id, p.favorite, p.pinned, p.hidden, p.locked, p.alias, idx) } })
     }
+    suspend fun move(kind: ContentKind, current: List<Folder>, f: Folder, delta: Int) = moveTo(kind, current, f, if (delta < 0) MoveTo.UP else MoveTo.DOWN)
+
+    /** One folder back to the provider's position (its other marks stay). */
+    suspend fun resetPosition(kind: ContentKind, f: Folder) = update(kind, f.id) { it.copy(sortIndex = -1) }
+    /** One folder back to plain: no label, not pinned, favorite, hidden or locked, in the provider's position. */
+    suspend fun resetFolder(kind: ContentKind, f: Folder) = db.folders().delete(scopeName(kind), f.id)
 
     /** Counts for the settings screens. */
     suspend fun lockedCount(): Int = db.browse().lockedFoldersNow().size

@@ -32,6 +32,10 @@ import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.nav.Navigator
 import app.streamsetu.tv.nav.Overlay
 import app.streamsetu.tv.ui.components.*
+import app.streamsetu.tv.ui.screens.home.HomeMenuHost
+import app.streamsetu.tv.ui.screens.home.HomeTarget
+import app.streamsetu.tv.ui.screens.home.HomeViewModel
+import app.streamsetu.tv.ui.screens.home.RowKind
 import app.streamsetu.tv.ui.screens.search.SectionSearch
 import app.streamsetu.tv.ui.theme.Tokens
 import coil.compose.AsyncImage
@@ -80,6 +84,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     var sortOpen by remember { mutableStateOf(false) }
     var filterOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
+    val homeVm: HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     var menuFor by remember { mutableStateOf<Card?>(null) }
     var colMenu by remember { mutableStateOf<UserCollection?>(null) }
     var newCollectionFor by remember { mutableStateOf<Card?>(null) }
@@ -95,11 +100,9 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
         is Browse.Collection -> collections.firstOrNull { it.id == (browse as Browse.Collection).id }?.name ?: "Collection"
         is Browse.Smart -> (browse as Browse.Smart).rule.label
     }
-    // Favorites, Watch Later, Recently Watched and Continue Watching are the chips under the banner, so the folder panel does not repeat them.
+    // The folder panel has only All, the provider's folders and the person's own folders. Favorites, Watch Later, Recently Watched and Continue Watching are the chips under the banner.
     val shortcuts = buildList {
         add(Shortcut(Browse.All, "All $noun", Icons.Filled.GridView))
-        add(Shortcut(Browse.RecentlyAdded, "Recently Added", Icons.Filled.NewReleases))
-        if (folders.any { it.pref.favorite }) add(Shortcut(Browse.FavoriteFolders, "Favorite Folders", Icons.Filled.Star))
         collections.forEach { add(Shortcut(Browse.Collection(it.id), it.name, Icons.Filled.CollectionsBookmark)) }
     }
 
@@ -117,7 +120,6 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                     Label((if (n == null) "Loading…" else "%,d ${if (kind == ContentKind.MOVIE) "movies" else "series"}".format(n)) + "  ·  " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources") + (if (sort != SortSpec.defaultFor(kind)) "  ·  Sort: ${sort.field.label}" else "  ·  Newest first".takeIf { sort.field == SortField.ADDED && sort.ascending }.orEmpty()), Tokens.small, Tokens.textSecondary)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ToolButton("Search", Icons.Filled.Search) { searchOpen = true }
                     ToolButton(if (filter.active) "Filter •" else "Filter", Icons.Filled.FilterList) { filterOpen = true }
                     ToolButton("Sort", Icons.Filled.SwapVert) { sortOpen = true }
                     ToolButton("View", Icons.Filled.GridView) { c.ui.setPosterSize(PosterSize.entries[(posterSize.ordinal + 1) % PosterSize.entries.size]) }
@@ -135,16 +137,18 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                         onPrimary = { b -> list?.firstOrNull { it.id == b.id }?.let { onOpen(it) } },
                         onDetails = { b -> list?.firstOrNull { it.id == b.id }?.let { onOpen(it) } },
                         isListed = { b -> b.id in later }, onToggleListed = { b -> vm.toggle(b.id, UserRepository.WATCH_LATER) },
-                        startPadding = 0.dp, intervalSeconds = c.ui.bannerSeconds.collectAsState().value,
+                        startPadding = 0.dp, intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuFor != null || sortOpen || filterOpen || searchOpen,
                         modifier = Modifier.padding(bottom = 4.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).clip(RoundedCornerShape(Tokens.radiusLarge)),
                     )
                 }
                 if (showShortcuts) item(span = { GridItemSpan(maxLineSpan) }, key = "shortcuts") {
-                    Row(Modifier.padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         order.forEach { name ->
                             val s = shortcutOf(name, kind)
-                            ShortcutChip(s.label, s.icon, browse == s.browse, onLong = null, onMoveLeft = { vm.moveShortcut(name, -1) }, onMoveRight = { vm.moveShortcut(name, +1) }) { vm.select(if (browse == s.browse) Browse.All else s.browse) }
+                            ShortcutChip(s.label, s.icon, browse == s.browse, onLong = null, onMoveLeft = { vm.moveShortcut(name, -1) }, onMoveRight = { vm.moveShortcut(name, +1) }) { vm.select(if (browse == s.browse) vm.lastFolder else s.browse) }
                         }
+                        Spacer(Modifier.weight(1f))
+                        ShortcutChip("Search", Icons.Filled.Search, false, onLong = null, onMoveLeft = {}, onMoveRight = {}) { searchOpen = true }
                     }
                 }
                 when {
@@ -158,7 +162,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                             card.title, card.posterUrl, { onOpen(card) }, width = posterSize.dp.dp,
                             progress = if (p != null && !p.completed) p.fraction else 0f,
                             subtitle = if (showMeta) card.year?.toString() else null,
-                            badge = if (card.id in newSeries) "NEW" else if (p?.completed == true) "✓" else ratingBadge(card.rating),
+                            badge = listOfNotNull(if (card.id in favs) "♥" else null, if (card.id in newSeries) "NEW" else if (p?.completed == true) "✓" else ratingBadge(card.rating)).joinToString(" ").ifBlank { null },
                             onLongClick = { menuFor = card },
                         )
                     }
@@ -171,15 +175,13 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     if (filterOpen) FilterSheet(filter, sources, onApply = { vm.filter.value = it }, onClose = { filterOpen = false })
     if (searchOpen) SectionSearch(c, kind, onOpen = { card -> searchOpen = false; onOpen(card) }, onClose = { searchOpen = false })
     menuFor?.let { card ->
-        val isFav = card.id in favs; val isLater = card.id in later; val p = progress[card.id]
-        ContextMenu(card.title, null, buildList {
-            add(MenuAction("Open", Icons.Filled.PlayArrow) { onOpen(card) })
-            add(MenuAction(if (isFav) "Remove from Favorites" else "Add to Favorites", Icons.Filled.Favorite) { vm.toggle(card.id, UserRepository.FAVOURITES) })
-            add(MenuAction(if (isLater) "Remove from Watch Later" else "Add to Watch Later", Icons.Filled.Bookmark) { vm.toggle(card.id, UserRepository.WATCH_LATER) })
-            if (kind == ContentKind.MOVIE) add(MenuAction(if (p?.completed == true) "Mark as unwatched" else "Mark as watched", Icons.Filled.Check) { vm.setWatched(card, p?.completed != true) })
+        val target: HomeTarget? = card.movie?.let { HomeTarget.Film(it) } ?: card.series?.let { HomeTarget.Show(it) }
+        val rowKind = when (browse) { Browse.Continue -> RowKind.CONTINUE; Browse.Favorites -> RowKind.FAVORITES; Browse.WatchLater -> RowKind.WATCH_LATER; else -> RowKind.OTHER }
+        val extra = buildList {
             add(MenuAction("Add to a collection…", Icons.Filled.CollectionsBookmark) { addTo = card })
             (browse as? Browse.Collection)?.let { b -> add(MenuAction("Remove from this collection", Icons.Filled.RemoveCircleOutline) { vm.removeFromCollection(b.id, card.id) }) }
-        }, onClose = { menuFor = null })
+        }
+        HomeMenuHost(target, rowKind, homeVm, c, nav, extra) { menuFor = null }
     }
     addTo?.let { card ->
         var inCols by remember(card.id) { mutableStateOf<Set<String>?>(null) }

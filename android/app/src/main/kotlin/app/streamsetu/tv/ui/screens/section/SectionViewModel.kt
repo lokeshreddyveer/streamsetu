@@ -25,7 +25,9 @@ abstract class FolderViewModel(protected val c: AppContainer, val kind: ContentK
     override fun toggleHidden(f: Folder) { viewModelScope.launch { c.folders.toggleHidden(kind, f) } }
     override fun toggleLocked(f: Folder) { viewModelScope.launch { c.folders.toggleLocked(kind, f) } }
     override fun rename(f: Folder, alias: String?) { viewModelScope.launch { c.folders.setAlias(kind, f, alias) } }
-    override fun move(f: Folder, delta: Int) { viewModelScope.launch { c.folders.move(kind, folders.value, f, delta) } }
+    override fun move(f: Folder, to: app.streamsetu.core.data.repo.MoveTo) { viewModelScope.launch { c.folders.moveTo(kind, folders.value.filter { !it.pref.hidden }, f, to) } }
+    override fun resetPosition(f: Folder) { viewModelScope.launch { c.folders.resetPosition(kind, f) } }
+    override fun resetFolder(f: Folder) { viewModelScope.launch { c.folders.resetFolder(kind, f) } }
     override fun restoreOrder() { viewModelScope.launch { c.folders.restoreDefaultOrder(kind) } }
     override fun isUnlocked(folderId: String) = c.folders.isUnlocked(folderId)
     override val hasPin: Boolean get() = c.parental.hasPin
@@ -82,7 +84,9 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
 
     init { viewModelScope.launch { availability.value = runCatching { c.browse.availability() }.getOrDefault(availability.value) } }
 
-    fun select(b: Browse) { if (browse.value != b) { browse.value = b; scrollIndex = 0 } }
+    /** The provider folder (or All) the person was last in, so leaving a shortcut returns there. */
+    var lastFolder: Browse = Browse.All
+    fun select(b: Browse) { if (browse.value != b) { if (b is Browse.Folder || b == Browse.All || b is Browse.Collection) lastFolder = b; browse.value = b; scrollIndex = 0 } }
     fun applySort(spec: SortSpec) = c.browse.setSort(kind, (browse.value as? Browse.Folder)?.id, spec)
     fun toggle(id: String, list: String) = viewModelScope.launch {
         val on = (if (list == UserRepository.FAVOURITES) favourites else watchLater).value.contains(id)

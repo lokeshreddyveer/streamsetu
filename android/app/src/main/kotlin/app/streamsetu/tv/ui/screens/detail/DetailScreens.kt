@@ -150,6 +150,8 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
     val sources by c.library.entries.collectAsState(initial = emptyList())
     var variants by remember { mutableStateOf<List<Series>>(emptyList()) }
     var chooseOpen by remember { mutableStateOf(false) }
+    var episodeMenu by remember { mutableStateOf<Episode?>(null) }
+    val homeVm: app.streamsetu.tv.ui.screens.home.HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     val seasons = episodes.groupBy { it.season }.toSortedMap()
     val plan = remember(episodes, progress) { EpisodePlan.of(episodes, progress) }
     val forward = plan.forward; val catchUp = plan.catchUp; val inProgress = plan.inProgress
@@ -208,7 +210,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
             }
             items(seasons[season].orEmpty().sortedBy { it.number }, key = { it.id }) { e ->
                 val p = progress[e.id]
-                Focusable({ playEp(e) }, Modifier.fillMaxWidth().widthIn(max = 760.dp), scaleOnFocus = 1.01f, hairline = true) { _ ->
+                Focusable({ playEp(e) }, Modifier.fillMaxWidth().widthIn(max = 760.dp), scaleOnFocus = 1.01f, hairline = true, onLongClick = { episodeMenu = e }) { _ ->
                     Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.width(132.dp).aspectRatio(16f / 9f).background(Tokens.elevated, RoundedCornerShape(6.dp))) {
                             if (!e.imageUrl.isNullOrBlank()) AsyncImage(e.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) else Label("E${e.number}", Tokens.title, Tokens.textTertiary, modifier = Modifier.align(Alignment.Center))
@@ -225,6 +227,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
             }
         }
     }
+    episodeMenu?.let { ep -> app.streamsetu.tv.ui.screens.home.HomeMenuHost(app.streamsetu.tv.ui.screens.home.HomeTarget.Episode(s, EpisodePlayable(ep, s)), app.streamsetu.tv.ui.screens.home.RowKind.EPISODES, homeVm, c, nav) { episodeMenu = null } }
     if (editing) OverrideDialog(s.title, overrides[series0.id]?.posterUrl.orEmpty(), onSave = { t, p -> scope.launch { c.collections.setOverride(series0.id, t.takeIf { it != series0.title }, p) }; editing = false }, onReset = { scope.launch { c.collections.clearOverride(series0.id) }; editing = false }, onClose = { editing = false })
     if (chooseOpen) ContextMenu("Choose Source", "Opens that connection's copy of this series.", variants.map { v -> MenuAction(sourceName(v.sourceId) + if (v.id == s.id) "  (current)" else "", Icons.Filled.SwapHoriz, enabled = v.id != s.id) { nav.close(); nav.open(Overlay.SeriesDetail(v)) } }, onClose = { chooseOpen = false })
 }

@@ -41,7 +41,8 @@ data class Shortcut(val browse: Browse, val label: String, val icon: ImageVector
 /** What the panel can do to a folder. The panel never touches the database itself. */
 interface FolderActions {
     fun toggleFavorite(f: Folder); fun togglePinned(f: Folder); fun toggleHidden(f: Folder); fun toggleLocked(f: Folder)
-    fun rename(f: Folder, alias: String?); fun move(f: Folder, delta: Int); fun restoreOrder()
+    fun rename(f: Folder, alias: String?); fun move(f: Folder, to: app.streamsetu.core.data.repo.MoveTo); fun restoreOrder()
+    fun resetPosition(f: Folder); fun resetFolder(f: Folder)
     fun isUnlocked(folderId: String): Boolean
     val hasPin: Boolean
     fun checkPin(pin: String): Boolean
@@ -75,6 +76,8 @@ fun FolderPanel(
     var pinFor by remember { mutableStateOf<Folder?>(null) }
     var creatingPinFor by remember { mutableStateOf<Folder?>(null) }
     var renameFor by remember { mutableStateOf<Folder?>(null) }
+    var infoFor by remember { mutableStateOf<Folder?>(null) }
+    var resetFor by remember { mutableStateOf<Folder?>(null) }
     var unlockingToRemove by remember { mutableStateOf(false) }
     var lockAfterCreate by remember { mutableStateOf(false) }
     val reduced = LocalReducedMotion.current
@@ -99,8 +102,8 @@ fun FolderPanel(
                 if (id != null && e.type == KeyEventType.KeyDown) {
                     val f = folders.firstOrNull { it.id == id }
                     when (e.key) {
-                        Key.DirectionUp -> { f?.let { actions.move(it, -1) }; true }
-                        Key.DirectionDown -> { f?.let { actions.move(it, +1) }; true }
+                        Key.DirectionUp -> { f?.let { actions.move(it, app.streamsetu.core.data.repo.MoveTo.UP) }; true }
+                        Key.DirectionDown -> { f?.let { actions.move(it, app.streamsetu.core.data.repo.MoveTo.DOWN) }; true }
                         Key.DirectionCenter, Key.Enter, Key.DirectionLeft, Key.DirectionRight -> { reordering = null; true }
                         else -> false
                     }
@@ -140,18 +143,35 @@ fun FolderPanel(
     }
 
     menuFor?.let { f ->
-        ContextMenu(f.title, if (f.title != f.providerName) f.providerName else null, listOf(
-            MenuAction(if (f.pref.favorite) "Remove from favorite folders" else "Add to favorite folders", Icons.Filled.Star) { actions.toggleFavorite(f) },
-            MenuAction("Reorder…", Icons.Filled.SwapVert) { reordering = f.id },
-            MenuAction(if (f.pref.hidden) "Unhide" else "Hide", Icons.Filled.VisibilityOff) { actions.toggleHidden(f) },
-            MenuAction(if (f.pref.locked) "Unlock" else "Lock", Icons.Filled.Lock) {
+        val ids = visible.map { it.id }
+        fun can(to: app.streamsetu.core.data.repo.MoveTo) = app.streamsetu.core.data.repo.FolderOrder.canMove(ids, f.id, to)
+        ContextMenu(f.title, if (f.title != f.providerName) f.providerName else null, buildList {
+            add(MenuAction("Open folder", Icons.Filled.FolderOpen) { open(f) })
+            if (can(app.streamsetu.core.data.repo.MoveTo.UP)) add(MenuAction("Move up", Icons.Filled.ArrowUpward) { actions.move(f, app.streamsetu.core.data.repo.MoveTo.UP) })
+            if (can(app.streamsetu.core.data.repo.MoveTo.DOWN)) add(MenuAction("Move down", Icons.Filled.ArrowDownward) { actions.move(f, app.streamsetu.core.data.repo.MoveTo.DOWN) })
+            if (can(app.streamsetu.core.data.repo.MoveTo.FIRST)) add(MenuAction("Move to first", Icons.Filled.VerticalAlignTop) { actions.move(f, app.streamsetu.core.data.repo.MoveTo.FIRST) })
+            if (can(app.streamsetu.core.data.repo.MoveTo.LAST)) add(MenuAction("Move to last", Icons.Filled.VerticalAlignBottom) { actions.move(f, app.streamsetu.core.data.repo.MoveTo.LAST) })
+            add(MenuAction(if (f.pref.pinned) "Unpin" else "Pin to the top", Icons.Filled.PushPin) { actions.togglePinned(f) })
+            add(MenuAction(if (f.pref.favorite) "Remove from favorite folders" else "Add to favorite folders", Icons.Filled.Star) { actions.toggleFavorite(f) })
+            add(MenuAction(if (f.pref.hidden) "Unhide folder" else "Hide folder", Icons.Filled.VisibilityOff) { actions.toggleHidden(f) })
+            add(MenuAction(if (f.pref.locked) "Unlock folder" else "Lock folder", Icons.Filled.Lock) {
                 if (f.pref.locked) { if (actions.hasPin) { unlockingToRemove = true; pinFor = f } else actions.toggleLocked(f) }
                 else if (actions.hasPin) actions.toggleLocked(f) else { lockAfterCreate = true; creatingPinFor = f }
-            },
-            MenuAction(if (f.pref.pinned) "Unpin from the top" else "Pin to the top", Icons.Filled.PushPin) { actions.togglePinned(f) },
-            MenuAction("Rename label…", Icons.Filled.Edit) { renameFor = f },
-            MenuAction("Restore provider order", Icons.Filled.Restore) { actions.restoreOrder() },
-        ), onClose = { menuFor = null })
+            })
+            add(MenuAction("Rename display name…", Icons.Filled.Edit) { renameFor = f })
+            add(MenuAction("Folder information", Icons.Filled.Info) { infoFor = f })
+            if (f.pref.sortIndex >= 0) add(MenuAction("Reset folder position", Icons.Filled.Restore) { actions.resetPosition(f) })
+            if (f.pref != app.streamsetu.core.model.FolderPref()) add(MenuAction("Reset folder customization…", Icons.Filled.RestartAlt) { resetFor = f })
+        }, onClose = { menuFor = null })
+    }
+    infoFor?.let { f ->
+        ContextMenu(f.title, listOfNotNull("Provider name: ${f.providerName}", f.pref.alias?.let { "Display name: $it" }, "%,d titles".format(f.count),
+            listOfNotNull(if (f.pref.favorite) "favorite" else null, if (f.pref.pinned) "pinned" else null, if (f.pref.hidden) "hidden" else null, if (f.pref.locked) "locked" else null).joinToString(", ").takeIf { it.isNotBlank() }?.let { "Marked: $it" }).joinToString("\n"),
+            listOf(MenuAction("Close", Icons.Filled.Close) {}), onClose = { infoFor = null })
+    }
+    resetFor?.let { f ->
+        ContextMenu("Reset “${f.title}”?", "Removes its display name, pin, favorite, hidden and lock marks and puts it back in the provider's position. Nothing else is touched.",
+            listOf(MenuAction("Reset this folder", Icons.Filled.RestartAlt) { actions.resetFolder(f) }, MenuAction("Cancel", Icons.Filled.Close) {}), onClose = { resetFor = null })
     }
     pinFor?.let { f ->
         PinDialog(create = false, check = actions::checkPin, onDone = {

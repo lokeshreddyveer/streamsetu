@@ -32,4 +32,17 @@ class HomeActionsTests {
         assertTrue(HomeAction.CHOOSE_SOURCE in actionsFor(TargetState(TargetKind.MOVIE, hasVariants = true)))
     }
     @Test fun hiddenRowsAreLeftOutAndTheOrderIsKept() = assertEquals(listOf("continue", "movies"), visibleRows(listOf("continue", "live", "movies"), setOf("live")))
+
+    @Test fun seriesMenuHasPlayNextAndMarkSeriesOnlyWhenTheyApply() {
+        val a = actionsFor(TargetState(TargetKind.SERIES, hasNextEpisode = true))
+        assertTrue(HomeAction.PLAY_NEXT_EPISODE in a && HomeAction.MARK_SERIES_WATCHED in a && HomeAction.FAVORITE in a && HomeAction.WATCH_LATER in a)
+        assertFalse(HomeAction.PLAY_NEXT_EPISODE in actionsFor(TargetState(TargetKind.SERIES)))
+        assertTrue(HomeAction.MARK_SERIES_UNWATCHED in actionsFor(TargetState(TargetKind.SERIES, seriesWatched = true)))
+    }
+    @Test fun episodeListMenuHasOnlyEpisodeActions() {
+        val a = actionsFor(TargetState(TargetKind.EPISODE, fromEpisodeList = true, hasResumePoint = true))
+        assertEquals(HomeAction.RESUME, a.first()); assertTrue(HomeAction.START_OVER in a && HomeAction.MARK_WATCHED in a && HomeAction.INFO in a)
+        assertFalse(HomeAction.FAVORITE in a || HomeAction.WATCH_LATER in a || HomeAction.DETAILS in a)
+    }
+    @Test fun movieMenuKeepsFavoriteAndWatchLater() { val a = actionsFor(TargetState(TargetKind.MOVIE)); assertTrue(HomeAction.FAVORITE in a && HomeAction.WATCH_LATER in a && HomeAction.DETAILS in a) }
 }

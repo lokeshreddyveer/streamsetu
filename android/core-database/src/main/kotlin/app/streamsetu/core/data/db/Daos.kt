@@ -148,6 +148,7 @@ interface FolderDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(p: FolderPrefEntity)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putAll(p: List<FolderPrefEntity>)
     @Query("DELETE FROM folder_prefs WHERE scope = :scope") suspend fun reset(scope: String)
+    @Query("DELETE FROM folder_prefs WHERE scope = :scope AND folderId = :id") suspend fun delete(scope: String, id: String)
 }
 
 /** Lists whose order and filter are chosen at run time (see BrowseRepository, which builds the SQL from fixed pieces, never from typed text). */
