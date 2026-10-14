@@ -195,16 +195,16 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Catch-up for past programmes | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Radio mode | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Movies and series with resume and Up Next | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Multi-View (several channels at once) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Multi-View (several channels at once) | ✓ | ✓ | ✓ | ✓ † | ✓ † |
 | Picture in Picture | ✓ | ✓ | ✓ | ✓ | – |
 | AirPlay | ✓ | ✓ | ✓ | – | – |
 | Chromecast | – | – | – | ✓ † | – |
 | Sound keeps playing in the background, with lock-screen controls and a mini player | – | ✓ | ✓ | ✓ | – |
 | Sleep timer | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Skip intro | – | – | – | ✓ | ✓ |
+| Skip intro | – | – | – | ✓ † | ✓ † |
 | Subtitles from a file, and subtitle and sound timing | ✓ | ✓ | ✓ | ✓ (timing with mpv) | ✓ (timing with mpv) |
 | Save a picture of the frame | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Programme reminders | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Programme reminders | ✓ | ✓ | ✓ | ✓ † | ✓ † |
 | Swipe to change channel | – | ✓ | ✓ | – | – |
 | Touch gestures in the player (double-tap skip, brightness, volume) | – | ✓ | ✓ | ✓ | – |
 | Player engines | AVPlayer + mpv | AVPlayer + mpv | AVPlayer + mpv | ExoPlayer + mpv | ExoPlayer + mpv |
@@ -216,13 +216,13 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | New-episode badge on series you watch | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Smart lists: Unwatched, Unwatched favorites, Added in 30 days | ✓ | ✓ | ✓ | – | – |
 | All playlists together (Apple) / Combined libraries (Android) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Hide, rename and check channels (Channel Manager, health check) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Hide, rename and check channels (Channel Manager, health check) | ✓ | ✓ | ✓ | ✓ † | ✓ † |
 | Watch statistics | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Artwork and details from TMDB (your own API key) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Parental controls | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Themes and accent colours | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Screen reader labels | ✓ | ✓ | ✓ | ✓ (phone) | – |
-| Hindi and Telugu (the main screens; some text is still English) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Hindi and Telugu (the main screens; some text is still English) | ✓ † | ✓ † | ✓ † | ✓ † | ✓ † |
 | **Sync and updates** | | | | | |
 | iCloud sync between your Apple devices | ✓ | ✓ | ✓ | – | – |
 | Backup and restore, and automatic weekly backups | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -370,7 +370,7 @@ More detail is in [`android/ARCHITECTURE.md`](android/ARCHITECTURE.md), and what
 ## Known limits
 
 - Stalker portals: live TV only; no movies, series or guide from a portal yet.
-- Jellyfin, Emby, Plex, HDHomeRun, TVHeadend, Enigma2, WebDAV and Chromecast on Android are marked † in the table: they have unit tests but have not been tried against a real server or device yet.
+- Items marked † in the table are built and covered by unit tests but have not been tried on real equipment yet: Jellyfin, Emby, Plex, HDHomeRun, TVHeadend, Enigma2, WebDAV and Chromecast on Android; Multi-View, Skip intro, reminders and the Channel Manager on Android; and Hindi and Telugu on every app (the wording has not been looked at on screen). Sound in the background, the mini player, lock-screen controls, the sleep timer menu and saving a picture were tried on a phone.
 - A Chromecast fetches the stream itself, so only plain web streams (HLS, MP4) cast well, and a connection that needs special headers cannot be cast.
 - The "Continue watching" row on the home screen works on Android TV and Google TV, not on a Fire TV, which has its own home screen.
 - Hindi and Telugu cover the main screens and the most common words; long explanations in Settings are still English. The wording was written without a native-speaker review, so corrections are welcome.
