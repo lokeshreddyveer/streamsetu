@@ -68,7 +68,7 @@ struct LibraryScreen: View {
         } else {
             LazyVGrid(columns: Array(repeating: GridItem(.fixed(layout.cardWidth), spacing: 12, alignment: .top), count: layout.columns), alignment: .leading, spacing: 16) {
                 ForEach(vm.items) { item in
-                    ReddyPosterCard(model: PosterCardModel(item: item, progress: vm.progress[item.id], isFavorite: state.isFavorite(item.id)), width: layout.cardWidth,
+                    ReddyPosterCard(model: PosterCardModel(item: item, progress: vm.progress[item.id], isFavorite: state.isFavorite(item.id), isNew: state.hasNewEpisodes(item.id)), width: layout.cardWidth,
                                     onOpen: { open(item) }, onPlay: { play(item) })
                         .contextMenu { menu(item) }
                         .task { if let c = container { await vm.loadMoreIfNeeded(c, current: item, selection: selection, source: state.activeSourceID) } }
@@ -86,10 +86,10 @@ struct LibraryScreen: View {
         case .folder(let id): state.folderName(id) ?? (kind == .movie ? "Movies" : "Series")
         }
     }
-    private var emptySymbol: String { selection == .shortcut(.favorites) ? "heart" : selection == .shortcut(.watchLater) ? "bookmark" : selection == .shortcut(.continueWatching) ? "play.circle" : "film" }
+    private var emptySymbol: String { selection == .shortcut(.favorites) ? "heart" : selection == .shortcut(.watchLater) ? "bookmark" : selection == .shortcut(.continueWatching) ? "play.circle" : selection == .shortcut(.unwatched) ? "eye.slash" : selection == .shortcut(.unwatchedFavorites) ? "heart.slash" : selection == .shortcut(.addedThisMonth) ? "calendar.badge.plus" : selection == .shortcut(.newEpisodes) ? "sparkles.tv" : "film" }
     private var emptyTitle: String {
         if !vm.search.isEmpty { return "No matches" }
-        switch selection { case .shortcut(.favorites): return "No favorites yet"; case .shortcut(.watchLater): return "Nothing saved for later"; case .shortcut(.continueWatching): return "Nothing to continue"; default: return "No \(vm.noun) here" }
+        switch selection { case .shortcut(.favorites): return "No favorites yet"; case .shortcut(.watchLater): return "Nothing saved for later"; case .shortcut(.continueWatching): return "Nothing to continue"; case .shortcut(.unwatched): return "Everything has been played"; case .shortcut(.unwatchedFavorites): return "No unwatched favorites"; case .shortcut(.addedThisMonth): return "Nothing new this month"; case .shortcut(.newEpisodes): return "No new episodes"; default: return "No \(vm.noun) here" }
     }
     private var emptyMessage: String {
         if !vm.search.isEmpty { return "Nothing matches “\(vm.search)”." }
@@ -97,6 +97,10 @@ struct LibraryScreen: View {
         case .shortcut(.favorites): return "Save a title from its details to find it here."
         case .shortcut(.watchLater): return "Tap the bookmark on a title's details to keep it here for later."
         case .shortcut(.continueWatching): return kind == .movie ? "Movies you start but don't finish appear here." : "Series you're partway through appear here."
+        case .shortcut(.unwatched): return "Titles you have never played are listed here."
+        case .shortcut(.unwatchedFavorites): return "Favorites you have not played yet are listed here."
+        case .shortcut(.addedThisMonth): return "Titles your provider added in the last 30 days. A title with no added date is not listed."
+        case .shortcut(.newEpisodes): return "When a series you are watching gets a new episode, it is listed here until you play it."
         default: return "This folder is empty, or the playlist hasn't finished updating."
         }
     }

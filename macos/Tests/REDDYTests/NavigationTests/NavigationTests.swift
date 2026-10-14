@@ -19,8 +19,8 @@ import Foundation
     @Test func eachTabPinsExactlyItsShortcuts() {
         func titles(_ t: AppTab) -> [String] { Shortcut.pinned(for: t).map(\.title) }
         #expect(titles(.home) == ["Discover", "Continue Watching", "Recently Watched", "Watch History", "Favorites", "Watch Later", "Collections", "Statistics"])
-        #expect(titles(.movies) == ["Featured", "All Movies", "Recently Added", "Continue Watching", "Favorites", "Watch Later"])
-        #expect(titles(.series) == ["Library", "Recently Added", "Continue Watching", "Favorites", "Watch Later"])
+        #expect(titles(.movies) == ["Featured", "All Movies", "Recently Added", "Continue Watching", "Favorites", "Watch Later", "Unwatched", "Unwatched Favorites", "Added in 30 Days"])
+        #expect(titles(.series) == ["Library", "Recently Added", "Continue Watching", "Favorites", "Watch Later", "New Episodes", "Unwatched", "Unwatched Favorites", "Added in 30 Days"])
         #expect(titles(.liveTV) == ["All Channels", "Recently Added", "Recently Watched", "Favorites"])
         for t in AppTab.allCases { #expect(!titles(t).contains("In Progress")) }
     }

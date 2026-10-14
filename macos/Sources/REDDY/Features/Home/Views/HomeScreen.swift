@@ -52,7 +52,7 @@ struct LibraryItemCard: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        ReddyPosterCard(model: PosterCardModel(item: item, rank: rank, progress: progress, isFavorite: state.isFavorite(item.id)), width: width,
+        ReddyPosterCard(model: PosterCardModel(item: item, rank: rank, progress: progress, isFavorite: state.isFavorite(item.id), isNew: state.hasNewEpisodes(item.id)), width: width,
                         onOpen: { PlayActions.open(item, router: router) },
                         onPlay: { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item) } })
             .contextMenu {

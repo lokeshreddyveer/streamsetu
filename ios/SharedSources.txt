@@ -21,6 +21,7 @@ Data/Database/Schema/SchemaV7.swift
 Data/Database/Schema/SchemaV8.swift
 Data/Database/Schema/SchemaV9.swift
 Data/Database/Schema/SchemaV10.swift
+Data/Database/Schema/SchemaV11.swift
 Data/Indexing/CatalogIndexer.swift
 Data/Indexing/ChannelDeduplicator.swift
 Data/Indexing/IndexHealthMonitor.swift
@@ -171,6 +172,7 @@ Services/FavoritesService.swift
 Services/FeaturedService.swift
 Services/GlobalSearchService.swift
 Services/HistoryService.swift
+Services/NewEpisodeService.swift
 Services/MetadataMatchService.swift
 Services/NetworkWatch.swift
 Services/PlaybackCoordinator.swift

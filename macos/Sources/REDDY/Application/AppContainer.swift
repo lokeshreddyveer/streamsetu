@@ -41,6 +41,9 @@ final class AppContainer {
     let channelHealth: ChannelHealthService
     let statistics: StatisticsService
     let metadata: MetadataMatchService
+    let newEpisodes: NewEpisodeService
+    /// Set by the app: called on the main actor when the list of series with new episodes changed.
+    var onNewEpisodesChanged: (@MainActor () -> Void)?
     private(set) var cloud: CloudSyncCoordinator!
     /// Set by the app once its state exists: called (on the main actor) when another device changed something that is on screen.
     var onCloudChange: (@MainActor (SyncApplyResult) -> Void)?
@@ -100,6 +103,16 @@ final class AppContainer {
         channelHealth = ChannelHealthService(resolver: resolver)
         playback = PlaybackCoordinator(factory: PlaybackEngineFactory(), resolver: resolver, history: historyRepo, historyService: history,
                                        catalog: catalog, settings: settings, diagnostics: diagnostics, videoPrefs: videoPrefs)
+        newEpisodes = NewEpisodeService(db: db, catalog: catalog, history: history, details: details,
+                                        busy: { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } })
+        let newEpisodeService = newEpisodes
+        Task { [weak self] in
+            // After a playlist was read, look (gently, never while something plays) for new episodes of the series being watched.
+            await self?.sync.setOnCompleted { id in
+                let n = await newEpisodeService.refresh(sourceID: id)
+                if n > 0 { await MainActor.run { self?.onNewEpisodesChanged?() } }
+            }
+        }
         let catalog = self.catalog, epg = epgRepo
         multiView = MultiViewModel(
             resolve: { try resolver.resolve(channel: $0) },

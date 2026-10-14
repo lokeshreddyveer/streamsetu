@@ -250,6 +250,15 @@ final class SQLiteCatalogRepository: CatalogRepository {
         }
         if let y = q.year { sql += " AND \(alias).release_year=?"; args.append(y) }
         if q.favoritesOnly { sql += " AND \(alias).id IN (SELECT item_id FROM favorites)" }
+        if q.unwatchedOnly {
+            if kind == "movie" { sql += " AND \(alias).id NOT IN (SELECT item_id FROM watch_progress) AND \(alias).id NOT IN (SELECT item_id FROM watch_history)" }
+            else { sql += " AND \(alias).id NOT IN (SELECT series_id FROM watch_progress WHERE series_id IS NOT NULL) AND \(alias).id NOT IN (SELECT e.series_id FROM episodes e JOIN watch_history h ON h.item_id = e.id)" }
+        }
+        if q.newEpisodesOnly { sql += " AND \(alias).id IN (SELECT series_id FROM new_episodes WHERE episode_id NOT IN (SELECT item_id FROM watch_progress) AND episode_id NOT IN (SELECT item_id FROM watch_history))" }
+        if let days = q.addedWithinDays {
+            sql += " AND \(alias).added_at IS NOT NULL AND \(alias).added_at >= ?"
+            args.append(Date().addingTimeInterval(-Double(days) * 86400))
+        }
         if !q.includeHidden {
             sql += " AND \(alias).id NOT IN (SELECT item_id FROM hidden_items) AND (\(alias).category_id IS NULL OR \(alias).category_id NOT IN (SELECT item_id FROM hidden_items WHERE kind='category'))"
         }

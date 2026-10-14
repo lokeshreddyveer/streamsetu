@@ -66,13 +66,15 @@ struct PosterCardModel: Identifiable, Hashable {
     var rank: Int?
     var progress: Double?
     var isFavorite = false
+    /// A series with an episode the person has not played yet.
+    var isNew = false
 
-    init(item: LibraryItem, rank: Int? = nil, progress: Double? = nil, isFavorite: Bool = false) {
+    init(item: LibraryItem, rank: Int? = nil, progress: Double? = nil, isFavorite: Bool = false, isNew: Bool = false) {
         id = item.id; title = item.title
         subtitle = [item.year.flatMap { item.title.contains(String($0)) ? nil : String($0) }, item.genre, item.isSeries ? "Series" : nil].compactMap { $0 }.joined(separator: " · ")
         imageURL = item.posterURL
         tag = item.isSeries ? "SERIES" : MetadataNormalizer.qualityLabel(MetadataNormalizer.normalize(item.title)).flatMap { ["4K", "FHD"].contains($0) ? $0 : nil }
-        self.rank = rank; self.progress = progress; self.isFavorite = isFavorite
+        self.rank = rank; self.progress = progress; self.isFavorite = isFavorite; self.isNew = isNew
     }
 }
 
@@ -119,6 +121,10 @@ struct ReddyPosterCard: View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topLeading) {
                 PosterArt(title: model.title, url: model.imageURL)
+                if model.isNew {
+                    Text("NEW").font(.system(size: 8, weight: .heavy)).tracking(0.6).foregroundStyle(.white).padding(.horizontal, 6).padding(.vertical, 3)
+                        .background(accent, in: RoundedRectangle(cornerRadius: 3)).padding(8).accessibilityLabel("New episode")
+                }
                 if let r = model.rank {
                     Text("\(r)").font(.system(size: 27, weight: .heavy)).foregroundStyle(Color.white.opacity(0.62)).padding(.leading, 10).padding(.top, 4)
                 }

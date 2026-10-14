@@ -46,6 +46,7 @@ actor CatalogSyncService {
     private var tasks: [UUID: Task<Void, Never>] = [:]
     private var observers: [UUID: Observer] = [:]
     private var latest: [UUID: SyncProgress] = [:]
+    private var onCompleted: (@Sendable (UUID) async -> Void)?
 
     init(catalog: CatalogRepository, indexer: CatalogIndexer, sources: SourceManager, epg: EPGSyncService, db: DatabaseManager) {
         self.catalog = catalog; self.indexer = indexer; self.sources = sources; self.epg = epg; self.db = db
@@ -59,6 +60,8 @@ actor CatalogSyncService {
     }
 
     func removeObserver(_ id: UUID) { observers[id] = nil }
+    /// Called, off to the side and at low priority, after a source was read successfully (a manual refresh or a scheduled one).
+    func setOnCompleted(_ f: @escaping @Sendable (UUID) async -> Void) { onCompleted = f }
     func isRunning(_ id: UUID) -> Bool { tasks[id] != nil }
     func progress(for id: UUID) -> SyncProgress? { latest[id] }
 
@@ -177,6 +180,7 @@ actor CatalogSyncService {
             if let jobID { try? db.write { try $0.execute("UPDATE sync_jobs SET finished_at=?, state='completed', detail=? WHERE id=?", [now, p.notes.joined(separator: "; "), jobID]) } }
             db.optimize()
             setState(.completed(now))
+            if let cb = onCompleted { Task.detached(priority: .utility) { await cb(sourceID) } }
         } catch is CancellationError {
             try? catalog.updateSyncStatus(sourceID: sourceID, status: "idle", lastSync: nil)
             if let jobID { try? db.write { try $0.execute("UPDATE sync_jobs SET finished_at=?, state='cancelled' WHERE id=?", [Date(), jobID]) } }

@@ -39,6 +39,7 @@ struct PosterCard: View {
     let item: LibraryItem
     var width: CGFloat = 120
     var progress: Double?
+    @Environment(AppState.self) private var state
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -46,6 +47,12 @@ struct PosterCard: View {
                 ArtworkImage(url: item.posterURL ?? item.backdropURL, kind: .poster, contentMode: .fill, symbol: item.isSeries ? "rectangle.stack" : "film")
                     .frame(width: width, height: width * 1.5)
                 if let progress, progress > 0 { ProgressStrip(fraction: progress) }
+            }
+            .overlay(alignment: .topLeading) {
+                if item.isSeries, state.hasNewEpisodes(item.id) {
+                    Text("NEW").appFont(9, .heavy).foregroundStyle(.white).padding(.horizontal, 6).padding(.vertical, 3)
+                        .background(ColorTokens.accentDefault, in: RoundedRectangle(cornerRadius: 4)).padding(6).accessibilityLabel("New episode")
+                }
             }
             .overlay(alignment: .topTrailing) {
                 if let r = item.ratingValue {

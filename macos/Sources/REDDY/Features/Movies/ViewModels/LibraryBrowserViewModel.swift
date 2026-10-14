@@ -58,6 +58,10 @@ final class LibraryBrowserViewModel {
         case .shortcut(.favorites): q.favoritesOnly = true
         case .shortcut(.watchLater): q.ids = watchLaterIDs.isEmpty ? ["-none-"] : watchLaterIDs
         case .shortcut(.recentlyAdded): q.sort = .recentlyAdded
+        case .shortcut(.unwatched): q.unwatchedOnly = true
+        case .shortcut(.unwatchedFavorites): q.unwatchedOnly = true; q.favoritesOnly = true
+        case .shortcut(.addedThisMonth): q.addedWithinDays = 30; q.sort = .recentlyAdded
+        case .shortcut(.newEpisodes): q.newEpisodesOnly = true
         default: break
         }
         return q

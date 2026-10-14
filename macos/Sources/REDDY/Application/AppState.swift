@@ -12,6 +12,16 @@ final class AppState {
     var loaded = false
     /// Single source of truth for hearts across every screen.
     private(set) var favoriteIDs: Set<String> = []
+    /// Series that gained an episode the person has not played yet (the NEW badge).
+    private(set) var newEpisodeSeriesIDs: Set<String> = []
+    func hasNewEpisodes(_ seriesID: String) -> Bool { newEpisodeSeriesIDs.contains(seriesID) }
+    func reloadNewEpisodes() {
+        let service = container.newEpisodes
+        Task { @MainActor in
+            let ids = await Task.detached { service.seriesIDs() }.value
+            if ids != newEpisodeSeriesIDs { newEpisodeSeriesIDs = ids; catalogVersion += 1 }
+        }
+    }
     /// Movies and series saved to watch later. A built-in list, kept with the person's other lists.
     private(set) var watchLaterIDs: Set<String> = []
     nonisolated static let watchLaterListID = "watch-later"
@@ -37,6 +47,8 @@ final class AppState {
         observerID = await container.sync.addObserver { [weak self] p in
             Task { @MainActor in self?.apply(p) }
         }
+        container.onNewEpisodesChanged = { [weak self] in self?.reloadNewEpisodes() }
+        reloadNewEpisodes()
         container.scheduler.start()
         container.vpn.onDrop = { [weak self] in
             guard let self else { return }

@@ -9,7 +9,7 @@ final class LibraryModel {
     var categoryID: String?
     var query = ""
     /// Everything, only favourites, or only what was saved to watch later.
-    enum Shelf: String, CaseIterable { case all, favourites, watchLater }
+    enum Shelf: String, CaseIterable { case all, favourites, watchLater, unwatched, unwatchedFavourites, thisMonth, newEpisodes }
     var shelf: Shelf = .all
     var sort: VODSort = .recentlyAdded
     var total = 0
@@ -58,6 +58,10 @@ final class LibraryModel {
             switch shelf {
             case .all: break
             case .favourites: q.favoritesOnly = true
+            case .unwatched: q.unwatchedOnly = true
+            case .unwatchedFavourites: q.unwatchedOnly = true; q.favoritesOnly = true
+            case .thisMonth: q.addedWithinDays = 30
+            case .newEpisodes: q.newEpisodesOnly = true
             case .watchLater:
                 let saved = ((try? c.favoritesRepo.collectionItems(id: AppState.watchLaterListID)) ?? []).filter { $0.kind == kind }.map(\.itemID).reversed()
                 q.ids = saved.isEmpty ? ["-none-"] : Array(saved)
@@ -91,12 +95,12 @@ struct LibraryView: View {
         NavigationStack {
             ScrollView {
                 if model.items.isEmpty, !model.loading {
-                    EmptyState(symbol: model.shelf == .watchLater ? "bookmark" : model.shelf == .favourites ? "heart" : (kind == .movie ? "film" : "rectangle.stack"), title: model.query.isEmpty ? (model.shelf == .watchLater ? "Nothing saved yet" : model.shelf == .favourites ? "No favourites yet" : "Nothing here") : "No matches",
+                    EmptyState(symbol: model.shelf == .watchLater ? "bookmark" : model.shelf == .favourites ? "heart" : model.shelf == .unwatched ? "eye.slash" : model.shelf == .unwatchedFavourites ? "heart.slash" : model.shelf == .thisMonth ? "calendar.badge.plus" : model.shelf == .newEpisodes ? "sparkles.tv" : (kind == .movie ? "film" : "rectangle.stack"), title: model.query.isEmpty ? (model.shelf == .watchLater ? "Nothing saved yet" : model.shelf == .favourites ? "No favourites yet" : model.shelf == .unwatched ? "Everything has been played" : model.shelf == .unwatchedFavourites ? "No unwatched favourites" : model.shelf == .thisMonth ? "Nothing new this month" : model.shelf == .newEpisodes ? "No new episodes" : "Nothing here") : "No matches",
                                message: model.query.isEmpty ? (state.isSyncing ? "Titles appear when the playlist has been read." : "This playlist has no \(kind == .movie ? "movies" : "series") in this folder.") : nil)
                 }
                 // The same slideshow as Home, only of movies (or only of series); hidden while searching or inside one folder.
                 if !featured.isEmpty, model.query.isEmpty, model.categoryID == nil, model.shelf == .all { FeaturedBanner(items: featured, height: sizeClass == .regular ? 300 : 220).padding(.top, 4) }
-                ShelfChips(selection: $model.shelf)
+                ShelfChips(selection: $model.shelf, kind: kind)
                 if let fixed = model.correctedTo { CorrectedNote(original: model.query, corrected: fixed).padding(.top, 4) }
                 if model.total > 0 { Text("\(model.total.formatted()) titles").appFont(12).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16) }
                 LazyVGrid(columns: columns, spacing: 16) {
@@ -147,9 +151,10 @@ struct LibraryView: View {
 }
 
 
-/// All, Favourites and Watch Later as a row of chips under the banner.
+/// All, Favourites, Watch Later and the smart lists (New Episodes, Unwatched, Unwatched Favourites, Added in 30 Days) as a row of chips under the banner.
 struct ShelfChips: View {
     @Binding var selection: LibraryModel.Shelf
+    var kind: ContentKind = .movie
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -157,6 +162,10 @@ struct ShelfChips: View {
                 chip("All", "square.grid.2x2", .all)
                 chip("Favourites", "heart.fill", .favourites)
                 chip("Watch Later", "bookmark.fill", .watchLater)
+                if kind == .series { chip("New Episodes", "sparkles.tv", .newEpisodes) }
+                chip("Unwatched", "eye.slash", .unwatched)
+                chip("Unwatched Favourites", "heart.slash", .unwatchedFavourites)
+                chip("Added in 30 Days", "calendar.badge.plus", .thisMonth)
             }
             .padding(.horizontal, 16).padding(.vertical, 6)
         }

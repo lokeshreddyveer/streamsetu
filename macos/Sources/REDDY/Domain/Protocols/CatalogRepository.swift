@@ -41,6 +41,12 @@ struct VODQuery: Sendable {
     var search = ""
     var sort: VODSort = .recentlyAdded
     var year: Int?
+    /// Titles never played (a series counts as played once any episode was). Used by the Unwatched lists.
+    var unwatchedOnly = false
+    /// Titles the provider added in the last N days. Titles with no added date are left out rather than guessed.
+    var addedWithinDays: Int?
+    /// Series that gained an episode the person has not played yet (see NewEpisodeService). Not meaningful for movies.
+    var newEpisodesOnly = false
     var includeHidden = false
     var ids: [String]?
     var limit: Int?
