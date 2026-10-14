@@ -40,7 +40,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { StreamSetuTV(container, nav, onExit = { finish() }) }
+        // A television keeps the remote layout, sideways. A phone or tablet gets the touch layout and turns with the person.
+        val phone = app.streamsetu.tv.ui.phone.isPhoneDevice(this)
+        if (phone) androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        else requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        setContent { if (phone) app.streamsetu.tv.ui.phone.PhoneApp(container, nav, onExit = { finish() }) else StreamSetuTV(container, nav, onExit = { finish() }) }
         handle(intent)
     }
 

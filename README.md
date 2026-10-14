@@ -93,6 +93,10 @@ If you installed an earlier test build, uninstall it first: test builds before 0
 
 ## Getting around
 
+### Android phone and tablet
+
+The Android app detects a phone or tablet and shows a touch layout, laid out like the iPhone app: a floating tab bar (Home, Live TV, Movies, Series, More), a banner you can tap, folder and list chips, poster and channel grids, and sheets that slide up for menus. Touch and hold a title for its menu. The player turns with the phone: tap the picture to show the controls, double-tap the left or right side to skip, drag the bar to seek, swipe up or down on the left for brightness and on the right for volume. A Fire TV or Android TV keeps the remote layout below.
+
 ### Fire TV and Android TV remote
 
 | Press | What happens |

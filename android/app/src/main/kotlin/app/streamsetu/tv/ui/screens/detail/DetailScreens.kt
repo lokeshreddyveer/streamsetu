@@ -208,7 +208,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                     }
                 }
             }
-            items(seasons[season].orEmpty().sortedBy { it.number }, key = { it.id }) { e ->
+            items((season?.let { seasons[it] }).orEmpty().sortedBy { it.number }, key = { it.id }) { e ->
                 val p = progress[e.id]
                 Focusable({ playEp(e) }, Modifier.fillMaxWidth().widthIn(max = 760.dp), scaleOnFocus = 1.01f, hairline = true, onLongClick = { episodeMenu = e }) { _ ->
                     Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
