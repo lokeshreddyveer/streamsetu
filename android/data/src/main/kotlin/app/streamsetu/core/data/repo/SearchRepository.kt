@@ -70,4 +70,16 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
             .sortedWith(compareByDescending<SearchHit> { SearchText.score(it.title, typed) }.thenBy { it.title.length }.thenBy { it.itemId })
             .map { it.title }.distinctBy { SearchText.normalize(it) }.take(limit)
     }
+
+    /** The same title in other connections of the open library (for "Choose Stream" / "Choose Source"). Never merges different titles. */
+    suspend fun movieVariants(title: String): List<Movie> = withContext(Dispatchers.IO) {
+        val norm = SearchText.normalize(title)
+        val hits = SearchIndex.query(db.openHelper.readableDatabase, SearchText.matchQuery(title), library.sourceIds.value, listOf("MOVIE"), 80).filter { SearchText.normalize(it.title) == norm }
+        db.catalog().moviesByIds(hits.map { it.itemId }).map { it.toModel() }.sortedBy { it.sourceId }
+    }
+    suspend fun seriesVariants(title: String): List<Series> = withContext(Dispatchers.IO) {
+        val norm = SearchText.normalize(title)
+        val hits = SearchIndex.query(db.openHelper.readableDatabase, SearchText.matchQuery(title), library.sourceIds.value, listOf("SERIES"), 80).filter { SearchText.normalize(it.title) == norm }
+        db.catalog().seriesByIds(hits.map { it.itemId }).map { it.toModel() }.sortedBy { it.sourceId }
+    }
 }

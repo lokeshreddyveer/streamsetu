@@ -120,8 +120,8 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
         androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalInOverlay provides true) {
             nav.top?.let { top -> app.streamsetu.tv.ui.components.FadeIn(top) {
                 when (val o = top) {
-                    is Overlay.MovieDetail -> MovieDetailScreen(o.movie, c, nav)
-                    is Overlay.SeriesDetail -> SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
+                    is Overlay.MovieDetail -> app.streamsetu.tv.ui.screens.detail.MovieDetailScreen(o.movie, c, nav)
+                    is Overlay.SeriesDetail -> app.streamsetu.tv.ui.screens.detail.SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
                     is Overlay.Player -> PlayerScreen(c, onClose = { c.playback.stop(); nav.close() })
                     is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                 }
@@ -158,7 +158,7 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
         Box(Modifier.weight(1f).fillMaxHeight()) {
             app.streamsetu.tv.ui.components.FadeIn(nav.tab) {
                 when (nav.tab) {
-                    Tab.HOME -> HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                    Tab.HOME -> app.streamsetu.tv.ui.screens.home.HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.LIVE -> LiveScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.GUIDE -> GuideScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.MOVIES -> app.streamsetu.tv.ui.screens.section.SectionScreen(androidx.hilt.navigation.compose.hiltViewModel<app.streamsetu.tv.ui.screens.section.MoviesSectionViewModel>(), c, nav) { card -> card.movie?.let { nav.open(Overlay.MovieDetail(it)) } }

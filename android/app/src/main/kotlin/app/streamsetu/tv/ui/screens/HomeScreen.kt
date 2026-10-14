@@ -17,44 +17,6 @@ import app.streamsetu.tv.play
 import app.streamsetu.tv.ui.components.*
 import app.streamsetu.tv.ui.theme.Tokens
 
-/** Home, like a streaming service: a full-bleed hero, then rows (Continue Watching, Watch Later, your channels, new movies, series). */
-@Composable
-fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
-    val featured by vm.featured.collectAsState()
-    val resume by vm.continueWatching.collectAsState()
-    val later by vm.watchLater.collectAsState()
-    val recent by vm.recentChannels.collectAsState()
-    val yours by vm.yourChannels.collectAsState()
-    val favs by vm.favourites.collectAsState()
-    val favMovies by vm.favouriteMovies.collectAsState()
-    val movies by vm.latestMovies.collectAsState()
-    val series by vm.someSeries.collectAsState()
-    val rowPad = PaddingValues(horizontal = Tokens.screenPadding, vertical = 6.dp)
-
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-    val atTop by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 40 } }
-    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 36.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (featured.isNotEmpty()) item {
-            Hero(featured, loadInfo = { c.sync.movieInfo(it) },
-                onPlay = { f -> play(c, nav, f) },
-                onDetails = { f -> if (f is SeriesFeature) nav.open(Overlay.SeriesDetail(f.series)) else if (f is MoviePlayable) nav.open(Overlay.MovieDetail(f.movie)) })
-        }
-        if (resume.isNotEmpty()) item { Shelf("Continue Watching", rowPad) { items(resume, key = { it.playable.id }) { r -> LandscapeCard(r.playable.title, remainingText(r), r.playable.artworkUrl, { play(c, nav, r.playable) }, progress = r.progress.fraction) } } }
-        if (later.isNotEmpty()) item { Shelf("Watch Later", rowPad) { items(later, key = { it.id }) { m -> PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, subtitle = m.year?.toString(), badge = ratingBadge(m.rating)) } } }
-        if (yours.isNotEmpty()) item { ChannelShelf("Your Channels", yours, c, nav, rowPad) }
-        if (favs.isNotEmpty()) item { ChannelShelf("Favorite Channels", favs, c, nav, rowPad) }
-        if (favMovies.isNotEmpty()) item { Shelf("Favorite Movies", rowPad) { items(favMovies, key = { it.id }) { m -> PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, subtitle = m.year?.toString(), badge = ratingBadge(m.rating)) } } }
-        if (recent.isNotEmpty()) item { ChannelShelf("Recently Watched", recent, c, nav, rowPad) }
-        if (movies.isNotEmpty()) item { Shelf("New Movies", rowPad) { items(movies, key = { it.id }) { m -> PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, subtitle = m.year?.toString(), badge = ratingBadge(m.rating)) } } }
-        if (series.isNotEmpty()) item { Shelf("Series", rowPad) { items(series, key = { it.id }) { s -> PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, subtitle = s.year?.toString(), badge = ratingBadge(s.rating)) } } }
-    }
-}
-
-private fun remainingText(r: HomeViewModel.ResumeItem): String {
-    val left = ((r.progress.durationMs - r.progress.positionMs) / 60000).toInt().coerceAtLeast(0)
-    return if (left >= 1) "${left}m left" else "Almost done"
-}
-
 @Composable
 fun Shelf(title: String, padding: PaddingValues = PaddingValues(horizontal = Tokens.screenPadding, vertical = 6.dp), content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
     Column {

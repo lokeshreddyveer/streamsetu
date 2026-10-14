@@ -13,54 +13,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import app.streamsetu.core.sync.upcoming
 
-/** What the Home screen shows. */
-@HiltViewModel
-class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel() {
-    private val _featured = MutableStateFlow<List<Playable>>(emptyList())
-    val featured: StateFlow<List<Playable>> = _featured
-    // The mix is picked once the library has something in it (a playlist that was just read arrives after this screen opens).
-    init { viewModelScope.launch { c.catalog.latestMovies(1).collect { if (_featured.value.isEmpty() && it.isNotEmpty()) { val f = runCatching { c.featured().take(6) }.onFailure { e -> android.util.Log.e("Featured", "failed", e) }.getOrDefault(emptyList()); android.util.Log.i("Featured", "picked ${f.size}"); _featured.value = f } } } }
-
-    data class ResumeItem(val progress: WatchProgress, val playable: Playable)
-
-    val continueWatching: StateFlow<List<ResumeItem>> = c.user.continueWatching().map { list ->
-        list.mapNotNull { p ->
-            val playable = when (p.kind) {
-                ContentKind.MOVIE -> c.catalog.movie(p.itemId)?.let { MoviePlayable(it) }
-                ContentKind.EPISODE -> c.catalog.episode(p.itemId)?.let { e -> c.catalog.series(e.seriesId)?.let { EpisodePlayable(e, it) } }
-                else -> null
-            }
-            playable?.let { ResumeItem(p, it) }
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val recentChannels: StateFlow<List<Channel>> = c.user.recentChannelIds(12).map { ids -> ids.mapNotNull { c.catalog.channel(it) } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val yourChannels: StateFlow<List<Channel>> = c.user.mostWatchedChannelIds(12).map { ids -> ids.mapNotNull { c.catalog.channel(it) } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val favourites: StateFlow<List<Channel>> = c.user.favouriteIds().map { ids -> ids.mapNotNull { c.catalog.channel(it) } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val history: StateFlow<List<app.streamsetu.core.data.db.WatchLogEntity>> = c.user.history(200).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val watchLater: StateFlow<List<Movie>> = c.user.favouriteIds(UserRepository.WATCH_LATER).map { c.catalog.moviesByIds(it.toList()) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val favouriteMovies: StateFlow<List<Movie>> = c.user.favouriteIds(UserRepository.FAVOURITES).map { c.catalog.moviesByIds(it.toList()) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    /** Plays something from the history list again. */
-    fun replay(h: app.streamsetu.core.data.db.WatchLogEntity, c0: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
-        viewModelScope.launch {
-            when (h.kind) {
-                "CHANNEL" -> c.catalog.channel(h.itemId)?.let { app.streamsetu.tv.play(c0, nav, ChannelPlayable(it)) }
-                "MOVIE" -> c.catalog.movie(h.itemId)?.let { nav.open(app.streamsetu.tv.nav.Overlay.MovieDetail(it)) }
-                "EPISODE" -> c.catalog.episode(h.itemId)?.let { e -> c.catalog.series(e.seriesId)?.let { app.streamsetu.tv.play(c0, nav, EpisodePlayable(e, it)) } }
-            }
-        }
-    }
-    val latestMovies: StateFlow<List<Movie>> = c.catalog.latestMovies(30).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val someSeries: StateFlow<List<Series>> = c.catalog.allSeries(30).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-}
-
-@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class LiveViewModel @Inject constructor(private val c: AppContainer) : ViewModel() {
     val categories: StateFlow<List<Category>> = combine(c.catalog.categories(ContentKind.CHANNEL), c.parental.hideAdult) { l, h -> l.filter { c.parental.visible(it, h) } }
@@ -119,14 +71,12 @@ class SeriesDetailViewModel(private val c: AppContainer, val series: Series) : V
     val loading: StateFlow<Boolean> = _loading
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
-    private val _progress = MutableStateFlow<Map<String, WatchProgress>>(emptyMap())
-    val progress: StateFlow<Map<String, WatchProgress>> = _progress
+    val progress: StateFlow<Map<String, WatchProgress>> = c.user.allProgress().map { m -> m.filterValues { it.seriesId == series.id } }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     init {
         viewModelScope.launch {
             runCatching { c.sync.loadEpisodes(series) }.onFailure { _error.value = "The episodes could not be loaded. ${it.message.orEmpty()}" }
             _loading.value = false
-            _progress.value = episodes.value.mapNotNull { e -> c.user.progress(e.id)?.let { e.id to it } }.toMap()
         }
     }
 }

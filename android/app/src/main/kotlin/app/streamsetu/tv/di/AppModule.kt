@@ -33,7 +33,7 @@ object AppModule {
     @Provides @Singleton fun credentials(@ApplicationContext c: Context): CredentialStore = KeystoreCredentialStore(c)
     @Provides @Singleton fun sources(db: AppDatabase, credentials: CredentialStore) = SourceRepository(db, credentials)
     @Provides @Singleton fun library(db: AppDatabase, @ApplicationContext c: Context, scope: CoroutineScope) = app.streamsetu.core.data.repo.LibraryRepository(db, c, scope)
-    @Provides @Singleton fun catalog(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository) = CatalogRepository(db, library)
+    @Provides @Singleton fun catalog(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository, folders: app.streamsetu.core.data.repo.FolderRepository) = CatalogRepository(db, library, folders)
     @Provides @Singleton fun folders(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository, parental: ParentalControls) = app.streamsetu.core.data.repo.FolderRepository(db, library, parental)
     @Provides @Singleton fun browse(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository, folders: app.streamsetu.core.data.repo.FolderRepository, @ApplicationContext c: Context) = app.streamsetu.core.data.repo.BrowseRepository(db, library, folders, c)
     @Provides @Singleton fun search(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository, folders: app.streamsetu.core.data.repo.FolderRepository, @ApplicationContext c: Context) = app.streamsetu.core.data.repo.SearchRepository(db, library, folders, c)

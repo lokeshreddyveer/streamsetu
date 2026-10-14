@@ -71,6 +71,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val showShortcuts by c.ui.showShortcuts.collectAsState()
 
     val entry = app.streamsetu.tv.ui.components.LocalContentEntry.current ?: remember { FocusRequester() }
+    LaunchedEffect(Unit) { nav.pendingFolder?.takeIf { it.first == kind }?.let { vm.select(Browse.Folder(it.second)); nav.pendingFolder = null } }
     val gridState = rememberLazyGridState(vm.scrollIndex)
     LaunchedEffect(gridState) { snapshotFlow { gridState.firstVisibleItemIndex }.collect { vm.scrollIndex = it } }
     var sortOpen by remember { mutableStateOf(false) }

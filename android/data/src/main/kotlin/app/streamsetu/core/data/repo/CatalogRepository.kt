@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.map
 
 /** Everything the screens read: categories, channels, movies, series, episodes and search. */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-class CatalogRepository(private val db: AppDatabase, private val library: LibraryRepository) {
+class CatalogRepository(private val db: AppDatabase, private val library: LibraryRepository, private val folders: FolderRepository) {
     private val dao get() = db.catalog()
     private val ids get() = library.sourceIds.value
     private fun <T> scoped(block: (List<String>) -> Flow<T>): Flow<T> = library.sourceIds.flatMapLatest(block)
@@ -42,8 +42,10 @@ class CatalogRepository(private val db: AppDatabase, private val library: Librar
 
     /** A fresh mix of movies and series with artwork, for the banner on Home. Different every time the app opens. */
     suspend fun featured(count: Int = 6): List<Playable> {
-        val m = dao.randomMovies(count, ids).map { MoviePlayable(it.toModel()) as Playable }
-        val s = dao.randomSeries(count, ids).map { SeriesFeature(it.toModel()) as Playable }
+        // Content in a locked folder never appears in a banner until the folder is unlocked.
+        val locked = folders.lockedIdsNow()
+        val m = dao.randomMovies(count * 2, ids).filter { it.categoryId == null || it.categoryId !in locked }.take(count).map { MoviePlayable(it.toModel()) as Playable }
+        val s = dao.randomSeries(count * 2, ids).filter { it.categoryId == null || it.categoryId !in locked }.take(count).map { SeriesFeature(it.toModel()) as Playable }
         return (m + s).shuffled().take(count)
     }
 

@@ -44,6 +44,9 @@ class Navigator {
     var base: Base by mutableStateOf(Base.ChooseLibrary)
     var tab by mutableStateOf(Tab.HOME)
     val overlays = mutableStateListOf<Overlay>()
+    /** Set when something elsewhere (a Home tile) wants a section opened on one folder; the section takes it when it appears. */
+    var pendingFolder: Pair<app.streamsetu.core.model.ContentKind, String>? = null
+    fun openFolder(kind: app.streamsetu.core.model.ContentKind, folderId: String) { pendingFolder = kind to folderId; go(if (kind == app.streamsetu.core.model.ContentKind.MOVIE) Tab.MOVIES else Tab.SERIES) }
     /** True while the sidebar is shown on a full-screen section (revealed with Back from its folders). */
     var sidebarRevealed by mutableStateOf(false)
 

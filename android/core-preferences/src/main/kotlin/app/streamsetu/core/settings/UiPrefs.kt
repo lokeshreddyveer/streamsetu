@@ -47,4 +47,11 @@ class UiPrefs(context: Context) {
         return saved + default.filter { it !in saved }
     }
     fun setShortcutOrder(section: String, order: List<String>) { prefs.edit().putString("order.$section", order.joinToString(",")).apply() }
+
+    /** The order of Home's rows, as saved ids; rows not listed keep their default place after the listed ones. */
+    fun homeOrder(default: List<String>): List<String> {
+        val saved = prefs.getString("homeOrder", null)?.split(',')?.filter { it in default }.orEmpty()
+        return saved + default.filter { it !in saved }
+    }
+    fun setHomeOrder(order: List<String>) { prefs.edit().putString("homeOrder", order.joinToString(",")).apply() }
 }

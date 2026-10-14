@@ -54,15 +54,20 @@ class AppContainer @Inject constructor(
             playback.state.collect { st ->
                 if (st == app.streamsetu.core.playback.PlaybackState.Ended && settings.playNextAutomatically.value) {
                     val ep = playback.current.value as? EpisodePlayable ?: return@collect
-                    catalog.nextEpisode(ep.episode)?.let { n -> catalog.series(n.seriesId)?.let { s -> kotlinx.coroutines.withContext(Dispatchers.Main) { play(EpisodePlayable(n, s), queue) } } }
+                    catalog.nextEpisode(ep.episode)?.takeIf { app.streamsetu.tv.ui.screens.detail.EpisodePlan.contiguous(ep.episode, it) }?.let { n -> catalog.series(n.seriesId)?.let { s -> kotlinx.coroutines.withContext(Dispatchers.Main) { play(EpisodePlayable(n, s), queue) } } }
                 }
             }
         }
     }
 
     private var featuredCache: List<Playable>? = null
-    /** The banner / Featured mix: picked once per launch (and again after a playlist is read), so it does not reshuffle when you come back to a page. */
-    suspend fun featured(): List<Playable> = featuredCache ?: catalog.featured(30).also { featuredCache = it }
+    private var featuredFor: String? = null
+    /** The banner mix: picked once per open library (and again after a playlist is read), so it does not reshuffle when you come back to a page. */
+    suspend fun featured(): List<Playable> {
+        val lib = library.activeId.value
+        if (featuredFor != lib) { featuredCache = null; featuredFor = lib }
+        return featuredCache ?: catalog.featured(30).also { featuredCache = it }
+    }
 
     /** Reads a playlist, then its guide (a guide that cannot be read never fails the playlist). */
     suspend fun syncWithGuide(sourceId: String): SyncService.Result {
@@ -83,12 +88,12 @@ class AppContainer @Inject constructor(
     var previousLive: Playable? = null
     fun lastChannel() { previousLive?.let { play(it, queue) } }
 
-    fun play(item: Playable, queue: List<Playable> = listOf(item)) {
+    fun play(item: Playable, queue: List<Playable> = listOf(item), startOver: Boolean = false) {
         playback.current.value?.takeIf { it.isLive && it.id != item.id }?.let { previousLive = it }
         this.queue = queue
         queueIndex = queue.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
         appScope.launch {
-            val resume = if (item.isLive) 0 else if (settings.resumeAutomatically.value) user.progress(item.id)?.takeIf { !it.completed }?.positionMs ?: 0 else 0
+            val resume = if (item.isLive || startOver) 0 else if (settings.resumeAutomatically.value) user.progress(item.id)?.takeIf { !it.completed }?.positionMs ?: 0 else 0
             kotlinx.coroutines.withContext(Dispatchers.Main) { playback.play(item, resume) }
         }
     }
