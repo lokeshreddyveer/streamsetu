@@ -10,9 +10,9 @@ import app.streamsetu.core.model.Movie
 import app.streamsetu.core.model.Series
 import app.streamsetu.core.model.SourceType
 
-/** The sections reached from the sidebar. Movies, Series and Live TV take the whole screen with their own folder panel. */
-enum class Tab(val title: String, val fullScreenSection: Boolean = false) {
-    HOME("Home"), LIVE("Live TV", true), MOVIES("Movies", true), SERIES("Series", true), GUIDE("TV Guide"), SEARCH("Search"), LIBRARIES("Libraries"), SETTINGS("Settings")
+/** The sections reached from the sidebar. On Home, Live TV, Movies and Series the sidebar floats over the page (opened with Left at the page's edge, or Back); on the others it is a narrow strip beside the page. */
+enum class Tab(val title: String, val floatingSidebar: Boolean = false) {
+    HOME("Home", true), LIVE("Live TV", true), MOVIES("Movies", true), SERIES("Series", true), GUIDE("TV Guide"), SEARCH("Search"), LIBRARIES("Libraries"), SETTINGS("Settings")
 }
 
 /** What fills the screen under any overlay. */
@@ -68,7 +68,7 @@ class Navigator {
     fun back(): Boolean = when {
         overlays.isNotEmpty() -> { close(); true }
         base is Base.Setup || base is Base.Combined || base is Base.Welcome && false -> { base = Base.ChooseLibrary; true }
-        base == Base.Shell && tab.fullScreenSection && !sidebarRevealed -> { sidebarRevealed = true; true }
+        base == Base.Shell && tab.floatingSidebar && !sidebarRevealed -> { sidebarRevealed = true; true }
         base == Base.Shell && tab != Tab.HOME -> { go(Tab.HOME); true }
         base == Base.Shell -> { toChooser(); true }
         else -> false

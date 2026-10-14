@@ -111,21 +111,6 @@ fun FolderPanel(
         TvTextField(query, { query = it }, "Search folders", Modifier.padding(horizontal = 8.dp, vertical = 6.dp).fillMaxWidth())
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            // The moving highlight sits behind the rows and slides to the open folder.
-            val y = remember { Animatable(0f) }
-            var hh by remember { mutableIntStateOf(0) }
-            var hv by remember { mutableStateOf(false) }
-            var first by remember { mutableStateOf(true) }
-            LaunchedEffect(selectedKey, rows.size) {
-                snapshotFlow { listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == selectedKey }?.let { it.offset to it.size } to listState.isScrollInProgress }.collect { (pos, scrolling) ->
-                    if (pos == null) hv = false else {
-                        hv = true; hh = pos.second
-                        if (first || scrolling || reduced) { y.snapTo(pos.first.toFloat()); first = false } else y.animateTo(pos.first.toFloat(), tween(Motion.HIGHLIGHT, easing = Motion.Standard))
-                    }
-                }
-            }
-            if (hv && hh > 0) Box(Modifier.padding(horizontal = 6.dp).fillMaxWidth().height(with(LocalDensity.current) { hh.toDp() }).graphicsLayer { translationY = y.value }.background(Tokens.elevated, RoundedCornerShape(8.dp)))
-
             LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)) {
                 itemsIndexed(rows, key = { _, r -> if (r is Shortcut) "s:${r.label}" else "f:${(r as Folder).id}" }) { idx, r ->
                     if (r is Shortcut) {
@@ -152,15 +137,13 @@ fun FolderPanel(
     menuFor?.let { f ->
         ContextMenu(f.title, if (f.title != f.providerName) f.providerName else null, listOf(
             MenuAction(if (f.pref.favorite) "Remove from favorite folders" else "Add to favorite folders", Icons.Filled.Star) { actions.toggleFavorite(f) },
-            MenuAction(if (f.pref.pinned) "Unpin" else "Pin to top", Icons.Filled.PushPin) { actions.togglePinned(f) },
             MenuAction("Reorder…", Icons.Filled.SwapVert) { reordering = f.id },
-            MenuAction("Move up", Icons.Filled.ArrowUpward) { actions.move(f, -1) },
-            MenuAction("Move down", Icons.Filled.ArrowDownward) { actions.move(f, +1) },
             MenuAction(if (f.pref.hidden) "Unhide" else "Hide", Icons.Filled.VisibilityOff) { actions.toggleHidden(f) },
             MenuAction(if (f.pref.locked) "Unlock" else "Lock", Icons.Filled.Lock) {
                 if (f.pref.locked) { if (actions.hasPin) { unlockingToRemove = true; pinFor = f } else actions.toggleLocked(f) }
                 else if (actions.hasPin) actions.toggleLocked(f) else { lockAfterCreate = true; creatingPinFor = f }
             },
+            MenuAction(if (f.pref.pinned) "Unpin from the top" else "Pin to the top", Icons.Filled.PushPin) { actions.togglePinned(f) },
             MenuAction("Rename label…", Icons.Filled.Edit) { renameFor = f },
             MenuAction("Restore provider order", Icons.Filled.Restore) { actions.restoreOrder() },
         ), onClose = { menuFor = null })
@@ -189,7 +172,9 @@ private fun PanelRow(label: String, icon: ImageVector, count: Int?, selected: Bo
     // Moving the remote over folders opens one only after a short pause, so scrolling through many folders stays light.
     LaunchedEffect(dwellKey, focused) { if (focused) { kotlinx.coroutines.delay(380); onFocusDwell() } }
     Focusable(onClick, extra.fillMaxWidth(), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Tokens.focusedSurface, shape = RoundedCornerShape(8.dp), onFocus = { focused = it; dwellKey++ }, onLongClick = onLongClick) { f ->
-        Row(Modifier.padding(horizontal = 9.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.padding(end = 9.dp, top = 7.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // The open folder is marked by a thin accent bar and brighter text: no coloured box, nothing that slides.
+            Box(Modifier.padding(start = 3.dp).width(3.dp).height(16.dp).background(if (selected) Tokens.accent else Color.Transparent, RoundedCornerShape(2.dp)))
             Image(if (reordering) Icons.Filled.SwapVert else icon, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(if (selected || f) Tokens.accent else Tokens.textTertiary))
             Label(label, Tokens.row, if (dimmed) Tokens.textTertiary else if (selected) Tokens.text else Tokens.textSecondary, if (selected) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f))
             if (count != null) Label("%,d".format(count), Tokens.caption, Tokens.textTertiary)

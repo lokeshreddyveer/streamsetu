@@ -66,7 +66,7 @@ class LiveSectionViewModel @Inject constructor(c: AppContainer) : FolderViewMode
     val sort: StateFlow<SortSpec> = browse.flatMapLatest { b -> c.browse.sort(ContentKind.CHANNEL, (b as? Browse.Folder)?.id) }.stateIn(viewModelScope, SharingStarted.Eagerly, SortSpec())
     val availability = MutableStateFlow(SortAvailability(false, false, false, false))
     val channels: StateFlow<List<Channel>?> = combine(browse, sort) { b, s -> b to s }
-        .flatMapLatest { (b, s) -> c.browse.channels(b, s).map<List<Channel>, List<Channel>?> { it }.onStart { emit(null) } }
+        .flatMapLatest { (b, s) -> c.browse.channels(b, s).map<List<Channel>, List<Channel>?> { it } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val favourites: StateFlow<Set<String>> = c.user.favouriteIds(UserRepository.FAVOURITES).stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
     /** The list as shown: duplicates of one channel folded into one row (Settings, Live TV), or every channel on its own. */

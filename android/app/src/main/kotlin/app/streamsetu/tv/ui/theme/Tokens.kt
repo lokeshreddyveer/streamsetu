@@ -6,13 +6,13 @@ import androidx.compose.ui.unit.sp
 
 /** The Mac app's default theme (Obsidian): same colours, same roles. Sizes are the Mac sizes scaled up for reading from a sofa. */
 object Tokens {
-    val background = Color(0xFF080C14)
-    val panel = Color(0xFF0D1520)        // sidebar and top bar
-    val surface = Color(0xFF0D1520)
-    val card = Color(0xFF142735)
-    val elevated = Color(0xFF193440)
+    val background = Color(0xFF050505)
+    val panel = Color(0xFF0A0A0A)        // sidebar and top bar
+    val surface = Color(0xFF0A0A0A)
+    val card = Color(0xFF151515)
+    val elevated = Color(0xFF1E1E1E)
     val accent = Color(0xFF43DCE8)
-    val focusedSurface = Color(0xFF29515E)
+    val focusedSurface = Color(0xFF2A2A2A)
     val text = Color(0xFFF5F6F8)
     val textSecondary = Color(0xFFB8CCD8)
     val textTertiary = Color(0xFF7F97A6)

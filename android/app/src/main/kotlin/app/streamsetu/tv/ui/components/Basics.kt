@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.streamsetu.tv.ui.theme.Tokens
 import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun Label(text: String, size: TextUnit = Tokens.body, color: Color = Tokens.text, weight: FontWeight = FontWeight.Normal,
@@ -100,6 +102,8 @@ fun Focusable(
 ) {
     var focused by remember { mutableStateOf(false) }
     var longHandled by remember { mutableStateOf(false) }
+    var held by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val highContrast = LocalHighContrast.current
     val enabled = LocalFocusEnabled.current
     val own = remember { FocusRequester() }
@@ -123,14 +127,20 @@ fun Focusable(
                 if (it.isFocused && enabled && !inOverlay) { FocusMemory.last = own; FocusMemory.lastHasFocus = true }
                 else if (!it.isFocused && FocusMemory.last === own) FocusMemory.lastHasFocus = false
             }
-            // Holding OK opens the context menu (long press); a short press still clicks.
+            // Holding OK opens the context menu; a short press still clicks. A held key repeats (repeatCount 1, 2, ...), and a timer covers remotes that do not repeat.
             .then(if (onLongClick == null) Modifier else Modifier.onPreviewKeyEvent { e ->
                 val select = e.key == androidx.compose.ui.input.key.Key.DirectionCenter || e.key == androidx.compose.ui.input.key.Key.Enter || e.key == androidx.compose.ui.input.key.Key.NumPadEnter
-                when {
-                    !select -> false
-                    e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.nativeKeyEvent.isLongPress -> { longHandled = true; onLongClick(); true }
-                    e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && longHandled -> true
-                    e.type == androidx.compose.ui.input.key.KeyEventType.KeyUp && longHandled -> { longHandled = false; true }
+                if (!select) return@onPreviewKeyEvent false
+                when (e.type) {
+                    androidx.compose.ui.input.key.KeyEventType.KeyDown -> {
+                        if (longHandled) true
+                        else if (e.nativeKeyEvent.repeatCount >= 1) { longHandled = true; held = false; onLongClick(); scope.launch { delay(900); longHandled = false }; true }
+                        else {
+                            if (!held) { held = true; scope.launch { delay(550); if (held && !longHandled) { longHandled = true; held = false; onLongClick(); delay(900); longHandled = false } } }
+                            false
+                        }
+                    }
+                    androidx.compose.ui.input.key.KeyEventType.KeyUp -> { held = false; if (longHandled) { longHandled = false; true } else false }
                     else -> false
                 }
             })

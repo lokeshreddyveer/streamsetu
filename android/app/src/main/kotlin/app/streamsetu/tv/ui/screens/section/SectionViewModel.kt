@@ -61,7 +61,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
 
     /** null while loading (a skeleton is shown), then the list. */
     val cards: StateFlow<List<Card>?> = combine(browse, sort) { b, s -> b to s }
-        .flatMapLatest { (b, s) -> source(b, s).map<List<Card>, List<Card>?> { it }.onStart { emit(null) } }
+        .flatMapLatest { (b, s) -> source(b, s).map<List<Card>, List<Card>?> { it } }      // the previous list stays until the new one is ready: no blank or skeleton flash between folders
         .combine(filter) { list, f -> if (f.active) list?.filter { f.accepts(it) } else list }
         .combine(c.collections.overrides) { list, ov -> if (ov.isEmpty()) list else list?.map { card -> ov[card.id]?.let { o -> card.copy(title = o.title ?: card.title, posterUrl = o.posterUrl ?: card.posterUrl) } ?: card } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
