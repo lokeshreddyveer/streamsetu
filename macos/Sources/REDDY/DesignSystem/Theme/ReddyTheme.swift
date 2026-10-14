@@ -6,6 +6,7 @@ struct ReddyThemeModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environment(\.reddyAccent, settings.accent.color)
+            .environment(\.locale, settings.language.locale ?? Locale.current)
             .environment(\.reddyDensity, settings.density)
             .transaction { t in if settings.reduceMotion { t.disablesAnimations = true; t.animation = nil } }
             .tint(settings.accent.color)

@@ -28,6 +28,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Framewor
 cp "$BIN" "$APP/Contents/MacOS/StreamSetu"; rm -f "$DIST/StreamSetu-universal"
 sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD/" Configuration/Info.plist > "$APP/Contents/Info.plist"
 cp Configuration/PrivacyInfo.xcprivacy "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
+# The app's wording in Hindi and Telugu (and the English marker): one folder per language, each with its Localizable.strings.
+for LANG in en hi te; do cp -R "Resources/Localization/$LANG.lproj" "$APP/Contents/Resources/$LANG.lproj"; done
 echo "APPL????" > "$APP/Contents/PkgInfo"
 
 echo "▸ Icon…"

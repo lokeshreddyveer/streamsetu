@@ -10,7 +10,7 @@ struct ReddyDialog<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(title).font(.system(size: 18, weight: .semibold)).accessibilityAddTraits(.isHeader)
+                Text(title.loc).font(.system(size: 18, weight: .semibold)).accessibilityAddTraits(.isHeader)
                 Spacer()
                 Button(action: onClose) {
                     Image(systemName: "xmark").font(.system(size: 11, weight: .bold)).frame(width: 26, height: 26)

@@ -3,7 +3,7 @@ import SwiftUI
 struct PageHead: View {
     let title: String
     var body: some View {
-        Text(title).font(.system(size: 23, weight: .semibold)).tracking(-0.6).accessibilityAddTraits(.isHeader)
+        Text(title.loc).font(.system(size: 23, weight: .semibold)).tracking(-0.6).accessibilityAddTraits(.isHeader)
     }
 }
 

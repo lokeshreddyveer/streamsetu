@@ -38,7 +38,7 @@ struct PrimaryButton: View {
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) { if let symbol { Image(systemName: symbol) }; Text(title) }
+            HStack(spacing: 6) { if let symbol { Image(systemName: symbol) }; Text(title.loc) }
         }.buttonStyle(PrimaryButtonStyle())
     }
 }
@@ -49,7 +49,7 @@ struct SecondaryButton: View {
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) { if let symbol { Image(systemName: symbol) }; Text(title) }
+            HStack(spacing: 6) { if let symbol { Image(systemName: symbol) }; Text(title.loc) }
         }.buttonStyle(SecondaryButtonStyle())
     }
 }

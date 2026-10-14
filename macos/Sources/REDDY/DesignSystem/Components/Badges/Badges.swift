@@ -15,7 +15,7 @@ struct LiveBadge: View {
 struct QualityBadge: View {
     let text: String
     var body: some View {
-        Text(text).font(Typography.micro)
+        Text(text.loc).font(Typography.micro)
             .padding(.horizontal, 5).padding(.vertical, 2)
             .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(ColorTokens.borderStrong))
             .foregroundStyle(ColorTokens.textSecondary)

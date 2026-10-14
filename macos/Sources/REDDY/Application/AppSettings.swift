@@ -32,6 +32,8 @@ final class AppSettings {
     var remindersEnabled: Bool { didSet { save(remindersEnabled, "reminders") } }
     /// Refresh playlists that are more than an hour old each time the app is opened, whatever the schedule says.
     var refreshOnOpen: Bool { didSet { save(refreshOnOpen, "refreshonopen") } }
+    /// The language of the app's own wording: the device's, English, Hindi or Telugu.
+    var language: AppLanguage { didSet { save(language.rawValue, "language") } }
     /// Start the channel that was playing when REDDY was last closed. Off by default: nothing plays until asked.
     /// Keep a rewindable buffer for live TV so it can be paused and wound back (MPV).
     var liveRewind: Bool { didSet { save(liveRewind, "liverewind") } }
@@ -184,6 +186,7 @@ final class AppSettings {
         rememberFolders = bool("rememberfolders", true)
         remindersEnabled = bool("reminders", true)
         refreshOnOpen = bool("refreshonopen", true)
+        language = get("language", AppLanguage.system)
         resumeLastChannel = bool("resumelast", false)
         autoBackup = bool("autobackup", true)
         lastAutoBackup = defaults.object(forKey: "settings.lastautobackup") as? Date
@@ -248,7 +251,7 @@ final class AppSettings {
     func resetAll() {
         resetAppearance(); resetPlayback()
         clickBehavior = Defaults.click; collapseDuplicates = true; hideEmptyFolders = false
-        defaultLibrarySort = .recentlyAdded; defaultChannelSort = .provider; rememberFolders = true; remindersEnabled = true; refreshOnOpen = true; resumeLastChannel = false
+        defaultLibrarySort = .recentlyAdded; defaultChannelSort = .provider; rememberFolders = true; remindersEnabled = true; refreshOnOpen = true; language = .system; resumeLastChannel = false
         catalogRefresh = Defaults.catalogRefresh; guideRefresh = Defaults.guideRefresh; guideRetentionDays = Defaults.guideRetentionDays
         guideHoursVisible = Defaults.guideHours; volume = Defaults.volume
     }
@@ -279,7 +282,7 @@ final class AppSettings {
     private func copy(from o: AppSettings) {
         theme = o.theme; customTheme = o.customTheme; accent = o.accent; density = o.density; reduceMotion = o.reduceMotion; sidebarLaunch = o.sidebarLaunch; clickBehavior = o.clickBehavior
         collapseDuplicates = o.collapseDuplicates; hideEmptyFolders = o.hideEmptyFolders; defaultLibrarySort = o.defaultLibrarySort
-        defaultChannelSort = o.defaultChannelSort; rememberFolders = o.rememberFolders; remindersEnabled = o.remindersEnabled; refreshOnOpen = o.refreshOnOpen; resumeLastChannel = o.resumeLastChannel
+        defaultChannelSort = o.defaultChannelSort; rememberFolders = o.rememberFolders; remindersEnabled = o.remindersEnabled; refreshOnOpen = o.refreshOnOpen; language = o.language; resumeLastChannel = o.resumeLastChannel
         enginePreference = o.enginePreference; hardwareDecoding = o.hardwareDecoding; deinterlace = o.deinterlace; videoQuality = o.videoQuality
         bufferingMode = o.bufferingMode; audioProcessing = o.audioProcessing; preferredAudioLanguage = o.preferredAudioLanguage
         preferredSubtitleLanguage = o.preferredSubtitleLanguage; subtitlesByDefault = o.subtitlesByDefault; subtitleSize = o.subtitleSize
@@ -291,7 +294,7 @@ final class AppSettings {
 
     /// Preferences that make sense to carry to another Mac. Output devices are machine-specific and are left out.
     nonisolated static let knownKeys: Set<String> = [
-        "theme", "customtheme", "accent", "density", "reducemotion", "highcontrast", "sidebarlaunch", "click", "collapse", "hideemptyfolders", "libsort", "chansort", "rememberfolders", "reminders", "refreshonopen", "resumelast",
+        "theme", "customtheme", "accent", "density", "reducemotion", "highcontrast", "sidebarlaunch", "click", "collapse", "hideemptyfolders", "libsort", "chansort", "rememberfolders", "reminders", "refreshonopen", "language", "resumelast",
         "engine", "hwdec2", "deinterlace2", "quality", "buffering", "alang", "audioproc", "slang", "subsdefault", "subsize", "subbg", "subcolor", "subpos",
         "autonext", "rememberpos", "autoresume", "diagoverlay", "rendering", "downmix", "suboutline", "tonemapping", "liverewind", "autobackup", "catalogrefresh", "guiderefresh", "guideretention", "guidehours",
     ].reduce(into: Set<String>()) { $0.insert("settings." + $1) }
@@ -304,6 +307,7 @@ final class AppSettings {
         case "subbg", "subpos": return Double(s).map { clamp($0, 0...1) }
         case "guidehours": return Double(s).flatMap { [2.0, 3.0, 4.0, 6.0].contains($0) ? $0 : nil }
         case "guideretention": return Int(s).map { min(14, max(0, $0)) }
+        case "language": return AppLanguage(rawValue: s)?.rawValue
         case "theme": return AppTheme(rawValue: s)?.rawValue
         case "customtheme": return CustomTheme(encoded: s)?.encoded
         case "accent": return AccentChoice(rawValue: s)?.rawValue

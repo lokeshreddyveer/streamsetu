@@ -47,6 +47,7 @@ class AppContainer @Inject constructor(
     val updates: app.streamsetu.tv.update.UpdateManager,
     val globalSearch: app.streamsetu.core.data.repo.GlobalSearch,
     val stats: app.streamsetu.core.data.repo.StatisticsRepository,
+    val cast: CastSupport,
     val channelPrefs: app.streamsetu.core.data.repo.ChannelPrefs,
 ) {
     /** What the player plays next: the channels of the list it was started from, or the episodes of a series. */

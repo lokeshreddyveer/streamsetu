@@ -55,7 +55,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.onSizeChanged
 import kotlin.math.abs
 
-private enum class Panel { AUDIO, SUBS, SPEED, PICTURE, ENGINE, EPISODES, CHANNELS, MORE, SLEEP, SYNC }
+private enum class Panel { AUDIO, SUBS, SPEED, PICTURE, ENGINE, EPISODES, CHANNELS, MORE, SLEEP, SYNC, CAST }
 
 private val Ink = Color(0xFFF2F2F2)
 private val InkDim = Color(0xB3FFFFFF)
@@ -81,6 +81,9 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
     val audio by playback.audioTracks.collectAsState()
     val subs by playback.subtitleTracks.collectAsState()
     val favourites by c.user.favouriteIds().collectAsState(initial = emptySet())
+    val castState by c.cast.state.collectAsState()
+    val casting = castState as? app.streamsetu.tv.CastState.Casting
+    val castScope = rememberCoroutineScope()
     val sleepAt by playback.sleepEndsAt.collectAsState()
     val subDelay by playback.subtitleDelayMs.collectAsState()
     val audioDelay by playback.audioDelayMs.collectAsState()
@@ -181,6 +184,18 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
     ) {
         EngineSurface(c, Modifier.fillMaxSize())
 
+        // Casting: the picture is on the other screen; this is its remote control.
+        if (casting != null) Column(Modifier.fillMaxSize().background(Color(0xF2050505)), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Icon(Icons.Filled.Cast, Tokens.accent, 56.dp)
+            Label("Casting to ${casting.device}", Ph.heading, Ink, FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
+            Label(item?.title.orEmpty(), Ph.small, InkDim, modifier = Modifier.padding(top = 4.dp))
+            Row(Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PillButton(if (casting.playing) "Pause" else "Play", { c.cast.togglePause() }, primary = true, icon = if (casting.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow)
+                PillButton("Stop casting", { val at = c.cast.positionMs(); c.cast.stop(); if (!live && at > 0) playback.seekBy(at - playback.positionMs) }, icon = Icons.Filled.Close)
+            }
+            PillButton("Back", onClose, Modifier.padding(top = 12.dp))
+        }
+
         // Double-tap feedback.
         AnimatedVisibility(flash != null, Modifier.align(if (flash == 1) Alignment.CenterEnd else Alignment.CenterStart).padding(horizontal = 56.dp), enter = fadeIn(), exit = fadeOut()) {
             Column(Modifier.clip(CircleShape).background(Color(0x66000000)).padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -278,6 +293,24 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
         Panel.AUDIO -> Sheet("Audio", if (audio.isEmpty()) listOf(SheetItem("Only one audio track", null, true) {}) else audio.map { t -> SheetItem(t.label, null, t.selected) { playback.selectAudio(t.id) } }, close)
         Panel.SUBS -> Sheet("Subtitles", listOf(SheetItem("Off", null, subs.none { it.selected }) { playback.selectSubtitle(null) }) + subs.map { t -> SheetItem(t.label, null, t.selected) { playback.selectSubtitle(t.id) } } +
             listOf(SheetItem("Add subtitles from a file…", Icons.Filled.NoteAdd) { pickSubtitle.launch(arrayOf("*/*")) }, SheetItem("Subtitle and sound timing…", Icons.Filled.Sync) { panel = Panel.SYNC }.copy(stays = true)), close)
+        Panel.CAST -> {
+            var devices by remember { mutableStateOf(c.cast.devices()) }
+            DisposableEffect(Unit) { c.cast.startScanning(); onDispose { c.cast.stopScanning() } }
+            LaunchedEffect(Unit) { while (true) { devices = c.cast.devices(); delay(1000) } }
+            Sheet("Cast to a device", if (devices.isEmpty()) listOf(SheetItem("Looking for devices…", null, false, "Your phone and the Chromecast must be on the same Wi-Fi") {}) else devices.map { route ->
+                SheetItem(route.name, Icons.Filled.Cast) {
+                    val it2 = item ?: return@SheetItem
+                    castScope.launch {
+                        val url = c.resolver.resolve(it2.sourceId, it2.streamRef)
+                        if (url == null) { android.widget.Toast.makeText(context, "That stream has no address to cast", android.widget.Toast.LENGTH_SHORT).show(); return@launch }
+                        if (c.resolver.headers(it2.sourceId).isNotEmpty()) { android.widget.Toast.makeText(context, "This connection needs special headers, which a Chromecast cannot send", android.widget.Toast.LENGTH_LONG).show(); return@launch }
+                        val at = playback.positionMs
+                        if (state == PlaybackState.Playing) playback.togglePause()
+                        c.cast.castTo(route, it2, url, at)
+                    }
+                }
+            }, close, subtitle = "Plain web streams (HLS, MP4) cast best")
+        }
         Panel.SLEEP -> Sheet("Sleep timer", listOf(15, 30, 45, 60, 90, 120).map { m -> SheetItem("$m minutes", null, false) { playback.startSleepTimer(m); android.widget.Toast.makeText(context, "Playback will stop in $m minutes", android.widget.Toast.LENGTH_SHORT).show() } } +
             (if (sleepAt > 0) listOf(SheetItem("Turn off", Icons.Filled.Close) { playback.startSleepTimer(0) }) else emptyList()), close,
             subtitle = if (sleepAt > 0) "Stops in ${((sleepAt - System.currentTimeMillis()) / 60_000 + 1).coerceAtLeast(1)} min" else null)
@@ -305,6 +338,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
                     android.widget.Toast.makeText(context, if (where != null) "Saved in $where" else "A picture could not be taken from this stream", android.widget.Toast.LENGTH_SHORT).show()
                 }
             })
+            if (c.cast.available() && item != null) add(if (casting != null) SheetItem("Stop casting", Icons.Filled.CastConnected) { val at = c.cast.positionMs(); c.cast.stop(); if (!live && at > 0) playback.seekBy(at - playback.positionMs) } else SheetItem("Cast to a device…", Icons.Filled.Cast) { panel = Panel.CAST }.copy(stays = true))
             if (live) add(SheetItem("Multi-View", Icons.Filled.GridView, false, "Several channels at once") { onMultiView() })
             if (live && c.previousLive != null) add(SheetItem("Last channel", Icons.Filled.History) { c.lastChannel() })
             if (android.os.Build.VERSION.SDK_INT >= 26) add(SheetItem("Picture in picture", Icons.Filled.PictureInPictureAlt) { (context as? Activity)?.enterPictureInPictureMode(android.app.PictureInPictureParams.Builder().build()) })

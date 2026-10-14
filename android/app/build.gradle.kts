@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.tv.material)
     implementation(libs.media3.ui)
     implementation(libs.coil.compose)
+    implementation(libs.play.services.cast)             // Chromecast, used on phones only (a Fire TV has no Google Play services and never starts it)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

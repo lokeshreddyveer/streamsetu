@@ -19,9 +19,9 @@ struct SettingsGroup<Content: View>: View {
         Section {
             content
         } header: {
-            Text(title)
+            Text(title.loc)
         } footer: {
-            if let footer { Text(footer).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+            if let footer { Text(footer.loc).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
         }
     }
 }
@@ -39,8 +39,8 @@ struct SettingsRow<Control: View>: View {
             control.labelsHidden()
         } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                if let detail { Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+                Text(title.loc)
+                if let detail { Text(detail.loc).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
                 if let note { Label(note, systemImage: "info.circle").font(.callout).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true) }
             }
         }
@@ -127,7 +127,7 @@ struct CapabilityChip: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: on ? "checkmark" : "minus").font(.system(size: 8, weight: .bold))
-            Text(title).font(Typography.caption)
+            Text(title.loc).font(Typography.caption)
         }
         .padding(.horizontal, 7).padding(.vertical, 3)
         .foregroundStyle(on ? ColorTokens.textPrimary : ColorTokens.textTertiary)
@@ -149,7 +149,7 @@ struct SettingsDisclosure<Content: View>: View {
         Section {
             Button { withAnimation(AnimationTokens.standard) { open.toggle() } } label: {
                 HStack {
-                    Text(title).font(.headline)
+                    Text(title.loc).font(.headline)
                     Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
                         .rotationEffect(.degrees(open ? 90 : 0))
@@ -160,7 +160,7 @@ struct SettingsDisclosure<Content: View>: View {
             .accessibilityLabel(title).accessibilityValue(open ? "expanded" : "collapsed").accessibilityAddTraits(.isButton)
             if open { content }
         } footer: {
-            if let footer, open { Text(footer).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+            if let footer, open { Text(footer.loc).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
         }
     }
 }

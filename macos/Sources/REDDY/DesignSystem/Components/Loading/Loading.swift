@@ -28,7 +28,7 @@ struct SkeletonBlock: View {
 struct LoadingView: View {
     var label: String = "Loading…"
     var body: some View {
-        VStack(spacing: Spacing.md) { ProgressView().controlSize(.large); Text(label).foregroundStyle(ColorTokens.textSecondary) }
+        VStack(spacing: Spacing.md) { ProgressView().controlSize(.large); Text(label.loc).foregroundStyle(ColorTokens.textSecondary) }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

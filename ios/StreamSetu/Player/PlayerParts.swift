@@ -288,7 +288,7 @@ struct StatusCard: View {
         VStack(spacing: 10) {
             ProgressView().controlSize(.large).tint(.white)
             Text(headline).font(.system(size: 15, weight: .semibold))
-            if let message, !message.isEmpty { Text(message).font(.system(size: 13)).foregroundStyle(.white.opacity(0.8)).multilineTextAlignment(.center) }
+            if let message, !message.isEmpty { Text(message.loc).font(.system(size: 13)).foregroundStyle(.white.opacity(0.8)).multilineTextAlignment(.center) }
             if state == .recovering { Button("Stop waiting") { stop() }.buttonStyle(.bordered).tint(.white) }
         }
         .foregroundStyle(.white).padding(20).frame(maxWidth: 320)

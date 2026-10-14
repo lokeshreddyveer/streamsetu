@@ -20,6 +20,9 @@ struct GeneralSettingsPage: View {
                     AccentPicker(selection: $s.accent)
                 }
                 .padding(.vertical, 2)
+                SettingsRow(title: "Language", detail: "The language of the app's own wording. Titles and descriptions come from your playlists and stay as they are. Some text is still in English.") {
+                    Picker("Language", selection: $s.language) { ForEach(AppLanguage.allCases) { Text($0.label).tag($0) } }.pickerStyle(.menu).fixedSize()
+                }
                 SettingsRow(title: "Density", detail: "Card size in grids, and row height in channel lists and the sidebar.") {
                     Picker("Density", selection: $s.density) { ForEach(LayoutDensity.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }

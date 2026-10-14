@@ -25,6 +25,7 @@ struct StreamSetuApp: App {
                             .scrollIndicators(.hidden)
                             .environment(c.settings).environment(s).environment(coordinator.router)
                             .environment(\.container, c).environment(\.artwork, c.artwork)
+                            .environment(\.locale, c.settings.language.locale ?? Locale.current)
                             .onOpenURL { coordinator.open($0) }
                     }
                 }
@@ -220,7 +221,7 @@ private struct FailureView: View {
         VStack(spacing: 14) {
             Image(systemName: "exclamationmark.triangle").appFont(34).foregroundStyle(.orange)
             Text("StreamSetu could not open its library").font(.headline)
-            Text(message).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            Text(message.loc).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
             Button("Rebuild Library and Retry", action: retry).buttonStyle(.borderedProminent)
             Text("Your playlists are re-added from their sources; nothing on the server changes.").font(.caption).foregroundStyle(.tertiary)
         }

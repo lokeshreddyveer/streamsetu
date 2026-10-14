@@ -28,7 +28,7 @@ struct UnlockDialog: View {
                 Text("Enter your PIN to show locked folders. They lock again by themselves after \(container?.parental.unlockMinutes ?? 15) minutes, when the Mac sleeps, and when StreamSetu restarts.")
                     .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true)
                 PINField(title: "PIN", text: $pin, onSubmit: submit)
-                if let message { Text(message).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
+                if let message { Text(message.loc).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
                 HStack { Spacer(); SecondaryButton(title: "Cancel") { router.modal = nil }; PrimaryButton(title: "Unlock", action: submit).disabled(pin.count < 4) }
             }
         }
@@ -131,7 +131,7 @@ struct ParentalSettingsGroup: View {
 
     private func promptSheet(title: String, note: String, pin: Binding<String>, error: String?, action: String, run: @escaping () -> Void) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(title).font(Typography.heading)
+            Text(title.loc).font(Typography.heading)
             Text(note).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true)
             PINField(title: "PIN", text: pin, onSubmit: run)
             if let error { Text(error).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
@@ -156,7 +156,7 @@ struct LockedFolderView: View {
             Text("Enter your PIN to see what's inside. It locks again after \(container?.parental.unlockMinutes ?? 15) minutes.")
                 .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
             PINField(title: "PIN", text: $pin, onSubmit: submit)
-            if let message { Text(message).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
+            if let message { Text(message.loc).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
             PrimaryButton(title: "Unlock", symbol: "lock.open", action: submit).disabled(pin.count < 4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

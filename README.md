@@ -175,7 +175,7 @@ Use the tab bar at the bottom: Home, Live TV, Movies, Series and More. Tap a pos
 
 ## What each app does
 
-A tick means the app has it today. A dash means it does not have it yet. The table was checked against the code of each app, and a feature I could not confirm for every app is left out rather than guessed. The Android phone layout is new, and it does not yet have a sleep timer or the TV Guide's full grid in portrait (the guide turns the phone sideways).
+A tick means the app has it today. A dash means it does not have it yet. The table was checked against the code of each app, and a feature I could not confirm for every app is left out rather than guessed. Features marked † are built and pass their tests but have not yet been tried against real equipment (a Jellyfin, Emby or Plex server, a tuner or receiver, a WebDAV share, a Chromecast), so they may need small fixes. On the Android phone the TV Guide is a list of channels with what is on now and next, not the full grid.
 
 | | Mac | iPhone | iPad | Android phone / tablet | Fire TV / Android TV |
 |---|:-:|:-:|:-:|:-:|:-:|
@@ -184,20 +184,27 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | M3U link | ✓ | ✓ | ✓ | ✓ | ✓ |
 | M3U file from the device | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Stalker / Ministra portal | ✓ | ✓ | ✓ | ✓ (live) | ✓ (live) |
-| Jellyfin, Emby, Plex | ✓ | ✓ | ✓ | – | – |
-| Enigma2 receiver | ✓ | – | – | – | – |
-| WebDAV server and local video files | ✓ | – | – | – | – |
+| Jellyfin, Emby, Plex | ✓ | ✓ | ✓ | ✓ † | ✓ † |
+| HDHomeRun, TVHeadend, Enigma2 | ✓ | ✓ | ✓ | ✓ † | ✓ † |
+| WebDAV server and local video files | ✓ | ✓ | ✓ | ✓ † | ✓ † |
 | Custom User-Agent per connection | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Extra request headers per connection, and a proxy | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Watching** | | | | | |
 | Live TV with groups and channel numbers | ✓ | ✓ | ✓ | ✓ | ✓ |
 | TV Guide (XMLTV) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Catch-up for past programmes | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Radio mode | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Movies and series with resume and Up Next | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Multi-View (several channels at once) | ✓ | ✓ | ✓ | – | – |
+| Multi-View (several channels at once) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Picture in Picture | ✓ | ✓ | ✓ | ✓ | – |
 | AirPlay | ✓ | ✓ | ✓ | – | – |
-| Sleep timer | ✓ | ✓ | ✓ | – | ✓ |
+| Chromecast | – | – | – | ✓ † | – |
+| Sound keeps playing in the background, with lock-screen controls and a mini player | – | ✓ | ✓ | ✓ | – |
+| Sleep timer | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Skip intro | – | – | – | ✓ | ✓ |
+| Subtitles from a file, and subtitle and sound timing | ✓ | ✓ | ✓ | ✓ (timing with mpv) | ✓ (timing with mpv) |
+| Save a picture of the frame | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Programme reminders | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Swipe to change channel | – | ✓ | ✓ | – | – |
 | Touch gestures in the player (double-tap skip, brightness, volume) | – | ✓ | ✓ | ✓ | – |
 | Player engines | AVPlayer + mpv | AVPlayer + mpv | AVPlayer + mpv | ExoPlayer + mpv | ExoPlayer + mpv |
@@ -206,14 +213,24 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Collections of your own | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Folders: reorder, hide, rename, PIN lock | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Search that works offline | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Watch statistics | ✓ | ✓ | ✓ | – | – |
-| Artwork and details from TMDB | ✓ | ✓ | ✓ | – | – |
+| New-episode badge on series you watch | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Smart lists: Unwatched, Unwatched favorites, Added in 30 days | ✓ | ✓ | ✓ | – | – |
+| All playlists together (Apple) / Combined libraries (Android) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Hide, rename and check channels (Channel Manager, health check) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Watch statistics | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Artwork and details from TMDB (your own API key) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Parental controls | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Themes | ✓ | ✓ | ✓ | – | – |
+| Themes and accent colours | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Screen reader labels | ✓ | ✓ | ✓ | ✓ (phone) | – |
+| Hindi and Telugu (the main screens; some text is still English) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Sync and updates** | | | | | |
 | iCloud sync between your Apple devices | ✓ | ✓ | ✓ | – | – |
-| Backup and restore | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Siri and Shortcuts actions | – | ✓ | ✓ | – | – |
+| Backup and restore, and automatic weekly backups | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Refresh playlists when the app opens | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Refresh while the app is closed | – | ✓ (iOS decides when) | ✓ (iOS decides when) | ✓ (optional) | ✓ (optional) |
+| Siri and Shortcuts | – (use Open URL links) | ✓ | ✓ | – | – |
+| `streamsetu://` links: play a channel or movie, search, open a tab, pause, resume, sleep | ✓ | ✓ | ✓ | play and search | play and search |
+| "Continue watching" row on the Android TV home screen | – | – | – | – | ✓ (Android TV; not Fire TV) |
 | Updates itself | ✓ (Sparkle) | TestFlight | TestFlight | ✓ (checks GitHub, asks before installing) | ✓ (checks GitHub, asks before installing) |
 
 The iPad runs the iPhone app, laid out for the larger screen. On the Apple apps, Picture in Picture and AirPlay work for streams AVPlayer plays; a stream played by mpv does not support them. Android phones and tablets run the same app as the Fire TV, with a touch layout chosen automatically when the device is not a television.
@@ -233,7 +250,7 @@ On the Mac, iPhone and iPad, **iCloud sync** keeps your setup the same on every 
 - **Mac**: the full app. A top bar for Home, Live TV, Movies, Series and TV Guide, a list of folders and shortcuts beside each, Cmd+K search, a Multi-View window, a Files screen for local videos and WebDAV servers, a Command Center for managing folders and channels, statistics, and automatic updates.
 - **iPhone**: Home, Live TV, Movies, Series and More in a tab bar. A full player with Picture in Picture, AirPlay, swipe to change channel, catch-up, radio mode, sleep timer and a mini player. Multi-View, reminders for programmes, Siri and Shortcuts ("Play BBC One in StreamSetu"), backups, and iCloud sync.
 - **iPad**: the iPhone app on a larger screen, with the same features.
-- **Android phone and tablet**: the iPhone layout in a touch design. Poster and channel grids, sheets for menus, folder chips, a banner, and a player you tap, drag and swipe, which turns with the phone.
+- **Android phone and tablet**: the iPhone layout in a touch design. Poster and channel grids, sheets for menus, folder chips, a banner, and a player you tap, drag and swipe, which turns with the phone. Sound keeps playing when you leave the app, with controls on the lock screen and a mini player; it can also cast to a Chromecast.
 - **Fire TV and Android TV**: made for the remote. A sidebar that opens with Back, folders beside the content, hold OK for a menu, a Live TV browser with a live preview, the TV Guide, a player with number keys for channels, and quiet interface sounds.
 
 ## Fire TV and Android in detail
@@ -242,7 +259,11 @@ On the Mac, iPhone and iPad, **iCloud sync** keeps your setup the same on every 
 
 - **Xtream Codes**: server, user name and password.
 - **M3U playlists**: a web link, or a file from the device or a USB drive.
-- **Stalker / Ministra portals** (Fire TV and Android TV): portal address and the MAC address of the box it should act as. Live TV only for now.
+- **Stalker / Ministra portals**: portal address and the MAC address of the box it should act as. Live TV only for now.
+- **Jellyfin and Emby** (movies and series; server, user name and password) and **Plex** (movies and shows; server and access token). The password is kept in the system's secure storage; the sign-in token is renewed by itself.
+- **HDHomeRun tuners**, **TVHeadend** servers and **Enigma2 receivers** on your own network (live channels; the guide comes from TVHeadend's own XMLTV).
+- **WebDAV shares** (a NAS or cloud drive) and **a folder of videos on the phone**: video files appear as movies, by folder.
+- **Extra request headers** per connection (one per line, written as `Name: value || Name: value` in the form), and an app-wide **HTTP or SOCKS proxy** that never touches addresses on your own network.
 - A **custom User-Agent** per connection, for providers that insist on a particular player.
 - **Combined libraries**: several connections shown as one library, without copying anything. A title that exists in two connections is one title to you; you choose which connection plays it.
 - **Test before you save**: a connection is tried once, by hand, with no automatic retries. A login that works but returns nothing is rejected, and an unfinished setup is kept as a draft you can come back to.
@@ -250,6 +271,11 @@ On the Mac, iPhone and iPad, **iCloud sync** keeps your setup the same on every 
 
 ### Watch
 
+- **Sound in the background** (phones): when you leave the app, what is playing carries on as sound, with controls on the lock screen and in the notification shade. Back from a radio station keeps it playing under a mini player; the down arrow in the player does the same for anything.
+- **Multi-View**: up to four live channels on one screen, sound from one. A provider that allows one connection plays only one of them, and the screen says so.
+- **Skip intro**: a button in the first minutes of an episode. The first time you jump forward early in a series it learns where that series' opening ends.
+- **Sleep timer**, **subtitles from a file**, **subtitle and sound timing** (mpv), and **a picture of the frame** saved to Pictures/StreamSetu.
+- **Programme reminders** from the TV Guide: a notification a minute before it starts, which opens the channel.
 - **Live TV** with channel groups, channel numbers, a three-column browser (folders, channels, live picture), fullscreen, last-channel recall, and typing a channel number.
 - **TV Guide** from XMLTV: a timeline grid, programme details, a "now" line, and matching by the provider's guide id or by channel name when ids are missing. A time shift for providers whose guide runs early or late.
 - **Catch-up** for channels where the provider offers an archive.
@@ -261,6 +287,10 @@ On the Mac, iPhone and iPad, **iCloud sync** keeps your setup the same on every 
 
 - **Folders** are the provider's own categories. You can search them, favorite, pin, reorder (up, down, first, last), hide, lock behind a PIN, give them a display name, and reset any of it. Nothing you do changes the provider's playlist; it is all stored on your device.
 - **Collections** of your own, and a shortcut row for Favorites, Watch Later, Recently Watched and Continue Watching.
+- **Channel Manager** (Settings): hide channels, rename them, tie one to another guide channel, and check which channels answer (a channel that does not answer in time is never counted as dead). Your changes survive a refresh of the playlist.
+- **Statistics**: how long you watched, by day and hour, and your most watched channels, movies and series. It stays on the device and can be cleared.
+- **Artwork from TMDB**: with your own free API key, pictures and descriptions your provider left out are filled in.
+- **Themes and accent colours**, and **Hindi and Telugu** for the main screens (Settings, Appearance, Language). Text that has no translation yet stays in English; titles and descriptions always come from your provider.
 - **Search** runs on a local text index, so it works offline. It reads queries the way you mean them ("hindi movies 2024" is Hindi titles from 2024), fixes a misspelt word from the words in your own library when nothing matches and says what it searched for, and groups results as Live TV, Movies, Series, Episodes, TV Guide programmes, Folders and Collections. It keeps recent searches for each screen. The iPhone, iPad, Mac, Android phone and Fire TV apps all search this way.
 - **Sorting** only offers orders the catalog can truly support (recently added, A–Z, release year, rating, recently watched, new episodes first…), remembered per section and per folder.
 
@@ -340,6 +370,11 @@ More detail is in [`android/ARCHITECTURE.md`](android/ARCHITECTURE.md), and what
 ## Known limits
 
 - Stalker portals: live TV only; no movies, series or guide from a portal yet.
+- Jellyfin, Emby, Plex, HDHomeRun, TVHeadend, Enigma2, WebDAV and Chromecast on Android are marked † in the table: they have unit tests but have not been tried against a real server or device yet.
+- A Chromecast fetches the stream itself, so only plain web streams (HLS, MP4) cast well, and a connection that needs special headers cannot be cast.
+- The "Continue watching" row on the home screen works on Android TV and Google TV, not on a Fire TV, which has its own home screen.
+- Hindi and Telugu cover the main screens and the most common words; long explanations in Settings are still English. The wording was written without a native-speaker review, so corrections are welcome.
+- On the Mac, real Siri phrases need an app built with Xcode (App Intents); the Mac build is not, so Shortcuts reaches it through "Open URL" with `streamsetu://` links.
 - Refresh-rate matching, audio delay and subtitle delay are not offered on Fire TV.
 - Catch-up needs a provider that offers an archive, and some providers read the start time in their own time zone (there is a setting for it).
 - The Fire TV app is newer than the Mac and iPhone apps and has had less testing on real devices.

@@ -42,6 +42,7 @@ object AppModule {
     @Provides @Singleton fun epg(db: AppDatabase) = EpgService(db)
     @Provides @Singleton fun parental(@ApplicationContext c: Context) = ParentalControls(c)
     @Provides @Singleton fun maintenance(@ApplicationContext c: Context, db: AppDatabase, sources: SourceRepository, library: app.streamsetu.core.data.repo.LibraryRepository) = app.streamsetu.core.data.repo.MaintenanceService(c, db, sources, library) { coil.Coil.imageLoader(c).memoryCache?.clear() }
+    @Provides @Singleton fun cast(@ApplicationContext c: Context) = app.streamsetu.tv.CastSupport(c)
     @Provides @Singleton fun statistics(db: AppDatabase) = app.streamsetu.core.data.repo.StatisticsRepository(db)
     @Provides @Singleton fun channelPrefs(db: AppDatabase) = app.streamsetu.core.data.repo.ChannelPrefs(db)
     @Provides @Singleton fun collections(db: AppDatabase) = app.streamsetu.core.data.repo.CollectionRepository(db)

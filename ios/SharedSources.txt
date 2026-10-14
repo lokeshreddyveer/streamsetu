@@ -22,6 +22,7 @@ Data/Database/Schema/SchemaV8.swift
 Data/Database/Schema/SchemaV9.swift
 Data/Database/Schema/SchemaV10.swift
 Data/Database/Schema/SchemaV11.swift
+DesignSystem/Localization.swift
 Data/Indexing/CatalogIndexer.swift
 Data/Indexing/ChannelDeduplicator.swift
 Data/Indexing/IndexHealthMonitor.swift

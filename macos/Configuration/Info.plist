@@ -13,6 +13,9 @@
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.entertainment</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array><string>en</string><string>hi</string><string>te</string></array>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

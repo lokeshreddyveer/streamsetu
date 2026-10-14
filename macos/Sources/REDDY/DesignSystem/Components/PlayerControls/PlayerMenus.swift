@@ -162,7 +162,7 @@ struct ReddyPicturePanel: View {
 
     private func slider(_ title: String, _ key: WritableKeyPath<PictureAdjustments, Int>) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack { Text(title).font(.callout); Spacer(); Text(picture[keyPath: key] == 0 ? "0" : String(format: "%+d", picture[keyPath: key])).font(.callout.monospacedDigit()).foregroundStyle(.secondary) }
+            HStack { Text(title.loc).font(.callout); Spacer(); Text(picture[keyPath: key] == 0 ? "0" : String(format: "%+d", picture[keyPath: key])).font(.callout.monospacedDigit()).foregroundStyle(.secondary) }
             Slider(value: Binding(get: { Double(picture[keyPath: key]) }, set: { var p = picture; p[keyPath: key] = Int($0.rounded()); onChange(p) }), in: -100...100, step: 1)
                 .controlSize(.small).accessibilityLabel(title)
         }

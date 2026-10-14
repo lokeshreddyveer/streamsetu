@@ -123,6 +123,11 @@ for r in resources:
     ref = file_ref(f"{APP_DIR}/{r}", kind=("folder.assetcatalog" if r.endswith(".xcassets") else "text.xml"), tree="SOURCE_ROOT")
     res_refs.append(ref)
     res_files.append(build_file(ref, r, "Resources"))
+# The Hindi and Telugu text (Localizable.strings in hi.lproj and te.lproj) is shared with the Mac app and copied into the app as folders.
+for code in ("en", "hi", "te"):
+    ref = file_ref(f"../macos/Resources/Localization/{code}.lproj", kind="folder", tree="SOURCE_ROOT")
+    res_refs.append(ref)
+    res_files.append(build_file(ref, f"{code}.lproj", "Resources"))
 plist_ref = file_ref(f"{APP_DIR}/Info.plist", kind="text.plist.xml", tree="SOURCE_ROOT")
 products_ref = oid("product")
 add(products_ref, f"{PROJECT}.app", f'isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{PROJECT}.app"; sourceTree = BUILT_PRODUCTS_DIR;')

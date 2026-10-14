@@ -12,6 +12,9 @@ struct AppearanceView: View {
                 ThemePreview(palette: s.theme == .custom ? draft.palette : s.theme.palette).frame(height: 120).listRowInsets(EdgeInsets())
             }.listRowBackground(ColorTokens.surface)
             Section {
+                Picker("Language", selection: $s.language) { ForEach(AppLanguage.allCases) { Text($0.label).tag($0) } }
+            } footer: { Text("The language of the app's own wording. Titles and descriptions come from your playlists and stay as they are. Some text is still in English.") }.listRowBackground(ColorTokens.surface)
+            Section {
                 Toggle("Increase contrast", isOn: $s.highContrast)
             } footer: { Text("Brighter text and stronger outlines. Also follows Settings > Accessibility > Display > Increase Contrast.") }.listRowBackground(ColorTokens.surface)
             Section("Theme") {

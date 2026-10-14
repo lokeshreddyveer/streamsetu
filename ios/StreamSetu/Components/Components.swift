@@ -102,8 +102,8 @@ struct Shelf<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(title).appFont(18, .semibold).accessibilityAddTraits(.isHeader)
-                if let caption { Text(caption).appFont(12).foregroundStyle(.secondary) }
+                Text(title.loc).appFont(18, .semibold).accessibilityAddTraits(.isHeader)
+                if let caption { Text(caption.loc).appFont(12).foregroundStyle(.secondary) }
             }.padding(.horizontal, 16)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 12) { content }.padding(.horizontal, 16)
@@ -122,8 +122,8 @@ struct EmptyState: View {
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: symbol).appFont(36, .light).foregroundStyle(.secondary)
-            Text(title).font(.headline)
-            if let message { Text(message).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center) }
+            Text(title.loc).font(.headline)
+            if let message { Text(message.loc).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center) }
             if let actionTitle, let action { Button(actionTitle, action: action).buttonStyle(.borderedProminent).padding(.top, 4) }
         }
         .padding(32).frame(maxWidth: .infinity)

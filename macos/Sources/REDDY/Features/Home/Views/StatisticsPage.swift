@@ -68,7 +68,7 @@ struct StatisticsPage: View {
 
     private func tile(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
+            Text(title.loc).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
             Text(value).font(.system(size: 20, weight: .semibold)).monospacedDigit()
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading).surface()
@@ -104,7 +104,7 @@ struct StatisticsPage: View {
 
     private func bar(_ title: String, _ seconds: TimeInterval, of total: TimeInterval) -> some View {
         HStack(spacing: 10) {
-            Text(title).font(Typography.row).frame(width: 70, alignment: .leading)
+            Text(title.loc).font(Typography.row).frame(width: 70, alignment: .leading)
             GeometryReader { g in
                 ZStack(alignment: .leading) {
                     Capsule().fill(ColorTokens.line)
