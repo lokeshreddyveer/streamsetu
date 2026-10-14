@@ -4,9 +4,6 @@ import app.streamsetu.core.model.EpgProgram
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 import java.io.InputStream
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.TimeZone
 
 /** Reads an XMLTV guide and reports programmes one by one. Only programmes that end after [notBeforeMs] and start before [notAfterMs] are kept. */
 object XmltvParser {
@@ -47,13 +44,30 @@ object XmltvParser {
         }
     }
 
-    /** "20261013183000 +0200" → epoch milliseconds. */
+    /** "20261013183000 +0200" → epoch milliseconds. Parsed by hand: a guide has hundreds of thousands of programmes and a formatter per value is far too slow. */
     fun parseTime(s: String?): Long {
         if (s.isNullOrBlank()) return 0
         val t = s.trim()
-        val hasZone = t.length > 14
-        val fmt = SimpleDateFormat(if (hasZone) "yyyyMMddHHmmss Z" else "yyyyMMddHHmmss", Locale.US)
-        if (!hasZone) fmt.timeZone = TimeZone.getTimeZone("UTC")
-        return runCatching { fmt.parse(if (hasZone) t.replace(Regex("\\s+"), " ") else t.take(14))?.time ?: 0L }.getOrDefault(0L)
+        if (t.length < 12 || !t.take(12).all { it in '0'..'9' }) return 0
+        fun n(from: Int, to: Int): Int = if (to <= t.length && t.substring(from, to).all { it in '0'..'9' }) t.substring(from, to).toInt() else 0
+        val sec = if (t.length >= 14) n(12, 14) else 0
+        val days = daysFromCivil(n(0, 4), n(4, 6), n(6, 8))
+        var ms = ((days * 24L + n(8, 10)) * 60 + n(10, 12)) * 60 + sec
+        val zone = t.drop(14).trim()
+        if (zone.length >= 5 && (zone[0] == '+' || zone[0] == '-') && zone.substring(1, 5).all { it in '0'..'9' }) {
+            val off = zone.substring(1, 3).toInt() * 3600L + zone.substring(3, 5).toInt() * 60
+            ms -= if (zone[0] == '+') off else -off
+        }
+        return ms * 1000
+    }
+
+    /** Days since 1970-01-01 of a proleptic Gregorian date. */
+    private fun daysFromCivil(y0: Int, m: Int, d: Int): Long {
+        val y = if (m <= 2) y0 - 1 else y0
+        val era = (if (y >= 0) y else y - 399) / 400
+        val yoe = y - era * 400
+        val doy = (153 * (if (m > 2) m - 3 else m + 9) + 2) / 5 + d - 1
+        val doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
+        return era * 146097L + doe - 719468
     }
 }

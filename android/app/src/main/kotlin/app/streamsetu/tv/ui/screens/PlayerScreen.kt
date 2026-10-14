@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
-private enum class PanelKind(val title: String) { TRACKS("Audio & Subtitles"), SPEED("Speed"), PICTURE("Picture"), ENGINE("Player"), MORE("More"), CHANNELS("Channels"), EPISODES("Episodes") }
+private enum class PanelKind(val title: String) { TRACKS("Audio & Subtitles"), SPEED("Speed"), PICTURE("Picture"), ENGINE("Player"), MORE("More"), SLEEP("Sleep timer"), JUMP("Jump"), SYNC("Sync"), CHANNELS("Channels"), EPISODES("Episodes") }
 
 private val Ink = Color(0xFFF2F2F2)
 private val InkDim = Color(0xB3FFFFFF)
@@ -84,7 +84,6 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     var tick by remember { mutableIntStateOf(0) }
     var panel by remember { mutableStateOf<PanelKind?>(null) }
     var controlsFocused by remember { mutableStateOf(false) }
-    var sleepAt by remember { mutableLongStateOf(0L) }
     var seekFlash by remember { mutableStateOf("") }
     var digits by remember { mutableStateOf("") }
     val root = remember { FocusRequester() }
@@ -105,7 +104,6 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     BackHandler(enabled = panel == null && !controlsFocused && !confirmExit) {
         if (askBeforeLeaving && state != PlaybackState.Ended && state !is PlaybackState.Failed) confirmExit = true else onClose()
     }
-    LaunchedEffect(sleepAt) { if (sleepAt > 0) { while (System.currentTimeMillis() < sleepAt) delay(1000); onClose() } }
     LaunchedEffect(Unit) { root.requestFocus() }
     LaunchedEffect(tick, state, controlsFocused, panel) { if (state == PlaybackState.Playing && !controlsFocused && panel == null) { delay(4500); barVisible = false } else barVisible = true }
     LaunchedEffect(seekFlash) { if (seekFlash.isNotEmpty()) { delay(800); seekFlash = "" } }
@@ -293,7 +291,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                 Label(kind.title, Tokens.title, Ink, FontWeight.Medium, modifier = Modifier.padding(bottom = 6.dp))
                 LazyColumn {
                     when (kind) {
-                        PanelKind.SPEED -> items(listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f), key = { "v$it" }) { v -> TextOption(if (v == 1f) "Normal" else "${v}×", v == speed, if (v == speed) Modifier.focusRequester(selectedReq) else Modifier) { playback.setSpeed(v); closePanel() } }
+                        PanelKind.SPEED -> items(listOf(0.25f, 0.5f, 0.75f, 1f, 1.1f, 1.25f, 1.5f, 1.75f, 2f, 3f), key = { "v$it" }) { v -> TextOption(if (v == 1f) "Normal" else "${v}×", v == speed, if (v == speed) Modifier.focusRequester(selectedReq) else Modifier) { playback.setSpeed(v); closePanel() } }
                         PanelKind.PICTURE -> items(AspectMode.entries, key = { "p" + it.name }) { m -> TextOption(m.label, m == aspect, if (m == aspect) Modifier.focusRequester(selectedReq) else Modifier) { playback.setAspect(m); closePanel() } }
                         PanelKind.ENGINE -> items(playback.available.toList(), key = { "e" + it.name }) { k -> TextOption(k.label, k == playback.engineKind, if (k == playback.engineKind) Modifier.focusRequester(selectedReq) else Modifier, if (k == EngineKind.MPV) "MKV, AVI and unusual formats" else "HLS, MP4 and transport streams") { playback.switchEngine(k); closePanel() } }
                         PanelKind.CHANNELS -> items(c.queue.filterIsInstance<ChannelPlayable>(), key = { "c" + it.id }) { ch -> TextOption("${ch.channel.number?.let { "$it  " } ?: ""}${ch.channel.name}", ch.id == item?.id, if (ch.id == item?.id) Modifier.focusRequester(selectedReq) else Modifier) { c.play(ch, c.queue); closePanel() } }
@@ -305,12 +303,30 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                             if (live) item { TextOption("Multi-View", false, Modifier) { onMultiView() } }
                             if (!live && playback.introEndMs() != null) item { TextOption("Skip intro", false, Modifier.focusRequester(selectedReq)) { playback.skipIntro(); closePanel() } }
                             if (!live && resumedFrom > 0) item { TextOption("Start over", false, Modifier.focusRequester(selectedReq)) { playback.startOver(); closePanel() } }
-                            item { TextOption("Sleep timer: " + if (sleepAt > 0) "on (30 min)" else "off", false, if (live || resumedFrom <= 0) Modifier.focusRequester(selectedReq) else Modifier) { sleepAt = if (sleepAt == 0L) System.currentTimeMillis() + 30 * 60_000L else 0L; closePanel() } }
+                            item { val end by playback.sleepEndsAt.collectAsState(); TextOption("Sleep timer" + if (end > 0) ": " + ((end - System.currentTimeMillis()) / 60_000 + 1) + " min left" else "", false, if (live || resumedFrom <= 0) Modifier.focusRequester(selectedReq) else Modifier) { panel = PanelKind.SLEEP } }
+                            if (!live) item { TextOption("Jump", false, Modifier) { panel = PanelKind.JUMP } }
+                            item { TextOption("Sync audio & subtitles", false, Modifier) { panel = PanelKind.SYNC } }
                             if (live && item != null) item { TextOption(if (item.id in favourites) "Remove from favorites" else "Add to favorites", false, Modifier) { scope.launch { c.user.setFavourite(item.id, ContentKind.CHANNEL, item.id !in favourites) }; closePanel() } }
                             if (live && c.previousLive != null) item { TextOption("Last channel", false, Modifier) { c.lastChannel(); closePanel() } }
                             item { val on by c.settings.showStreamInfo.collectAsState(); TextOption("Stream information: " + if (on) "on" else "off", false, Modifier) { c.settings.setShowStreamInfo(!on); closePanel() } }
                             if (android.os.Build.VERSION.SDK_INT >= 26) item { TextOption("Picture in Picture", false, Modifier) { closePanel(); (context as? android.app.Activity)?.enterPictureInPictureMode(android.app.PictureInPictureParams.Builder().build()) } }
                             item { TextOption("Close player", false, Modifier) { onClose() } }
+                        }
+                        PanelKind.SLEEP -> {
+                            items(listOf(0, 15, 30, 45, 60, 90, 120), key = { "z$it" }) { m -> val end by playback.sleepEndsAt.collectAsState(); TextOption(if (m == 0) (if (end > 0) "Turn off" else "Off") else "$m minutes", m == 0 && end == 0L, if (m == 0) Modifier.focusRequester(selectedReq) else Modifier) { playback.startSleepTimer(m); closePanel() } }
+                        }
+                        PanelKind.JUMP -> {
+                            items(listOf(-600_000L to "Back 10 minutes", -60_000L to "Back 1 minute", -10_000L to "Back 10 seconds", 10_000L to "Forward 10 seconds", 60_000L to "Forward 1 minute", 600_000L to "Forward 10 minutes"), key = { "j${it.first}" }) { (d, label) ->
+                                TextOption(label, false, if (d == -600_000L) Modifier.focusRequester(selectedReq) else Modifier) { playback.seekBy(d); closePanel() }
+                            }
+                            item { TextOption("Start over", false, Modifier) { playback.startOver(); closePanel() } }
+                        }
+                        PanelKind.SYNC -> {
+                            item { val sd by playback.subtitleDelayMs.collectAsState(); TextOption("Subtitles later  (now ${sd} ms)", false, Modifier.focusRequester(selectedReq)) { playback.setSubtitleDelay(sd + 250) } }
+                            item { val sd by playback.subtitleDelayMs.collectAsState(); TextOption("Subtitles earlier", false, Modifier) { playback.setSubtitleDelay(sd - 250) } }
+                            item { val ad by playback.audioDelayMs.collectAsState(); TextOption("Audio later  (now ${ad} ms)", false, Modifier) { playback.setAudioDelay(ad + 100) } }
+                            item { val ad by playback.audioDelayMs.collectAsState(); TextOption("Audio earlier", false, Modifier) { playback.setAudioDelay(ad - 100) } }
+                            item { TextOption("Reset both", false, Modifier) { playback.setSubtitleDelay(0); playback.setAudioDelay(0) } }
                         }
                         PanelKind.TRACKS -> {}
                     }

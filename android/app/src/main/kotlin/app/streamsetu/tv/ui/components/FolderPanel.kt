@@ -120,7 +120,11 @@ fun FolderPanel(
             Label(if (folders.isEmpty()) "No folders" else "%,d folders".format(folders.count { !it.pref.hidden }), Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(top = 1.dp))
         }
         TvTextField(query, { query = it }, "Search folders", Modifier.padding(horizontal = 8.dp).fillMaxWidth(), compact = true, leadingIcon = Icons.Filled.Search)
-        Spacer(Modifier.height(6.dp))
+        // New folder and Manage folders sit up here, one press from the search field, so they are reached without scrolling through every folder.
+        Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            PanelAction("New", Icons.Filled.CreateNewFolder, Modifier.weight(1f)) { creating = true }
+            PanelAction(if (manage) "Done" else "Edit", Icons.Filled.Tune, Modifier.weight(1f), highlighted = manage) { manage = !manage }
+        }
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -142,11 +146,6 @@ fun FolderPanel(
                 }
                 if (q.isNotEmpty() && visible.isEmpty()) item(key = "none") { Label("No folder matches “$query”.", Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(12.dp), maxLines = 2) }
             }
-        }
-        // Always at the bottom, outside the scrolling list.
-        Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            PanelRow("New folder", Icons.Filled.CreateNewFolder, null, false, false, Modifier, onClick = { creating = true })
-            PanelRow(if (manage) "Done managing" else "Manage folders", Icons.Filled.Tune, null, false, false, Modifier, onClick = { manage = !manage })
         }
     }
 
@@ -199,12 +198,23 @@ fun FolderPanel(
     }
 }
 
+/** A small button in the folder panel's header. */
+@Composable
+private fun PanelAction(label: String, icon: ImageVector, modifier: Modifier, highlighted: Boolean = false, onClick: () -> Unit) {
+    Focusable(onClick, modifier.height(34.dp), scaleOnFocus = 1.0f, container = if (highlighted) Tokens.accent.copy(alpha = 0.18f) else Tokens.card, focusedContainer = Color(0x26FFFFFF), shape = RoundedCornerShape(12.dp)) { f ->
+        Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
+            Image(icon, null, Modifier.size(15.dp), colorFilter = ColorFilter.tint(if (f || highlighted) Color.White else Tokens.textSecondary))
+            Label(label, Tokens.small, if (f || highlighted) Color.White else Tokens.textSecondary, FontWeight.Medium)
+        }
+    }
+}
+
 @Composable
 private fun PanelRow(label: String, icon: ImageVector, count: Int?, selected: Boolean, dimmed: Boolean, extra: Modifier, onFocusDwell: () -> Unit = {}, onLongClick: (() -> Unit)? = null, reordering: Boolean = false, onClick: () -> Unit) {
     var dwellKey by remember { mutableIntStateOf(0) }
     var focused by remember { mutableStateOf(false) }
     // Moving the remote over folders opens one only after a short pause, so scrolling through many folders stays light.
-    LaunchedEffect(dwellKey, focused) { if (focused) { kotlinx.coroutines.delay(380); onFocusDwell() } }
+    LaunchedEffect(dwellKey, focused) { if (focused) { kotlinx.coroutines.delay(260); onFocusDwell() } }
     // One row: [accent bar 3] [icon box 36] [name, one line] [count]. The bar marks the open folder; the soft fill marks where the remote is.
     Focusable(onClick, extra.fillMaxWidth().height(36.dp), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color(0x26FFFFFF), shape = RoundedCornerShape(12.dp), onFocus = { focused = it; dwellKey++ }, onLongClick = onLongClick) { f ->
         Row(Modifier.fillMaxHeight().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {

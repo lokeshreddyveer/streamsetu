@@ -38,7 +38,7 @@
             <key>CFBundleTypeExtensions</key><array><string>mkv</string><string>avi</string><string>mp4</string><string>m4v</string><string>mov</string><string>webm</string><string>ts</string><string>wmv</string><string>flv</string><string>mpg</string><string>mpeg</string></array>
         </dict>
     </array>
-    <key>SUFeedURL</key><string>https://raw.githubusercontent.com/lokeshreddyveer/streamsetu-releases/main/appcast.xml</string>
+    <key>SUFeedURL</key><string>https://raw.githubusercontent.com/lokeshreddyveer/streamsetu/main/appcast.xml</string>
     <key>SUPublicEDKey</key><string>4DehN3EMGzztmFkF2H4vucejhtH2lQIqrwZ5BX4ZzLY=</string>
     <key>SUEnableAutomaticChecks</key><true/>
     <key>SUAutomaticallyUpdate</key><false/>

@@ -97,6 +97,9 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
         }
     }
     LaunchedEffect(gridState) { snapshotFlow { gridState.firstVisibleItemIndex }.collect { vm.scrollIndex = it } }
+    // A different folder starts at its top, so the grid does not keep an offset from the previous one.
+    var shownBrowse by remember { mutableStateOf(browse) }
+    LaunchedEffect(browse, cards) { if (shownBrowse != browse && cards != null) { shownBrowse = browse; gridState.scrollToItem(0) } }
     var sortOpen by remember { mutableStateOf(false) }
     var filterOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }

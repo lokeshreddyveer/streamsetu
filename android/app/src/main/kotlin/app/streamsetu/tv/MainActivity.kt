@@ -255,7 +255,15 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
     Box(Modifier.fillMaxSize()) {
     Row(Modifier.fillMaxSize()) {
         Spacer(Modifier.width(if (nav.tab == Tab.HOME && mode != app.streamsetu.tv.nav.SidebarMode.HIDDEN) Tokens.sidebarCompact else androidx.compose.ui.unit.Dp.Hairline))
-        Box(Modifier.weight(1f).fillMaxHeight().onFocusChanged { nav.contentFocusChanged(it.hasFocus) }) {
+        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        Box(Modifier.weight(1f).fillMaxHeight().onFocusChanged { nav.contentFocusChanged(it.hasFocus) }
+            // Left when nothing in the page is to the left opens the sidebar (so it does not need Back). Anything that can still move left does.
+            .onKeyEvent { e ->
+                if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == androidx.compose.ui.input.key.Key.DirectionLeft && !nav.sidebarFocused) {
+                    if (!focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Left)) nav.revealSidebar()
+                    true
+                } else false
+            }) {
             app.streamsetu.tv.ui.components.FadeIn(nav.tab) {
                 when (nav.tab) {
                     Tab.HOME -> app.streamsetu.tv.ui.screens.home.HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)

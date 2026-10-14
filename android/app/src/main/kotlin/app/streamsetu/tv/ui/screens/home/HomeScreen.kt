@@ -70,10 +70,10 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
 
     androidx.compose.runtime.CompositionLocalProvider(LocalFocusRing provides Tokens.gold) {
         LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            item(key = "header") { HomeHeader(libraryName, libraryOk, nav) { nav.open(Overlay.Collection("recent")) } }
+            item(key = "header") { HomeHeader(libraryName, libraryOk) }
             if (bannerOn && banner.isNotEmpty()) item(key = "banner") {
                 FeaturedBanner(
-                    banner, 210.dp, primaryEntry = entry, startPadding = Tokens.safeHorizontal, intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuOpen,
+                    banner, 280.dp, primaryEntry = entry, startPadding = Tokens.safeHorizontal, intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuOpen,
                     onPrimary = { b -> vm.playableFor(b.id)?.let { p -> if (p is SeriesFeature) nav.open(Overlay.SeriesDetail(p.series)) else play(c, nav, p) } },
                     onDetails = { b -> when (val p = vm.playableFor(b.id)) { is SeriesFeature -> nav.open(Overlay.SeriesDetail(p.series)); is MoviePlayable -> nav.open(Overlay.MovieDetail(p.movie)); else -> {} } },
                     isListed = { b -> b.id in laterIds }, onToggleListed = { b -> vm.toggleWatchLater(b.id, if (vm.playableFor(b.id) is SeriesFeature) ContentKind.SERIES else ContentKind.MOVIE) },
@@ -81,7 +81,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 )
             }
             item(key = "quick") {
-                Row(Modifier.padding(horizontal = Tokens.safeHorizontal, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.padding(horizontal = Tokens.safeHorizontal, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     vm.shortcutOrder.forEach { id ->
                         val (label, icon, n) = when (id) {
                             "favorites" -> Triple("Favorites", Icons.Filled.Favorite, favs.size)
@@ -110,8 +110,8 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     "series" -> if (series.isNotEmpty()) rail("Recently Added Series", pad) { items(series, key = { "s" + it.id }) { s ->
                         PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, subtitle = s.year?.toString(), badge = if (s.id in favIds) "♥" else ratingBadge(s.rating), onLongClick = { longOn(HomeTarget.Show(s), RowKind.OTHER) })
                     } }
-                    "categories" -> rail("Browse by Category", pad) {
-                        items(fixedCategories(nav, cols), key = { "x" + it.key }) { t -> CategoryCard(t.title, t.subtitle, t.icon, { t.open() }, { catMenu = t }) }
+                    "categories" -> if (cols.isNotEmpty() || cats.isNotEmpty()) rail("Folders & Collections", pad) {
+                        items(collectionCategories(nav, cols), key = { "x" + it.key }) { t -> CategoryCard(t.title, t.subtitle, t.icon, { t.open() }, { catMenu = t }) }
                         items(cats, key = { "k${it.kind}${it.folder.id}" }) { t -> CategoryCard(t.folder.title, (if (t.kind == ContentKind.MOVIE) "Movies" else "Series") + "  ·  %,d".format(t.folder.count), Icons.Filled.Folder, { nav.openFolderTab(t.kind, t.folder.id) }, { catMenu = Cat("f${t.kind}${t.folder.id}", t.folder.title, "", Icons.Filled.Folder, { nav.openFolderTab(t.kind, t.folder.id) }, t) }) }
                     }
                 }
@@ -140,15 +140,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
 
 private data class Cat(val key: String, val title: String, val subtitle: String, val icon: ImageVector, val open: () -> Unit, val folder: CategoryTile? = null)
 
-private fun fixedCategories(nav: Navigator, cols: List<UserCollection>): List<Cat> = buildList {
-    add(Cat("movies", "Movies", "Browse all movies", Icons.Filled.Movie, { nav.go(Tab.MOVIES) }))
-    add(Cat("series", "Series", "Browse all series", Icons.Filled.VideoLibrary, { nav.go(Tab.SERIES) }))
-    add(Cat("live", "Live TV", "Channels and folders", Icons.Filled.LiveTv, { nav.go(Tab.LIVE) }))
-    add(Cat("added", "Recently Added", "Newest first", Icons.Filled.NewReleases, { nav.go(Tab.MOVIES) }))
-    add(Cat("fav", "Favorites", "Your favorites", Icons.Filled.Favorite, { nav.open(Overlay.Collection("favorites")) }))
-    add(Cat("later", "Watch Later", "Saved for later", Icons.Filled.Bookmark, { nav.open(Overlay.Collection("later")) }))
-    cols.forEach { col -> add(Cat("col${col.id}", col.name, "Your collection", Icons.Filled.CollectionsBookmark, { nav.openCollection(col.scope, col.id) })) }
-}
+private fun collectionCategories(nav: Navigator, cols: List<UserCollection>): List<Cat> = cols.map { col -> Cat("col${col.id}", col.name, "Your collection", Icons.Filled.CollectionsBookmark, { nav.openCollection(col.scope, col.id) }) }
 
 private fun LazyListScope.rail(title: String, pad: PaddingValues, content: LazyListScope.() -> Unit) {
     item(key = "rail:$title") {
@@ -160,40 +152,23 @@ private fun LazyListScope.rail(title: String, pad: PaddingValues, content: LazyL
 }
 
 @Composable
-private fun HomeHeader(library: String, ok: Boolean, nav: Navigator, onRecent: () -> Unit) {
+private fun HomeHeader(library: String, ok: Boolean) {
     val now by produceState(System.currentTimeMillis()) { while (true) { value = System.currentTimeMillis(); delay(15_000) } }
-    Row(Modifier.fillMaxWidth().padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column {
-            Label(library, Tokens.title, Tokens.text, FontWeight.Bold)
-            if (!ok) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Box(Modifier.size(7.dp).background(Tokens.warning, CircleShape)); Label("Offline or needs attention: showing what is saved", Tokens.caption, Tokens.warning) }
-        }
+    Row(Modifier.fillMaxWidth().padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Label(library, Tokens.row, Tokens.textSecondary, FontWeight.SemiBold)
+        if (!ok) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Box(Modifier.size(7.dp).background(Tokens.warning, CircleShape)); Label("Offline: showing what is saved", Tokens.caption, Tokens.warning) }
         Spacer(Modifier.weight(1f))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            HeaderIcon(Icons.Filled.Search, "Search") { nav.go(Tab.SEARCH) }
-            HeaderIcon(Icons.Filled.History, "Recently watched") { onRecent() }
-            HeaderIcon(Icons.Filled.Settings, "Settings") { nav.go(Tab.SETTINGS) }
-            Spacer(Modifier.width(8.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                Label(java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(now)), Tokens.row, Tokens.text, FontWeight.SemiBold)
-                Label(java.text.SimpleDateFormat("EEE, MMM d", java.util.Locale.getDefault()).format(java.util.Date(now)), Tokens.caption, Tokens.textSecondary)
-            }
-        }
-    }
-}
-
-@Composable
-private fun HeaderIcon(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Focusable(onClick, Modifier, shape = CircleShape, container = Color(0x1AFFFFFF), scaleOnFocus = 1.08f, hairline = true) { f ->
-        Image(icon, label, Modifier.padding(10.dp).size(20.dp), colorFilter = ColorFilter.tint(if (f) Tokens.goldHighlight else Tokens.text))
+        Label(java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(now)), Tokens.row, Tokens.textSecondary)
     }
 }
 
 @Composable
 private fun QuickCard(label: String, icon: ImageVector, count: Int, onClick: () -> Unit, onLong: () -> Unit, extra: Modifier = Modifier) {
-    Focusable(onClick, extra.width(200.dp), shape = RoundedCornerShape(16.dp), container = Color(0xFF0B121B), scaleOnFocus = 1.03f, hairline = true, onLongClick = onLong) { f ->
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF14202C)), Alignment.Center) { Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f) Tokens.goldHighlight else Tokens.gold)) }
-            Column(Modifier.weight(1f)) { Label(label, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 1); Label(if (count == 0) "Empty" else "%,d item%s".format(count, if (count == 1) "" else "s"), Tokens.caption, Tokens.textSecondary) }
+    Focusable(onClick, extra, shape = CircleShape, container = Color(0x1AFFFFFF), scaleOnFocus = 1.04f, hairline = true, onLongClick = onLong) { f ->
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f) Tokens.goldHighlight else Tokens.text))
+            Label(label, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 1)
+            if (count > 0) Label("%,d".format(count), Tokens.caption, Tokens.textSecondary)
         }
     }
 }

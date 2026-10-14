@@ -29,3 +29,5 @@ android/keystore.properties
 android/**/build/
 android/.gradle/
 android/local.properties
+android/dist/
+android/.kotlin/

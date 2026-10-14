@@ -19,8 +19,10 @@ class EpgService(private val db: AppDatabase) {
         val batch = ArrayList<EpgEntity>()
         val names = LinkedHashMap<String, String>()
         Http.get(url, source.userAgent, headers) { resp ->
-            val raw = resp.body!!.byteStream().buffered()
-            val input = if (url.endsWith(".gz")) GZIPInputStream(raw) else raw
+            val raw = java.io.BufferedInputStream(resp.body!!.byteStream())
+            // Gzip is recognised by its first two bytes, not by the file name: many providers serve it without a ".gz" suffix.
+            raw.mark(2); val b0 = raw.read(); val b1 = raw.read(); raw.reset()
+            val input = if (b0 == 0x1f && b1 == 0x8b) GZIPInputStream(raw) else raw
             XmltvParser.parse(input, now - 3600_000, now + 48 * 3600_000, onChannel = { id, name -> names.putIfAbsent(name, id) }) { p ->
                 batch += EpgEntity(p.channelEpgId, p.startMs, p.endMs, p.title, p.description); kept++
             }

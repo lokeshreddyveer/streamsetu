@@ -55,7 +55,7 @@ class GuideViewModel @Inject constructor(private val c: AppContainer) : ViewMode
 
     val rows: StateFlow<List<GuideRow>?> = combine(favouritesOnly, windowStart, offsetMin, query) { f, w, o, q -> arrayOf<Any>(f, w, o, q) }.flatMapLatest { a ->
         val fav = a[0] as Boolean; val start = a[1] as Long; val off = a[2] as Int; val q = a[3] as String
-        c.browse.channels(Browse.All, SortSpec(SortField.PROVIDER), 3000).map { all ->
+        c.browse.channels(Browse.All, SortSpec(SortField.PROVIDER), 40000).map { all ->
             val resolved = c.epg.resolve(all)
             val withGuide = all.filter { it.id in resolved }
             val picked = withGuide.filter { !fav || it.id in favs.value }.filter { q.isBlank() || SearchText.normalize(it.name).contains(SearchText.normalize(q)) }.take(250)
