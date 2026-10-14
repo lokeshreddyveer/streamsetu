@@ -97,12 +97,14 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     fun closePanel() { panel = null; toRoot() }
 
     BackHandler(enabled = panel != null) { closePanel() }
-    BackHandler(enabled = panel == null && controlsFocused) { toRoot() }
+    // Back with the controls showing hides them first; only a second Back asks about leaving.
+    BackHandler(enabled = panel == null && controlsFocused) { toRoot(); barVisible = false }
     // One press of Back asks instead of throwing the player away. A stream that has failed or ended just closes.
     var confirmExit by remember { mutableStateOf(false) }
     val askBeforeLeaving by c.settings.confirmLeavingPlayer.collectAsState()
     BackHandler(enabled = panel == null && !controlsFocused && !confirmExit) {
-        if (askBeforeLeaving && state != PlaybackState.Ended && state !is PlaybackState.Failed) confirmExit = true else onClose()
+        if (barVisible) barVisible = false
+        else if (askBeforeLeaving && state != PlaybackState.Ended && state !is PlaybackState.Failed) confirmExit = true else onClose()
     }
     LaunchedEffect(Unit) { root.requestFocus() }
     LaunchedEffect(tick, state, controlsFocused, panel) { if (state == PlaybackState.Playing && !controlsFocused && panel == null) { delay(4500); barVisible = false } else barVisible = true }

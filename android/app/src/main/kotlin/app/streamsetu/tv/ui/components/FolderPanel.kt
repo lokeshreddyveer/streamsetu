@@ -67,6 +67,7 @@ fun FolderPanel(
     actions: FolderActions,
     modifier: Modifier = Modifier,
     entry: FocusRequester? = null,
+    showSearch: Boolean = false,
     onRight: () -> Boolean = { false },
     selectOnDwell: Boolean = true,
     onShortcutMenu: (Shortcut) -> Unit = {},
@@ -122,14 +123,16 @@ fun FolderPanel(
             Label(title, Tokens.title, Tokens.text, FontWeight.Bold)
             Label(if (folders.isEmpty()) "No folders" else "%,d folders".format(folders.count { !it.pref.hidden }), Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(top = 1.dp))
         }
-        TvTextField(query, { query = it }, "Search folders", Modifier.padding(horizontal = 8.dp).fillMaxWidth(), compact = true, leadingIcon = Icons.Filled.Search)
+        // The folder search field is only on screens with a very long list of folders (Live TV); Movies and Series have the Search chip on the page.
+        if (showSearch) TvTextField(query, { query = it }, "Search folders", Modifier.padding(horizontal = 8.dp).fillMaxWidth(), compact = true, leadingIcon = Icons.Filled.Search)
         // New folder and Manage folders sit up here, one press from the search field, so they are reached without scrolling through every folder.
         Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             PanelAction("New", Icons.Filled.CreateNewFolder, Modifier.weight(1f)) { creating = true }
             PanelAction(if (manage) "Done" else "Edit", Icons.Filled.Tune, Modifier.weight(1f), highlighted = manage) { manage = !manage }
         }
 
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+        // Holding Up runs the highlight to the top of the folders and stops there; it does not carry on into the buttons above. A fresh press does.
+        Box(Modifier.weight(1f).fillMaxWidth().onPreviewKeyEvent { e -> e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == androidx.compose.ui.input.key.Key.DirectionUp && e.nativeKeyEvent.repeatCount > 0 && focusedIdx <= 0 }) {
             LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 itemsIndexed(rows, key = { _, r -> if (r is Shortcut) "s:${r.label}" else "f:${(r as Folder).id}" }) { idx, r ->
                     // A small heading where the shortcuts end and the provider's folders begin.

@@ -167,6 +167,7 @@ Services/DetailService.swift
 Services/DiagnosticsService.swift
 Services/DiagnosticsUploader.swift
 Services/DiscoverService.swift
+Services/SimilarTitles.swift
 Services/FeaturedPicker.swift
 Services/EPGSyncService.swift
 Services/FavoritesService.swift

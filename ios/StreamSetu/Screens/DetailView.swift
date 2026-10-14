@@ -53,6 +53,7 @@ struct DetailView: View {
                     facts
                     if let error { Label(error, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange) }
                     if item.isSeries { episodes }
+                    SimilarRow(item: item, extras: extras)
                 }.padding(.horizontal, 16).frame(maxWidth: 820, alignment: .leading)
                     .frame(maxWidth: .infinity).background(ColorTokens.background).zIndex(1)      // slides over the banner as it recedes
             }
@@ -232,5 +233,43 @@ struct ClipSheet: View {
         }
         .onAppear { let p = AVPlayer(url: url); player = p; p.play() }
         .onDisappear { player?.pause(); player = nil }
+    }
+}
+
+
+/// "More Like This": titles from the library that share this one's franchise, director, genre, cast or story, each with the reason it was chosen.
+struct SimilarRow: View {
+    let item: LibraryItem
+    let extras: ProviderExtras?
+    @Environment(\.container) private var container
+    @State private var suggestions: [SimilarSuggestion] = []
+
+    var body: some View {
+        Group {
+            if !suggestions.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("More Like This").appFont(17, .bold)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(alignment: .top, spacing: 12) {
+                            ForEach(suggestions) { s in
+                                NavigationLink(value: s.item) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        PosterCard(item: s.item, width: 110)
+                                        Text(s.reason).appFont(11).foregroundStyle(.secondary).lineLimit(1).frame(width: 110, alignment: .leading)
+                                    }
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }.padding(.top, 8)
+            }
+        }
+        // First from what is in the catalog, then again when the provider has sent the cast and director.
+        .task(id: (extras?.cast ?? []) + (extras?.directors ?? []) + [item.id]) {
+            guard let container else { return }
+            let service = SimilarService(catalog: container.catalog)
+            let e = extras
+            suggestions = await Task.detached { service.suggestions(for: item, extras: e) }.value
+        }
     }
 }

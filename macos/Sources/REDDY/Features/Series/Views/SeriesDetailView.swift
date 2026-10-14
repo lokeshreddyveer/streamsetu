@@ -53,6 +53,7 @@ struct SeriesDetailView: View {
                             }
                         }
                     }
+                    SimilarSection(item: .series(s))
                 }.padding(.horizontal, Spacing.section).padding(.bottom, Spacing.section)
             }
         }

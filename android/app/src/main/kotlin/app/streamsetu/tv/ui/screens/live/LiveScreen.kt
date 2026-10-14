@@ -144,7 +144,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
 
     androidx.compose.runtime.CompositionLocalProvider(LocalFocusRing provides Tokens.gold) {
     Row(Modifier.fillMaxSize()) {
-        FolderPanel("Live TV", shortcuts, folders, browse, vm::select, vm, Modifier.weight(0.2f), entry = entry, selectOnDwell = c.settings.foldersOpenOnFocus.collectAsState().value, onRight = { runCatching { channelEntry.requestFocus() }.isSuccess })
+        FolderPanel("Live TV", shortcuts, folders, browse, vm::select, vm, Modifier.weight(0.2f), entry = entry, showSearch = true, selectOnDwell = c.settings.foldersOpenOnFocus.collectAsState().value, onRight = { runCatching { channelEntry.requestFocus() }.isSuccess })
 
         // Channels
         Column(Modifier.weight(0.2f).fillMaxHeight().background(Tokens.surface).onFocusChanged { inChannels = it.hasFocus }.padding(top = Tokens.safeVertical)) {

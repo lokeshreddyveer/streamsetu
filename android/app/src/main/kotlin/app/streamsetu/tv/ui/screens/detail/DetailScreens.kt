@@ -60,7 +60,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
     val progress = allProgress[movie.id]
     var info by remember { mutableStateOf<app.streamsetu.core.sync.SyncService.MovieInfo?>(null) }
     var variants by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var related by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var related by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Movie>>>(emptyList()) }
     var more by remember { mutableStateOf(false) }
     var chooseOpen by remember { mutableStateOf(false) }
     val sources by c.library.entries.collectAsState(initial = emptyList())
@@ -70,7 +70,8 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
         delay(120); runCatching { first.requestFocus() }
         info = runCatching { c.sync.movieInfo(movie) }.getOrNull()
         variants = runCatching { c.search.movieVariants(movie.title) }.getOrDefault(emptyList())
-        related = movie.categoryId?.let { id -> runCatching { c.browse.movies(Browse.Folder(id), SortSpec(SortField.NAME), 40).first().filter { it.id != movie.id }.take(14) }.getOrDefault(emptyList<Movie>()) } ?: emptyList()
+        val facts = info?.let { app.streamsetu.core.data.repo.Similarity.facts(it.genre, it.cast, it.director) }
+        runCatching { c.search.similarMovies(movie, facts) { m -> c.sync.movieInfo(m)?.let { app.streamsetu.core.data.repo.Similarity.facts(it.genre, it.cast, it.director) } }.collect { related = it } }
     }
     val resumable = progress?.takeIf { !it.completed && it.positionMs > 30_000 }
     val container = movie.streamRef.substringAfterLast(':', "").uppercase().takeIf { it.length in 2..4 }
@@ -119,8 +120,8 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
             }
             if (related.isNotEmpty()) item {
                 Column {
-                    SectionTitle("More like this in this folder")
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(related, key = { it.id }) { m -> PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, subtitle = m.year?.toString(), badge = ratingBadge(m.rating)) } }
+                    SectionTitle("More like this")
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(related, key = { it.item.id }) { r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, subtitle = r.reason, badge = ratingBadge(m.rating)) } }
                 }
             }
         }
@@ -149,6 +150,8 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
     val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsState(initial = emptySet())
     val sources by c.library.entries.collectAsState(initial = emptyList())
     var variants by remember { mutableStateOf<List<Series>>(emptyList()) }
+    var similar by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Series>>>(emptyList()) }
+    LaunchedEffect(series0.id) { similar = runCatching { c.search.similarSeries(series0) }.getOrDefault(emptyList()) }
     var chooseOpen by remember { mutableStateOf(false) }
     var episodeMenu by remember { mutableStateOf<Episode?>(null) }
     val homeVm: app.streamsetu.tv.ui.screens.home.HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
@@ -223,6 +226,12 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                         }
                         if (p?.completed == true) Image(Icons.Filled.CheckCircle, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(Tokens.success))
                     }
+                }
+            }
+            if (similar.isNotEmpty()) item {
+                Column(Modifier.padding(top = 10.dp)) {
+                    SectionTitle("More like this")
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(similar, key = { it.item.id }) { r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.SeriesDetail(m)) }, subtitle = r.reason, badge = ratingBadge(m.rating)) } }
                 }
             }
         }

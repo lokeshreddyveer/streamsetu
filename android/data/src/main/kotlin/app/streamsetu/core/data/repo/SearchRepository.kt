@@ -9,6 +9,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.withPermit
 
 /** What the person asked for: which kinds, in which library connections, optionally one folder or year. */
 data class SearchScope(val kinds: Set<ContentKind> = setOf(ContentKind.CHANNEL, ContentKind.MOVIE, ContentKind.SERIES), val sourceId: String? = null, val folderId: String? = null, val year: Int? = null)
@@ -90,5 +94,52 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
         val norm = SearchText.normalize(title)
         val hits = SearchIndex.query(db.openHelper.readableDatabase, SearchText.matchQuery(title), library.sourceIds.value, listOf("SERIES"), 80).filter { SearchText.normalize(it.title) == norm }
         db.catalog().seriesByIds(hits.map { it.itemId }).map { it.toModel() }.sortedBy { it.sourceId }
+    }
+
+    // ---- More like this ----
+
+    /** A movie or series suggested for the open title, with the reason it was chosen ("Same director", "Similar story", …). */
+    data class Suggestion<T>(val item: T, val reason: String)
+
+    /**
+     * Suggestions for an open movie, best first. The first list comes at once from what is on the device (franchise, story, language, year, rating, folder); when
+     * [factsOf] can ask the provider for the genre, cast and director of the best candidates, a second, sharper list follows. Locked folders are never used.
+     */
+    fun similarMovies(movie: Movie, facts: Similarity.Facts?, factsOf: suspend (Movie) -> Similarity.Facts?): kotlinx.coroutines.flow.Flow<List<Suggestion<Movie>>> = kotlinx.coroutines.flow.flow {
+        val pool = withContext(Dispatchers.IO) {
+            val locked = folders.lockedIdsNow()
+            val inFolder = movie.categoryId?.takeIf { it !in locked }?.let { db.catalog().moviesIn(it, 800).first() }.orEmpty().map { it.toModel() }
+            val q = SearchText.matchQuery(Similarity.stem(movie.title).split(' ').take(2).joinToString(" "))
+            val hits = SearchIndex.query(db.openHelper.readableDatabase, q, library.sourceIds.value, listOf("MOVIE"), 80).filter { it.folderId == null || it.folderId !in locked }
+            val have = inFolder.map { it.id }.toSet()
+            inFolder + db.catalog().moviesByIds(hits.map { it.itemId }.filter { it !in have }).map { it.toModel() }
+        }
+        val byId = pool.associateBy { it.id }
+        fun item(m: Movie) = Similarity.Item(m.id, m.title, m.year, m.rating?.toDoubleOrNull(), m.plot, m.categoryId)
+        val target = item(movie); val items = pool.map(::item)
+        val first = Similarity.rank(target, facts, items)
+        emit(first.mapNotNull { r -> byId[r.id]?.let { Suggestion(it, r.reason) } })
+        if (facts == null || facts.isEmpty) return@flow
+        // Ask the provider about the best twenty or so, a few at a time, then rank again with what came back.
+        val known = HashMap<String, Similarity.Facts>()
+        val ids = (first.map { it.id } + items.filter { it.folder == target.folder }.map { it.id }).distinct().take(24)
+        val sem = kotlinx.coroutines.sync.Semaphore(6)
+        kotlinx.coroutines.coroutineScope {
+            ids.map { id -> async(Dispatchers.IO) { sem.withPermit { byId[id]?.let { m -> kotlinx.coroutines.withTimeoutOrNull(3500) { factsOf(m) }?.let { known[id] = it } } } } }.awaitAll()
+        }
+        if (known.isNotEmpty()) emit(Similarity.rank(target, facts, items, known).mapNotNull { r -> byId[r.id]?.let { Suggestion(it, r.reason) } })
+    }
+
+    /** The same for a series (the provider's facts are not asked for; the franchise, story, language, year, rating and folder are enough to rank). */
+    suspend fun similarSeries(series: Series): List<Suggestion<Series>> = withContext(Dispatchers.IO) {
+        val locked = folders.lockedIdsNow()
+        val inFolder = series.categoryId?.takeIf { it !in locked }?.let { db.catalog().seriesIn(it, 800).first() }.orEmpty().map { it.toModel() }
+        val q = SearchText.matchQuery(Similarity.stem(series.title).split(' ').take(2).joinToString(" "))
+        val hits = SearchIndex.query(db.openHelper.readableDatabase, q, library.sourceIds.value, listOf("SERIES"), 80).filter { it.folderId == null || it.folderId !in locked }
+        val have = inFolder.map { it.id }.toSet()
+        val pool = inFolder + db.catalog().seriesByIds(hits.map { it.itemId }.filter { it !in have }).map { it.toModel() }
+        val byId = pool.associateBy { it.id }
+        fun item(m: Series) = Similarity.Item(m.id, m.title, m.year, m.rating?.toDoubleOrNull(), m.plot, m.categoryId)
+        Similarity.rank(item(series), null, pool.map(::item)).mapNotNull { r -> byId[r.id]?.let { Suggestion(it, r.reason) } }
     }
 }

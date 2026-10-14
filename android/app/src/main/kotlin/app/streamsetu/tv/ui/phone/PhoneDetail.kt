@@ -57,14 +57,15 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
     val progress = allProgress[movie.id]
     var info by remember { mutableStateOf<SyncService.MovieInfo?>(null) }
     var variants by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var related by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var related by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Movie>>>(emptyList()) }
     var chooseOpen by remember { mutableStateOf(false) }
     val sources by c.library.entries.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     LaunchedEffect(movie.id) {
         info = runCatching { c.sync.movieInfo(movie) }.getOrNull()
         variants = runCatching { c.search.movieVariants(movie.title) }.getOrDefault(emptyList())
-        related = movie.categoryId?.let { id -> runCatching { c.browse.movies(Browse.Folder(id), SortSpec(SortField.NAME), 40).first().filter { it.id != movie.id }.take(14) }.getOrDefault(emptyList<Movie>()) } ?: emptyList()
+        val facts = info?.let { app.streamsetu.core.data.repo.Similarity.facts(it.genre, it.cast, it.director) }
+        runCatching { c.search.similarMovies(movie, facts) { m -> c.sync.movieInfo(m)?.let { app.streamsetu.core.data.repo.Similarity.facts(it.genre, it.cast, it.director) } }.collect { related = it } }
     }
     val resumable = progress?.takeIf { !it.completed && it.positionMs > 30_000 }
     fun sourceName(id: String) = sources.firstOrNull { it.id == "src:$id" }?.name ?: "Connection"
@@ -99,7 +100,7 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("More like this")
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(related, key = { it.id }) { m -> PhonePoster(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, Modifier.width(112.dp), subtitle = m.year?.toString(), badge = ratingBadge(m.rating)) }
+                        items(related, key = { it.item.id }) { r -> val m = r.item; PhonePoster(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, Modifier.width(112.dp), subtitle = r.reason, badge = ratingBadge(m.rating)) }
                     }
                 }
             }
@@ -119,6 +120,8 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
     val s = overrides[series0.id]?.let { o -> series0.copy(title = o.title ?: series0.title, posterUrl = o.posterUrl ?: series0.posterUrl, plot = series0.plot ?: o.plot) } ?: series0
     val favs by c.user.favouriteIds(UserRepository.FAVOURITES).collectAsState(initial = emptySet())
     val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsState(initial = emptySet())
+    var similar by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Series>>>(emptyList()) }
+    LaunchedEffect(series0.id) { similar = runCatching { c.search.similarSeries(series0) }.getOrDefault(emptyList()) }
     val seasons = episodes.groupBy { it.season }.toSortedMap()
     val plan = remember(episodes, progress) { EpisodePlan.of(episodes, progress) }
     val forward = plan.forward; val catchUp = plan.catchUp; val inProgress = plan.inProgress
@@ -173,6 +176,14 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                         Label(listOfNotNull(e.durationSec?.takeIf { it > 0 }?.let { "${it / 60} min" }, if (p?.completed == true) "Watched" else if (p != null && p.fraction > 0) "${minutes(p.durationMs - p.positionMs)}m left" else null).joinToString("  ·  "), Ph.caption, Tokens.textSecondary)
                     }
                     if (p?.completed == true) Icon(Icons.Filled.CheckCircle, Tokens.success, 18.dp)
+                }
+            }
+            if (similar.isNotEmpty()) item {
+                Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionHeader("More like this")
+                    LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(similar, key = { it.item.id }) { r -> val m = r.item; PhonePoster(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.SeriesDetail(m)) }, Modifier.width(112.dp), subtitle = r.reason, badge = ratingBadge(m.rating)) }
+                    }
                 }
             }
         }

@@ -38,7 +38,8 @@ struct MovieDetailView: View {
                         Text("Audio and subtitle tracks appear in the player once the movie starts.").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
                     }.padding(.top, Spacing.lg)
                 }
-                .padding(.horizontal, Spacing.section).padding(.bottom, Spacing.section)
+                .padding(.horizontal, Spacing.section).padding(.bottom, Spacing.md)
+                SimilarSection(item: .movie(m)).padding(.horizontal, Spacing.section).padding(.bottom, Spacing.section)
             }
         }
         .frame(width: 860, height: 640).background(ColorTokens.background)

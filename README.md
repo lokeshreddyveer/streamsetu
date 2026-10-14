@@ -94,10 +94,10 @@ The artwork in these screenshots comes from the provider's own playlist. StreamS
 
 | Platform | What to get | Notes |
 |---|---|---|
-| **Mac** | [`StreamSetu-2.3.1.dmg`](../../releases/download/mac-v2.3.1/StreamSetu-2.3.1.dmg) (all Mac releases are tagged `mac-v…`) | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
-| **Fire TV and Android TV** | [`StreamSetu-FireTV-0.8.0.apk`](../../releases/download/android-v0.8.0/StreamSetu-FireTV-0.8.0.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
-| **Android phone and tablet** | [`StreamSetu-Android-0.8.0.apk`](../../releases/download/android-v0.8.0/StreamSetu-Android-0.8.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
-| **iPhone and iPad** | TestFlight (version 0.4.0) | Ask for an invitation at contact@lokeshreddy.dev. |
+| **Mac** | [`StreamSetu-2.4.0.dmg`](../../releases/download/mac-v2.4.0/StreamSetu-2.4.0.dmg) (all Mac releases are tagged `mac-v…`) | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
+| **Fire TV and Android TV** | [`StreamSetu-FireTV-0.9.0.apk`](../../releases/download/android-v0.9.0/StreamSetu-FireTV-0.9.0.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
+| **Android phone and tablet** | [`StreamSetu-Android-0.9.0.apk`](../../releases/download/android-v0.9.0/StreamSetu-Android-0.9.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
+| **iPhone and iPad** | TestFlight (version 0.5.0) | Ask for an invitation at contact@lokeshreddy.dev. |
 
 The two Android files hold the same build, listed separately so each device has its own download. The app picks the remote or touch layout by itself. Every download has a SHA-256 checksum in its release notes. Verify it with `shasum -a 256 <file>`.
 
@@ -107,7 +107,7 @@ If you have a Mac copy older than 2.3.1, it cannot update itself (the old update
 
 ### Installing on Android phone or tablet
 
-1. Download `StreamSetu-Android-0.8.0.apk` on the phone.
+1. Download `StreamSetu-Android-0.9.0.apk` on the phone.
 2. Open it and, when asked, allow installs from your browser or files app.
 3. Open StreamSetu.
 
@@ -151,9 +151,9 @@ The Android app detects a phone or tablet and shows a touch layout, laid out lik
 | **Left / Right** | Skip back or forward (10 seconds by default, changeable in Settings) | Left opens the channel list |
 | **Up / Down** | Down moves to the buttons along the bottom | Next or previous channel |
 | **Number keys** | | Type a channel number and wait a moment |
-| **Menu or Info** | Opens the More panel: start over, sleep timer, stream information, picture in picture, close player | The same, plus favorite and last channel |
+| **Menu or Info** | Opens the More panel: start over, sleep timer (15 to 120 minutes), jump (10 seconds to 10 minutes), audio and subtitle sync, stream information, picture in picture, close player | The same, plus favorite and last channel |
 | **Play/Pause, Fast-forward, Rewind, Next, Previous** | Work as on any media remote | Next and Previous change channel |
-| **Back** | Asks "Stop watching?" so a stray press doesn't end the film. Choose Continue watching or Exit the player. | Same |
+| **Back** | Hides the controls when they are showing. With them hidden, asks "Stop watching?" so a stray press doesn't end the film. Choose Continue watching or Exit the player. | Same |
 
 The buttons along the bottom open the episode list, channel list, audio and subtitles, speed, picture shape and which player (ExoPlayer or mpv) is in use. Press **Up** to return to the picture. If a stream does not play, the screen offers **Try Again**, **Next Channel** and **Close**.
 
@@ -225,6 +225,8 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Themes and accent colours | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Screen reader labels | ✓ | ✓ | ✓ | ✓ (phone) | – |
 | Hindi and Telugu (the main screens; some text is still English) | ✓ (untested) | ✓ (untested) | ✓ (untested) | ✓ | ✓ (untested) |
+| **More like this** | | | | | |
+| Suggestions under a movie or series by franchise, director, genre, cast and story, each with its reason | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Sync and updates** | | | | | |
 | iCloud sync between your Apple devices | ✓ | ✓ | ✓ | – | – |
 | Backup and restore, and automatic weekly backups | ✓ | ✓ | ✓ | ✓ | ✓ |
