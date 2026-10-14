@@ -78,7 +78,7 @@ The artwork in these screenshots comes from the provider's own playlist. StreamS
 | Platform | What to get | Notes |
 |---|---|---|
 | **Mac** | `StreamSetu-x.y.z.dmg` from [Releases](../../releases) (look for `mac-v…`) | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
-| **Fire TV, Android TV, Android** | `StreamSetu-FireTV-Android-x.y.z.apk` from [Releases](../../releases) (look for `android-v…`) | One signed APK. Android 5.1 or later. |
+| **Fire TV, Android TV, Android phones and tablets** | [`StreamSetu-FireTV-Android-0.6.2.apk`](../../releases/tag/android-v0.6.2) (or the latest `android-v…` release) | One APK signed with the StreamSetu release key. Android 5.1 or later. Shows a remote layout on a TV and a touch layout on a phone or tablet. |
 | **iPhone and iPad** | TestFlight | Ask for an invitation at contact@lokeshreddy.dev. |
 
 Every download has a SHA-256 checksum in its release notes. Verify it with `shasum -a 256 <file>`.
@@ -147,7 +147,72 @@ The top bar switches between Home, Live TV, Movies, Series and TV Guide, and eac
 
 Use the tab bar at the bottom: Home, Live TV, Movies, Series and More. Tap a poster for its page, and use the buttons at the top for search, sorting and filters.
 
-## What it does
+## What each app does
+
+A tick means the app has it today. A dash means it does not. This table was written from the code of each app, not from memory.
+
+| | Mac | iPhone | iPad | Android phone / tablet | Fire TV / Android TV |
+|---|:-:|:-:|:-:|:-:|:-:|
+| **Connections** | | | | | |
+| Xtream Codes login | ✓ | ✓ | ✓ | ✓ | ✓ |
+| M3U link | ✓ | ✓ | ✓ | ✓ | ✓ |
+| M3U file from the device | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Stalker / Ministra portal | ✓ | ✓ | ✓ | ✓ (live) | ✓ (live) |
+| Jellyfin, Emby, Plex | ✓ | ✓ | ✓ | – | – |
+| Enigma2 receiver | ✓ | – | – | – | – |
+| WebDAV server and local video files | ✓ | – | – | – | – |
+| Combine several connections into one library | ✓ | – | – | ✓ | ✓ |
+| Custom User-Agent per connection | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Watching** | | | | | |
+| Live TV with groups and channel numbers | ✓ | ✓ | ✓ | ✓ | ✓ |
+| TV Guide (XMLTV) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Catch-up for past programmes | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Radio mode | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Movies and series with resume and Up Next | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Multi-View (several channels at once) | ✓ | ✓ | ✓ | – | – |
+| Picture in Picture | ✓ | ✓ | ✓ | ✓ | – |
+| AirPlay | ✓ | ✓ | ✓ | – | – |
+| Sleep timer sheet in the player | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Swipe to change channel | – | ✓ | ✓ | – | – |
+| Touch gestures in the player (double-tap skip, brightness, volume) | – | ✓ | ✓ | ✓ | – |
+| Typing a channel number | ✓ | – | – | – | ✓ |
+| Player engines | AVPlayer + mpv | AVPlayer | AVPlayer | ExoPlayer + mpv | ExoPlayer + mpv |
+| **Your library** | | | | | |
+| Favorites, Watch Later, Recently Watched, Continue Watching | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Collections of your own | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Folders: reorder, hide, rename, PIN lock | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Search that works offline | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Watch statistics | ✓ | ✓ | ✓ | – | – |
+| Artwork and details from TMDB | ✓ | ✓ | ✓ | – | – |
+| Parental controls | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Themes | ✓ | ✓ | ✓ | – | – |
+| **Sync and updates** | | | | | |
+| iCloud sync between your Apple devices | ✓ | ✓ | ✓ | – | – |
+| Backup and restore | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Siri and Shortcuts actions | – | ✓ | ✓ | – | – |
+| Updates itself | ✓ (Sparkle) | TestFlight | TestFlight | download the new APK | download the new APK |
+
+The iPad runs the iPhone app, laid out for the larger screen. Android phones and tablets run the same app as the Fire TV, with a touch layout chosen automatically when the device is not a television.
+
+### iCloud sync
+
+On the Mac, iPhone and iPad, **iCloud sync** keeps your setup the same on every device signed in to the same Apple ID. It is **off by default**: you turn it on in Settings, under iCloud.
+
+- It carries your playlists, favourites, collections, watch history and resume positions, folder organisation and settings.
+- Your playlist logins can travel in iCloud Keychain, which Apple encrypts end to end. There is a separate switch for this, so you can leave logins off and type them on each device instead.
+- The data is stored in your own private iCloud, not on our servers. We cannot see it.
+- Settings shows the sync status, **Sync Now**, and **Erase iCloud Data** to remove what was stored.
+- Android phones, Android tablets and the Fire TV have no iCloud, since it is an Apple service. They keep their data on the device, and can save and restore a backup.
+
+### Each app in a few words
+
+- **Mac**: the full app. A top bar for Home, Live TV, Movies, Series and TV Guide, a list of folders and shortcuts beside each, Cmd+K search, a Multi-View window, a Files screen for local videos and WebDAV servers, a Command Center for managing folders and channels, statistics, and automatic updates.
+- **iPhone**: Home, Live TV, Movies, Series and More in a tab bar. A full player with Picture in Picture, AirPlay, swipe to change channel, catch-up, radio mode, sleep timer and a mini player. Multi-View, reminders for programmes, Siri and Shortcuts ("Play BBC One in StreamSetu"), backups, and iCloud sync.
+- **iPad**: the iPhone app on a larger screen, with the same features.
+- **Android phone and tablet**: the iPhone layout in a touch design. Poster and channel grids, sheets for menus, folder chips, a banner, and a player you tap, drag and swipe, which turns with the phone.
+- **Fire TV and Android TV**: made for the remote. A sidebar that opens with Back, folders beside the content, hold OK for a menu, a Live TV browser with a live preview, the TV Guide, a player with number keys for channels, and quiet interface sounds.
+
+## Fire TV and Android in detail
 
 ### Connect your own sources
 
@@ -200,14 +265,14 @@ Use the tab bar at the bottom: Home, Live TV, Movies, Series and More. Tap a pos
 
 ## Platforms and compatibility
 
-| | Mac | iPhone and iPad | Fire TV / Android TV |
+| | Mac | iPhone and iPad | Android phone / tablet and Fire TV / Android TV |
 |---|---|---|---|
 | Language | Swift, SwiftUI, AppKit | Swift, SwiftUI | Kotlin, Jetpack Compose |
-| Engines | AVPlayer + mpv | AVPlayer + mpv | Media3 ExoPlayer + mpv |
-| Connections | Xtream, M3U, Stalker, local media, WebDAV/SMB | Xtream, M3U, Stalker, Files | Xtream, M3U, local M3U, Stalker (live) |
-| Minimum | macOS 14 | iOS 17 | Android 5.1 (mpv needs Android 8) |
+| Players | AVPlayer and mpv | AVPlayer | Media3 ExoPlayer and mpv |
+| Formats | HLS, MP4, MKV, AVI and more through mpv | HLS, MP4 and what AVPlayer plays (no MKV or AVI) | HLS, MP4, DASH, MPEG-TS, plus MKV and AVI through mpv |
+| Minimum | macOS 14 | iOS 18 | Android 5.1 (mpv needs Android 8) |
 
-The Fire TV app has been developed and tested on a Fire TV Stick 4K (Fire OS 7). Other devices should work but have not all been tested.
+The Fire TV app has been developed and tested on a Fire TV Stick 4K (Fire OS 7). The Android phone layout has been tried on one Samsung phone running Android 16. Other devices should work but have not all been tested.
 
 ## Repository layout
 
