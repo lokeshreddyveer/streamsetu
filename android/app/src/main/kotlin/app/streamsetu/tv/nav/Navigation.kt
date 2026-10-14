@@ -11,8 +11,8 @@ import app.streamsetu.core.model.Series
 import app.streamsetu.core.model.SourceType
 
 /** The sections reached from the sidebar. On Home, Live TV, Movies and Series the sidebar floats over the page (opened with Left at the page's edge, or Back); on the others it is a narrow strip beside the page. */
-enum class Tab(val title: String, val floatingSidebar: Boolean = false) {
-    HOME("Home", true), LIVE("Live TV", true), MOVIES("Movies", true), SERIES("Series", true), GUIDE("TV Guide"), SEARCH("Search"), LIBRARIES("Libraries"), SETTINGS("Settings")
+enum class Tab(val title: String) {
+    HOME("Home"), LIVE("Live TV"), MOVIES("Movies"), SERIES("Series"), GUIDE("TV Guide"), SEARCH("Search"), LIBRARIES("Libraries"), SETTINGS("Settings")
 }
 
 /** What fills the screen under any overlay. */
@@ -49,6 +49,9 @@ class Navigator {
     fun openFolder(kind: app.streamsetu.core.model.ContentKind, folderId: String) { pendingFolder = kind to folderId; go(if (kind == app.streamsetu.core.model.ContentKind.MOVIE) Tab.MOVIES else Tab.SERIES) }
     /** True while the sidebar is shown on a full-screen section (revealed with Back from its folders). */
     var sidebarRevealed by mutableStateOf(false)
+    /** True while the remote is on the sidebar; bumped to send it there. */
+    var sidebarFocused by mutableStateOf(false)
+    var sidebarFocusTick by mutableStateOf(0)
 
     /** True while the fullscreen player was opened from the Live TV browser: Back then leaves the stream playing in the preview. */
     var liveFullscreen = false
@@ -70,12 +73,15 @@ class Navigator {
     fun enterLibrary() { overlays.clear(); base = Base.Shell; tab = Tab.HOME; sidebarRevealed = false }
     fun toChooser() { settingsFromChooser = false; overlays.clear(); base = Base.ChooseLibrary; sidebarRevealed = false }
 
-    /** True when back was used up inside the app; false when the app should close. */
+    /**
+     * Back follows the hierarchy: an overlay closes; from a page the remote goes to the sidebar; from the sidebar it goes Home; from Home to Choose Your Library.
+     * True when back was used up inside the app; false when the app should close.
+     */
     fun back(): Boolean = when {
         overlays.isNotEmpty() -> { close(); true }
-        base is Base.Setup || base is Base.Combined || base is Base.Welcome && false -> { base = Base.ChooseLibrary; true }
+        base is Base.Setup || base is Base.Combined -> { base = Base.ChooseLibrary; true }
         base == Base.Shell && settingsFromChooser && tab == Tab.SETTINGS -> { settingsFromChooser = false; toChooser(); true }
-        base == Base.Shell && sidebarRevealed -> { sidebarRevealed = false; contentFocusTick++; true }     // Back closes the floating sidebar first
+        base == Base.Shell && !sidebarFocused -> { sidebarFocusTick++; true }
         base == Base.Shell && tab != Tab.HOME -> { go(Tab.HOME); true }
         base == Base.Shell -> { toChooser(); true }
         else -> false
