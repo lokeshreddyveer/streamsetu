@@ -62,6 +62,9 @@ class PlaybackController(
     val resumedFrom: StateFlow<Long> = _resumedFrom.asStateFlow()
     private var bufferingSince = 0L
     private var attempt = 0
+    /** Providers that allow one connection (from the account's own answer, or learned from a refusal): a new stream waits until the old one is closed. */
+    private val strict = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private fun isStrict(sourceId: String) = sourceId in strict || appContext.getSharedPreferences("account-formats", Context.MODE_PRIVATE).getInt("max.$sourceId", 0) == 1
     private var switchedEngine = false
     private var startPositionMs = 0L
     private var job: Job? = null
@@ -111,6 +114,7 @@ class PlaybackController(
 
     private suspend fun startNow(item: Playable, forced: EngineKind?) {
         // A provider that allows one connection keeps the last one open for a few seconds; opening another at once is refused or very slow.
+        if (isStrict(item.sourceId)) { _engine.value?.takeIf { _state.value != PlaybackState.Idle }?.stop(); if (_engine.value != null) closedAt[item.sourceId] = System.currentTimeMillis() }
         val wait = 3500 - (System.currentTimeMillis() - (closedAt[item.sourceId] ?: 0L))
         if (wait in 1..3500) { android.util.Log.i("Playback", "pacing: waiting ${wait} ms for the provider"); delay(wait) }
         val url = resolver.resolve(item.sourceId, item.streamRef)
@@ -158,6 +162,7 @@ class PlaybackController(
     private fun handleError(error: PlaybackError) {
         val item = _current.value ?: return
         synchronized(errors) { errors.addFirst("${java.text.DateFormat.getTimeInstance(java.text.DateFormat.MEDIUM).format(java.util.Date())}  ${error.kind}: ${error.message.take(120)}"); while (errors.size > 20) errors.removeLast() }
+        if (error.kind == ErrorKind.SERVER_REFUSED) strict.add(item.sourceId)
         val e = _engine.value
         // A format the engine cannot play goes to the other engine once, like the Mac app does; so does an engine that keeps failing.
         if (!switchedEngine && e != null && (error.kind == ErrorKind.FORMAT || attempt >= 2)) {
@@ -271,6 +276,35 @@ class PlaybackController(
         _current.value?.let { closedAt[it.sourceId] = System.currentTimeMillis() }
         _engine.value?.stop()
         _current.value = null; _state.value = PlaybackState.Idle
+    }
+
+    // ---- Lifecycle: Home button, TV sleep, HDMI changes ----
+    private var backgroundJob: Job? = null
+    private var restoreItem: Playable? = null
+    private var restorePosition = 0L
+    private var pausedByLifecycle = false
+
+    /** The app left the screen. The position is saved; a movie pauses; a live stream is closed after a short grace so it does not hold the provider's connection. */
+    fun onBackground() {
+        val item = _current.value ?: return
+        saveProgress()
+        backgroundJob?.cancel()
+        if (item.isLive) {
+            backgroundJob = scope.launch {
+                delay(20_000)
+                restoreItem = item; restorePosition = 0
+                closedAt[item.sourceId] = System.currentTimeMillis()
+                job?.cancel(); progressJob?.cancel(); _engine.value?.stop(); _state.value = PlaybackState.Idle
+            }
+        } else if (_engine.value?.isPlaying == true) { _engine.value?.pause(); pausedByLifecycle = true }
+    }
+
+    /** The app is back: a live channel that was closed starts again; a movie that was paused by leaving carries on from where it was. */
+    fun onForeground() {
+        backgroundJob?.cancel()
+        val item = restoreItem
+        if (item != null) { restoreItem = null; play(item, restorePosition); return }
+        if (pausedByLifecycle) { pausedByLifecycle = false; _engine.value?.play() }
     }
 
     fun release() { stop(); engines.values.forEach { it.release() }; engines.clear(); scope.coroutineContext[Job]?.cancel() }

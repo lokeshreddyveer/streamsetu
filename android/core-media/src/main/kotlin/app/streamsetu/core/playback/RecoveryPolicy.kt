@@ -14,7 +14,7 @@ class RecoveryPolicy(private val maxLiveAttempts: Int = 6, private val maxVodAtt
         if (!online) return Decision.GiveUp(PlaybackError(ErrorKind.NO_NETWORK, "No internet connection. Playback resumes when it returns."))
         val limit = if (isLive) maxLiveAttempts else maxVodAttempts
         val retryable = when (error.kind) {
-            ErrorKind.NOT_FOUND, ErrorKind.FORMAT -> false
+            ErrorKind.NOT_FOUND, ErrorKind.FORMAT, ErrorKind.AUTH, ErrorKind.DRM -> false
             ErrorKind.SERVER_REFUSED -> attemptsSoFar < 2            // a refusal is usually a one-connection limit: wait, try twice, then explain
             else -> true
         }
@@ -30,6 +30,9 @@ class RecoveryPolicy(private val maxLiveAttempts: Int = 6, private val maxVodAtt
     private fun explain(e: PlaybackError): PlaybackError = when (e.kind) {
         ErrorKind.SERVER_REFUSED -> PlaybackError(e.kind, "The provider refused the stream. Another device may be using the same account.", e.httpStatus)
         ErrorKind.NOT_FOUND -> PlaybackError(e.kind, "The provider does not have this stream any more.", e.httpStatus)
+        ErrorKind.AUTH -> PlaybackError(e.kind, "The provider did not accept the login. It may have expired: edit the connection and test it again.", e.httpStatus)
+        ErrorKind.DRM -> PlaybackError(e.kind, "This stream is copy-protected in a way this app cannot play.", e.httpStatus)
+        ErrorKind.DECODER -> PlaybackError(e.kind, "This device could not decode the video. Another player may handle it.", e.httpStatus)
         ErrorKind.TIMEOUT -> PlaybackError(e.kind, "The provider did not answer in time.", e.httpStatus)
         ErrorKind.FORMAT -> PlaybackError(e.kind, "This video format is not supported on this device.", e.httpStatus)
         ErrorKind.NO_NETWORK -> e

@@ -86,6 +86,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         val auth = Xtream.parseObject(Http.text(Xtream.api(host, user, pass)))
         val info = auth?.get("user_info") as? JsonObject
         if (info == null || info.int("auth") == 0) error("The server refused the login. Check the user name and password.")
+        info.str("max_connections")?.toIntOrNull()?.let { resolver?.rememberMaxConnections(s.id, it) }
         resolver?.remember(s.id, (info["allowed_output_formats"] as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }.orEmpty())
 
         val categories = ArrayList<CategoryEntity>()

@@ -61,8 +61,13 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        container.playback.saveProgress()
+        container.playback.onBackground()
         super.onStop()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        container.playback.onForeground()
     }
 }
 

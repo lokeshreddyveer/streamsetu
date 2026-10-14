@@ -1,4 +1,4 @@
-package app.streamsetu.tv.ui.screens.detail
+package app.streamsetu.core.data.repo
 
 import app.streamsetu.core.model.Episode
 import app.streamsetu.core.model.WatchProgress

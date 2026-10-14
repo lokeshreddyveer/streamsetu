@@ -175,11 +175,14 @@ class ExoEngine(context: Context) : PlayerEngine {
         val http = generateSequence(e.cause) { it.cause }.filterIsInstance<HttpDataSource.InvalidResponseCodeException>().firstOrNull()?.responseCode
         return when {
             http == 404 || http == 410 -> PlaybackError(ErrorKind.NOT_FOUND, "Not found", http)
-            http == 401 || http == 403 || http == 429 || http == 458 || http == 503 || (http != null && http >= 500) -> PlaybackError(ErrorKind.SERVER_REFUSED, "Refused", http)
+            http == 401 -> PlaybackError(ErrorKind.AUTH, "Login refused", http)
+            e.errorCode in PlaybackException.ERROR_CODE_DRM_UNSPECIFIED..PlaybackException.ERROR_CODE_DRM_LICENSE_EXPIRED -> PlaybackError(ErrorKind.DRM, "Protected content")
+            http == 403 || http == 429 || http == 458 || http == 503 || (http != null && http >= 500) -> PlaybackError(ErrorKind.SERVER_REFUSED, "Refused", http)
             e.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT || e.errorCode == PlaybackException.ERROR_CODE_TIMEOUT -> PlaybackError(ErrorKind.TIMEOUT, "Timed out")
             e.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> PlaybackError(ErrorKind.NO_NETWORK, "Network failed")
             e.errorCode in listOf(PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED, PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED,
-                PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED, PlaybackException.ERROR_CODE_DECODER_INIT_FAILED, PlaybackException.ERROR_CODE_DECODING_FAILED) -> PlaybackError(ErrorKind.FORMAT, "Unsupported")
+                PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED) -> PlaybackError(ErrorKind.FORMAT, "Unsupported")
+            e.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED || e.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED -> PlaybackError(ErrorKind.DECODER, "Decoder failed")
             else -> PlaybackError(ErrorKind.UNKNOWN, e.message.orEmpty())
         }
     }

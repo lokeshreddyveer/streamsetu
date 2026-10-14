@@ -43,3 +43,9 @@ sealed interface Browse {
     /** The person's starred folders, shown together. */
     data object FavoriteFolders : Browse
 }
+
+/**
+ * What a connection can really do, found from what it delivered (never assumed from its type). The screens switch features on only when they are true.
+ * Seek, audio tracks and adaptive quality belong to a single stream and are reported by the player while it plays.
+ */
+data class SourceCapabilities(val guide: Boolean, val guideChannels: Int, val catchUp: Boolean, val catchUpChannels: Int, val movies: Boolean, val series: Boolean, val live: Boolean)

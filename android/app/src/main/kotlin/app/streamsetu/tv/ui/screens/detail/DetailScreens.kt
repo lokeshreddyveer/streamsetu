@@ -21,6 +21,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.streamsetu.core.data.repo.UserRepository
+import app.streamsetu.core.data.repo.EpisodePlan
 import app.streamsetu.core.model.*
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.nav.Navigator
@@ -143,8 +144,9 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
     var chooseOpen by remember { mutableStateOf(false) }
     val seasons = episodes.groupBy { it.season }.toSortedMap()
     val plan = remember(episodes, progress) { EpisodePlan.of(episodes, progress) }
+    val forward = plan.forward; val catchUp = plan.catchUp; val inProgress = plan.inProgress
     var season by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(seasons.keys, plan) { if (season == null || season !in seasons.keys) season = (plan.inProgress ?: plan.forward ?: episodes.firstOrNull())?.season ?: seasons.keys.firstOrNull() }
+    LaunchedEffect(seasons.keys, plan) { if (season == null || season !in seasons.keys) season = (inProgress ?: forward ?: episodes.firstOrNull())?.season ?: seasons.keys.firstOrNull() }
     val queue = remember(episodes) { episodes.sortedWith(compareBy({ it.season }, { it.number })).map { EpisodePlayable(it, s) } }
     val scope = rememberCoroutineScope()
     val first = remember { FocusRequester() }
@@ -165,17 +167,17 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                         Chip(sourceName(s.sourceId))
                         if (episodes.isNotEmpty()) Chip(if (plan.allFinished) "All watched" else "$watchedCount of ${episodes.size} watched", if (plan.allFinished) Tokens.success else Tokens.textSecondary)
                     }
-                    if (plan.gapBefore && plan.forward != null) Label("Episode ${plan.forward.number - 1} is not available. The next one on offer is episode ${plan.forward.number}.", Tokens.small, Tokens.warning, maxLines = 2)
+                    if (plan.gapBefore && forward != null) Label("Episode ${forward.number - 1} is not available. The next one on offer is episode ${forward.number}.", Tokens.small, Tokens.warning, maxLines = 2)
                     Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val ip = plan.inProgress
+                        val ip = inProgress
                         when {
                             ip != null -> TvButton("Continue S${ip.season} E${ip.number}", { playEp(ip) }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
-                            plan.forward != null && watchedCount > 0 -> TvButton(if (plan.catchUp != null) "Continue Forward S${plan.forward.season} E${plan.forward.number}" else "Continue S${plan.forward.season} E${plan.forward.number}", { playEp(plan.forward) }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
+                            forward != null && watchedCount > 0 -> TvButton(if (catchUp != null) "Continue Forward S${forward.season} E${forward.number}" else "Continue S${forward.season} E${forward.number}", { playEp(forward) }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
                             episodes.isNotEmpty() && plan.allFinished -> TvButton("Watch Again", { playEp(episodes.minWith(compareBy({ it.season }, { it.number }))) }, Modifier.focusRequester(first), icon = Icons.Filled.Replay, primary = true)
                             episodes.isNotEmpty() -> TvButton("Start Series", { playEp(episodes.minWith(compareBy({ it.season }, { it.number }))) }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
                             else -> TvButton(if (loading) "Loading episodes…" else "View Episodes", {}, Modifier.focusRequester(first), icon = Icons.Filled.List, primary = true)
                         }
-                        plan.catchUp?.let { cu -> TvButton("Catch Up S${cu.season} E${cu.number}", { playEp(cu) }, icon = Icons.Filled.History) }
+                        catchUp?.let { cu -> TvButton("Catch Up S${cu.season} E${cu.number}", { playEp(cu) }, icon = Icons.Filled.History) }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TvButton(if (s.id in favs) "Favorited" else "Favorite", { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in favs) } }, icon = if (s.id in favs) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder)

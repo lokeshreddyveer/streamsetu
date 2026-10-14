@@ -184,6 +184,8 @@ fun WelcomeScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
         Label("A player for your own IPTV connection. Choose how you want to connect.", Tokens.body, Tokens.textSecondary)
         Spacer(Modifier.height(10.dp))
         Label("StreamSetu does not provide channels, movies or subscriptions.", Tokens.small, Tokens.textTertiary)
+        Spacer(Modifier.height(4.dp))
+        Label("Arrow keys move  ·  OK chooses  ·  hold OK for options  ·  Back goes back", Tokens.small, Tokens.textTertiary)
         Spacer(Modifier.height(26.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             SetupCard("Xtream Codes", "Server, user name and password", Icons.Filled.Dns, Modifier.focusRequester(first)) { nav.base = Base.Setup(SourceType.XTREAM) }

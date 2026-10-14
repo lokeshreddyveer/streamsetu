@@ -51,6 +51,9 @@ class StreamResolver(private val sources: SourceRepository, private val credenti
         return list
     }
 
+    /** The number of simultaneous streams the account allows, as the provider says it. 0 when unknown. */
+    fun rememberMaxConnections(sourceId: String, max: Int) { if (max > 0) prefs.edit().putInt("max.$sourceId", max).apply() }
+
     fun remember(sourceId: String, formats: List<String>) { if (formats.isNotEmpty()) prefs.edit().putString(sourceId, formats.joinToString(",")).apply() }
 
     companion object {

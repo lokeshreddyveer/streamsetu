@@ -1,3 +1,28 @@
+# StreamSetu for Fire TV and Android TV: architecture
+
+Read `SPEC-STATUS.md` for what is built against the specifications. Modules and packages:
+
+```
+core-model        data classes, sorting and capability models, playback preference enums
+core-security     Android Keystore credential store
+core-network      OkHttp client, M3U / Xtream / XMLTV parsers
+core-database     Room (v3): catalog, libraries, folder arrangements, progress, plus the FTS4 search index and raw browse queries
+core-preferences  AppSettings (playback), UiPrefs (appearance), ParentalControls (adult filter, PIN hash)
+core-media        PlaybackController (coordinator), ExoPlayer and MPV engines, recovery policy
+core-ui           motion tokens (durations, curves, scales), reduced-motion handling, frame monitor
+data              repositories (library, catalog, browse, folders, search, user, source), sync, EPG, maintenance (backup, diagnostics, cleanup)
+app               Hilt wiring, navigation, screens: library, home, section (movies / series), live, guide, detail, search, settings, player
+```
+
+Flow of the data: sources (Xtream / M3U / local file) are read by `SyncService` into Room in one transaction together with the search index. Screens read through
+`LibraryRepository.sourceIds` (the open library, a connection or a combination of connections), so every query is already limited to it. `FolderRepository` applies the
+person's folder arrangement and the PIN lock; `BrowseRepository` builds ordered lists from fixed SQL pieces; `SearchRepository` queries the index.
+
+Playback: the UI sends commands to `PlaybackController` and watches its state. The controller picks the engine, paces connections, retries, falls back, saves progress for the
+verified session, and handles leaving and returning to the app. The Live TV preview and the fullscreen player share one engine view through `EngineSurface`.
+
+Earlier notes on provider behaviour (kept below):
+
 # StreamSetu for Android TV and Fire TV
 
 A native Kotlin app for Android TV, Google TV and Amazon Fire TV (Fire OS 5 and later, API 22+). It mirrors the Apple apps' ideas:

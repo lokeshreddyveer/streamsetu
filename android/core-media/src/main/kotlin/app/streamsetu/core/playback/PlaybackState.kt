@@ -13,7 +13,7 @@ sealed interface PlaybackState {
     data class Failed(val error: PlaybackError) : PlaybackState
 }
 
-enum class ErrorKind { NO_NETWORK, SERVER_REFUSED, NOT_FOUND, TIMEOUT, FORMAT, DECODER, UNKNOWN }
+enum class ErrorKind { NO_NETWORK, SERVER_REFUSED, AUTH, DRM, NOT_FOUND, TIMEOUT, FORMAT, DECODER, UNKNOWN }
 
 data class PlaybackError(val kind: ErrorKind, val message: String, val httpStatus: Int? = null)
 

@@ -91,6 +91,12 @@ class MaintenanceService(private val context: Context, private val db: AppDataba
         RestoreResult(fav, fol, prog, hist, skipped)
     }
 
+    /** What this connection delivered: guide data, catch-up channels, movies, series, live channels. */
+    suspend fun capabilities(source: Source): SourceCapabilities = withContext(Dispatchers.IO) {
+        val d = db.browse()
+        SourceCapabilities(d.programmesFor(source.id) > 0, d.channelsWithGuideId(source.id), d.channelsWithCatchUp(source.id) > 0, d.channelsWithCatchUp(source.id), source.movieCount > 0, source.seriesCount > 0, source.channelCount > 0)
+    }
+
     // ---- Resets ----
     /** Every setting back to its default. Connections, favourites, folders and progress stay. */
     fun resetSettings() { listOf("settings", "ui", "sort").forEach { context.getSharedPreferences(it, Context.MODE_PRIVATE).edit().clear().apply() } }

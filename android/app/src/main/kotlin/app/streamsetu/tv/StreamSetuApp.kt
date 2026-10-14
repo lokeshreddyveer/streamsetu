@@ -55,7 +55,7 @@ class AppContainer @Inject constructor(
             playback.state.collect { st ->
                 if (st == app.streamsetu.core.playback.PlaybackState.Ended && settings.playNextAutomatically.value) {
                     val ep = playback.current.value as? EpisodePlayable ?: return@collect
-                    catalog.nextEpisode(ep.episode)?.takeIf { app.streamsetu.tv.ui.screens.detail.EpisodePlan.contiguous(ep.episode, it) }?.let { n -> catalog.series(n.seriesId)?.let { s -> kotlinx.coroutines.withContext(Dispatchers.Main) { play(EpisodePlayable(n, s), queue) } } }
+                    catalog.nextEpisode(ep.episode)?.takeIf { app.streamsetu.core.data.repo.EpisodePlan.contiguous(ep.episode, it) }?.let { n -> catalog.series(n.seriesId)?.let { s -> kotlinx.coroutines.withContext(Dispatchers.Main) { play(EpisodePlayable(n, s), queue) } } }
                 }
             }
         }
