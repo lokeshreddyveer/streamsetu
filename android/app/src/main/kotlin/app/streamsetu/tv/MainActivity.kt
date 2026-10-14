@@ -163,13 +163,15 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
     val sidebarVisible = !floating || nav.sidebarRevealed
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     // After a section opens, the remote goes to its entry point; after the sidebar is revealed, to the sidebar.
-    LaunchedEffect(nav.tab, nav.sidebarRevealed) {
-        kotlinx.coroutines.delay(if (nav.sidebarRevealed) 120 else 220)
-        repeat(8) {
-            val ok = runCatching { if (nav.sidebarRevealed) sidebarEntry.requestFocus() else contentEntry.requestFocus() }.isSuccess
-            if (ok) return@LaunchedEffect
-            kotlinx.coroutines.delay(120)
-        }
+    // A chosen section (or a sidebar closed on a choice) gives the remote to the page's entry point; opening the sidebar gives it to the sidebar.
+    LaunchedEffect(nav.tab, nav.contentFocusTick) {
+        kotlinx.coroutines.delay(220)
+        repeat(8) { if (runCatching { contentEntry.requestFocus() }.isSuccess) return@LaunchedEffect; kotlinx.coroutines.delay(120) }
+    }
+    LaunchedEffect(nav.sidebarRevealed) {
+        if (!nav.sidebarRevealed) return@LaunchedEffect
+        kotlinx.coroutines.delay(120)
+        repeat(8) { if (runCatching { sidebarEntry.requestFocus() }.isSuccess) return@LaunchedEffect; kotlinx.coroutines.delay(120) }
     }
     Box(
         Modifier.fillMaxSize().onKeyEvent { e ->
@@ -210,7 +212,7 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
         ) {
             app.streamsetu.tv.ui.components.Sidebar(nav.tab, onSelect = { t ->
                 if (t == Tab.LIBRARIES) { c.library.close(); nav.toChooser() } else nav.go(t)
-            }, entry = sidebarEntry, floating = floating, startExpanded = floating)
+            }, entry = sidebarEntry, floating = floating, startExpanded = floating, onFocusLost = { if (floating) nav.sidebarRevealed = false })
         }
     }
 }

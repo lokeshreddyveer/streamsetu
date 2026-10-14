@@ -96,6 +96,7 @@ fun Focusable(
     focusedContainer: Color = Tokens.focusedSurface,
     scaleOnFocus: Float = app.streamsetu.core.ui.motion.Motion.CARD_FOCUS_SCALE,
     hairline: Boolean = false,
+    ring: Color = Tokens.accent,
     onFocus: (Boolean) -> Unit = {},
     onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
@@ -116,7 +117,7 @@ fun Focusable(
             // The ring is drawn, not added as a layer, so taking and losing focus does not rebuild the modifier chain.
             .drawWithContent {
                 drawContent()
-                if (focused) strokeOutline(shape.createOutline(size, layoutDirection, this), if (highContrast) Color.White else Tokens.accent, (if (highContrast) 3.dp else 1.5.dp).toPx() * 2)
+                if (focused) strokeOutline(shape.createOutline(size, layoutDirection, this), if (highContrast) Color.White else ring, (if (highContrast) 3.dp else 1.5.dp).toPx() * 2)
                 else if (hairline) strokeOutline(shape.createOutline(size, layoutDirection, this), Tokens.line, 1.dp.toPx() * 2)
             }
             .focusRequester(own)
@@ -177,8 +178,8 @@ fun PosterPlaceholder(title: String, modifier: Modifier = Modifier) {
 fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null, focusRequester: FocusRequester? = null, onLongClick: (() -> Unit)? = null) {
     Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(2f / 3f), scaleOnFocus = app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE, onLongClick = onLongClick) { _ ->
-            PosterPlaceholder(title, Modifier.fillMaxSize())
-            if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            // With a picture to come, a flat dark tile is enough underneath (a title gradient only when there is no picture): less to draw and lay out per card.
+            if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else { Box(Modifier.fillMaxSize().background(Tokens.card)); AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Color(0xB3000000), RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Tokens.text, FontWeight.SemiBold) }
         }

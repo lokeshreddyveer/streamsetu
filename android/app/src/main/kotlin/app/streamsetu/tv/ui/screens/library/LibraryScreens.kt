@@ -4,6 +4,10 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -55,70 +59,159 @@ private fun healthColor(e: LibraryEntry) = when (e.health) {
 
 private fun lastSync(ms: Long) = if (ms <= 0) "Never" else DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(ms))
 
-/** The opening screen of every launch (the person picks which library to open; nothing opens by itself). */
+private val Gold = Color(0xFFFFB347)
+
+/** The opening screen of every launch: the person picks which library to open; nothing opens by itself. */
 @Composable
 fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
     val entries by vm.entries.collectAsState()
+    val favouriteCount by vm.favouriteCount.collectAsState()
     val list = entries
     var previewId by remember { mutableStateOf<String?>(null) }
     val preview = list?.firstOrNull { it.id == previewId } ?: list?.firstOrNull()
-    val initial = remember(list) {
-        list?.let { l -> l.firstOrNull { it.id == vm.lastUsedId && it.usable } ?: l.firstOrNull { it.usable } ?: l.firstOrNull() }?.id
-    }
+    val initial = remember(list) { list?.let { l -> l.firstOrNull { it.id == vm.lastUsedId && it.usable } ?: l.firstOrNull { it.usable } ?: l.firstOrNull() }?.id }
     val initialFocus = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
+    var addMenu by remember { mutableStateOf(false) }
     LaunchedEffect(initial) { if (initial != null && !focused) { delay(120); runCatching { initialFocus.requestFocus() } } }
     LaunchedEffect(initial) { if (previewId == null) previewId = initial }
 
-    Row(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-        // Left 40 %: logo, heading and the libraries.
-        Column(Modifier.weight(0.4f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            LogoRow()
-            Label("Choose Your Library", Tokens.display, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
-            if (list == null) Loading(Modifier.weight(1f)) else LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
-                val combined = list.filter { it.kind == LibraryEntry.Kind.COMBINED }
-                val single = list.filter { it.kind == LibraryEntry.Kind.CONNECTION }
-                val drafts = list.filter { it.kind == LibraryEntry.Kind.UNFINISHED }
-                if (combined.isNotEmpty()) { item { Eyebrow("Combined Libraries", Modifier.padding(top = 6.dp)) }; items(combined, key = { it.id }) { LibraryRow(it, it.id == initial, initialFocus, nav, vm, { previewId = it.id }) { focused = true } } }
-                if (single.isNotEmpty()) { item { Eyebrow("Individual Connections", Modifier.padding(top = 10.dp)) }; items(single, key = { it.id }) { LibraryRow(it, it.id == initial, initialFocus, nav, vm, { previewId = it.id }) { focused = true } } }
-                if (drafts.isNotEmpty()) { item { Eyebrow("Unfinished Connections", Modifier.padding(top = 10.dp)) }; items(drafts, key = { it.id }) { LibraryRow(it, it.id == initial, initialFocus, nav, vm, { previewId = it.id }) { focused = true } } }
+    Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Top: the mark, and on the right the settings button and the clock.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)))
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Row { Label("Stream", Tokens.display, Tokens.text, FontWeight.Bold); Label("Setu", Tokens.display, Tokens.accent, FontWeight.Bold) }
+                Label("YOUR STREAMS. ONE HOME.", Tokens.eyebrow, Tokens.textTertiary, FontWeight.Medium, letterSpacing = 2.sp)
+            }
+            Spacer(Modifier.weight(1f))
+            Focusable({ nav.openSettingsFromChooser() }, Modifier, shape = RoundedCornerShape(50), container = Color(0x14FFFFFF), ring = Gold, scaleOnFocus = 1.06f) { f ->
+                Image(Icons.Filled.Settings, "Settings", Modifier.padding(11.dp).size(20.dp), colorFilter = ColorFilter.tint(if (f) Gold else Tokens.textSecondary))
+            }
+            Spacer(Modifier.width(18.dp))
+            Clock()
+        }
+        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            // Left: the libraries.
+            Column(Modifier.weight(0.31f).fillMaxHeight().background(Color(0xFF0B0B0C), RoundedCornerShape(22.dp)).border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(22.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Label("Choose Your Library", Tokens.pageTitle, Tokens.text, FontWeight.Bold)
+                Label("Select a connection to start watching.", Tokens.small, Tokens.textSecondary, modifier = Modifier.padding(bottom = 6.dp))
+                if (list == null) Loading(Modifier.weight(1f)) else LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val combined = list.filter { it.kind == LibraryEntry.Kind.COMBINED }
+                    val single = list.filter { it.kind == LibraryEntry.Kind.CONNECTION }
+                    val drafts = list.filter { it.kind == LibraryEntry.Kind.UNFINISHED }
+                    if (combined.isNotEmpty()) { item { Eyebrow("Combined libraries", Modifier.padding(top = 6.dp, bottom = 2.dp)) }; items(combined, key = { it.id }) { LibraryRow(it, it.id == initial, initialFocus, nav, vm, { previewId = it.id }) { focused = true } } }
+                    if (single.isNotEmpty()) { item { Eyebrow("Individual connections", Modifier.padding(top = 8.dp, bottom = 2.dp)) }; items(single, key = { it.id }) { LibraryRow(it, it.id == initial, initialFocus, nav, vm, { previewId = it.id }) { focused = true } } }
+                    if (drafts.isNotEmpty()) { item { Eyebrow("Unfinished connections", Modifier.padding(top = 8.dp, bottom = 2.dp)) }; items(drafts, key = { it.id }) { LibraryRow(it, it.id == initial, initialFocus, nav, vm, { previewId = it.id }) { focused = true } } }
+                    item(key = "add") {
+                        Focusable({ addMenu = true }, Modifier.fillMaxWidth().padding(top = 6.dp), scaleOnFocus = 1.0f, container = Color(0xFF131314), ring = Gold, shape = RoundedCornerShape(16.dp)) { _ ->
+                            Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                IconTile(Icons.Filled.Add, Color(0xFF2A2A2C), Color.White)
+                                Column(Modifier.weight(1f)) { Label("Add Another Library", Tokens.title, Tokens.text, FontWeight.SemiBold); Label("Xtream Codes, M3U URL or File", Tokens.small, Tokens.textSecondary) }
+                                Image(Icons.Filled.ChevronRight, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary))
+                            }
+                        }
+                    }
+                }
+            }
+            // Right: the selected library, from details kept on this device.
+            Column(Modifier.weight(0.69f).fillMaxHeight().clip(RoundedCornerShape(22.dp)).background(Color(0xFF080808)).border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(22.dp))) {
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    // The lion fades in from the right, so the writing on the left stays easy to read.
+                    Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.align(Alignment.CenterEnd).fillMaxHeight().aspectRatio(1f).graphicsLayer { alpha = 0.5f }, contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.horizontalGradient(0f to Color(0xFF080808), 0.55f to Color(0xE6080808), 1f to Color(0x11080808))))
+                    Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (preview == null) { Eyebrow("Selected library"); Label("No libraries yet", Tokens.display, Tokens.text, FontWeight.Bold); Label("Add a connection below to get started.", Tokens.body, Tokens.textSecondary) }
+                        else {
+                            Eyebrow("Selected library")
+                            Label(preview.name, Tokens.display * 1.5f, Tokens.text, FontWeight.Bold, maxLines = 2)
+                            Label(when (preview.kind) { LibraryEntry.Kind.COMBINED -> "Movies, series and live television in one place."; LibraryEntry.Kind.UNFINISHED -> "Setup was not finished. Continue where you left off."; else -> "${preview.typeLabel}  ·  last read ${lastSync(preview.lastSyncAt)}" }, Tokens.body, Tokens.textSecondary, maxLines = 2)
+                            Spacer(Modifier.weight(1f))
+                            if (preview.kind != LibraryEntry.Kind.UNFINISHED) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                StatTile(Icons.Filled.LiveTv, "Channels", preview.channelCount); StatTile(Icons.Filled.Movie, "Movies", preview.movieCount)
+                                StatTile(Icons.Filled.VideoLibrary, "Series", preview.seriesCount); StatTile(Icons.Filled.Star, "Favorites", favouriteCount)
+                            }
+                            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                if (preview.kind == LibraryEntry.Kind.UNFINISHED) BigPill("Continue Setup", Icons.Filled.Edit, Modifier.width(260.dp)) { nav.base = Base.Setup(typeOf(preview), preview.sourceIds.first()) }
+                                else BigPill("Open Library", Icons.Filled.PlayArrow, Modifier.width(260.dp)) { vm.open(preview) { nav.enterLibrary() } }
+                                GhostPill("Manage Library", Icons.Filled.Tune) { nav.open(Overlay.ManageLibrary(preview)) }
+                                if (preview.kind != LibraryEntry.Kind.UNFINISHED) GhostPill("Connection Details", Icons.Filled.Info) {
+                                    if (preview.kind == LibraryEntry.Kind.COMBINED) nav.base = Base.Combined(preview) else nav.base = Base.Setup(typeOf(preview), preview.sourceIds.first())
+                                }
+                            }
+                        }
+                    }
+                }
+                // Quick Add: always on screen.
+                Column(Modifier.fillMaxWidth().background(Color(0xFF0C0C0D)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Label("Quick Add", Tokens.heading, Tokens.text, FontWeight.Bold); Label("Add a new connection or import your playlist.", Tokens.small, Tokens.textSecondary) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        QuickTile("Add Xtream Codes", "Username, Password, URL", Icons.Filled.Dns, Color(0xFF1B3A5C), Color(0xFF4DA3FF), Modifier.weight(1f)) { nav.base = Base.Setup(SourceType.XTREAM) }
+                        QuickTile("Add M3U URL", "Paste your playlist link", Icons.Filled.Link, Color(0xFF3A2A66), Color(0xFFA48BFF), Modifier.weight(1f)) { nav.base = Base.Setup(SourceType.M3U) }
+                        QuickTile("Import M3U File", "From USB or local storage", Icons.Filled.Description, Color(0xFF14463A), Color(0xFF3DDCA8), Modifier.weight(1f)) { nav.base = Base.Setup(SourceType.LOCAL_FILE) }
+                        QuickTile("Combine Libraries", "Merge multiple sources", Icons.Filled.Layers, Color(0xFF2A2A2C), Color.White, Modifier.weight(1f)) { nav.base = Base.Combined() }
+                    }
+                }
             }
         }
-        // Right 60 %: the preview from cached details, then the always-visible add controls.
-        Column(Modifier.weight(0.6f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Column(Modifier.weight(1f).fillMaxWidth().background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (preview == null) { Label("No libraries yet", Tokens.title, Tokens.text, FontWeight.SemiBold); Label("Add a connection below to get started.", Tokens.body, Tokens.textSecondary) }
-                else {
-                    Eyebrow(preview.typeLabel, color = Tokens.accent)
-                    Label(preview.name, Tokens.display, Tokens.text, FontWeight.Bold)
-                    if (preview.kind != LibraryEntry.Kind.UNFINISHED) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Stat("Live TV", preview.channelCount); Stat("Movies", preview.movieCount); Stat("Series", preview.seriesCount)
-                    }
-                    if (preview.kind == LibraryEntry.Kind.COMBINED) Label("${preview.sourceIds.size} connected source${if (preview.sourceIds.size == 1) "" else "s"}", Tokens.body, Tokens.textSecondary)
-                    Label("Last catalog refresh: ${lastSync(preview.lastSyncAt)}", Tokens.body, Tokens.textSecondary)
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(Modifier.size(9.dp).background(healthColor(preview), RoundedCornerShape(50)))
-                        Label(healthText(preview), Tokens.body, healthColor(preview))
-                    }
-                    Spacer(Modifier.weight(1f))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (preview.kind == LibraryEntry.Kind.UNFINISHED) TvButton("Continue Setup", { nav.base = Base.Setup(typeOf(preview), preview.sourceIds.first()) }, icon = Icons.Filled.Edit, primary = true)
-                        else TvButton("Enter Home", { vm.open(preview) { nav.enterLibrary() } }, icon = Icons.Filled.PlayArrow, primary = true)
-                        TvButton("Manage Library", { nav.open(Overlay.ManageLibrary(preview)) }, icon = Icons.Filled.Settings)
-                    }
-                }
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Eyebrow("Add a connection")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AddTile("Xtream Connection", Icons.Filled.Dns, Modifier.weight(1f)) { nav.base = Base.Setup(SourceType.XTREAM) }
-                    AddTile("M3U URL", Icons.Filled.Link, Modifier.weight(1f)) { nav.base = Base.Setup(SourceType.M3U) }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AddTile("Local M3U File", Icons.Filled.Folder, Modifier.weight(1f)) { nav.base = Base.Setup(SourceType.LOCAL_FILE) }
-                    AddTile("Create Combined Library", Icons.Filled.Layers, Modifier.weight(1f)) { nav.base = Base.Combined() }
-                }
-            }
+    }
+    if (addMenu) ContextMenu("Add a library", null, listOf(
+        MenuAction("Xtream Codes", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.XTREAM) },
+        MenuAction("M3U URL", Icons.Filled.Link) { nav.base = Base.Setup(SourceType.M3U) },
+        MenuAction("Import M3U file", Icons.Filled.Description) { nav.base = Base.Setup(SourceType.LOCAL_FILE) },
+        MenuAction("Combine libraries", Icons.Filled.Layers) { nav.base = Base.Combined() },
+    ), onClose = { addMenu = false })
+}
+
+@Composable
+private fun Clock() {
+    val now by produceState(System.currentTimeMillis()) { while (true) { value = System.currentTimeMillis(); delay(15_000) } }
+    Column(horizontalAlignment = Alignment.End) {
+        Label(java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(now)), Tokens.title, Tokens.text, FontWeight.SemiBold)
+        Label(java.text.SimpleDateFormat("EEE, MMM d", java.util.Locale.getDefault()).format(java.util.Date(now)), Tokens.small, Tokens.textSecondary)
+    }
+}
+
+@Composable
+private fun IconTile(icon: ImageVector, bg: Color, tint: Color, size: Int = 40) {
+    Box(Modifier.size(size.dp).clip(RoundedCornerShape(11.dp)).background(bg), Alignment.Center) { Image(icon, null, Modifier.size((size * 0.55f).dp), colorFilter = ColorFilter.tint(tint)) }
+}
+
+@Composable
+private fun StatTile(icon: ImageVector, title: String, n: Int) {
+    Column(Modifier.width(112.dp).background(Color(0x8C101011), RoundedCornerShape(16.dp)).border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(16.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Image(icon, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(Tokens.textSecondary))
+        Label("%,d".format(n), Tokens.pageTitle, Tokens.text, FontWeight.Bold)
+        Label(title, Tokens.small, Tokens.textSecondary)
+    }
+}
+
+/** The main action: a wide white pill that glows gold when the remote is on it. */
+@Composable
+private fun BigPill(text: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
+    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color(0xFFE9EDF2), focusedContainer = Color.White, ring = Gold, scaleOnFocus = 1.04f) { _ ->
+        Row(Modifier.fillMaxWidth().padding(vertical = 13.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+            Image(icon, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Color.Black)); Spacer(Modifier.width(10.dp)); Label(text, Tokens.title, Color.Black, FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun GhostPill(text: String, icon: ImageVector, onClick: () -> Unit) {
+    Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = Color(0x66101011), focusedContainer = Color(0xFF222224), ring = Gold, hairline = true, scaleOnFocus = 1.04f) { f ->
+        Row(Modifier.padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f) Gold else Tokens.text)); Label(text, Tokens.row, Tokens.text, FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+private fun QuickTile(title: String, sub: String, icon: ImageVector, bg: Color, tint: Color, modifier: Modifier, onClick: () -> Unit) {
+    Focusable(onClick, modifier, shape = RoundedCornerShape(14.dp), container = Color(0xFF121213), ring = Gold, hairline = true, scaleOnFocus = 1.03f) { _ ->
+        Row(Modifier.padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            IconTile(icon, bg, tint, 38)
+            Column { Label(title, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 1); Label(sub, Tokens.caption, Tokens.textSecondary, maxLines = 1) }
         }
     }
 }
@@ -126,46 +219,32 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
 private fun typeOf(e: LibraryEntry) = when (e.typeLabel) { "M3U URL" -> SourceType.M3U; "Local M3U file" -> SourceType.LOCAL_FILE; else -> SourceType.XTREAM }
 
 @Composable
-private fun LogoRow() = Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-    Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(36.dp).clip(RoundedCornerShape(9.dp)))
-    Label("StreamSetu", Tokens.title, Tokens.text, FontWeight.Bold)
-}
-
-@Composable
-private fun Stat(title: String, n: Int) = Column(Modifier.background(Tokens.card, RoundedCornerShape(Tokens.radius)).padding(horizontal = 16.dp, vertical = 10.dp)) {
-    Label("%,d".format(n), Tokens.pageTitle, Tokens.text, FontWeight.Bold); Label(title, Tokens.small, Tokens.textSecondary)
-}
-
-@Composable
-private fun AddTile(title: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Focusable(onClick, modifier, container = Tokens.card, scaleOnFocus = 1.02f) { _ ->
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(Tokens.accent))
-            Label(title, Tokens.row, Tokens.text, FontWeight.Medium)
-        }
-    }
-}
-
-@Composable
 private fun LibraryRow(e: LibraryEntry, isInitial: Boolean, initialFocus: FocusRequester, nav: Navigator, vm: LibraryViewModel, onPreview: () -> Unit, onFocused: () -> Unit) {
+    val (tileBg, tileTint) = when {
+        e.kind == LibraryEntry.Kind.COMBINED -> Color(0xFF2A2A2C) to Color.White
+        e.kind == LibraryEntry.Kind.UNFINISHED -> Color(0xFF4A3A14) to Gold
+        e.typeLabel == "M3U URL" -> Color(0xFF3A2A66) to Color(0xFFA48BFF)
+        e.typeLabel == "Local M3U file" -> Color(0xFF14463A) to Color(0xFF3DDCA8)
+        else -> Color(0xFF1B3A5C) to Color(0xFF4DA3FF)
+    }
     Focusable(
-        onClick = {
-            when {
-                e.kind == LibraryEntry.Kind.UNFINISHED -> nav.base = Base.Setup(typeOf(e), e.sourceIds.first())
-                else -> vm.open(e) { nav.enterLibrary() }
-            }
-        },
+        onClick = { if (e.kind == LibraryEntry.Kind.UNFINISHED) nav.base = Base.Setup(typeOf(e), e.sourceIds.first()) else vm.open(e) { nav.enterLibrary() } },
         modifier = (if (isInitial) Modifier.focusRequester(initialFocus) else Modifier).fillMaxWidth(),
-        scaleOnFocus = 1.0f, container = Tokens.card,
+        scaleOnFocus = 1.0f, container = Color(0xFF131314), focusedContainer = Color(0xFF1A1A1B), ring = Gold, shape = RoundedCornerShape(16.dp),
         onFocus = { if (it) { onPreview(); onFocused() } },
         onLongClick = { nav.open(Overlay.ManageLibrary(e)) },
     ) { _ ->
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Image(typeIcon(e), null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(if (e.usable) Tokens.accent else Tokens.warning))
+        Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            IconTile(typeIcon(e), tileBg, tileTint)
             Column(Modifier.weight(1f)) {
                 Label(e.name, Tokens.title, Tokens.text, FontWeight.SemiBold)
-                Label(if (e.kind == LibraryEntry.Kind.UNFINISHED) "Resume setup" else e.typeLabel, Tokens.small, Tokens.textSecondary)
+                Label(if (e.kind == LibraryEntry.Kind.COMBINED) "${e.sourceIds.size} connected source${if (e.sourceIds.size == 1) "" else "s"}" else e.typeLabel, Tokens.small, Tokens.textSecondary)
             }
+            if (e.kind != LibraryEntry.Kind.COMBINED) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Box(Modifier.size(7.dp).background(healthColor(e), CircleShape))
+                Label(when (e.health) { LibraryEntry.Health.OK -> "Ready"; LibraryEntry.Health.UNFINISHED -> "Unfinished"; LibraryEntry.Health.NEVER_READ -> "Not read yet"; LibraryEntry.Health.LAST_READ_FAILED -> "Needs Attention" }, Tokens.caption, Tokens.textSecondary)
+            }
+            Image(Icons.Filled.ChevronRight, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary))
         }
     }
 }
@@ -245,7 +324,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
         Column(Modifier.fillMaxSize().padding(horizontal = 120.dp, vertical = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)) {
             Label("Connection verified", Tokens.display, Tokens.text, FontWeight.Bold)
             Label(passed.name, Tokens.heading, Tokens.accent, FontWeight.SemiBold)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { Stat("Live TV", passed.channels); Stat("Movies", passed.movies); Stat("Series", passed.series) }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { StatTile(Icons.Filled.LiveTv, "Live TV", passed.channels); StatTile(Icons.Filled.Movie, "Movies", passed.movies); StatTile(Icons.Filled.VideoLibrary, "Series", passed.series) }
             Label("Saved on this device. Your login is kept in the Android Keystore and is never shown or logged.", Tokens.body, Tokens.textSecondary)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TvButton("Enter Home", {

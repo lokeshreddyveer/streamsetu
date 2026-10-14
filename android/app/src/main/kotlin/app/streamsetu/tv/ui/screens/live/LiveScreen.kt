@@ -85,7 +85,7 @@ class LiveSectionViewModel @Inject constructor(c: AppContainer) : FolderViewMode
     fun select(b: Browse) { if (browse.value != b) { browse.value = b; scrollIndex = 0 } }
     fun applySort(spec: SortSpec) = c.browse.setSort(ContentKind.CHANNEL, (browse.value as? Browse.Folder)?.id, spec)
     fun toggleFavourite(ch: Channel) = viewModelScope.launch { c.user.setFavourite(ch.id, ContentKind.CHANNEL, ch.id !in favourites.value) }
-    suspend fun programmes(ch: Channel): List<EpgProgram> = c.epg.resolve(listOf(ch))[ch.id]?.let { runCatching { c.epg.upcoming(c.db, it, 2) }.getOrDefault(emptyList()) }.orEmpty()
+    suspend fun programmes(ch: Channel, n: Int = 12): List<EpgProgram> = c.epg.resolve(listOf(ch))[ch.id]?.let { runCatching { c.epg.upcoming(c.db, it, n) }.getOrDefault(emptyList()) }.orEmpty()
 }
 
 private fun timeText(ms: Long) = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(ms))
@@ -191,7 +191,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
                 }
                 if (live != null) Box(Modifier.align(Alignment.TopStart).padding(8.dp).background(Tokens.danger, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp)) { Label("LIVE", Tokens.caption, androidx.compose.ui.graphics.Color.White, FontWeight.Bold) }
             }
-            if (live != null) NowNext(live.channel, vm, c, nav)
+            if (live != null) NowNext(live.channel, vm, c, nav, Modifier.weight(1f))
         }
     }
 
@@ -222,27 +222,45 @@ private fun SmallIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
     }
 }
 
-/** The name, what is on, what is next, and a progress bar, only when the guide really has the data. */
+/** Under the picture: the channel, what is on and what is next, and the channel's guide for the coming hours, only from real guide data. */
 @Composable
-private fun NowNext(ch: Channel, vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
+private fun NowNext(ch: Channel, vm: LiveSectionViewModel, c: AppContainer, nav: Navigator, modifier: Modifier = Modifier) {
     var programmes by remember(ch.id) { mutableStateOf<List<EpgProgram>>(emptyList()) }
     var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var details by remember { mutableStateOf<EpgProgram?>(null) }
     val shift = c.ui.epgOffsetMinutes.collectAsState().value * 60_000L
     LaunchedEffect(ch.id, shift) { while (true) { programmes = vm.programmes(ch).map { it.copy(startMs = it.startMs + shift, endMs = it.endMs + shift) }; tick = System.currentTimeMillis(); delay(30_000) } }
     val nowP = programmes.firstOrNull { it.isLive(tick) }
-    val next = programmes.firstOrNull { it.startMs >= (nowP?.endMs ?: tick) }
-    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        ChannelLogo(ch.logoUrl, ch.name, 44.dp)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Label(ch.name, Tokens.title, Tokens.text, FontWeight.Bold)
-            if (nowP != null) {
-                Label("${nowP.title}  ·  ${timeText(nowP.startMs)} – ${timeText(nowP.endMs)}", Tokens.body, Tokens.text, maxLines = 1)
-                val f = ((tick - nowP.startMs).toFloat() / (nowP.endMs - nowP.startMs)).coerceIn(0f, 1f)
-                Box(Modifier.fillMaxWidth().height(3.dp).background(Tokens.elevated, RoundedCornerShape(2.dp))) { Box(Modifier.fillMaxWidth(f).fillMaxHeight().background(Tokens.accent, RoundedCornerShape(2.dp))) }
-                nowP.description?.takeIf { it.isNotBlank() }?.let { Label(it, Tokens.small, Tokens.textSecondary, maxLines = 2) }
-                next?.let { Label("Next  ·  ${it.title}  ·  ${timeText(it.startMs)}", Tokens.small, Tokens.textSecondary, maxLines = 1) }
-            } else Label(if (ch.epgId == null && programmes.isEmpty()) "No guide information for this channel." else "No guide information right now.", Tokens.small, Tokens.textTertiary)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ChannelLogo(ch.logoUrl, ch.name, 36.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Label(ch.name, Tokens.title, Tokens.text, FontWeight.Bold)
+                if (nowP != null) {
+                    Label("${nowP.title}  ·  ${timeText(nowP.startMs)} – ${timeText(nowP.endMs)}", Tokens.body, Tokens.textSecondary, maxLines = 1)
+                    val f = ((tick - nowP.startMs).toFloat() / (nowP.endMs - nowP.startMs)).coerceIn(0f, 1f)
+                    Box(Modifier.fillMaxWidth().height(3.dp).background(Tokens.elevated, RoundedCornerShape(2.dp))) { Box(Modifier.fillMaxWidth(f).fillMaxHeight().background(Tokens.accent, RoundedCornerShape(2.dp))) }
+                } else Label(if (ch.epgId == null && programmes.isEmpty()) "No guide information for this channel." else "No guide information right now.", Tokens.small, Tokens.textTertiary)
+            }
+            TvButton("Fullscreen", { nav.liveFullscreen = true; nav.open(Overlay.Player) }, icon = Icons.Filled.Fullscreen)
         }
-        TvButton("Fullscreen", { nav.liveFullscreen = true; nav.open(Overlay.Player) }, icon = Icons.Filled.Fullscreen)
+        if (programmes.isNotEmpty()) {
+            Eyebrow("Guide", color = Tokens.textTertiary)
+            LazyColumn(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                items(programmes.size, key = { programmes[it].startMs }) { i ->
+                    val p = programmes[i]; val live = p.isLive(tick)
+                    Focusable({ details = p }, Modifier.fillMaxWidth(), scaleOnFocus = 1.0f, container = if (live) Tokens.elevated else Tokens.card.copy(alpha = 0f), shape = RoundedCornerShape(8.dp)) { _ ->
+                        Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Label(timeText(p.startMs), Tokens.small, if (live) Tokens.accent else Tokens.textSecondary, FontWeight.SemiBold, modifier = Modifier.width(62.dp))
+                            Column(Modifier.weight(1f)) {
+                                Label(p.title, Tokens.row, if (live) Tokens.text else Tokens.textSecondary, if (live) FontWeight.SemiBold else FontWeight.Normal)
+                                if (live) { val f = ((tick - p.startMs).toFloat() / (p.endMs - p.startMs)).coerceIn(0f, 1f); Label("On now  ·  ${((p.endMs - tick) / 60000).coerceAtLeast(0)} min left", Tokens.caption, Tokens.accent) } else Label("${timeText(p.startMs)} – ${timeText(p.endMs)}", Tokens.caption, Tokens.textTertiary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+    details?.let { p -> ContextMenu(p.title, "${ch.name}  ·  ${timeText(p.startMs)} – ${timeText(p.endMs)}" + (p.description?.takeIf { it.isNotBlank() }?.let { "\n$it" } ?: ""), listOf(MenuAction("Close", Icons.Filled.Close) {}), onClose = { details = null }) }
 }

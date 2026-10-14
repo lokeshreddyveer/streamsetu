@@ -39,8 +39,8 @@ object Tokens {
     /** About 5 % of the screen on each side, kept clear of the edge (television-safe area). */
     val safeHorizontal = 48.dp
     val safeVertical = 27.dp
-    val sidebarCompact = 64.dp
-    val sidebarExpanded = 230.dp
+    val sidebarCompact = 56.dp
+    val sidebarExpanded = 172.dp
     val folderPanelWidth = 190.dp
 
     val display = 24.sp; val pageTitle = 19.sp; val title = 17.sp; val heading = 15.sp

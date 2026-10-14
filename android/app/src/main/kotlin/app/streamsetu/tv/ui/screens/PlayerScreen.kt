@@ -107,12 +107,15 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
             digits = ""
         }
     }
+    val barNow by rememberUpdatedState(barVisible)
     var position by remember { mutableLongStateOf(0) }
     var duration by remember { mutableLongStateOf(0) }
-    LaunchedEffect(Unit) { while (true) { position = playback.positionMs; duration = playback.durationMs; delay(500) } }
+    LaunchedEffect(Unit) { while (true) { position = playback.positionMs; duration = playback.durationMs; delay(if (barNow) 500 else 2000) } }
     var programmes by remember { mutableStateOf<List<EpgProgram>>(emptyList()) }
     LaunchedEffect(item?.id) { programmes = (item as? ChannelPlayable)?.channel?.epgId?.let { runCatching { c.epg.upcoming(c.db, it, 3) }.getOrNull() }.orEmpty() }
-    val upNextVisible = item is EpisodePlayable && duration > 0 && duration - position in 1..30_000 && c.queue.indexOfFirst { it.id == item.id }.let { it >= 0 && it < c.queue.lastIndex }
+    // The clock ticks twice a second; only the small pieces that show it redraw. These two flags change rarely, so the whole screen does not redraw with the clock.
+    val upNextVisible by remember(item?.id) { derivedStateOf { item is EpisodePlayable && duration > 0 && duration - position in 1..30_000 && c.queue.indexOfFirst { it.id == item.id }.let { it >= 0 && it < c.queue.lastIndex } } }
+    val showResumed by remember(resumedFrom) { derivedStateOf { resumedFrom > 0 && position in 1..(resumedFrom + 9000) } }
 
     Box(
         Modifier.fillMaxSize().background(Color.Black).focusRequester(root).focusable()
@@ -173,7 +176,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
         if (seekFlash.isNotEmpty()) Box(Modifier.align(Alignment.Center).offset(y = (-100).dp).background(Color(0x99000000), RoundedCornerShape(50)).padding(horizontal = 18.dp, vertical = 8.dp)) { Label(seekFlash, Tokens.heading, Tokens.text, FontWeight.Bold) }
         if (state == PlaybackState.Paused && live) Box(Modifier.align(Alignment.Center).size(72.dp).background(Color(0x99000000), CircleShape), Alignment.Center) { Image(Icons.Filled.PlayArrow, null, Modifier.size(40.dp), colorFilter = ColorFilter.tint(Color.White)) }
         if (digits.isNotEmpty()) Box(Modifier.align(Alignment.TopEnd).padding(36.dp).background(Color(0xCC000000), RoundedCornerShape(10.dp)).padding(horizontal = 16.dp, vertical = 8.dp)) { Label(digits, Tokens.display, Tokens.accent, FontWeight.Bold) }
-        if (resumedFrom > 0 && position in 1..(resumedFrom + 9000)) Box(Modifier.align(Alignment.TopCenter).padding(top = 72.dp).background(Color(0xCC101319), RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 7.dp)) { Label("Resumed at ${clock(resumedFrom)}  ·  ▼ then Start over to begin again", Tokens.small, Color.White) }
+        if (showResumed) Box(Modifier.align(Alignment.TopCenter).padding(top = 72.dp).background(Color(0xCC101319), RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 7.dp)) { Label("Resumed at ${clock(resumedFrom)}  ·  ▼ then Start over to begin again", Tokens.small, Color.White) }
         if (upNextVisible && item is EpisodePlayable) {
             val next = c.queue.getOrNull(c.queue.indexOfFirst { it.id == item.id } + 1)
             if (next != null) Column(Modifier.align(Alignment.BottomEnd).padding(end = 48.dp, bottom = 190.dp).background(Color(0xE6101319), RoundedCornerShape(Tokens.radiusLarge)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -202,7 +205,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
                 }
             }
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEB000000)))).padding(start = 48.dp, end = 48.dp, top = 40.dp, bottom = 22.dp)) {
-                if (item is ChannelPlayable) LiveBanner(item.channel, programmes) else VodControls(position, duration, state == PlaybackState.Playing || state == PlaybackState.Buffering)
+                if (item is ChannelPlayable) LiveBanner(item.channel, programmes) else VodControls({ position }, { duration })
                 Spacer(Modifier.height(10.dp))
                 // The chips, like the iPhone app: each opens a small panel.
                 Row(Modifier.fillMaxWidth().onFocusChanged { chipsFocused = it.hasFocus }.onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp) { toRoot(); true } else false }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -303,7 +306,8 @@ private fun OptionRow(label: String, selected: Boolean, requester: FocusRequeste
 
 /** A movie or episode: the bar with a thumb, the times, and round controls like a streaming app. */
 @Composable
-private fun VodControls(position: Long, duration: Long, playing: Boolean) {
+private fun VodControls(positionOf: () -> Long, durationOf: () -> Long) {
+    val position = positionOf(); val duration = durationOf()
     val frac = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Label(clock(position), Tokens.body, Color.White, FontWeight.SemiBold, modifier = Modifier.widthIn(min = 52.dp))

@@ -59,16 +59,23 @@ class Navigator {
     fun open(o: Overlay) { overlays += o }
     fun close() { if (overlays.isNotEmpty()) { overlays.removeAt(overlays.lastIndex); lastClosedAt = System.currentTimeMillis() } }
 
-    fun go(t: Tab) { tab = t; sidebarRevealed = false }
+    /** Bumped whenever the page should take the remote (a section was chosen, or the sidebar closed on a choice). */
+    var contentFocusTick by mutableStateOf(0)
+    fun go(t: Tab) { tab = t; sidebarRevealed = false; contentFocusTick++ }
+
+    /** True while Settings was opened from the library chooser: Back returns there. */
+    var settingsFromChooser = false
+    fun openSettingsFromChooser() { settingsFromChooser = true; base = Base.Shell; tab = Tab.SETTINGS; sidebarRevealed = false }
 
     fun enterLibrary() { overlays.clear(); base = Base.Shell; tab = Tab.HOME; sidebarRevealed = false }
-    fun toChooser() { overlays.clear(); base = Base.ChooseLibrary; sidebarRevealed = false }
+    fun toChooser() { settingsFromChooser = false; overlays.clear(); base = Base.ChooseLibrary; sidebarRevealed = false }
 
     /** True when back was used up inside the app; false when the app should close. */
     fun back(): Boolean = when {
         overlays.isNotEmpty() -> { close(); true }
         base is Base.Setup || base is Base.Combined || base is Base.Welcome && false -> { base = Base.ChooseLibrary; true }
-        base == Base.Shell && tab.floatingSidebar && !sidebarRevealed -> { sidebarRevealed = true; true }
+        base == Base.Shell && settingsFromChooser && tab == Tab.SETTINGS -> { settingsFromChooser = false; toChooser(); true }
+        base == Base.Shell && sidebarRevealed -> { sidebarRevealed = false; contentFocusTick++; true }     // Back closes the floating sidebar first
         base == Base.Shell && tab != Tab.HOME -> { go(Tab.HOME); true }
         base == Base.Shell -> { toChooser(); true }
         else -> false

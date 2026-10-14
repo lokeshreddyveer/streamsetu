@@ -20,6 +20,7 @@ hiltNavigation = "1.2.0"
 retrofit = "2.11.0"
 workmanager = "2.10.0"
 zxing = "3.5.3"
+profileinstaller = "1.4.1"
 junit = "4.13.2"
 
 [libraries]
@@ -57,6 +58,7 @@ hilt-compiler = { module = "com.google.dagger:hilt-android-compiler", version.re
 hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigation" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 retrofit-serialization = { module = "com.squareup.retrofit2:converter-kotlinx-serialization", version.ref = "retrofit" }
+profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
 zxing = { module = "com.google.zxing:core", version.ref = "zxing" }
 workmanager = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
 

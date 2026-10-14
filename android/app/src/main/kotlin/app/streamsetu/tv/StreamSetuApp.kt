@@ -120,6 +120,7 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
         .okHttpClient(okhttp3.OkHttpClient.Builder().dispatcher(images).build())
         .diskCache { coil.disk.DiskCache.Builder().directory(java.io.File(cacheDir, "image_cache")).maxSizeBytes(160L * 1024 * 1024).build() }
         .crossfade(false)
+        .allowRgb565(true)                  // posters have no transparency: half the memory and decoding work
         .build()
 
     override fun onCreate() {

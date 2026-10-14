@@ -14,6 +14,7 @@ import javax.inject.Inject
 class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewModel() {
     val entries: StateFlow<List<LibraryEntry>?> = c.library.entries.map<List<LibraryEntry>, List<LibraryEntry>?> { it }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val lastUsedId: String? get() = c.library.lastUsedId
+    val favouriteCount: StateFlow<Int> = c.user.favouriteIds().map { it.size }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     fun open(entry: LibraryEntry, then: () -> Unit) = viewModelScope.launch { c.library.open(entry); then() }
 
