@@ -16,13 +16,19 @@ StreamSetu is a native player for the IPTV playlists and media servers you alrea
 
 <table>
   <tr>
-    <td width="33%" valign="top"><img src="docs/screenshots/mac-home.png" alt="StreamSetu on Mac: Home with the Discover banner and Trending in Your Library" width="100%"></td>
-    <td width="33%" valign="top"><img src="docs/screenshots/mac-live.png" alt="StreamSetu on Mac: Live TV with channel groups, channel list and player" width="100%"></td>
-    <td width="33%" valign="top"><img src="docs/screenshots/mac-series.png" alt="StreamSetu on Mac: Series with the folder list and poster grid" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/mac-home.png" alt="StreamSetu on Mac: Home with the Discover banner and Trending in Your Library" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/mac-live.png" alt="StreamSetu on Mac: Live TV with channel groups, channel list and player" width="100%"></td>
   </tr>
   <tr>
     <td align="center"><sub>Home</sub></td>
     <td align="center"><sub>Live TV</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/screenshots/mac-movies.png" alt="StreamSetu on Mac: Movies with a featured banner, folder list and poster grid" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/mac-series.png" alt="StreamSetu on Mac: Series with the folder list and poster grid" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Movies</sub></td>
     <td align="center"><sub>Series</sub></td>
   </tr>
 </table>
