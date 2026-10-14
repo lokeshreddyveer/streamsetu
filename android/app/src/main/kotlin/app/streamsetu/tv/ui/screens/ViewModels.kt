@@ -162,7 +162,7 @@ class AddPlaylistViewModel(private val c: AppContainer) : ViewModel() {
             val saved = c.sources.add(
                 Source(id = "", name = name.ifBlank { address.substringAfter("://").substringBefore('/').take(30) }, type = type,
                     address = address.trim(), username = user.trim().ifBlank { null }),
-                password.ifBlank { null },
+                password.trim().ifBlank { null },
             )
             runCatching { c.syncWithGuide(saved.id) }
                 .onSuccess { _busy.value = false; done() }

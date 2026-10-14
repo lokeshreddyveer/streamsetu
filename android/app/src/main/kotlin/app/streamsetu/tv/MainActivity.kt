@@ -10,7 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.foundation.focusGroup
@@ -104,11 +103,19 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     ) {
         // The page underneath stays alive while a full-screen page is open (so scroll and focus come back as they were); it just cannot take focus.
         val baseFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-        LaunchedEffect(nav.top == null) { if (nav.top == null && nav.lastClosedAt > 0) { kotlinx.coroutines.delay(150); val back = app.streamsetu.tv.ui.components.FocusMemory.last; if (back == null || runCatching { back.requestFocus() }.isFailure) runCatching { contentFocus.requestFocus() } } }
+        LaunchedEffect(nav.top == null) { if (nav.top == null && nav.lastClosedAt > 0) { // Focus may be taken by something else for a moment after a page closes, so the remembered item is asked for until it holds focus.
+            repeat(10) {
+                kotlinx.coroutines.delay(150)
+                val back = app.streamsetu.tv.ui.components.FocusMemory.last
+                if (back == null) { runCatching { contentFocus.requestFocus() }; return@repeat }
+                val ok = runCatching { back.requestFocus() }
+                android.util.Log.i("FocusMem", "restore #$it ${ok.exceptionOrNull()?.javaClass?.simpleName ?: "ok"}")
+            } } }
         androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalFocusEnabled provides (nav.top == null), app.streamsetu.tv.ui.components.LocalSidebarEntry provides sidebarEntry) {
-        Column(Modifier.fillMaxSize()) {
-            TopBar(nav.tab, topFocus, onHasFocus = { topBarFocused = it }, canAutoSelect = { nav.canAutoSelect() }, onSelect = { nav.tab = it })
-            Box(Modifier.weight(1f).fillMaxWidth().focusRequester(contentFocus).focusRestorer()) {
+        // The page fills the screen; the top bar floats over it (transparent on Home, where the hero picture runs underneath).
+        Box(Modifier.fillMaxSize()) {
+            val onHome = nav.tab == Tab.HOME && hasSources?.isNotEmpty() == true
+            Box(Modifier.fillMaxSize().padding(top = if (onHome) androidx.compose.ui.unit.Dp(0f) else app.streamsetu.tv.ui.theme.Tokens.headerHeight).focusRequester(contentFocus)) {
                 when {
                     hasSources == null -> {}
                     hasSources!!.isEmpty() && nav.tab != Tab.SETTINGS -> FirstRun(onAdd = { nav.open(Overlay.AddPlaylist) })
@@ -123,6 +130,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                     }
                 }
             }
+            TopBar(nav.tab, topFocus, transparent = onHome, onHasFocus = { topBarFocused = it }, canAutoSelect = { nav.canAutoSelect() }, onSelect = { nav.tab = it })
         }
         }
         androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalInOverlay provides true) {

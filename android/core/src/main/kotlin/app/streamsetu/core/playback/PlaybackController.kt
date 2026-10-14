@@ -61,6 +61,7 @@ class PlaybackController(
     private var progressJob: Job? = null
     private var waitingForNetwork = false
     private var appliedPreferredTracks = false
+    private val closedAt = HashMap<String, Long>()      // when a stream of each playlist was last closed: one-connection accounts need a moment
     private var loggedStart = false      // a play is logged once, however many times it is retried or moved to the other engine
 
     init {
@@ -75,6 +76,7 @@ class PlaybackController(
 
     /** Starts [item]. A movie or episode resumes at [resumeAtMs] (when the Settings allow it). */
     fun play(item: Playable, resumeAtMs: Long = 0) {
+        _current.value?.let { closedAt[it.sourceId] = System.currentTimeMillis() }
         saveProgress()
         job?.cancel()
         attempt = 0; switchedEngine = false; appliedPreferredTracks = false; loggedStart = false
@@ -87,6 +89,9 @@ class PlaybackController(
     }
 
     private suspend fun startNow(item: Playable, forced: EngineKind?) {
+        // A provider that allows one connection keeps the last one open for a few seconds; opening another at once is refused or very slow.
+        val wait = 3500 - (System.currentTimeMillis() - (closedAt[item.sourceId] ?: 0L))
+        if (wait in 1..3500) { android.util.Log.i("Playback", "pacing: waiting ${wait} ms for the provider"); delay(wait) }
         val url = resolver.resolve(item.sourceId, item.streamRef)
         if (url == null) { _state.value = PlaybackState.Failed(PlaybackError(ErrorKind.NOT_FOUND, "The playlist for this item is gone or has no login.")); return }
         val container = StreamContainer.of(url, item.isLive)
@@ -183,6 +188,7 @@ class PlaybackController(
     fun stop() {
         saveProgress()
         job?.cancel(); progressJob?.cancel()
+        _current.value?.let { closedAt[it.sourceId] = System.currentTimeMillis() }
         _engine.value?.stop()
         _current.value = null; _state.value = PlaybackState.Idle
     }

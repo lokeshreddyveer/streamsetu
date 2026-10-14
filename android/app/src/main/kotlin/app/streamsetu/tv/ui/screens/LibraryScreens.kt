@@ -15,7 +15,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.streamsetu.core.data.repo.UserRepository
@@ -29,6 +28,12 @@ import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.launch
 
+private val movieShortcuts = listOf(Chip("featured", "Featured", Icons.Filled.AutoAwesome), Chip("all", "All Movies", Icons.Filled.GridView), Chip("added", "Recently Added", Icons.Filled.History),
+    Chip("continue", "Continue Watching", Icons.Filled.PlayArrow), Chip("favorites", "Favorites", Icons.Filled.FavoriteBorder), Chip("later", "Watch Later", Icons.Filled.BookmarkBorder))
+private val seriesShortcuts = listOf(Chip("all", "All Series", Icons.Filled.GridView), Chip("added", "Recently Added", Icons.Filled.History), Chip("continue", "Continue Watching", Icons.Filled.PlayArrow),
+    Chip("favorites", "Favorites", Icons.Filled.FavoriteBorder), Chip("later", "Watch Later", Icons.Filled.BookmarkBorder))
+
+/** Movies: category pills under the top bar, then a grid of posters. */
 @Composable
 fun MoviesScreen(vm: MoviesViewModel, c: AppContainer, nav: Navigator) {
     val categories by vm.categories.collectAsState()
@@ -37,22 +42,22 @@ fun MoviesScreen(vm: MoviesViewModel, c: AppContainer, nav: Navigator) {
     val movies = moviesOrNull ?: emptyList()
     if (moviesOrNull == null && categories.isEmpty()) { Loading(); return }
     if (categories.isEmpty() && movies.isEmpty()) { EmptyState("No movies yet", "This playlist has no movies. Add one in Settings."); return }
-    val title = Pin.forTab(Tab.MOVIES).firstOrNull { pinKey(it, Tab.MOVIES) == sel }?.title ?: categories.firstOrNull { it.id == sel }?.name ?: "Movies"
-    Row(Modifier.fillMaxSize()) {
-        ContextSidebar(Pin.forTab(Tab.MOVIES), categories, sel, { sel = it }, pinId = { pinKey(it, Tab.MOVIES) })
-        Box(Modifier.weight(1f).fillMaxHeight()) { MoviesPage(title, movies, c, nav) }
+    val folders = categories.map { Chip(it.id, it.name) }
+    val chips = movieShortcuts
+    val folder = folders.firstOrNull { it.id == sel }
+    val title = chips.firstOrNull { it.id == sel }?.title ?: folder?.title ?: "Movies"
+    var picking by remember { mutableStateOf(false) }
+    if (picking) CategoryPicker("Movie categories", folders, sel, { sel = it; picking = false }, { picking = false })
+    Column(Modifier.fillMaxSize()) {
+        ChipRow(chips, sel, { sel = it }, moreLabel = folder?.title, moreSelected = folder != null, onMore = { picking = true })
+        Row(Modifier.padding(start = Tokens.screenPadding, top = 2.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Label(title, Tokens.pageTitle, Tokens.text, FontWeight.Bold); Label("${movies.size} movies", Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(bottom = 2.dp))
+        }
+        if (movies.isEmpty()) EmptyState("Nothing here yet", "Movies you add to $title appear here.")
+        else LazyVerticalGrid(GridCells.Adaptive(Tokens.posterWidth), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(start = Tokens.screenPadding, end = Tokens.screenPadding, top = 4.dp, bottom = 28.dp)) {
+            items(movies, key = { it.id }) { m -> PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, subtitle = m.year?.toString(), badge = ratingBadge(m.rating)) }
+        }
     }
-}
-
-/** The sidebar's ids differ a little between sections ("Library" is "all" in Series, "All Movies" is "all" in Movies). */
-private fun pinKey(p: Pin, tab: Tab): String = when (p) {
-    Pin.RECENTLY_ADDED -> "added"
-    Pin.CONTINUE -> "continue"
-    Pin.FAVOURITES -> "favorites"
-    Pin.WATCH_LATER -> "later"
-    Pin.FEATURED -> "featured"
-    Pin.ALL_MOVIES, Pin.LIBRARY -> "all"
-    else -> p.id
 }
 
 @Composable
@@ -63,15 +68,20 @@ fun SeriesScreen(vm: SeriesViewModel, nav: Navigator) {
     val series = seriesOrNull ?: emptyList()
     if (seriesOrNull == null && categories.isEmpty()) { Loading(); return }
     if (categories.isEmpty() && series.isEmpty()) { EmptyState("No series yet", "This playlist has no series. Add an Xtream playlist in Settings."); return }
-    val title = Pin.forTab(Tab.SERIES).firstOrNull { pinKey(it, Tab.SERIES) == sel }?.title ?: categories.firstOrNull { it.id == sel }?.name ?: "Series"
-    Row(Modifier.fillMaxSize()) {
-        ContextSidebar(Pin.forTab(Tab.SERIES), categories, sel, { sel = it }, pinId = { pinKey(it, Tab.SERIES) })
-        Column(Modifier.weight(1f).fillMaxHeight().padding(start = 24.dp, top = 16.dp, end = Tokens.screenPadding)) {
-            Label(title, Tokens.pageTitle, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(bottom = 2.dp))
-            Label("${series.size} series", Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(bottom = 8.dp))
-            LazyVerticalGrid(GridCells.Adaptive(Tokens.posterWidth), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(top = 4.dp, bottom = 28.dp), modifier = Modifier.focusRestorer()) {
-                items(series, key = { it.id }) { s -> PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, subtitle = s.year?.toString()) }
-            }
+    val folders = categories.map { Chip(it.id, it.name) }
+    val chips = seriesShortcuts
+    val folder = folders.firstOrNull { it.id == sel }
+    val title = chips.firstOrNull { it.id == sel }?.title ?: folder?.title ?: "Series"
+    var picking by remember { mutableStateOf(false) }
+    if (picking) CategoryPicker("Series categories", folders, sel, { sel = it; picking = false }, { picking = false })
+    Column(Modifier.fillMaxSize()) {
+        ChipRow(chips, sel, { sel = it }, moreLabel = folder?.title, moreSelected = folder != null, onMore = { picking = true })
+        Row(Modifier.padding(start = Tokens.screenPadding, top = 2.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Label(title, Tokens.pageTitle, Tokens.text, FontWeight.Bold); Label("${series.size} series", Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(bottom = 2.dp))
+        }
+        if (series.isEmpty()) EmptyState("Nothing here yet", "Series you add to $title appear here.")
+        else LazyVerticalGrid(GridCells.Adaptive(Tokens.posterWidth), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(start = Tokens.screenPadding, end = Tokens.screenPadding, top = 4.dp, bottom = 28.dp)) {
+            items(series, key = { it.id }) { s -> PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, subtitle = s.year?.toString(), badge = ratingBadge(s.rating)) }
         }
     }
 }
@@ -110,7 +120,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
             }
             if (loading && episodes.isEmpty()) Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Spinner(); Label("Loading episodes…", color = Tokens.textSecondary) }
             error?.let { if (episodes.isEmpty()) Label(it, color = Tokens.danger, modifier = Modifier.padding(top = 12.dp)) }
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp), modifier = Modifier.focusRestorer()) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp), modifier = Modifier) {
                 items(seasons.keys.toList()) { n ->
                     Focusable({ season = n }, container = if (n == season) Tokens.accent.copy(alpha = 0.22f) else Tokens.card, scaleOnFocus = 1.05f) { f ->
                         LaunchedEffect(f) { if (f) season = n }
@@ -118,7 +128,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                     }
                 }
             }
-            LazyColumn(Modifier.focusRestorer(), verticalArrangement = Arrangement.spacedBy(3.dp), contentPadding = PaddingValues(bottom = 28.dp)) {
+            LazyColumn(Modifier, verticalArrangement = Arrangement.spacedBy(3.dp), contentPadding = PaddingValues(bottom = 28.dp)) {
                 items(seasons[season].orEmpty(), key = { it.id }) { e ->
                     val p = progress[e.id]
                     Focusable({ play(c, nav, EpisodePlayable(e, s), queue) }, Modifier.fillMaxWidth(), scaleOnFocus = 1.01f, hairline = true) {
@@ -154,7 +164,8 @@ fun MovieDetailScreen(movie: Movie, c: AppContainer, nav: Navigator) {
 
     Box(Modifier.fillMaxSize().background(Tokens.background)) {
         val backdrop = info?.backdrop ?: movie.posterUrl
-        if (!backdrop.isNullOrBlank()) AsyncImage(backdrop, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.22f)
+        if (!backdrop.isNullOrBlank()) AsyncImage(backdrop, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = if (info?.backdrop != null) 0.9f else 0.25f)
+        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.horizontalGradient(0f to androidx.compose.ui.graphics.Color(0xF50B0D12), 0.6f to androidx.compose.ui.graphics.Color(0xB00B0D12), 1f to androidx.compose.ui.graphics.Color(0x330B0D12))))
         Row(Modifier.fillMaxSize().padding(horizontal = Tokens.screenPadding, vertical = 20.dp), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
             Box(Modifier.width(150.dp).aspectRatio(150f / 218f)) { PosterPlaceholder(movie.title, Modifier.fillMaxSize()); if (!movie.posterUrl.isNullOrBlank()) AsyncImage(movie.posterUrl, movie.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {

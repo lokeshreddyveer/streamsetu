@@ -55,7 +55,7 @@ fun Eyebrow(text: String, modifier: Modifier = Modifier, color: Color = Tokens.t
 val LocalFocusEnabled = androidx.compose.runtime.compositionLocalOf { true }
 
 /** The last thing on the base page that held focus, so closing a page (a movie, an episode list, the player) returns you to it. */
-object FocusMemory { var last: FocusRequester? = null }
+object FocusMemory { var last: FocusRequester? = null; var lastHasFocus = false }
 
 /** True inside a full-screen page (movie, series, add playlist, player): its buttons are not part of the remembered base page. */
 val LocalInOverlay = androidx.compose.runtime.compositionLocalOf { false }
@@ -73,6 +73,7 @@ fun Focusable(
     focusedContainer: Color = Tokens.elevated,
     scaleOnFocus: Float = 1.05f,
     hairline: Boolean = false,
+    onFocus: (Boolean) -> Unit = {},
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -88,14 +89,19 @@ fun Focusable(
             .then(if (focused) Modifier.border(BorderStroke(2.dp, Tokens.accent), shape) else if (hairline) Modifier.border(BorderStroke(1.dp, Tokens.line), shape) else Modifier)
             .focusRequester(own)
             .focusProperties { canFocus = enabled }
-            .onFocusChanged { focused = it.isFocused; if (it.isFocused && enabled && !inOverlay) FocusMemory.last = own }
+            .onFocusChanged {
+                focused = it.isFocused
+                onFocus(it.isFocused)
+                if (it.isFocused && enabled && !inOverlay) { FocusMemory.last = own; FocusMemory.lastHasFocus = true }
+                else if (!it.isFocused && FocusMemory.last === own) FocusMemory.lastHasFocus = false
+            }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
     ) { content(focused) }
 }
 
 @Composable
-fun TvButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, primary: Boolean = false) {
-    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = if (primary) Tokens.playPill else Tokens.elevated,
+fun TvButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, primary: Boolean = false, onFocus: (Boolean) -> Unit = {}) {
+    Focusable(onClick, modifier, onFocus = onFocus, shape = RoundedCornerShape(50), container = if (primary) Tokens.playPill else Tokens.elevated,
         focusedContainer = if (primary) Tokens.playPill else Tokens.elevated.copy(alpha = 1f), scaleOnFocus = 1.05f) { _ ->
         Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (icon != null) Image(icon, null, Modifier.size(15.dp), colorFilter = ColorFilter.tint(Tokens.text))

@@ -12,7 +12,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.streamsetu.core.model.*
@@ -36,7 +35,7 @@ fun SettingsScreen(vm: SettingsViewModel, c: AppContainer, nav: Navigator) {
         Row(Modifier.fillMaxHeight().width(Tokens.sidebarWidth).background(Tokens.panel)) {
             Column(Modifier.weight(1f).padding(8.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 SettingsPage.entries.forEach { p ->
-                    Focusable({ page = p.name }, (if (p == current) (LocalSidebarEntry.current?.let { Modifier.focusRequester(it) } ?: Modifier) else Modifier).fillMaxWidth(), shape = RoundedCornerShape(Tokens.radiusSmall),
+                    Focusable({ page = p.name }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(Tokens.radiusSmall),
                         container = if (p == current) androidx.compose.ui.graphics.Color(0x0AFFFFFF) else androidx.compose.ui.graphics.Color.Transparent, focusedContainer = androidx.compose.ui.graphics.Color(0x1FFFFFFF), scaleOnFocus = 1.02f) { f ->
                         LaunchedEffect(f) { if (f && p != current) { kotlinx.coroutines.delay(250); page = p.name } }
                         Label(p.title, Tokens.row, if (p == current || f) Tokens.accent else Tokens.textSecondary, if (p == current) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
@@ -45,7 +44,7 @@ fun SettingsScreen(vm: SettingsViewModel, c: AppContainer, nav: Navigator) {
             }
             Box(Modifier.fillMaxHeight().width(1.dp).background(Tokens.line))
         }
-        LazyColumn(Modifier.weight(1f).fillMaxHeight().focusRestorer(), contentPadding = PaddingValues(start = 24.dp, top = 16.dp, end = Tokens.screenPadding, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = PaddingValues(start = 24.dp, top = 16.dp, end = Tokens.screenPadding, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { Label(current.title, Tokens.pageTitle, Tokens.text, FontWeight.SemiBold) }
             when (current) {
                 SettingsPage.GENERAL -> general(c)

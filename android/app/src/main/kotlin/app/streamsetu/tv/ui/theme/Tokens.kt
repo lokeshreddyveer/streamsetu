@@ -29,7 +29,7 @@ object Tokens {
     val accent2 get() = accent
 
     // Mac: radius 7 / 8 / 10 / 12, sidebar 184, header 54, poster 150 x 218, landscape 240 x 135.
-    val radiusSmall = 7.dp; val radius = 8.dp; val radiusPanel = 10.dp; val radiusLarge = 12.dp
+    val radiusSmall = 8.dp; val radius = 10.dp; val radiusPanel = 12.dp; val radiusLarge = 16.dp
     val sidebarWidth = 176.dp
     val headerHeight = 44.dp
     val posterWidth = 112.dp
