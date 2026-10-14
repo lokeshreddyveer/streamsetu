@@ -11,9 +11,10 @@ import app.streamsetu.core.security.CredentialStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
 
 /** Reads a playlist into the database. Old rows of that playlist are replaced only after the new ones were read successfully. */
-class SyncService(private val db: AppDatabase, private val sources: SourceRepository, private val credentials: CredentialStore) {
+class SyncService(private val db: AppDatabase, private val sources: SourceRepository, private val credentials: CredentialStore, private val resolver: app.streamsetu.core.net.StreamResolver? = null) {
 
     data class Result(val channels: Int, val movies: Int, val series: Int)
 
@@ -51,7 +52,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
                 M3uParser.parse(lines, onHeader = { guideUrl = it }) { e ->
                     order++
                     when (e.kind) {
-                        ContentKind.CHANNEL -> channels += ChannelEntity(
+                        ContentKind.CHANNEL -> if (!ChannelFilter.isDivider(e.name)) channels += ChannelEntity(
                             id = "${s.id}:ch:${stableId(e)}", sourceId = s.id, categoryId = category(e.group ?: "Other", ContentKind.CHANNEL), name = e.name,
                             number = e.channelNumber, logoUrl = e.logo, streamRef = e.url, epgId = e.tvgId ?: e.tvgName, catchupDays = e.catchupDays, sortOrder = order,
                         )
@@ -83,6 +84,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         val auth = Xtream.parseObject(Http.text(Xtream.api(host, user, pass)))
         val info = auth?.get("user_info") as? JsonObject
         if (info == null || info.int("auth") == 0) error("The server refused the login. Check the user name and password.")
+        resolver?.remember(s.id, (info["allowed_output_formats"] as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }.orEmpty())
 
         val categories = ArrayList<CategoryEntity>()
         fun cats(action: String, kind: ContentKind) = fetch(action).forEachIndexed { i, o ->
@@ -93,6 +95,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
 
         val channels = fetch("get_live_streams").mapIndexedNotNull { i, o ->
             val id = o.str("stream_id") ?: return@mapIndexedNotNull null
+            if (ChannelFilter.isDivider(o.str("name").orEmpty())) return@mapIndexedNotNull null
             ChannelEntity("${s.id}:ch:$id", s.id, o.str("category_id")?.let { "${s.id}:CHANNEL:$it" }, o.str("name") ?: "Channel $id", o.int("num"),
                 o.str("stream_icon"), "live:$id:m3u8", o.str("epg_channel_id"), o.int("tv_archive_duration") ?: 0, i)
         }
@@ -145,5 +148,14 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             mv.chunked(500).forEach { c.putMovies(it) }
             sr.chunked(500).forEach { c.putSeries(it) }
         }
+    }
+}
+
+/** Providers put divider rows in the channel list ("####### Bulgaria #######", "=== SPORTS ==="). They are not streams. */
+object ChannelFilter {
+    fun isDivider(name: String): Boolean {
+        val letters = name.count { it.isLetterOrDigit() }
+        val marks = name.count { it == '#' || it == '=' || it == '*' || it == '_' || it == '-' || it == '~' || it == '•' }
+        return name.isBlank() || (marks >= 4 && marks >= letters / 2)
     }
 }

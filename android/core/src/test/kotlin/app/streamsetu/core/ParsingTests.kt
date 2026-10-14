@@ -4,6 +4,7 @@ import app.streamsetu.core.model.ContentKind
 import app.streamsetu.core.parse.M3uParser
 import app.streamsetu.core.parse.Xtream
 import app.streamsetu.core.parse.XmltvParser
+import app.streamsetu.core.sync.ChannelFilter
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -67,5 +68,18 @@ class ParsingTests {
         var found: String? = null
         M3uParser.parse(sequenceOf("#EXTM3U url-tvg=\"http://g/epg.xml.gz,http://h/x.xml\"", "#EXTINF:-1,A", "http://s/1"), onHeader = { found = it }) {}
         assertEquals("http://g/epg.xml.gz", found)
+    }
+
+    @Test fun dividerRowsAreNotChannels() {
+        for (n in listOf("BG: ################## Bulgaria Channels######################", "=== SPORTS ===", "-----------", "")) assertTrue(n, ChannelFilter.isDivider(n))
+        for (n in listOf("BBC One HD", "Star Sports 1", "T-Series", "Sky Sports - Cricket")) assertFalse(n, ChannelFilter.isDivider(n))
+    }
+
+    @Test fun liveFormatFollowsWhatTheAccountAllows() {
+        val pick = app.streamsetu.core.net.StreamResolver.Companion::pickLiveFormat
+        assertEquals("ts", pick(listOf("ts"), "m3u8"))
+        assertEquals("m3u8", pick(listOf("m3u8", "ts"), "ts"))
+        assertEquals("m3u8", pick(emptyList(), "m3u8"))
+        assertEquals("ts", pick(emptyList(), "ts"))
     }
 }

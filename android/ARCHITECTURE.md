@@ -52,15 +52,27 @@ remote OK ─▶ AppContainer.play(item, queue) ─▶ StreamResolver ─▶ Pla
 OK shows the bar (and pauses a movie when the bar is already visible). Left/Right skip 10 s in a movie. Up/Down change channel in a live list
 (and step episodes in a series). Play/pause and fast-forward/rewind media keys work. Back closes the player.
 
-## Built since the first version
-Guide screen (now and next per channel, from the XMLTV guide; M3U `url-tvg` and Xtream `xmltv.php` are read after each sync), Favourites tab
-(channels and Watch Later), audio / subtitle chooser (MENU), sleep timer, hide-adult-categories switch (on by default).
+## Mac parity (what was copied from the macOS app)
+* **Layout:** top bar with Home, Live TV, Movies, Series, TV Guide, plus Search and Settings; a contextual sidebar per section with the Mac's pinned shortcuts
+  (Discover, Continue Watching, Recently Watched, Watch History, Favorites, Watch Later, Featured, All Movies, Recently Added, All Channels…) and a "Folders" list below.
+* **Design:** the Obsidian palette and the Mac's radii; flat cards with a thin accent ring only while focused; coral Play pill; Discover banner with "DISCOVER · FROM YOUR LIBRARY".
+* **Engines:** `PlayerEngine` with `ExoEngine` and `MpvEngine` (libmpv), `EngineSelector` (Automatic / ExoPlayer / MPV, same rules as the Mac), switch to the other engine once on a
+  format failure, retry policy, buffering modes (Automatic, Low latency, Standard, Large), resume and "play next episode automatically".
+* **Settings:** General, Playback, Library, Advanced pages with grouped rows; every control saves at once (`AppSettings`).
+* **Navigation:** tabs and sidebar entries show their content as focus rests on them; Back goes up to the top bar first; focus is remembered per list.
+
+## Provider behaviour learned from a real account
+* Xtream accounts say which live formats they allow (`allowed_output_formats`). Many allow only `ts`; asking for `m3u8` is refused. `StreamResolver` follows the account.
+* Playlists contain divider rows ("#### Bulgaria ####") that are not streams; they are dropped at sync.
+
+## Verified on a Fire TV Stick 4K (AFTKM, Fire OS 7) with a real Xtream account
+Live TV (MPEG-TS) on ExoPlayer and MPV, movies (MP4) on both, series episodes, engine fallback, add-playlist with the on-screen keyboard, focus and back navigation.
 
 ## Not built yet
 1. Catch-up playback and a time-grid guide.
 2. PIN protection for the adult switch.
 3. Stalker portals, HDHomeRun, local files and WebDAV.
-4. MPV engine for MKV/AVI where ExoPlayer cannot decode (ExoPlayer plays most MKV and MP4; AVI and exotic codecs are the gap).
+4. Subtitle styling settings; the aspect ratio / zoom controls of the Mac player.
 5. Secure-DNS fallback for blocked server names (done on Apple; same idea fits `StreamResolver`).
 6. Amazon Appstore listing; sideload the APK until then.
 
@@ -74,4 +86,4 @@ adb connect <fire-tv-ip>:5555 && adb install -r app/build/outputs/apk/debug/app-
 On a Fire TV: Settings → My Fire TV → Developer Options → ADB debugging (and Apps from unknown sources) → on.
 
 ## Verification status
-Compiles; 13 unit tests pass (M3U/Xtream/XMLTV parsing, retry policy, parental words). Not yet run on a device or emulator.
+Unit tests: parsers, retry policy, parental words, divider rows, live-format choice.

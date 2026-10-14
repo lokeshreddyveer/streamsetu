@@ -20,8 +20,6 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
 import app.streamsetu.core.playback.PlaybackState
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.ui.components.Label
@@ -79,10 +77,27 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
                 }
             },
     ) {
+        // The picture comes from whichever engine is playing (ExoPlayer or MPV); switching engine swaps the view.
+        val engine by playback.engine.collectAsState()
         AndroidView(
-            factory = { ctx -> PlayerView(ctx).apply { player = playback.player; useController = false; resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT; keepScreenOn = true } },
+            factory = { ctx -> android.widget.FrameLayout(ctx) },
+            update = { frame ->
+                val e = engine
+                val view = e?.view(frame.context)
+                if (view != null && frame.tag !== e) {
+                    frame.removeAllViews(); (view.parent as? android.view.ViewGroup)?.removeView(view)
+                    frame.addView(view, android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT))
+                    frame.tag = e
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
+        val showInfo by c.settings.showStreamInfo.collectAsState()
+        if (showInfo) {
+            var info by remember { mutableStateOf("") }
+            LaunchedEffect(state, engine) { while (true) { info = (playback.engineKind?.label ?: "") + " · " + playback.streamInfo(); delay(2000) } }
+            Label(info, Tokens.caption, Tokens.textSecondary, modifier = Modifier.align(Alignment.TopEnd).padding(24.dp))
+        }
 
         // Status in the middle: loading, retrying, failed.
         Box(Modifier.align(Alignment.Center)) {

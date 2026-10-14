@@ -27,6 +27,7 @@ interface CatalogDao {
     // Channels
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putChannels(list: List<ChannelEntity>)
     @Query("DELETE FROM channels WHERE sourceId = :sourceId") suspend fun clearChannels(sourceId: String)
+    @Query("DELETE FROM channels WHERE name LIKE '%####%' OR name LIKE '%====%' OR name LIKE '%----%' OR name LIKE '%****%' OR TRIM(name) = ''") suspend fun deleteDividers(): Int
     @Query("SELECT * FROM channels WHERE categoryId = :categoryId ORDER BY sortOrder, name") fun channelsIn(categoryId: String): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels ORDER BY sortOrder, name LIMIT :limit") fun allChannels(limit: Int): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE id = :id") suspend fun channel(id: String): ChannelEntity?
@@ -38,6 +39,9 @@ interface CatalogDao {
     @Query("DELETE FROM movies WHERE sourceId = :sourceId") suspend fun clearMovies(sourceId: String)
     @Query("SELECT * FROM movies WHERE categoryId = :categoryId ORDER BY title LIMIT :limit") fun moviesIn(categoryId: String, limit: Int): Flow<List<MovieEntity>>
     @Query("SELECT * FROM movies ORDER BY addedAt DESC LIMIT :limit") fun latestMovies(limit: Int): Flow<List<MovieEntity>>
+    @Query("SELECT * FROM movies ORDER BY title LIMIT :limit") fun allMovies(limit: Int): Flow<List<MovieEntity>>
+    @Query("SELECT * FROM movies WHERE id IN (:ids)") suspend fun moviesByIds(ids: List<String>): List<MovieEntity>
+    @Query("SELECT * FROM series WHERE id IN (:ids)") suspend fun seriesByIds(ids: List<String>): List<SeriesEntity>
     @Query("SELECT * FROM movies WHERE id = :id") suspend fun movie(id: String): MovieEntity?
     @Query("SELECT * FROM movies WHERE posterUrl IS NOT NULL AND posterUrl != '' ORDER BY RANDOM() LIMIT :n") suspend fun randomMovies(n: Int): List<MovieEntity>
     @Query("SELECT * FROM series WHERE posterUrl IS NOT NULL AND posterUrl != '' ORDER BY RANDOM() LIMIT :n") suspend fun randomSeries(n: Int): List<SeriesEntity>
@@ -80,6 +84,8 @@ interface UserDao {
 
     @Insert suspend fun log(e: WatchLogEntity)
     @Query("SELECT * FROM watch_log WHERE kind = 'CHANNEL' ORDER BY playedAt DESC LIMIT :limit") fun recentChannelLog(limit: Int): Flow<List<WatchLogEntity>>
+    @Query("SELECT * FROM watch_log ORDER BY playedAt DESC LIMIT :limit") fun history(limit: Int): Flow<List<WatchLogEntity>>
+    @Query("DELETE FROM watch_log") suspend fun clearLog()
     @Query("DELETE FROM watch_log WHERE id NOT IN (SELECT id FROM watch_log ORDER BY playedAt DESC LIMIT 500)") suspend fun trimLog()
     @Query("SELECT itemId, COUNT(*) AS plays FROM watch_log WHERE kind = 'CHANNEL' AND playedAt > :since GROUP BY itemId HAVING plays >= 2 ORDER BY plays DESC LIMIT :limit")
     fun mostWatched(since: Long, limit: Int): Flow<List<PlayCount>>

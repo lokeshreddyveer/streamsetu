@@ -5,16 +5,36 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import app.streamsetu.core.model.Movie
 import app.streamsetu.core.model.Series
 
-/** The top-level places in the side rail. */
-enum class Tab(val title: String) { HOME("Home"), LIVE("Live TV"), GUIDE("Guide"), FAVOURITES("Favourites"), MOVIES("Movies"), SERIES("Series"), SEARCH("Search"), SETTINGS("Settings") }
+/** The sections of the top bar, in the Mac app's order. Search and Settings are the two icons on the right. */
+enum class Tab(val title: String) { HOME("Home"), LIVE("Live TV"), MOVIES("Movies"), SERIES("Series"), GUIDE("TV Guide"), SEARCH("Search"), SETTINGS("Settings") }
+
+/** A fixed shortcut at the top of a section's sidebar (the Mac's `Shortcut`). */
+enum class Pin(val id: String, val title: String) {
+    DISCOVER("discover", "Discover"), CONTINUE("continue", "Continue Watching"), RECENT("recent", "Recently Watched"), HISTORY("history", "Watch History"),
+    FAVOURITES("favorites", "Favorites"), WATCH_LATER("later", "Watch Later"), FEATURED("featured", "Featured"), ALL_MOVIES("all", "All Movies"),
+    RECENTLY_ADDED("added", "Recently Added"), LIBRARY("all", "Library"), ALL_CHANNELS("all", "All Channels");
+
+    companion object {
+        fun forTab(tab: Tab): List<Pin> = when (tab) {
+            Tab.HOME -> listOf(DISCOVER, CONTINUE, RECENT, HISTORY, FAVOURITES, WATCH_LATER)
+            Tab.MOVIES -> listOf(FEATURED, ALL_MOVIES, RECENTLY_ADDED, CONTINUE, FAVOURITES, WATCH_LATER)
+            Tab.SERIES -> listOf(LIBRARY, RECENTLY_ADDED, CONTINUE, FAVOURITES, WATCH_LATER)
+            Tab.LIVE -> listOf(ALL_CHANNELS, RECENT, FAVOURITES)
+            Tab.GUIDE -> listOf(ALL_CHANNELS, FAVOURITES)
+            else -> emptyList()
+        }
+    }
+}
 
 /** Screens that cover the whole window. */
 sealed interface Overlay {
     data object Player : Overlay
     data object AddPlaylist : Overlay
     data class SeriesDetail(val series: Series) : Overlay
+    data class MovieDetail(val movie: Movie) : Overlay
 }
 
 /** What is on screen. Back closes the top overlay, then returns to Home, then leaves the app. */

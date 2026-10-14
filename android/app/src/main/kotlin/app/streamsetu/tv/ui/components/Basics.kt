@@ -72,7 +72,7 @@ fun Focusable(
             .clip(shape)
             .background(if (focused) focusedContainer else container)
             .then(if (focused) Modifier.border(BorderStroke(2.dp, Tokens.accent), shape) else if (hairline) Modifier.border(BorderStroke(1.dp, Tokens.line), shape) else Modifier)
-            .onFocusChanged { focused = it.isFocused }
+            .onFocusChanged { focused = it.isFocused; android.util.Log.d("Focus", "focus=${it.isFocused} hasFocus=${it.hasFocus} ${modifier.hashCode()}") }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
     ) { content(focused) }
 }
@@ -81,8 +81,8 @@ fun Focusable(
 fun TvButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, primary: Boolean = false) {
     Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = if (primary) Tokens.playPill else Tokens.elevated,
         focusedContainer = if (primary) Tokens.playPill else Tokens.elevated.copy(alpha = 1f), scaleOnFocus = 1.05f) { _ ->
-        Row(Modifier.padding(horizontal = 24.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (icon != null) Image(icon, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Tokens.text))
+        Row(Modifier.padding(horizontal = 18.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (icon != null) Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(Tokens.text))
             Label(text, Tokens.row, Tokens.text, FontWeight.SemiBold)
         }
     }
@@ -103,13 +103,13 @@ fun PosterPlaceholder(title: String, modifier: Modifier = Modifier) {
 /** A poster, 150 x 218 on the Mac scaled up: artwork, title and a quiet subtitle under it. A thin bar shows how far you are. */
 @Composable
 fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null) {
-    Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(150f / 218f)) { _ ->
             PosterPlaceholder(title, Modifier.fillMaxSize())
             if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
         }
-        Label(title, Tokens.row, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))
+        Label(title, Tokens.small, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))
         if (subtitle != null) Label(subtitle, Tokens.caption, Tokens.textTertiary, modifier = Modifier.padding(horizontal = 2.dp))
     }
 }
@@ -129,7 +129,7 @@ fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: 
 }
 
 @Composable
-fun ChannelLogo(url: String?, name: String, size: Dp = 56.dp) {
+fun ChannelLogo(url: String?, name: String, size: Dp = 40.dp) {
     Box(Modifier.size(size).clip(RoundedCornerShape(Tokens.radius)).background(Tokens.elevated), Alignment.Center) {
         if (url.isNullOrBlank()) Label(name.take(2).uppercase(), Tokens.row, Tokens.textTertiary, FontWeight.Bold)
         else AsyncImage(url, name, Modifier.fillMaxSize().padding(5.dp), contentScale = ContentScale.Fit)
@@ -137,7 +137,7 @@ fun ChannelLogo(url: String?, name: String, size: Dp = 56.dp) {
 }
 
 @Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier) = Label(text, Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = modifier.padding(bottom = 10.dp))
+fun SectionTitle(text: String, modifier: Modifier = Modifier) = Label(text, Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = modifier.padding(bottom = 6.dp))
 
 @Composable
 fun EmptyState(title: String, message: String, modifier: Modifier = Modifier, action: (@Composable () -> Unit)? = null) {

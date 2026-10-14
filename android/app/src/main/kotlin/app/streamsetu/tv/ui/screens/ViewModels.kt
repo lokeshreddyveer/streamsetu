@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.streamsetu.core.data.repo.SearchResults
 import app.streamsetu.core.model.*
+import app.streamsetu.core.data.repo.UserRepository
 import app.streamsetu.tv.AppContainer
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -39,49 +40,71 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
     val favourites: StateFlow<List<Channel>> = c.user.favouriteIds().map { ids -> ids.mapNotNull { c.catalog.channel(it) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val history: StateFlow<List<app.streamsetu.core.data.db.WatchLogEntity>> = c.user.history(200).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val watchLater: StateFlow<List<Movie>> = c.user.favouriteIds(UserRepository.WATCH_LATER).map { c.catalog.moviesByIds(it.toList()) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val favouriteMovies: StateFlow<List<Movie>> = c.user.favouriteIds(UserRepository.FAVOURITES).map { c.catalog.moviesByIds(it.toList()) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    /** Plays something from the history list again. */
+    fun replay(h: app.streamsetu.core.data.db.WatchLogEntity, c0: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
+        viewModelScope.launch {
+            when (h.kind) {
+                "CHANNEL" -> c.catalog.channel(h.itemId)?.let { app.streamsetu.tv.play(c0, nav, ChannelPlayable(it)) }
+                "MOVIE" -> c.catalog.movie(h.itemId)?.let { nav.open(app.streamsetu.tv.nav.Overlay.MovieDetail(it)) }
+                "EPISODE" -> c.catalog.episode(h.itemId)?.let { e -> c.catalog.series(e.seriesId)?.let { app.streamsetu.tv.play(c0, nav, EpisodePlayable(e, it)) } }
+            }
+        }
+    }
     val latestMovies: StateFlow<List<Movie>> = c.catalog.latestMovies(30).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val someSeries: StateFlow<List<Series>> = c.catalog.allSeries(30).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveViewModel(private val c: AppContainer) : ViewModel() {
-    val categories: StateFlow<List<Category>> = combine(c.catalog.categories(ContentKind.CHANNEL), c.parental.hideAdult) { l, h -> l.filter { c.parental.visible(it, h) } }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    private val selected = MutableStateFlow<String?>(null)
-    val selectedCategory: StateFlow<String?> = selected
+    val categories: StateFlow<List<Category>> = combine(c.catalog.categories(ContentKind.CHANNEL), c.parental.hideAdult) { l, h -> l.filter { c.parental.visible(it, h) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val favouriteIds: StateFlow<Set<String>> = c.user.favouriteIds().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
-    val channels: StateFlow<List<Channel>> = combine(selected, categories) { s, cats -> s ?: cats.firstOrNull()?.id }.distinctUntilChanged()
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else c.catalog.channels(id) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    /** What is on now, by guide id. */
-    val nowOn: StateFlow<Map<String, EpgProgram>> = channels.map { list -> c.epg.nowFor(list.mapNotNull { it.epgId }) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
-
-    fun select(id: String) { selected.value = id }
+    /** The channels for a sidebar entry: "all", "recent", "favorites", or a folder id. */
+    fun channelsFor(sel: String): Flow<List<Channel>> = when (sel) {
+        "all" -> c.catalog.allChannels(4000)
+        "recent" -> c.user.recentChannelIds(60).map { ids -> ids.mapNotNull { c.catalog.channel(it) } }
+        "favorites" -> c.user.favouriteIds().map { ids -> ids.mapNotNull { c.catalog.channel(it) } }
+        else -> c.catalog.channels(sel)
+    }
+    suspend fun nowOn(list: List<Channel>) = c.epg.nowFor(list.mapNotNull { it.epgId })
     fun toggleFavourite(ch: Channel) = viewModelScope.launch { c.user.setFavourite(ch.id, ContentKind.CHANNEL, ch.id !in favouriteIds.value) }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MoviesViewModel(private val c: AppContainer) : ViewModel() {
-    val categories: StateFlow<List<Category>> = combine(c.catalog.categories(ContentKind.MOVIE), c.parental.hideAdult) { l, h -> l.filter { c.parental.visible(it, h) } }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    private val selected = MutableStateFlow<String?>(null)
-    val selectedCategory: StateFlow<String?> = selected
-    val movies: StateFlow<List<Movie>> = combine(selected, categories) { s, cats -> s ?: cats.firstOrNull()?.id }.distinctUntilChanged()
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else c.catalog.movies(id) }
+    val categories: StateFlow<List<Category>> = combine(c.catalog.categories(ContentKind.MOVIE), c.parental.hideAdult) { l, h -> l.filter { c.parental.visible(it, h) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    fun select(id: String) { selected.value = id }
+
+    /** The movies for a sidebar entry: "featured", "all", "added", "continue", "favorites", "later", or a folder id. */
+    fun moviesFor(sel: String): Flow<List<Movie>> = when (sel) {
+        "featured" -> flow { emit(c.catalog.featured(30).filterIsInstance<MoviePlayable>().map { it.movie }) }
+        "all" -> c.catalog.allMovies()
+        "added" -> c.catalog.latestMovies(120)
+        "continue" -> c.user.continueWatching(60).map { l -> c.catalog.moviesByIds(l.filter { it.kind == ContentKind.MOVIE }.map { it.itemId }) }
+        "favorites" -> c.user.favouriteIds(UserRepository.FAVOURITES).map { c.catalog.moviesByIds(it.toList()) }
+        "later" -> c.user.favouriteIds(UserRepository.WATCH_LATER).map { c.catalog.moviesByIds(it.toList()) }
+        else -> c.catalog.movies(sel)
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SeriesViewModel(private val c: AppContainer) : ViewModel() {
-    val categories: StateFlow<List<Category>> = combine(c.catalog.categories(ContentKind.SERIES), c.parental.hideAdult) { l, h -> l.filter { c.parental.visible(it, h) } }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    private val selected = MutableStateFlow<String?>(null)
-    val selectedCategory: StateFlow<String?> = selected
-    val series: StateFlow<List<Series>> = combine(selected, categories) { s, cats -> s ?: cats.firstOrNull()?.id }.distinctUntilChanged()
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else c.catalog.seriesIn(id) }
+    val categories: StateFlow<List<Category>> = combine(c.catalog.categories(ContentKind.SERIES), c.parental.hideAdult) { l, h -> l.filter { c.parental.visible(it, h) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    fun select(id: String) { selected.value = id }
+
+    /** The series for a sidebar entry: "all", "added", "continue", "favorites", "later", or a folder id. */
+    fun seriesFor(sel: String): Flow<List<Series>> = when (sel) {
+        "all" -> c.catalog.allSeries(600)
+        "added" -> c.catalog.allSeries(120)
+        "continue" -> c.user.continueWatching(60).map { l -> c.catalog.seriesByIds(l.mapNotNull { it.seriesId }.distinct()) }
+        "favorites" -> c.user.favouriteIds(UserRepository.FAVOURITES).map { c.catalog.seriesByIds(it.toList()) }
+        "later" -> c.user.favouriteIds(UserRepository.WATCH_LATER).map { c.catalog.seriesByIds(it.toList()) }
+        else -> c.catalog.seriesIn(sel)
+    }
 }
 
 class SeriesDetailViewModel(private val c: AppContainer, val series: Series) : ViewModel() {
@@ -123,6 +146,7 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
             .getOrElse { it.message ?: "The playlist could not be read." }
     }
     fun remove(s: Source) = viewModelScope.launch { c.sources.remove(s.id); _message.value = "${s.name} was removed." }
+    fun clearHistory() = viewModelScope.launch { c.user.clearHistory(); _message.value = "Watch history cleared." }
 }
 
 class AddPlaylistViewModel(private val c: AppContainer) : ViewModel() {
@@ -158,8 +182,11 @@ class FavouritesViewModel(private val c: AppContainer) : ViewModel() {
 class GuideViewModel(private val c: AppContainer) : ViewModel() {
     data class Row(val channel: Channel, val programmes: List<EpgProgram>)
 
-    val rows: StateFlow<List<Row>> = c.catalog.allChannels(400).map { list ->
-        list.filter { it.epgId != null }.take(200).map { ch -> Row(ch, c.epg.upcoming(c.db, ch.epgId!!)) }
-            .filter { it.programmes.isNotEmpty() }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    /** The guide for "all" channels or just the favourites. */
+    fun rows(sel: String): Flow<List<Row>> {
+        val source: Flow<List<Channel>> = if (sel == "favorites") c.user.favouriteIds().map { ids -> ids.mapNotNull { c.catalog.channel(it) } } else c.catalog.allChannels(400)
+        return source.map { list ->
+            list.filter { it.epgId != null }.take(200).map { ch -> Row(ch, c.epg.upcoming(c.db, ch.epgId!!)) }.filter { it.programmes.isNotEmpty() }
+        }
+    }
 }

@@ -27,20 +27,34 @@ class AppContainer(context: Context) {
     val sources = SourceRepository(db, credentials)
     val catalog = CatalogRepository(db)
     val user = UserRepository(db)
-    val sync = SyncService(db, sources, credentials)
     val epg = EpgService(db)
     val parental = app.streamsetu.core.data.repo.ParentalControls(context)
-    val resolver = StreamResolver(sources, credentials)
+    val settings = app.streamsetu.core.settings.AppSettings(context)
+    val resolver = StreamResolver(sources, credentials, context)
+    val sync = SyncService(db, sources, credentials, resolver)
 
     /** What the player plays next: the channels of the list it was started from, or the episodes of a series. */
     var queue: List<Playable> = emptyList()
     var queueIndex: Int = 0
 
     val playback: PlaybackController = PlaybackController(
-        context, resolver,
+        context, resolver, settings,
         onProgress = { item, pos, dur -> user.saveProgress(item.id, kindOf(item), (item as? EpisodePlayable)?.series?.id, pos, dur) },
         onStarted = { item -> user.recordPlay(item.id, kindOf(item), item.title) },
     )
+
+    init {
+        appScope.launch { runCatching { db.catalog().deleteDividers() } }      // divider rows read by an earlier version
+        // "Play next episode automatically": when an episode ends, the next one of the same series starts.
+        appScope.launch {
+            playback.state.collect { st ->
+                if (st == app.streamsetu.core.playback.PlaybackState.Ended && settings.playNextAutomatically.value) {
+                    val ep = playback.current.value as? EpisodePlayable ?: return@collect
+                    catalog.nextEpisode(ep.episode)?.let { n -> catalog.series(n.seriesId)?.let { s -> kotlinx.coroutines.withContext(Dispatchers.Main) { play(EpisodePlayable(n, s), queue) } } }
+                }
+            }
+        }
+    }
 
     /** Reads a playlist, then its guide (a guide that cannot be read never fails the playlist). */
     suspend fun syncWithGuide(sourceId: String): SyncService.Result {
@@ -60,7 +74,7 @@ class AppContainer(context: Context) {
         this.queue = queue
         queueIndex = queue.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
         appScope.launch {
-            val resume = if (item.isLive) 0 else user.progress(item.id)?.takeIf { !it.completed }?.positionMs ?: 0
+            val resume = if (item.isLive) 0 else if (settings.resumeAutomatically.value) user.progress(item.id)?.takeIf { !it.completed }?.positionMs ?: 0 else 0
             kotlinx.coroutines.withContext(Dispatchers.Main) { playback.play(item, resume) }
         }
     }

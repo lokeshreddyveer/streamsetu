@@ -30,12 +30,12 @@ object Tokens {
 
     // Mac: radius 7 / 8 / 10 / 12, sidebar 184, header 54, poster 150 x 218, landscape 240 x 135.
     val radiusSmall = 7.dp; val radius = 8.dp; val radiusPanel = 10.dp; val radiusLarge = 12.dp
-    val sidebarWidth = 250.dp
-    val headerHeight = 64.dp
-    val posterWidth = 170.dp
-    val landscapeWidth = 290.dp
+    val sidebarWidth = 200.dp
+    val headerHeight = 52.dp
+    val posterWidth = 138.dp
+    val landscapeWidth = 240.dp
     val screenPadding = 40.dp
 
-    val display = 38.sp; val pageTitle = 30.sp; val title = 26.sp; val heading = 21.sp
-    val nav = 18.sp; val body = 18.sp; val row = 16.sp; val small = 15.sp; val caption = 14.sp; val eyebrow = 13.sp
+    val display = 30.sp; val pageTitle = 23.sp; val title = 20.sp; val heading = 17.sp
+    val nav = 14.sp; val body = 15.sp; val row = 14.sp; val small = 13.sp; val caption = 12.sp; val eyebrow = 11.sp
 }

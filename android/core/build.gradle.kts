@@ -34,6 +34,8 @@ dependencies {
     api(libs.media3.exoplayer)
     api(libs.media3.exoplayer.hls)
     api(libs.media3.datasource.okhttp)
+    api(libs.libmpv)
+    api(libs.media3.ui)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -27,10 +27,15 @@ class UserRepository(private val db: AppDatabase) {
 
     fun continueWatching(limit: Int = 20): Flow<List<WatchProgress>> = dao.continueWatching(limit).map { l -> l.map { it.toModel() } }
 
+    suspend fun clearHistory() = dao.clearLog()
+
     suspend fun recordPlay(itemId: String, kind: ContentKind, title: String) {
         dao.log(WatchLogEntity(itemId = itemId, kind = kind.name, title = title, playedAt = System.currentTimeMillis()))
         dao.trimLog()
     }
+
+    /** Everything watched, newest first (a title can appear more than once). */
+    fun history(limit: Int = 200): Flow<List<app.streamsetu.core.data.db.WatchLogEntity>> = dao.history(limit)
 
     /** Channels in the order last watched, each once. */
     fun recentChannelIds(limit: Int = 20): Flow<List<String>> = dao.recentChannelLog(200).map { l -> l.map { it.itemId }.distinct().take(limit) }

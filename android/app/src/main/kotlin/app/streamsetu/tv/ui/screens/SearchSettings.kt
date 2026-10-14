@@ -27,7 +27,7 @@ import app.streamsetu.tv.ui.theme.Tokens
 fun SearchScreen(vm: SearchViewModel, c: AppContainer, nav: Navigator) {
     val query by vm.query.collectAsState()
     val results by vm.results.collectAsState()
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 36.dp, end = Tokens.screenPadding, bottom = 48.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = Tokens.screenPadding, top = 18.dp, end = Tokens.screenPadding, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Label("Search", Tokens.title, Tokens.text, FontWeight.Bold)
@@ -56,40 +56,6 @@ fun SearchScreen(vm: SearchViewModel, c: AppContainer, nav: Navigator) {
         }
         if (query.trim().length >= 2 && results.isEmpty) item { Label("Nothing found for “${query.trim()}”.", color = Tokens.muted) }
     }
-}
-
-@Composable
-fun SettingsScreen(vm: SettingsViewModel, nav: Navigator, hideAdult: Boolean, onHideAdult: (Boolean) -> Unit) {
-    val sources by vm.sources.collectAsState()
-    val message by vm.message.collectAsState()
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 36.dp, end = Tokens.screenPadding, bottom = 48.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { Label("Settings", Tokens.title, Tokens.text, FontWeight.Bold) }
-        item { SectionTitle("Playlists") }
-        items(sources, key = { it.id }) { s ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Label(s.name, weight = FontWeight.SemiBold)
-                    Label("${if (s.type == SourceType.XTREAM) "Xtream" else "M3U"} · ${statusText(s)}", Tokens.small, if (s.status == SyncStatus.FAILED) Tokens.danger else Tokens.muted)
-                }
-                TvButton("Refresh", { vm.sync(s) }, icon = Icons.Filled.Refresh)
-                TvButton("Remove", { vm.remove(s) }, icon = Icons.Filled.Delete)
-            }
-        }
-        item { TvButton("Add a Playlist", { nav.open(Overlay.AddPlaylist) }, icon = Icons.Filled.Add, primary = true) }
-        message?.let { item { Label(it, color = Tokens.accent) } }
-        item { Spacer(Modifier.height(12.dp)); SectionTitle("Parental") }
-        item { TvButton(if (hideAdult) "Adult categories: hidden" else "Adult categories: shown", { onHideAdult(!hideAdult) }) }
-        item { Spacer(Modifier.height(20.dp)); SectionTitle("About") }
-        item { Label("StreamSetu for Android TV and Fire TV · version 0.1.0", color = Tokens.muted) }
-        item { Label("Your playlists and logins stay on this device.", Tokens.small, Tokens.muted) }
-    }
-}
-
-private fun statusText(s: Source) = when (s.status) {
-    SyncStatus.NEVER -> "not read yet"
-    SyncStatus.SYNCING -> "reading…"
-    SyncStatus.OK -> "up to date"
-    SyncStatus.FAILED -> "could not be read"
 }
 
 @Composable

@@ -14,6 +14,9 @@ class CatalogRepository(private val db: AppDatabase) {
     fun allChannels(limit: Int = 2000): Flow<List<Channel>> = dao.allChannels(limit).map { l -> l.map { it.toModel() } }
     fun movies(categoryId: String, limit: Int = 300): Flow<List<Movie>> = dao.moviesIn(categoryId, limit).map { l -> l.map { it.toModel() } }
     fun latestMovies(limit: Int = 40): Flow<List<Movie>> = dao.latestMovies(limit).map { l -> l.map { it.toModel() } }
+    fun allMovies(limit: Int = 600): Flow<List<Movie>> = dao.allMovies(limit).map { l -> l.map { it.toModel() } }
+    suspend fun moviesByIds(ids: List<String>): List<Movie> = if (ids.isEmpty()) emptyList() else dao.moviesByIds(ids).map { it.toModel() }
+    suspend fun seriesByIds(ids: List<String>): List<Series> = if (ids.isEmpty()) emptyList() else dao.seriesByIds(ids).map { it.toModel() }
     fun seriesIn(categoryId: String, limit: Int = 300): Flow<List<Series>> = dao.seriesIn(categoryId, limit).map { l -> l.map { it.toModel() } }
     fun allSeries(limit: Int = 40): Flow<List<Series>> = dao.allSeries(limit).map { l -> l.map { it.toModel() } }
     fun episodes(seriesId: String): Flow<List<Episode>> = dao.episodes(seriesId).map { l -> l.map { it.toModel() } }
@@ -24,6 +27,8 @@ class CatalogRepository(private val db: AppDatabase) {
     suspend fun episode(id: String) = dao.episode(id)?.toModel()
 
     /** The episode after [episode] in the same series (the next one in the season, or the first of the next season). */
+    suspend fun episodesOnce(seriesId: String): List<Episode> = dao.episodesOnce(seriesId).map { it.toModel() }
+
     suspend fun nextEpisode(episode: Episode): Episode? {
         val all = dao.episodesOnce(episode.seriesId).map { it.toModel() }
         val i = all.indexOfFirst { it.id == episode.id }
