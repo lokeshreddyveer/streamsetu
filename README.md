@@ -16,11 +16,13 @@ StreamSetu is a native player for the IPTV playlists and media servers you alrea
 
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/screenshots/mac-home.png" alt="StreamSetu on Mac: Home with the Discover banner and Trending in Your Library" width="100%"></td>
-    <td width="50%" valign="top"><img src="docs/screenshots/mac-series.png" alt="StreamSetu on Mac: Series with the folder list and poster grid" width="100%"></td>
+    <td width="33%" valign="top"><img src="docs/screenshots/mac-home.png" alt="StreamSetu on Mac: Home with the Discover banner and Trending in Your Library" width="100%"></td>
+    <td width="33%" valign="top"><img src="docs/screenshots/mac-live.png" alt="StreamSetu on Mac: Live TV with channel groups, channel list and player" width="100%"></td>
+    <td width="33%" valign="top"><img src="docs/screenshots/mac-series.png" alt="StreamSetu on Mac: Series with the folder list and poster grid" width="100%"></td>
   </tr>
   <tr>
     <td align="center"><sub>Home</sub></td>
+    <td align="center"><sub>Live TV</sub></td>
     <td align="center"><sub>Series</sub></td>
   </tr>
 </table>
@@ -29,12 +31,18 @@ StreamSetu is a native player for the IPTV playlists and media servers you alrea
 
 <table>
   <tr>
-    <td width="33%" valign="top"><img src="docs/screenshots/firetv-home-sidebar.png" alt="StreamSetu on Fire TV: Home with the sidebar open" width="100%"></td>
-    <td width="33%" valign="top"><img src="docs/screenshots/firetv-movies.png" alt="StreamSetu on Fire TV: Movies with folders and posters" width="100%"></td>
-    <td width="33%" valign="top"><img src="docs/screenshots/firetv-series.png" alt="StreamSetu on Fire TV: Series with a featured banner" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/firetv-home-sidebar.png" alt="StreamSetu on Fire TV: Home with the sidebar open" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/firetv-live.png" alt="StreamSetu on Fire TV: Live TV with folders, channels and a live preview" width="100%"></td>
   </tr>
   <tr>
     <td align="center"><sub>Home, sidebar open</sub></td>
+    <td align="center"><sub>Live TV</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/screenshots/firetv-movies.png" alt="StreamSetu on Fire TV: Movies with folders and posters" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/firetv-series.png" alt="StreamSetu on Fire TV: Series with a featured banner" width="100%"></td>
+  </tr>
+  <tr>
     <td align="center"><sub>Movies</sub></td>
     <td align="center"><sub>Series</sub></td>
   </tr>
