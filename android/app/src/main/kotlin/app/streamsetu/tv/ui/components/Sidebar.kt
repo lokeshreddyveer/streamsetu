@@ -46,8 +46,8 @@ private fun nameOf(t: Tab) = when (t) { Tab.LIBRARIES -> "Libraries"; Tab.GUIDE 
 private val Main = listOf(Tab.HOME, Tab.LIVE, Tab.MOVIES, Tab.SERIES, Tab.GUIDE)
 private val Other = listOf(Tab.SEARCH, Tab.LIBRARIES, Tab.SETTINGS)
 
-private const val Row = 46        // dp, the height of every entry
-private const val IconBox = 40    // dp, the square the icon is centred in: in the narrow strip it is centred in the strip
+private const val Row = 40        // dp, the height of every entry
+private const val IconBox = 34    // dp, the square the icon is centred in: in the narrow strip it is centred in the strip
 
 /**
  * The global navigation. Narrow: a strip of icons, each centred. Wide: the same icons stay exactly where they are, and the names appear to their right.
@@ -67,20 +67,20 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
             .width(width).clip(shape)
             .background(Color(0xF2090909))
             .onFocusChanged { if (it.hasFocus != hadFocus) { hadFocus = it.hasFocus; onFocusChange(it.hasFocus) } }
-            .padding(vertical = 10.dp, horizontal = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp, if (floating) Alignment.Top else Alignment.CenterVertically),
+            .padding(vertical = 6.dp, horizontal = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp, if (floating) Alignment.Top else Alignment.CenterVertically),
     ) {
         if (floating) {
             // The mark: the same spot whether the panel is narrow or wide.
             Row(Modifier.height(44.dp).padding(start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.Image(painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)))
-                Label("StreamSetu", Tokens.heading, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 12.dp).graphicsLayer { alpha = labelAlpha })
+                Label("StreamSetu", Tokens.row, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 10.dp).graphicsLayer { alpha = labelAlpha })
             }
             Spacer(Modifier.height(4.dp))
         }
         // The mark and name: the mark never moves; the name fades in as the panel widens.
-        Row(Modifier.height(48.dp).padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)))
+        Row(Modifier.height(40.dp).padding(start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Image(painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(28.dp).clip(RoundedCornerShape(9.dp)))
             Label("StreamSetu", Tokens.heading, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 12.dp).graphicsLayer { alpha = labelAlpha })
         }
         Spacer(Modifier.height(4.dp))
@@ -98,9 +98,9 @@ private fun SidebarEntry(t: Tab, selected: Tab, entry: FocusRequester, labelAlph
             // The accent bar sits at the very left; the icon box is the same width in both states, so nothing shifts when the panel widens.
             Box(Modifier.padding(start = 2.dp).width(3.dp).height(20.dp).background(if (isSel) Tokens.gold else Color.Transparent, RoundedCornerShape(2.dp)))
             Box(Modifier.width(IconBox.dp - 3.dp), Alignment.Center) {
-                Image(iconOf(t), nameOf(t), Modifier.size(22.dp), colorFilter = ColorFilter.tint(if (isSel) Tokens.gold else if (f) Color.White else Tokens.textSecondary))
+                Image(iconOf(t), nameOf(t), Modifier.size(19.dp), colorFilter = ColorFilter.tint(if (isSel) Tokens.gold else if (f) Color.White else Tokens.textSecondary))
             }
-            Label(nameOf(t), Tokens.nav, if (f || isSel) Color.White else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.padding(start = 10.dp).graphicsLayer { alpha = labelAlpha })
+            Label(nameOf(t), Tokens.row, if (f || isSel) Color.White else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.padding(start = 10.dp).graphicsLayer { alpha = labelAlpha })
         }
     }
 }

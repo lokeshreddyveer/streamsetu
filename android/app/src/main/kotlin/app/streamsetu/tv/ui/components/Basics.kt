@@ -231,8 +231,8 @@ fun TvTextField(value: String, onChange: (String) -> Unit, placeholder: String, 
     var gotFocus by remember { mutableStateOf(false) }
     LaunchedEffect(editing) { gotFocus = false; if (editing) { runCatching { requester.requestFocus() }; keyboard?.show() } }
     Focusable({ editing = true }, modifier.focusRequester(rowRequester), shape = RoundedCornerShape(if (compact) 12.dp else Tokens.radius), container = Tokens.card, focusedContainer = Tokens.elevated, scaleOnFocus = if (compact) 1.0f else 1.02f, hairline = true) { _ ->
-        Row(Modifier.fillMaxWidth().padding(horizontal = if (compact) 12.dp else 18.dp, vertical = if (compact) 9.dp else 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (leadingIcon != null) Image(leadingIcon, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary))
+        Row(Modifier.fillMaxWidth().padding(horizontal = if (compact) 9.dp else 18.dp, vertical = if (compact) 6.dp else 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (leadingIcon != null) Image(leadingIcon, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary))
             Box(Modifier.weight(1f)) {
             if (editing) {
                 BasicTextField(
@@ -244,7 +244,7 @@ fun TvTextField(value: String, onChange: (String) -> Unit, placeholder: String, 
                 )
             } else {
                 val shown = if (secret && value.isNotEmpty()) "•".repeat(value.length.coerceAtMost(24)) else value
-                if (value.isEmpty()) Label(placeholder, if (compact) Tokens.body else Tokens.body, Tokens.textTertiary) else Label(shown, Tokens.body)
+                if (value.isEmpty()) Label(placeholder, if (compact) Tokens.small else Tokens.body, Tokens.textTertiary) else Label(shown, if (compact) Tokens.small else Tokens.body)
             }
             }
         }
