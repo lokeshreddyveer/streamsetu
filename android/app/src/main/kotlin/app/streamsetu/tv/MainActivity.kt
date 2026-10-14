@@ -2,6 +2,8 @@ package app.streamsetu.tv
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -25,12 +27,13 @@ import app.streamsetu.tv.ui.components.TopBar
 import app.streamsetu.tv.ui.screens.*
 import app.streamsetu.tv.ui.theme.Tokens
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var container: AppContainer
     private val nav = Navigator()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val container = (application as StreamSetuApp).container
         setContent { StreamSetuTV(container, nav, onExit = { finish() }) }
         handle(intent)
     }
@@ -41,7 +44,7 @@ class MainActivity : ComponentActivity() {
     private fun handle(intent: android.content.Intent?) {
         val uri = intent?.data ?: return
         if (uri.scheme != "streamsetu" || uri.host != "play") return
-        val c = (application as StreamSetuApp).container
+        val c = container
         uri.getQueryParameter("engine")?.let { e -> c.settings.setEngine(app.streamsetu.core.playback.EnginePreference.entries.firstOrNull { it.name.equals(e, true) || (e == "auto" && it.name == "AUTOMATIC") } ?: app.streamsetu.core.playback.EnginePreference.AUTOMATIC) }
         val q = uri.getQueryParameter("q") ?: return
         c.appScope.launch {
@@ -56,7 +59,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        (application as StreamSetuApp).container.playback.saveProgress()
+        container.playback.saveProgress()
         super.onStop()
     }
 }
@@ -121,13 +124,13 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                     hasSources == null -> {}
                     hasSources!!.isEmpty() && nav.tab != Tab.SETTINGS -> FirstRun(onAdd = { nav.open(Overlay.AddPlaylist) })
                     else -> app.streamsetu.tv.ui.components.FadeIn(nav.tab) { when (nav.tab) {
-                        Tab.HOME -> HomeScreen(vm { HomeViewModel(c) }, c, nav)
-                        Tab.LIVE -> LiveScreen(vm { LiveViewModel(c) }, c, nav)
-                        Tab.GUIDE -> GuideScreen(vm { GuideViewModel(c) }, c, nav)
-                        Tab.MOVIES -> MoviesScreen(vm { MoviesViewModel(c) }, c, nav)
-                        Tab.SERIES -> SeriesScreen(vm { SeriesViewModel(c) }, nav)
-                        Tab.SEARCH -> SearchScreen(vm { SearchViewModel(c) }, c, nav)
-                        Tab.SETTINGS -> SettingsScreen(vm { SettingsViewModel(c) }, c, nav)
+                        Tab.HOME -> HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                        Tab.LIVE -> LiveScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                        Tab.GUIDE -> GuideScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                        Tab.MOVIES -> MoviesScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                        Tab.SERIES -> SeriesScreen(androidx.hilt.navigation.compose.hiltViewModel(), nav)
+                        Tab.SEARCH -> SearchScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                        Tab.SETTINGS -> SettingsScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     } }
                 }
             }
@@ -137,7 +140,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
         androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalInOverlay provides true) {
         nav.top?.let { top -> app.streamsetu.tv.ui.components.FadeIn(top) {
         when (val o = top) {
-            is Overlay.AddPlaylist -> AddPlaylistScreen(vm { AddPlaylistViewModel(c) }, onClose = { nav.close() })
+            is Overlay.AddPlaylist -> AddPlaylistScreen(androidx.hilt.navigation.compose.hiltViewModel(), onClose = { nav.close() })
             is Overlay.MovieDetail -> MovieDetailScreen(o.movie, c, nav)
             is Overlay.SeriesDetail -> SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
             is Overlay.Player -> PlayerScreen(c, onClose = { c.playback.stop(); nav.close() })
