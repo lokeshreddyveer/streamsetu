@@ -93,7 +93,8 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
         val primary = when (field) {
             SortField.PROVIDER -> "x.rowid ${dir("ASC")}"
             SortField.NAME -> "$title COLLATE NOCASE ${dir("ASC")}"
-            SortField.ADDED -> "x.addedAt ${dir("DESC")}, x.rowid ${dir("DESC")}"       // a provider that sends no dates: the later in its list, the newer
+            SortField.ADDED -> if (kind == ContentKind.CHANNEL) "x.addedAt ${dir("DESC")}, x.rowid ${dir("ASC")}"      // channels with no date keep the provider's order
+                else "x.addedAt ${dir("DESC")}, x.rowid ${dir("DESC")}"                                           // a provider that sends no dates: the later in its list, the newer
             SortField.RECENTLY_WATCHED -> { joins.append(" LEFT JOIN (SELECT itemId, MAX(playedAt) AS lastPlayed FROM watch_log GROUP BY itemId) w ON w.itemId = x.id"); "(w.lastPlayed IS NULL) ASC, w.lastPlayed ${dir("DESC")}" }
             SortField.YEAR -> if (kind == ContentKind.CHANNEL) "x.rowid ASC" else "(x.year IS NULL) ASC, x.year ${dir("DESC")}"
             SortField.RATING -> if (kind == ContentKind.CHANNEL) "x.rowid ASC" else "(x.rating IS NULL OR x.rating = '' OR CAST(x.rating AS REAL) = 0) ASC, CAST(x.rating AS REAL) ${dir("DESC")}"

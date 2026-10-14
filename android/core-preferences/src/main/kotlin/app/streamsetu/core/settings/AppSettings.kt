@@ -73,6 +73,11 @@ class AppSettings(context: Context) {
     fun liveBufferFor(sourceId: String): BufferingMode? = prefs.getString("bufferLive.$sourceId", null)?.let { n -> BufferingMode.entries.firstOrNull { it.name == n } }
     fun setLiveBufferFor(sourceId: String, v: BufferingMode?) { prefs.edit().apply { if (v == null) remove("bufferLive.$sourceId") else putString("bufferLive.$sourceId", v.name) }.apply() }
 
+    private val _confirmExit = flow(prefs.getBoolean("confirmExit", true))
+    /** On: Back in the player asks whether to keep watching or leave. */
+    val confirmLeavingPlayer: StateFlow<Boolean> = _confirmExit
+    fun setConfirmLeavingPlayer(v: Boolean) { prefs.edit().putBoolean("confirmExit", v).apply(); _confirmExit.value = v }
+
     // ---- Video ----
     private val _aspect = flow(prefs.getString("aspect", "FIT") ?: "FIT")
     val defaultAspect: StateFlow<String> = _aspect

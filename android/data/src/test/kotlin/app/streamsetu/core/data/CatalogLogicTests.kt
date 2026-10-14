@@ -48,10 +48,10 @@ class CatalogLogicTests {
         assertEquals(s, SortSpec.decode(s.encode()))
         assertEquals(SortSpec(), SortSpec.decode("garbage"))
     }
-    @Test fun moviesAndSeriesStartNewestFirstChannelsInProviderOrder() {
+    @Test fun everythingStartsMostRecentlyAdded() {
         assertEquals(SortField.ADDED, SortSpec.defaultFor(ContentKind.MOVIE).field)
         assertEquals(SortField.ADDED, SortSpec.defaultFor(ContentKind.SERIES).field)
-        assertEquals(SortField.PROVIDER, SortSpec.defaultFor(ContentKind.CHANNEL).field)
+        assertEquals(SortField.ADDED, SortSpec.defaultFor(ContentKind.CHANNEL).field)
     }
     @Test fun sortOffersOnlyWhatTheCatalogHas() {
         val none = SortAvailability(false, false, false, false).offers(ContentKind.MOVIE)

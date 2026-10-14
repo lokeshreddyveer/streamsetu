@@ -157,6 +157,8 @@ fun PlaybackSettings(c: AppContainer) {
         ToggleRow("Remember playback position", "Saves where you stop so Continue Watching works.", remember) { s.setRememberPosition(it) }
         ToggleRow("Resume automatically", "Continue a partly watched title where it stopped.", resume && remember, enabled = remember, reason = "Turn on Remember playback position first.") { s.setResumeAutomatically(it) }
         ChoiceRow("Skip interval", "How far Left and Right jump while watching.", listOf(5 to "5 seconds", 10 to "10 seconds", 15 to "15 seconds", 30 to "30 seconds"), seek) { s.setSeekSeconds(it) }
+        val confirmLeave by s.confirmLeavingPlayer.collectAsState()
+        ToggleRow("Ask before leaving the player", "Back shows Continue watching or Exit instead of leaving at once.", confirmLeave) { s.setConfirmLeavingPlayer(it) }
         ToggleRow("Play the next episode automatically", "Only continues to the very next episode; it never plays across a missing one.", next) { s.setPlayNext(it) }
     }
     SettingGroup("Recovery", "Switching to a different provider stream is always a choice you make (Choose Stream). It never happens by itself.") {

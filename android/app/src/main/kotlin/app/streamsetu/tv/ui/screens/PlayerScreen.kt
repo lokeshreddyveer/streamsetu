@@ -82,6 +82,12 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
 
     BackHandler(enabled = panel != null) { closePanel() }
     BackHandler(enabled = panel == null && chipsFocused) { toRoot() }
+    // One press of Back no longer throws the player away: it asks. A stream that has failed or ended just closes.
+    var confirmExit by remember { mutableStateOf(false) }
+    val askBeforeLeaving by c.settings.confirmLeavingPlayer.collectAsState()
+    BackHandler(enabled = panel == null && !chipsFocused && !confirmExit) {
+        if (askBeforeLeaving && state != PlaybackState.Ended && state !is PlaybackState.Failed) confirmExit = true else onClose()
+    }
     LaunchedEffect(sleepAt) { if (sleepAt > 0) { while (System.currentTimeMillis() < sleepAt) delay(1000); onClose() } }
     LaunchedEffect(Unit) { root.requestFocus() }
     LaunchedEffect(tick, state, chipsFocused, panel) { if (state == PlaybackState.Playing && !chipsFocused && panel == null) { delay(4500); barVisible = false } else barVisible = true }
@@ -198,6 +204,11 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
                 Label(if (live) "▲ ▼ channel      ◀ channels      OK options      0–9 channel number      BACK close" else "◀ ▶ skip 10 s      OK pause      ▼ options      BACK close", Tokens.caption, Color(0x80FFFFFF), modifier = Modifier.padding(top = 8.dp))
             }
         }
+
+        if (confirmExit) ContextMenu("Stop watching?", item?.title, listOf(
+            MenuAction("Continue watching", Icons.Filled.PlayArrow) {},
+            MenuAction("Exit the player", Icons.Filled.Close) { onClose() },
+        ), onClose = { confirmExit = false; runCatching { root.requestFocus() } })
 
         panel?.let { kind ->
             val selectedReq = remember(kind) { FocusRequester() }

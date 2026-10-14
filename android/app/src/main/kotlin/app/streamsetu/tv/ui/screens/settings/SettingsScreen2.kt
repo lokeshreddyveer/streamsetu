@@ -82,7 +82,7 @@ fun SearchSettings(c: AppContainer) {
     var msg by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(msg) { indexRows = c.maintenance.indexRows(); catalogRows = c.maintenance.catalogRows() }
     val recent by c.search.recent.collectAsState()
-    SettingGroup("Default sorting", "Movies and series start with the most recently added first; Live TV starts in the provider's order. Each section remembers its own sort. A folder can also have its own (use Sort inside the folder). Choices appear only when the catalog really has that information.") {
+    SettingGroup("Default sorting", "Everything starts with the most recently added first. Every other order stays available; each section remembers its own choice. A folder can also have its own (use Sort inside the folder). Choices appear only when the catalog really has that information.") {
         listOf(ContentKind.MOVIE to "Movies", ContentKind.SERIES to "Series", ContentKind.CHANNEL to "Live TV").forEach { (k, n) ->
             val spec by c.browse.sort(k, null).collectAsState()
             val fields = availability.offers(k)

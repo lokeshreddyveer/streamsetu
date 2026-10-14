@@ -13,8 +13,8 @@ data class SortSpec(val field: SortField = SortField.PROVIDER, val ascending: Bo
     val isDefault get() = this == SortSpec()
     fun encode() = "${field.name}|$ascending|$favoritesFirst|$unwatchedFirst"
     companion object {
-        /** What a list is ordered by until the person chooses otherwise: movies and series newest first, channels as the provider lists them. */
-        fun defaultFor(kind: ContentKind) = if (kind == ContentKind.CHANNEL) SortSpec() else SortSpec(SortField.ADDED)
+        /** What a list is ordered by until the person chooses otherwise: most recently added first, everywhere. All the other orders stay available. */
+        @Suppress("UNUSED_PARAMETER") fun defaultFor(kind: ContentKind) = SortSpec(SortField.ADDED)
 
         fun decode(s: String?): SortSpec {
             val p = s?.split('|') ?: return SortSpec()
