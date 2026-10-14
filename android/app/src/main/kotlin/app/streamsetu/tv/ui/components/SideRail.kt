@@ -18,6 +18,7 @@ import app.streamsetu.tv.ui.theme.Tokens
 private fun Tab.icon(): ImageVector = when (this) {
     Tab.HOME -> Icons.Filled.Home
     Tab.LIVE -> Icons.Filled.LiveTv
+    Tab.FAVOURITES -> Icons.Filled.Favorite
     Tab.MOVIES -> Icons.Filled.Movie
     Tab.SERIES -> Icons.Filled.VideoLibrary
     Tab.SEARCH -> Icons.Filled.Search

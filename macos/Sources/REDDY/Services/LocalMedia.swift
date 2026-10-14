@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import AVFoundation
 
 /// Files and folders on this device, and folders on a WebDAV server: what can be played from them and how they are listed.
 /// None of this touches playlists or the catalogue; a file plays like a movie that belongs to no playlist.
@@ -32,6 +33,28 @@ enum LocalMedia {
             let s = (($0 as NSString).deletingPathExtension).lowercased()
             return s == stem || s.hasPrefix(stem + ".")
         }.sorted()
+    }
+
+    /// How far a video must be turned clockwise to stand upright (phones store portrait video sideways and say so in a flag): 0, 90, 180 or 270.
+    static func rotationDegrees(of url: URL) async -> Int {
+        guard let track = try? await AVURLAsset(url: url).loadTracks(withMediaType: .video).first, let t = try? await track.load(.preferredTransform) else { return 0 }
+        return rotationDegrees(a: Double(t.a), b: Double(t.b))
+    }
+
+    static func rotationDegrees(a: Double, b: Double) -> Int {
+        let d = Int((atan2(b, a) * 180 / .pi).rounded())
+        let n = ((d % 360) + 360) % 360
+        return [0, 90, 180, 270].min { abs($0 - n) < abs($1 - n) } ?? 0
+    }
+
+    /// The video filter that turns a picture by that many degrees (nil when it is upright).
+    static func rotationFilter(_ degrees: Int) -> String? {
+        switch degrees {
+        case 90: return "lavfi=[transpose=clock]"
+        case 180: return "lavfi=[hflip,vflip]"
+        case 270: return "lavfi=[transpose=cclock]"
+        default: return nil
+        }
     }
 
     /// The subtitle files next to a video on disk (empty when the folder cannot be read).

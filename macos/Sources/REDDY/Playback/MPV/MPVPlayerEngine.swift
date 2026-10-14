@@ -95,6 +95,7 @@ final class MPVPlayerEngine: PlaybackEngine {
         core.renderer = displayLayer.sampleBufferRenderer
         core.surface = surfaceLayer
         self.core = core
+        let rotationFilter: String? = request.url.isFileURL ? LocalMedia.rotationFilter(await LocalMedia.rotationDegrees(of: request.url)) : nil
         var cfg = configuration
         cfg.lowLatency = bufferingMode == .lowLatency
         cfg.isLive = request.isLive
@@ -102,6 +103,10 @@ final class MPVPlayerEngine: PlaybackEngine {
         cfg.resumeThreshold = bufferingMode.mpvResumeThreshold(live: request.isLive)
         for (k, v) in cfg.options where k != "vo" { _ = lib.setOption?(ctx, k, v == "videotoolbox" ? "videotoolbox-copy" : v) }
         _ = lib.setOption?(ctx, "vo", "libmpv")
+        // The software renderer cannot draw a picture MPV rotates by itself (it aborts), so MPV's own rotation is off and a phone video that is stored
+        // sideways is turned by a filter instead.
+        _ = lib.setOption?(ctx, "video-rotate", "no")
+        if let filter = rotationFilter { _ = lib.setOption?(ctx, "vf", filter) }
         _ = lib.requestLog?(ctx, "error")
         guard lib.initialize?(ctx) == 0 else { throw fail(PlaybackError(.engineUnavailable, detail: "mpv failed to initialise")) }
         try createRenderContext(core)

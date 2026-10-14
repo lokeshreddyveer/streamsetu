@@ -3,7 +3,12 @@ package app.streamsetu.tv.ui.screens
 import android.view.KeyEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import app.streamsetu.tv.ui.components.Focusable
+import app.streamsetu.core.playback.TrackOption
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +43,12 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
     var tick by remember { mutableIntStateOf(0) }
     val focus = remember { FocusRequester() }
     val item = current
+    val audio by playback.audioTracks.collectAsState()
+    val subs by playback.subtitleTracks.collectAsState()
+    var panel by remember { mutableStateOf(false) }
+    var sleepAt by remember { mutableLongStateOf(0L) }
+    BackHandler(enabled = panel) { panel = false }
+    LaunchedEffect(sleepAt) { if (sleepAt > 0) { while (System.currentTimeMillis() < sleepAt) delay(1000); onClose() } }
 
     LaunchedEffect(Unit) { focus.requestFocus() }
     // The bar hides by itself a few seconds after the last key, while playing.
@@ -53,6 +64,8 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
         Modifier.fillMaxSize().background(Color.Black).focusRequester(focus).focusable()
             .onPreviewKeyEvent { e ->
                 if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                if (e.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_MENU || e.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_INFO || e.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_Y) { panel = !panel; return@onPreviewKeyEvent true }
+                if (panel) return@onPreviewKeyEvent false          // the list takes the arrow keys
                 val live = item?.isLive == true
                 when (e.nativeKeyEvent.keyCode) {
                     KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER ->
@@ -94,17 +107,42 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
             }
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xDD000000)))).padding(horizontal = 56.dp, vertical = 32.dp)) {
                 if (item.isLive) {
-                    Label("LIVE · ▲▼ change channel", Tokens.small, Tokens.accent, FontWeight.SemiBold)
+                    Label("LIVE · ▲▼ change channel · MENU audio & subtitles", Tokens.small, Tokens.accent, FontWeight.SemiBold)
                 } else {
                     ProgressBar(if (duration > 0) position.toFloat() / duration else 0f)
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Label(clock(position), Tokens.small, Tokens.muted); Label("◀▶ skip 10 s · OK pause", Tokens.small, Tokens.muted); Label(clock(duration), Tokens.small, Tokens.muted)
+                        Label(clock(position), Tokens.small, Tokens.muted); Label("◀▶ skip 10 s · OK pause · MENU audio & subtitles", Tokens.small, Tokens.muted); Label(clock(duration), Tokens.small, Tokens.muted)
                     }
                 }
                 if (state == PlaybackState.Paused) Label("Paused", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
             }
         }
+
+        if (panel) {
+            Column(Modifier.align(Alignment.CenterEnd).width(420.dp).fillMaxHeight().background(Color(0xEE0B0D12)).padding(28.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Label("Audio and subtitles", Tokens.heading, Tokens.text, FontWeight.Bold)
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item { Label("Audio", Tokens.small, Tokens.muted) }
+                    items(audio, key = { "a" + it.id }) { t -> TrackRow(t) { playback.selectAudio(t.id) } }
+                    item { Label("Subtitles", Tokens.small, Tokens.muted, modifier = Modifier.padding(top = 10.dp)) }
+                    item { Focusable({ playback.selectSubtitle(null) }, Modifier.fillMaxWidth()) { Label("Off", modifier = Modifier.padding(12.dp), color = if (subs.none { it.selected }) Tokens.accent else Tokens.text) } }
+                    items(subs, key = { "s" + it.id }) { t -> TrackRow(t) { playback.selectSubtitle(t.id) } }
+                    item { Label("Sleep timer", Tokens.small, Tokens.muted, modifier = Modifier.padding(top = 10.dp)) }
+                    item {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(30, 60, 90).forEach { m -> TvButton("${m} min", { sleepAt = System.currentTimeMillis() + m * 60_000L; panel = false }) }
+                            if (sleepAt > 0) TvButton("Off", { sleepAt = 0 })
+                        }
+                    }
+                }
+            }
+        }
     }
+}
+
+@Composable
+private fun TrackRow(t: TrackOption, onClick: () -> Unit) {
+    Focusable(onClick, Modifier.fillMaxWidth()) { Label(t.label, modifier = Modifier.padding(12.dp), color = if (t.selected) Tokens.accent else Tokens.text) }
 }
 
 @Composable

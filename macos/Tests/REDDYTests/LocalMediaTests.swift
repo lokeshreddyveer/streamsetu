@@ -80,4 +80,12 @@ import Foundation
         store.remove(s)
         #expect(store.all().isEmpty && store.password(for: s) == nil)
     }
+
+    @Test func aSidewaysPhoneVideoIsTurnedUpright() {
+        #expect(LocalMedia.rotationDegrees(a: 1, b: 0) == 0)
+        #expect(LocalMedia.rotationDegrees(a: 0, b: 1) == 90)
+        #expect(LocalMedia.rotationDegrees(a: -1, b: 0) == 180)
+        #expect(LocalMedia.rotationDegrees(a: 0, b: -1) == 270)
+        #expect(LocalMedia.rotationFilter(0) == nil && LocalMedia.rotationFilter(90) == "lavfi=[transpose=clock]")
+    }
 }
