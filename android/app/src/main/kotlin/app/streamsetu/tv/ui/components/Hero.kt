@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -70,7 +71,7 @@ fun Hero(items: List<Playable>, loadInfo: suspend (Movie) -> SyncService.MovieIn
             val plot = when (item) { is SeriesFeature -> item.series.plot; is MoviePlayable -> info?.plot ?: item.movie.plot; else -> null }
             if (!plot.isNullOrBlank()) Label(plot, Tokens.small, Tokens.textSecondary, maxLines = 3)
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                TvButton(if (item is SeriesFeature) "Episodes" else "Play", { if (item is SeriesFeature) onDetails(item) else onPlay(item) }, icon = Icons.Filled.PlayArrow, primary = true, onFocus = { focusedInside = it })
+                TvButton(if (item is SeriesFeature) "Episodes" else "Play", { if (item is SeriesFeature) onDetails(item) else onPlay(item) }, (LocalContentEntry.current?.let { Modifier.focusRequester(it) } ?: Modifier), icon = Icons.Filled.PlayArrow, primary = true, onFocus = { focusedInside = it })
                 TvButton("More Info", { onDetails(item) }, icon = Icons.Filled.Info, onFocus = { focusedInside = it })
             }
         }

@@ -31,7 +31,7 @@ fun SearchScreen(vm: SearchViewModel, c: AppContainer, nav: Navigator) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Label("Search", Tokens.title, Tokens.text, FontWeight.Bold)
-                TvTextField(query, vm::setQuery, "Type a channel, movie or series", Modifier.widthIn(max = 700.dp).fillMaxWidth())
+                TvTextField(query, vm::setQuery, "Type a channel, movie or series", (LocalContentEntry.current?.let { Modifier.focusRequester(it) } ?: Modifier).widthIn(max = 700.dp).fillMaxWidth())
             }
         }
         if (results.channels.isNotEmpty()) item {
@@ -61,7 +61,7 @@ fun SearchScreen(vm: SearchViewModel, c: AppContainer, nav: Navigator) {
 @Composable
 fun FirstRun(onAdd: () -> Unit) {
     EmptyState("Welcome to StreamSetu", "Add your playlist (an M3U link or an Xtream login) to start watching.") {
-        TvButton("Add a Playlist", onAdd, icon = Icons.Filled.Add, primary = true)
+        TvButton("Add a Playlist", onAdd, (LocalContentEntry.current?.let { Modifier.focusRequester(it) } ?: Modifier), icon = Icons.Filled.Add, primary = true)
     }
 }
 

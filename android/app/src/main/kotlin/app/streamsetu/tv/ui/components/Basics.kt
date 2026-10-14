@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -53,6 +54,9 @@ fun Eyebrow(text: String, modifier: Modifier = Modifier, color: Color = Tokens.t
 
 /** False while a full-screen page covers the screen, so the page underneath cannot take the remote's focus. */
 val LocalFocusEnabled = androidx.compose.runtime.compositionLocalOf { true }
+
+/** Where DOWN from the top bar lands on the current page (the hero's Play button, the open category pill, the first settings page...). */
+val LocalContentEntry = androidx.compose.runtime.compositionLocalOf<FocusRequester?> { null }
 
 /** The last thing on the base page that held focus, so closing a page (a movie, an episode list, the player) returns you to it. */
 object FocusMemory { var last: FocusRequester? = null; var lastHasFocus = false }
@@ -124,9 +128,9 @@ fun PosterPlaceholder(title: String, modifier: Modifier = Modifier) {
 
 /** A poster, 150 x 218 on the Mac scaled up: artwork, title and a quiet subtitle under it. A thin bar shows how far you are. */
 @Composable
-fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null) {
+fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null, focusRequester: FocusRequester? = null) {
     Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(150f / 218f)) { _ ->
+        Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(150f / 218f)) { _ ->
             PosterPlaceholder(title, Modifier.fillMaxSize())
             if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
@@ -213,4 +217,12 @@ fun Spinner(modifier: Modifier = Modifier) {
 @Composable
 fun Loading(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize(), Alignment.Center) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Spinner(); Label("Loading…", Tokens.row, Tokens.textSecondary) } }
+}
+
+/** A short fade-and-rise when a page appears, so moving between sections feels smooth instead of cutting. The content is composed once; only its look animates. */
+@Composable
+fun FadeIn(key: Any, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val a = remember(key) { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(key) { a.animateTo(1f, androidx.compose.animation.core.tween(260, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
+    Box(modifier.graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 14f; val sc = 0.985f + 0.015f * a.value; scaleX = sc; scaleY = sc }) { content() }
 }

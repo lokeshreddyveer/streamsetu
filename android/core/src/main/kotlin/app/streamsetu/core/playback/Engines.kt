@@ -12,11 +12,11 @@ enum class EnginePreference(val label: String) {
 enum class EngineKind(val label: String) { EXOPLAYER("ExoPlayer"), MPV("MPV") }
 
 /** The Mac's `BufferingMode`. */
-enum class BufferingMode(val label: String, val detail: String, val minMs: Int, val maxMs: Int, val startMs: Int, val rebufferMs: Int, val mpvCacheSecs: Int) {
+enum class BufferingMode(val label: String, val detail: String, val minMs: Int, val maxMs: Int, val startMs: Int, val rebufferMs: Int, val mpvCacheSecs: Int, val liveOffsetMs: Long = 8_000) {
     AUTOMATIC("Automatic", "A balanced buffer that suits most streams.", 20_000, 60_000, 1_500, 4_000, 20),
-    LOW_LATENCY("Low latency (live)", "Stays close to the live edge. Less delay, more risk of stalls.", 5_000, 15_000, 800, 2_000, 4),
+    LOW_LATENCY("Low latency (live)", "Stays close to the live edge. Less delay, more risk of stalls.", 5_000, 15_000, 800, 2_000, 4, 3_000),
     STANDARD("Standard", "A moderate buffer for steady connections.", 15_000, 45_000, 1_500, 4_000, 15),
-    LARGE("Large buffer", "Keeps more ahead. Best for slow or unstable providers.", 40_000, 120_000, 2_500, 5_000, 60);
+    LARGE("Large buffer", "Keeps more ahead. Best for slow or unstable providers.", 40_000, 120_000, 2_500, 5_000, 60, 20_000);
     companion object { fun from(s: String?) = entries.firstOrNull { it.name == s } ?: AUTOMATIC }
 }
 
@@ -57,6 +57,9 @@ object EngineSelector {
     fun other(kind: EngineKind, available: Set<EngineKind>): EngineKind? = available.firstOrNull { it != kind }
 }
 
+/** How the picture fills the screen (the iPhone app's Fit / Fill, plus Zoom). */
+enum class AspectMode(val label: String) { FIT("Fit"), FILL("Fill"), ZOOM("Zoom") }
+
 data class EngineRequest(val url: String, val headers: Map<String, String>, val startMs: Long, val live: Boolean, val buffering: BufferingMode)
 
 sealed interface EngineEvent {
@@ -88,4 +91,6 @@ interface PlayerEngine {
     fun selectSubtitle(id: String?)
     /** A line of facts about the stream being played, for the "Show stream information" overlay. */
     fun streamInfo(): String
+    fun setSpeed(speed: Float)
+    fun setAspect(mode: AspectMode)
 }

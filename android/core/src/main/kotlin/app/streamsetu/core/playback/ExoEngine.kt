@@ -11,6 +11,9 @@ import androidx.media3.common.Tracks
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -32,9 +35,15 @@ class ExoEngine(context: Context) : PlayerEngine {
         if (player != null && builtFor == mode) return player!!
         player?.release()
         val factory = OkHttpDataSource.Factory(Http.client).setUserAgent(Http.USER_AGENT)
-        val p = ExoPlayer.Builder(appContext)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(factory))
-            .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(mode.minMs, mode.maxMs, mode.startMs, mode.rebufferMs).build())
+        // IPTV transport streams are often cut mid-frame and start between keyframes: these flags let ExoPlayer start and recover on them.
+        val extractors = DefaultExtractorsFactory()
+            .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS)
+            .setConstantBitrateSeekingEnabled(true)
+        // A decoder that fails on one stream hands over to another decoder instead of failing the stream.
+        val renderers = DefaultRenderersFactory(appContext).setEnableDecoderFallback(true).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
+        val p = ExoPlayer.Builder(appContext, renderers)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(factory, extractors).setLiveTargetOffsetMs(mode.liveOffsetMs))
+            .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(mode.minMs, mode.maxMs, mode.startMs, mode.rebufferMs).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(30_000, true).build())
             .setHandleAudioBecomingNoisy(true)
             .build()
         p.addListener(object : Player.Listener {
@@ -46,7 +55,11 @@ class ExoEngine(context: Context) : PlayerEngine {
                 }
             }
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) { if (p.playbackState == Player.STATE_READY) onEvent(EngineEvent.Ready(playWhenReady)) }
-            override fun onPlayerError(error: PlaybackException) { onEvent(EngineEvent.Error(classify(error))) }
+            override fun onPlayerError(error: PlaybackException) {
+                // A live stream that fell behind its window just jumps to the live edge; that is not a failure.
+                if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) { p.seekToDefaultPosition(); p.prepare(); return }
+                onEvent(EngineEvent.Error(classify(error)))
+            }
             override fun onTracksChanged(tracks: Tracks) { onEvent(EngineEvent.TracksChanged) }
         })
         player = p; builtFor = mode
@@ -56,7 +69,7 @@ class ExoEngine(context: Context) : PlayerEngine {
 
     override fun view(context: Context): View {
         viewRef?.let { return it }
-        val v = PlayerView(context).apply { useController = false; resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT; keepScreenOn = true; player = this@ExoEngine.player }
+        val v = PlayerView(context).apply { useController = false; resizeMode = resizeFor(aspect); keepScreenOn = true; player = this@ExoEngine.player }
         viewRef = v
         return v
     }
@@ -68,6 +81,11 @@ class ExoEngine(context: Context) : PlayerEngine {
         p.prepare()
         p.playWhenReady = true
     }
+
+    private var aspect = AspectMode.FIT
+    private fun resizeFor(m: AspectMode) = when (m) { AspectMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT; AspectMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL; AspectMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM }
+    override fun setAspect(mode: AspectMode) { aspect = mode; viewRef?.resizeMode = resizeFor(mode) }
+    override fun setSpeed(speed: Float) { player?.setPlaybackSpeed(speed) }
 
     override fun play() { player?.play() }
     override fun pause() { player?.pause() }

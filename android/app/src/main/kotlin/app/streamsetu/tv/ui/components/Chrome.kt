@@ -16,6 +16,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -34,9 +39,10 @@ val LocalSidebarEntry = androidx.compose.runtime.compositionLocalOf<FocusRequest
  * Over the full-bleed picture on Home it is transparent with a soft shade; on other pages it is a solid bar.
  */
 @Composable
-fun TopBar(selected: Tab, first: FocusRequester, transparent: Boolean, onHasFocus: (Boolean) -> Unit = {}, canAutoSelect: () -> Boolean = { true }, onSelect: (Tab) -> Unit) {
+fun TopBar(selected: Tab, first: FocusRequester, transparent: Boolean, onHasFocus: (Boolean) -> Unit = {}, canAutoSelect: () -> Boolean = { true }, onDown: () -> Boolean = { false }, onSelect: (Tab) -> Unit) {
     Box(
         Modifier.fillMaxWidth().height(Tokens.headerHeight)
+            .onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionDown) onDown() else false }
             .background(if (transparent) Brush.verticalGradient(listOf(Color(0xCC05070B), Color(0x0005070B))) else Brush.verticalGradient(listOf(Tokens.panel, Tokens.panel)))
             .onFocusChanged { onHasFocus(it.hasFocus) },
     ) {
@@ -87,17 +93,21 @@ data class Chip(val id: String, val title: String, val icon: ImageVector? = null
  * DOWN from the top bar lands here; moving along it shows each category as the focus rests on it.
  */
 @Composable
-fun ChipRow(chips: List<Chip>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier, moreLabel: String? = null, moreSelected: Boolean = false, onMore: (() -> Unit)? = null) {
-    // DOWN from the top bar lands on the category that is open now (not on whichever pill is nearest), so nothing changes until you choose.
-    val entry = remember { FocusRequester() }
-    val hasSelected = moreSelected || chips.any { it.id == selected }
-    LazyRow(modifier.fillMaxWidth().focusProperties { enter = { if (hasSelected) entry else FocusRequester.Default } }, contentPadding = PaddingValues(horizontal = Tokens.screenPadding, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+fun ChipRow(chips: List<Chip>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier, moreLabel: String? = null, moreSelected: Boolean = false, onMore: (() -> Unit)? = null, below: FocusRequester? = null) {
+    // DOWN from the top bar lands on the Categories pill when there is one (the folder dropdown), else on the open category; DOWN from here lands on the first item below.
+    val entry = LocalContentEntry.current ?: remember { FocusRequester() }
+    LazyRow(
+        modifier.fillMaxWidth().onPreviewKeyEvent { e ->
+            if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionDown && below != null) runCatching { below.requestFocus() }.isSuccess else false
+        },
+        contentPadding = PaddingValues(horizontal = Tokens.screenPadding, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         items(chips, key = { it.id }) { chip ->
             val sel = chip.id == selected && !moreSelected
-            Pill(chip.title, chip.icon, sel, modifier = if (sel) Modifier.focusRequester(entry) else Modifier) { onSelect(chip.id) }
+            Pill(chip.title, chip.icon, sel, modifier = if (sel && onMore == null) Modifier.focusRequester(entry) else Modifier) { onSelect(chip.id) }
         }
         // There can be hundreds of provider folders: one pill opens the whole list instead of a row that never ends.
-        if (onMore != null) item(key = "__more") { Pill(moreLabel ?: "Categories", Icons.Filled.Folder, moreSelected, trailing = Icons.Filled.ArrowDropDown, autoSelect = false, modifier = if (moreSelected) Modifier.focusRequester(entry) else Modifier) { onMore() } }
+        if (onMore != null) item(key = "__more") { Pill(moreLabel ?: "Categories", Icons.Filled.Folder, moreSelected, trailing = Icons.Filled.ArrowDropDown, autoSelect = false, modifier = Modifier.focusRequester(entry)) { onMore() } }
     }
 }
 

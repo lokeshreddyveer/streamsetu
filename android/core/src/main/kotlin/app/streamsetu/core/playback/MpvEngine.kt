@@ -42,6 +42,11 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
         MPVLib.setOptionString("cache", "yes")
         MPVLib.setOptionString("demuxer-max-bytes", "64MiB")
         MPVLib.setOptionString("keep-open", "no")
+        // IPTV servers drop connections: reconnect by itself, and play on a frame drop instead of stalling.
+        MPVLib.setOptionString("stream-lavf-o", "reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=5")
+        MPVLib.setOptionString("framedrop", "vo")
+        MPVLib.setOptionString("video-sync", "audio")
+        MPVLib.setOptionString("vd-lavc-threads", "4")
         MPVLib.setOptionString("sub-auto", "fuzzy")
         MPVLib.init()
         MPVLib.observeProperty("time-pos", MPVLib.MPV_FORMAT_DOUBLE)
@@ -77,6 +82,10 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
     override fun load(request: EngineRequest) {
         ensureInit()
         started = false; pos = 0.0; dur = 0.0
+        // A live stream starts faster with a short probe; a movie is probed fully so its tracks are right.
+        MPVLib.setPropertyString("demuxer-lavf-analyzeduration", if (request.live) "1" else "5")
+        MPVLib.setPropertyString("demuxer-lavf-probesize", if (request.live) "500000" else "5000000")
+        MPVLib.setPropertyString("cache-pause-wait", if (request.live) "1" else "2")
         MPVLib.setPropertyString("cache-secs", request.buffering.mpvCacheSecs.toString())
         MPVLib.setPropertyString("demuxer-readahead-secs", request.buffering.mpvCacheSecs.toString())
         MPVLib.setPropertyString("user-agent", request.headers["User-Agent"] ?: "StreamSetu/0.1 (Android TV)")
@@ -86,6 +95,16 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
         if (request.startMs > 5_000) MPVLib.command(arrayOf("loadfile", request.url, "replace", "-1", "start=${request.startMs / 1000}"))
         else MPVLib.command(arrayOf("loadfile", request.url, "replace"))
         onEvent(EngineEvent.Buffering)
+    }
+
+    override fun setSpeed(speed: Float) { if (initialised) MPVLib.setPropertyDouble("speed", speed.toDouble()) }
+    override fun setAspect(mode: AspectMode) {
+        if (!initialised) return
+        when (mode) {
+            AspectMode.FIT -> { MPVLib.setPropertyDouble("panscan", 0.0); MPVLib.setPropertyDouble("video-zoom", 0.0) }
+            AspectMode.FILL -> { MPVLib.setPropertyDouble("panscan", 1.0); MPVLib.setPropertyDouble("video-zoom", 0.0) }
+            AspectMode.ZOOM -> { MPVLib.setPropertyDouble("panscan", 1.0); MPVLib.setPropertyDouble("video-zoom", 0.2) }
+        }
     }
 
     override fun play() { if (initialised) MPVLib.setPropertyBoolean("pause", false) }

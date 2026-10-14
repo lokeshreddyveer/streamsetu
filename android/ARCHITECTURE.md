@@ -61,6 +61,15 @@ OK shows the bar (and pauses a movie when the bar is already visible). Left/Righ
 * **Settings:** General, Playback, Library, Advanced pages with grouped rows; every control saves at once (`AppSettings`).
 * **Navigation:** tabs and sidebar entries show their content as focus rests on them; Back goes up to the top bar first; focus is remembered per list.
 
+## Player (matches the iPhone app)
+Chips under the progress bar: Audio, Subtitles, Speed, Picture (Fit / Fill / Zoom), Player (ExoPlayer / MPV for this stream), Start over (after a resume), Channels (live), More
+(sleep timer, favourite, last channel, stream information, Picture in Picture). Live: channel banner with now/next, ▲ ▼ channel, ◀ channel list, digits type a channel number.
+Movies: ◀ ▶ skip 10 s, ▼ options, "Up next" card in the last 30 s of an episode. A failed stream offers Try Again / Next Channel / Close.
+
+## Engine robustness
+ExoPlayer: transport-stream flags for streams cut mid-frame, decoder fallback, live-window recovery, buffer modes. MPV: reconnect on network errors, short probe for live. The controller
+treats a stream stuck in buffering as a failure (18 s live, 30 s movies) so retry and engine-switch rules take over, logs the time to first picture, and spaces streams on one-connection accounts.
+
 ## Provider behaviour learned from a real account
 * Xtream accounts say which live formats they allow (`allowed_output_formats`). Many allow only `ts`; asking for `m3u8` is refused. `StreamResolver` follows the account.
 * Playlists contain divider rows ("#### Bulgaria ####") that are not streams; they are dropped at sync.

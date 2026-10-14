@@ -72,6 +72,7 @@ inline fun <reified T : ViewModel> vm(key: String? = null, crossinline create: (
 fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     val topFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val sidebarEntry = remember { androidx.compose.ui.focus.FocusRequester() }
+    val contentEntry = remember { androidx.compose.ui.focus.FocusRequester() }
     val contentFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     var anyFocus by remember { mutableStateOf(false) }
     var topBarFocused by remember { mutableStateOf(false) }
@@ -111,7 +112,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                 val ok = runCatching { back.requestFocus() }
                 android.util.Log.i("FocusMem", "restore #$it ${ok.exceptionOrNull()?.javaClass?.simpleName ?: "ok"}")
             } } }
-        androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalFocusEnabled provides (nav.top == null), app.streamsetu.tv.ui.components.LocalSidebarEntry provides sidebarEntry) {
+        androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalFocusEnabled provides (nav.top == null), app.streamsetu.tv.ui.components.LocalSidebarEntry provides sidebarEntry, app.streamsetu.tv.ui.components.LocalContentEntry provides contentEntry) {
         // The page fills the screen; the top bar floats over it (transparent on Home, where the hero picture runs underneath).
         Box(Modifier.fillMaxSize()) {
             val onHome = nav.tab == Tab.HOME && hasSources?.isNotEmpty() == true
@@ -119,7 +120,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                 when {
                     hasSources == null -> {}
                     hasSources!!.isEmpty() && nav.tab != Tab.SETTINGS -> FirstRun(onAdd = { nav.open(Overlay.AddPlaylist) })
-                    else -> when (nav.tab) {
+                    else -> app.streamsetu.tv.ui.components.FadeIn(nav.tab) { when (nav.tab) {
                         Tab.HOME -> HomeScreen(vm { HomeViewModel(c) }, c, nav)
                         Tab.LIVE -> LiveScreen(vm { LiveViewModel(c) }, c, nav)
                         Tab.GUIDE -> GuideScreen(vm { GuideViewModel(c) }, c, nav)
@@ -127,20 +128,22 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                         Tab.SERIES -> SeriesScreen(vm { SeriesViewModel(c) }, nav)
                         Tab.SEARCH -> SearchScreen(vm { SearchViewModel(c) }, c, nav)
                         Tab.SETTINGS -> SettingsScreen(vm { SettingsViewModel(c) }, c, nav)
-                    }
+                    } }
                 }
             }
-            TopBar(nav.tab, topFocus, transparent = onHome, onHasFocus = { topBarFocused = it }, canAutoSelect = { nav.canAutoSelect() }, onSelect = { nav.tab = it })
+            TopBar(nav.tab, topFocus, transparent = onHome && nav.homeAtTop, onHasFocus = { topBarFocused = it }, canAutoSelect = { nav.canAutoSelect() }, onDown = { runCatching { contentEntry.requestFocus() }.isSuccess }, onSelect = { nav.tab = it })
         }
         }
         androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalInOverlay provides true) {
-        when (val o = nav.top) {
+        nav.top?.let { top -> app.streamsetu.tv.ui.components.FadeIn(top) {
+        when (val o = top) {
             is Overlay.AddPlaylist -> AddPlaylistScreen(vm { AddPlaylistViewModel(c) }, onClose = { nav.close() })
             is Overlay.MovieDetail -> MovieDetailScreen(o.movie, c, nav)
             is Overlay.SeriesDetail -> SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
             is Overlay.Player -> PlayerScreen(c, onClose = { c.playback.stop(); nav.close() })
             null -> {}
         }
+        } }
         }
     }
 }

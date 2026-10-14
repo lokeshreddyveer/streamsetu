@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -46,16 +47,17 @@ fun MoviesScreen(vm: MoviesViewModel, c: AppContainer, nav: Navigator) {
     val chips = movieShortcuts
     val folder = folders.firstOrNull { it.id == sel }
     val title = chips.firstOrNull { it.id == sel }?.title ?: folder?.title ?: "Movies"
+    val firstItem = remember { androidx.compose.ui.focus.FocusRequester() }
     var picking by remember { mutableStateOf(false) }
     if (picking) CategoryPicker("Movie categories", folders, sel, { sel = it; picking = false }, { picking = false })
     Column(Modifier.fillMaxSize()) {
-        ChipRow(chips, sel, { sel = it }, moreLabel = folder?.title, moreSelected = folder != null, onMore = { picking = true })
+        ChipRow(chips, sel, { sel = it }, moreLabel = folder?.title, moreSelected = folder != null, onMore = { picking = true }, below = firstItem)
         Row(Modifier.padding(start = Tokens.screenPadding, top = 2.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Label(title, Tokens.pageTitle, Tokens.text, FontWeight.Bold); Label("${movies.size} movies", Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(bottom = 2.dp))
         }
         if (movies.isEmpty()) EmptyState("Nothing here yet", "Movies you add to $title appear here.")
         else LazyVerticalGrid(GridCells.Adaptive(Tokens.posterWidth), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(start = Tokens.screenPadding, end = Tokens.screenPadding, top = 4.dp, bottom = 28.dp)) {
-            items(movies, key = { it.id }) { m -> PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, subtitle = m.year?.toString(), badge = ratingBadge(m.rating)) }
+            itemsIndexed(movies, key = { _, it -> it.id }) { i, m -> PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, subtitle = m.year?.toString(), badge = ratingBadge(m.rating), focusRequester = if (i == 0) firstItem else null) }
         }
     }
 }
@@ -72,16 +74,17 @@ fun SeriesScreen(vm: SeriesViewModel, nav: Navigator) {
     val chips = seriesShortcuts
     val folder = folders.firstOrNull { it.id == sel }
     val title = chips.firstOrNull { it.id == sel }?.title ?: folder?.title ?: "Series"
+    val firstItem = remember { androidx.compose.ui.focus.FocusRequester() }
     var picking by remember { mutableStateOf(false) }
     if (picking) CategoryPicker("Series categories", folders, sel, { sel = it; picking = false }, { picking = false })
     Column(Modifier.fillMaxSize()) {
-        ChipRow(chips, sel, { sel = it }, moreLabel = folder?.title, moreSelected = folder != null, onMore = { picking = true })
+        ChipRow(chips, sel, { sel = it }, moreLabel = folder?.title, moreSelected = folder != null, onMore = { picking = true }, below = firstItem)
         Row(Modifier.padding(start = Tokens.screenPadding, top = 2.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Label(title, Tokens.pageTitle, Tokens.text, FontWeight.Bold); Label("${series.size} series", Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(bottom = 2.dp))
         }
         if (series.isEmpty()) EmptyState("Nothing here yet", "Series you add to $title appear here.")
         else LazyVerticalGrid(GridCells.Adaptive(Tokens.posterWidth), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(start = Tokens.screenPadding, end = Tokens.screenPadding, top = 4.dp, bottom = 28.dp)) {
-            items(series, key = { it.id }) { s -> PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, subtitle = s.year?.toString(), badge = ratingBadge(s.rating)) }
+            itemsIndexed(series, key = { _, it -> it.id }) { i, s -> PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, subtitle = s.year?.toString(), badge = ratingBadge(s.rating), focusRequester = if (i == 0) firstItem else null) }
         }
     }
 }

@@ -35,7 +35,7 @@ fun SettingsScreen(vm: SettingsViewModel, c: AppContainer, nav: Navigator) {
         Row(Modifier.fillMaxHeight().width(Tokens.sidebarWidth).background(Tokens.panel)) {
             Column(Modifier.weight(1f).padding(8.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 SettingsPage.entries.forEach { p ->
-                    Focusable({ page = p.name }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(Tokens.radiusSmall),
+                    Focusable({ page = p.name }, (if (p == current) (LocalContentEntry.current?.let { Modifier.focusRequester(it) } ?: Modifier) else Modifier).fillMaxWidth(), shape = RoundedCornerShape(Tokens.radiusSmall),
                         container = if (p == current) androidx.compose.ui.graphics.Color(0x0AFFFFFF) else androidx.compose.ui.graphics.Color.Transparent, focusedContainer = androidx.compose.ui.graphics.Color(0x1FFFFFFF), scaleOnFocus = 1.02f) { f ->
                         LaunchedEffect(f) { if (f && p != current) { kotlinx.coroutines.delay(250); page = p.name } }
                         Label(p.title, Tokens.row, if (p == current || f) Tokens.accent else Tokens.textSecondary, if (p == current) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))

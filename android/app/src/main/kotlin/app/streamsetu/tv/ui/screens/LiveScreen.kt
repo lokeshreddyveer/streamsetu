@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.streamsetu.core.model.*
@@ -45,16 +46,17 @@ fun LiveScreen(vm: LiveViewModel, c: AppContainer, nav: Navigator) {
     val chips = listOf(Chip("all", "All Channels", Icons.Filled.LiveTv), Chip("recent", "Recently Watched", Icons.Filled.History), Chip("favorites", "Favorites", Icons.Filled.FavoriteBorder))
     val folders = categories.map { Chip(it.id, it.name) }
     val folder = folders.firstOrNull { it.id == sel }
+    val firstRow = remember { androidx.compose.ui.focus.FocusRequester() }
     var picking by remember { mutableStateOf(false) }
     if (picking) CategoryPicker("Channel categories", folders, sel, { sel = it; picking = false }, { picking = false })
 
     Column(Modifier.fillMaxSize()) {
-        ChipRow(chips, sel, { sel = it }, moreLabel = folder?.title, moreSelected = folder != null, onMore = { picking = true })
+        ChipRow(chips, sel, { sel = it }, moreLabel = folder?.title, moreSelected = folder != null, onMore = { picking = true }, below = firstRow)
         Row(Modifier.fillMaxSize().padding(start = Tokens.screenPadding, end = Tokens.screenPadding, top = 4.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             LazyColumn(Modifier.weight(1.15f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(3.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                 itemsIndexed(channels, key = { _, ch -> ch.id }) { index, ch ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Focusable({ play(c, nav, ChannelPlayable(ch), channels.map { ChannelPlayable(it) }) }, Modifier.weight(1f), scaleOnFocus = 1.0f, container = Tokens.card, onFocus = { if (it) highlighted = ch }) { f ->
+                        Focusable({ play(c, nav, ChannelPlayable(ch), channels.map { ChannelPlayable(it) }) }, (if (index == 0) Modifier.focusRequester(firstRow) else Modifier).weight(1f), scaleOnFocus = 1.0f, container = Tokens.card, onFocus = { if (it) highlighted = ch }) { f ->
                             Row(Modifier.padding(horizontal = 8.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                 Label("${ch.number ?: index + 1}", Tokens.caption, if (f) Tokens.accent else Tokens.textTertiary, FontWeight.Bold, modifier = Modifier.width(28.dp))
                                 ChannelLogo(ch.logoUrl, ch.name, 26.dp)

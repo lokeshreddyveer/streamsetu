@@ -75,7 +75,12 @@ class AppContainer(context: Context) {
         return r
     }
 
+    /** The live channel watched before the current one (the iPhone app's Last Channel). */
+    var previousLive: Playable? = null
+    fun lastChannel() { previousLive?.let { play(it, queue) } }
+
     fun play(item: Playable, queue: List<Playable> = listOf(item)) {
+        playback.current.value?.takeIf { it.isLive && it.id != item.id }?.let { previousLive = it }
         this.queue = queue
         queueIndex = queue.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
         appScope.launch {

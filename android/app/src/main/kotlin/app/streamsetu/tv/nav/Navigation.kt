@@ -41,6 +41,8 @@ sealed interface Overlay {
 @Stable
 class Navigator {
     var tab by mutableStateOf(Tab.HOME)
+    /** True while Home shows its top picture (the top bar is see-through only then; scrolled, it turns solid so rows never run under its text). */
+    var homeAtTop by mutableStateOf(true)
     val overlays = mutableStateListOf<Overlay>()
 
     val top: Overlay? get() = overlays.lastOrNull()

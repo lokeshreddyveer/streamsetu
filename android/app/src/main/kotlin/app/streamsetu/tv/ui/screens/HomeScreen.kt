@@ -31,7 +31,11 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val series by vm.someSeries.collectAsState()
     val rowPad = PaddingValues(horizontal = Tokens.screenPadding, vertical = 6.dp)
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 36.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val atTop by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 40 } }
+    LaunchedEffect(atTop) { nav.homeAtTop = atTop }
+    DisposableEffect(Unit) { onDispose { nav.homeAtTop = true } }
+    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 36.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (featured.isNotEmpty()) item {
             Hero(featured, loadInfo = { c.sync.movieInfo(it) },
                 onPlay = { f -> play(c, nav, f) },
