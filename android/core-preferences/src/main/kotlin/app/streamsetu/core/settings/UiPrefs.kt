@@ -69,4 +69,28 @@ class UiPrefs(context: Context) {
     /** Home rows the person turned off. */
     val homeHidden: StateFlow<Set<String>> = _homeHidden
     fun setHomeRowHidden(id: String, hidden: Boolean) { val n = if (hidden) _homeHidden.value + id else _homeHidden.value - id; prefs.edit().putString("homeHidden", n.joinToString(",")).apply(); _homeHidden.value = n }
+
+    // ---- Interface sounds ----
+    private val _soundsOn = flow(prefs.getBoolean("soundsOn", true))
+    val soundsEnabled: StateFlow<Boolean> = _soundsOn
+    fun setSoundsEnabled(v: Boolean) { prefs.edit().putBoolean("soundsOn", v).apply(); _soundsOn.value = v }
+    private val _soundTheme = flow(prefs.getString("soundTheme", "SIGNATURE")!!)
+    /** SIGNATURE (all tones), MINIMAL (only the important ones) or SILENT. */
+    val soundTheme: StateFlow<String> = _soundTheme
+    fun setSoundTheme(v: String) { prefs.edit().putString("soundTheme", v).apply(); _soundTheme.value = v }
+    private val _soundVol = flow(prefs.getInt("soundVol", 50))
+    val soundVolume: StateFlow<Int> = _soundVol
+    fun setSoundVolume(v: Int) { prefs.edit().putInt("soundVol", v).apply(); _soundVol.value = v }
+    private val _navTones = flow(prefs.getBoolean("navTones", true)); val navTones: StateFlow<Boolean> = _navTones
+    fun setNavTones(v: Boolean) { prefs.edit().putBoolean("navTones", v).apply(); _navTones.value = v }
+    private val _selTones = flow(prefs.getBoolean("selTones", true)); val selectionTones: StateFlow<Boolean> = _selTones
+    fun setSelectionTones(v: Boolean) { prefs.edit().putBoolean("selTones", v).apply(); _selTones.value = v }
+    private val _confTones = flow(prefs.getBoolean("confTones", true)); val confirmationTones: StateFlow<Boolean> = _confTones
+    fun setConfirmationTones(v: Boolean) { prefs.edit().putBoolean("confTones", v).apply(); _confTones.value = v }
+    private val _errTones = flow(prefs.getBoolean("errTones", true)); val errorTones: StateFlow<Boolean> = _errTones
+    fun setErrorTones(v: Boolean) { prefs.edit().putBoolean("errTones", v).apply(); _errTones.value = v }
+    private val _soundPlayback = flow(prefs.getString("soundPlayback", "REDUCED")!!)
+    /** What happens to interface sounds while a video is playing: OFF, REDUCED or ON. */
+    val soundsDuringPlayback: StateFlow<String> = _soundPlayback
+    fun setSoundsDuringPlayback(v: String) { prefs.edit().putString("soundPlayback", v).apply(); _soundPlayback.value = v }
 }

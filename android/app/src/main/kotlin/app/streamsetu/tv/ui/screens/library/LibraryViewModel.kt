@@ -58,9 +58,9 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
             runCatching { c.syncWithGuide(saved.id) }
                 .onSuccess { r ->
                     if (r.channels + r.movies + r.series == 0) _test.value = Test.Failed("The sign-in worked but the provider returned nothing to watch. Check that the subscription is active.").also { c.sources.setError(saved.id, "Nothing to watch") }
-                    else _test.value = Test.Passed(saved.id, label, r.channels, r.movies, r.series)
+                    else { _test.value = Test.Passed(saved.id, label, r.channels, r.movies, r.series); app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.SUCCESS) }
                 }
-                .onFailure { _test.value = Test.Failed(it.message ?: "The connection could not be read.").also { _ -> c.sources.setError(saved.id, it.message?.take(200)) } }
+                .onFailure { app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.ERROR); _test.value = Test.Failed(it.message ?: "The connection could not be read.").also { _ -> c.sources.setError(saved.id, it.message?.take(200)) } }
             testing = false
         }
     }

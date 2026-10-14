@@ -93,7 +93,7 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
 @Composable
 private fun SidebarEntry(t: Tab, selected: Tab, entry: FocusRequester, labelAlpha: Float, onSelect: (Tab) -> Unit) {
     val isSel = t == selected
-    Focusable({ onSelect(t) }, (if (isSel) Modifier.focusRequester(entry) else Modifier).fillMaxWidth().height(Row.dp), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color(0x26FFFFFF), shape = RoundedCornerShape(12.dp)) { f ->
+    Focusable({ onSelect(t) }, (if (isSel) Modifier.focusRequester(entry) else Modifier).fillMaxWidth().height(Row.dp), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color(0x26FFFFFF), shape = RoundedCornerShape(12.dp), focusSound = app.streamsetu.tv.UISoundEvent.SIDEBAR_MOVE, selectSound = app.streamsetu.tv.UISoundEvent.NAVIGATE_FORWARD) { f ->
         Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
             // The accent bar sits at the very left; the icon box is the same width in both states, so nothing shifts when the panel widens.
             Box(Modifier.padding(start = 2.dp).width(3.dp).height(20.dp).background(if (isSel) Tokens.gold else Color.Transparent, RoundedCornerShape(2.dp)))

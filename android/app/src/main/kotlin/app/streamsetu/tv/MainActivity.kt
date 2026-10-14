@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        app.streamsetu.tv.UISound.pause()
         runCatching { frames.stop() }
         container.playback.onBackground()
         super.onStop()
@@ -78,6 +79,7 @@ class MainActivity : ComponentActivity() {
     private val fireLong = Runnable { val h = app.streamsetu.tv.ui.components.LongPress.handler; if (h != null) { longFired = true; h.run() } }
 
     override fun dispatchKeyEvent(e: android.view.KeyEvent): Boolean {
+        if (e.action == android.view.KeyEvent.ACTION_DOWN && e.keyCode in android.view.KeyEvent.KEYCODE_DPAD_UP..android.view.KeyEvent.KEYCODE_DPAD_RIGHT) app.streamsetu.tv.UISound.noteDpad()
         val select = e.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || e.keyCode == android.view.KeyEvent.KEYCODE_ENTER || e.keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
         if (!select || nav.top == Overlay.Player) return super.dispatchKeyEvent(e)
         when (e.action) {
@@ -94,6 +96,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        app.streamsetu.tv.UISound.resume()
         container.playback.onForeground()
         // In a test build, frame timing is written to the log (adb logcat -s Motion) so smoothness can be measured, not guessed.
         if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) frames.start()
@@ -131,6 +134,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     val effectiveBase = if (nav.base == Base.ChooseLibrary && noLibrary && entries.none { it.kind == LibraryEntry.Kind.CONNECTION }) Base.Welcome else nav.base
 
     BackHandler(enabled = true) {
+        app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.NAVIGATE_BACK)
         when {
             nav.top == Overlay.Player -> closePlayer(c, nav)
             nav.overlays.isNotEmpty() -> nav.close()

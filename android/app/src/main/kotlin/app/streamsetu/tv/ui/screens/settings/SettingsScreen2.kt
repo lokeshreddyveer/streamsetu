@@ -154,6 +154,18 @@ fun AppearanceSettings(c: AppContainer) {
         ChoiceRow("Slide duration", "The banner never changes while the remote is on one of its buttons.", listOf(6 to "6 seconds", 9 to "9 seconds", 12 to "12 seconds"), secs, enabled = banner, reason = "Turn on the banner first.") { ui.setBannerSeconds(it) }
         ToggleRow("Shortcut chips under the banner", "Favorites, Watch Later, Recently Watched, Continue Watching.", shortcuts) { ui.setShowShortcuts(it) }
     }
+    val soundsOn by ui.soundsEnabled.collectAsState(); val theme by ui.soundTheme.collectAsState(); val vol by ui.soundVolume.collectAsState()
+    val navT by ui.navTones.collectAsState(); val selT by ui.selectionTones.collectAsState(); val confT by ui.confirmationTones.collectAsState(); val errT by ui.errorTones.collectAsState(); val dur by ui.soundsDuringPlayback.collectAsState()
+    SettingGroup("Interface sounds", "Short, soft tones for moving, choosing and confirming. They never change the TV's volume, never take audio focus, and do not play for the banner slideshow or background updates.") {
+        ToggleRow("Interface sounds", "One switch for every interface tone.", soundsOn) { ui.setSoundsEnabled(it) }
+        ChoiceRow("Sound theme", "Signature has every tone, Minimal keeps only choosing, going back, confirmations and errors.", listOf("SIGNATURE" to "StreamSetu Signature", "MINIMAL" to "Minimal", "SILENT" to "Silent"), theme, enabled = soundsOn, reason = "Interface sounds are off.") { ui.setSoundTheme(it); app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.SELECT) }
+        ChoiceRow("Sound volume", "Relative to a deliberately low base level.", listOf(10, 25, 50, 75, 100).map { it to "$it%" }, vol, enabled = soundsOn, reason = "Interface sounds are off.") { ui.setSoundVolume(it); app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.SELECT) }
+        ToggleRow("Navigation tones", "Moving between items and opening or closing menus.", navT, enabled = soundsOn, reason = "Interface sounds are off.") { ui.setNavTones(it) }
+        ToggleRow("Selection tones", "Choosing an item and starting playback.", selT, enabled = soundsOn, reason = "Interface sounds are off.") { ui.setSelectionTones(it) }
+        ToggleRow("Confirmation tones", "Favorites, Watch Later, folder changes and successful connections.", confT, enabled = soundsOn, reason = "Interface sounds are off.") { ui.setConfirmationTones(it) }
+        ToggleRow("Error tones", "When something cannot be done.", errT, enabled = soundsOn, reason = "Interface sounds are off.") { ui.setErrorTones(it) }
+        ChoiceRow("Sounds during playback", "What happens to these tones while a video is playing.", listOf("OFF" to "Off", "REDUCED" to "Reduced", "ON" to "On"), dur, enabled = soundsOn, reason = "Interface sounds are off.") { ui.setSoundsDuringPlayback(it) }
+    }
     SettingGroup("Folders") {
         ToggleRow("Open a folder when the remote rests on it", "Off: a folder opens only when OK is pressed.", dwell) { s.setFoldersOpenOnFocus(it) }
     }

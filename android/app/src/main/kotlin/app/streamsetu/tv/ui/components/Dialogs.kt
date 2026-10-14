@@ -32,7 +32,8 @@ data class MenuAction(val label: String, val icon: ImageVector, val enabled: Boo
 @Composable
 fun ContextMenu(title: String, subtitle: String? = null, actions: List<MenuAction>, onClose: () -> Unit) {
     val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) { delay(80); runCatching { first.requestFocus() } }
+    LaunchedEffect(Unit) { app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.MENU_OPEN); delay(80); runCatching { first.requestFocus() } }
+    DisposableEffect(Unit) { onDispose { app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.MENU_CLOSE) } }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
             Column(Modifier.width(300.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -41,7 +42,7 @@ fun ContextMenu(title: String, subtitle: String? = null, actions: List<MenuActio
                 Spacer(Modifier.height(6.dp))
                 val firstEnabled = actions.indexOfFirst { it.enabled }
                 actions.forEachIndexed { idx, a ->
-                    Focusable({ if (a.enabled) { onClose(); a.run() } }, (if (idx == firstEnabled) Modifier.focusRequester(first) else Modifier).fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
+                    Focusable({ if (a.enabled) { onClose(); a.run() } else app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.ERROR) }, (if (idx == firstEnabled) Modifier.focusRequester(first) else Modifier).fillMaxWidth(), scaleOnFocus = 1.0f, selectSound = null) { _ ->
                         Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Image(a.icon, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(if (a.enabled) Tokens.accent else Tokens.textTertiary))
                             Label(a.label, Tokens.row, if (a.enabled) Tokens.text else Tokens.textTertiary)
@@ -67,7 +68,7 @@ fun PinDialog(create: Boolean, check: (String) -> Boolean, onDone: (String) -> U
         if (entered.length == 4) {
             val pin = entered; entered = ""
             when {
-                !create -> if (check(pin)) onDone(pin) else message = "That PIN is not right."
+                !create -> if (check(pin)) onDone(pin) else { message = "That PIN is not right."; app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.ERROR) }
                 firstEntry == null -> { firstEntry = pin; message = "Enter it once more to confirm." }
                 firstEntry == pin -> onDone(pin)
                 else -> { firstEntry = null; message = "The two PINs did not match. Start again." }

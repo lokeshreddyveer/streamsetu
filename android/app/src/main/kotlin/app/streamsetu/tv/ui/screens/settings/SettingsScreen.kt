@@ -43,7 +43,7 @@ enum class Category(val title: String, val subtitle: String, val icon: ImageVect
     LIBRARIES("Libraries & Folders", "Connections, combined libraries, folders", Icons.Filled.Layers),
     SEARCH("Search & Catalog", "Sorting, search history and the index", Icons.Filled.Search),
     FAVOURITES("Favorites & History", "Lists, history and Home rows", Icons.Filled.Favorite),
-    APPEARANCE("Appearance & Navigation", "Posters, banner, animation", Icons.Filled.Palette),
+    APPEARANCE("Appearance & Sounds", "Posters, banner, animation, interface sounds", Icons.Filled.Palette),
     PRIVACY("Privacy & Security", "Folder PIN, relock, clearing data", Icons.Filled.Lock),
     STORAGE("Storage & Backup", "Cache, backup and reset", Icons.Filled.Storage),
     DIAGNOSTICS("Diagnostics", "Playback facts and a safe report", Icons.Filled.Troubleshoot),

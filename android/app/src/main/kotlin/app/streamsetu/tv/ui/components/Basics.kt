@@ -108,6 +108,9 @@ fun Focusable(
     ring: Color = Color.Unspecified,
     onFocus: (Boolean) -> Unit = {},
     onLongClick: (() -> Unit)? = null,
+    /** The tone when the remote moves onto this, and when it is chosen. null = silent (a caller that plays its own sound). */
+    focusSound: app.streamsetu.tv.UISoundEvent? = app.streamsetu.tv.UISoundEvent.FOCUS_MOVE,
+    selectSound: app.streamsetu.tv.UISoundEvent? = app.streamsetu.tv.UISoundEvent.SELECT,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -131,6 +134,7 @@ fun Focusable(
             .focusRequester(own)
             .focusProperties { canFocus = enabled }
             .onFocusChanged {
+                if (it.isFocused && !focused && focusSound != null) app.streamsetu.tv.UISound.focusMoved(focusSound)
                 focused = it.isFocused
                 onFocus(it.isFocused)
                 // Holding OK is detected by the activity (it sees every key before anything else) and handed to whatever the remote is on.
@@ -139,7 +143,7 @@ fun Focusable(
                 if (it.isFocused && enabled && !inOverlay) { FocusMemory.last = own; FocusMemory.lastHasFocus = true }
                 else if (!it.isFocused && FocusMemory.last === own) FocusMemory.lastHasFocus = false
             }
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = { if (selectSound != null) app.streamsetu.tv.UISound.play(selectSound); onClick() }),
     ) { content(focused) }
 }
 

@@ -23,9 +23,9 @@ abstract class FolderViewModel(protected val c: AppContainer, val kind: ContentK
     override fun toggleFavorite(f: Folder) { viewModelScope.launch { c.folders.toggleFavorite(kind, f) } }
     override fun togglePinned(f: Folder) { viewModelScope.launch { c.folders.togglePinned(kind, f) } }
     override fun toggleHidden(f: Folder) { viewModelScope.launch { c.folders.toggleHidden(kind, f) } }
-    override fun toggleLocked(f: Folder) { viewModelScope.launch { c.folders.toggleLocked(kind, f) } }
+    override fun toggleLocked(f: Folder) { viewModelScope.launch { c.folders.toggleLocked(kind, f); app.streamsetu.tv.UISound.play(if (f.pref.locked) app.streamsetu.tv.UISoundEvent.FOLDER_UNLOCK else app.streamsetu.tv.UISoundEvent.FOLDER_LOCK) } }
     override fun rename(f: Folder, alias: String?) { viewModelScope.launch { c.folders.setAlias(kind, f, alias) } }
-    override fun move(f: Folder, to: app.streamsetu.core.data.repo.MoveTo) { viewModelScope.launch { c.folders.moveTo(kind, folders.value.filter { !it.pref.hidden }, f, to) } }
+    override fun move(f: Folder, to: app.streamsetu.core.data.repo.MoveTo) { viewModelScope.launch { c.folders.moveTo(kind, folders.value.filter { !it.pref.hidden }, f, to); app.streamsetu.tv.UISound.play(if (to == app.streamsetu.core.data.repo.MoveTo.FIRST) app.streamsetu.tv.UISoundEvent.FOLDER_MOVE_FIRST else app.streamsetu.tv.UISoundEvent.FOLDER_REORDER) } }
     override fun resetPosition(f: Folder) { viewModelScope.launch { c.folders.resetPosition(kind, f) } }
     override fun resetFolder(f: Folder) { viewModelScope.launch { c.folders.resetFolder(kind, f) } }
     override fun createFolder(name: String) { viewModelScope.launch { c.collections.create(name, kind) } }
@@ -98,6 +98,8 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
             else -> null
         } ?: listOf(id)
         ids.forEach { c.user.setFavourite(it, kind, !on, list) }
+        val fav = list == UserRepository.FAVOURITES
+        app.streamsetu.tv.UISound.play(if (fav) (if (!on) app.streamsetu.tv.UISoundEvent.FAVORITE_ADD else app.streamsetu.tv.UISoundEvent.FAVORITE_REMOVE) else (if (!on) app.streamsetu.tv.UISoundEvent.WATCH_LATER_ADD else app.streamsetu.tv.UISoundEvent.WATCH_LATER_REMOVE))
     }
     abstract fun setWatched(card: Card, watched: Boolean)
 

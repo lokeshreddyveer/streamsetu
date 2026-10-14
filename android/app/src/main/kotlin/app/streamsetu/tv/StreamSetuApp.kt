@@ -95,6 +95,7 @@ class AppContainer @Inject constructor(
         this.queue = queue
         if (item is ChannelPlayable) settings.lastChannelId = item.id
         queueIndex = queue.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
+        UISound.play(UISoundEvent.PLAYBACK_START)
         appScope.launch {
             val resume = if (item.isLive || !item.tracksProgress || startOver) 0 else if (settings.resumeAutomatically.value) user.progress(item.id)?.takeIf { !it.completed }?.positionMs ?: 0 else 0
             kotlinx.coroutines.withContext(Dispatchers.Main) { playback.play(item, resume) }
@@ -126,6 +127,10 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        UISound.init(this, settings = {
+            val u = container.ui
+            SoundSettings(u.soundsEnabled.value, u.soundTheme.value, u.soundVolume.value, u.navTones.value, u.selectionTones.value, u.confirmationTones.value, u.errorTones.value, u.soundsDuringPlayback.value)
+        }, videoPlaying = { container.playback.current.value != null && container.playback.state.value == app.streamsetu.core.playback.PlaybackState.Playing })
         CrashReporter.install(this, runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?")
         container.appScope.launch {
             // "Refresh on app start": after the screen has settled, each connection is read once, one after another, and never while something plays.
