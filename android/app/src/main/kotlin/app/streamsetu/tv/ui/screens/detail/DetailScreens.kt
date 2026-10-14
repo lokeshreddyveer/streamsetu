@@ -50,7 +50,10 @@ private fun Backdrop(url: String?, title: String, dim: Float = 0.9f) {
 
 /** A movie, full screen. The sidebar and folders are gone; Back returns to the exact poster you came from. */
 @Composable
-fun MovieDetailScreen(movie: Movie, c: AppContainer, nav: Navigator) {
+fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
+    val overrides by c.collections.overrides.collectAsState(initial = emptyMap())
+    val movie = overrides[movie0.id]?.let { o -> movie0.copy(title = o.title ?: movie0.title, posterUrl = o.posterUrl ?: movie0.posterUrl) } ?: movie0
+    var editing by remember { mutableStateOf(false) }
     val favs by c.user.favouriteIds(UserRepository.FAVOURITES).collectAsState(initial = emptySet())
     val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsState(initial = emptySet())
     val allProgress by c.user.allProgress().collectAsState(initial = emptyMap())
@@ -96,6 +99,7 @@ fun MovieDetailScreen(movie: Movie, c: AppContainer, nav: Navigator) {
                         TvButton(if (movie.id in later) "In Watch Later" else "Watch Later", { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in later, UserRepository.WATCH_LATER) } }, icon = if (movie.id in later) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder)
                         if (variants.size > 1) TvButton("Choose Stream", { chooseOpen = true }, icon = Icons.Filled.SwapHoriz)
                         TvButton(if (more) "Less" else "More Information", { more = !more }, icon = Icons.Filled.Info)
+                        TvButton("Edit", { editing = true }, icon = Icons.Filled.Edit)
                     }
                 }
             }
@@ -121,6 +125,7 @@ fun MovieDetailScreen(movie: Movie, c: AppContainer, nav: Navigator) {
             }
         }
     }
+    if (editing) OverrideDialog(movie.title, overrides[movie0.id]?.posterUrl.orEmpty(), onSave = { t, p -> scope.launch { c.collections.setOverride(movie0.id, t.takeIf { it != movie0.title }, p) }; editing = false }, onReset = { scope.launch { c.collections.clearOverride(movie0.id) }; editing = false }, onClose = { editing = false })
     if (chooseOpen) ContextMenu("Choose Stream", "Opens only this play. Your default is unchanged.", variants.map { v -> MenuAction("${sourceName(v.sourceId)}  ·  ${v.streamRef.substringAfterLast(':', "").uppercase()}", Icons.Filled.PlayArrow) { play(c, nav, MoviePlayable(v)) } }, onClose = { chooseOpen = false })
 }
 
@@ -136,7 +141,10 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
     val loading by vm.loading.collectAsState()
     val error by vm.error.collectAsState()
     val progress by vm.progress.collectAsState()
-    val s = vm.series
+    val series0 = vm.series
+    val overrides by c.collections.overrides.collectAsState(initial = emptyMap())
+    val s = overrides[series0.id]?.let { o -> series0.copy(title = o.title ?: series0.title, posterUrl = o.posterUrl ?: series0.posterUrl) } ?: series0
+    var editing by remember { mutableStateOf(false) }
     val favs by c.user.favouriteIds(UserRepository.FAVOURITES).collectAsState(initial = emptySet())
     val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsState(initial = emptySet())
     val sources by c.library.entries.collectAsState(initial = emptyList())
@@ -183,6 +191,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                         TvButton(if (s.id in favs) "Favorited" else "Favorite", { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in favs) } }, icon = if (s.id in favs) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder)
                         TvButton(if (s.id in later) "In Watch Later" else "Watch Later", { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in later, UserRepository.WATCH_LATER) } }, icon = if (s.id in later) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder)
                         if (variants.size > 1) TvButton("Choose Source", { chooseOpen = true }, icon = Icons.Filled.SwapHoriz)
+                        TvButton("Edit", { editing = true }, icon = Icons.Filled.Edit)
                     }
                 }
             }
@@ -216,5 +225,6 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
             }
         }
     }
+    if (editing) OverrideDialog(s.title, overrides[series0.id]?.posterUrl.orEmpty(), onSave = { t, p -> scope.launch { c.collections.setOverride(series0.id, t.takeIf { it != series0.title }, p) }; editing = false }, onReset = { scope.launch { c.collections.clearOverride(series0.id) }; editing = false }, onClose = { editing = false })
     if (chooseOpen) ContextMenu("Choose Source", "Opens that connection's copy of this series.", variants.map { v -> MenuAction(sourceName(v.sourceId) + if (v.id == s.id) "  (current)" else "", Icons.Filled.SwapHoriz, enabled = v.id != s.id) { nav.close(); nav.open(Overlay.SeriesDetail(v)) } }, onClose = { chooseOpen = false })
 }

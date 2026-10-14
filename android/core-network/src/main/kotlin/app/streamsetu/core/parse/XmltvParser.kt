@@ -10,12 +10,13 @@ import java.util.TimeZone
 
 /** Reads an XMLTV guide and reports programmes one by one. Only programmes that end after [notBeforeMs] and start before [notAfterMs] are kept. */
 object XmltvParser {
-    fun parse(input: InputStream, notBeforeMs: Long, notAfterMs: Long, onProgram: (EpgProgram) -> Unit): Int {
+    fun parse(input: InputStream, notBeforeMs: Long, notAfterMs: Long, onChannel: (id: String, name: String) -> Unit = { _, _ -> }, onProgram: (EpgProgram) -> Unit): Int {
         val p = XmlPullParserFactory.newInstance().newPullParser()
         p.setInput(input, null)
         var count = 0
         var channel: String? = null; var start = 0L; var stop = 0L; var title = ""; var desc: String? = null
         var inProgramme = false
+        var channelId: String? = null; var nameText: String? = null
         var text: String? = null
         while (true) {
             when (p.next()) {
@@ -26,10 +27,14 @@ object XmltvParser {
                         start = parseTime(p.getAttributeValue(null, "start")); stop = parseTime(p.getAttributeValue(null, "stop"))
                         title = ""; desc = null
                     }
+                    "channel" -> channelId = p.getAttributeValue(null, "id")
+                    "display-name" -> nameText = if (channelId != null && !inProgramme) "" else null
                     "title", "desc" -> text = if (inProgramme) "" else null
                 }
-                XmlPullParser.TEXT -> if (text != null) text += p.text
+                XmlPullParser.TEXT -> { if (text != null) text += p.text; if (nameText != null) nameText += p.text }
                 XmlPullParser.END_TAG -> when (p.name) {
+                    "display-name" -> { val id = channelId; val n = nameText?.trim(); if (id != null && !n.isNullOrEmpty()) onChannel(id, n); nameText = null }
+                    "channel" -> channelId = null
                     "title" -> { if (inProgramme && text != null && title.isEmpty()) title = text.trim(); text = null }
                     "desc" -> { if (inProgramme && text != null) desc = text.trim().ifEmpty { null }; text = null }
                     "programme" -> {

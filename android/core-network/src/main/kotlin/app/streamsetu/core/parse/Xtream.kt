@@ -33,6 +33,12 @@ object Xtream {
         return "$base/$type/${enc(user)}/${enc(pass)}/$id.${ext.ifBlank { if (type == "live") "m3u8" else "mp4" }}"
     }
 
+    /** The archive address of a programme: `/timeshift/user/pass/minutes/yyyy-MM-dd:HH-mm/streamId.ts`. [zone] is the time zone the provider reads the start time in. */
+    fun timeshiftUrl(host: String, user: String, pass: String, streamId: String, startMs: Long, minutes: Long, zone: java.util.TimeZone): String {
+        val f = java.text.SimpleDateFormat("yyyy-MM-dd:HH-mm", java.util.Locale.US).apply { timeZone = zone }
+        return "${normalizeHost(host)}/timeshift/${enc(user)}/${enc(pass)}/$minutes/${f.format(java.util.Date(startMs))}/$streamId.ts"
+    }
+
     fun parseArray(text: String): List<JsonObject> {
         val el = runCatching { json.parseToJsonElement(text) }.getOrNull() ?: return emptyList()
         return when (el) {

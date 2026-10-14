@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class ResumeItem(val progress: WatchProgress, val playable: Playable, val subtitle: String)
+data class ResumeItem(val progress: WatchProgress, val playable: Playable, val subtitle: String, val isNew: Boolean = false)
 data class LiveItem(val channel: Channel, val now: String?)
 sealed interface FavItem { val id: String; val title: String
     data class Ch(val channel: Channel) : FavItem { override val id get() = channel.id; override val title get() = channel.name }
@@ -63,18 +63,38 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     fun toggleWatchLater(id: String, kind: ContentKind) = viewModelScope.launch { c.user.setFavourite(id, kind, id !in watchLaterIds.value, UserRepository.WATCH_LATER) }
 
     // ---- Rails ----
-    val continueWatching: StateFlow<List<ResumeItem>> = combine(c.user.continueWatching(), c.library.sourceIds) { list, ids -> list to ids }.mapLatest { (list, ids) ->
-        list.mapNotNull { p ->
+    /**
+     * Continue Watching: titles left partway, and series with an episode that appeared after the person finished the earlier ones (marked New).
+     * A series shows once, whichever of the two applies; a new episode is never put ahead of one that is still in progress.
+     */
+    val continueWatching: StateFlow<List<ResumeItem>> = combine(c.user.continueWatching(), c.user.newEpisodes(), c.user.allProgress(), c.library.sourceIds) { list, fresh, progress, ids -> arrayOf(list, fresh, progress, ids) }.mapLatest { a ->
+        @Suppress("UNCHECKED_CAST") val list = a[0] as List<WatchProgress>
+        @Suppress("UNCHECKED_CAST") val fresh = a[1] as List<app.streamsetu.core.data.db.NewEpisodeEntity>
+        @Suppress("UNCHECKED_CAST") val progress = a[2] as Map<String, WatchProgress>
+        @Suppress("UNCHECKED_CAST") val ids = a[3] as List<String>
+        val out = ArrayList<ResumeItem>()
+        val seenSeries = HashSet<String>()
+        list.forEach { p ->
             when (p.kind) {
-                ContentKind.MOVIE -> c.catalog.movie(p.itemId)?.takeIf { it.sourceId in ids }?.let { ResumeItem(p, MoviePlayable(it), remaining(p)) }
-                ContentKind.EPISODE -> c.catalog.episode(p.itemId)?.let { e -> c.catalog.series(e.seriesId)?.takeIf { it.sourceId in ids }?.let { ResumeItem(p, EpisodePlayable(e, it), "S${e.season} E${e.number}  ·  ${remaining(p)}") } }
-                else -> null
+                ContentKind.MOVIE -> c.catalog.movie(p.itemId)?.takeIf { it.sourceId in ids }?.let { out += ResumeItem(p, MoviePlayable(it), remaining(p)) }
+                ContentKind.EPISODE -> c.catalog.episode(p.itemId)?.let { e -> c.catalog.series(e.seriesId)?.takeIf { it.sourceId in ids && seenSeries.add(it.id) }?.let { out += ResumeItem(p, EpisodePlayable(e, it), "S${e.season} E${e.number}  ·  ${remaining(p)}") } }
+                else -> {}
             }
         }
+        fresh.groupBy { it.seriesId }.forEach { (sid, flagged) ->
+            if (sid in seenSeries) return@forEach
+            val series = c.catalog.series(sid)?.takeIf { it.sourceId in ids } ?: return@forEach
+            val plan = app.streamsetu.core.data.repo.EpisodePlan.of(c.catalog.episodesOnce(sid), progress)
+            val next = plan.forward ?: return@forEach
+            // Only when everything before it was finished: otherwise the person is still catching up and Continue Watching already knows.
+            if (plan.catchUp != null || plan.inProgress != null || next.id !in flagged.map { it.episodeId }) return@forEach
+            out += ResumeItem(WatchProgress(next.id, ContentKind.EPISODE, sid, 0, 1, flagged.maxOf { it.discoveredAt }, false), EpisodePlayable(next, series), "New episode  ·  S${next.season} E${next.number}", isNew = true)
+        }
+        out.sortedByDescending { it.progress.updatedAt }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val recentLive: StateFlow<List<LiveItem>> = combine(c.user.recentChannelIds(14), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->
-        ids.mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib }.map { ch -> LiveItem(ch, ch.epgId?.let { e -> runCatching { c.epg.upcoming(c.db, e, 1).firstOrNull()?.title }.getOrNull() }) }
+        ids.mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib }.let { chs -> val map = runCatching { c.epg.resolve(chs) }.getOrDefault(emptyMap()); chs.map { ch -> LiveItem(ch, map[ch.id]?.let { e -> runCatching { c.epg.upcoming(c.db, e, 1).firstOrNull()?.title }.getOrNull() }) } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val favourites: StateFlow<List<FavItem>> = combine(c.user.favouriteIds(UserRepository.FAVOURITES), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->

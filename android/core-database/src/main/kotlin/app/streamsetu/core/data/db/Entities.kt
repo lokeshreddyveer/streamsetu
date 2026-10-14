@@ -126,3 +126,22 @@ data class FolderPrefEntity(
     /** -1 = provider order. */
     val sortIndex: Int = -1,
 )
+
+/** An episode that appeared after the person had already seen the series' earlier ones. Cleared when it is played or marked watched. */
+@Entity(tableName = "new_episodes", indices = [Index("seriesId")])
+data class NewEpisodeEntity(@PrimaryKey val episodeId: String, val seriesId: String, val discoveredAt: Long)
+
+/** A list the person made ("Weekend movies"). [scope] is MOVIE, SERIES or CHANNEL. */
+@Entity(tableName = "collections")
+data class CollectionEntity(@PrimaryKey val id: String, val name: String, val scope: String, val createdAt: Long)
+
+@Entity(tableName = "collection_items", primaryKeys = ["collectionId", "itemId"], indices = [Index("itemId")])
+data class CollectionItemEntity(val collectionId: String, val itemId: String, val addedAt: Long)
+
+/** A local correction to what the provider calls something. The provider's own data is never changed. */
+@Entity(tableName = "overrides")
+data class OverrideEntity(@PrimaryKey val itemId: String, val title: String?, val posterUrl: String?)
+
+/** Guide channel names, so a channel without a usable guide id can be matched to its programmes by name. */
+@Entity(tableName = "epg_channels")
+data class EpgChannelEntity(@PrimaryKey val epgId: String, val nameNorm: String)

@@ -235,10 +235,14 @@ fun LiveSettings(c: AppContainer) {
     SettingGroup("Watching live TV") {
         ToggleRow("Swap the channel keys", "Off: Up is the next channel and Down the previous one. On: the other way round.", inv) { s.setInvertChannelKeys(it) }
         ToggleRow("Show channel numbers", "The number the provider gives each channel, in lists and when typing a number.", nums) { s.setShowChannelNumbers(it) }
+        val group by ui.groupDuplicates.collectAsState()
+        ToggleRow("Fold the same channel into one row", "A channel that comes in HD, FHD and SD, or from two connections, is one row. Hold OK on it to pick a version.", group) { ui.setGroupDuplicates(it) }
         ToggleRow("Open Live TV on the last channel", "Starts the last channel you watched when Live TV opens. Off: nothing plays until you choose a channel.", resumeLast) { s.setResumeLastChannel(it) }
     }
     SettingGroup("Guide") {
         ChoiceRow("Guide time shift", "For a provider whose guide is early or late: every programme time moves by this much.", listOf(-120, -90, -60, -30, 0, 30, 60, 90, 120).map { it to if (it == 0) "None" else (if (it > 0) "+" else "−") + "${kotlin.math.abs(it)} min" }, off) { ui.setEpgOffsetMinutes(it) }
+        val zone by s.catchupZone.collectAsState()
+        ChoiceRow("Catch-up start time", "Providers read the start of a catch-up programme in their own time zone. If a catch-up plays the wrong programme, switch this.", listOf("UTC" to "UTC", "DEVICE" to "This device's time zone"), zone) { s.setCatchupZone(it) }
         InfoRow("Time zone", java.util.TimeZone.getDefault().id, "Guide times are shown in this device's time zone.")
     }
 }

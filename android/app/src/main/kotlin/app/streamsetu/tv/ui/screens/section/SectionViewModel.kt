@@ -63,10 +63,21 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
     val cards: StateFlow<List<Card>?> = combine(browse, sort) { b, s -> b to s }
         .flatMapLatest { (b, s) -> source(b, s).map<List<Card>, List<Card>?> { it }.onStart { emit(null) } }
         .combine(filter) { list, f -> if (f.active) list?.filter { f.accepts(it) } else list }
+        .combine(c.collections.overrides) { list, ov -> if (ov.isEmpty()) list else list?.map { card -> ov[card.id]?.let { o -> card.copy(title = o.title ?: card.title, posterUrl = o.posterUrl ?: card.posterUrl) } ?: card } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val favourites: StateFlow<Set<String>> = c.user.favouriteIds(UserRepository.FAVOURITES).stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
     val watchLater: StateFlow<Set<String>> = c.user.favouriteIds(UserRepository.WATCH_LATER).stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+    /** Series with an episode that appeared after the person had started them. */
+    val newSeries: StateFlow<Set<String>> = c.user.newEpisodes().map { l -> l.map { it.seriesId }.toSet() }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+    val collections: StateFlow<List<UserCollection>> = c.collections.collections(kind).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val overrides: StateFlow<Map<String, ItemOverride>> = c.collections.overrides.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+    fun createCollection(name: String, then: (String) -> Unit = {}) = viewModelScope.launch { then(c.collections.create(name, kind)) }
+    fun renameCollection(col: UserCollection, name: String) = viewModelScope.launch { c.collections.rename(col, name) }
+    fun deleteCollection(col: UserCollection) = viewModelScope.launch { c.collections.delete(col); if (browse.value == Browse.Collection(col.id)) select(Browse.All) }
+    suspend fun containing(itemId: String) = c.collections.containing(itemId)
+    fun addToCollection(col: String, itemId: String) = viewModelScope.launch { c.collections.add(col, itemId) }
+    fun removeFromCollection(col: String, itemId: String) = viewModelScope.launch { c.collections.remove(col, itemId) }
     val progress: StateFlow<Map<String, WatchProgress>> = c.user.allProgress().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     init { viewModelScope.launch { availability.value = runCatching { c.browse.availability() }.getOrDefault(availability.value) } }

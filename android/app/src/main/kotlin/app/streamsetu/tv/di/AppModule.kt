@@ -41,6 +41,7 @@ object AppModule {
     @Provides @Singleton fun epg(db: AppDatabase) = EpgService(db)
     @Provides @Singleton fun parental(@ApplicationContext c: Context) = ParentalControls(c)
     @Provides @Singleton fun maintenance(@ApplicationContext c: Context, db: AppDatabase, sources: SourceRepository, library: app.streamsetu.core.data.repo.LibraryRepository) = app.streamsetu.core.data.repo.MaintenanceService(c, db, sources, library) { coil.Coil.imageLoader(c).memoryCache?.clear() }
+    @Provides @Singleton fun collections(db: AppDatabase) = app.streamsetu.core.data.repo.CollectionRepository(db)
     @Provides @Singleton fun uiPrefs(@ApplicationContext c: Context) = app.streamsetu.core.settings.UiPrefs(c)
     @Provides @Singleton fun settings(@ApplicationContext c: Context) = AppSettings(c)
     @Provides @Singleton fun resolver(sources: SourceRepository, credentials: CredentialStore, @ApplicationContext c: Context) = StreamResolver(sources, credentials, c)
@@ -60,4 +61,5 @@ fun kindOf(p: Playable) = when (p) {
     is MoviePlayable -> ContentKind.MOVIE
     is EpisodePlayable -> ContentKind.EPISODE
     is SeriesFeature -> ContentKind.SERIES
+    is CatchUpPlayable -> ContentKind.CHANNEL
 }

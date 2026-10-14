@@ -66,6 +66,7 @@ fun FolderPanel(
     entry: FocusRequester? = null,
     onRight: () -> Boolean = { false },
     selectOnDwell: Boolean = true,
+    onShortcutMenu: (Shortcut) -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
     var manage by remember { mutableStateOf(false) }
@@ -128,7 +129,7 @@ fun FolderPanel(
             LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)) {
                 itemsIndexed(rows, key = { _, r -> if (r is Shortcut) "s:${r.label}" else "f:${(r as Folder).id}" }) { idx, r ->
                     if (r is Shortcut) {
-                        PanelRow(r.label, r.icon, null, r.browse == selected, false, if (r.browse == selected && entry != null) Modifier.focusRequester(entry) else Modifier, onFocusDwell = { if (selectOnDwell) onSelect(r.browse) }, onClick = { onSelect(r.browse) })
+                        PanelRow(r.label, r.icon, null, r.browse == selected, false, if (r.browse == selected && entry != null) Modifier.focusRequester(entry) else Modifier, onFocusDwell = { if (selectOnDwell) onSelect(r.browse) }, onLongClick = if (r.browse is Browse.Collection) ({ onShortcutMenu(r) }) else null, onClick = { onSelect(r.browse) })
                     } else {
                         val f = r as Folder
                         val isSel = selected == Browse.Folder(f.id)
@@ -197,17 +198,17 @@ private fun PanelRow(label: String, icon: ImageVector, count: Int?, selected: Bo
 }
 
 @Composable
-fun RenameDialog(current: String, onSave: (String) -> Unit, onReset: () -> Unit, onClose: () -> Unit) {
+fun RenameDialog(current: String, onSave: (String) -> Unit, onReset: () -> Unit, onClose: () -> Unit, title: String = "Display label", hint: String = "Only changes how it looks here. The provider's name is not touched.", resetLabel: String = "Use provider name") {
     var text by remember { mutableStateOf(current) }
     androidx.compose.ui.window.Dialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
             Column(Modifier.width(340.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Label("Display label", Tokens.title, Tokens.text, FontWeight.Bold)
-                Label("Only changes how it looks here. The provider's name is not touched.", Tokens.small, Tokens.textSecondary, maxLines = 2)
+                Label(title, Tokens.title, Tokens.text, FontWeight.Bold)
+                Label(hint, Tokens.small, Tokens.textSecondary, maxLines = 2)
                 TvTextField(text, { text = it }, "Label", Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TvButton("Save", { onSave(text) }, primary = true)
-                    TvButton("Use provider name", onReset)
+                    TvButton(resetLabel, onReset)
                 }
             }
         }

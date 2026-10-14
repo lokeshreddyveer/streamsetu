@@ -1,6 +1,7 @@
 package app.streamsetu.core.sync
 
 import androidx.room.withTransaction
+import app.streamsetu.core.data.repo.toModel
 import app.streamsetu.core.data.db.*
 import app.streamsetu.core.data.repo.toEntity
 import app.streamsetu.core.data.repo.SourceRepository
@@ -136,7 +137,13 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
                     "series:$id:${e.str("container_extension") ?: "mp4"}")
             }
         }
+        val known = db.extras().episodeIds(series.id).toSet()
         db.catalog().putEpisodes(out)
+        // An episode that shows up after the series was already read, in a series the person has watched, is flagged as new.
+        if (known.isNotEmpty() && series.id in db.extras().seriesWithProgress()) {
+            val fresh = out.filter { it.id !in known }
+            if (fresh.isNotEmpty()) db.extras().putNewEpisodes(fresh.map { app.streamsetu.core.data.db.NewEpisodeEntity(it.id, series.id, System.currentTimeMillis()) })
+        }
         out.size
     }
 
@@ -155,6 +162,20 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         val backdrop = ((info["backdrop_path"] as? kotlinx.serialization.json.JsonArray)?.firstOrNull() as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
         MovieInfo(info.str("plot") ?: info.str("description"), info.str("cast") ?: info.str("actors"), info.str("director"), info.str("genre"),
             info.str("duration"), backdrop, info.str("releasedate") ?: info.str("release_date")).also { movieInfoCache[movie.id] = it }
+    }
+
+    /** Reads the episode lists of series the person has started, one at a time and slowly, to notice new episodes. Never runs while something plays. */
+    suspend fun refreshWatchedSeries(limit: Int = 25, shouldStop: () -> Boolean = { false }): Int {
+        var found = 0
+        for (id in db.extras().seriesWithProgress().take(limit)) {
+            if (shouldStop()) break
+            val entity = db.catalog().series(id) ?: continue
+            val before = db.extras().episodeIds(id).size
+            runCatching { loadEpisodes(entity.toModel()) }
+            found += (db.extras().episodeIds(id).size - before).coerceAtLeast(0)
+            kotlinx.coroutines.delay(400)
+        }
+        return found
     }
 
     private fun year(s: String?) = s?.take(4)?.toIntOrNull()

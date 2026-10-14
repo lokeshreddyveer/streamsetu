@@ -120,6 +120,17 @@ class AppSettings(context: Context) {
         get() = prefs.getString("lastChannel", null)
         set(v) { prefs.edit().putString("lastChannel", v).apply() }
 
+    // ---- Catalog refresh ----
+    private val _bgHours = flow(prefs.getInt("bgSyncHours", 0))
+    /** 0 = only when asked; otherwise how many hours between background reads. */
+    val backgroundSyncHours: StateFlow<Int> = _bgHours
+    fun setBackgroundSyncHours(v: Int) { prefs.edit().putInt("bgSyncHours", v).apply(); _bgHours.value = v }
+
+    private val _catchupZone = flow(prefs.getString("catchupZone", "UTC") ?: "UTC")
+    /** The time zone a provider reads catch-up start times in: UTC or this device's. */
+    val catchupZone: StateFlow<String> = _catchupZone
+    fun setCatchupZone(v: String) { prefs.edit().putString("catchupZone", v).apply(); _catchupZone.value = v }
+
     // ---- Folders and privacy ----
     private val _dwell = flow(prefs.getBoolean("folderDwell", true))
     /** On: resting on a folder opens it after a moment. Off: it opens only when OK is pressed. */

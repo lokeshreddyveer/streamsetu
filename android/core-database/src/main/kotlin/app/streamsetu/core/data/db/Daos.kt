@@ -169,3 +169,37 @@ interface BrowseDao {
     @Query("SELECT COUNT(*) FROM channels WHERE sourceId = :id AND catchupDays > 0") suspend fun channelsWithCatchUp(id: String): Int
     @Query("SELECT COUNT(*) FROM epg WHERE channelEpgId IN (SELECT epgId FROM channels WHERE sourceId = :id AND epgId IS NOT NULL)") suspend fun programmesFor(id: String): Int
 }
+
+@Dao
+interface ExtrasDao {
+    // New episodes
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun putNewEpisodes(list: List<NewEpisodeEntity>)
+    @Query("SELECT * FROM new_episodes ORDER BY discoveredAt DESC") fun newEpisodes(): Flow<List<NewEpisodeEntity>>
+    @Query("DELETE FROM new_episodes WHERE episodeId = :id") suspend fun clearNewEpisode(id: String)
+    @Query("DELETE FROM new_episodes WHERE seriesId = :id") suspend fun clearNewForSeries(id: String)
+    @Query("SELECT id FROM episodes WHERE seriesId = :seriesId") suspend fun episodeIds(seriesId: String): List<String>
+    @Query("SELECT DISTINCT seriesId FROM progress WHERE seriesId IS NOT NULL") suspend fun seriesWithProgress(): List<String>
+    @Query("DELETE FROM episodes WHERE seriesId = :seriesId AND id NOT IN (:keep)") suspend fun dropOtherEpisodes(seriesId: String, keep: List<String>)
+
+    // Collections
+    @Query("SELECT * FROM collections WHERE scope = :scope ORDER BY name") fun collections(scope: String): Flow<List<CollectionEntity>>
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putCollection(c: CollectionEntity)
+    @Query("DELETE FROM collections WHERE id = :id") suspend fun deleteCollection(id: String)
+    @Query("DELETE FROM collection_items WHERE collectionId = :id") suspend fun clearCollection(id: String)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putItem(i: CollectionItemEntity)
+    @Query("DELETE FROM collection_items WHERE collectionId = :c AND itemId = :i") suspend fun removeItem(c: String, i: String)
+    @Query("SELECT collectionId FROM collection_items WHERE itemId = :i") suspend fun collectionsOf(i: String): List<String>
+    @Query("SELECT * FROM collection_items") suspend fun allCollectionItems(): List<CollectionItemEntity>
+    @Query("SELECT * FROM collections") suspend fun allCollections(): List<CollectionEntity>
+
+    // Overrides
+    @Query("SELECT * FROM overrides") fun overrides(): Flow<List<OverrideEntity>>
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putOverride(o: OverrideEntity)
+    @Query("DELETE FROM overrides WHERE itemId = :id") suspend fun clearOverride(id: String)
+
+    // Guide channel names
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putEpgChannels(list: List<EpgChannelEntity>)
+    @Query("SELECT * FROM epg_channels") suspend fun epgChannels(): List<EpgChannelEntity>
+    @Query("DELETE FROM epg_channels") suspend fun clearEpgChannels()
+    @Query("SELECT DISTINCT channelEpgId FROM epg") suspend fun epgIdsWithProgrammes(): List<String>
+}

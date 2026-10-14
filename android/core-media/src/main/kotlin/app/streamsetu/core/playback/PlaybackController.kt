@@ -253,14 +253,14 @@ class PlaybackController(
 
     private fun startProgressTicker(item: Playable) {
         progressJob?.cancel()
-        if (item.isLive) return
+        if (!item.tracksProgress) return
         progressJob = scope.launch { while (true) { delay(10_000); saveProgress() } }
     }
 
     /** Remembers where a movie or episode stopped (when the Settings allow it). */
     fun saveProgress() {
         val item = _current.value ?: return
-        if (item.isLive || !settings.rememberPosition.value) return
+        if (!item.tracksProgress || !settings.rememberPosition.value) return
         val pos = positionMs; val dur = durationMs
         // A checkpoint is only replaced by a position that is real: the picture has played in this session, the numbers make sense, and
         // a position far below where we resumed (a seek that failed and restarted from zero) is not allowed to erase the earlier one.

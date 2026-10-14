@@ -40,6 +40,24 @@ import java.text.DateFormat
 import java.util.Date
 import javax.inject.Inject
 
+/** One channel as the list shows it. When the same channel comes in several qualities or from several connections, [variants] holds them all and [rep] is the best one. */
+data class ChannelGroup(val rep: Channel, val variants: List<Channel>)
+
+private fun qualityRank(name: String): Int = when {
+    Regex("(?i)\\b(4k|uhd)\\b").containsMatchIn(name) -> 4
+    Regex("(?i)\\b(fhd|1080p?)\\b").containsMatchIn(name) -> 3
+    Regex("(?i)\\bhd\\b|720p").containsMatchIn(name) -> 2
+    Regex("(?i)\\bsd\\b").containsMatchIn(name) -> 0
+    else -> 1
+}
+fun qualityLabel(name: String) = when (qualityRank(name)) { 4 -> "4K"; 3 -> "FHD"; 2 -> "HD"; 0 -> "SD"; else -> "Standard" }
+
+fun groupChannels(list: List<Channel>): List<ChannelGroup> {
+    val order = LinkedHashMap<String, MutableList<Channel>>()
+    list.forEach { ch -> order.getOrPut(app.streamsetu.core.data.repo.SearchText.normalize(app.streamsetu.core.sync.stripQuality(ch.name))) { mutableListOf() } += ch }
+    return order.values.map { v -> ChannelGroup(v.maxByOrNull { qualityRank(it.name) } ?: v.first(), v.sortedByDescending { qualityRank(it.name) }) }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class LiveSectionViewModel @Inject constructor(c: AppContainer) : FolderViewModel(c, ContentKind.CHANNEL) {
@@ -51,10 +69,15 @@ class LiveSectionViewModel @Inject constructor(c: AppContainer) : FolderViewMode
         .flatMapLatest { (b, s) -> c.browse.channels(b, s).map<List<Channel>, List<Channel>?> { it }.onStart { emit(null) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val favourites: StateFlow<Set<String>> = c.user.favouriteIds(UserRepository.FAVOURITES).stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+    /** The list as shown: duplicates of one channel folded into one row (Settings, Live TV), or every channel on its own. */
+    val groups: StateFlow<List<ChannelGroup>?> = combine(channels, c.ui.groupDuplicates) { list, on -> list?.let { if (on) groupChannels(it) else it.map { ch -> ChannelGroup(ch, listOf(ch)) } } }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** The guide id for each listed channel: its own, or one matched by name. */
+    val epgIds: StateFlow<Map<String, String>> = channels.mapLatest { list -> runCatching { c.epg.resolve(list.orEmpty().take(1500)) }.getOrDefault(emptyMap()) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     /** What is on now for the channels listed, refreshed once a minute. */
-    val now: StateFlow<Map<String, EpgProgram>> = channels.flatMapLatest { list ->
-        flow { while (true) { emit(list.orEmpty().mapNotNull { it.epgId }.distinct().take(300)); delay(60_000) } }
+    val now: StateFlow<Map<String, EpgProgram>> = epgIds.flatMapLatest { ids ->
+        flow { while (true) { emit(ids.values.distinct().take(300)); delay(60_000) } }
     }.mapLatest { ids -> if (ids.isEmpty()) emptyMap() else runCatching { c.epg.nowFor(ids, System.currentTimeMillis() - c.ui.epgOffsetMinutes.value * 60_000L) }.getOrDefault(emptyMap()) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     init { viewModelScope.launch { availability.value = runCatching { c.browse.availability() }.getOrDefault(availability.value) } }
@@ -62,7 +85,7 @@ class LiveSectionViewModel @Inject constructor(c: AppContainer) : FolderViewMode
     fun select(b: Browse) { if (browse.value != b) { browse.value = b; scrollIndex = 0 } }
     fun applySort(spec: SortSpec) = c.browse.setSort(ContentKind.CHANNEL, (browse.value as? Browse.Folder)?.id, spec)
     fun toggleFavourite(ch: Channel) = viewModelScope.launch { c.user.setFavourite(ch.id, ContentKind.CHANNEL, ch.id !in favourites.value) }
-    suspend fun programmes(ch: Channel): List<EpgProgram> = ch.epgId?.let { runCatching { c.epg.upcoming(c.db, it, 2) }.getOrDefault(emptyList()) }.orEmpty()
+    suspend fun programmes(ch: Channel): List<EpgProgram> = c.epg.resolve(listOf(ch))[ch.id]?.let { runCatching { c.epg.upcoming(c.db, it, 2) }.getOrDefault(emptyList()) }.orEmpty()
 }
 
 private fun timeText(ms: Long) = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(ms))
@@ -77,9 +100,11 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     val folders by vm.folders.collectAsState()
     val browse by vm.browse.collectAsState()
     val channels by vm.channels.collectAsState()
+    val groups by vm.groups.collectAsState()
     val sort by vm.sort.collectAsState()
     val avail by vm.availability.collectAsState()
     val now by vm.now.collectAsState()
+    val epgIds by vm.epgIds.collectAsState()
     val favs by vm.favourites.collectAsState()
     val current by c.playback.current.collectAsState()
     val state by c.playback.state.collectAsState()
@@ -90,6 +115,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     var sortOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
     var menuFor by remember { mutableStateOf<Channel?>(null) }
+    var menuVariants by remember { mutableStateOf<List<Channel>>(emptyList()) }
     var inChannels by remember { mutableStateOf(false) }
     var inPreview by remember { mutableStateOf(false) }
     val channelEntry = remember { FocusRequester() }
@@ -111,7 +137,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
 
     fun choose(ch: Channel) {
         if (live?.channel?.id == ch.id) { nav.liveFullscreen = true; nav.open(Overlay.Player); return }
-        c.play(ChannelPlayable(ch), channels.orEmpty().map { ChannelPlayable(it) })
+        c.play(ChannelPlayable(ch), groups.orEmpty().map { ChannelPlayable(it.rep) })
     }
 
     Row(Modifier.fillMaxSize()) {
@@ -122,26 +148,27 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
             Row(Modifier.padding(horizontal = 10.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Label(if (browse is Browse.Folder) folders.firstOrNull { it.id == (browse as Browse.Folder).id }?.title ?: "Channels" else shortcuts.firstOrNull { it.browse == browse }?.label ?: "Channels", Tokens.heading, Tokens.text, FontWeight.Bold)
-                    Label(channels?.let { "%,d channels".format(it.size) } ?: "Loading…", Tokens.caption, Tokens.textSecondary)
+                    Label(groups?.let { "%,d channels".format(it.size) } ?: "Loading…", Tokens.caption, Tokens.textSecondary)
                 }
                 SmallIcon(Icons.Filled.Search, "Search channels") { searchOpen = true }
                 SmallIcon(Icons.Filled.SwapVert, "Sort channels") { sortOpen = true }
             }
-            val list = channels
+            val list = groups
             when {
                 list == null -> LazyColumn(Modifier.fillMaxSize(), userScrollEnabled = false) { items(14) { Box(Modifier.padding(8.dp).fillMaxWidth().height(34.dp).background(Tokens.card, RoundedCornerShape(8.dp))) } }
                 list.isEmpty() -> Box(Modifier.fillMaxSize().padding(12.dp), Alignment.Center) { Label(if (browse == Browse.Favorites) "No favorite channels yet. Hold OK on a channel to add one." else "No channels here.", Tokens.small, Tokens.textSecondary, maxLines = 4) }
                 else -> LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    items(list.size, key = { list[it].id }) { i ->
-                        val ch = list[i]
+                    items(list.size, key = { list[it].rep.id }) { i ->
+                        val grp = list[i]; val ch = grp.rep
                         val playing = live?.channel?.id == ch.id
-                        Focusable({ choose(ch) }, (if (i == 0) Modifier.focusRequester(channelEntry) else Modifier).fillMaxWidth(), scaleOnFocus = 1.0f, container = if (playing) Tokens.elevated else Tokens.card.copy(alpha = 0f), shape = RoundedCornerShape(8.dp), onLongClick = { menuFor = ch }) { f ->
+                        Focusable({ choose(ch) }, (if (i == 0) Modifier.focusRequester(channelEntry) else Modifier).fillMaxWidth(), scaleOnFocus = 1.0f, container = if (playing) Tokens.elevated else Tokens.card.copy(alpha = 0f), shape = RoundedCornerShape(8.dp), onLongClick = { menuFor = ch; menuVariants = grp.variants }) { f ->
                             Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 ChannelLogo(ch.logoUrl, ch.name, 26.dp)
                                 Column(Modifier.weight(1f)) {
                                     Label((if (showNumbers) ch.number?.let { "$it  " } else null).orEmpty() + ch.name, Tokens.row, if (playing) Tokens.accent else Tokens.text, FontWeight.Medium, maxLines = 2)
-                                    ch.epgId?.let { id -> now[id] }?.let { p -> Label(p.title, Tokens.caption, Tokens.textSecondary) }
+                                    epgIds[ch.id]?.let { id -> now[id] }?.let { p -> Label(p.title, Tokens.caption, Tokens.textSecondary) }
                                 }
+                                if (grp.variants.size > 1) Label("+${grp.variants.size - 1}", Tokens.caption, Tokens.textTertiary)
                                 if (ch.id in favs) Image(Icons.Filled.Favorite, null, Modifier.size(11.dp), colorFilter = ColorFilter.tint(Tokens.accent))
                             }
                         }
@@ -180,9 +207,9 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
         }
     }
     menuFor?.let { ch ->
-        ContextMenu(ch.name, null, listOf(
+        ContextMenu(ch.name, null, menuVariants.filter { it.id != ch.id }.map { v -> MenuAction("Version: ${qualityLabel(v.name)}  ·  ${v.name}", Icons.Filled.SwapHoriz) { c.play(ChannelPlayable(v), listOf(ChannelPlayable(v))) } } + listOf(
             MenuAction("Watch", Icons.Filled.PlayArrow) { choose(ch) },
-            MenuAction("Watch fullscreen", Icons.Filled.Fullscreen) { c.play(ChannelPlayable(ch), channels.orEmpty().map { ChannelPlayable(it) }); nav.liveFullscreen = true; nav.open(Overlay.Player) },
+            MenuAction("Watch fullscreen", Icons.Filled.Fullscreen) { c.play(ChannelPlayable(ch), groups.orEmpty().map { ChannelPlayable(it.rep) }); nav.liveFullscreen = true; nav.open(Overlay.Player) },
             MenuAction(if (ch.id in favs) "Remove from Favorites" else "Add to Favorites", Icons.Filled.Favorite) { vm.toggleFavourite(ch) },
         ), onClose = { menuFor = null })
     }
@@ -214,7 +241,7 @@ private fun NowNext(ch: Channel, vm: LiveSectionViewModel, c: AppContainer, nav:
                 Box(Modifier.fillMaxWidth().height(3.dp).background(Tokens.elevated, RoundedCornerShape(2.dp))) { Box(Modifier.fillMaxWidth(f).fillMaxHeight().background(Tokens.accent, RoundedCornerShape(2.dp))) }
                 nowP.description?.takeIf { it.isNotBlank() }?.let { Label(it, Tokens.small, Tokens.textSecondary, maxLines = 2) }
                 next?.let { Label("Next  ·  ${it.title}  ·  ${timeText(it.startMs)}", Tokens.small, Tokens.textSecondary, maxLines = 1) }
-            } else Label(if (ch.epgId == null) "No guide information for this channel." else "No guide information right now.", Tokens.small, Tokens.textTertiary)
+            } else Label(if (ch.epgId == null && programmes.isEmpty()) "No guide information for this channel." else "No guide information right now.", Tokens.small, Tokens.textTertiary)
         }
         TvButton("Fullscreen", { nav.liveFullscreen = true; nav.open(Overlay.Player) }, icon = Icons.Filled.Fullscreen)
     }

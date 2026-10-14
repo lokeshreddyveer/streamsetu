@@ -63,8 +63,10 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val favs by vm.favourites.collectAsState()
     val later by vm.watchLater.collectAsState()
     val progress by vm.progress.collectAsState()
+    val newSeries by vm.newSeries.collectAsState()
     val avail by vm.availability.collectAsState()
     val sources by vm.sources.collectAsState()
+    val collections by vm.collections.collectAsState()
     val posterSize by c.ui.posterSize.collectAsState()
     val showMeta by c.ui.showPosterMeta.collectAsState()
     val bannerOn by c.ui.bannerEnabled.collectAsState()
@@ -78,6 +80,10 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     var filterOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
     var menuFor by remember { mutableStateOf<Card?>(null) }
+    var colMenu by remember { mutableStateOf<UserCollection?>(null) }
+    var newCollectionFor by remember { mutableStateOf<Card?>(null) }
+    var addTo by remember { mutableStateOf<Card?>(null) }
+    var renameCol by remember { mutableStateOf<UserCollection?>(null) }
     var inContent by remember { mutableStateOf(false) }
     val panelEntry = entry
 
@@ -85,6 +91,8 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val title = when (browse) {
         Browse.All -> "All $noun"; Browse.Favorites -> "Favorites"; Browse.WatchLater -> "Watch Later"; Browse.Continue -> "Continue Watching"
         Browse.Recent -> "Recently Watched"; Browse.RecentlyAdded -> "Recently Added"; Browse.FavoriteFolders -> "Favorite Folders"; is Browse.Folder -> folderTitle ?: noun
+        is Browse.Collection -> collections.firstOrNull { it.id == (browse as Browse.Collection).id }?.name ?: "Collection"
+        is Browse.Smart -> (browse as Browse.Smart).rule.label
     }
     val shortcuts = buildList {
         add(Shortcut(Browse.All, "All $noun", Icons.Filled.GridView))
@@ -92,13 +100,15 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
         add(Shortcut(Browse.Favorites, "Favorites", Icons.Filled.Favorite)); add(Shortcut(Browse.WatchLater, "Watch Later", Icons.Filled.Bookmark))
         add(Shortcut(Browse.Continue, "Continue Watching", Icons.Filled.PlayArrow)); add(Shortcut(Browse.Recent, "Recently Watched", Icons.Filled.History))
         add(Shortcut(Browse.RecentlyAdded, "Recently Added", Icons.Filled.NewReleases))
+        collections.forEach { add(Shortcut(Browse.Collection(it.id), it.name, Icons.Filled.CollectionsBookmark)) }
+        SmartRule.entries.forEach { add(Shortcut(Browse.Smart(it), it.label, Icons.Filled.AutoAwesome)) }
     }
 
     // Back from the posters returns to the folders; back from the folders reveals the sidebar (handled by the shell).
     BackHandler(enabled = inContent) { runCatching { panelEntry.requestFocus() } }
 
     Row(Modifier.fillMaxSize()) {
-        FolderPanel(noun, shortcuts, folders, browse, vm::select, vm, Modifier.width(Tokens.folderPanelWidth), entry = panelEntry, selectOnDwell = c.settings.foldersOpenOnFocus.collectAsState().value)
+        FolderPanel(noun, shortcuts, folders, browse, vm::select, vm, Modifier.width(Tokens.folderPanelWidth), entry = panelEntry, selectOnDwell = c.settings.foldersOpenOnFocus.collectAsState().value, onShortcutMenu = { sc -> collections.firstOrNull { it.id == (sc.browse as? Browse.Collection)?.id }?.let { colMenu = it } })
         Column(Modifier.weight(1f).fillMaxHeight().onFocusChanged { inContent = it.hasFocus }) {
             // Header
             Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -149,7 +159,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                             card.title, card.posterUrl, { onOpen(card) }, width = posterSize.dp.dp,
                             progress = if (p != null && !p.completed) p.fraction else 0f,
                             subtitle = if (showMeta) card.year?.toString() else null,
-                            badge = if (p?.completed == true) "✓" else ratingBadge(card.rating),
+                            badge = if (card.id in newSeries) "NEW" else if (p?.completed == true) "✓" else ratingBadge(card.rating),
                             onLongClick = { menuFor = card },
                         )
                     }
@@ -168,8 +178,18 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
             add(MenuAction(if (isFav) "Remove from Favorites" else "Add to Favorites", Icons.Filled.Favorite) { vm.toggle(card.id, UserRepository.FAVOURITES) })
             add(MenuAction(if (isLater) "Remove from Watch Later" else "Add to Watch Later", Icons.Filled.Bookmark) { vm.toggle(card.id, UserRepository.WATCH_LATER) })
             if (kind == ContentKind.MOVIE) add(MenuAction(if (p?.completed == true) "Mark as unwatched" else "Mark as watched", Icons.Filled.Check) { vm.setWatched(card, p?.completed != true) })
+            add(MenuAction("Add to a collection…", Icons.Filled.CollectionsBookmark) { addTo = card })
+            (browse as? Browse.Collection)?.let { b -> add(MenuAction("Remove from this collection", Icons.Filled.RemoveCircleOutline) { vm.removeFromCollection(b.id, card.id) }) }
         }, onClose = { menuFor = null })
     }
+    addTo?.let { card ->
+        var inCols by remember(card.id) { mutableStateOf<Set<String>?>(null) }
+        LaunchedEffect(card.id) { inCols = vm.containing(card.id) }
+        ContextMenu("Add to a collection", card.title, collections.map { col -> MenuAction(col.name + if (inCols?.contains(col.id) == true) "   ✓" else "", Icons.Filled.CollectionsBookmark) { if (inCols?.contains(col.id) == true) vm.removeFromCollection(col.id, card.id) else vm.addToCollection(col.id, card.id) } } + MenuAction("New collection…", Icons.Filled.Add) { newCollectionFor = card }, onClose = { addTo = null })
+    }
+    newCollectionFor?.let { card -> RenameDialog("", onSave = { n -> vm.createCollection(n) { id -> vm.addToCollection(id, card.id) }; newCollectionFor = null }, onReset = { newCollectionFor = null }, onClose = { newCollectionFor = null }, title = "New collection", hint = "Name your collection", resetLabel = "Cancel") }
+    colMenu?.let { col -> ContextMenu(col.name, "Your collection", listOf(MenuAction("Rename", Icons.Filled.Edit) { renameCol = col }, MenuAction("Delete collection", Icons.Filled.Delete) { vm.deleteCollection(col) }), onClose = { colMenu = null }) }
+    renameCol?.let { col -> RenameDialog(col.name, onSave = { vm.renameCollection(col, it); renameCol = null }, onReset = { renameCol = null }, onClose = { renameCol = null }, title = "Rename collection", hint = "Name", resetLabel = "Cancel") }
 }
 
 
@@ -184,6 +204,8 @@ private fun EmptyText(browse: Browse, noun: String, filtered: Boolean) {
         browse == Browse.Continue -> "Nothing to continue" to "Titles you start and leave partway appear here."
         browse == Browse.Recent -> "Nothing watched yet" to "What you watch appears here."
         browse == Browse.FavoriteFolders -> "No favorite folders" to "Hold OK on a folder and choose Add to favorite folders."
+        browse is Browse.Collection -> "This collection is empty" to "Hold OK on a poster and choose Add to a collection."
+        browse is Browse.Smart -> "Nothing matches yet" to "This list fills itself from what you watch and what is added."
         else -> "Nothing here" to "This folder has no ${noun.lowercase()} in your library."
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {

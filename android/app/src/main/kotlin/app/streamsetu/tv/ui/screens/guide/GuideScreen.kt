@@ -56,13 +56,14 @@ class GuideViewModel @Inject constructor(private val c: AppContainer) : ViewMode
     val rows: StateFlow<List<GuideRow>?> = combine(favouritesOnly, windowStart, offsetMin, query) { f, w, o, q -> arrayOf<Any>(f, w, o, q) }.flatMapLatest { a ->
         val fav = a[0] as Boolean; val start = a[1] as Long; val off = a[2] as Int; val q = a[3] as String
         c.browse.channels(Browse.All, SortSpec(SortField.PROVIDER), 3000).map { all ->
-            val withGuide = all.filter { it.epgId != null }
+            val resolved = c.epg.resolve(all)
+            val withGuide = all.filter { it.id in resolved }
             val picked = withGuide.filter { !fav || it.id in favs.value }.filter { q.isBlank() || SearchText.normalize(it.name).contains(SearchText.normalize(q)) }.take(250)
             val end = start + WINDOW_MIN * 60_000L
             val shift = off * 60_000L
-            val data = c.epg.window(c.db, picked.mapNotNull { it.epgId }.distinct(), start - shift, end - shift)
+            val data = c.epg.window(c.db, picked.mapNotNull { resolved[it.id] }.distinct(), start - shift, end - shift)
             hasGuide.value = c.epg.programmeCount(c.db) > 0
-            picked.map { ch -> GuideRow(ch, data[ch.epgId].orEmpty().map { it.copy(startMs = it.startMs + shift, endMs = it.endMs + shift) }) }
+            picked.map { ch -> GuideRow(ch, data[resolved[ch.id]].orEmpty().map { it.copy(startMs = it.startMs + shift, endMs = it.endMs + shift) }) }
         }.map<List<GuideRow>, List<GuideRow>?> { it }.onStart { emit(null) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
@@ -154,7 +155,8 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
         ContextMenu(p.title, "${ch.name}  ·  ${clock(p.startMs)} – ${clock(p.endMs)}" + (p.description?.takeIf { it.isNotBlank() }?.let { "\n$it" } ?: ""), buildList {
             add(MenuAction(if (p.isLive(now)) "Watch now" else "Watch channel", Icons.Filled.PlayArrow) { play(c, nav, ChannelPlayable(ch), rows.orEmpty().map { ChannelPlayable(it.channel) }) })
             add(MenuAction(if (fav) "Remove channel from Favorites" else "Add channel to Favorites", Icons.Filled.Favorite) { vm.toggleFavourite(ch) })
-            if (ch.catchupDays > 0 && p.endMs < now) add(MenuAction("Catch-up is offered by this provider (not yet supported here)", Icons.Filled.History, enabled = false) {})
+            if (ch.catchupDays > 0 && p.startMs < now && p.startMs > now - ch.catchupDays * 86_400_000L) add(MenuAction("Watch from the start (catch-up)", Icons.Filled.History) { play(c, nav, CatchUpPlayable(ch, p.title, p.startMs - vm.offsetMin.value * 60_000L, p.endMs - vm.offsetMin.value * 60_000L)) })
+            else if (ch.catchupDays > 0 && p.startMs <= now - ch.catchupDays * 86_400_000L) add(MenuAction("Too old for catch-up (${ch.catchupDays} days)", Icons.Filled.History, enabled = false) {})
         }, onClose = { details = null })
     }
 }

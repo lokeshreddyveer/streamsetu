@@ -36,7 +36,7 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
             InfoRow(s.name + if (s.draft) "  (unfinished)" else "", when { s.draft -> "Not tested"; s.status == SyncStatus.FAILED -> "Last read failed"; s.status == SyncStatus.OK -> "Healthy"; else -> "Not read yet" },
                 "%,d live · %,d movies · %,d series  ·  last read %s".format(s.channelCount, s.movieCount, s.seriesCount, if (s.lastSyncAt > 0) DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(s.lastSyncAt)) else "never") + (s.lastError?.let { "\n" + app.streamsetu.core.data.repo.MaintenanceService.redact(it) } ?: ""))
             if (!s.draft) { val cap by produceState<SourceCapabilities?>(null, s.id, s.lastSyncAt) { value = c.maintenance.capabilities(s) }; cap?.let { k ->
-                InfoRow("What ${s.name} offers", listOfNotNull(if (k.live) "Live" else null, if (k.movies) "Movies" else null, if (k.series) "Series" else null, if (k.guide) "Guide" else null, if (k.catchUp) "Catch-up" else null).joinToString(" · ").ifBlank { "nothing yet" }, if (!k.guide && k.live) "No guide data was delivered, so the TV Guide is empty for this connection." else if (k.catchUp) "Catch-up is offered on %,d channels (playback of past programmes is not available in this version).".format(k.catchUpChannels) else null) } }
+                InfoRow("What ${s.name} offers", listOfNotNull(if (k.live) "Live" else null, if (k.movies) "Movies" else null, if (k.series) "Series" else null, if (k.guide) "Guide" else null, if (k.catchUp) "Catch-up" else null).joinToString(" · ").ifBlank { "nothing yet" }, if (!k.guide && k.live) "No guide data was delivered, so the TV Guide is empty for this connection." else if (k.catchUp) "Catch-up is offered on %,d channels: choose a past programme in the TV Guide.".format(k.catchUpChannels) else null) } }
             if (!s.draft) ToggleRow("Include ${s.name} in combined libraries", on = s.enabled) { v -> scope.launch { c.sources.setEnabled(s.id, v) } }
             if (!s.draft) ActionRow("Refresh ${s.name} now", "Reads the catalog again. Your favorites, folders and progress stay.", if (busy == s.id) "Reading…" else "Refresh", enabled = busy == null, reason = "Another refresh is running.", confirm = false) {
                 busy = s.id; scope.launch { result = runCatching { c.syncWithGuide(s.id); "${s.name} refreshed." }.getOrElse { "${s.name}: " + (it.message ?: "could not be read") + " The previous catalog is still in use." }; busy = null }
@@ -47,6 +47,11 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
         ActionRow("Add a connection", "Xtream, M3U link or a local M3U file.", "Add", confirm = false) { c.library.close(); nav.toChooser() }
     }
     ResultLine(result)
+    val hours by c.settings.backgroundSyncHours.collectAsState()
+    val ctx = LocalContext.current
+    SettingGroup("Catalog refresh", "A refresh also looks for new episodes of series you have started. It never runs while something is playing, and a failed read keeps the last good catalog.") {
+        ChoiceRow("Refresh catalogs in the background", options = listOf(0 to "Only when I ask", 12 to "Every 12 hours", 24 to "Every day"), value = hours) { c.settings.setBackgroundSyncHours(it); app.streamsetu.tv.CatalogSyncWorker.schedule(ctx, it) }
+    }
     SettingGroup("Libraries") {
         InfoRow("Libraries", libs.size.toString(), libs.joinToString(", ") { it.name }.ifBlank { "none" })
         ActionRow("Manage combined libraries", "Opens Choose Your Library: hold OK on a library to edit its members.", "Open", confirm = false) { c.library.close(); nav.toChooser() }

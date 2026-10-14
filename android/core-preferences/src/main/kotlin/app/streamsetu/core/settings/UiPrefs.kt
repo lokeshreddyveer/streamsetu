@@ -59,4 +59,9 @@ class UiPrefs(context: Context) {
     /** Minutes added to every guide time, for a provider whose guide is shifted. */
     val epgOffsetMinutes: StateFlow<Int> = _epgOffset
     fun setEpgOffsetMinutes(v: Int) { prefs.edit().putInt("epgOffsetMin", v).apply(); _epgOffset.value = v }
+
+    private val _group = flow(prefs.getBoolean("groupDuplicates", true))
+    /** Live TV shows one row for a channel that comes in several qualities or from several connections. */
+    val groupDuplicates: StateFlow<Boolean> = _group
+    fun setGroupDuplicates(v: Boolean) { prefs.edit().putBoolean("groupDuplicates", v).apply(); _group.value = v }
 }

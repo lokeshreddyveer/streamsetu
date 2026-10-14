@@ -8,8 +8,9 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [SourceEntity::class, CategoryEntity::class, ChannelEntity::class, MovieEntity::class, SeriesEntity::class,
         EpisodeEntity::class, EpgEntity::class, FavoriteEntity::class, ProgressEntity::class, WatchLogEntity::class,
-        LibraryEntity::class, LibraryMemberEntity::class, FolderPrefEntity::class],
-    version = 3,
+        LibraryEntity::class, LibraryMemberEntity::class, FolderPrefEntity::class,
+        NewEpisodeEntity::class, CollectionEntity::class, CollectionItemEntity::class, OverrideEntity::class, EpgChannelEntity::class],
+    version = 4,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -20,9 +21,23 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun libraries(): LibraryDao
     abstract fun folders(): FolderDao
     abstract fun browse(): BrowseDao
+    abstract fun extras(): ExtrasDao
 
     companion object {
         /** Adds drafts and cached counts to playlists, combined libraries, and folder arrangements. Nothing existing is touched. */
+        /** New-episode flags, collections, local overrides and guide channel names. Nothing existing is touched. */
+        val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS new_episodes (episodeId TEXT NOT NULL, seriesId TEXT NOT NULL, discoveredAt INTEGER NOT NULL, PRIMARY KEY(episodeId))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_new_episodes_seriesId ON new_episodes (seriesId)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS collections (id TEXT NOT NULL, name TEXT NOT NULL, scope TEXT NOT NULL, createdAt INTEGER NOT NULL, PRIMARY KEY(id))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS collection_items (collectionId TEXT NOT NULL, itemId TEXT NOT NULL, addedAt INTEGER NOT NULL, PRIMARY KEY(collectionId, itemId))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_collection_items_itemId ON collection_items (itemId)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS overrides (itemId TEXT NOT NULL, title TEXT, posterUrl TEXT, PRIMARY KEY(itemId))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS epg_channels (epgId TEXT NOT NULL, nameNorm TEXT NOT NULL, PRIMARY KEY(epgId))")
+            }
+        }
+
         /** Adds the text search index and fills it from the catalog already on the device. */
         val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
@@ -50,7 +65,7 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         fun open(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, "streamsetu.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            Room.databaseBuilder(context, AppDatabase::class.java, "streamsetu.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db) }
                     override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db) }

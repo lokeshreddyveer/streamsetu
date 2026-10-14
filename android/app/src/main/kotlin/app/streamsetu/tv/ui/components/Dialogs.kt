@@ -160,3 +160,24 @@ fun ToggleRow(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
         }
     }
 }
+
+/** Local corrections to a title and its picture. The provider's data is not changed, and "Use the provider's" removes the correction. */
+@Composable
+fun OverrideDialog(title: String, poster: String, onSave: (String, String) -> Unit, onReset: () -> Unit, onClose: () -> Unit) {
+    var t by remember { mutableStateOf(title) }
+    var p by remember { mutableStateOf(poster) }
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize(), Alignment.Center) {
+            Column(Modifier.width(380.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Label("Edit details", Tokens.title, Tokens.text, FontWeight.Bold)
+                Label("Only changes how it looks on this device. The provider's data is not touched.", Tokens.small, Tokens.textSecondary, maxLines = 2)
+                TvTextField(t, { t = it }, "Title", Modifier.fillMaxWidth())
+                TvTextField(p, { p = it }, "Picture address (optional)", Modifier.fillMaxWidth())
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TvButton("Save", { onSave(t, p) }, primary = true)
+                    TvButton("Use the provider's", onReset)
+                }
+            }
+        }
+    }
+}

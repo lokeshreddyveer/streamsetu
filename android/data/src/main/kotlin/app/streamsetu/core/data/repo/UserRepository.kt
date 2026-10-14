@@ -29,6 +29,7 @@ class UserRepository(private val db: AppDatabase) {
 
     /** Marks a movie or episode watched (it leaves Continue Watching) or unwatched (its resume point is forgotten). */
     suspend fun setWatched(itemId: String, kind: ContentKind, seriesId: String?, watched: Boolean) {
+        db.extras().clearNewEpisode(itemId)
         if (watched) dao.putProgress(ProgressEntity(itemId, kind.name, seriesId, 0, 1, System.currentTimeMillis(), true)) else dao.clearProgress(itemId)
     }
     suspend fun clearResumePoint(itemId: String) = dao.clearProgress(itemId)
@@ -39,7 +40,10 @@ class UserRepository(private val db: AppDatabase) {
     suspend fun clearList(list: String) = dao.clearList(list)
     suspend fun clearAllProgress() = dao.clearAllProgress()
 
+    fun newEpisodes(): Flow<List<app.streamsetu.core.data.db.NewEpisodeEntity>> = db.extras().newEpisodes()
+
     suspend fun recordPlay(itemId: String, kind: ContentKind, title: String) {
+        if (kind == ContentKind.EPISODE) db.extras().clearNewEpisode(itemId)         // starting a new episode removes its New badge
         dao.log(WatchLogEntity(itemId = itemId, kind = kind.name, title = title, playedAt = System.currentTimeMillis()))
         dao.trimLog()
     }

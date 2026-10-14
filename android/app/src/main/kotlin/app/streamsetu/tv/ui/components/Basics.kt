@@ -165,12 +165,13 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
 
 /** A wide 16:9 card (Continue Watching). */
 @Composable
-fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, progress: Float = 0f, width: Dp = Tokens.landscapeWidth) {
+fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, progress: Float = 0f, width: Dp = Tokens.landscapeWidth, badge: String? = null) {
     Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f)) { _ ->
             PosterPlaceholder(title, Modifier.fillMaxSize())
             if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
+            if (badge != null) Box(Modifier.align(Alignment.TopStart).padding(6.dp).background(Tokens.accent, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Color(0xFF04141A), FontWeight.Bold) }
         }
         Label(title, Tokens.row, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))
         if (subtitle != null) Label(subtitle, Tokens.caption, Tokens.textTertiary, modifier = Modifier.padding(horizontal = 2.dp))

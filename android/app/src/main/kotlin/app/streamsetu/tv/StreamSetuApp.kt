@@ -39,6 +39,7 @@ class AppContainer @Inject constructor(
     val parental: ParentalControls,
     val settings: AppSettings,
     val ui: app.streamsetu.core.settings.UiPrefs,
+    val collections: app.streamsetu.core.data.repo.CollectionRepository,
     val maintenance: app.streamsetu.core.data.repo.MaintenanceService,
     val resolver: StreamResolver,
     val sync: SyncService,
@@ -95,7 +96,7 @@ class AppContainer @Inject constructor(
         if (item is ChannelPlayable) settings.lastChannelId = item.id
         queueIndex = queue.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
         appScope.launch {
-            val resume = if (item.isLive || startOver) 0 else if (settings.resumeAutomatically.value) user.progress(item.id)?.takeIf { !it.completed }?.positionMs ?: 0 else 0
+            val resume = if (item.isLive || !item.tracksProgress || startOver) 0 else if (settings.resumeAutomatically.value) user.progress(item.id)?.takeIf { !it.completed }?.positionMs ?: 0 else 0
             kotlinx.coroutines.withContext(Dispatchers.Main) { playback.play(item, resume) }
         }
     }
@@ -110,4 +111,11 @@ class AppContainer @Inject constructor(
 }
 
 @HiltAndroidApp
-class StreamSetuApp : Application()
+class StreamSetuApp : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        // Re-asserts the background refresh the person chose (a no-op when it is already scheduled).
+        val hours = getSharedPreferences("settings", MODE_PRIVATE).getInt("bgSyncHours", 0)
+        CatalogSyncWorker.schedule(this, hours)
+    }
+}

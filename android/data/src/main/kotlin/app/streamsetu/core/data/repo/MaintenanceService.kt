@@ -52,6 +52,8 @@ class MaintenanceService(private val context: Context, private val db: AppDataba
         root.put("folders", JSONArray().also { a -> db.folders().all().forEach { a.put(JSONObject().put("scope", it.scope).put("folderId", it.folderId).put("favorite", it.favorite).put("pinned", it.pinned).put("hidden", it.hidden).put("locked", it.locked).put("alias", it.alias ?: JSONObject.NULL).put("sortIndex", it.sortIndex)) } })
         root.put("progress", JSONArray().also { a -> db.user().allProgressNow().forEach { a.put(JSONObject().put("itemId", it.itemId).put("kind", it.kind).put("seriesId", it.seriesId ?: JSONObject.NULL).put("positionMs", it.positionMs).put("durationMs", it.durationMs).put("updatedAt", it.updatedAt).put("completed", it.completed)) } })
         root.put("history", JSONArray().also { a -> db.user().logNow().forEach { a.put(JSONObject().put("itemId", it.itemId).put("kind", it.kind).put("title", it.title).put("playedAt", it.playedAt)) } })
+        root.put("collections", JSONArray().also { a -> db.extras().allCollections().forEach { a.put(JSONObject().put("id", it.id).put("name", it.name).put("scope", it.scope)) } })
+        root.put("collectionItems", JSONArray().also { a -> db.extras().allCollectionItems().forEach { a.put(JSONObject().put("collectionId", it.collectionId).put("itemId", it.itemId).put("addedAt", it.addedAt)) } })
         val prefs = JSONObject()
         prefFiles.forEach { f -> val o = JSONObject(); context.getSharedPreferences(f, Context.MODE_PRIVATE).all.forEach { (k, v) -> if (v != null) o.put(k, v) }; prefs.put(f, o) }
         root.put("preferences", prefs)
@@ -84,6 +86,8 @@ class MaintenanceService(private val context: Context, private val db: AppDataba
             val existing = u.progress(id); if (existing != null && existing.updatedAt > e.optLong("updatedAt")) continue          // a newer position on this device wins
             u.putProgress(ProgressEntity(id, e.getString("kind"), if (e.isNull("seriesId")) null else fix(e.getString("seriesId")), e.optLong("positionMs"), e.optLong("durationMs"), e.optLong("updatedAt"), e.optBoolean("completed"))); prog++ } }
         o.optJSONArray("history")?.let { a -> val rows = ArrayList<WatchLogEntity>(); for (i in 0 until a.length()) { val e = a.getJSONObject(i); val id = fix(e.getString("itemId")) ?: continue; rows += WatchLogEntity(0, id, e.getString("kind"), e.optString("title"), e.optLong("playedAt")) }; u.putLog(rows); hist = rows.size }
+        o.optJSONArray("collections")?.let { a -> for (i in 0 until a.length()) { val e = a.getJSONObject(i); db.extras().putCollection(CollectionEntity(e.getString("id"), e.getString("name"), e.getString("scope"), System.currentTimeMillis())) } }
+        o.optJSONArray("collectionItems")?.let { a -> for (i in 0 until a.length()) { val e = a.getJSONObject(i); val id = fix(e.getString("itemId")) ?: continue; db.extras().putItem(CollectionItemEntity(e.getString("collectionId"), id, e.optLong("addedAt"))) } }
         o.optJSONObject("preferences")?.let { p -> prefFiles.forEach { f -> p.optJSONObject(f)?.let { vals ->
             val ed = context.getSharedPreferences(f, Context.MODE_PRIVATE).edit()
             vals.keys().forEach { k -> when (val v = vals.get(k)) { is Boolean -> ed.putBoolean(k, v); is Int -> ed.putInt(k, v); is Long -> ed.putLong(k, v); is Double -> ed.putFloat(k, v.toFloat()); is String -> ed.putString(k, v) } }

@@ -117,6 +117,8 @@ sealed interface Playable {
     val streamRef: String
     val isLive: Boolean
     val artworkUrl: String?
+    /** False for things whose position must not be remembered (catch-up recordings). */
+    val tracksProgress: Boolean get() = !isLive
 }
 
 data class ChannelPlayable(val channel: Channel) : Playable {
@@ -185,4 +187,15 @@ data class FolderPref(
 
 data class Folder(val id: String, val sourceId: String, val providerName: String, val count: Int, val pref: FolderPref = FolderPref()) {
     val title get() = pref.alias?.takeIf { it.isNotBlank() } ?: providerName
+}
+
+/** A programme that already aired, played from the provider's archive (catch-up). It is a recording: it can be paused and skipped, but no resume point is kept. */
+data class CatchUpPlayable(val channel: Channel, val programTitle: String, val startMs: Long, val endMs: Long) : Playable {
+    override val id get() = "catchup:${channel.id}:$startMs"
+    override val title get() = "$programTitle  ·  ${channel.name}"
+    override val sourceId get() = channel.sourceId
+    override val streamRef get() = "timeshift:${channel.streamRef.split(':').getOrNull(1).orEmpty()}:$startMs:${((endMs - startMs) / 60_000L + 1).coerceAtLeast(1)}"
+    override val isLive get() = false
+    override val artworkUrl get() = channel.logoUrl
+    override val tracksProgress get() = false
 }

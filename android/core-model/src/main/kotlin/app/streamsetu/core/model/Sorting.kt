@@ -42,6 +42,8 @@ sealed interface Browse {
     data class Folder(val id: String) : Browse
     /** The person's starred folders, shown together. */
     data object FavoriteFolders : Browse
+    data class Collection(val id: String) : Browse
+    data class Smart(val rule: SmartRule) : Browse
 }
 
 /**
@@ -49,3 +51,9 @@ sealed interface Browse {
  * Seek, audio tracks and adaptive quality belong to a single stream and are reported by the player while it plays.
  */
 data class SourceCapabilities(val guide: Boolean, val guideChannels: Int, val catchUp: Boolean, val catchUpChannels: Int, val movies: Boolean, val series: Boolean, val live: Boolean)
+
+/** Built-in rules that fill a list by themselves from what the library and the person's history say. No cloud, no guessing. */
+enum class SmartRule(val label: String) { UNWATCHED("Unwatched"), UNWATCHED_FAVORITES("Unwatched favorites"), NEW_30D("Added in the last 30 days") }
+
+data class UserCollection(val id: String, val name: String, val scope: ContentKind)
+data class ItemOverride(val title: String?, val posterUrl: String?)

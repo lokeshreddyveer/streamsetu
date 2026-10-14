@@ -61,7 +61,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
         vm.order.forEach { id ->
             when (id) {
                 "continue" -> if (resume.isNotEmpty()) rail("Continue Watching", pad) { items(resume, key = { it.playable.id }) { r ->
-                    LandscapeCard(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, progress = r.progress.fraction)
+                    LandscapeCard(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, progress = if (r.isNew) 0f else r.progress.fraction, badge = if (r.isNew) "NEW" else null)
                 } }
                 "live" -> if (live.isNotEmpty()) rail("Recently Watched Live TV", pad) { items(live, key = { it.channel.id }) { l -> ChannelCard(l.channel, l.now) { play(c, nav, ChannelPlayable(l.channel), live.map { ChannelPlayable(it.channel) }) } } }
                 "favorites" -> if (favs.isNotEmpty()) rail("Favorites", pad) { items(favs, key = { it.id }) { f -> FavCard(f, c, nav) { ch -> play(c, nav, ChannelPlayable(ch)) } } }

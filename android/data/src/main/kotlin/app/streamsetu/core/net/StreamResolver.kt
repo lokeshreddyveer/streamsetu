@@ -19,7 +19,7 @@ import kotlinx.serialization.json.contentOrNull
  * For Xtream live channels it also picks the format the ACCOUNT allows: many providers only serve MPEG-TS ("ts") and refuse HLS ("m3u8"),
  * which is what `allowed_output_formats` in the login answer says. That answer is remembered per playlist.
  */
-class StreamResolver(private val sources: SourceRepository, private val credentials: CredentialStore, context: Context) : app.streamsetu.core.playback.StreamUrlResolver {
+class StreamResolver(private val sources: SourceRepository, private val credentials: CredentialStore, private val context: Context) : app.streamsetu.core.playback.StreamUrlResolver {
     private val prefs = context.applicationContext.getSharedPreferences("account-formats", Context.MODE_PRIVATE)
 
     override suspend fun resolve(sourceId: String, streamRef: String): String? {
@@ -27,6 +27,11 @@ class StreamResolver(private val sources: SourceRepository, private val credenti
         val s = sources.get(sourceId) ?: return null
         if (s.type != SourceType.XTREAM) return null
         val pass = credentials.load(SourceRepository.credentialRef(s.id)) ?: return null
+        if (streamRef.startsWith("timeshift:")) {
+            val p = streamRef.split(':')
+            val zone = if (context.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("catchupZone", "UTC") == "DEVICE") java.util.TimeZone.getDefault() else java.util.TimeZone.getTimeZone("UTC")
+            return Xtream.timeshiftUrl(s.address, s.username.orEmpty(), pass, p.getOrNull(1).orEmpty(), p.getOrNull(2)?.toLongOrNull() ?: return null, p.getOrNull(3)?.toLongOrNull() ?: 60, zone)
+        }
         var ref = streamRef
         if (ref.startsWith("live:")) {
             val parts = ref.split(':')

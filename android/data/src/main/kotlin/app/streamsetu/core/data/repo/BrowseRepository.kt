@@ -58,6 +58,15 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
             Browse.All, Browse.RecentlyAdded -> {}
             is Browse.Folder -> { where += "x.categoryId = ?"; args += browse.id }
             Browse.FavoriteFolders -> { where += if (favFolders.isEmpty()) "1 = 0" else "x.categoryId IN (${favFolders.joinToString(",") { "?" }})"; args.addAll(favFolders) }
+            is Browse.Collection -> { where += "EXISTS (SELECT 1 FROM collection_items ci WHERE ci.itemId = x.id AND ci.collectionId = ?)"; args += browse.id }
+            is Browse.Smart -> {
+                val unwatched = if (kind == ContentKind.SERIES) "NOT EXISTS (SELECT 1 FROM progress p WHERE p.seriesId = x.id)" else "NOT EXISTS (SELECT 1 FROM progress p WHERE p.itemId = x.id)"
+                where += when (browse.rule) {
+                    SmartRule.UNWATCHED -> unwatched
+                    SmartRule.UNWATCHED_FAVORITES -> "$unwatched AND ${inList(UserRepository.FAVOURITES)}"
+                    SmartRule.NEW_30D -> "x.addedAt >= CAST(strftime('%s','now','-30 days') AS INTEGER)"
+                }
+            }
             Browse.Favorites -> where += inList(UserRepository.FAVOURITES)
             Browse.WatchLater -> where += inList(UserRepository.WATCH_LATER)
             Browse.Continue -> where += when (kind) {
