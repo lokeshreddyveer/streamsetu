@@ -50,6 +50,9 @@ class Navigator {
     /** True while the sidebar is shown on a full-screen section (revealed with Back from its folders). */
     var sidebarRevealed by mutableStateOf(false)
 
+    /** True while the fullscreen player was opened from the Live TV browser: Back then leaves the stream playing in the preview. */
+    var liveFullscreen = false
+
     val top: Overlay? get() = overlays.lastOrNull()
     var lastClosedAt = 0L
 

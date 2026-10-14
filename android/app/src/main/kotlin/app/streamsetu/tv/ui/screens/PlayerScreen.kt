@@ -133,21 +133,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
                 }
             },
     ) {
-        // The picture comes from whichever engine is playing (ExoPlayer or MPV); switching engine swaps the view.
-        AndroidView(
-            factory = { ctx -> android.widget.FrameLayout(ctx) },
-            update = { frame ->
-                val e = engineNow
-                val view = e?.view(frame.context)
-                if (view != null && frame.tag !== e) {
-                    frame.removeAllViews(); (view.parent as? android.view.ViewGroup)?.removeView(view)
-                    frame.addView(view, android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT))
-                    frame.tag = e
-                    e.setAspect(aspect)
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
+        EngineSurface(c, Modifier.fillMaxSize())
         val showInfo by c.settings.showStreamInfo.collectAsState()
         if (showInfo) {
             var info by remember { mutableStateOf("") }

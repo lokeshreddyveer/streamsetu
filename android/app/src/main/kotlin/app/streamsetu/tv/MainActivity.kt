@@ -89,7 +89,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
 
     BackHandler(enabled = true) {
         when {
-            nav.top == Overlay.Player -> { c.playback.stop(); nav.close() }
+            nav.top == Overlay.Player -> closePlayer(c, nav)
             nav.overlays.isNotEmpty() -> nav.close()
             effectiveBase is Base.Setup || effectiveBase is Base.Combined -> nav.base = Base.ChooseLibrary
             effectiveBase == Base.ChooseLibrary || effectiveBase == Base.Welcome -> onExit()
@@ -122,7 +122,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                 when (val o = top) {
                     is Overlay.MovieDetail -> app.streamsetu.tv.ui.screens.detail.MovieDetailScreen(o.movie, c, nav)
                     is Overlay.SeriesDetail -> app.streamsetu.tv.ui.screens.detail.SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
-                    is Overlay.Player -> PlayerScreen(c, onClose = { c.playback.stop(); nav.close() })
+                    is Overlay.Player -> PlayerScreen(c, onClose = { closePlayer(c, nav) })
                     is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                 }
             } }
@@ -159,7 +159,7 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
             app.streamsetu.tv.ui.components.FadeIn(nav.tab) {
                 when (nav.tab) {
                     Tab.HOME -> app.streamsetu.tv.ui.screens.home.HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
-                    Tab.LIVE -> LiveScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                    Tab.LIVE -> app.streamsetu.tv.ui.screens.live.LiveScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.GUIDE -> GuideScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.MOVIES -> app.streamsetu.tv.ui.screens.section.SectionScreen(androidx.hilt.navigation.compose.hiltViewModel<app.streamsetu.tv.ui.screens.section.MoviesSectionViewModel>(), c, nav) { card -> card.movie?.let { nav.open(Overlay.MovieDetail(it)) } }
                     Tab.SERIES -> app.streamsetu.tv.ui.screens.section.SectionScreen(androidx.hilt.navigation.compose.hiltViewModel<app.streamsetu.tv.ui.screens.section.SeriesSectionViewModel>(), c, nav) { card -> card.series?.let { nav.open(Overlay.SeriesDetail(it)) } }
@@ -170,6 +170,12 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
             }
         }
     }
+}
+
+/** Closes the fullscreen player. From the Live TV browser the channel keeps playing in the preview; anywhere else the stream stops. */
+fun closePlayer(c: AppContainer, nav: Navigator) {
+    if (nav.liveFullscreen && nav.tab == Tab.LIVE) nav.liveFullscreen = false else { c.playback.stop(); nav.liveFullscreen = false }
+    nav.close()
 }
 
 /** Plays something and shows the player on top. */

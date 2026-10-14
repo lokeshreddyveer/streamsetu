@@ -15,6 +15,26 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Folder state and actions shared by Movies, Series and Live TV. */
+@OptIn(ExperimentalCoroutinesApi::class)
+abstract class FolderViewModel(protected val c: AppContainer, val kind: ContentKind) : ViewModel(), FolderActions {
+    val folders: StateFlow<List<Folder>> = c.folders.folders(kind).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    // ---- Folder actions (FolderActions) ----
+    override fun toggleFavorite(f: Folder) { viewModelScope.launch { c.folders.toggleFavorite(kind, f) } }
+    override fun togglePinned(f: Folder) { viewModelScope.launch { c.folders.togglePinned(kind, f) } }
+    override fun toggleHidden(f: Folder) { viewModelScope.launch { c.folders.toggleHidden(kind, f) } }
+    override fun toggleLocked(f: Folder) { viewModelScope.launch { c.folders.toggleLocked(kind, f) } }
+    override fun rename(f: Folder, alias: String?) { viewModelScope.launch { c.folders.setAlias(kind, f, alias) } }
+    override fun move(f: Folder, delta: Int) { viewModelScope.launch { c.folders.move(kind, folders.value, f, delta) } }
+    override fun restoreOrder() { viewModelScope.launch { c.folders.restoreDefaultOrder(kind) } }
+    override fun isUnlocked(folderId: String) = c.folders.isUnlocked(folderId)
+    override val hasPin: Boolean get() = c.parental.hasPin
+    override fun checkPin(pin: String) = c.parental.checkPin(pin)
+    override fun setPin(pin: String) = c.parental.setPin(pin)
+    override fun unlock(folderId: String) = c.folders.unlock(folderId)
+
+}
+
 /** What a poster shows, whether it stands for a movie or a series. */
 data class Card(val id: String, val title: String, val posterUrl: String?, val year: Int?, val rating: String?, val sourceId: String, val movie: Movie? = null, val series: Series? = null)
 
@@ -28,8 +48,7 @@ data class ContentFilter(val sourceId: String? = null, val decade: Int? = null) 
  * so the open folder is still there when the person comes back from a detail page.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-abstract class SectionViewModel(protected val c: AppContainer, val kind: ContentKind) : ViewModel(), FolderActions {
-    val folders: StateFlow<List<Folder>> = c.folders.folders(kind).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderViewModel(c, kind) {
     val browse = MutableStateFlow<Browse>(Browse.All)
     val filter = MutableStateFlow(ContentFilter())
     var scrollIndex = 0
@@ -59,20 +78,6 @@ abstract class SectionViewModel(protected val c: AppContainer, val kind: Content
         c.user.setFavourite(id, kind, !on, list)
     }
     abstract fun setWatched(card: Card, watched: Boolean)
-
-    // ---- Folder actions (FolderActions) ----
-    override fun toggleFavorite(f: Folder) { viewModelScope.launch { c.folders.toggleFavorite(kind, f) } }
-    override fun togglePinned(f: Folder) { viewModelScope.launch { c.folders.togglePinned(kind, f) } }
-    override fun toggleHidden(f: Folder) { viewModelScope.launch { c.folders.toggleHidden(kind, f) } }
-    override fun toggleLocked(f: Folder) { viewModelScope.launch { c.folders.toggleLocked(kind, f) } }
-    override fun rename(f: Folder, alias: String?) { viewModelScope.launch { c.folders.setAlias(kind, f, alias) } }
-    override fun move(f: Folder, delta: Int) { viewModelScope.launch { c.folders.move(kind, folders.value, f, delta) } }
-    override fun restoreOrder() { viewModelScope.launch { c.folders.restoreDefaultOrder(kind) } }
-    override fun isUnlocked(folderId: String) = c.folders.isUnlocked(folderId)
-    override val hasPin: Boolean get() = c.parental.hasPin
-    override fun checkPin(pin: String) = c.parental.checkPin(pin)
-    override fun setPin(pin: String) = c.parental.setPin(pin)
-    override fun unlock(folderId: String) = c.folders.unlock(folderId)
 
     // ---- Shortcuts under the banner (their order is the person's) ----
     val defaultShortcuts = listOf("favorites", "later", "recent", "continue")
