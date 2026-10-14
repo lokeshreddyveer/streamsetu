@@ -130,6 +130,16 @@ data class MoviePlayable(val movie: Movie) : Playable {
     override val artworkUrl get() = movie.posterUrl
 }
 
+/** A series shown in the banner. It is opened, not played, so it is not a stream. */
+data class SeriesFeature(val series: Series) : Playable {
+    override val id get() = series.id
+    override val title get() = series.title
+    override val sourceId get() = series.sourceId
+    override val streamRef get() = ""
+    override val isLive get() = false
+    override val artworkUrl get() = series.backdropUrl ?: series.posterUrl
+}
+
 data class EpisodePlayable(val episode: Episode, val series: Series) : Playable {
     override val id get() = episode.id
     override val title get() = "${series.title}  S${episode.season} E${episode.number}"

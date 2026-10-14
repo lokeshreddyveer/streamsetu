@@ -30,6 +30,13 @@ class CatalogRepository(private val db: AppDatabase) {
         return if (i >= 0) all.getOrNull(i + 1) else null
     }
 
+    /** A fresh mix of movies and series with artwork, for the banner on Home. Different every time the app opens. */
+    suspend fun featured(count: Int = 6): List<Playable> {
+        val m = dao.randomMovies(count).map { MoviePlayable(it.toModel()) as Playable }
+        val s = dao.randomSeries(count).map { SeriesFeature(it.toModel()) as Playable }
+        return (m + s).shuffled().take(count)
+    }
+
     suspend fun search(query: String, limit: Int = 30): SearchResults {
         val q = query.trim()
         if (q.length < 2) return SearchResults()

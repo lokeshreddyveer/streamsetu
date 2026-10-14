@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.streamsetu.core.model.*
@@ -107,13 +108,15 @@ fun AddPlaylistScreen(vm: AddPlaylistViewModel, onClose: () -> Unit) {
     var address by remember { mutableStateOf("") }
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
+    val first = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
     val ready = address.isNotBlank() && (type == SourceType.M3U || (user.isNotBlank() && pass.isNotBlank()))
 
     Box(Modifier.fillMaxSize().background(Tokens.background)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 120.dp, vertical = 48.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Label("Add a Playlist", Tokens.title, Tokens.text, FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TvButton("Xtream login", { type = SourceType.XTREAM }, primary = type == SourceType.XTREAM)
+                TvButton("Xtream login", { type = SourceType.XTREAM }, Modifier.focusRequester(first), primary = type == SourceType.XTREAM)
                 TvButton("M3U link", { type = SourceType.M3U }, primary = type == SourceType.M3U)
             }
             TvTextField(name, { name = it }, "Name (optional)", Modifier.widthIn(max = 700.dp).fillMaxWidth())

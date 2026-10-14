@@ -22,27 +22,20 @@ import app.streamsetu.tv.ui.components.*
 import app.streamsetu.tv.ui.theme.Tokens
 
 @Composable
-private fun CategoryChips(categories: List<Category>, selected: String?, onSelect: (String) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 10.dp)) {
-        items(categories, key = { it.id }) { cat ->
-            Focusable({ onSelect(cat.id) }, container = if (cat.id == selected) Tokens.accent2 else Tokens.surface, scaleOnFocus = 1.05f) {
-                Label(cat.name, Tokens.small, Tokens.text, modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp))
-            }
-        }
-    }
-}
-
-@Composable
 fun MoviesScreen(vm: MoviesViewModel, c: AppContainer, nav: Navigator) {
     val categories by vm.categories.collectAsState()
     val selected by vm.selectedCategory.collectAsState()
     val movies by vm.movies.collectAsState()
     if (categories.isEmpty()) { EmptyState("No movies yet", "This playlist has no movies. Add one in Settings."); return }
-    Column(Modifier.fillMaxSize().padding(top = 36.dp, end = Tokens.screenPadding)) {
-        Label("Movies", Tokens.title, Tokens.text, FontWeight.Bold)
-        CategoryChips(categories, selected ?: categories.first().id, vm::select)
-        LazyVerticalGrid(GridCells.Adaptive(150.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp)) {
-            items(movies, key = { it.id }) { m -> PosterCard(m.title, m.posterUrl, { play(c, nav, MoviePlayable(m)) }) }
+    val current = selected ?: categories.first().id
+    Row(Modifier.fillMaxSize()) {
+        ContextSidebar("Movies", categories, current, vm::select)
+        Column(Modifier.weight(1f).fillMaxHeight().padding(start = 28.dp, top = 22.dp, end = Tokens.screenPadding)) {
+            Label(categories.firstOrNull { it.id == current }?.name ?: "Movies", Tokens.pageTitle, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
+            Label("${movies.size} movies", Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(bottom = 14.dp))
+            LazyVerticalGrid(GridCells.Adaptive(Tokens.posterWidth), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(top = 6.dp, bottom = 48.dp)) {
+                items(movies, key = { it.id }) { m -> PosterCard(m.title, m.posterUrl, { play(c, nav, MoviePlayable(m)) }, subtitle = m.year?.toString()) }
+            }
         }
     }
 }
@@ -53,11 +46,15 @@ fun SeriesScreen(vm: SeriesViewModel, nav: Navigator) {
     val selected by vm.selectedCategory.collectAsState()
     val series by vm.series.collectAsState()
     if (categories.isEmpty()) { EmptyState("No series yet", "This playlist has no series. Add an Xtream playlist in Settings."); return }
-    Column(Modifier.fillMaxSize().padding(top = 36.dp, end = Tokens.screenPadding)) {
-        Label("Series", Tokens.title, Tokens.text, FontWeight.Bold)
-        CategoryChips(categories, selected ?: categories.first().id, vm::select)
-        LazyVerticalGrid(GridCells.Adaptive(150.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp)) {
-            items(series, key = { it.id }) { s -> PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }) }
+    val current = selected ?: categories.first().id
+    Row(Modifier.fillMaxSize()) {
+        ContextSidebar("Series", categories, current, vm::select)
+        Column(Modifier.weight(1f).fillMaxHeight().padding(start = 28.dp, top = 22.dp, end = Tokens.screenPadding)) {
+            Label(categories.firstOrNull { it.id == current }?.name ?: "Series", Tokens.pageTitle, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
+            Label("${series.size} series", Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(bottom = 14.dp))
+            LazyVerticalGrid(GridCells.Adaptive(Tokens.posterWidth), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(top = 6.dp, bottom = 48.dp)) {
+                items(series, key = { it.id }) { s -> PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, subtitle = s.year?.toString()) }
+            }
         }
     }
 }

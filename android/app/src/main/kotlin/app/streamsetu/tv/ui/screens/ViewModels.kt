@@ -12,6 +12,11 @@ import app.streamsetu.core.sync.upcoming
 
 /** What the Home screen shows. */
 class HomeViewModel(private val c: AppContainer) : ViewModel() {
+    private val _featured = MutableStateFlow<List<Playable>>(emptyList())
+    val featured: StateFlow<List<Playable>> = _featured
+    // The mix is picked once the library has something in it (a playlist that was just read arrives after this screen opens).
+    init { viewModelScope.launch { c.catalog.latestMovies(1).collect { if (_featured.value.isEmpty() && it.isNotEmpty()) { val f = runCatching { c.catalog.featured(6) }.onFailure { e -> android.util.Log.e("Featured", "failed", e) }.getOrDefault(emptyList()); android.util.Log.i("Featured", "picked ${f.size}"); _featured.value = f } } } }
+
     data class ResumeItem(val progress: WatchProgress, val playable: Playable)
 
     val continueWatching: StateFlow<List<ResumeItem>> = c.user.continueWatching().map { list ->

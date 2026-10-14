@@ -39,6 +39,8 @@ interface CatalogDao {
     @Query("SELECT * FROM movies WHERE categoryId = :categoryId ORDER BY title LIMIT :limit") fun moviesIn(categoryId: String, limit: Int): Flow<List<MovieEntity>>
     @Query("SELECT * FROM movies ORDER BY addedAt DESC LIMIT :limit") fun latestMovies(limit: Int): Flow<List<MovieEntity>>
     @Query("SELECT * FROM movies WHERE id = :id") suspend fun movie(id: String): MovieEntity?
+    @Query("SELECT * FROM movies WHERE posterUrl IS NOT NULL AND posterUrl != '' ORDER BY RANDOM() LIMIT :n") suspend fun randomMovies(n: Int): List<MovieEntity>
+    @Query("SELECT * FROM series WHERE posterUrl IS NOT NULL AND posterUrl != '' ORDER BY RANDOM() LIMIT :n") suspend fun randomSeries(n: Int): List<SeriesEntity>
     @Query("SELECT * FROM movies WHERE title LIKE '%' || :q || '%' ORDER BY title LIMIT :limit") suspend fun searchMovies(q: String, limit: Int): List<MovieEntity>
 
     // Series

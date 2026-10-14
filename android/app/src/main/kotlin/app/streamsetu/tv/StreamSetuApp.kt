@@ -76,6 +76,7 @@ class AppContainer(context: Context) {
         is ChannelPlayable -> ContentKind.CHANNEL
         is MoviePlayable -> ContentKind.MOVIE
         is EpisodePlayable -> ContentKind.EPISODE
+        is SeriesFeature -> ContentKind.SERIES
     }
 }
 

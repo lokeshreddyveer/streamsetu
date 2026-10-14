@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -15,7 +16,7 @@ import app.streamsetu.core.playback.PlaybackState
 import app.streamsetu.tv.nav.Navigator
 import app.streamsetu.tv.nav.Overlay
 import app.streamsetu.tv.nav.Tab
-import app.streamsetu.tv.ui.components.SideRail
+import app.streamsetu.tv.ui.components.TopBar
 import app.streamsetu.tv.ui.screens.*
 import app.streamsetu.tv.ui.theme.Tokens
 
@@ -53,9 +54,10 @@ fun StreamSetuTV(c: AppContainer, onExit: () -> Unit) {
     }
 
     Box(Modifier.fillMaxSize().background(Tokens.background)) {
-        Row(Modifier.fillMaxSize()) {
-            SideRail(nav.tab, onSelect = { nav.tab = it })
-            Box(Modifier.weight(1f).fillMaxHeight()) {
+        // While a full-screen page is open, nothing underneath can take the remote's focus.
+        Column(Modifier.fillMaxSize().focusProperties { canFocus = nav.top == null }) {
+            TopBar(nav.tab, onSelect = { nav.tab = it })
+            Box(Modifier.weight(1f).fillMaxWidth()) {
                 when {
                     hasSources == null -> {}
                     hasSources!!.isEmpty() && nav.tab != Tab.SETTINGS -> FirstRun(onAdd = { nav.open(Overlay.AddPlaylist) })
