@@ -54,6 +54,23 @@ StreamSetu is a native player for the IPTV playlists and media servers you alrea
   </tr>
 </table>
 
+### Android phone
+
+<table>
+  <tr>
+    <td width="25%" valign="top"><img src="docs/screenshots/android-home.png" alt="StreamSetu on an Android phone: Home" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/android-live.png" alt="StreamSetu on an Android phone: Live TV channel grid" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/android-movies.png" alt="StreamSetu on an Android phone: Movies" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/android-series.png" alt="StreamSetu on an Android phone: Series" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Home</sub></td>
+    <td align="center"><sub>Live TV</sub></td>
+    <td align="center"><sub>Movies</sub></td>
+    <td align="center"><sub>Series</sub></td>
+  </tr>
+</table>
+
 ### iPhone
 
 <table>
