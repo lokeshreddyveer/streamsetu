@@ -3,6 +3,15 @@
   <channel>
     <title>StreamSetu</title>
     <item>
+      <title>StreamSetu 2.4.0</title>
+      <pubDate>Wed, 14 Oct 2026 23:36:50 -0000</pubDate>
+      <sparkle:version>240</sparkle:version>
+      <sparkle:shortVersionString>2.4.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[More Like This under every movie and series: titles that share the franchise, director, genre, cast or story, with the reason shown.]]></description>
+      <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/mac-v2.4.0/StreamSetu-2.4.0.dmg" type="application/octet-stream" sparkle:edSignature="BGfCA6UOwhCfHEkH+E4ZkodOnxZXmBy/CtDAGid4gawu8rtPWmHrpMsj384huqEpZddya/wJ2L96QrPqP/vRBg==" length="65456856"/>
+    </item>
+    <item>
       <title>StreamSetu 2.3.1</title>
       <pubDate>Wed, 14 Oct 2026 23:14:01 -0000</pubDate>
       <sparkle:version>231</sparkle:version>
@@ -11,5 +20,5 @@
       <description><![CDATA[Updates now come from the one StreamSetu repository. If you have an older copy, download this one once; it updates itself from then on.]]></description>
       <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/mac-v2.3.1/StreamSetu-2.3.1.dmg" type="application/octet-stream" sparkle:edSignature="C6eMDAYgR8nLbI0cQYXeeDf/ZITqwbIqLWvhz++8pB6E8Tq9U1ITGr10mGAIOMsW4pkgqoWbtKb2Me6cLZcOAg==" length="64424077"/>
     </item>
-  </channel>
+    </channel>
 </rss>
