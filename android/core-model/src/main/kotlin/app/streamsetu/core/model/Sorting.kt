@@ -2,7 +2,7 @@ package app.streamsetu.core.model
 
 /** What a list can be ordered by. A field is offered only when the catalog really carries that information. */
 enum class SortField(val label: String) {
-    PROVIDER("Provider order"), NAME("Name"), ADDED("Recently added"), RECENTLY_WATCHED("Recently watched"), YEAR("Release year"), RATING("Rating"), DURATION("Duration")
+    PROVIDER("Provider order"), NAME("Name"), ADDED("Recently added"), UPDATED("Recently updated"), NEW_EPISODES("New episodes first"), RECENTLY_WATCHED("Recently watched"), YEAR("Release year"), RATING("Rating"), DURATION("Duration")
 }
 
 /**
@@ -25,12 +25,14 @@ data class SortSpec(val field: SortField = SortField.PROVIDER, val ascending: Bo
 }
 
 /** Which sort fields the open library can honestly offer, from what the catalog holds. */
-data class SortAvailability(val year: Boolean, val rating: Boolean, val duration: Boolean, val recentlyWatched: Boolean) {
+data class SortAvailability(val year: Boolean, val rating: Boolean, val duration: Boolean, val recentlyWatched: Boolean, val seriesUpdated: Boolean = false, val newEpisodes: Boolean = false) {
     fun offers(kind: ContentKind): List<SortField> = buildList {
         add(SortField.PROVIDER); add(SortField.NAME); add(SortField.ADDED)
         if (recentlyWatched) add(SortField.RECENTLY_WATCHED)
         if (kind != ContentKind.CHANNEL) { if (year) add(SortField.YEAR); if (rating) add(SortField.RATING) }
         if (kind == ContentKind.MOVIE && duration) add(SortField.DURATION)
+        if (kind == ContentKind.SERIES && seriesUpdated) add(SortField.UPDATED)
+        if (kind == ContentKind.SERIES && newEpisodes) add(SortField.NEW_EPISODES)
     }
 }
 

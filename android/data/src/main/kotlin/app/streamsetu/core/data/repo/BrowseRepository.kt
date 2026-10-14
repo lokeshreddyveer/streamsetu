@@ -31,7 +31,7 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
         val ids = library.sourceIds.value; val d = db.browse()
         return SortAvailability(
             year = d.moviesWithYear(ids) + d.seriesWithYear(ids) > 0, rating = d.moviesWithRating(ids) + d.seriesWithRating(ids) > 0,
-            duration = false, recentlyWatched = d.watchedCount() > 0,
+            duration = false, recentlyWatched = d.watchedCount() > 0, seriesUpdated = d.seriesWithUpdateDate(ids) > 0, newEpisodes = d.newEpisodeCount() > 0,
         )
     }
 
@@ -94,7 +94,10 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
             SortField.PROVIDER -> "x.rowid ${dir("ASC")}"
             SortField.NAME -> "$title COLLATE NOCASE ${dir("ASC")}"
             SortField.ADDED -> if (kind == ContentKind.CHANNEL) "x.addedAt ${dir("DESC")}, x.rowid ${dir("ASC")}"      // channels with no date keep the provider's order
+                else if (kind == ContentKind.SERIES) "x.rowid ${dir("DESC")}"                                         // series: the order they appeared in the catalog, the later the newer
                 else "x.addedAt ${dir("DESC")}, x.rowid ${dir("DESC")}"                                           // a provider that sends no dates: the later in its list, the newer
+            SortField.UPDATED -> if (kind == ContentKind.SERIES) "x.addedAt ${dir("DESC")}, x.rowid ${dir("DESC")}" else "x.rowid ASC"     // the provider's own "last modified" time
+            SortField.NEW_EPISODES -> if (kind == ContentKind.SERIES) "(NOT EXISTS (SELECT 1 FROM new_episodes ne WHERE ne.seriesId = x.id)) ${dir("ASC")}, x.addedAt DESC" else "x.rowid ASC"
             SortField.RECENTLY_WATCHED -> { joins.append(" LEFT JOIN (SELECT itemId, MAX(playedAt) AS lastPlayed FROM watch_log GROUP BY itemId) w ON w.itemId = x.id"); "(w.lastPlayed IS NULL) ASC, w.lastPlayed ${dir("DESC")}" }
             SortField.YEAR -> if (kind == ContentKind.CHANNEL) "x.rowid ASC" else "(x.year IS NULL) ASC, x.year ${dir("DESC")}"
             SortField.RATING -> if (kind == ContentKind.CHANNEL) "x.rowid ASC" else "(x.rating IS NULL OR x.rating = '' OR CAST(x.rating AS REAL) = 0) ASC, CAST(x.rating AS REAL) ${dir("DESC")}"

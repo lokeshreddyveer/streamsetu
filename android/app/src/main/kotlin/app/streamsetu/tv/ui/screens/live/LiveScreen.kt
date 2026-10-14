@@ -130,7 +130,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     LaunchedEffect(Unit) { nav.pendingFolder?.takeIf { it.first == ContentKind.CHANNEL }?.let { vm.select(Browse.Folder(it.second)); nav.pendingFolder = null } }
 
     val shortcuts = listOf(
-        Shortcut(Browse.All, "All Channels", Icons.Filled.LiveTv), Shortcut(Browse.Favorites, "Favorites", Icons.Filled.Favorite), Shortcut(Browse.Recent, "Recently Watched", Icons.Filled.History),
+        Shortcut(Browse.All, "All Channels", Icons.Filled.LiveTv), Shortcut(Browse.Favorites, "Favorites", Icons.Filled.Favorite), Shortcut(Browse.WatchLater, "Watch Later", Icons.Filled.Bookmark), Shortcut(Browse.Recent, "Recently Watched", Icons.Filled.History),
     ) + if (folders.any { it.pref.favorite }) listOf(Shortcut(Browse.FavoriteFolders, "Favorite Folders", Icons.Filled.Star)) else emptyList()
 
     BackHandler(enabled = inChannels || inPreview) { runCatching { entry.requestFocus() } }

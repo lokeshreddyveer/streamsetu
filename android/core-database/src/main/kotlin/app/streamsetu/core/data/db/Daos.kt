@@ -169,6 +169,8 @@ interface BrowseDao {
     @Query("SELECT COUNT(*) FROM series WHERE sourceId IN (:s) AND year IS NOT NULL") suspend fun seriesWithYear(s: List<String>): Int
     @Query("SELECT COUNT(*) FROM series WHERE sourceId IN (:s) AND rating IS NOT NULL AND rating != '' AND rating != '0'") suspend fun seriesWithRating(s: List<String>): Int
     @Query("SELECT COUNT(*) FROM watch_log") suspend fun watchedCount(): Int
+    @Query("SELECT COUNT(*) FROM series WHERE sourceId IN (:s) AND addedAt > 0") suspend fun seriesWithUpdateDate(s: List<String>): Int
+    @Query("SELECT COUNT(*) FROM new_episodes") suspend fun newEpisodeCount(): Int
     @Query("SELECT COUNT(*) FROM channels WHERE sourceId = :id AND epgId IS NOT NULL AND epgId != ''") suspend fun channelsWithGuideId(id: String): Int
     @Query("SELECT COUNT(*) FROM channels WHERE sourceId = :id AND catchupDays > 0") suspend fun channelsWithCatchUp(id: String): Int
     @Query("SELECT COUNT(*) FROM epg WHERE channelEpgId IN (SELECT epgId FROM channels WHERE sourceId = :id AND epgId IS NOT NULL)") suspend fun programmesFor(id: String): Int

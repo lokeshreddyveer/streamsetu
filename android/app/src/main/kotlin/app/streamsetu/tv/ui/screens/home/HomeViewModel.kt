@@ -17,6 +17,7 @@ import javax.inject.Inject
 data class ResumeItem(val progress: WatchProgress, val playable: Playable, val subtitle: String, val isNew: Boolean = false)
 data class LiveItem(val channel: Channel, val now: String?)
 sealed interface FavItem { val id: String; val title: String
+    fun kind(): String = when (this) { is Ch -> "c"; is Mv -> "m"; is Sr -> "s" }
     data class Ch(val channel: Channel) : FavItem { override val id get() = channel.id; override val title get() = channel.name }
     data class Mv(val movie: Movie) : FavItem { override val id get() = movie.id; override val title get() = movie.title }
     data class Sr(val series: Series) : FavItem { override val id get() = series.id; override val title get() = series.title }
@@ -112,12 +113,13 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         val mv = c.catalog.moviesByIds(list).filter { it.sourceId in lib }.map { FavItem.Mv(it) }
         val sr = c.catalog.seriesByIds(list).filter { it.sourceId in lib }.map { FavItem.Sr(it) }
         val order = list.withIndex().associate { it.value to it.index }
-        (ch + mv + sr).sortedBy { order[it.id] }
+        (ch + mv + sr).sortedBy { order[it.id] }.distinctBy { it.kind() + app.streamsetu.core.data.repo.SearchText.normalize(it.title) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val watchLater: StateFlow<List<FavItem>> = combine(c.user.favouriteIds(UserRepository.WATCH_LATER), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->
         val list = ids.toList(); val order = list.withIndex().associate { it.value to it.index }
-        (c.catalog.moviesByIds(list).filter { it.sourceId in lib }.map { FavItem.Mv(it) } + c.catalog.seriesByIds(list).filter { it.sourceId in lib }.map { FavItem.Sr(it) }).sortedBy { order[it.id] }
+        (list.mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib }.map { FavItem.Ch(it) } + c.catalog.moviesByIds(list).filter { it.sourceId in lib }.map { FavItem.Mv(it) } + c.catalog.seriesByIds(list).filter { it.sourceId in lib }.map { FavItem.Sr(it) })
+            .sortedBy { order[it.id] }.distinctBy { it.kind() + app.streamsetu.core.data.repo.SearchText.normalize(it.title) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val recentMovies: StateFlow<List<Movie>> = c.browse.movies(Browse.RecentlyAdded, SortSpec(SortField.ADDED), 30).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -147,8 +149,14 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     val order: List<String> get() = visibleRows(c.ui.homeOrder(DEFAULT_ORDER), hiddenRows.value)
 
     // ---- Actions behind the long-press menu (the screen only passes typed identities in) ----
-    fun setFavorite(id: String, kind: ContentKind, on: Boolean) = viewModelScope.launch { c.user.setFavourite(id, kind, on) }
-    fun setWatchLater(id: String, kind: ContentKind, on: Boolean) = viewModelScope.launch { c.user.setFavourite(id, kind, on, UserRepository.WATCH_LATER) }
+    /** The same title from every connection of the open library (a title in two connections is one title to the person). Channels and other kinds stand alone. */
+    private suspend fun logicalIds(id: String, kind: ContentKind): List<String> = when (kind) {
+        ContentKind.MOVIE -> c.catalog.movie(id)?.let { m -> (c.search.movieVariants(m.title).map { it.id } + id).distinct() } ?: listOf(id)
+        ContentKind.SERIES -> c.catalog.series(id)?.let { s -> (c.search.seriesVariants(s.title).map { it.id } + id).distinct() } ?: listOf(id)
+        else -> listOf(id)
+    }
+    fun setFavorite(id: String, kind: ContentKind, on: Boolean) = viewModelScope.launch { logicalIds(id, kind).forEach { c.user.setFavourite(it, kind, on) } }
+    fun setWatchLater(id: String, kind: ContentKind, on: Boolean) = viewModelScope.launch { logicalIds(id, kind).forEach { c.user.setFavourite(it, kind, on, UserRepository.WATCH_LATER) } }
     fun setWatched(id: String, kind: ContentKind, seriesId: String?, watched: Boolean) = viewModelScope.launch { c.user.setWatched(id, kind, seriesId, watched) }
     /** Takes a title out of Continue Watching: only its resume point goes; watch history stays. */
     fun removeFromContinue(id: String) = viewModelScope.launch { c.user.clearResumePoint(id) }

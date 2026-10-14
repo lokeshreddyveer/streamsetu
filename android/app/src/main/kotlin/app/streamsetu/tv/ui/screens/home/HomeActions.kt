@@ -39,6 +39,7 @@ fun actionsFor(t: TargetState): List<HomeAction> = buildList {
         TargetKind.CHANNEL -> {
             add(HomeAction.WATCH_CHANNEL)
             add(if (t.isFavorite) HomeAction.UNFAVORITE else HomeAction.FAVORITE)
+            add(if (t.isWatchLater) HomeAction.REMOVE_WATCH_LATER else HomeAction.WATCH_LATER)       // a saved-channel list, not a playback queue: no resume, no watched mark
             if (t.hasGuide) add(HomeAction.OPEN_GUIDE)
             if (t.hasFolder) add(HomeAction.OPEN_CHANNEL_FOLDER)
             if (t.hasVariants) add(HomeAction.CHOOSE_SOURCE)

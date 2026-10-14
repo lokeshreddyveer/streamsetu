@@ -53,6 +53,12 @@ class CatalogLogicTests {
         assertEquals(SortField.ADDED, SortSpec.defaultFor(ContentKind.SERIES).field)
         assertEquals(SortField.ADDED, SortSpec.defaultFor(ContentKind.CHANNEL).field)
     }
+    @Test fun seriesSortOffersUpdatedAndNewEpisodesOnlyWhenTheDataExists() {
+        assertFalse(SortField.UPDATED in SortAvailability(false, false, false, false).offers(ContentKind.SERIES))
+        val a = SortAvailability(false, false, false, false, seriesUpdated = true, newEpisodes = true).offers(ContentKind.SERIES)
+        assertTrue(SortField.UPDATED in a && SortField.NEW_EPISODES in a)
+        assertFalse(SortField.UPDATED in SortAvailability(false, false, false, false, seriesUpdated = true).offers(ContentKind.MOVIE))
+    }
     @Test fun sortOffersOnlyWhatTheCatalogHas() {
         val none = SortAvailability(false, false, false, false).offers(ContentKind.MOVIE)
         assertFalse(SortField.YEAR in none); assertFalse(SortField.RATING in none); assertFalse(SortField.RECENTLY_WATCHED in none)

@@ -28,6 +28,7 @@ abstract class FolderViewModel(protected val c: AppContainer, val kind: ContentK
     override fun move(f: Folder, to: app.streamsetu.core.data.repo.MoveTo) { viewModelScope.launch { c.folders.moveTo(kind, folders.value.filter { !it.pref.hidden }, f, to) } }
     override fun resetPosition(f: Folder) { viewModelScope.launch { c.folders.resetPosition(kind, f) } }
     override fun resetFolder(f: Folder) { viewModelScope.launch { c.folders.resetFolder(kind, f) } }
+    override fun createFolder(name: String) { viewModelScope.launch { c.collections.create(name, kind) } }
     override fun restoreOrder() { viewModelScope.launch { c.folders.restoreDefaultOrder(kind) } }
     override fun isUnlocked(folderId: String) = c.folders.isUnlocked(folderId)
     override val hasPin: Boolean get() = c.parental.hasPin
@@ -90,7 +91,13 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
     fun applySort(spec: SortSpec) = c.browse.setSort(kind, (browse.value as? Browse.Folder)?.id, spec)
     fun toggle(id: String, list: String) = viewModelScope.launch {
         val on = (if (list == UserRepository.FAVOURITES) favourites else watchLater).value.contains(id)
-        c.user.setFavourite(id, kind, !on, list)
+        // The title is saved or removed in every connection of the library that has it.
+        val ids = when (kind) {
+            ContentKind.MOVIE -> c.catalog.movie(id)?.let { m -> (c.search.movieVariants(m.title).map { it.id } + id).distinct() }
+            ContentKind.SERIES -> c.catalog.series(id)?.let { s -> (c.search.seriesVariants(s.title).map { it.id } + id).distinct() }
+            else -> null
+        } ?: listOf(id)
+        ids.forEach { c.user.setFavourite(it, kind, !on, list) }
     }
     abstract fun setWatched(card: Card, watched: Boolean)
 

@@ -74,7 +74,8 @@ fun <T> motionSpec(durationMs: Int = Motion.SCREEN, easing: Easing = Motion.Stan
 @Composable
 fun Modifier.focusScale(focused: Boolean, scale: Float = Motion.POSTER_FOCUS_SCALE): Modifier {
     val reduced = LocalReducedMotion.current
-    val s = animateFloatAsState(if (focused) scale else 1f, if (reduced) snap() else tween(Motion.FOCUS, easing = Motion.Standard), label = "focusScale")
+    // A critically damped spring: no bounce, and a new target mid-animation continues from the current value and speed, so rapid D-pad moves never queue or jump.
+    val s = animateFloatAsState(if (focused) scale else 1f, if (reduced) snap() else spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 900f), label = "focusScale")
     return graphicsLayer { scaleX = s.value; scaleY = s.value }
 }
 

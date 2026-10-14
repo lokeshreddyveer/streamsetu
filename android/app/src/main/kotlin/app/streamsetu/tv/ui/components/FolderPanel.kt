@@ -43,6 +43,8 @@ interface FolderActions {
     fun toggleFavorite(f: Folder); fun togglePinned(f: Folder); fun toggleHidden(f: Folder); fun toggleLocked(f: Folder)
     fun rename(f: Folder, alias: String?); fun move(f: Folder, to: app.streamsetu.core.data.repo.MoveTo); fun restoreOrder()
     fun resetPosition(f: Folder); fun resetFolder(f: Folder)
+    /** Makes a folder of the person's own (a collection). Provider folders are never created, moved into or deleted. */
+    fun createFolder(name: String)
     fun isUnlocked(folderId: String): Boolean
     val hasPin: Boolean
     fun checkPin(pin: String): Boolean
@@ -77,6 +79,7 @@ fun FolderPanel(
     var creatingPinFor by remember { mutableStateOf<Folder?>(null) }
     var renameFor by remember { mutableStateOf<Folder?>(null) }
     var infoFor by remember { mutableStateOf<Folder?>(null) }
+    var creating by remember { mutableStateOf(false) }
     var resetFor by remember { mutableStateOf<Folder?>(null) }
     var unlockingToRemove by remember { mutableStateOf(false) }
     var lockAfterCreate by remember { mutableStateOf(false) }
@@ -139,9 +142,13 @@ fun FolderPanel(
             }
         }
         // Always at the bottom, outside the scrolling list.
-        Box(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) { PanelRow(if (manage) "Done managing" else "Manage folders", Icons.Filled.Tune, null, false, false, Modifier, onClick = { manage = !manage }) }
+        Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            PanelRow("New folder", Icons.Filled.CreateNewFolder, null, false, false, Modifier, onClick = { creating = true })
+            PanelRow(if (manage) "Done managing" else "Manage folders", Icons.Filled.Tune, null, false, false, Modifier, onClick = { manage = !manage })
+        }
     }
 
+    if (creating) RenameDialog("", onSave = { actions.createFolder(it); creating = false }, onReset = { creating = false }, onClose = { creating = false }, title = "New folder", hint = "A folder of your own. Add titles to it by holding OK on a poster.", resetLabel = "Cancel")
     menuFor?.let { f ->
         val ids = visible.map { it.id }
         fun can(to: app.streamsetu.core.data.repo.MoveTo) = app.streamsetu.core.data.repo.FolderOrder.canMove(ids, f.id, to)

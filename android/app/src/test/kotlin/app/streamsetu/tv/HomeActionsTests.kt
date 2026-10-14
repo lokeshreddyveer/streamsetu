@@ -7,7 +7,8 @@ import org.junit.Test
 class HomeActionsTests {
     @Test fun channelsNeverGetMovieActions() {
         val a = actionsFor(TargetState(TargetKind.CHANNEL, inRecentLive = true, hasGuide = true, hasFolder = true))
-        assertFalse(HomeAction.MARK_WATCHED in a); assertFalse(HomeAction.START_OVER in a); assertFalse(HomeAction.WATCH_LATER in a); assertFalse(HomeAction.RESUME in a)
+        assertFalse(HomeAction.MARK_WATCHED in a); assertFalse(HomeAction.START_OVER in a); assertFalse(HomeAction.RESUME in a)
+        assertTrue(HomeAction.WATCH_LATER in a)          // a saved-channel list: it is allowed, but there is no resume and no watched mark
         assertEquals(HomeAction.WATCH_CHANNEL, a.first()); assertTrue(HomeAction.OPEN_GUIDE in a && HomeAction.REMOVE_FROM_RECENT in a)
     }
     @Test fun guideActionOnlyWhenThereIsGuideData() = assertFalse(HomeAction.OPEN_GUIDE in actionsFor(TargetState(TargetKind.CHANNEL, hasGuide = false)))

@@ -80,6 +80,22 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     LaunchedEffect(Unit) { nav.pendingCollection?.takeIf { it.first == kind }?.let { vm.select(Browse.Collection(it.second)); nav.pendingCollection = null } }
     LaunchedEffect(Unit) { nav.pendingFolder?.takeIf { it.first == kind }?.let { vm.select(Browse.Folder(it.second)); nav.pendingFolder = null } }
     val gridState = rememberLazyGridState(vm.scrollIndex)
+    // Pictures a little way ahead of the visible rows are fetched at the size a poster is drawn, a bounded number, and not at all while something is playing.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val requested = remember(browse) { HashSet<String>() }
+    LaunchedEffect(gridState, cards, posterSize) {
+        val list = cards ?: return@LaunchedEffect
+        val w = with(density) { posterSize.dp.dp.roundToPx() }; val h = w * 3 / 2
+        val loader = coil.Coil.imageLoader(context)
+        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }.collect { last ->
+            if (c.playback.state.value != app.streamsetu.core.playback.PlaybackState.Idle) return@collect
+            val from = (last).coerceAtLeast(0); val to = minOf(list.size, from + app.streamsetu.tv.Perf.prefetchAhead(context))
+            for (i in from until to) list.getOrNull(i)?.posterUrl?.takeIf { it.isNotBlank() && requested.add(it) }?.let { url ->
+                loader.enqueue(coil.request.ImageRequest.Builder(context).data(url).size(w, h).build())
+            }
+        }
+    }
     LaunchedEffect(gridState) { snapshotFlow { gridState.firstVisibleItemIndex }.collect { vm.scrollIndex = it } }
     var sortOpen by remember { mutableStateOf(false) }
     var filterOpen by remember { mutableStateOf(false) }
