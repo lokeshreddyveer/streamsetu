@@ -183,18 +183,31 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
 /** An open library: the sidebar and the sections. Movies, Series and Live TV hide the sidebar and bring their own folder panel. */
 @Composable
 private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compose.ui.focus.FocusRequester, contentEntry: androidx.compose.ui.focus.FocusRequester) {
-    // A chosen section gives the remote to the page's entry point; Back from the page gives it to the sidebar.
+    val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
+    val mode = nav.sidebarMode
+    // A chosen section gives the remote to the page's entry point, once per choice (not on every recomposition).
     LaunchedEffect(nav.tab, nav.contentFocusTick) {
         kotlinx.coroutines.delay(220)
         repeat(8) { if (runCatching { contentEntry.requestFocus() }.isSuccess) return@LaunchedEffect; kotlinx.coroutines.delay(120) }
     }
+    // Back from a page's root (or Back on Home) sends the remote to the sidebar, once per request.
     LaunchedEffect(nav.sidebarFocusTick) {
         if (nav.sidebarFocusTick == 0) return@LaunchedEffect
-        repeat(8) { if (runCatching { sidebarEntry.requestFocus() }.isSuccess) return@LaunchedEffect; kotlinx.coroutines.delay(100) }
+        kotlinx.coroutines.delay(60)
+        repeat(8) { if (runCatching { sidebarEntry.requestFocus() }.isSuccess) return@LaunchedEffect; kotlinx.coroutines.delay(80) }
     }
-    Box(Modifier.fillMaxSize()) {
-        // The sidebar is always here, on every page. The page keeps a fixed margin for its narrow strip; the wider state is drawn over the page's edge, so opening it never moves the page.
-        Box(Modifier.fillMaxSize().padding(start = app.streamsetu.tv.ui.theme.Tokens.sidebarCompact)) {
+    // One instance of the sidebar, in the layout beside the page. When it is HIDDEN it takes no width and is not composed, so it cannot take focus or keys.
+    Row(Modifier.fillMaxSize()) {
+        androidx.compose.animation.AnimatedVisibility(
+            mode != app.streamsetu.tv.nav.SidebarMode.HIDDEN,
+            enter = androidx.compose.animation.expandHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR, easing = app.streamsetu.core.ui.motion.Motion.Standard)) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR)),
+            exit = androidx.compose.animation.shrinkHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR, easing = app.streamsetu.core.ui.motion.Motion.Exit)) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SHORT)),
+        ) {
+            app.streamsetu.tv.ui.components.Sidebar(nav.tab, onSelect = { t ->
+                if (t == Tab.LIBRARIES) { c.library.close(); nav.toChooser() } else nav.go(t)
+            }, entry = sidebarEntry, expanded = mode == app.streamsetu.tv.nav.SidebarMode.EXPANDED, onFocusChange = nav::sidebarFocusChanged)
+        }
+        Box(Modifier.weight(1f).fillMaxHeight()) {
             app.streamsetu.tv.ui.components.FadeIn(nav.tab) {
                 when (nav.tab) {
                     Tab.HOME -> app.streamsetu.tv.ui.screens.home.HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
@@ -208,9 +221,6 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
                 }
             }
         }
-        app.streamsetu.tv.ui.components.Sidebar(nav.tab, onSelect = { t ->
-            if (t == Tab.LIBRARIES) { c.library.close(); nav.toChooser() } else nav.go(t)
-        }, entry = sidebarEntry, modifier = Modifier.align(Alignment.CenterStart), onFocusChange = { nav.sidebarFocused = it })
     }
 }
 

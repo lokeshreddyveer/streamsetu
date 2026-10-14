@@ -55,9 +55,9 @@ private const val IconBox = 40    // dp, the square the icon is centred in: in t
  * Entries are 46 dp tall, with 4 dp between them; the page you are on has a thin accent bar and white text; the entry under the remote has a soft white fill.
  */
 @Composable
-fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modifier: Modifier = Modifier, floating: Boolean = false, startExpanded: Boolean = false, onFocusChange: (Boolean) -> Unit = {}) {
+fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modifier: Modifier = Modifier, expanded: Boolean = false, onFocusChange: (Boolean) -> Unit = {}) {
+    val floating = false
     var hadFocus by remember { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(startExpanded) }
     val reduced = LocalReducedMotion.current
     val width by animateDpAsState(if (expanded) Tokens.sidebarExpanded else Tokens.sidebarCompact, if (reduced) snap() else tween(Motion.SIDEBAR, easing = Motion.Standard), label = "sidebarWidth")
     val labelAlpha by animateFloatAsState(if (expanded) 1f else 0f, if (reduced) snap() else tween(Motion.SHORT), label = "sidebarLabels")
@@ -66,7 +66,7 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
         (if (floating) modifier.padding(start = 16.dp, top = Tokens.safeVertical, bottom = Tokens.safeVertical).wrapContentHeight() else modifier.fillMaxHeight().padding(vertical = Tokens.safeVertical))
             .width(width).clip(shape)
             .background(Color(0xF2090909))
-            .onFocusChanged { expanded = it.hasFocus || startExpanded; if (it.hasFocus != hadFocus) { hadFocus = it.hasFocus; onFocusChange(it.hasFocus) } }
+            .onFocusChanged { if (it.hasFocus != hadFocus) { hadFocus = it.hasFocus; onFocusChange(it.hasFocus) } }
             .padding(vertical = 10.dp, horizontal = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp, if (floating) Alignment.Top else Alignment.CenterVertically),
     ) {
