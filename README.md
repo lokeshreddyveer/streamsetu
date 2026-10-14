@@ -38,7 +38,7 @@ StreamSetu is a native player for the IPTV playlists and media servers you alrea
 <table>
   <tr>
     <td width="50%" valign="top"><img src="docs/screenshots/firetv-home-sidebar.png" alt="StreamSetu on Fire TV: Home with the sidebar open" width="100%"></td>
-    <td width="50%" valign="top"><img src="docs/screenshots/firetv-live-tv.png" alt="StreamSetu on Fire TV: Live TV with folders, channels and a live preview" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/firetv-live-channels.png" alt="StreamSetu on Fire TV: Live TV with folders, channels and a live preview" width="100%"></td>
   </tr>
   <tr>
     <td align="center"><sub>Home, sidebar open</sub></td>
