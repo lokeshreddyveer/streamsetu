@@ -1,6 +1,7 @@
 package app.streamsetu.tv.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -10,6 +11,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
@@ -69,6 +71,7 @@ fun FirstRun(onAdd: () -> Unit) {
 fun AddPlaylistScreen(vm: AddPlaylistViewModel, onClose: () -> Unit) {
     val busy by vm.busy.collectAsState()
     val message by vm.message.collectAsState()
+    val summary by vm.summary.collectAsState()
     var type by remember { mutableStateOf(SourceType.XTREAM) }
     var name by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
@@ -79,6 +82,24 @@ fun AddPlaylistScreen(vm: AddPlaylistViewModel, onClose: () -> Unit) {
     val ready = address.isNotBlank() && (type == SourceType.M3U || (user.isNotBlank() && pass.isNotBlank()))
 
     Box(Modifier.fillMaxSize().background(Tokens.background)) {
+        summary?.let { sm ->
+            val open = remember { androidx.compose.ui.focus.FocusRequester() }
+            LaunchedEffect(Unit) { delay(150); runCatching { open.requestFocus() } }
+            Column(Modifier.fillMaxSize().padding(horizontal = 120.dp, vertical = 48.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Label("Connection verified", Tokens.title, Tokens.text, FontWeight.Bold)
+                Label(sm.name, Tokens.heading, Tokens.accent, FontWeight.SemiBold)
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    listOf("Live channels" to sm.channels, "Movies" to sm.movies, "Series" to sm.series).forEach { (t, n) ->
+                        Column(Modifier.background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(horizontal = 22.dp, vertical = 14.dp)) {
+                            Label("%,d".format(n), Tokens.display, Tokens.text, FontWeight.Bold); Label(t, Tokens.small, Tokens.textSecondary)
+                        }
+                    }
+                }
+                Label("Saved on this device. Your login is kept in the Android Keystore and is never shown or logged.", Tokens.small, Tokens.textSecondary)
+                TvButton("Open Home", onClose, Modifier.focusRequester(open), primary = true)
+            }
+            return@Box
+        }
         Column(Modifier.fillMaxSize().padding(horizontal = 120.dp, vertical = 48.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Label("Add a Playlist", Tokens.title, Tokens.text, FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -93,9 +114,9 @@ fun AddPlaylistScreen(vm: AddPlaylistViewModel, onClose: () -> Unit) {
             }
             message?.let { Label(it, color = Tokens.danger, maxLines = 3) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (busy) { Spinner(); Label("Reading the playlist. This can take a minute for big lists…", color = Tokens.muted) }
+                if (busy) { Spinner(); Label("Testing the connection and reading the catalog. This can take a minute for big lists…", color = Tokens.muted) }
                 else {
-                    TvButton("Add and Read", { if (ready) vm.add(type, name, address, user, pass, onClose) }, primary = true)
+                    TvButton("Test and Save", { if (ready) vm.test(type, name, address, user, pass) }, primary = true)
                     TvButton("Cancel", onClose)
                 }
             }

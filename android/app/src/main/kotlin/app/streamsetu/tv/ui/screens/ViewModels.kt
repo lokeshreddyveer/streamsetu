@@ -150,23 +150,37 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
 }
 
 class AddPlaylistViewModel(private val c: AppContainer) : ViewModel() {
+    /** What a successful test found; shown on a summary screen before the library opens. */
+    data class Summary(val name: String, val channels: Int, val movies: Int, val series: Int)
+
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message
+    private val _summary = MutableStateFlow<Summary?>(null)
+    val summary: StateFlow<Summary?> = _summary
+    private var testing = false
 
-    /** Saves the playlist and reads it. Calls [done] when it worked. */
-    fun add(type: SourceType, name: String, address: String, user: String, password: String, done: () -> Unit) {
+    /**
+     * Tests the connection once (no automatic retries): signs in, reads the catalog, and only keeps the playlist when it holds something to watch.
+     * A failure leaves everything on screen so the person can fix the details and test again by hand.
+     */
+    fun test(type: SourceType, name: String, address: String, user: String, password: String) {
+        if (testing) return
+        testing = true
         viewModelScope.launch {
-            _busy.value = true; _message.value = null
-            val saved = c.sources.add(
-                Source(id = "", name = name.ifBlank { address.substringAfter("://").substringBefore('/').take(30) }, type = type,
-                    address = address.trim(), username = user.trim().ifBlank { null }),
-                password.trim().ifBlank { null },
-            )
+            _busy.value = true; _message.value = null; _summary.value = null
+            val label = name.ifBlank { address.trim().substringAfter("://").substringBefore('/').take(30) }
+            val saved = c.sources.add(Source(id = "", name = label, type = type, address = address.trim(), username = user.trim().ifBlank { null }), password.trim().ifBlank { null })
             runCatching { c.syncWithGuide(saved.id) }
-                .onSuccess { _busy.value = false; done() }
-                .onFailure { c.sources.remove(saved.id); _busy.value = false; _message.value = it.message ?: "The playlist could not be read." }
+                .onSuccess { r ->
+                    if (r.channels + r.movies + r.series == 0) {
+                        c.sources.remove(saved.id)
+                        _message.value = "The sign-in worked but the provider returned nothing to watch. Check that the subscription is active."
+                    } else _summary.value = Summary(label, r.channels, r.movies, r.series)
+                }
+                .onFailure { c.sources.remove(saved.id); _message.value = it.message ?: "The playlist could not be read." }
+            _busy.value = false; testing = false
         }
     }
 }

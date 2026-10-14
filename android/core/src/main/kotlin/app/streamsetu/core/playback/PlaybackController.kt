@@ -70,6 +70,10 @@ class PlaybackController(
     private var waitingForNetwork = false
     private var appliedPreferredTracks = false
     private val closedAt = HashMap<String, Long>()      // when a stream of each playlist was last closed: one-connection accounts need a moment
+    /** Each start gets a new number; progress is only written for the session that is still current and has really shown a picture. */
+    private var sessionId = 0
+    private var sessionVerified = false
+    private var userSeeked = false
     private var startedAt = 0L
     private var firstFrameLogged = false
     private var loggedStart = false      // a play is logged once, however many times it is retried or moved to the other engine
@@ -92,6 +96,7 @@ class PlaybackController(
         attempt = 0; switchedEngine = false; appliedPreferredTracks = false; loggedStart = false; firstFrameLogged = false; bufferingSince = 0L
         startPositionMs = if (item.isLive || !settings.resumeAutomatically.value) 0 else resumeAtMs
         _resumedFrom.value = if (startPositionMs > 30_000) startPositionMs else 0
+        sessionId++; sessionVerified = false; userSeeked = false
         _speed.value = 1f
         _current.value = item
         _state.value = PlaybackState.Resolving
@@ -123,7 +128,7 @@ class PlaybackController(
         android.util.Log.i("Playback", "${_engine.value?.kind?.label}: $ev pos=${positionMs / 1000}s dur=${durationMs / 1000}s")
         when (ev) {
             EngineEvent.Buffering -> { if (bufferingSince == 0L) bufferingSince = System.currentTimeMillis(); if (_state.value !is PlaybackState.Retrying) _state.value = PlaybackState.Buffering }
-            is EngineEvent.Ready -> { bufferingSince = 0L; if (!firstFrameLogged) { firstFrameLogged = true; android.util.Log.i("Playback", "first picture after ${System.currentTimeMillis() - startedAt} ms (${_engine.value?.kind?.label})") }; attempt = 0; _state.value = if (ev.playing) PlaybackState.Playing else PlaybackState.Paused; refreshTracks() }
+            is EngineEvent.Ready -> { sessionVerified = true; bufferingSince = 0L; if (!firstFrameLogged) { firstFrameLogged = true; android.util.Log.i("Playback", "first picture after ${System.currentTimeMillis() - startedAt} ms (${_engine.value?.kind?.label})") }; attempt = 0; _state.value = if (ev.playing) PlaybackState.Playing else PlaybackState.Paused; refreshTracks() }
             EngineEvent.Ended -> { _state.value = PlaybackState.Ended; onEnded() }
             EngineEvent.TracksChanged -> refreshTracks()
             is EngineEvent.Error -> handleError(ev.error)
@@ -183,7 +188,7 @@ class PlaybackController(
 
     fun setSpeed(s: Float) { _speed.value = s; _engine.value?.setSpeed(s) }
     fun setAspect(m: AspectMode) { _aspect.value = m; _engine.value?.setAspect(m) }
-    fun startOver() { _engine.value?.seekTo(0); _resumedFrom.value = 0 }
+    fun startOver() { userSeeked = true; _engine.value?.seekTo(0); _resumedFrom.value = 0 }
 
     /** Switches the player for the stream playing now (the iPhone app's "Player" chip). */
     fun switchEngine(kind: EngineKind) {
@@ -197,7 +202,7 @@ class PlaybackController(
 
     fun retryNow() { attempt = 0; switchedEngine = false; _state.value = PlaybackState.Resolving; restart() }
     fun togglePause() { val e = _engine.value ?: return; if (e.isPlaying) e.pause() else e.play() }
-    fun seekBy(deltaMs: Long) { val e = _engine.value ?: return; if (_current.value?.isLive == false) e.seekTo((e.positionMs + deltaMs).coerceIn(0, e.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE)) }
+    fun seekBy(deltaMs: Long) { val e = _engine.value ?: return; userSeeked = true; if (_current.value?.isLive == false) e.seekTo((e.positionMs + deltaMs).coerceIn(0, e.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE)) }
     val positionMs: Long get() = _engine.value?.positionMs ?: 0
     val durationMs: Long get() = _engine.value?.durationMs ?: 0
     val engineKind: EngineKind? get() = _engine.value?.kind
@@ -227,7 +232,12 @@ class PlaybackController(
         val item = _current.value ?: return
         if (item.isLive || !settings.rememberPosition.value) return
         val pos = positionMs; val dur = durationMs
-        if (dur > 0) scope.launch { onProgress(item, pos, dur) }
+        // A checkpoint is only replaced by a position that is real: the picture has played in this session, the numbers make sense, and
+        // a position far below where we resumed (a seek that failed and restarted from zero) is not allowed to erase the earlier one.
+        if (!sessionVerified || dur <= 0 || pos < 0 || pos > dur + 5_000) return
+        if (!userSeeked && startPositionMs > 30_000 && pos < startPositionMs - 15_000) return
+        val session = sessionId
+        scope.launch { if (session == sessionId) onProgress(item, pos, dur) }
     }
 
     fun stop() {

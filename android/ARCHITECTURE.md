@@ -66,6 +66,12 @@ Chips under the progress bar: Audio, Subtitles, Speed, Picture (Fit / Fill / Zoo
 (sleep timer, favourite, last channel, stream information, Picture in Picture). Live: channel banner with now/next, ▲ ▼ channel, ◀ channel list, digits type a channel number.
 Movies: ◀ ▶ skip 10 s, ▼ options, "Up next" card in the last 30 s of an episode. A failed stream offers Try Again / Next Channel / Close.
 
+## Reliability rules (from the Fire TV architecture brief)
+- Progress is written only for the session still playing, after a picture has really shown, with sane numbers; a position far below the resume point (a failed seek) never replaces the earlier checkpoint unless the person seeked.
+- Add Playlist is one explicit **Test and Save**: no automatic retries, an empty catalog counts as a failure (nothing is kept), success shows a summary (channels / movies / series) before Home opens.
+- Engine fallback changes the player, never the provider stream; there is no silent switch to another source.
+- Not built yet: library chooser at launch / combined libraries (the app merges all playlists), drafts, QR phone setup, catch-up, source variants.
+
 ## Engine robustness
 ExoPlayer: transport-stream flags for streams cut mid-frame, decoder fallback, live-window recovery, buffer modes. MPV: reconnect on network errors, short probe for live. The controller
 treats a stream stuck in buffering as a failure (18 s live, 30 s movies) so retry and engine-switch rules take over, logs the time to first picture, and spaces streams on one-connection accounts.
