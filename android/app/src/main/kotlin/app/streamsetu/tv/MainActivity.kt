@@ -70,6 +70,26 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
+    // ---- Holding OK ----
+    // Seen here, before any screen can take the key: after about half a second the thing the remote is on gets its long press, and the release that follows is swallowed
+    // so it does not also count as a click. Works whether the remote repeats the key while held or not.
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private var longFired = false
+    private val fireLong = Runnable { val h = app.streamsetu.tv.ui.components.LongPress.handler; if (h != null) { longFired = true; h.run() } }
+
+    override fun dispatchKeyEvent(e: android.view.KeyEvent): Boolean {
+        val select = e.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || e.keyCode == android.view.KeyEvent.KEYCODE_ENTER || e.keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
+        if (!select || nav.top == Overlay.Player) return super.dispatchKeyEvent(e)
+        when (e.action) {
+            android.view.KeyEvent.ACTION_DOWN -> {
+                if (e.repeatCount == 0) { longFired = false; main.removeCallbacks(fireLong); if (app.streamsetu.tv.ui.components.LongPress.handler != null) main.postDelayed(fireLong, 520) }
+                if (longFired) return true
+            }
+            android.view.KeyEvent.ACTION_UP -> { main.removeCallbacks(fireLong); if (longFired) { longFired = false; return true } }
+        }
+        return super.dispatchKeyEvent(e)
+    }
+
     private val frames by lazy { app.streamsetu.core.ui.motion.FrameMonitor(this) }
 
     override fun onStart() {

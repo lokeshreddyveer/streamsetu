@@ -18,6 +18,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -66,18 +67,17 @@ fun FeaturedBanner(
     if (items.isEmpty()) return
     val reduced = LocalReducedMotion.current
     var index by remember(items.firstOrNull()?.id, items.size) { mutableIntStateOf(0) }
-    var focusInside by remember { mutableStateOf(false) }
-    var lastFocusChange by remember { mutableLongStateOf(0L) }
+    // The slideshow keeps going while the remote simply rests on a button; it waits only while the person is pressing keys on the banner.
+    var lastKey by remember { mutableLongStateOf(0L) }
     val n = items.size
     val i = index.coerceIn(0, n - 1)
     val item = items[i]
     val context = LocalContext.current
 
-    // Rotate every ~9 s unless the remote is on the banner (or just left it).
-    val paused by rememberUpdatedState(focusInside || System.currentTimeMillis() - lastFocusChange < 6000)
-    LaunchedEffect(items, reduced) {
-        if (reduced || n < 2) return@LaunchedEffect
-        while (true) { delay(intervalSeconds * 1000L); if (!paused) index = (index + 1) % n }
+    // Rotate every few seconds, unless a key was pressed on the banner in the last 8 seconds. Reduced motion keeps the rotation but drops the fade (the picture just changes).
+    LaunchedEffect(items, intervalSeconds) {
+        if (n < 2) return@LaunchedEffect
+        while (true) { delay(intervalSeconds * 1000L); if (System.currentTimeMillis() - lastKey > 8000) index = (index + 1) % n }
     }
     // The next slide's picture is requested now, so the crossfade never waits on the network.
     LaunchedEffect(i, items) {
@@ -107,7 +107,7 @@ fun FeaturedBanner(
                     if (!it.synopsis.isNullOrBlank()) Label(it.synopsis, Tokens.body, Tokens.textSecondary, maxLines = 3)
                 }
             }
-            Row(Modifier.padding(top = 4.dp).onFocusChanged { focusInside = it.hasFocus; lastFocusChange = System.currentTimeMillis() }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.padding(top = 4.dp).onPreviewKeyEvent { lastKey = System.currentTimeMillis(); false }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TvButton(item.primaryLabel, { onPrimary(item) }, if (primaryEntry != null) Modifier.focusRequester(primaryEntry) else Modifier, icon = Icons.Filled.PlayArrow, primary = true)
                 TvButton("Details", { onDetails(item) }, icon = Icons.Filled.Info)
                 val listed = isListed(item)

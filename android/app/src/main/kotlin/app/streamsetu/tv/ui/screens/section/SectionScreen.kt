@@ -94,14 +94,12 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
         is Browse.Collection -> collections.firstOrNull { it.id == (browse as Browse.Collection).id }?.name ?: "Collection"
         is Browse.Smart -> (browse as Browse.Smart).rule.label
     }
+    // Favorites, Watch Later, Recently Watched and Continue Watching are the chips under the banner, so the folder panel does not repeat them.
     val shortcuts = buildList {
         add(Shortcut(Browse.All, "All $noun", Icons.Filled.GridView))
-        if (folders.any { it.pref.favorite }) add(Shortcut(Browse.FavoriteFolders, "Favorite Folders", Icons.Filled.Star))
-        add(Shortcut(Browse.Favorites, "Favorites", Icons.Filled.Favorite)); add(Shortcut(Browse.WatchLater, "Watch Later", Icons.Filled.Bookmark))
-        add(Shortcut(Browse.Continue, "Continue Watching", Icons.Filled.PlayArrow)); add(Shortcut(Browse.Recent, "Recently Watched", Icons.Filled.History))
         add(Shortcut(Browse.RecentlyAdded, "Recently Added", Icons.Filled.NewReleases))
+        if (folders.any { it.pref.favorite }) add(Shortcut(Browse.FavoriteFolders, "Favorite Folders", Icons.Filled.Star))
         collections.forEach { add(Shortcut(Browse.Collection(it.id), it.name, Icons.Filled.CollectionsBookmark)) }
-        SmartRule.entries.forEach { add(Shortcut(Browse.Smart(it), it.label, Icons.Filled.AutoAwesome)) }
     }
 
     // Back from the posters returns to the folders; back from the folders reveals the sidebar (handled by the shell).

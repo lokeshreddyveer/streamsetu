@@ -64,6 +64,12 @@ val LocalFocusEnabled = androidx.compose.runtime.compositionLocalOf { true }
 /** Where DOWN from the top bar lands on the current page (the hero's Play button, the open category pill, the first settings page...). */
 val LocalContentEntry = androidx.compose.runtime.compositionLocalOf<FocusRequester?> { null }
 
+/** The thing the remote is on that reacts to holding OK, if any. Set by [Focusable]; read by the activity. */
+object LongPress {
+    class Handler(val owner: Any, val run: () -> Unit)
+    @Volatile var handler: Handler? = null
+}
+
 /** A thicker white focus frame for people who find the thin accent line hard to see. */
 val LocalHighContrast = androidx.compose.runtime.compositionLocalOf { false }
 
@@ -102,9 +108,7 @@ fun Focusable(
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
-    var longHandled by remember { mutableStateOf(false) }
-    var held by remember { mutableStateOf(false) }
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val longClick by androidx.compose.runtime.rememberUpdatedState(onLongClick)
     val highContrast = LocalHighContrast.current
     val enabled = LocalFocusEnabled.current
     val own = remember { FocusRequester() }
@@ -125,26 +129,12 @@ fun Focusable(
             .onFocusChanged {
                 focused = it.isFocused
                 onFocus(it.isFocused)
+                // Holding OK is detected by the activity (it sees every key before anything else) and handed to whatever the remote is on.
+                if (it.isFocused) { if (longClick != null) LongPress.handler = LongPress.Handler(own) { longClick?.invoke() } else LongPress.handler = null }
+                else if (LongPress.handler?.owner === own) LongPress.handler = null
                 if (it.isFocused && enabled && !inOverlay) { FocusMemory.last = own; FocusMemory.lastHasFocus = true }
                 else if (!it.isFocused && FocusMemory.last === own) FocusMemory.lastHasFocus = false
             }
-            // Holding OK opens the context menu; a short press still clicks. A held key repeats (repeatCount 1, 2, ...), and a timer covers remotes that do not repeat.
-            .then(if (onLongClick == null) Modifier else Modifier.onPreviewKeyEvent { e ->
-                val select = e.key == androidx.compose.ui.input.key.Key.DirectionCenter || e.key == androidx.compose.ui.input.key.Key.Enter || e.key == androidx.compose.ui.input.key.Key.NumPadEnter
-                if (!select) return@onPreviewKeyEvent false
-                when (e.type) {
-                    androidx.compose.ui.input.key.KeyEventType.KeyDown -> {
-                        if (longHandled) true
-                        else if (e.nativeKeyEvent.repeatCount >= 1) { longHandled = true; held = false; onLongClick(); scope.launch { delay(900); longHandled = false }; true }
-                        else {
-                            if (!held) { held = true; scope.launch { delay(550); if (held && !longHandled) { longHandled = true; held = false; onLongClick(); delay(900); longHandled = false } } }
-                            false
-                        }
-                    }
-                    androidx.compose.ui.input.key.KeyEventType.KeyUp -> { held = false; if (longHandled) { longHandled = false; true } else false }
-                    else -> false
-                }
-            })
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
     ) { content(focused) }
 }
@@ -229,15 +219,17 @@ fun EmptyState(title: String, message: String, modifier: Modifier = Modifier, ac
  * returns to the list. A field that took the keyboard the moment it was focused would trap the remote on it.
  */
 @Composable
-fun TvTextField(value: String, onChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier, secret: Boolean = false, onDone: () -> Unit = {}) {
+fun TvTextField(value: String, onChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier, secret: Boolean = false, onDone: () -> Unit = {}, compact: Boolean = false, leadingIcon: ImageVector? = null) {
     var editing by remember { mutableStateOf(false) }
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val requester = remember { androidx.compose.ui.focus.FocusRequester() }
     val rowRequester = remember { androidx.compose.ui.focus.FocusRequester() }
     var gotFocus by remember { mutableStateOf(false) }
     LaunchedEffect(editing) { gotFocus = false; if (editing) { runCatching { requester.requestFocus() }; keyboard?.show() } }
-    Focusable({ editing = true }, modifier.focusRequester(rowRequester), shape = RoundedCornerShape(Tokens.radius), container = Tokens.card, focusedContainer = Tokens.elevated, scaleOnFocus = 1.02f, hairline = true) { _ ->
-        Box(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp)) {
+    Focusable({ editing = true }, modifier.focusRequester(rowRequester), shape = RoundedCornerShape(if (compact) 12.dp else Tokens.radius), container = Tokens.card, focusedContainer = Tokens.elevated, scaleOnFocus = if (compact) 1.0f else 1.02f, hairline = true) { _ ->
+        Row(Modifier.fillMaxWidth().padding(horizontal = if (compact) 12.dp else 18.dp, vertical = if (compact) 9.dp else 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (leadingIcon != null) Image(leadingIcon, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary))
+            Box(Modifier.weight(1f)) {
             if (editing) {
                 BasicTextField(
                     value, onChange, Modifier.fillMaxWidth().focusRequester(requester).onFocusChanged { f -> if (f.isFocused) gotFocus = true else if (gotFocus) { editing = false } },
@@ -248,7 +240,8 @@ fun TvTextField(value: String, onChange: (String) -> Unit, placeholder: String, 
                 )
             } else {
                 val shown = if (secret && value.isNotEmpty()) "•".repeat(value.length.coerceAtMost(24)) else value
-                if (value.isEmpty()) Label(placeholder, color = Tokens.textTertiary) else Label(shown)
+                if (value.isEmpty()) Label(placeholder, if (compact) Tokens.body else Tokens.body, Tokens.textTertiary) else Label(shown, Tokens.body)
+            }
             }
         }
     }

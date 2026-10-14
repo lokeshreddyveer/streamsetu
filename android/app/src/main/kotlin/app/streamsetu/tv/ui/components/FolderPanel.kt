@@ -107,12 +107,18 @@ fun FolderPanel(
                 } else if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) onRight() else false
             },
     ) {
-        Label(title, Tokens.pageTitle, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp))
-        TvTextField(query, { query = it }, "Search folders", Modifier.padding(horizontal = 8.dp, vertical = 6.dp).fillMaxWidth())
+        Column(Modifier.padding(start = 20.dp, end = 12.dp, bottom = 10.dp)) {
+            Label(title, Tokens.pageTitle, Tokens.text, FontWeight.Bold)
+            Label(if (folders.isEmpty()) "No folders" else "%,d folders".format(folders.count { !it.pref.hidden }), Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(top = 1.dp))
+        }
+        TvTextField(query, { query = it }, "Search folders", Modifier.padding(horizontal = 12.dp).fillMaxWidth(), compact = true, leadingIcon = Icons.Filled.Search)
+        Spacer(Modifier.height(10.dp))
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)) {
+            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 itemsIndexed(rows, key = { _, r -> if (r is Shortcut) "s:${r.label}" else "f:${(r as Folder).id}" }) { idx, r ->
+                    // A small heading where the shortcuts end and the provider's folders begin.
+                    if (r is Folder && (idx == 0 || rows[idx - 1] is Shortcut) && visible.isNotEmpty()) Label("FOLDERS", Tokens.eyebrow, Tokens.textTertiary, FontWeight.Bold, modifier = Modifier.padding(start = 14.dp, top = if (idx == 0) 2.dp else 14.dp, bottom = 4.dp), letterSpacing = androidx.compose.ui.unit.TextUnit(1.4f, androidx.compose.ui.unit.TextUnitType.Sp))
                     if (r is Shortcut) {
                         PanelRow(r.label, r.icon, null, r.browse == selected, false, if (r.browse == selected && entry != null) Modifier.focusRequester(entry) else Modifier, onFocusDwell = { if (selectOnDwell) onSelect(r.browse) }, onLongClick = if (r.browse is Browse.Collection) ({ onShortcutMenu(r) }) else null, onClick = { onSelect(r.browse) })
                     } else {
@@ -126,12 +132,11 @@ fun FolderPanel(
                         )
                     }
                 }
-                item(key = "manage") {
-                    PanelRow(if (manage) "Done managing" else "Manage folders", Icons.Filled.Tune, null, false, false, Modifier.padding(top = 8.dp), onClick = { manage = !manage })
-                }
                 if (q.isNotEmpty() && visible.isEmpty()) item(key = "none") { Label("No folder matches “$query”.", Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(12.dp), maxLines = 2) }
             }
         }
+        // Always at the bottom, outside the scrolling list.
+        Box(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) { PanelRow(if (manage) "Done managing" else "Manage folders", Icons.Filled.Tune, null, false, false, Modifier, onClick = { manage = !manage }) }
     }
 
     menuFor?.let { f ->
@@ -171,13 +176,15 @@ private fun PanelRow(label: String, icon: ImageVector, count: Int?, selected: Bo
     var focused by remember { mutableStateOf(false) }
     // Moving the remote over folders opens one only after a short pause, so scrolling through many folders stays light.
     LaunchedEffect(dwellKey, focused) { if (focused) { kotlinx.coroutines.delay(380); onFocusDwell() } }
-    Focusable(onClick, extra.fillMaxWidth(), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Tokens.focusedSurface, shape = RoundedCornerShape(8.dp), onFocus = { focused = it; dwellKey++ }, onLongClick = onLongClick) { f ->
-        Row(Modifier.padding(end = 9.dp, top = 7.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // The open folder is marked by a thin accent bar and brighter text: no coloured box, nothing that slides.
-            Box(Modifier.padding(start = 3.dp).width(3.dp).height(16.dp).background(if (selected) Tokens.accent else Color.Transparent, RoundedCornerShape(2.dp)))
-            Image(if (reordering) Icons.Filled.SwapVert else icon, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(if (selected || f) Tokens.accent else Tokens.textTertiary))
-            Label(label, Tokens.row, if (dimmed) Tokens.textTertiary else if (selected) Tokens.text else Tokens.textSecondary, if (selected) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f))
-            if (count != null) Label("%,d".format(count), Tokens.caption, Tokens.textTertiary)
+    // One row: [accent bar 3] [icon box 36] [name, one line] [count]. The bar marks the open folder; the soft fill marks where the remote is.
+    Focusable(onClick, extra.fillMaxWidth().height(44.dp), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color(0x26FFFFFF), shape = RoundedCornerShape(12.dp), onFocus = { focused = it; dwellKey++ }, onLongClick = onLongClick) { f ->
+        Row(Modifier.fillMaxHeight().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.padding(start = 2.dp).width(3.dp).height(20.dp).background(if (selected) Tokens.accent else Color.Transparent, RoundedCornerShape(2.dp)))
+            Box(Modifier.width(36.dp), Alignment.Center) {
+                Image(if (reordering) Icons.Filled.SwapVert else icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f || selected) Color.White else Tokens.textTertiary))
+            }
+            Label(label, Tokens.row, if (dimmed) Tokens.textTertiary else if (f || selected) Color.White else Tokens.textSecondary, if (selected) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f).padding(start = 4.dp))
+            if (count != null) Label("%,d".format(count), Tokens.caption, Tokens.textTertiary, modifier = Modifier.padding(start = 8.dp))
         }
     }
 }
