@@ -35,9 +35,12 @@ object AppModule {
     @Provides @Singleton fun library(db: AppDatabase, @ApplicationContext c: Context, scope: CoroutineScope) = app.streamsetu.core.data.repo.LibraryRepository(db, c, scope)
     @Provides @Singleton fun catalog(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository) = CatalogRepository(db, library)
     @Provides @Singleton fun folders(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository, parental: ParentalControls) = app.streamsetu.core.data.repo.FolderRepository(db, library, parental)
+    @Provides @Singleton fun browse(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository, folders: app.streamsetu.core.data.repo.FolderRepository, @ApplicationContext c: Context) = app.streamsetu.core.data.repo.BrowseRepository(db, library, folders, c)
+    @Provides @Singleton fun search(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository, folders: app.streamsetu.core.data.repo.FolderRepository, @ApplicationContext c: Context) = app.streamsetu.core.data.repo.SearchRepository(db, library, folders, c)
     @Provides @Singleton fun user(db: AppDatabase) = UserRepository(db)
     @Provides @Singleton fun epg(db: AppDatabase) = EpgService(db)
     @Provides @Singleton fun parental(@ApplicationContext c: Context) = ParentalControls(c)
+    @Provides @Singleton fun uiPrefs(@ApplicationContext c: Context) = app.streamsetu.core.settings.UiPrefs(c)
     @Provides @Singleton fun settings(@ApplicationContext c: Context) = AppSettings(c)
     @Provides @Singleton fun resolver(sources: SourceRepository, credentials: CredentialStore, @ApplicationContext c: Context) = StreamResolver(sources, credentials, c)
     @Provides @Singleton fun sync(db: AppDatabase, sources: SourceRepository, credentials: CredentialStore, resolver: StreamResolver, @ApplicationContext c: Context) =

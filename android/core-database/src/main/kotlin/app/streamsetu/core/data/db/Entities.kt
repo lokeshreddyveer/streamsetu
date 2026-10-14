@@ -41,6 +41,7 @@ data class ChannelEntity(
     val epgId: String?,
     val catchupDays: Int,
     val sortOrder: Int,
+    val addedAt: Long = 0,
 )
 
 @Entity(tableName = "movies", indices = [Index("sourceId", "categoryId"), Index("title")])
@@ -69,6 +70,7 @@ data class SeriesEntity(
     val rating: String?,
     val plot: String?,
     val providerId: String,
+    val addedAt: Long = 0,
 )
 
 @Entity(tableName = "episodes", indices = [Index("seriesId", "season", "number")])

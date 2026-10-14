@@ -4,6 +4,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RawQuery
+import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -35,6 +37,7 @@ interface CatalogDao {
     @Query("SELECT * FROM channels WHERE categoryId = :categoryId ORDER BY sortOrder, name") fun channelsIn(categoryId: String): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE sourceId IN (:sources) ORDER BY sortOrder, name LIMIT :limit") fun allChannels(limit: Int, sources: List<String>): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE id = :id") suspend fun channel(id: String): ChannelEntity?
+    @Query("SELECT * FROM channels WHERE id IN (:ids)") suspend fun channelsByIds(ids: List<String>): List<ChannelEntity>
     @Query("SELECT * FROM channels WHERE sourceId IN (:sources) AND name LIKE '%' || :q || '%' ORDER BY name LIMIT :limit") suspend fun searchChannels(q: String, limit: Int, sources: List<String>): List<ChannelEntity>
     @Query("SELECT COUNT(*) FROM channels WHERE sourceId IN (:sources)") fun channelCount(sources: List<String>): Flow<Int>
 
@@ -89,6 +92,9 @@ interface UserDao {
     @Query("SELECT * FROM progress WHERE itemId = :id") suspend fun progress(id: String): ProgressEntity?
     @Query("SELECT * FROM progress WHERE completed = 0 AND positionMs > 30000 AND kind IN ('MOVIE','EPISODE') ORDER BY updatedAt DESC LIMIT :limit") fun continueWatching(limit: Int): Flow<List<ProgressEntity>>
     @Query("SELECT * FROM progress WHERE seriesId = :seriesId") suspend fun progressForSeries(seriesId: String): List<ProgressEntity>
+    @Query("SELECT * FROM progress") fun allProgress(): Flow<List<ProgressEntity>>
+    @Query("DELETE FROM progress WHERE itemId = :id") suspend fun clearProgress(id: String)
+    @Query("DELETE FROM progress") suspend fun clearAllProgress()
 
     @Insert suspend fun log(e: WatchLogEntity)
     @Query("SELECT * FROM watch_log WHERE kind = 'CHANNEL' ORDER BY playedAt DESC LIMIT :limit") fun recentChannelLog(limit: Int): Flow<List<WatchLogEntity>>
@@ -124,4 +130,24 @@ interface FolderDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(p: FolderPrefEntity)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putAll(p: List<FolderPrefEntity>)
     @Query("DELETE FROM folder_prefs WHERE scope = :scope") suspend fun reset(scope: String)
+}
+
+/** Lists whose order and filter are chosen at run time (see BrowseRepository, which builds the SQL from fixed pieces, never from typed text). */
+@Dao
+interface BrowseDao {
+    @RawQuery(observedEntities = [MovieEntity::class, FavoriteEntity::class, ProgressEntity::class, WatchLogEntity::class, FolderPrefEntity::class])
+    fun movies(q: SupportSQLiteQuery): Flow<List<MovieEntity>>
+    @RawQuery(observedEntities = [SeriesEntity::class, FavoriteEntity::class, ProgressEntity::class, WatchLogEntity::class, FolderPrefEntity::class])
+    fun series(q: SupportSQLiteQuery): Flow<List<SeriesEntity>>
+    @RawQuery(observedEntities = [ChannelEntity::class, FavoriteEntity::class, WatchLogEntity::class, FolderPrefEntity::class])
+    fun channels(q: SupportSQLiteQuery): Flow<List<ChannelEntity>>
+
+    @Query("SELECT folderId FROM folder_prefs WHERE scope = :scope AND locked = 1") fun lockedFolders(scope: String): Flow<List<String>>
+    @Query("SELECT folderId FROM folder_prefs WHERE locked = 1") suspend fun lockedFoldersNow(): List<String>
+    @Query("SELECT folderId FROM folder_prefs WHERE scope = :scope AND favorite = 1") fun favoriteFolders(scope: String): Flow<List<String>>
+    @Query("SELECT COUNT(*) FROM movies WHERE sourceId IN (:s) AND year IS NOT NULL") suspend fun moviesWithYear(s: List<String>): Int
+    @Query("SELECT COUNT(*) FROM movies WHERE sourceId IN (:s) AND rating IS NOT NULL AND rating != '' AND rating != '0'") suspend fun moviesWithRating(s: List<String>): Int
+    @Query("SELECT COUNT(*) FROM series WHERE sourceId IN (:s) AND year IS NOT NULL") suspend fun seriesWithYear(s: List<String>): Int
+    @Query("SELECT COUNT(*) FROM series WHERE sourceId IN (:s) AND rating IS NOT NULL AND rating != '' AND rating != '0'") suspend fun seriesWithRating(s: List<String>): Int
+    @Query("SELECT COUNT(*) FROM watch_log") suspend fun watchedCount(): Int
 }

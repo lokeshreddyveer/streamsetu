@@ -27,6 +27,7 @@ class SourceRepository(private val db: AppDatabase, private val credentials: Cre
         c.clearChannels(id); c.clearMovies(id); c.clearSeries(id); c.clearCategories(id)
         db.sources().delete(id)
         db.libraries().removeSource(id)
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { app.streamsetu.core.data.db.SearchIndex.clear(db.openHelper.writableDatabase, id) }
         credentials.delete(credentialRef(id))
     }
 

@@ -99,7 +99,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             val id = o.str("stream_id") ?: return@mapIndexedNotNull null
             if (ChannelFilter.isDivider(o.str("name").orEmpty())) return@mapIndexedNotNull null
             ChannelEntity("${s.id}:ch:$id", s.id, o.str("category_id")?.let { "${s.id}:CHANNEL:$it" }, o.str("name") ?: "Channel $id", o.int("num"),
-                o.str("stream_icon"), "live:$id:m3u8", o.str("epg_channel_id"), o.int("tv_archive_duration") ?: 0, i)
+                o.str("stream_icon"), "live:$id:m3u8", o.str("epg_channel_id"), o.int("tv_archive_duration") ?: 0, i, o.str("added")?.toLongOrNull() ?: 0)
         }
         val movies = fetch("get_vod_streams").mapNotNull { o ->
             val id = o.str("stream_id") ?: return@mapNotNull null
@@ -110,7 +110,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             val id = o.str("series_id") ?: return@mapNotNull null
             SeriesEntity("${s.id}:sr:$id", s.id, o.str("category_id")?.let { "${s.id}:SERIES:$it" }, o.str("name") ?: "Series $id", o.str("cover"),
                 (o["backdrop_path"] as? kotlinx.serialization.json.JsonArray)?.firstOrNull()?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content },
-                year(o.str("year") ?: o.str("releaseDate")), o.str("rating"), o.str("plot"), id)
+                year(o.str("year") ?: o.str("releaseDate")), o.str("rating"), o.str("plot"), id, o.str("last_modified")?.toLongOrNull() ?: 0)
         }
         replace(s.id, categories, channels, movies, series)
         return Result(channels.size, movies.size, series.size)
@@ -166,6 +166,14 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             ch.chunked(500).forEach { c.putChannels(it) }
             mv.chunked(500).forEach { c.putMovies(it) }
             sr.chunked(500).forEach { c.putSeries(it) }
+            // The text index changes in the same transaction, so a refresh that fails keeps the old catalog and the old index together.
+            val raw = db.openHelper.writableDatabase
+            app.streamsetu.core.data.db.SearchIndex.clear(raw, sourceId)
+            val hits = ArrayList<app.streamsetu.core.data.db.SearchHit>(ch.size + mv.size + sr.size)
+            ch.forEach { hits += app.streamsetu.core.data.db.SearchHit("CHANNEL", it.id, sourceId, it.categoryId, it.name) }
+            mv.forEach { hits += app.streamsetu.core.data.db.SearchHit("MOVIE", it.id, sourceId, it.categoryId, it.title) }
+            sr.forEach { hits += app.streamsetu.core.data.db.SearchHit("SERIES", it.id, sourceId, it.categoryId, it.title) }
+            hits.chunked(2000).forEach { app.streamsetu.core.data.db.SearchIndex.insert(raw, it) }
         }
     }
 }

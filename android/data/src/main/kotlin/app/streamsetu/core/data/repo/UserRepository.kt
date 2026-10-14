@@ -25,6 +25,14 @@ class UserRepository(private val db: AppDatabase) {
         dao.putProgress(ProgressEntity(itemId, kind.name, seriesId, if (finished) 0 else positionMs, durationMs, System.currentTimeMillis(), finished))
     }
 
+    fun allProgress(): Flow<Map<String, WatchProgress>> = dao.allProgress().map { l -> l.associate { it.itemId to it.toModel() } }
+
+    /** Marks a movie or episode watched (it leaves Continue Watching) or unwatched (its resume point is forgotten). */
+    suspend fun setWatched(itemId: String, kind: ContentKind, seriesId: String?, watched: Boolean) {
+        if (watched) dao.putProgress(ProgressEntity(itemId, kind.name, seriesId, 0, 1, System.currentTimeMillis(), true)) else dao.clearProgress(itemId)
+    }
+    suspend fun clearResumePoint(itemId: String) = dao.clearProgress(itemId)
+
     fun continueWatching(limit: Int = 20): Flow<List<WatchProgress>> = dao.continueWatching(limit).map { l -> l.map { it.toModel() } }
 
     suspend fun clearHistory() = dao.clearLog()

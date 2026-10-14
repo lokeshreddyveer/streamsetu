@@ -146,9 +146,9 @@ fun PosterPlaceholder(title: String, modifier: Modifier = Modifier) {
 
 /** A poster, 150 x 218 on the Mac scaled up: artwork, title and a quiet subtitle under it. A thin bar shows how far you are. */
 @Composable
-fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null, focusRequester: FocusRequester? = null) {
+fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null, focusRequester: FocusRequester? = null, onLongClick: (() -> Unit)? = null) {
     Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(2f / 3f), scaleOnFocus = app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE) { _ ->
+        Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(2f / 3f), scaleOnFocus = app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE, onLongClick = onLongClick) { _ ->
             PosterPlaceholder(title, Modifier.fillMaxSize())
             if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }

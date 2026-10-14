@@ -161,8 +161,8 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
                     Tab.HOME -> HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.LIVE -> LiveScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.GUIDE -> GuideScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
-                    Tab.MOVIES -> MoviesScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
-                    Tab.SERIES -> SeriesScreen(androidx.hilt.navigation.compose.hiltViewModel(), nav)
+                    Tab.MOVIES -> app.streamsetu.tv.ui.screens.section.SectionScreen(androidx.hilt.navigation.compose.hiltViewModel<app.streamsetu.tv.ui.screens.section.MoviesSectionViewModel>(), c, nav) { card -> card.movie?.let { nav.open(Overlay.MovieDetail(it)) } }
+                    Tab.SERIES -> app.streamsetu.tv.ui.screens.section.SectionScreen(androidx.hilt.navigation.compose.hiltViewModel<app.streamsetu.tv.ui.screens.section.SeriesSectionViewModel>(), c, nav) { card -> card.series?.let { nav.open(Overlay.SeriesDetail(it)) } }
                     Tab.SEARCH -> SearchScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.SETTINGS -> SettingsScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.LIBRARIES -> {}

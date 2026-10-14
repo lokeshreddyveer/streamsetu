@@ -14,6 +14,16 @@ import kotlinx.coroutines.flow.*
 class FolderRepository(private val db: AppDatabase, private val library: LibraryRepository, private val parental: ParentalControls) {
     private fun scopeName(kind: ContentKind) = kind.name
 
+    /** Folders the person unlocked with the PIN since the app started; they lock again when a library is closed. */
+    private val unlocked = MutableStateFlow<Set<String>>(emptySet())
+    fun unlock(folderId: String) { unlocked.value = unlocked.value + folderId }
+    fun lockAgain() { unlocked.value = emptySet() }
+    fun isUnlocked(folderId: String) = folderId in unlocked.value
+
+    /** Folders whose content must stay out of lists, search and banners right now: locked and not yet unlocked. */
+    fun lockedIds(kind: ContentKind): Flow<Set<String>> = combine(db.browse().lockedFolders(scopeName(kind)), unlocked) { locked, open -> locked.toSet() - open }
+    suspend fun lockedIdsNow(): Set<String> = db.browse().lockedFoldersNow().toSet() - unlocked.value
+
     /** Every folder of [kind] in the open library, in the person's order (pinned first, then arranged order, then the provider's order). Hidden ones are included, flagged. */
     fun folders(kind: ContentKind): Flow<List<Folder>> = library.sourceIds.flatMapLatest { ids ->
         val counts = when (kind) {
