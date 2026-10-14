@@ -11,18 +11,21 @@ import kotlinx.coroutines.flow.*
  * Only a local table is written; the provider's own folder names and order are never changed.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class FolderRepository(private val db: AppDatabase, private val library: LibraryRepository, private val parental: ParentalControls) {
+class FolderRepository(private val db: AppDatabase, private val library: LibraryRepository, private val parental: ParentalControls, private val relockAfterMs: () -> Long = { Long.MAX_VALUE }) {
     private fun scopeName(kind: ContentKind) = kind.name
 
     /** Folders the person unlocked with the PIN since the app started; they lock again when a library is closed. */
+    private val unlockedAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val unlocked = MutableStateFlow<Set<String>>(emptySet())
-    fun unlock(folderId: String) { unlocked.value = unlocked.value + folderId }
-    fun lockAgain() { unlocked.value = emptySet() }
-    fun isUnlocked(folderId: String) = folderId in unlocked.value
+    fun unlock(folderId: String) { unlockedAt[folderId] = System.currentTimeMillis(); unlocked.value = unlockedAt.keys.toSet() }
+    fun lockAgain() { unlockedAt.clear(); unlocked.value = emptySet() }
+    /** Applies the auto-relock policy: folders unlocked longer ago than the limit lock again. */
+    private fun expire() { val limit = relockAfterMs(); if (limit == Long.MAX_VALUE) return; val now = System.currentTimeMillis(); if (unlockedAt.entries.removeIf { now - it.value > limit }) unlocked.value = unlockedAt.keys.toSet() }
+    fun isUnlocked(folderId: String): Boolean { expire(); return unlockedAt.containsKey(folderId) }
 
     /** Folders whose content must stay out of lists, search and banners right now: locked and not yet unlocked. */
     fun lockedIds(kind: ContentKind): Flow<Set<String>> = combine(db.browse().lockedFolders(scopeName(kind)), unlocked) { locked, open -> locked.toSet() - open }
-    suspend fun lockedIdsNow(): Set<String> = db.browse().lockedFoldersNow().toSet() - unlocked.value
+    suspend fun lockedIdsNow(): Set<String> { expire(); return db.browse().lockedFoldersNow().toSet() - unlockedAt.keys }
 
     /** Every folder of [kind] in the open library, in the person's order (pinned first, then arranged order, then the provider's order). Hidden ones are included, flagged. */
     fun folders(kind: ContentKind): Flow<List<Folder>> = library.sourceIds.flatMapLatest { ids ->
@@ -61,6 +64,11 @@ class FolderRepository(private val db: AppDatabase, private val library: Library
         val byId = current.associateBy { it.id }
         db.folders().putAll(order.mapIndexed { idx, id -> (byId[id]?.pref ?: FolderPref()).let { p -> FolderPrefEntity(scopeName(kind), id, p.favorite, p.pinned, p.hidden, p.locked, p.alias, idx) } })
     }
+
+    /** Counts for the settings screens. */
+    suspend fun lockedCount(): Int = db.browse().lockedFoldersNow().size
+    suspend fun unhideAll(kind: ContentKind) = db.folders().unhideAll(scopeName(kind))
+    suspend fun clearAllLocks() { db.folders().all().filter { it.locked }.forEach { db.folders().put(it.copy(locked = false)) }; lockAgain() }
 
     suspend fun restoreDefaultOrder(kind: ContentKind) {
         // Keeps favourites, hidden, locked and renamed state; only the order goes back to the provider's.

@@ -55,7 +55,7 @@ class LiveSectionViewModel @Inject constructor(c: AppContainer) : FolderViewMode
     /** What is on now for the channels listed, refreshed once a minute. */
     val now: StateFlow<Map<String, EpgProgram>> = channels.flatMapLatest { list ->
         flow { while (true) { emit(list.orEmpty().mapNotNull { it.epgId }.distinct().take(300)); delay(60_000) } }
-    }.mapLatest { ids -> if (ids.isEmpty()) emptyMap() else runCatching { c.epg.nowFor(ids) }.getOrDefault(emptyMap()) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    }.mapLatest { ids -> if (ids.isEmpty()) emptyMap() else runCatching { c.epg.nowFor(ids, System.currentTimeMillis() - c.ui.epgOffsetMinutes.value * 60_000L) }.getOrDefault(emptyMap()) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     init { viewModelScope.launch { availability.value = runCatching { c.browse.availability() }.getOrDefault(availability.value) } }
 
@@ -84,6 +84,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     val current by c.playback.current.collectAsState()
     val state by c.playback.state.collectAsState()
     val entry = LocalContentEntry.current ?: remember { FocusRequester() }
+    val showNumbers by c.settings.showChannelNumbers.collectAsState()
     val listState = rememberLazyListState(vm.scrollIndex)
     LaunchedEffect(listState) { snapshotFlow { listState.firstVisibleItemIndex }.collect { vm.scrollIndex = it } }
     var sortOpen by remember { mutableStateOf(false) }
@@ -98,6 +99,8 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
 
     // Leaving Live TV releases the stream (a provider may allow only one connection).
     DisposableEffect(Unit) { onDispose { if (c.playback.current.value?.isLive == true && nav.top != Overlay.Player) c.playback.stop() } }
+    // "Open Live TV on the last channel" (off by default): nothing starts by itself unless the person asked for it.
+    LaunchedEffect(Unit) { if (c.settings.resumeLastChannel.value && c.playback.current.value == null) c.settings.lastChannelId?.let { id -> c.catalog.channel(id)?.let { ch -> c.play(ChannelPlayable(ch), listOf(ChannelPlayable(ch))) } } }
     LaunchedEffect(Unit) { nav.pendingFolder?.takeIf { it.first == ContentKind.CHANNEL }?.let { vm.select(Browse.Folder(it.second)); nav.pendingFolder = null } }
 
     val shortcuts = listOf(
@@ -112,7 +115,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     }
 
     Row(Modifier.fillMaxSize()) {
-        FolderPanel("Live TV", shortcuts, folders, browse, vm::select, vm, Modifier.weight(0.2f), entry = entry, selectOnDwell = false, onRight = { runCatching { channelEntry.requestFocus() }.isSuccess })
+        FolderPanel("Live TV", shortcuts, folders, browse, vm::select, vm, Modifier.weight(0.2f), entry = entry, selectOnDwell = c.settings.foldersOpenOnFocus.collectAsState().value, onRight = { runCatching { channelEntry.requestFocus() }.isSuccess })
 
         // Channels
         Column(Modifier.weight(0.2f).fillMaxHeight().background(Tokens.surface).onFocusChanged { inChannels = it.hasFocus }.padding(top = Tokens.safeVertical)) {
@@ -136,7 +139,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
                             Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 ChannelLogo(ch.logoUrl, ch.name, 26.dp)
                                 Column(Modifier.weight(1f)) {
-                                    Label((ch.number?.let { "$it  " } ?: "") + ch.name, Tokens.row, if (playing) Tokens.accent else Tokens.text, FontWeight.Medium, maxLines = 2)
+                                    Label((if (showNumbers) ch.number?.let { "$it  " } else null).orEmpty() + ch.name, Tokens.row, if (playing) Tokens.accent else Tokens.text, FontWeight.Medium, maxLines = 2)
                                     ch.epgId?.let { id -> now[id] }?.let { p -> Label(p.title, Tokens.caption, Tokens.textSecondary) }
                                 }
                                 if (ch.id in favs) Image(Icons.Filled.Favorite, null, Modifier.size(11.dp), colorFilter = ColorFilter.tint(Tokens.accent))
@@ -197,7 +200,8 @@ private fun SmallIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
 private fun NowNext(ch: Channel, vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     var programmes by remember(ch.id) { mutableStateOf<List<EpgProgram>>(emptyList()) }
     var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(ch.id) { while (true) { programmes = vm.programmes(ch); tick = System.currentTimeMillis(); delay(30_000) } }
+    val shift = c.ui.epgOffsetMinutes.collectAsState().value * 60_000L
+    LaunchedEffect(ch.id, shift) { while (true) { programmes = vm.programmes(ch).map { it.copy(startMs = it.startMs + shift, endMs = it.endMs + shift) }; tick = System.currentTimeMillis(); delay(30_000) } }
     val nowP = programmes.firstOrNull { it.isLive(tick) }
     val next = programmes.firstOrNull { it.startMs >= (nowP?.endMs ?: tick) }
     Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

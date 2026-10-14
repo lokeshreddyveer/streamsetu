@@ -35,6 +35,7 @@ class SourceRepository(private val db: AppDatabase, private val credentials: Cre
 
     suspend fun setCounts(id: String, channels: Int, movies: Int, series: Int) = db.sources().setCounts(id, channels, movies, series)
     suspend fun setError(id: String, message: String?) = db.sources().setError(id, message)
+    suspend fun setEnabled(id: String, enabled: Boolean) = db.sources().setEnabled(id, enabled)
     suspend fun rename(id: String, name: String) = db.sources().rename(id, name)
     suspend fun markOpened(id: String) = db.sources().touch(id, System.currentTimeMillis())
 

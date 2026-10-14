@@ -123,10 +123,10 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit) {
                         }; true
                     }
                     KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> { playback.togglePause(); poke(); true }
-                    KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { if (!live) { playback.seekBy(10_000); seekFlash = "+10 s"; poke() } else { poke(); runCatching { chipsFirst.requestFocus() } }; true }
-                    KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> { if (!live) { playback.seekBy(-10_000); seekFlash = "−10 s"; poke() } else panel = PanelKind.CHANNELS; true }
-                    KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_CHANNEL_UP -> { if (live) c.step(+1); poke(); true }
-                    KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_CHANNEL_DOWN -> { if (live) c.step(-1) else if (barVisible) runCatching { chipsFirst.requestFocus() } else poke(); poke(); true }
+                    KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { if (!live) { playback.seekBy(c.settings.seekSeconds.value * 1000L); seekFlash = "+${c.settings.seekSeconds.value} s"; poke() } else { poke(); runCatching { chipsFirst.requestFocus() } }; true }
+                    KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> { if (!live) { playback.seekBy(-c.settings.seekSeconds.value * 1000L); seekFlash = "−${c.settings.seekSeconds.value} s"; poke() } else panel = PanelKind.CHANNELS; true }
+                    KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_CHANNEL_UP -> { if (live) c.step(if (c.settings.invertChannelKeys.value && code == KeyEvent.KEYCODE_DPAD_UP) -1 else +1); poke(); true }
+                    KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_CHANNEL_DOWN -> { if (live) c.step(if (c.settings.invertChannelKeys.value && code == KeyEvent.KEYCODE_DPAD_DOWN) +1 else -1) else if (barVisible) runCatching { chipsFirst.requestFocus() } else poke(); poke(); true }
                     KeyEvent.KEYCODE_MEDIA_NEXT -> { c.step(+1); poke(); true }
                     KeyEvent.KEYCODE_MEDIA_PREVIOUS -> { c.step(-1); poke(); true }
                     else -> false

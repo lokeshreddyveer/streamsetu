@@ -98,7 +98,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     BackHandler(enabled = inContent) { runCatching { panelEntry.requestFocus() } }
 
     Row(Modifier.fillMaxSize()) {
-        FolderPanel(noun, shortcuts, folders, browse, vm::select, vm, Modifier.width(Tokens.folderPanelWidth), entry = panelEntry)
+        FolderPanel(noun, shortcuts, folders, browse, vm::select, vm, Modifier.width(Tokens.folderPanelWidth), entry = panelEntry, selectOnDwell = c.settings.foldersOpenOnFocus.collectAsState().value)
         Column(Modifier.weight(1f).fillMaxHeight().onFocusChanged { inContent = it.hasFocus }) {
             // Header
             Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -126,7 +126,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                         onPrimary = { b -> list?.firstOrNull { it.id == b.id }?.let { onOpen(it) } },
                         onDetails = { b -> list?.firstOrNull { it.id == b.id }?.let { onOpen(it) } },
                         isListed = { b -> b.id in later }, onToggleListed = { b -> vm.toggle(b.id, UserRepository.WATCH_LATER) },
-                        startPadding = 0.dp,
+                        startPadding = 0.dp, intervalSeconds = c.ui.bannerSeconds.collectAsState().value,
                         modifier = Modifier.padding(bottom = 4.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).clip(RoundedCornerShape(Tokens.radiusLarge)),
                     )
                 }

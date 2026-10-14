@@ -52,7 +52,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
         item(key = "header") { HomeHeader(libraryName, libraryOk, nav, c) }
         if (bannerOn && banner.isNotEmpty()) item(key = "banner") {
             FeaturedBanner(
-                banner, 200.dp, primaryEntry = entry, startPadding = Tokens.safeHorizontal,
+                banner, 200.dp, primaryEntry = entry, startPadding = Tokens.safeHorizontal, intervalSeconds = c.ui.bannerSeconds.collectAsState().value,
                 onPrimary = { b -> vm.playableFor(b.id)?.let { p -> if (p is SeriesFeature) nav.open(Overlay.SeriesDetail(p.series)) else play(c, nav, p) } },
                 onDetails = { b -> when (val p = vm.playableFor(b.id)) { is SeriesFeature -> nav.open(Overlay.SeriesDetail(p.series)); is MoviePlayable -> nav.open(Overlay.MovieDetail(p.movie)); else -> {} } },
                 isListed = { b -> b.id in laterIds }, onToggleListed = { b -> vm.toggleWatchLater(b.id, if (vm.playableFor(b.id) is SeriesFeature) ContentKind.SERIES else ContentKind.MOVIE) },

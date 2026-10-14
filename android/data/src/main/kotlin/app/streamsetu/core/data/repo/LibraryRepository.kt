@@ -22,7 +22,7 @@ class LibraryRepository(private val db: AppDatabase, context: Context, scope: Co
     val entries: Flow<List<LibraryEntry>> = combine(db.sources().observe(), dao.observe(), dao.members()) { sources, libs, members ->
         val bySource = sources.map { it.toModel() }.associateBy { it.id }
         val combined = libs.map { l ->
-            val ids = members.filter { it.libraryId == l.id }.map { it.sourceId }.filter { bySource[it]?.draft == false }
+            val ids = members.filter { it.libraryId == l.id }.map { it.sourceId }.filter { bySource[it]?.draft == false && bySource[it]?.enabled == true }
             val ms = ids.mapNotNull { bySource[it] }
             LibraryEntry(
                 id = "lib:${l.id}", name = l.name, kind = LibraryEntry.Kind.COMBINED, sourceIds = ids, typeLabel = "Combined library · ${ms.size} connection${if (ms.size == 1) "" else "s"}",

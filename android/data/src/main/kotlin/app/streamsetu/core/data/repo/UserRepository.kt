@@ -36,6 +36,8 @@ class UserRepository(private val db: AppDatabase) {
     fun continueWatching(limit: Int = 20): Flow<List<WatchProgress>> = dao.continueWatching(limit).map { l -> l.map { it.toModel() } }
 
     suspend fun clearHistory() = dao.clearLog()
+    suspend fun clearList(list: String) = dao.clearList(list)
+    suspend fun clearAllProgress() = dao.clearAllProgress()
 
     suspend fun recordPlay(itemId: String, kind: ContentKind, title: String) {
         dao.log(WatchLogEntity(itemId = itemId, kind = kind.name, title = title, playedAt = System.currentTimeMillis()))

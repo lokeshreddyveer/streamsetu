@@ -27,12 +27,16 @@ class ExoEngine(context: Context) : PlayerEngine {
     override var onEvent: (EngineEvent) -> Unit = {}
 
     private var player: ExoPlayer? = null
-    private var builtFor: BufferingMode? = null
+    private var builtFor: Triple<BufferingMode, Boolean, Boolean>? = null
+    private var options = EngineOptions()
+    private var dropped = 0L
+    private var decoderName = ""
     private var viewRef: PlayerView? = null
     private var currentHeaders: Map<String, String> = emptyMap()
 
     private fun ensurePlayer(mode: BufferingMode): ExoPlayer {
-        if (player != null && builtFor == mode) return player!!
+        val key = Triple(mode, options.decoderFallback, options.passthrough)
+        if (player != null && builtFor == key) return player!!
         player?.release()
         val factory = OkHttpDataSource.Factory(Http.client).setUserAgent(Http.USER_AGENT)
         // IPTV transport streams are often cut mid-frame and start between keyframes: these flags let ExoPlayer start and recover on them.
@@ -40,12 +44,23 @@ class ExoEngine(context: Context) : PlayerEngine {
             .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS)
             .setConstantBitrateSeekingEnabled(true)
         // A decoder that fails on one stream hands over to another decoder instead of failing the stream.
-        val renderers = DefaultRenderersFactory(appContext).setEnableDecoderFallback(true).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
+        val passthrough = options.passthrough
+        val renderers = object : DefaultRenderersFactory(appContext) {
+            // With passthrough off the sound is decoded on this device to stereo instead of being sent as-is to a TV or receiver.
+            override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink? =
+                if (passthrough) super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
+                else androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).setEnableFloatOutput(enableFloatOutput).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams).build()
+        }.setEnableDecoderFallback(options.decoderFallback).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
         val p = ExoPlayer.Builder(appContext, renderers)
             .setMediaSourceFactory(DefaultMediaSourceFactory(factory, extractors).setLiveTargetOffsetMs(mode.liveOffsetMs))
             .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(mode.minMs, mode.maxMs, mode.startMs, mode.rebufferMs).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(30_000, true).build())
             .setHandleAudioBecomingNoisy(true)
             .build()
+        dropped = 0
+        p.addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+            override fun onDroppedVideoFrames(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) { dropped += droppedFrames }
+            override fun onVideoDecoderInitialized(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long) { this@ExoEngine.decoderName = decoderName }
+        })
         p.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 when (state) {
@@ -62,7 +77,7 @@ class ExoEngine(context: Context) : PlayerEngine {
             }
             override fun onTracksChanged(tracks: Tracks) { onEvent(EngineEvent.TracksChanged) }
         })
-        player = p; builtFor = mode
+        player = p; builtFor = key
         viewRef?.player = p
         return p
     }
@@ -71,11 +86,23 @@ class ExoEngine(context: Context) : PlayerEngine {
         viewRef?.let { return it }
         val v = PlayerView(context).apply { useController = false; resizeMode = resizeFor(aspect); keepScreenOn = true; player = this@ExoEngine.player }
         viewRef = v
+        applySubtitleStyle()
         return v
     }
 
+    private fun applySubtitleStyle() {
+        val st = options.subtitles
+        viewRef?.subtitleView?.apply {
+            setFractionalTextSize(androidx.media3.ui.SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * st.scale)
+            setStyle(androidx.media3.ui.CaptionStyleCompat(android.graphics.Color.WHITE, if (st.darkBackground) 0xB3000000.toInt() else android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT,
+                if (st.outline) androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE else androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_NONE, android.graphics.Color.BLACK, null))
+        }
+    }
+
     override fun load(request: EngineRequest) {
+        options = request.options
         val p = ensurePlayer(request.buffering)
+        applySubtitleStyle()
         currentHeaders = request.headers
         p.setMediaItem(MediaItem.fromUri(request.url), if (request.startMs > 5_000) request.startMs else C.TIME_UNSET)
         p.prepare()
@@ -122,6 +149,19 @@ class ExoEngine(context: Context) : PlayerEngine {
             b.setTrackTypeDisabled(type, false).setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, t))
         }
         p.trackSelectionParameters = b.build()
+    }
+
+    override fun diagnostics(): Map<String, String> {
+        val p = player ?: return emptyMap()
+        val v = p.videoFormat; val a = p.audioFormat
+        return linkedMapOf(
+            "Video" to (v?.let { listOfNotNull("${it.width}×${it.height}", it.sampleMimeType?.substringAfter('/'), it.frameRate.takeIf { f -> f > 0 }?.let { f -> "%.0f fps".format(f) }).joinToString(" · ") } ?: "none"),
+            "Video bitrate" to (v?.bitrate?.takeIf { it > 0 }?.let { "${it / 1000} kbps" } ?: "unknown"),
+            "Audio" to (a?.let { listOfNotNull(it.sampleMimeType?.substringAfter('/'), it.channelCount.takeIf { c -> c > 0 }?.let { c -> "$c ch" }, it.language).joinToString(" · ") } ?: "none"),
+            "Decoder" to decoderName.ifBlank { "unknown" },
+            "Buffered ahead" to "${((p.bufferedPosition - p.currentPosition).coerceAtLeast(0)) / 1000} s",
+            "Dropped frames" to dropped.toString(),
+        )
     }
 
     override fun streamInfo(): String {

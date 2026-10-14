@@ -62,6 +62,9 @@ val LocalFocusEnabled = androidx.compose.runtime.compositionLocalOf { true }
 /** Where DOWN from the top bar lands on the current page (the hero's Play button, the open category pill, the first settings page...). */
 val LocalContentEntry = androidx.compose.runtime.compositionLocalOf<FocusRequester?> { null }
 
+/** A thicker white focus frame for people who find the thin accent line hard to see. */
+val LocalHighContrast = androidx.compose.runtime.compositionLocalOf { false }
+
 /** The last thing on the base page that held focus, so closing a page (a movie, an episode list, the player) returns you to it. */
 object FocusMemory { var last: FocusRequester? = null; var lastHasFocus = false }
 
@@ -87,6 +90,7 @@ fun Focusable(
 ) {
     var focused by remember { mutableStateOf(false) }
     var longHandled by remember { mutableStateOf(false) }
+    val highContrast = LocalHighContrast.current
     val enabled = LocalFocusEnabled.current
     val own = remember { FocusRequester() }
     val inOverlay = LocalInOverlay.current
@@ -96,7 +100,7 @@ fun Focusable(
             .focusScale(focused, scaleOnFocus)
             .clip(shape)
             .background(if (focused) focusedContainer else container)
-            .then(if (focused) Modifier.border(BorderStroke(1.5.dp, Tokens.accent), shape) else if (hairline) Modifier.border(BorderStroke(1.dp, Tokens.line), shape) else Modifier)
+            .then(if (focused) Modifier.border(if (highContrast) BorderStroke(3.dp, Color.White) else BorderStroke(1.5.dp, Tokens.accent), shape) else if (hairline) Modifier.border(BorderStroke(1.dp, Tokens.line), shape) else Modifier)
             .focusRequester(own)
             .focusProperties { canFocus = enabled }
             .onFocusChanged {

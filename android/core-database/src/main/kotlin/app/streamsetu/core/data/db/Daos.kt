@@ -20,6 +20,7 @@ interface SourceDao {
     @Query("UPDATE sources SET lastError = :error WHERE id = :id") suspend fun setError(id: String, error: String?)
     @Query("UPDATE sources SET lastOpenedAt = :at WHERE id = :id") suspend fun touch(id: String, at: Long)
     @Query("UPDATE sources SET name = :name WHERE id = :id") suspend fun rename(id: String, name: String)
+    @Query("UPDATE sources SET enabled = :enabled WHERE id = :id") suspend fun setEnabled(id: String, enabled: Boolean)
 }
 
 @Dao
@@ -57,6 +58,10 @@ interface CatalogDao {
     // Series
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putSeries(list: List<SeriesEntity>)
     @Query("DELETE FROM series WHERE sourceId = :sourceId") suspend fun clearSeries(sourceId: String)
+    @Query("DELETE FROM episodes WHERE seriesId NOT IN (SELECT id FROM series)") suspend fun deleteOrphanEpisodes(): Int
+    @Query("SELECT COUNT(*) FROM channels") suspend fun channelTotal(): Int
+    @Query("SELECT COUNT(*) FROM movies") suspend fun movieTotal(): Int
+    @Query("SELECT COUNT(*) FROM series") suspend fun seriesTotal(): Int
     @Query("SELECT * FROM series WHERE categoryId = :categoryId ORDER BY title LIMIT :limit") fun seriesIn(categoryId: String, limit: Int): Flow<List<SeriesEntity>>
     @Query("SELECT * FROM series WHERE sourceId IN (:sources) ORDER BY title LIMIT :limit") fun allSeries(limit: Int, sources: List<String>): Flow<List<SeriesEntity>>
     @Query("SELECT * FROM series WHERE sourceId IN (:sources) ORDER BY id DESC LIMIT :limit") fun latestSeries(limit: Int, sources: List<String>): Flow<List<SeriesEntity>>
@@ -88,6 +93,10 @@ interface EpgDao {
 @Dao
 interface UserDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putFavorite(f: FavoriteEntity)
+    @Query("SELECT * FROM favorites") suspend fun allFavorites(): List<FavoriteEntity>
+    @Query("SELECT * FROM progress") suspend fun allProgressNow(): List<ProgressEntity>
+    @Query("SELECT * FROM watch_log ORDER BY playedAt DESC LIMIT 500") suspend fun logNow(): List<WatchLogEntity>
+    @Query("DELETE FROM favorites WHERE listId = :listId") suspend fun clearList(listId: String)
     @Query("DELETE FROM favorites WHERE itemId = :itemId AND listId = :listId") suspend fun removeFavorite(itemId: String, listId: String)
     @Query("SELECT itemId FROM favorites WHERE listId = :listId ORDER BY addedAt DESC") fun favoriteIds(listId: String): Flow<List<String>>
 
@@ -103,6 +112,7 @@ interface UserDao {
     @Query("SELECT * FROM watch_log WHERE kind = 'CHANNEL' ORDER BY playedAt DESC LIMIT :limit") fun recentChannelLog(limit: Int): Flow<List<WatchLogEntity>>
     @Query("SELECT * FROM watch_log ORDER BY playedAt DESC LIMIT :limit") fun history(limit: Int): Flow<List<WatchLogEntity>>
     @Query("DELETE FROM watch_log") suspend fun clearLog()
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putLog(l: List<WatchLogEntity>)
     @Query("DELETE FROM watch_log WHERE id NOT IN (SELECT id FROM watch_log ORDER BY playedAt DESC LIMIT 500)") suspend fun trimLog()
     @Query("SELECT itemId, COUNT(*) AS plays FROM watch_log WHERE kind = 'CHANNEL' AND playedAt > :since GROUP BY itemId HAVING plays >= 2 ORDER BY plays DESC LIMIT :limit")
     fun mostWatched(since: Long, limit: Int): Flow<List<PlayCount>>
@@ -129,6 +139,8 @@ interface LibraryDao {
 @Dao
 interface FolderDao {
     @Query("SELECT * FROM folder_prefs WHERE scope = :scope") fun observe(scope: String): Flow<List<FolderPrefEntity>>
+    @Query("SELECT * FROM folder_prefs") suspend fun all(): List<FolderPrefEntity>
+    @Query("UPDATE folder_prefs SET hidden = 0 WHERE scope = :scope") suspend fun unhideAll(scope: String)
     @Query("SELECT * FROM folder_prefs WHERE scope = :scope AND folderId = :id") suspend fun get(scope: String, id: String): FolderPrefEntity?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(p: FolderPrefEntity)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putAll(p: List<FolderPrefEntity>)

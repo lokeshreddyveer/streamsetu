@@ -74,6 +74,10 @@ class PlaybackController(
     private var sessionVerified = false
     private var userSeeked = false
     private var startedAt = 0L
+    private val errors = ArrayDeque<String>()
+    /** The last few player errors, newest first, with no addresses (for the diagnostics screen). */
+    fun recentErrors(): List<String> = synchronized(errors) { errors.toList() }
+    var lastStartupMs: Long = 0; private set
     private var firstFrameLogged = false
     private var loggedStart = false      // a play is logged once, however many times it is retried or moved to the other engine
 
@@ -96,6 +100,7 @@ class PlaybackController(
         startPositionMs = if (item.isLive || !settings.resumeAutomatically.value) 0 else resumeAtMs
         _resumedFrom.value = if (startPositionMs > 30_000) startPositionMs else 0
         sessionId++; sessionVerified = false; userSeeked = false
+        _aspect.value = runCatching { AspectMode.valueOf(settings.defaultAspect.value) }.getOrDefault(AspectMode.FIT)
         _speed.value = 1f
         _current.value = item
         _state.value = PlaybackState.Resolving
@@ -111,15 +116,19 @@ class PlaybackController(
         val url = resolver.resolve(item.sourceId, item.streamRef)
         if (url == null) { _state.value = PlaybackState.Failed(PlaybackError(ErrorKind.NOT_FOUND, "The playlist for this item is gone or has no login.")); return }
         val container = StreamContainer.of(url, item.isLive)
-        val kind = forced ?: EngineSelector.select(container, settings.enginePreference.value, available)
-        android.util.Log.i("Playback", "start ${if (item.isLive) "live" else "vod"} '${item.title}' container=$container engine=${kind.label} (preference=${settings.enginePreference.value.label}) host=${runCatching { java.net.URI(url).host }.getOrNull()}")
+        val preference = settings.engineFor(item.sourceId) ?: settings.enginePreference.value
+        val kind = forced ?: EngineSelector.select(container, preference, available)
+        android.util.Log.i("Playback", "start ${if (item.isLive) "live" else "vod"} '${item.title}' container=$container engine=${kind.label} (preference=${preference.label}) host=${runCatching { java.net.URI(url).host }.getOrNull()}")
         val next = engineFor(kind)
         val previous = _engine.value
         if (previous != null && previous !== next) previous.stop()
         _engine.value = next
         next.setAspect(_aspect.value); next.setSpeed(1f)
         startedAt = System.currentTimeMillis()
-        next.load(EngineRequest(url, emptyMap(), startPositionMs, item.isLive, settings.bufferingMode.value))
+        val buffering = if (item.isLive) settings.liveBufferFor(item.sourceId) ?: settings.liveBuffering.value else settings.vodBuffering.value
+        val scale = when (settings.subtitleSize.value) { "SMALL" -> 0.8f; "LARGE" -> 1.3f; "XLARGE" -> 1.6f; else -> 1f }
+        next.load(EngineRequest(url, emptyMap(), startPositionMs, item.isLive, buffering,
+            EngineOptions(settings.decoderFallback.value, settings.surroundPassthrough.value, SubtitleStyle(scale, settings.subtitleBackground.value == "DARK", settings.subtitleOutline.value))))
         if (!loggedStart) { loggedStart = true; onStarted(item) }
     }
 
@@ -127,7 +136,7 @@ class PlaybackController(
         android.util.Log.i("Playback", "${_engine.value?.kind?.label}: $ev pos=${positionMs / 1000}s dur=${durationMs / 1000}s")
         when (ev) {
             EngineEvent.Buffering -> { if (bufferingSince == 0L) bufferingSince = System.currentTimeMillis(); if (_state.value !is PlaybackState.Retrying) _state.value = PlaybackState.Buffering }
-            is EngineEvent.Ready -> { sessionVerified = true; bufferingSince = 0L; if (!firstFrameLogged) { firstFrameLogged = true; android.util.Log.i("Playback", "first picture after ${System.currentTimeMillis() - startedAt} ms (${_engine.value?.kind?.label})") }; attempt = 0; _state.value = if (ev.playing) PlaybackState.Playing else PlaybackState.Paused; refreshTracks() }
+            is EngineEvent.Ready -> { sessionVerified = true; bufferingSince = 0L; if (!firstFrameLogged) { firstFrameLogged = true; lastStartupMs = System.currentTimeMillis() - startedAt; android.util.Log.i("Playback", "first picture after $lastStartupMs ms (${_engine.value?.kind?.label})") }; attempt = 0; _state.value = if (ev.playing) PlaybackState.Playing else PlaybackState.Paused; refreshTracks() }
             EngineEvent.Ended -> { _state.value = PlaybackState.Ended; onEnded() }
             EngineEvent.TracksChanged -> refreshTracks()
             is EngineEvent.Error -> handleError(ev.error)
@@ -148,6 +157,7 @@ class PlaybackController(
 
     private fun handleError(error: PlaybackError) {
         val item = _current.value ?: return
+        synchronized(errors) { errors.addFirst("${java.text.DateFormat.getTimeInstance(java.text.DateFormat.MEDIUM).format(java.util.Date())}  ${error.kind}: ${error.message.take(120)}"); while (errors.size > 20) errors.removeLast() }
         val e = _engine.value
         // A format the engine cannot play goes to the other engine once, like the Mac app does; so does an engine that keeps failing.
         if (!switchedEngine && e != null && (error.kind == ErrorKind.FORMAT || attempt >= 2)) {
@@ -158,7 +168,8 @@ class PlaybackController(
                 return
             }
         }
-        when (val d = policy.decide(error, attempt, item.isLive, online = isOnline())) {
+        val attemptsSoFar = if (settings.automaticRetry.value) attempt else Int.MAX_VALUE / 2     // retries off: give up at once and wait for the person
+        when (val d = policy.decide(error, attemptsSoFar, item.isLive, online = isOnline())) {
             is RecoveryPolicy.Decision.GiveUp -> { if (d.error.kind == ErrorKind.NO_NETWORK) waitingForNetwork = true; _state.value = PlaybackState.Failed(d.error) }
             is RecoveryPolicy.Decision.Retry -> {
                 attempt = d.attempt
@@ -168,6 +179,12 @@ class PlaybackController(
         }
     }
 
+    private fun stallLimitMs(live: Boolean) = when (settings.stallPatience.value) { "SHORT" -> if (live) 10_000L else 20_000L; "LONG" -> if (live) 30_000L else 60_000L; else -> if (live) 18_000L else 30_000L }
+
+    /** Facts about the stream playing now (engine, container, picture, buffer, dropped frames, start time), with no addresses or logins. */
+    fun diagnostics(): Map<String, String> = linkedMapOf("Engine" to (engineKind?.label ?: "none"), "State" to _state.value.toString().substringBefore('(')) + (_engine.value?.diagnostics().orEmpty()) +
+        (if (lastStartupMs > 0) mapOf("Time to first picture" to "$lastStartupMs ms") else emptyMap())
+
     /** A stream that sits in "buffering" for too long is treated as a failure, so the retry and engine-switch rules take over instead of an endless spinner. */
     private fun watchStalls() {
         scope.launch {
@@ -175,7 +192,7 @@ class PlaybackController(
                 delay(2000)
                 val since = bufferingSince
                 val item = _current.value
-                if (item != null && since != 0L && _state.value == PlaybackState.Buffering && System.currentTimeMillis() - since > (if (item.isLive) 18_000 else 30_000)) {
+                if (item != null && since != 0L && _state.value == PlaybackState.Buffering && System.currentTimeMillis() - since > stallLimitMs(item.isLive)) {
                     bufferingSince = 0L
                     android.util.Log.i("Playback", "stalled in buffering; recovering")
                     handleError(PlaybackError(ErrorKind.TIMEOUT, "The stream stopped loading"))
@@ -207,7 +224,10 @@ class PlaybackController(
     val engineKind: EngineKind? get() = _engine.value?.kind
     fun streamInfo(): String = _engine.value?.streamInfo().orEmpty()
 
-    fun selectAudio(id: String?) { _engine.value?.selectAudio(id); main.postDelayed({ refreshTracks() }, 300) }
+    fun selectAudio(id: String?) {
+        if (settings.rememberAudioChoice.value) _audio.value.firstOrNull { it.id == id }?.language?.takeIf { it.isNotBlank() }?.let { settings.setAudioLanguage(it) }
+        _engine.value?.selectAudio(id); main.postDelayed({ refreshTracks() }, 300)
+    }
     fun selectSubtitle(id: String?) { _engine.value?.selectSubtitle(id); main.postDelayed({ refreshTracks() }, 300) }
 
     private fun refreshTracks() {
@@ -217,7 +237,13 @@ class PlaybackController(
         appliedPreferredTracks = true
         val al = settings.audioLanguage.value; val sl = settings.subtitleLanguage.value
         if (al.isNotBlank()) _audio.value.firstOrNull { it.language?.startsWith(al, true) == true }?.let { e.selectAudio(it.id) }
-        if (settings.subtitlesByDefault.value) (_subtitles.value.firstOrNull { sl.isNotBlank() && it.language?.startsWith(sl, true) == true } ?: _subtitles.value.firstOrNull())?.let { e.selectSubtitle(it.id) }
+        val wantSubs = when (settings.subtitleMode.value) {
+            "ON" -> true
+            "OFF" -> false
+            else -> al.isNotBlank() && _audio.value.firstOrNull { it.selected }?.language?.startsWith(al, true) == false       // AUTO: when the sound is not in the preferred language
+        }
+        if (!wantSubs) e.selectSubtitle(null)
+        else (_subtitles.value.firstOrNull { sl.isNotBlank() && it.language?.startsWith(sl, true) == true } ?: _subtitles.value.firstOrNull())?.let { e.selectSubtitle(it.id) }
     }
 
     private fun startProgressTicker(item: Playable) {

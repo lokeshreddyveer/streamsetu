@@ -39,6 +39,7 @@ class AppContainer @Inject constructor(
     val parental: ParentalControls,
     val settings: AppSettings,
     val ui: app.streamsetu.core.settings.UiPrefs,
+    val maintenance: app.streamsetu.core.data.repo.MaintenanceService,
     val resolver: StreamResolver,
     val sync: SyncService,
     val playback: PlaybackController,
@@ -91,6 +92,7 @@ class AppContainer @Inject constructor(
     fun play(item: Playable, queue: List<Playable> = listOf(item), startOver: Boolean = false) {
         playback.current.value?.takeIf { it.isLive && it.id != item.id }?.let { previousLive = it }
         this.queue = queue
+        if (item is ChannelPlayable) settings.lastChannelId = item.id
         queueIndex = queue.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
         appScope.launch {
             val resume = if (item.isLive || startOver) 0 else if (settings.resumeAutomatically.value) user.progress(item.id)?.takeIf { !it.completed }?.positionMs ?: 0 else 0

@@ -61,6 +61,7 @@ fun FeaturedBanner(
     modifier: Modifier = Modifier,
     primaryEntry: FocusRequester? = null,
     startPadding: Dp = Tokens.screenPadding,
+    intervalSeconds: Int = 9,
 ) {
     if (items.isEmpty()) return
     val reduced = LocalReducedMotion.current
@@ -76,7 +77,7 @@ fun FeaturedBanner(
     val paused by rememberUpdatedState(focusInside || System.currentTimeMillis() - lastFocusChange < 6000)
     LaunchedEffect(items, reduced) {
         if (reduced || n < 2) return@LaunchedEffect
-        while (true) { delay(9000); if (!paused) index = (index + 1) % n }
+        while (true) { delay(intervalSeconds * 1000L); if (!paused) index = (index + 1) % n }
     }
     // The next slide's picture is requested now, so the crossfade never waits on the network.
     LaunchedEffect(i, items) {

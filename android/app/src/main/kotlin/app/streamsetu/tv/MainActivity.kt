@@ -26,7 +26,6 @@ import app.streamsetu.core.model.LibraryEntry
 import kotlinx.coroutines.launch
 import app.streamsetu.tv.nav.Overlay
 import app.streamsetu.tv.nav.Tab
-import app.streamsetu.tv.ui.components.TopBar
 import app.streamsetu.tv.ui.screens.*
 import app.streamsetu.tv.ui.theme.Tokens
 
@@ -76,8 +75,14 @@ inline fun <reified T : ViewModel> vm(key: String? = null, crossinline create: (
 
 @Composable
 fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
-    val reduced = app.streamsetu.core.ui.motion.rememberReducedMotion()
+    val systemReduced = app.streamsetu.core.ui.motion.rememberReducedMotion()
+    val animation by c.ui.animation.collectAsState()
+    val reduced = systemReduced || animation != app.streamsetu.core.settings.AnimationLevel.FULL
+    val contrast by c.ui.highContrastFocus.collectAsState()
+    val textScale by c.settings.textScalePercent.collectAsState()
     val entries by c.library.entries.collectAsState(initial = emptyList())
+    val relock by c.settings.relockPolicy.collectAsState()
+    LaunchedEffect(nav.base, relock) { if (nav.base != Base.Shell && relock == "LEAVE") c.folders.lockAgain() }
     val playbackState by c.playback.state.collectAsState()
     val sidebarEntry = remember { androidx.compose.ui.focus.FocusRequester() }
     val contentEntry = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -97,7 +102,12 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
         }
     }
 
-    androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.core.ui.motion.LocalReducedMotion provides reduced) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.runtime.CompositionLocalProvider(
+        app.streamsetu.core.ui.motion.LocalReducedMotion provides reduced,
+        app.streamsetu.tv.ui.components.LocalHighContrast provides contrast,
+        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * textScale / 100f),
+    ) {
     Box(Modifier.fillMaxSize().background(Tokens.background)) {
         androidx.compose.runtime.CompositionLocalProvider(
             app.streamsetu.tv.ui.components.LocalFocusEnabled provides (nav.top == null),
@@ -164,7 +174,7 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
                     Tab.MOVIES -> app.streamsetu.tv.ui.screens.section.SectionScreen(androidx.hilt.navigation.compose.hiltViewModel<app.streamsetu.tv.ui.screens.section.MoviesSectionViewModel>(), c, nav) { card -> card.movie?.let { nav.open(Overlay.MovieDetail(it)) } }
                     Tab.SERIES -> app.streamsetu.tv.ui.screens.section.SectionScreen(androidx.hilt.navigation.compose.hiltViewModel<app.streamsetu.tv.ui.screens.section.SeriesSectionViewModel>(), c, nav) { card -> card.series?.let { nav.open(Overlay.SeriesDetail(it)) } }
                     Tab.SEARCH -> app.streamsetu.tv.ui.screens.search.SearchScreen(c, nav)
-                    Tab.SETTINGS -> SettingsScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                    Tab.SETTINGS -> app.streamsetu.tv.ui.screens.settings.SettingsScreen(c, nav)
                     Tab.LIBRARIES -> {}
                 }
             }

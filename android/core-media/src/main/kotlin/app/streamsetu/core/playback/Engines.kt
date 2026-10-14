@@ -45,7 +45,13 @@ object EngineSelector {
 /** How the picture fills the screen (the iPhone app's Fit / Fill, plus Zoom). */
 enum class AspectMode(val label: String) { FIT("Fit"), FILL("Fill"), ZOOM("Zoom") }
 
-data class EngineRequest(val url: String, val headers: Map<String, String>, val startMs: Long, val live: Boolean, val buffering: BufferingMode)
+/** How subtitles are drawn: a size factor, a dark box behind the text, an outline. */
+data class SubtitleStyle(val scale: Float = 1f, val darkBackground: Boolean = false, val outline: Boolean = true)
+
+/** Choices that need the player to be built a certain way. */
+data class EngineOptions(val decoderFallback: Boolean = true, val passthrough: Boolean = true, val subtitles: SubtitleStyle = SubtitleStyle())
+
+data class EngineRequest(val url: String, val headers: Map<String, String>, val startMs: Long, val live: Boolean, val buffering: BufferingMode, val options: EngineOptions = EngineOptions())
 
 sealed interface EngineEvent {
     data object Buffering : EngineEvent
@@ -76,6 +82,8 @@ interface PlayerEngine {
     fun selectSubtitle(id: String?)
     /** A line of facts about the stream being played, for the "Show stream information" overlay. */
     fun streamInfo(): String
+    /** Facts about the stream playing now, for the diagnostics screen (no addresses, no logins). */
+    fun diagnostics(): Map<String, String>
     fun setSpeed(speed: Float)
     fun setAspect(mode: AspectMode)
 }

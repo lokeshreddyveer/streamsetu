@@ -91,6 +91,10 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
         MPVLib.setPropertyString("user-agent", request.headers["User-Agent"] ?: "StreamSetu/0.1 (Android TV)")
         val extra = request.headers.filterKeys { it != "User-Agent" }.map { "${it.key}: ${it.value}".replace(",", "%2C") }
         MPVLib.setPropertyString("http-header-fields", extra.joinToString(","))
+        val st = request.options.subtitles
+        MPVLib.setPropertyString("sub-font-size", (55 * st.scale).toInt().toString())
+        MPVLib.setPropertyString("sub-border-size", if (st.outline) "3" else "0")
+        MPVLib.setPropertyString("sub-back-color", if (st.darkBackground) "#B3000000" else "#00000000")
         MPVLib.setPropertyString("pause", "no")
         if (request.startMs > 5_000) MPVLib.command(arrayOf("loadfile", request.url, "replace", "-1", "start=${request.startMs / 1000}"))
         else MPVLib.command(arrayOf("loadfile", request.url, "replace"))
@@ -165,6 +169,18 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
 
     override fun audioTracks() = tracks("audio")
     override fun subtitleTracks() = tracks("sub")
+    override fun diagnostics(): Map<String, String> {
+        if (!initialised) return emptyMap()
+        fun prop(n: String) = runCatching { MPVLib.getPropertyString(n) }.getOrNull().orEmpty()
+        return linkedMapOf(
+            "Video" to listOf("${prop("video-params/w")}×${prop("video-params/h")}", prop("video-format"), prop("container-fps").toDoubleOrNull()?.let { "%.0f fps".format(it) }.orEmpty()).filter { it.isNotBlank() && it != "×" }.joinToString(" · ").ifBlank { "none" },
+            "Audio" to listOf(prop("audio-codec-name"), prop("audio-params/channel-count").takeIf { it.isNotBlank() }?.let { "$it ch" }.orEmpty()).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "none" },
+            "Decoder" to prop("hwdec-current").ifBlank { "software" },
+            "Buffered ahead" to (prop("demuxer-cache-duration").toDoubleOrNull()?.let { "%.0f s".format(it) } ?: "unknown"),
+            "Dropped frames" to prop("vo-drop-frame-count").ifBlank { "0" },
+        )
+    }
+
     override fun selectAudio(id: String?) { if (initialised) MPVLib.setPropertyString("aid", id ?: "no") }
     override fun selectSubtitle(id: String?) { if (initialised) MPVLib.setPropertyString("sid", id ?: "no") }
 

@@ -47,4 +47,97 @@ class AppSettings(context: Context) {
     private val _info = flow(prefs.getBoolean("streamInfo", false))
     val showStreamInfo: StateFlow<Boolean> = _info
     fun setShowStreamInfo(v: Boolean) { prefs.edit().putBoolean("streamInfo", v).apply(); _info.value = v }
+
+    // ---- Buffering: separately for Live TV and for movies and episodes ----
+    private val _liveBuf = flow(BufferingMode.from(prefs.getString("bufferLive", prefs.getString("buffering", null))).let { if (it == BufferingMode.STANDARD) BufferingMode.AUTOMATIC else it })
+    val liveBuffering: StateFlow<BufferingMode> = _liveBuf
+    fun setLiveBuffering(v: BufferingMode) { prefs.edit().putString("bufferLive", v.name).apply(); _liveBuf.value = v }
+    private val _vodBuf = flow(BufferingMode.from(prefs.getString("bufferVod", null)).let { if (it == BufferingMode.LOW_LATENCY || it == BufferingMode.STANDARD) BufferingMode.AUTOMATIC else it })
+    val vodBuffering: StateFlow<BufferingMode> = _vodBuf
+    fun setVodBuffering(v: BufferingMode) { prefs.edit().putString("bufferVod", v.name).apply(); _vodBuf.value = v }
+
+    // ---- Playback behaviour ----
+    private val _seek = flow(prefs.getInt("seekSecs", 10))
+    val seekSeconds: StateFlow<Int> = _seek
+    fun setSeekSeconds(v: Int) { prefs.edit().putInt("seekSecs", v).apply(); _seek.value = v }
+    private val _autoRetry = flow(prefs.getBoolean("autoRetry", true))
+    /** On: a failing stream is retried by itself a few times. Off: it stops at once and waits for the person. */
+    val automaticRetry: StateFlow<Boolean> = _autoRetry
+    fun setAutomaticRetry(v: Boolean) { prefs.edit().putBoolean("autoRetry", v).apply(); _autoRetry.value = v }
+    private val _stall = flow(prefs.getString("stall", "NORMAL") ?: "NORMAL")
+    /** How long a stream may sit loading before it counts as failed: SHORT, NORMAL or LONG. */
+    val stallPatience: StateFlow<String> = _stall
+    fun setStallPatience(v: String) { prefs.edit().putString("stall", v).apply(); _stall.value = v }
+    fun engineFor(sourceId: String): EnginePreference? = prefs.getString("engine.$sourceId", null)?.let { n -> EnginePreference.entries.firstOrNull { it.name == n } }
+    fun setEngineFor(sourceId: String, v: EnginePreference?) { prefs.edit().apply { if (v == null) remove("engine.$sourceId") else putString("engine.$sourceId", v.name) }.apply() }
+    fun liveBufferFor(sourceId: String): BufferingMode? = prefs.getString("bufferLive.$sourceId", null)?.let { n -> BufferingMode.entries.firstOrNull { it.name == n } }
+    fun setLiveBufferFor(sourceId: String, v: BufferingMode?) { prefs.edit().apply { if (v == null) remove("bufferLive.$sourceId") else putString("bufferLive.$sourceId", v.name) }.apply() }
+
+    // ---- Video ----
+    private val _aspect = flow(prefs.getString("aspect", "FIT") ?: "FIT")
+    val defaultAspect: StateFlow<String> = _aspect
+    fun setDefaultAspect(v: String) { prefs.edit().putString("aspect", v).apply(); _aspect.value = v }
+    private val _decoderFallback = flow(prefs.getBoolean("decoderFallback", true))
+    val decoderFallback: StateFlow<Boolean> = _decoderFallback
+    fun setDecoderFallback(v: Boolean) { prefs.edit().putBoolean("decoderFallback", v).apply(); _decoderFallback.value = v }
+
+    // ---- Audio ----
+    private val _passthrough = flow(prefs.getBoolean("passthrough", true))
+    /** On: surround sound is passed to the TV or receiver when it supports it. Off: the device decodes to stereo. */
+    val surroundPassthrough: StateFlow<Boolean> = _passthrough
+    fun setSurroundPassthrough(v: Boolean) { prefs.edit().putBoolean("passthrough", v).apply(); _passthrough.value = v }
+    private val _rememberAudio = flow(prefs.getBoolean("rememberAudio", true))
+    val rememberAudioChoice: StateFlow<Boolean> = _rememberAudio
+    fun setRememberAudioChoice(v: Boolean) { prefs.edit().putBoolean("rememberAudio", v).apply(); _rememberAudio.value = v }
+
+    // ---- Subtitles ----
+    private val _subMode = flow(prefs.getString("subMode", if (prefs.getBoolean("subsDefault", false)) "ON" else "AUTO") ?: "AUTO")
+    /** OFF, AUTO (on when the audio is not in the preferred language) or ON. */
+    val subtitleMode: StateFlow<String> = _subMode
+    fun setSubtitleMode(v: String) { prefs.edit().putString("subMode", v).apply(); _subMode.value = v }
+    private val _subSize = flow(prefs.getString("subSize", "MEDIUM") ?: "MEDIUM")
+    val subtitleSize: StateFlow<String> = _subSize
+    fun setSubtitleSize(v: String) { prefs.edit().putString("subSize", v).apply(); _subSize.value = v }
+    private val _subBg = flow(prefs.getString("subBg", "NONE") ?: "NONE")
+    val subtitleBackground: StateFlow<String> = _subBg
+    fun setSubtitleBackground(v: String) { prefs.edit().putString("subBg", v).apply(); _subBg.value = v }
+    private val _subOutline = flow(prefs.getBoolean("subOutline", true))
+    val subtitleOutline: StateFlow<Boolean> = _subOutline
+    fun setSubtitleOutline(v: Boolean) { prefs.edit().putBoolean("subOutline", v).apply(); _subOutline.value = v }
+
+    // ---- Live TV ----
+    private val _invert = flow(prefs.getBoolean("invertChannelKeys", false))
+    /** Off: Up is the next channel. On: Up is the previous one. */
+    val invertChannelKeys: StateFlow<Boolean> = _invert
+    fun setInvertChannelKeys(v: Boolean) { prefs.edit().putBoolean("invertChannelKeys", v).apply(); _invert.value = v }
+    private val _chNumbers = flow(prefs.getBoolean("chNumbers", true))
+    val showChannelNumbers: StateFlow<Boolean> = _chNumbers
+    fun setShowChannelNumbers(v: Boolean) { prefs.edit().putBoolean("chNumbers", v).apply(); _chNumbers.value = v }
+    private val _resumeLast = flow(prefs.getBoolean("resumeLastChannel", false))
+    val resumeLastChannel: StateFlow<Boolean> = _resumeLast
+    fun setResumeLastChannel(v: Boolean) { prefs.edit().putBoolean("resumeLastChannel", v).apply(); _resumeLast.value = v }
+    var lastChannelId: String?
+        get() = prefs.getString("lastChannel", null)
+        set(v) { prefs.edit().putString("lastChannel", v).apply() }
+
+    // ---- Folders and privacy ----
+    private val _dwell = flow(prefs.getBoolean("folderDwell", true))
+    /** On: resting on a folder opens it after a moment. Off: it opens only when OK is pressed. */
+    val foldersOpenOnFocus: StateFlow<Boolean> = _dwell
+    fun setFoldersOpenOnFocus(v: Boolean) { prefs.edit().putBoolean("folderDwell", v).apply(); _dwell.value = v }
+    private val _relock = flow(prefs.getString("relock", "LEAVE") ?: "LEAVE")
+    /** When unlocked folders lock again: LEAVE (when the library is closed), TEN (after ten minutes), SESSION (only when the app closes). */
+    val relockPolicy: StateFlow<String> = _relock
+    fun setRelockPolicy(v: String) { prefs.edit().putString("relock", v).apply(); _relock.value = v }
+    private val _textScale = flow(prefs.getInt("textScale", 100))
+    val textScalePercent: StateFlow<Int> = _textScale
+    fun setTextScalePercent(v: Int) { prefs.edit().putInt("textScale", v).apply(); _textScale.value = v }
+
+    /** Puts every preference above back to its default. Content, connections, favourites and progress are not touched. */
+    fun resetPlayerPreferences() {
+        prefs.edit().clear().apply()
+        setEngine(EnginePreference.AUTOMATIC); setLiveBuffering(BufferingMode.AUTOMATIC); setVodBuffering(BufferingMode.AUTOMATIC); setSeekSeconds(10); setAutomaticRetry(true); setStallPatience("NORMAL")
+        setDefaultAspect("FIT"); setDecoderFallback(true); setSurroundPassthrough(true); setRememberAudioChoice(true); setSubtitleMode("AUTO"); setSubtitleSize("MEDIUM"); setSubtitleBackground("NONE"); setSubtitleOutline(true)
+        setAudioLanguage(""); setSubtitleLanguage(""); setPlayNext(true); setRememberPosition(true); setResumeAutomatically(true); setShowStreamInfo(false)
+    }
 }
