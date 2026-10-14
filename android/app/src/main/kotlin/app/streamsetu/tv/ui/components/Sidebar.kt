@@ -11,6 +11,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +60,8 @@ private const val IconBox = 34    // dp, the square the icon is centred in: in t
 fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modifier: Modifier = Modifier, expanded: Boolean = false, onFocusChange: (Boolean) -> Unit = {}) {
     val floating = false
     var hadFocus by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var lossJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val reduced = LocalReducedMotion.current
     val width by animateDpAsState(if (expanded) Tokens.sidebarExpanded else Tokens.sidebarCompact, if (reduced) snap() else tween(Motion.SIDEBAR, easing = Motion.Standard), label = "sidebarWidth")
     val labelAlpha by animateFloatAsState(if (expanded) 1f else 0f, if (reduced) snap() else tween(Motion.SHORT), label = "sidebarLabels")
@@ -66,7 +70,13 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
         (if (floating) modifier.padding(start = 16.dp, top = Tokens.safeVertical, bottom = Tokens.safeVertical).wrapContentHeight() else modifier.fillMaxHeight().padding(vertical = Tokens.safeVertical))
             .width(width).clip(shape)
             .background(Color(0xF2090909))
-            .onFocusChanged { if (it.hasFocus != hadFocus) { hadFocus = it.hasFocus; onFocusChange(it.hasFocus) } }
+            // Moving between two entries can report "no focus" for an instant. Gaining focus is immediate; losing it only counts if it lasts, or the panel would hide itself mid-move.
+            .onFocusChanged { st ->
+                android.util.Log.d("Nav", "sidebar hasFocus=${st.hasFocus} had=$hadFocus")
+                lossJob?.cancel()
+                if (st.hasFocus) { if (!hadFocus) { hadFocus = true; onFocusChange(true) } }
+                else if (hadFocus) lossJob = scope.launch { delay(140); hadFocus = false; onFocusChange(false) }
+            }
             .padding(vertical = 6.dp, horizontal = 4.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp, if (floating) Alignment.Top else Alignment.CenterVertically),
     ) {
