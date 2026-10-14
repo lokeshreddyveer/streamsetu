@@ -22,3 +22,10 @@ web/tsconfig.tsbuildinfo
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+# android signing
+*.keystore
+*.jks
+android/keystore.properties
+android/**/build/
+android/.gradle/
+android/local.properties
