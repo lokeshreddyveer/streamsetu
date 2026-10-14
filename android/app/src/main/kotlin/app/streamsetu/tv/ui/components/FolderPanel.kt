@@ -91,6 +91,9 @@ fun FolderPanel(
     val rows: List<Any> = shownShortcuts + visible
     val selectedKey: Any? = when (selected) { is Browse.Folder -> "f:${selected.id}"; else -> shortcuts.firstOrNull { it.browse == selected }?.let { "s:${it.label}" } }
 
+    // The highlight stays in one place: once the remote is a few rows down, the list moves under it instead of the highlight moving down the panel.
+    var focusedIdx by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(focusedIdx) { if (focusedIdx >= 0) runCatching { listState.animateScrollToItem((focusedIdx - 3).coerceAtLeast(0)) } }
     BackHandler(enabled = reordering != null) { reordering = null }
     // The open folder's row must exist for the remote to land on it: bring it into view when the panel appears or the selection changes.
     LaunchedEffect(selectedKey) { val i = rows.indexOfFirst { (it is Shortcut && "s:${it.label}" == selectedKey) || (it is Folder && "f:${it.id}" == selectedKey) }; if (i > 3) runCatching { listState.scrollToItem(i - 2) } }
@@ -132,14 +135,14 @@ fun FolderPanel(
                     // A small heading where the shortcuts end and the provider's folders begin.
                     if (r is Folder && (idx == 0 || rows[idx - 1] is Shortcut) && visible.isNotEmpty()) Label("FOLDERS", Tokens.eyebrow, Tokens.textTertiary, FontWeight.Bold, modifier = Modifier.padding(start = 10.dp, top = if (idx == 0) 2.dp else 8.dp, bottom = 2.dp), letterSpacing = androidx.compose.ui.unit.TextUnit(1.4f, androidx.compose.ui.unit.TextUnitType.Sp))
                     if (r is Shortcut) {
-                        PanelRow(r.label, r.icon, null, r.browse == selected, false, if (r.browse == selected && entry != null) Modifier.focusRequester(entry) else Modifier, onFocusDwell = { if (selectOnDwell) onSelect(r.browse) }, onLongClick = if (r.browse is Browse.Collection) ({ onShortcutMenu(r) }) else null, onClick = { onSelect(r.browse) })
+                        PanelRow(r.label, r.icon, null, r.browse == selected, false, if (r.browse == selected && entry != null) Modifier.focusRequester(entry) else Modifier, onFocusDwell = { if (selectOnDwell) onSelect(r.browse) }, onRowFocus = { focusedIdx = idx }, onLongClick = if (r.browse is Browse.Collection) ({ onShortcutMenu(r) }) else null, onClick = { onSelect(r.browse) })
                     } else {
                         val f = r as Folder
                         val isSel = selected == Browse.Folder(f.id)
                         PanelRow(
                             f.title, if (f.pref.locked) Icons.Filled.Lock else if (f.pref.pinned) Icons.Filled.PushPin else if (f.pref.favorite) Icons.Filled.Star else Icons.Filled.Folder,
                             f.count.takeIf { it > 0 }, isSel, f.pref.hidden, (if (reordering == f.id) Modifier.background(Tokens.accent.copy(alpha = 0.18f)) else Modifier).then(if (isSel && entry != null) Modifier.focusRequester(entry) else Modifier),
-                            onFocusDwell = { if (selectOnDwell && !(f.pref.locked && !actions.isUnlocked(f.id))) onSelect(Browse.Folder(f.id)) },
+                            onFocusDwell = { if (selectOnDwell && !(f.pref.locked && !actions.isUnlocked(f.id))) onSelect(Browse.Folder(f.id)) }, onRowFocus = { focusedIdx = idx },
                             onLongClick = { menuFor = f }, onClick = { open(f) }, reordering = reordering == f.id,
                         )
                     }
@@ -210,13 +213,13 @@ private fun PanelAction(label: String, icon: ImageVector, modifier: Modifier, hi
 }
 
 @Composable
-private fun PanelRow(label: String, icon: ImageVector, count: Int?, selected: Boolean, dimmed: Boolean, extra: Modifier, onFocusDwell: () -> Unit = {}, onLongClick: (() -> Unit)? = null, reordering: Boolean = false, onClick: () -> Unit) {
+private fun PanelRow(label: String, icon: ImageVector, count: Int?, selected: Boolean, dimmed: Boolean, extra: Modifier, onFocusDwell: () -> Unit = {}, onRowFocus: () -> Unit = {}, onLongClick: (() -> Unit)? = null, reordering: Boolean = false, onClick: () -> Unit) {
     var dwellKey by remember { mutableIntStateOf(0) }
     var focused by remember { mutableStateOf(false) }
     // Moving the remote over folders opens one only after a short pause, so scrolling through many folders stays light.
     LaunchedEffect(dwellKey, focused) { if (focused) { kotlinx.coroutines.delay(260); onFocusDwell() } }
     // One row: [accent bar 3] [icon box 36] [name, one line] [count]. The bar marks the open folder; the soft fill marks where the remote is.
-    Focusable(onClick, extra.fillMaxWidth().height(36.dp), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color(0x26FFFFFF), shape = RoundedCornerShape(12.dp), onFocus = { focused = it; dwellKey++ }, onLongClick = onLongClick) { f ->
+    Focusable(onClick, extra.fillMaxWidth().height(36.dp), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color(0x26FFFFFF), shape = RoundedCornerShape(12.dp), onFocus = { focused = it; dwellKey++; if (it) onRowFocus() }, onLongClick = onLongClick) { f ->
         Row(Modifier.fillMaxHeight().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.padding(start = 2.dp).width(3.dp).height(16.dp).background(if (selected) Tokens.accent else Color.Transparent, RoundedCornerShape(2.dp)))
             Box(Modifier.width(28.dp), Alignment.Center) {

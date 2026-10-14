@@ -83,51 +83,50 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
     LaunchedEffect(initial) { if (initial != null && !focused) { delay(120); runCatching { initialFocus.requestFocus() } } }
     LaunchedEffect(initial) { if (previewId == null) previewId = initial }
 
-    Box(Modifier.fillMaxSize().background(Night))
-    Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical)) {
-        // The mark on the left, the time on the right. Nothing else competes with the list.
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(36.dp).clip(RoundedCornerShape(9.dp)))
-            Spacer(Modifier.width(10.dp))
-            Label("Stream", Tokens.title, Tokens.text, FontWeight.Bold); Label("Setu", Tokens.title, Gold, FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
-            Label(java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(System.currentTimeMillis())), Tokens.row, Tokens.textSecondary)
+    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0xFF16202C), Night), center = androidx.compose.ui.geometry.Offset(960f, 300f), radius = 1300f)))
+    Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), horizontalAlignment = Alignment.CenterHorizontally) {
+        // The mark, centred, with the time off to the side. Nothing else competes with the choice.
+        Box(Modifier.fillMaxWidth()) {
+            Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
+                Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(44.dp).clip(RoundedCornerShape(11.dp)))
+                Spacer(Modifier.width(12.dp))
+                Label("Stream", Tokens.pageTitle, Tokens.text, FontWeight.Bold); Label("Setu", Tokens.pageTitle, Gold, FontWeight.Bold)
+            }
+            Label(java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(System.currentTimeMillis())), Tokens.row, Tokens.textSecondary, modifier = Modifier.align(Alignment.CenterEnd))
         }
-        Column(Modifier.weight(1f).widthIn(max = 760.dp).align(Alignment.CenterHorizontally), verticalArrangement = Arrangement.Center) {
-            Label("Choose a library", Tokens.display, Tokens.text, FontWeight.Bold)
-            // What is in the library the remote is on.
-            Label(
-                when {
-                    preview == null -> "Add a connection to get started."
-                    preview.kind == LibraryEntry.Kind.UNFINISHED -> "Setup was not finished. Continue where you left off."
-                    preview.kind == LibraryEntry.Kind.COMBINED -> "%,d channels  ·  %,d movies  ·  %,d series".format(preview.channelCount, preview.movieCount, preview.seriesCount)
-                    else -> "%,d channels  ·  %,d movies  ·  %,d series  ·  last read %s".format(preview.channelCount, preview.movieCount, preview.seriesCount, lastSync(preview.lastSyncAt))
-                }, Tokens.body, Tokens.textSecondary, maxLines = 1, modifier = Modifier.padding(top = 4.dp, bottom = 14.dp))
-            if (preview?.health == LibraryEntry.Health.LAST_READ_FAILED) Label("Offline or needs attention: opening uses what is saved on this device.", Tokens.small, Amber, modifier = Modifier.padding(bottom = 8.dp))
-            if (list == null) Loading(Modifier.height(80.dp)) else LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(list.filter { it.kind == LibraryEntry.Kind.COMBINED }, key = { it.id }) { LibraryRow(it, it.id == initial, initialFocus, nav, vm, { previewId = it.id }) { focused = true } }
-                items(list.filter { it.kind == LibraryEntry.Kind.CONNECTION }, key = { it.id }) { LibraryRow(it, it.id == initial, initialFocus, nav, vm, { previewId = it.id }) { focused = true } }
-                items(list.filter { it.kind == LibraryEntry.Kind.UNFINISHED }, key = { it.id }) { LibraryRow(it, it.id == initial, initialFocus, nav, vm, { previewId = it.id }) { focused = true } }
-                item(key = "add") {
-                    Focusable({ addMenu = true }, Modifier.fillMaxWidth().padding(top = 4.dp), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color(0xFF1A1A1B), ring = Gold, shape = RoundedCornerShape(14.dp)) { f ->
-                        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Image(Icons.Filled.Add, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(if (f) Gold else Tokens.textSecondary))
-                            Label("Add a library", Tokens.row, if (f) Tokens.text else Tokens.textSecondary, FontWeight.Medium)
-                        }
+        Spacer(Modifier.weight(1f))
+        Label(if (list.isNullOrEmpty()) "Welcome" else "Who is watching?", Tokens.display, Tokens.text, FontWeight.Bold)
+        Label(if (list.isNullOrEmpty()) "Add a connection to get started." else "Choose a library to open.", Tokens.body, Tokens.textSecondary, modifier = Modifier.padding(top = 2.dp, bottom = 26.dp))
+        if (list == null) Loading(Modifier.height(120.dp)) else androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp)) {
+            val ordered = list.filter { it.kind == LibraryEntry.Kind.COMBINED } + list.filter { it.kind == LibraryEntry.Kind.CONNECTION } + list.filter { it.kind == LibraryEntry.Kind.UNFINISHED }
+            items(ordered, key = { it.id }) { LibraryTile(it, it.id == initial, initialFocus, nav, vm, { previewId = it.id }) { focused = true } }
+            item(key = "add") {
+                Focusable({ addMenu = true }, Modifier.width(200.dp).height(190.dp), scaleOnFocus = 1.06f, container = Color(0x0DFFFFFF), focusedContainer = Color(0xFF1A1F27), ring = Gold, shape = RoundedCornerShape(22.dp), hairline = true) { f ->
+                    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        Image(Icons.Filled.Add, null, Modifier.size(40.dp), colorFilter = ColorFilter.tint(if (f) Gold else Tokens.textSecondary))
+                        Label("Add a library", Tokens.row, if (f) Tokens.text else Tokens.textSecondary, FontWeight.Medium, modifier = Modifier.padding(top = 10.dp))
                     }
                 }
             }
         }
-        // The few other things this screen offers, and how to reach the rest.
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        // What is in the library the remote is on.
+        Label(
+            when {
+                preview == null || list.isNullOrEmpty() -> ""
+                preview.kind == LibraryEntry.Kind.UNFINISHED -> "Setup was not finished. Continue where you left off."
+                preview.kind == LibraryEntry.Kind.COMBINED -> "%,d channels  ·  %,d movies  ·  %,d series".format(preview.channelCount, preview.movieCount, preview.seriesCount)
+                else -> "%,d channels  ·  %,d movies  ·  %,d series  ·  last read %s".format(preview.channelCount, preview.movieCount, preview.seriesCount, lastSync(preview.lastSyncAt))
+            }, Tokens.body, Tokens.textSecondary, maxLines = 1, modifier = Modifier.padding(top = 14.dp))
+        if (preview?.health == LibraryEntry.Health.LAST_READ_FAILED) Label("Offline or needs attention: opening uses what is saved on this device.", Tokens.small, Amber, modifier = Modifier.padding(top = 4.dp))
+        Spacer(Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             GhostPill("Settings", Icons.Filled.Settings) { nav.openSettingsFromChooser() }
             if (preview != null) GhostPill("Manage", Icons.Filled.Tune) { nav.open(Overlay.ManageLibrary(preview)) }
             if (preview != null && preview.kind != LibraryEntry.Kind.UNFINISHED) GhostPill("Details", Icons.Filled.Info) {
                 if (preview.kind == LibraryEntry.Kind.COMBINED) nav.base = Base.Combined(preview) else nav.base = Base.Setup(typeOf(preview), preview.sourceIds.first())
             }
-            Spacer(Modifier.weight(1f))
-            Label("OK to open  ·  hold OK to manage", Tokens.small, Tokens.textTertiary)
         }
+        Label("OK to open  ·  hold OK to manage", Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(top = 10.dp))
     }
     if (recentMenu) {
         val recent = list.orEmpty().filter { it.usable && it.lastOpenedAt > 0 }.sortedByDescending { it.lastOpenedAt }.take(6)
@@ -204,7 +203,7 @@ private fun QuickTile(title: String, sub: String, icon: ImageVector, bg: Color, 
 private fun typeOf(e: LibraryEntry) = SourceType.fromLabel(e.typeLabel)
 
 @Composable
-private fun LibraryRow(e: LibraryEntry, isInitial: Boolean, initialFocus: FocusRequester, nav: Navigator, vm: LibraryViewModel, onPreview: () -> Unit, onFocused: () -> Unit) {
+private fun LibraryTile(e: LibraryEntry, isInitial: Boolean, initialFocus: FocusRequester, nav: Navigator, vm: LibraryViewModel, onPreview: () -> Unit, onFocused: () -> Unit) {
     val (tileBg, tileTint) = when {
         e.kind == LibraryEntry.Kind.COMBINED -> Color(0xFF2A2A2C) to Color.White
         e.kind == LibraryEntry.Kind.UNFINISHED -> Color(0xFF4A3A14) to Gold
@@ -214,20 +213,17 @@ private fun LibraryRow(e: LibraryEntry, isInitial: Boolean, initialFocus: FocusR
     }
     Focusable(
         onClick = { if (e.kind == LibraryEntry.Kind.UNFINISHED) nav.base = Base.Setup(typeOf(e), e.sourceIds.first()) else vm.open(e) { nav.enterLibrary() } },
-        modifier = (if (isInitial) Modifier.focusRequester(initialFocus) else Modifier).fillMaxWidth(),
-        scaleOnFocus = 1.0f, container = Color(0xFF0E1218), focusedContainer = Color(0xFF1A1F27), ring = Gold, shape = RoundedCornerShape(14.dp),
+        modifier = (if (isInitial) Modifier.focusRequester(initialFocus) else Modifier).width(240.dp).height(190.dp),
+        scaleOnFocus = 1.06f, container = Color(0xFF0E1218), focusedContainer = Color(0xFF1A1F27), ring = Gold, shape = RoundedCornerShape(22.dp), hairline = true,
         onFocus = { if (it) { onPreview(); onFocused() } },
         onLongClick = { nav.open(Overlay.ManageLibrary(e)) },
     ) { _ ->
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Image(typeIcon(e), null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(tileTint))
-            Column(Modifier.weight(1f)) {
-                Label(e.name, Tokens.title, Tokens.text, FontWeight.SemiBold, maxLines = 1)
-                Label(if (e.kind == LibraryEntry.Kind.COMBINED) "Combined  ·  ${e.sourceIds.size} source${if (e.sourceIds.size == 1) "" else "s"}" else e.typeLabel, Tokens.small, Tokens.textSecondary, maxLines = 1)
-            }
-            if (e.kind != LibraryEntry.Kind.COMBINED) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.size(8.dp).background(healthColor(e), CircleShape))
-                Label(when (e.health) { LibraryEntry.Health.OK -> "Ready"; LibraryEntry.Health.UNFINISHED -> "Unfinished"; LibraryEntry.Health.NEVER_READ -> "Not read yet"; LibraryEntry.Health.LAST_READ_FAILED -> "Needs attention" }, Tokens.caption, Tokens.textSecondary)
+        Column(Modifier.fillMaxSize().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            IconTile(typeIcon(e), tileBg, tileTint, 64)
+            Label(e.name, Tokens.title, Tokens.text, FontWeight.SemiBold, maxLines = 1, modifier = Modifier.padding(top = 12.dp))
+            Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (e.kind != LibraryEntry.Kind.COMBINED) Box(Modifier.size(8.dp).background(healthColor(e), CircleShape))
+                Label(if (e.kind == LibraryEntry.Kind.COMBINED) "Combined" else if (e.kind == LibraryEntry.Kind.UNFINISHED) "Unfinished" else e.typeLabel, Tokens.caption, Tokens.textSecondary, maxLines = 1)
             }
         }
     }

@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.streamsetu.core.model.*
 import app.streamsetu.core.playback.*
+import androidx.compose.ui.draw.clip
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.nav.Navigator
 import app.streamsetu.tv.ui.components.*
@@ -68,10 +69,13 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
     BackHandler(enabled = inPanel) { runCatching { rows[current]?.requestFocus() } }
 
     Row(Modifier.fillMaxSize()) {
-        Column(Modifier.weight(0.32f).fillMaxHeight().background(Tokens.panel).padding(horizontal = 8.dp, vertical = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            Label("Settings", Tokens.pageTitle, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
-            Label("StreamSetu · Fire TV", Tokens.caption, Tokens.textTertiary, modifier = Modifier.padding(start = 8.dp, bottom = 6.dp))
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        // Left: the categories, each with an icon tile and a line saying what is inside.
+        Column(Modifier.weight(0.34f).fillMaxHeight().background(Tokens.panel).padding(horizontal = 12.dp, vertical = Tokens.safeVertical)) {
+            Row(Modifier.padding(start = 8.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)))
+                Column { Label("Settings", Tokens.pageTitle, Tokens.text, FontWeight.Bold); Label("StreamSetu " + app.streamsetu.tv.BuildConfig.VERSION_NAME, Tokens.caption, Tokens.textTertiary) }
+            }
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Category.entries.forEach { cat ->
                     val isSel = cat == current
                     var dwell by remember { mutableStateOf(false) }
@@ -79,19 +83,27 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
                     Focusable({ selected = cat.name; focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right) },
                         (if (isSel) Modifier.focusRequester(listEntry) else Modifier).then(Modifier.focusRequester(rows.getValue(cat))).fillMaxWidth()
                             .onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { selected = cat.name; focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right) } else false },
-                        shape = RoundedCornerShape(8.dp), container = if (isSel) Tokens.elevated else Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.0f, onFocus = { dwell = it }) { f ->
-                        Row(Modifier.padding(horizontal = 9.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                            androidx.compose.foundation.Image(cat.icon, null, Modifier.size(15.dp), colorFilter = ColorFilter.tint(if (isSel || f) Tokens.accent else Tokens.textTertiary))
-                            Label(cat.title, Tokens.row, if (isSel) Tokens.text else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Normal)
+                        shape = RoundedCornerShape(14.dp), container = if (isSel) Tokens.elevated else Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.0f, onFocus = { dwell = it }) { f ->
+                        Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(if (isSel || f) Tokens.accent.copy(alpha = 0.22f) else Color(0x14FFFFFF)), Alignment.Center) {
+                                androidx.compose.foundation.Image(cat.icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (isSel || f) Tokens.accent else Tokens.textSecondary))
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Label(cat.title, Tokens.row, if (isSel || f) Tokens.text else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium)
+                                Label(cat.subtitle, Tokens.caption, Tokens.textTertiary)
+                            }
                         }
                     }
                 }
             }
         }
-        Column(Modifier.weight(0.68f).fillMaxHeight().onFocusChanged { inPanel = it.hasFocus }.verticalScroll(rememberScrollState()).padding(start = 22.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column {
-                Label(current.title, Tokens.pageTitle, Tokens.text, FontWeight.Bold)
-                Label(current.subtitle, Tokens.small, Tokens.textSecondary)
+        // Right: a header for the category, then its groups.
+        Column(Modifier.weight(0.66f).fillMaxHeight().onFocusChanged { inPanel = it.hasFocus }.verticalScroll(rememberScrollState()).padding(start = 26.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Box(Modifier.size(52.dp).clip(RoundedCornerShape(15.dp)).background(Tokens.accent.copy(alpha = 0.20f)), Alignment.Center) {
+                    androidx.compose.foundation.Image(current.icon, null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(Tokens.accent))
+                }
+                Column { Label(current.title, Tokens.display, Tokens.text, FontWeight.Bold); Label(current.subtitle, Tokens.small, Tokens.textSecondary) }
             }
             SettingsPanel(current, c, nav)
         }

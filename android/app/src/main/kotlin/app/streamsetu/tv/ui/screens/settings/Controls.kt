@@ -19,8 +19,8 @@ import kotlinx.coroutines.delay
 @Composable
 fun SettingGroup(title: String, footer: String? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth()) {
-        Eyebrow(title, Modifier.padding(start = 4.dp, bottom = 6.dp))
-        Column(Modifier.fillMaxWidth().background(Tokens.card, RoundedCornerShape(Tokens.radiusPanel)), content = content)
+        Eyebrow(title, Modifier.padding(start = 4.dp, bottom = 8.dp))
+        Column(Modifier.fillMaxWidth().background(Tokens.card, RoundedCornerShape(18.dp)).padding(vertical = 6.dp, horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
         if (footer != null) Label(footer, Tokens.caption, Tokens.textTertiary, maxLines = 3, modifier = Modifier.padding(start = 4.dp, top = 6.dp))
     }
 }
@@ -30,15 +30,17 @@ fun SettingGroup(title: String, footer: String? = null, content: @Composable Col
  * and does nothing when pressed (it never just looks dead).
  */
 @Composable
-fun SettingRow(title: String, detail: String? = null, value: String? = null, enabled: Boolean = true, reason: String? = null, danger: Boolean = false, onClick: () -> Unit = {}) {
-    Focusable(if (enabled) onClick else ({}), Modifier.fillMaxWidth(), shape = RoundedCornerShape(Tokens.radiusSmall), container = Color.Transparent, scaleOnFocus = 1.0f) { f ->
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+fun SettingRow(title: String, detail: String? = null, value: String? = null, enabled: Boolean = true, reason: String? = null, danger: Boolean = false, switch: Boolean? = null, onClick: () -> Unit = {}) {
+    Focusable(if (enabled) onClick else ({}), Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), container = Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.0f) { f ->
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Label(title, Tokens.row, if (!enabled) Tokens.textTertiary else if (danger) Tokens.danger else Tokens.text, FontWeight.Medium)
                 if (detail != null) Label(detail, Tokens.caption, Tokens.textSecondary, maxLines = 3)
                 if (!enabled && reason != null) Label(reason, Tokens.caption, Tokens.warning, maxLines = 3)
             }
-            if (value != null) Label(value, Tokens.row, if (!enabled) Tokens.textTertiary else if (f) Tokens.accent else Tokens.textSecondary, FontWeight.Medium, maxLines = 2, modifier = Modifier.widthIn(max = 220.dp))
+            if (switch != null) Box(Modifier.width(48.dp).height(26.dp).background(if (!enabled) Color(0x14FFFFFF) else if (switch) Tokens.accent else Color(0x33FFFFFF), RoundedCornerShape(13.dp)).padding(3.dp)) {
+                Box(Modifier.align(if (switch) Alignment.CenterEnd else Alignment.CenterStart).size(20.dp).background(Color.White, androidx.compose.foundation.shape.CircleShape))
+            } else if (value != null) Label(value, Tokens.row, if (!enabled) Tokens.textTertiary else if (f) Tokens.accent else Tokens.textSecondary, FontWeight.Medium, maxLines = 2, modifier = Modifier.widthIn(max = 220.dp))
         }
     }
 }
@@ -53,7 +55,7 @@ fun <T> ChoiceRow(title: String, detail: String? = null, options: List<Pair<T, S
 
 @Composable
 fun ToggleRow(title: String, detail: String? = null, on: Boolean, enabled: Boolean = true, reason: String? = null, onChange: (Boolean) -> Unit) =
-    SettingRow(title, detail, if (on) "On" else "Off", enabled, reason) { onChange(!on) }
+    SettingRow(title, detail, if (on) "On" else "Off", enabled, reason, switch = on) { onChange(!on) }
 
 /** A button-like row. A destructive one needs a second press within a few seconds; a small note says so. */
 @Composable
