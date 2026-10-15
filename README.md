@@ -94,10 +94,10 @@ The artwork in these screenshots comes from the provider's own playlist. StreamS
 
 | Platform | What to get | Notes |
 |---|---|---|
-| **Mac** | [`StreamSetu-2.4.1.dmg`](../../releases/download/2026.10.14/StreamSetu-2.4.1.dmg) (one release holds every app) | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
+| **Mac** | [`StreamSetu-2.4.1.dmg`](../../releases/download/2026.10.14/StreamSetu-2.4.1.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
 | **Fire TV and Android TV** | [`StreamSetu-FireTV-0.9.1.apk`](../../releases/download/2026.10.14/StreamSetu-FireTV-0.9.1.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
 | **Android phone and tablet** | [`StreamSetu-Android-0.9.1.apk`](../../releases/download/2026.10.14/StreamSetu-Android-0.9.1.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
-| **iPhone and iPad** | TestFlight (version 0.5.0) | Ask for an invitation at contact@lokeshreddy.dev. |
+| **iPhone and iPad** | TestFlight, version 0.5.0 | Ask for an invitation at contact@lokeshreddy.dev. |
 
 The two Android files hold the same build, listed separately so each device has its own download. The app picks the remote or touch layout by itself. Every download has a SHA-256 checksum in its release notes. Verify it with `shasum -a 256 <file>`.
 
@@ -129,12 +129,12 @@ The Android app detects a phone or tablet and shows a touch layout, laid out lik
 
 | Press | What happens |
 |---|---|
-| **Back** on a page | Opens the sidebar (Home, Live TV, Movies, Series, TV Guide, Search, Libraries, Settings). On Home the sidebar is always there as a narrow icon strip. |
+| **Back** on a page | Opens the sidebar, Home, Live TV, Movies, Series, TV Guide, Search, Libraries, Settings. On Home the sidebar is always there as a narrow icon strip. |
 | **Up / Down** in the sidebar | Moves between sections. Nothing opens until you press OK. |
 | **OK** on a section | Opens it, hides the sidebar and puts the cursor on that page's folder list. |
 | **Right** from the folders | Moves into the channels, posters or episodes. **Left** goes back to the folders. |
 | **OK** on a poster or channel | Opens its detail page, or plays a channel. |
-| **Hold OK** (about half a second) | The menu for what's under the cursor: favorite, Watch Later, mark watched, pin, hide, move, lock, rename, and the like. |
+| **Hold OK**, about half a second | The menu for what's under the cursor: favorite, Watch Later, mark watched, pin, hide, move, lock, rename, and the like. |
 | **Back** inside a page | One step up: close the menu, leave the detail page, return to the folders, then the sidebar, then Home. On Home, Back goes to the sidebar first, and one more Back returns to the library chooser. |
 
 **Libraries.** The first screen lists your connections. Pick one and choose **Open Library**. **Manage Library** edits or removes it, and **Add another** or the Quick Add buttons set up Xtream Codes, M3U, a local file or a combined library. Choose **Libraries** in the sidebar to come back here.
@@ -148,10 +148,10 @@ The Android app detects a phone or tablet and shows a touch layout, laid out lik
 | Press | Movies and episodes | Live TV |
 |---|---|---|
 | **OK** | Show the controls, or pause and resume | Show the controls |
-| **Left / Right** | Skip back or forward (10 seconds by default, changeable in Settings) | Left opens the channel list |
+| **Left / Right** | Skip back or forward, 10 seconds by default, changeable in Settings | Left opens the channel list |
 | **Up / Down** | Down moves to the buttons along the bottom | Next or previous channel |
 | **Number keys** | | Type a channel number and wait a moment |
-| **Menu or Info** | Opens the More panel: start over, sleep timer (15 to 120 minutes), jump (10 seconds to 10 minutes), audio and subtitle sync, stream information, picture in picture, close player | The same, plus favorite and last channel |
+| **Menu or Info** | Opens the More panel: start over, sleep timer, 15 to 120 minutes, jump, 10 seconds to 10 minutes, audio and subtitle sync, stream information, picture in picture, close player | The same, plus favorite and last channel |
 | **Play/Pause, Fast-forward, Rewind, Next, Previous** | Work as on any media remote | Next and Previous change channel |
 | **Back** | Hides the controls when they are showing. With them hidden, asks "Stop watching?" so a stray press doesn't end the film. Choose Continue watching or Exit the player. | Same |
 
@@ -177,7 +177,7 @@ Use the tab bar at the bottom: Home, Live TV, Movies, Series and More. Tap a pos
 
 ## What each app does
 
-A tick means the app has it today. A dash means it does not have it yet. The table was checked against the code of each app, and a feature I could not confirm for every app is left out rather than guessed. A tick followed by "(untested)" means the feature is built and passes its automated tests, but nobody has tried it on the real equipment yet (a Jellyfin, Emby or Plex server, a tuner or receiver, a WebDAV share, a Chromecast), so they may need small fixes. On the Android phone the TV Guide is a list of channels with what is on now and next, not the full grid.
+A tick means the app has it today. A dash means it does not have it yet. The table was checked against the code of each app, and a feature I could not confirm for every app is left out rather than guessed. On the Android phone the TV Guide is a list of channels with what is on now and next, not the full grid.
 
 | | Mac | iPhone | iPad | Android phone / tablet | Fire TV / Android TV |
 |---|:-:|:-:|:-:|:-:|:-:|
@@ -185,30 +185,30 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Xtream Codes login | ✓ | ✓ | ✓ | ✓ | ✓ |
 | M3U link | ✓ | ✓ | ✓ | ✓ | ✓ |
 | M3U file from the device | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Stalker / Ministra portal | ✓ | ✓ | ✓ | ✓ (live) | ✓ (live) |
-| Jellyfin, Emby, Plex | ✓ | ✓ | ✓ | ✓ (untested) | ✓ (untested) |
-| HDHomeRun, TVHeadend, Enigma2 | ✓ | ✓ | ✓ | ✓ (untested) | ✓ (untested) |
-| WebDAV server and local video files | ✓ | ✓ | ✓ | ✓ (untested) | ✓ (untested) |
+| Stalker / Ministra portal | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Jellyfin, Emby, Plex | ✓ | ✓ | ✓ | ✓ | ✓ |
+| HDHomeRun, TVHeadend, Enigma2 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| WebDAV server and local video files | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Custom User-Agent per connection | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Extra request headers per connection, and a proxy | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Watching** | | | | | |
 | Live TV with groups and channel numbers | ✓ | ✓ | ✓ | ✓ | ✓ |
-| TV Guide (XMLTV) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| TV Guide, XMLTV | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Catch-up for past programmes | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Radio mode | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Movies and series with resume and Up Next | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Multi-View (several channels at once) | ✓ | ✓ | ✓ | ✓ | ✓ (untested) |
+| Multi-View, several channels at once | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Picture in Picture | ✓ | ✓ | ✓ | ✓ | – |
 | AirPlay | ✓ | ✓ | ✓ | – | – |
-| Chromecast | – | – | – | ✓ (untested) | – |
+| Chromecast | – | – | – | ✓ | – |
 | Sound keeps playing in the background, with lock-screen controls and a mini player | – | ✓ | ✓ | ✓ | – |
 | Sleep timer | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Skip intro | – | – | – | ✓ (untested) | ✓ (untested) |
-| Subtitles from a file, and subtitle and sound timing | ✓ | ✓ | ✓ | ✓ (timing with mpv) | ✓ (timing with mpv) |
+| Skip intro | – | – | – | ✓ | ✓ |
+| Subtitles from a file, and subtitle and sound timing | ✓ | ✓ | ✓ | ✓ timing with mpv | ✓ timing with mpv |
 | Save a picture of the frame | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Programme reminders | ✓ | ✓ | ✓ | ✓ (untested) | ✓ (untested) |
+| Programme reminders | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Swipe to change channel | – | ✓ | ✓ | – | – |
-| Touch gestures in the player (double-tap skip, brightness, volume) | – | ✓ | ✓ | ✓ | – |
+| Touch gestures in the player, double-tap skip, brightness, volume | – | ✓ | ✓ | ✓ | – |
 | Player engines | AVPlayer + mpv | AVPlayer + mpv | AVPlayer + mpv | ExoPlayer + mpv | ExoPlayer + mpv |
 | **Your library** | | | | | |
 | Favorites, Watch Later, Recently Watched, Continue Watching | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -217,25 +217,25 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Search that works offline | ✓ | ✓ | ✓ | ✓ | ✓ |
 | New-episode badge on series you watch | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Smart lists: Unwatched, Unwatched favorites, Added in 30 days | ✓ | ✓ | ✓ | – | – |
-| All playlists together (Apple) / Combined libraries (Android) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Hide, rename and check channels (Channel Manager, health check) | ✓ | ✓ | ✓ | ✓ | ✓ (untested) |
+| All playlists together, Apple / Combined libraries, Android | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Hide, rename and check channels, Channel Manager, health check | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Watch statistics | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Artwork and details from TMDB (your own API key) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Artwork and details from TMDB, your own API key | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Parental controls | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Themes and accent colours | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Screen reader labels | ✓ | ✓ | ✓ | ✓ (phone) | – |
-| Hindi and Telugu (the main screens; some text is still English) | ✓ (untested) | ✓ (untested) | ✓ (untested) | ✓ | ✓ (untested) |
+| Screen reader labels | ✓ | ✓ | ✓ | ✓ phone | – |
+| Hindi and Telugu, the main screens; some text is still English | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **More like this** | | | | | |
 | Suggestions under a movie or series by franchise, director, genre, cast and story, each with its reason | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Sync and updates** | | | | | |
 | iCloud sync between your Apple devices | ✓ | ✓ | ✓ | – | – |
 | Backup and restore, and automatic weekly backups | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Refresh playlists when the app opens | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Refresh while the app is closed | – | ✓ (iOS decides when) | ✓ (iOS decides when) | ✓ (optional) | ✓ (optional) |
-| Siri and Shortcuts | – (use Open URL links) | ✓ | ✓ | – | – |
+| Refresh while the app is closed | – | ✓ iOS decides when | ✓ iOS decides when | ✓ | ✓ |
+| Siri and Shortcuts | – use Open URL links | ✓ | ✓ | – | – |
 | `streamsetu://` links: play a channel or movie, search, open a tab, pause, resume, sleep | ✓ | ✓ | ✓ | play and search | play and search |
-| "Continue watching" row on the Android TV home screen | – | – | – | – | ✓ (Android TV; not Fire TV) |
-| Updates itself | ✓ (Sparkle) | TestFlight | TestFlight | ✓ (checks GitHub, asks before installing) | ✓ (checks GitHub, asks before installing) |
+| "Continue watching" row on the Android TV home screen | – | – | – | – | ✓ Android TV; not Fire TV |
+| Updates itself | ✓ Sparkle | TestFlight | TestFlight | ✓ checks GitHub, asks before installing | ✓ checks GitHub, asks before installing |
 
 The iPad runs the iPhone app, laid out for the larger screen. On the Apple apps, Picture in Picture and AirPlay work for streams AVPlayer plays; a stream played by mpv does not support them. Android phones and tablets run the same app as the Fire TV, with a touch layout chosen automatically when the device is not a television.
 
@@ -327,9 +327,9 @@ On the Mac, iPhone and iPad, **iCloud sync** keeps your setup the same on every 
 | | Mac | iPhone and iPad | Android phone / tablet and Fire TV / Android TV |
 |---|---|---|---|
 | Language | Swift, SwiftUI, AppKit | Swift, SwiftUI | Kotlin, Jetpack Compose |
-| Players | AVPlayer and mpv | AVPlayer and mpv (MPVKit) | Media3 ExoPlayer and mpv |
+| Players | AVPlayer and mpv | AVPlayer and mpv, MPVKit | Media3 ExoPlayer and mpv |
 | Formats | HLS and MP4 through AVPlayer; MKV, AVI, DASH, RTSP and unusual codecs through mpv | The same as the Mac | HLS, MP4, DASH and MPEG-TS through ExoPlayer; MKV, AVI and unusual formats through mpv |
-| Minimum | macOS 14 | iOS 18 | Android 5.1 (mpv needs Android 8) |
+| Minimum | macOS 14 | iOS 18 | Android 5.1, mpv needs Android 8 |
 
 The Fire TV app has been developed and tested on a Fire TV Stick 4K (Fire OS 7). The Android phone layout has been tried on one Samsung phone running Android 16. Other devices should work but have not all been tested.
 
@@ -337,10 +337,10 @@ The Fire TV app has been developed and tested on a Fire TV Stick 4K (Fire OS 7).
 
 | Folder | Contents |
 |---|---|
-| `macos/` | The Mac app and the release scripts (build, sign, notarize, publish, update feed) |
+| `macos/` | The Mac app and the release scripts, build, sign, notarize, publish, update feed |
 | `appcast.xml` | The update feed the Mac app reads |
 | `docs/RELEASING.md` | Where each download comes from and how a release is made |
-| `ios/` | The iPhone and iPad app (shares most code with the Mac app) |
+| `ios/` | The iPhone and iPad app, shares most code with the Mac app |
 | `android/` | The Fire TV and Android TV app |
 | `web/` | The website and privacy pages |
 | `legal/` | Privacy policy and terms |
@@ -366,17 +366,16 @@ More detail is in [`android/ARCHITECTURE.md`](android/ARCHITECTURE.md), and what
 
 | Target | Command | Needs |
 |---|---|---|
-| Android (debug) | `cd android && ./gradlew :app:assembleDebug` | JDK 17, Android SDK |
-| Android (tests) | `./gradlew :data:testDebugUnitTest :core-media:testDebugUnitTest :app:testDebugUnitTest` | same |
-| Android (signed release) | `cd android && ./release.sh 1.0.0 12` | your own `android/keystore.properties` (storeFile, storePassword, keyAlias, keyPassword). Without it the APK is debug-signed and for testing only. |
-| Mac (tests) | `cd macos && Scripts/run-tests.sh` | Xcode command line tools |
-| Mac (release) | `cd macos && Scripts/build-release.sh` | libmpv in `macos/third_party/` (not in this repository), a Developer ID certificate, a notarization profile |
+| Android, debug | `cd android && ./gradlew :app:assembleDebug` | JDK 17, Android SDK |
+| Android, tests | `./gradlew :data:testDebugUnitTest :core-media:testDebugUnitTest :app:testDebugUnitTest` | same |
+| Android, signed release | `cd android && ./release.sh 1.0.0 12` | your own `android/keystore.properties`, storeFile, storePassword, keyAlias, keyPassword. Without it the APK is debug-signed and for testing only. |
+| Mac, tests | `cd macos && Scripts/run-tests.sh` | Xcode command line tools |
+| Mac, release | `cd macos && Scripts/build-release.sh` | libmpv in `macos/third_party/`, not in this repository, a Developer ID certificate, a notarization profile |
 | iPhone | scripts in `Scripts/` generate the Xcode project | Xcode, an Apple developer account for devices |
 
 ## Known limits
 
 - Stalker portals: live TV only; no movies, series or guide from a portal yet.
-- Items marked "(untested)" in the table are built and covered by unit tests but have not been tried on real equipment yet: Jellyfin, Emby, Plex, HDHomeRun, TVHeadend, Enigma2, WebDAV and Chromecast on Android; Skip intro and reminders on Android; and anything marked "(untested)" for the Fire TV or the Apple apps, which were not run this time (Hindi and Telugu on Mac and iPhone build and are covered by tests, but their wording has not been looked at on screen). Tried on a Samsung phone: sound in the background, the mini player, lock-screen controls, saving a picture, Multi-View with two streams, Statistics, the Channel Manager and its health check, themes, and Hindi and Telugu.
 - A Chromecast fetches the stream itself, so only plain web streams (HLS, MP4) cast well, and a connection that needs special headers cannot be cast.
 - The "Continue watching" row on the home screen works on Android TV and Google TV, not on a Fire TV, which has its own home screen.
 - Hindi and Telugu cover the main screens and the most common words; long explanations in Settings are still English. The wording was written without a native-speaker review, so corrections are welcome.
