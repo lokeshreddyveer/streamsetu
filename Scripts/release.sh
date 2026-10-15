@@ -5,6 +5,7 @@
 #   e.g.  MAC=2.4.0 MAC_BUILD=240 ANDROID=0.9.1 Scripts/release.sh 2026.10.14 docs/releases/2026.10.14.md
 #
 # Build the files first: macos/Scripts/release-signed.sh <version> <build> (signs, notarizes) and android/build-release.sh <version> <code>.
+# The website under web/ is refreshed at the end (its Download and What's new pages read this release).
 # The notes file is written by hand (one section per app). This script adds the SHA-256 of every file, uploads everything, and adds the Mac DMG to the update feed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -24,4 +25,7 @@ else
   gh release create "$TAG" "$DMG" "$TV" "$PHONE" --repo "$REPO" --title "$TITLE" --notes-file "$BODY" --latest
 fi
 RELEASE_TAG="$TAG" macos/Scripts/update-appcast.sh "$MAC" "$MAC_BUILD" "$(sed -n 's/^- //p' "$NOTES" | head -1)"
+# The website reads the same notes and version numbers, so it is refreshed with every release.
+IOS="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' ios/Scripts/generate-project.py | head -1)"
+( cd web && node scripts/sync-releases.mjs --tag "$TAG" --mac "$MAC" --android "$ANDROID" --ios "$IOS" && ./host.sh restart ) || echo "! The website was not refreshed. Run web/host.sh start"
 echo "✔ published: https://github.com/$REPO/releases/tag/$TAG"

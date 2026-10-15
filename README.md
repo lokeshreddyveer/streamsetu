@@ -349,6 +349,7 @@ The Fire TV app has been developed and tested on a Fire TV Stick 4K (Fire OS 7).
 | Folder | Contents |
 |---|---|
 | `macos/` | The Mac app and the release scripts, build, sign, notarize, publish, update feed |
+| `web/` | The website (Next.js). `web/host.sh start` runs it at http://localhost:4300; each release refreshes it |
 | `appcast.xml` | The update feed the Mac app reads |
 | `docs/RELEASING.md` | Where each download comes from and how a release is made |
 | `ios/` | The iPhone and iPad app, shares most code with the Mac app |
