@@ -103,9 +103,73 @@ class PlaybackController(
     val audioDelayMs: StateFlow<Long> = _audioDelay.asStateFlow()
     /** True when the player in use can move subtitles and sound (MPV can; ExoPlayer cannot). */
     val canDelay: Boolean get() = _engine.value?.kind == EngineKind.MPV
-    fun setSubtitleDelay(ms: Long): Boolean = (_engine.value?.setSubtitleDelay(ms) == true).also { if (it) _subtitleDelay.value = ms }
-    fun setAudioDelay(ms: Long): Boolean = (_engine.value?.setAudioDelay(ms) == true).also { if (it) _audioDelay.value = ms }
+    fun setSubtitleDelay(ms: Long): Boolean = (_engine.value?.setSubtitleDelay(ms) == true).also { if (it) { _subtitleDelay.value = ms; remember() } }
+    fun setAudioDelay(ms: Long): Boolean = (_engine.value?.setAudioDelay(ms) == true).also { if (it) { _audioDelay.value = ms; remember() } }
     fun addSubtitle(address: String, label: String): Boolean = _engine.value?.addSubtitle(address, label) == true
+
+    // ---- Picture, sound and subtitle tuning, chapters, quality, and what is remembered for each title ----
+    private val _tuning = MutableStateFlow(PlayerTuning())
+    val tuning: StateFlow<PlayerTuning> = _tuning.asStateFlow()
+    private val _subtitleStyle = MutableStateFlow<SubtitleStyle?>(null)
+    /** The subtitle look chosen from the player; null until the person changes it (then the Settings apply). */
+    val subtitleStyle: StateFlow<SubtitleStyle?> = _subtitleStyle.asStateFlow()
+    private val _chapters = MutableStateFlow<List<Chapter>>(emptyList())
+    val chapters: StateFlow<List<Chapter>> = _chapters.asStateFlow()
+    private val _qualities = MutableStateFlow<List<TrackOption>>(emptyList())
+    val qualities: StateFlow<List<TrackOption>> = _qualities.asStateFlow()
+    private val memory = appContext.getSharedPreferences("item-memory", Context.MODE_PRIVATE)
+    /** Audio language, subtitles, speed, picture size, sound and picture settings come back the next time the same title or channel is played. */
+    var rememberPerTitle: Boolean
+        get() = memory.getBoolean("enabled", true)
+        set(v) { memory.edit().putBoolean("enabled", v).apply() }
+    /** Move on to the next episode by itself when one ends (after a short countdown). */
+    var autoPlayNext: Boolean
+        get() = memory.getBoolean("autonext", true)
+        set(v) { memory.edit().putBoolean("autonext", v).apply() }
+    private fun memoryKey(item: Playable) = "m." + item.id
+
+    private fun applyTuningLater() { main.postDelayed({ _engine.value?.let { it.applyTuning(_tuning.value) } }, 800) }
+
+    fun setTuning(t: PlayerTuning) {
+        val old = _tuning.value
+        _tuning.value = t
+        val e = _engine.value
+        e?.applyTuning(t)
+        // Hardware or software decoding is chosen when the player is built, so ExoPlayer starts the same stream again at the same place.
+        if (old.softwareDecoding != t.softwareDecoding && e?.kind == EngineKind.EXOPLAYER) restart()
+        remember()
+    }
+
+    /** How subtitles look now: what the person chose in the player, else what the Settings say. */
+    fun currentSubtitleStyle(): SubtitleStyle = _subtitleStyle.value ?: SubtitleStyle(
+        when (settings.subtitleSize.value) { "SMALL" -> 0.8f; "LARGE" -> 1.3f; "XLARGE" -> 1.6f; else -> 1f }, settings.subtitleBackground.value == "DARK", settings.subtitleOutline.value)
+
+    fun setSubtitleStyle(s: SubtitleStyle) { _subtitleStyle.value = s; _engine.value?.applySubtitleStyle(s) }
+    fun selectQuality(id: String?) { _engine.value?.selectVideo(id); main.postDelayed({ _qualities.value = _engine.value?.videoQualities().orEmpty() }, 400) }
+    /** Jumps to a time in a movie or episode. */
+    fun goTo(ms: Long) { val e = _engine.value ?: return; if (_current.value?.isLive == true) return; userSeeked = true; e.seekTo(ms.coerceIn(0, e.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE)) }
+
+    /** Keeps this title's choices (or this channel's) for next time. */
+    fun remember() {
+        val item = _current.value ?: return
+        if (!rememberPerTitle) return
+        val a = _audio.value.firstOrNull { it.selected }; val s = _subtitles.value.firstOrNull { it.selected }
+        val t = _tuning.value
+        memory.edit().putString(memoryKey(item), listOf(
+            a?.language.orEmpty(), if (s == null) "off" else s.language.orEmpty(), _speed.value, _aspect.value.name, _audioDelay.value, _subtitleDelay.value,
+            t.brightness, t.contrast, t.saturation, t.gamma, t.deinterlace, t.softwareDecoding, t.boostPercent, t.normalizeLoudness,
+        ).joinToString("|")).apply()
+    }
+
+    private var remembered: List<String>? = null
+    private fun recall(item: Playable) {
+        remembered = if (rememberPerTitle) memory.getString(memoryKey(item), null)?.split('|')?.takeIf { it.size >= 14 } else null
+        val r = remembered ?: run { _tuning.value = _tuning.value.copy(brightness = 0, contrast = 0, saturation = 0, gamma = 0, deinterlace = false, boostPercent = 100, normalizeLoudness = false); return }
+        r[2].toFloatOrNull()?.let { _speed.value = it }
+        runCatching { AspectMode.valueOf(r[3]) }.getOrNull()?.let { _aspect.value = it }
+        _audioDelay.value = r[4].toLongOrNull() ?: 0; _subtitleDelay.value = r[5].toLongOrNull() ?: 0
+        _tuning.value = PlayerTuning(r[6].toIntOrNull() ?: 0, r[7].toIntOrNull() ?: 0, r[8].toIntOrNull() ?: 0, r[9].toIntOrNull() ?: 0, r[10].toBooleanStrictOrNull() ?: false, r[11].toBooleanStrictOrNull() ?: false, r[12].toIntOrNull() ?: 100, r[13].toBooleanStrictOrNull() ?: false)
+    }
 
     // ---- Skip intro ----
     private val introPrefs = appContext.getSharedPreferences("intro", Context.MODE_PRIVATE)
@@ -172,12 +236,14 @@ class PlaybackController(
         startPositionMs = if (item.isLive || !settings.resumeAutomatically.value) 0 else resumeAtMs
         _resumedFrom.value = if (startPositionMs > 30_000) startPositionMs else 0
         sessionId++; sessionVerified = false; userSeeked = false
+        minimized = false
         _aspect.value = runCatching { AspectMode.valueOf(settings.defaultAspect.value) }.getOrDefault(AspectMode.FIT)
         _speed.value = 1f
         _subtitleDelay.value = 0; _audioDelay.value = 0; appliedAudioOnly = false
         _current.value = item
+        recall(item)
         _state.value = PlaybackState.Resolving
-        _audio.value = emptyList(); _subtitles.value = emptyList()
+        _audio.value = emptyList(); _subtitles.value = emptyList(); _chapters.value = emptyList(); _qualities.value = emptyList()
         startProgressTicker(item)
         job = scope.launch { startNow(item, null) }
     }
@@ -198,14 +264,15 @@ class PlaybackController(
         val previous = _engine.value
         if (previous != null && previous !== next) previous.stop()
         _engine.value = next
-        next.setAspect(_aspect.value); next.setSpeed(1f)
+        next.setAspect(_aspect.value); next.setSpeed(_speed.value)
         startedAt = System.currentTimeMillis()
         val buffering = if (item.isLive) settings.liveBufferFor(item.sourceId) ?: settings.liveBuffering.value else settings.vodBuffering.value
         val scale = when (settings.subtitleSize.value) { "SMALL" -> 0.8f; "LARGE" -> 1.3f; "XLARGE" -> 1.6f; else -> 1f }
         val ua = resolver.userAgent(item.sourceId)
         val extra = resolver.headers(item.sourceId)
         next.load(EngineRequest(url, (if (ua != null) mapOf("User-Agent" to ua) else emptyMap()) + extra, startPositionMs, item.isLive, buffering,
-            EngineOptions(settings.decoderFallback.value, settings.surroundPassthrough.value, SubtitleStyle(scale, settings.subtitleBackground.value == "DARK", settings.subtitleOutline.value), settings.mpvProxy.takeIf { !app.streamsetu.core.net.Http.isLocal(runCatching { java.net.URI(url).host }.getOrNull().orEmpty()) })))
+            EngineOptions(settings.decoderFallback.value, settings.surroundPassthrough.value, _subtitleStyle.value ?: SubtitleStyle(scale, settings.subtitleBackground.value == "DARK", settings.subtitleOutline.value), settings.mpvProxy.takeIf { !app.streamsetu.core.net.Http.isLocal(runCatching { java.net.URI(url).host }.getOrNull().orEmpty()) }, _tuning.value.softwareDecoding)))
+        applyTuningLater()
         if (!loggedStart) { loggedStart = true; onStarted(item) }
     }
 
@@ -313,8 +380,8 @@ class PlaybackController(
     }
     init { watchClock() }
 
-    fun setSpeed(s: Float) { _speed.value = s; _engine.value?.setSpeed(s) }
-    fun setAspect(m: AspectMode) { _aspect.value = m; _engine.value?.setAspect(m) }
+    fun setSpeed(s: Float) { _speed.value = s; _engine.value?.setSpeed(s); remember() }
+    fun setAspect(m: AspectMode) { _aspect.value = m; _engine.value?.setAspect(m); remember() }
     fun startOver() { userSeeked = true; _engine.value?.seekTo(0); _resumedFrom.value = 0 }
 
     /** Switches the player for the stream playing now (the iPhone app's "Player" chip). */
@@ -340,15 +407,26 @@ class PlaybackController(
 
     fun selectAudio(id: String?) {
         if (settings.rememberAudioChoice.value) _audio.value.firstOrNull { it.id == id }?.language?.takeIf { it.isNotBlank() }?.let { settings.setAudioLanguage(it) }
-        _engine.value?.selectAudio(id); main.postDelayed({ refreshTracks() }, 300)
+        _engine.value?.selectAudio(id); main.postDelayed({ refreshTracks(); remember() }, 300)
     }
-    fun selectSubtitle(id: String?) { _engine.value?.selectSubtitle(id); main.postDelayed({ refreshTracks() }, 300) }
+    fun selectSubtitle(id: String?) { _engine.value?.selectSubtitle(id); main.postDelayed({ refreshTracks(); remember() }, 300) }
 
     private fun refreshTracks() {
         val e = _engine.value ?: return
         _audio.value = e.audioTracks(); _subtitles.value = e.subtitleTracks()
+        _chapters.value = e.chapters(); _qualities.value = e.videoQualities()
         if (appliedPreferredTracks || (_audio.value.isEmpty() && _subtitles.value.isEmpty())) return
         appliedPreferredTracks = true
+        e.applyTuning(_tuning.value)
+        if (_audioDelay.value != 0L) e.setAudioDelay(_audioDelay.value)
+        if (_subtitleDelay.value != 0L) e.setSubtitleDelay(_subtitleDelay.value)
+        // What was chosen for this title last time beats the general language settings.
+        remembered?.let { r ->
+            val al = r[0]; val sl = r[1]
+            if (al.isNotBlank()) _audio.value.firstOrNull { it.language?.startsWith(al, true) == true }?.let { e.selectAudio(it.id) }
+            if (sl == "off") e.selectSubtitle(null) else if (sl.isNotBlank()) _subtitles.value.firstOrNull { it.language?.startsWith(sl, true) == true }?.let { e.selectSubtitle(it.id) }
+            return
+        }
         val al = settings.audioLanguage.value; val sl = settings.subtitleLanguage.value
         if (al.isNotBlank()) _audio.value.firstOrNull { it.language?.startsWith(al, true) == true }?.let { e.selectAudio(it.id) }
         val wantSubs = when (settings.subtitleMode.value) {

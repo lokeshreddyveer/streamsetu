@@ -20,22 +20,23 @@ struct LibraryScreen: View {
     private var showsSlideshow: Bool { kind == .movie && selection == .shortcut(.featured) }
     private var slideshowKey: String { "\(showsSlideshow)-\(state.activeSourceID?.uuidString ?? "")-\(FeaturedPolicy.dayKey(Date()))" }
 
-    /// Page header, slideshow and toolbar are fixed; only the poster grid below them scrolls. The slideshow is not inside any
-    /// scroll view, so scrolling can't move it, and the grid is clipped to its own region so posters never draw over it.
+    /// The page header and the toolbar stay put. The slideshow is the first thing in the scrolling region, so it scrolls up and out of the way with the posters;
+    /// the region is clipped, so nothing draws over the header or the toolbar.
     var body: some View {
         GeometryReader { g in
             let layout = PosterGridLayout.compute(available: g.size.width - 2 * LayoutTokens.gutter, minCard: density.posterRange.min, maxCard: density.posterRange.max)
             VStack(alignment: .leading, spacing: 10) {
                 PageHead(title: title)
-                if showsSlideshow, !slides.isEmpty {
-                    FeaturedSlideshow(slides: slides, kicker: "FEATURED · FROM YOUR LIBRARY",
-                                      height: FeaturedLayout.bannerHeight(contentHeight: g.size.height),
-                                      onPlay: { play($0.item) }, onInfo: { open($0.item) })
-                }
                 LibraryToolbar(search: $vm.search, prompt: "Search all \(vm.noun)…", count: vm.countText, focusToken: router.focusSearch) {
                     SortMenu(options: vm.availableSorts, selection: $vm.sort) { $0.rawValue }
                 }
                 ScrollView {
+                    if showsSlideshow, !slides.isEmpty {
+                        FeaturedSlideshow(slides: slides, kicker: "FEATURED · FROM YOUR LIBRARY",
+                                          height: FeaturedLayout.bannerHeight(contentHeight: g.size.height),
+                                          onPlay: { play($0.item) }, onInfo: { open($0.item) })
+                            .padding(.bottom, 10)
+                    }
                     content(layout).padding(.bottom, 16).frame(maxWidth: .infinity, alignment: .leading)
                         .animation(AnimationTokens.page, value: vm.loading)
                 }

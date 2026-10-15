@@ -45,7 +45,10 @@ import app.streamsetu.core.model.*
 import app.streamsetu.core.playback.AspectMode
 import app.streamsetu.core.playback.EngineKind
 import app.streamsetu.core.playback.PlaybackState
+import app.streamsetu.core.sync.upcoming
 import app.streamsetu.tv.AppContainer
+import app.streamsetu.tv.ui.components.PlayerMenus
+import app.streamsetu.tv.ui.components.StatsOverlay
 import app.streamsetu.tv.ui.components.EngineSurface
 import app.streamsetu.tv.ui.components.Label
 import app.streamsetu.tv.ui.components.Spinner
@@ -55,7 +58,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.onSizeChanged
 import kotlin.math.abs
 
-private enum class Panel { AUDIO, SUBS, SPEED, PICTURE, ENGINE, EPISODES, CHANNELS, MORE, SLEEP, SYNC, CAST }
+private enum class Panel { SEARCH, SEARCH_LIVE, TUNE, SOUND, SUBLOOK, SUBFIND, QUALITY, CHAPTERS, JUMPTO, AUDIO, SUBS, SPEED, PICTURE, ENGINE, EPISODES, CHANNELS, MORE, SLEEP, SYNC, CAST }
 
 private val Ink = Color(0xFFF2F2F2)
 private val InkDim = Color(0xB3FFFFFF)
@@ -71,7 +74,7 @@ private fun clock(ms: Long): String {
  * Turn the phone to fill the screen; the controls follow.
  */
 @Composable
-fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = onClose, onMultiView: () -> Unit = {}) {
+fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = onClose, onMultiView: () -> Unit = {}, onOpenSeries: (Series) -> Unit = {}) {
     val playback = c.playback
     val state by playback.state.collectAsState()
     val current by playback.current.collectAsState()
@@ -96,6 +99,21 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
     var controls by remember { mutableStateOf(true) }
     var tick by remember { mutableIntStateOf(0) }
     var panel by remember { mutableStateOf<Panel?>(null) }
+    var gotoOpen by remember { mutableStateOf(false) }
+    val tuning by playback.tuning.collectAsState()
+    val styleNow by playback.subtitleStyle.collectAsState()
+    val chapters by playback.chapters.collectAsState()
+    val qualities by playback.qualities.collectAsState()
+    val nextIn by c.nextEpisodeIn.collectAsState()
+    val onlineSubs = remember { app.streamsetu.tv.ui.screens.OnlineSubtitles(context, c.credentials) }
+    var subHits by remember { mutableStateOf<List<app.streamsetu.tv.ui.screens.OnlineSubtitles.Hit>?>(null) }
+    var subMessage by remember { mutableStateOf<String?>(null) }
+    val subScope = rememberCoroutineScope()
+    var epgNext by remember { mutableStateOf<app.streamsetu.core.model.EpgProgram?>(null) }
+    LaunchedEffect(item?.id) {
+        epgNext = (item as? ChannelPlayable)?.channel?.let { ch -> c.epg.resolve(listOf(ch))[ch.id] }?.let { id -> runCatching { c.epg.upcoming(c.db, id, 4) }.getOrNull() }
+            ?.firstOrNull { it.startMs > System.currentTimeMillis() + 2 * 60_000L }
+    }
     var position by remember { mutableLongStateOf(0) }
     var duration by remember { mutableLongStateOf(0) }
     var dragFrac by remember { mutableStateOf<Float?>(null) }
@@ -251,6 +269,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
                         if (item is EpisodePlayable) Label("Season ${item.episode.season}  ·  Episode ${item.episode.number}  ·  ${item.episode.title}", Ph.caption, InkDim)
                     }
                     if (live && item != null) IconTap(if (item.id in favourites) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, "Favorite", { c.appScope.launch { c.user.setFavourite(item.id, ContentKind.CHANNEL, item.id !in favourites) } }, tint = if (item.id in favourites) Tokens.gold else Color.White)
+                    IconTap(Icons.Filled.Search, "Search", { panel = Panel.SEARCH; poke() })
                     IconTap(Icons.Filled.MoreVert, "More", { panel = Panel.MORE; poke() })
                 }
                 // Middle: skip back, play or pause, skip forward.
@@ -288,8 +307,31 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
         }
     }
 
+    StatsOverlay(c, Modifier.windowInsetsPadding(WindowInsets.systemBars).padding(start = 12.dp, top = 56.dp))
+    if (nextIn > 0) Box(Modifier.fillMaxSize(), Alignment.Center) { Label("Next episode in $nextIn", Ph.heading, Color.White, FontWeight.SemiBold) }
+    if (gotoOpen) PhoneGoToDialog(onGo = { playback.goTo(it); gotoOpen = false; panel = null }, onClose = { gotoOpen = false })
     val close = { panel = null }
     when (panel) {
+        Panel.SEARCH_LIVE -> PhonePlayerSearch(c, app.streamsetu.core.data.repo.SearchTab.LIVE, onPlay = { p -> c.play(p, c.queue); panel = null }, onSeries = { sr -> panel = null; onOpenSeries(sr) }, onClose = { panel = null })
+        Panel.SEARCH -> PhonePlayerSearch(c, onPlay = { p -> c.play(p, if (p is ChannelPlayable) c.queue else listOf(p)); panel = null }, onSeries = { sr -> panel = null; onOpenSeries(sr) }, onClose = { panel = null })
+        Panel.TUNE -> Sheet("Picture tuning", PlayerMenus.picture(playback, tuning).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
+        Panel.SOUND -> Sheet("Sound", PlayerMenus.sound(playback, tuning).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
+        Panel.SUBLOOK -> Sheet("Subtitle look", PlayerMenus.subtitleStyle(playback, styleNow ?: playback.currentSubtitleStyle()).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
+        Panel.QUALITY -> Sheet("Quality", PlayerMenus.quality(playback, qualities).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
+        Panel.CHAPTERS -> Sheet("Chapters", PlayerMenus.chapters(playback, chapters).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
+        Panel.JUMPTO -> Sheet("Go to", listOf(SheetItem("Type a time…", Icons.Filled.Edit) { gotoOpen = true }) + PlayerMenus.jumpToPoints(playback).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
+        Panel.SUBFIND -> {
+            LaunchedEffect(Unit) {
+                subHits = null; subMessage = null
+                if (!onlineSubs.configured) { subMessage = "Add your free OpenSubtitles key, account name and password in Settings, Subtitles."; return@LaunchedEffect }
+                val title = (item as? EpisodePlayable)?.series?.title ?: item?.title.orEmpty()
+                runCatching { onlineSubs.search(title, (item as? app.streamsetu.core.model.MoviePlayable)?.movie?.year, c.settings.subtitleLanguage.value) }
+                    .onSuccess { subHits = it; if (it.isEmpty()) subMessage = "No subtitles found for this title." }.onFailure { subMessage = it.message ?: "The search did not work." }
+            }
+            Sheet("Subtitles online", (subHits ?: emptyList()).map { h -> SheetItem(h.label, Icons.Filled.Subtitles) {
+                subScope.launch { runCatching { onlineSubs.download(h) }.onSuccess { playback.addSubtitle(it, "Online") }.onFailure { android.widget.Toast.makeText(context, it.message ?: "That did not work.", android.widget.Toast.LENGTH_LONG).show() } }
+            } }.ifEmpty { listOf(SheetItem(subMessage ?: "Searching…", null, false) {}) }, close)
+        }
         Panel.AUDIO -> Sheet("Audio", if (audio.isEmpty()) listOf(SheetItem("Only one audio track", null, true) {}) else audio.map { t -> SheetItem(t.label, null, t.selected) { playback.selectAudio(t.id) } }, close)
         Panel.SUBS -> Sheet("Subtitles", listOf(SheetItem("Off", null, subs.none { it.selected }) { playback.selectSubtitle(null) }) + subs.map { t -> SheetItem(t.label, null, t.selected) { playback.selectSubtitle(t.id) } } +
             listOf(SheetItem("Add subtitles from a file…", Icons.Filled.NoteAdd) { pickSubtitle.launch(arrayOf("*/*")) }, SheetItem("Subtitle and sound timing…", Icons.Filled.Sync) { panel = Panel.SYNC }.copy(stays = true)), close)
@@ -323,13 +365,24 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
         Panel.SPEED -> Sheet("Speed", listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f).map { v -> SheetItem(if (v == 1f) "Normal" else "${v}×", null, v == speed) { playback.setSpeed(v) } }, close)
         Panel.PICTURE -> Sheet("Picture", AspectMode.entries.map { m -> SheetItem(m.label, null, m == aspect) { playback.setAspect(m) } }, close)
         Panel.ENGINE -> Sheet("Player", playback.available.toList().map { k -> SheetItem(k.label, null, k == playback.engineKind, if (k == EngineKind.MPV) "MKV, AVI and unusual formats" else "HLS, MP4 and transport streams") { playback.switchEngine(k) } }, close, subtitle = "Switching retries this same stream.")
-        Panel.CHANNELS -> Sheet("Channels", c.queue.filterIsInstance<ChannelPlayable>().map { ch -> SheetItem("${ch.channel.number?.let { "$it  " } ?: ""}${ch.channel.name}", null, ch.id == item?.id) { c.play(ch, c.queue) } }, close)
+        Panel.CHANNELS -> Sheet("Channels", listOf(SheetItem("Search channels…", Icons.Filled.Search) { panel = Panel.SEARCH_LIVE }) + c.queue.filterIsInstance<ChannelPlayable>().map { ch -> SheetItem("${ch.channel.number?.let { "$it  " } ?: ""}${ch.channel.name}", null, ch.id == item?.id) { c.play(ch, c.queue) } }, close)
         Panel.EPISODES -> {
             val eps = c.queue.filterIsInstance<EpisodePlayable>().filter { (item as? EpisodePlayable)?.episode?.season == it.episode.season }
             Sheet("Episodes", eps.map { ep -> SheetItem("${ep.episode.number}.  ${ep.episode.title}", null, ep.id == item?.id) { c.play(ep, c.queue) } }, close, subtitle = "Season ${(item as? EpisodePlayable)?.episode?.season ?: ""}")
         }
         Panel.MORE -> Sheet("More", buildList {
             if (!live && resumedFrom > 0) add(SheetItem("Start over", Icons.Filled.Replay) { playback.startOver() })
+            add(SheetItem("Picture tuning", Icons.Filled.Tune, false, "Brightness, contrast, saturation, decoding", true, true) { panel = Panel.TUNE })
+            add(SheetItem("Sound", Icons.Filled.VolumeUp, false, "Volume boost, even out loudness", true, true) { panel = Panel.SOUND })
+            add(SheetItem("Subtitle look", Icons.Filled.FormatSize, false, "Size, colour, position, background", true, true) { panel = Panel.SUBLOOK })
+            add(SheetItem("Find subtitles online", Icons.Filled.Subtitles, false, "From OpenSubtitles, with your free key", true, true) { panel = Panel.SUBFIND })
+            if (qualities.isNotEmpty()) add(SheetItem("Quality", Icons.Filled.HighQuality, false, "Choose the resolution", true, true) { panel = Panel.QUALITY })
+            if (!live && chapters.isNotEmpty()) add(SheetItem("Chapters", Icons.Filled.List, false, null, true, true) { panel = Panel.CHAPTERS })
+            if (!live) add(SheetItem("Go to time…", Icons.Filled.Schedule, false, "Type an exact time, or jump by tenths", true, true) { panel = Panel.JUMPTO })
+            if (live) (item as? ChannelPlayable)?.let { cp -> epgNext?.let { nx -> add(SheetItem("Remind me: " + nx.title, Icons.Filled.Notifications, false, "A notification when it starts") { subScope.launch { app.streamsetu.tv.Reminders.schedule(c, context, cp.channel, nx) } }) } }
+            add(SheetItem("Remember settings for this title: " + if (playback.rememberPerTitle) "on" else "off", Icons.Filled.Bookmark, false, "Audio, subtitles, speed, picture, sound", true, true) { playback.rememberPerTitle = !playback.rememberPerTitle })
+            if (item is EpisodePlayable) add(SheetItem("Play next episode by itself: " + if (c.settings.playNextAutomatically.value) "on" else "off", Icons.Filled.SkipNext, false, null, true, true) { c.settings.setPlayNext(!c.settings.playNextAutomatically.value) })
+            add(SheetItem("Skip length: ${c.settings.seekSeconds.value} seconds", Icons.Filled.FastForward, false, "Tap to change: 5, 10, 15, 30, 85", true, true) { c.settings.setSeekSeconds(listOf(5, 10, 15, 30, 85).let { l -> l[(l.indexOf(c.settings.seekSeconds.value) + 1).mod(l.size)] }) })
             add(SheetItem("Stream information: " + if (c.settings.showStreamInfo.value) "on" else "off", Icons.Filled.Info) { c.settings.setShowStreamInfo(!c.settings.showStreamInfo.value) })
             add(SheetItem(if (sleepAt > 0) "Sleep timer: ${((sleepAt - System.currentTimeMillis()) / 60_000 + 1).coerceAtLeast(1)} min left" else "Sleep timer", Icons.Filled.Bedtime) { panel = Panel.SLEEP }.copy(stays = true))
             add(SheetItem("Save a picture of this frame", Icons.Filled.PhotoCamera) {

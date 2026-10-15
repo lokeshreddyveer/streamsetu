@@ -133,18 +133,19 @@ struct DiscoverPage: View {
 
     private var slideshowKey: String { "\(state.activeSourceID?.uuidString ?? "")-\(FeaturedPolicy.dayKey(Date()))-\(content != nil)" }
 
-    /// Header, slideshow and toolbar are fixed. Only the rails scroll, inside their own clipped region, so posters never
-    /// pass over the slideshow and nothing can move the top navigation or the sidebar.
+    /// The header and the toolbar stay put. The slideshow is the first thing in the scrolling region, so it scrolls up and out of the way with the rails.
+    /// The region is clipped, so nothing can move the top navigation or the sidebar.
     var body: some View {
         GeometryReader { g in
             VStack(alignment: .leading, spacing: 10) {
                 PageHead(title: "Discover")
-                if state.hasLibrary, !slides.isEmpty {
-                    FeaturedSlideshow(slides: slides, kicker: "DISCOVER · FROM YOUR LIBRARY", height: FeaturedLayout.bannerHeight(contentHeight: g.size.height),
-                                      onPlay: { play($0.item) }, onInfo: { PlayActions.open($0.item, router: router) })
-                }
                 if let content, !content.shelves.isEmpty { toolbar(content) }
                 ScrollView {
+                    if state.hasLibrary, !slides.isEmpty {
+                        FeaturedSlideshow(slides: slides, kicker: "DISCOVER · FROM YOUR LIBRARY", height: FeaturedLayout.bannerHeight(contentHeight: g.size.height),
+                                          onPlay: { play($0.item) }, onInfo: { PlayActions.open($0.item, router: router) })
+                            .padding(.bottom, 10)
+                    }
                     VStack(alignment: .leading, spacing: 16) { rails }.padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
                         .animation(AnimationTokens.page, value: loaded)
                 }

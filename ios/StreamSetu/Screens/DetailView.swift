@@ -245,7 +245,9 @@ struct SimilarRow: View {
     @State private var suggestions: [SimilarSuggestion] = []
 
     var body: some View {
-        Group {
+        // A task on an empty view never runs, so something always exists here: a one-point clear line holds the loading step until there is a row to show.
+        VStack(alignment: .leading, spacing: 0) {
+            Color.clear.frame(height: 1)
             if !suggestions.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("More Like This").appFont(17, .bold)
@@ -269,7 +271,18 @@ struct SimilarRow: View {
             guard let container else { return }
             let service = SimilarService(catalog: container.catalog)
             let e = extras
-            suggestions = await Task.detached { service.suggestions(for: item, extras: e) }.value
+            let first = await Task.detached { service.suggestions(for: item, extras: e) }.value
+            suggestions = first
+            // The catalog list rarely has cast or genre, so ask the provider about the closest movies and rank again with what comes back.
+            guard !item.isSeries, let e, !e.cast.isEmpty || !e.directors.isEmpty else { return }
+            var known: [String: ProviderExtras] = [:]
+            await withTaskGroup(of: (String, ProviderExtras?).self) { group in
+                for s in first.prefix(20) { group.addTask { (s.id, await container.details.extras(movie: s.id)) } }
+                for await (id, x) in group { if let x { known[id] = x } }
+            }
+            guard !known.isEmpty else { return }
+            let k = known
+            suggestions = await Task.detached { service.suggestions(for: item, extras: e, known: k) }.value
         }
     }
 }

@@ -210,3 +210,7 @@ Utilities/MemoryPressureGuard.swift
 Utilities/Trace.swift
 Utilities/PlaybackLog.swift
 Utilities/URLUtilities.swift
+Features/Shared/Views/PlayerSearchSheet.swift
+Playback/ItemMemory.swift
+Services/OnlineSubtitles.swift
+Features/Shared/Views/OnlineSubtitleSheet.swift

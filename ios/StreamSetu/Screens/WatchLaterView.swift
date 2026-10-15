@@ -7,6 +7,8 @@ struct WatchLaterView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var titles: [LibraryItem] = []
     @State private var loaded = false
+    @State private var sort: TitleSort = .recent
+    @State private var editing = false
     private var width: CGFloat { sizeClass == .regular ? 150 : 108 }
 
     var body: some View {
@@ -14,16 +16,16 @@ struct WatchLaterView: View {
             if titles.isEmpty, loaded {
                 EmptyState(symbol: "bookmark", title: "Nothing saved yet", message: "Tap the bookmark on a movie or series to keep it here for later.")
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: width, maximum: width + 40), spacing: 14, alignment: .top)], spacing: 16) {
-                ForEach(titles) { t in
-                    NavigationLink(value: t) { PosterCard(item: t, width: width) }.buttonStyle(.press)
-                        .contextMenu { TitleMenu(item: t) }
-                }
-            }
+            TitleGrid(items: sort.apply(titles), editing: editing, onRemove: { t in state.toggleWatchLater(t.id, kind: t.kind); titles.removeAll { $0.id == t.id }; if titles.isEmpty { editing = false } })
             .padding(16)
         }
         .navigationTitle("Watch Later").themed("Watch Later")
-        .navigationDestination(for: LibraryItem.self) { DetailView(item: $0) }
+        .editButton($editing, enabled: !titles.isEmpty)
+        .listTools(sort: $sort, canClear: !titles.isEmpty, clearLabel: "Remove All from Watch Later", confirmTitle: "Remove everything from Watch Later?",
+                   confirmMessage: "The titles stay in your library; they just leave this list.") {
+            for t in titles { state.toggleWatchLater(t.id, kind: t.kind) }
+            titles = []; editing = false
+        }
         .miniPlayerInset()
         .task(id: "\(state.catalogVersion)-\(state.watchLaterIDs.count)") { await load() }
     }

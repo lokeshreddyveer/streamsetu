@@ -121,7 +121,10 @@ enum SimilarTitles {
         if out.count < 6, let tf = target.folder {
             let have = Set(out.map { $0.0.id })
             let fill = candidates.filter { !have.contains($0.item.id) && $0.folder == tf }
-                .sorted { ($0.rating ?? 0) > ($1.rating ?? 0) }.prefix(10 - out.count)
+                .sorted { a, b in
+                    let ay = abs((a.item.year ?? 0) - (target.item.year ?? 0)), by = abs((b.item.year ?? 0) - (target.item.year ?? 0))
+                    return ay != by ? ay < by : (a.rating ?? 0) > (b.rating ?? 0)
+                }.prefix(10 - out.count)
             for c in fill { out.append((SimilarSuggestion(item: c.item, reason: "From the same folder"), 0.5)) }
         }
         // Still thin (a catalog with no plots, genres or facts): add the closest by language, year and rating, saying so.
@@ -144,7 +147,7 @@ struct SimilarService: Sendable {
         }
     }
 
-    func suggestions(for item: LibraryItem, extras: ProviderExtras?) -> [SimilarSuggestion] {
+    func suggestions(for item: LibraryItem, extras: ProviderExtras?, known: [String: ProviderExtras] = [:]) -> [SimilarSuggestion] {
         var pool: [LibraryItem] = []
         let folder: String? = { switch item { case .movie(let m): m.categoryID; case .series(let s): s.categoryID } }()
         let stemWords = SimilarTitles.stem(item.title).split(separator: " ").prefix(2).joined(separator: " ")
@@ -158,6 +161,6 @@ struct SimilarService: Sendable {
         }
         var seen = Set<String>()
         let unique = pool.filter { seen.insert($0.id).inserted }
-        return SimilarTitles.rank(target: candidate(item), extras: extras, pool: unique.map(candidate))
+        return SimilarTitles.rank(target: candidate(item), extras: extras, pool: unique.map(candidate), known: known)
     }
 }

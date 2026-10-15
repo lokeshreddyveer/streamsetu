@@ -40,6 +40,7 @@ import kotlinx.coroutines.delay
 fun SearchContent(
     c: AppContainer, kinds: Set<ContentKind>, modifier: Modifier = Modifier,
     onChannel: (Channel) -> Unit, onMovie: (Movie) -> Unit, onSeries: (Series) -> Unit, entry: FocusRequester? = null,
+    dropdown: Boolean = false,
     onEpisode: (Episode, Series) -> Unit = { _, _ -> }, onFolder: (ContentKind, String) -> Unit = { _, _ -> }, onCollection: (String, ContentKind) -> Unit = { _, _ -> },
 ) {
     var query by remember { mutableStateOf("") }
@@ -73,7 +74,22 @@ fun SearchContent(
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TvTextField(query, { query = it }, if (tab == SearchTab.ALL) "Search channels, movies, series" else "Search " + tab.label.lowercase(), Modifier.widthIn(max = 520.dp), onDone = { remember() }, leadingIcon = Icons.Filled.Search)
-        if (kinds.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (dropdown && kinds.size > 1) {
+            var open by remember { mutableStateOf(false) }
+            val label = when (typeFilter) { ContentKind.CHANNEL -> "Live TV"; ContentKind.MOVIE -> "Movies"; ContentKind.SERIES -> "Series"; else -> "All" }
+            Focusable({ open = true }, Modifier, shape = RoundedCornerShape(50), container = Tokens.card, scaleOnFocus = 1.03f) { _ ->
+                Row(Modifier.padding(horizontal = 14.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Label("Search in", Tokens.small, Tokens.textSecondary); Label(label, Tokens.small, Tokens.accent, FontWeight.SemiBold)
+                    Image(Icons.Filled.ArrowDropDown, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(Tokens.textSecondary))
+                }
+            }
+            if (open) ContextMenu("Search in", null, buildList {
+                add(MenuAction("All" + if (typeFilter == null) "   ✓" else "", Icons.Filled.Search) { typeFilter = null })
+                if (ContentKind.MOVIE in kinds) add(MenuAction("Movies" + if (typeFilter == ContentKind.MOVIE) "   ✓" else "", Icons.Filled.Movie) { typeFilter = ContentKind.MOVIE })
+                if (ContentKind.SERIES in kinds) add(MenuAction("Series" + if (typeFilter == ContentKind.SERIES) "   ✓" else "", Icons.Filled.VideoLibrary) { typeFilter = ContentKind.SERIES })
+                if (ContentKind.CHANNEL in kinds) add(MenuAction("Live TV" + if (typeFilter == ContentKind.CHANNEL) "   ✓" else "", Icons.Filled.LiveTv) { typeFilter = ContentKind.CHANNEL })
+            }, onClose = { open = false })
+        } else if (kinds.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             TypeChip("All", typeFilter == null) { typeFilter = null }
             if (ContentKind.CHANNEL in kinds) TypeChip("Live TV", typeFilter == ContentKind.CHANNEL) { typeFilter = ContentKind.CHANNEL }
             if (ContentKind.MOVIE in kinds) TypeChip("Movies", typeFilter == ContentKind.MOVIE) { typeFilter = ContentKind.MOVIE }

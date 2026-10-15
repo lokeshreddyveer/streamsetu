@@ -6,7 +6,7 @@
 
 **Your streams. One home.**
 
-StreamSetu is a native player for the IPTV playlists and media servers you already have. It runs on **Mac, iPhone and iPad, Fire TV and Android TV**, keeps everything on your own device, and has no account, no advertising and no analytics.
+StreamSetu is a native player for the IPTV playlists and media servers you already have. It runs on **Mac, iPhone and iPad, Android phones and tablets, Fire TV and Android TV**, with **Windows coming soon**, keeps everything on your own device, and has no account, no advertising and no analytics.
 
 > StreamSetu is a player only. It provides **no channels, movies, series or subscriptions**, and it does not ship or link to any content. You bring your own legally obtained playlist or login.
 
@@ -97,7 +97,8 @@ The artwork in these screenshots comes from the provider's own playlist. StreamS
 | **Mac** | [`StreamSetu-2.4.1.dmg`](../../releases/download/2026.10.14/StreamSetu-2.4.1.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
 | **Fire TV and Android TV** | [`StreamSetu-FireTV-0.9.1.apk`](../../releases/download/2026.10.14/StreamSetu-FireTV-0.9.1.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
 | **Android phone and tablet** | [`StreamSetu-Android-0.9.1.apk`](../../releases/download/2026.10.14/StreamSetu-Android-0.9.1.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
-| **iPhone and iPad** | TestFlight, version 0.5.0 | Ask for an invitation at contact@lokeshreddy.dev. |
+| **iPhone and iPad** | [Join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 0.6.0 | Open to the first 100 testers. After that, ask for an invitation at contact@lokeshreddy.dev. |
+| **Windows** | Coming soon | Not released yet. |
 
 The two Android files hold the same build, listed separately so each device has its own download. The app picks the remote or touch layout by itself. Every download has a SHA-256 checksum in its release notes. Verify it with `shasum -a 256 <file>`.
 
@@ -203,7 +204,17 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Chromecast | – | – | – | ✓ | – |
 | Sound keeps playing in the background, with lock-screen controls and a mini player | – | ✓ | ✓ | ✓ | – |
 | Sleep timer | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Skip intro | – | – | – | ✓ | ✓ |
+| Skip intro | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Search the whole catalog from inside the player, with All, Movies, Series and Live TV | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Go to an exact time | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Remembered audio, subtitles, speed and timing for each title or channel | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Subtitles from OpenSubtitles, with your own free key | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Picture tuning, brightness, contrast, saturation, gamma | ✓ | ✓ | ✓ | ✓ with mpv | ✓ with mpv |
+| Volume boost above 100% | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Subtitle size, colour, position and background in the player | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Choose the resolution of a stream that offers several | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Stats overlay with decoder, bitrate, buffer and dropped frames | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Sound keeps playing while you browse, with a small now-playing box | – | ✓ | ✓ | ✓ | ✓ |
 | Subtitles from a file, and subtitle and sound timing | ✓ | ✓ | ✓ | ✓ timing with mpv | ✓ timing with mpv |
 | Save a picture of the frame | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Programme reminders | ✓ | ✓ | ✓ | ✓ | ✓ |

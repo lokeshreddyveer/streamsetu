@@ -36,7 +36,7 @@ class ExoEngine(context: Context) : PlayerEngine {
     private var currentHeaders: Map<String, String> = emptyMap()
 
     private fun ensurePlayer(mode: BufferingMode): ExoPlayer {
-        val key = listOf(mode, options.decoderFallback, options.passthrough, userAgent, currentHeaders)
+        val key = listOf(mode, options.decoderFallback, options.passthrough, userAgent, currentHeaders, options.softwareDecoding)
         if (player != null && builtFor == key) return player!!
         player?.release()
         val factory = OkHttpDataSource.Factory(Http.client).setUserAgent(userAgent ?: Http.USER_AGENT).setDefaultRequestProperties(currentHeaders.filterKeys { !it.equals("User-Agent", true) })
@@ -51,6 +51,13 @@ class ExoEngine(context: Context) : PlayerEngine {
             override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink? =
                 if (passthrough) super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
                 else androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).setEnableFloatOutput(enableFloatOutput).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams).build()
+            // Software decoding puts the phone or TV's hardware decoders last: for a picture that is green, blocky or frozen on a certain stream.
+            override fun buildVideoRenderers(context: Context, extensionRendererMode: Int, mediaCodecSelector: androidx.media3.exoplayer.mediacodec.MediaCodecSelector, enableDecoderFallback: Boolean, eventHandler: android.os.Handler, eventListener: androidx.media3.exoplayer.video.VideoRendererEventListener, allowedVideoJoiningTimeMs: Long, out: java.util.ArrayList<androidx.media3.exoplayer.Renderer>) {
+                val selector = if (!options.softwareDecoding) mediaCodecSelector else androidx.media3.exoplayer.mediacodec.MediaCodecSelector { mime, secure, tunneling ->
+                    androidx.media3.exoplayer.mediacodec.MediaCodecUtil.getDecoderInfos(mime, secure, tunneling).sortedBy { it.hardwareAccelerated }
+                }
+                super.buildVideoRenderers(context, extensionRendererMode, selector, enableDecoderFallback, eventHandler, eventListener, allowedVideoJoiningTimeMs, out)
+            }
         }.setEnableDecoderFallback(options.decoderFallback).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
         val p = ExoPlayer.Builder(appContext, renderers)
             .setMediaSourceFactory(DefaultMediaSourceFactory(androidx.media3.datasource.DefaultDataSource.Factory(appContext, factory), extractors).setLiveTargetOffsetMs(mode.liveOffsetMs))
@@ -91,11 +98,14 @@ class ExoEngine(context: Context) : PlayerEngine {
         return v
     }
 
+    override fun applySubtitleStyle(style: SubtitleStyle) { options = options.copy(subtitles = style); applySubtitleStyle() }
+
     private fun applySubtitleStyle() {
         val st = options.subtitles
         viewRef?.subtitleView?.apply {
             setFractionalTextSize(androidx.media3.ui.SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * st.scale)
-            setStyle(androidx.media3.ui.CaptionStyleCompat(android.graphics.Color.WHITE, if (st.darkBackground) 0xB3000000.toInt() else android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT,
+            setBottomPaddingFraction(androidx.media3.ui.SubtitleView.DEFAULT_BOTTOM_PADDING_FRACTION + st.raise * 0.04f)
+            setStyle(androidx.media3.ui.CaptionStyleCompat(st.color, if (st.darkBackground) 0xB3000000.toInt() else android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT,
                 if (st.outline) androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE else androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_NONE, android.graphics.Color.BLACK, null))
         }
     }
@@ -144,7 +154,7 @@ class ExoEngine(context: Context) : PlayerEngine {
     override fun pause() { player?.pause() }
     override fun seekTo(positionMs: Long) { player?.seekTo(positionMs) }
     override fun stop() { player?.stop(); player?.clearMediaItems() }
-    override fun release() { player?.release(); player = null; viewRef?.player = null }
+    override fun release() { enhancer?.release(); enhancer = null; player?.release(); player = null; viewRef?.player = null }
     override val positionMs get() = player?.currentPosition ?: 0
     override val durationMs get() = player?.duration?.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0
     override val isPlaying get() = player?.isPlaying == true
@@ -174,6 +184,40 @@ class ExoEngine(context: Context) : PlayerEngine {
             val group = p.currentTracks.groups.filter { it.type == type }.getOrNull(g) ?: return
             b.setTrackTypeDisabled(type, false).setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, t))
         }
+        p.trackSelectionParameters = b.build()
+    }
+
+    private var enhancer: android.media.audiofx.LoudnessEnhancer? = null
+    private var enhancerSession = -1
+
+    /** Boosts the sound above its normal volume with Android's loudness enhancer. ExoPlayer has no picture controls; MPV does. */
+    override fun applyTuning(t: PlayerTuning): Boolean {
+        val p = player ?: return false
+        val session = p.audioSessionId
+        runCatching {
+            if (enhancer == null || enhancerSession != session) { enhancer?.release(); enhancer = if (session != 0) android.media.audiofx.LoudnessEnhancer(session) else null; enhancerSession = session }
+            enhancer?.apply { setTargetGain(((t.boostPercent - 100).coerceAtLeast(0)) * 30); enabled = t.boostPercent > 100 }
+        }
+        return true
+    }
+
+    /** What an adaptive stream offers: "1080p", "720p"… (highest first), one entry per size. */
+    override fun videoQualities(): List<TrackOption> {
+        val p = player ?: return emptyList()
+        val group = p.currentTracks.groups.firstOrNull { it.type == C.TRACK_TYPE_VIDEO } ?: return emptyList()
+        val selected = p.trackSelectionParameters.overrides.isNotEmpty()
+        return (0 until group.length).filter { group.isTrackSupported(it) }.map { it to group.getTrackFormat(it) }
+            .sortedWith(compareByDescending<Pair<Int, androidx.media3.common.Format>> { it.second.height }.thenByDescending { it.second.bitrate })
+            .distinctBy { it.second.height }
+            .map { (i, f) -> TrackOption(i.toString(), "${f.height}p" + (f.bitrate.takeIf { it > 0 }?.let { "  ·  %.1f Mbps".format(it / 1_000_000.0) } ?: ""), null, selected && group.isTrackSelected(i)) }
+            .takeIf { it.size > 1 } ?: emptyList()
+    }
+
+    override fun selectVideo(id: String?) {
+        val p = player ?: return
+        val b = p.trackSelectionParameters.buildUpon().clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+        val group = p.currentTracks.groups.firstOrNull { it.type == C.TRACK_TYPE_VIDEO }
+        if (id != null && group != null) b.setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, id.toInt()))
         p.trackSelectionParameters = b.build()
     }
 

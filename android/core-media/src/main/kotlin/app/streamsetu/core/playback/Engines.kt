@@ -46,10 +46,23 @@ object EngineSelector {
 enum class AspectMode(val label: String) { FIT("Fit"), FILL("Fill"), ZOOM("Zoom") }
 
 /** How subtitles are drawn: a size factor, a dark box behind the text, an outline. */
-data class SubtitleStyle(val scale: Float = 1f, val darkBackground: Boolean = false, val outline: Boolean = true)
+data class SubtitleStyle(val scale: Float = 1f, val darkBackground: Boolean = false, val outline: Boolean = true, val color: Int = 0xFFFFFFFF.toInt(), val raise: Int = 0)
+
+/** Picture, sound and decoding adjustments for the stream playing now. Zero is unchanged; brightness, contrast, saturation and gamma run from -100 to 100. */
+data class PlayerTuning(
+    val brightness: Int = 0, val contrast: Int = 0, val saturation: Int = 0, val gamma: Int = 0,
+    val deinterlace: Boolean = false, val softwareDecoding: Boolean = false,
+    /** 100 is the normal volume; above it the sound is boosted. */
+    val boostPercent: Int = 100, val normalizeLoudness: Boolean = false,
+) {
+    val picture get() = brightness != 0 || contrast != 0 || saturation != 0 || gamma != 0 || deinterlace
+}
+
+/** One chapter of a movie: its name and where it starts. */
+data class Chapter(val title: String, val startMs: Long)
 
 /** Choices that need the player to be built a certain way. */
-data class EngineOptions(val decoderFallback: Boolean = true, val passthrough: Boolean = true, val subtitles: SubtitleStyle = SubtitleStyle(), val httpProxy: String? = null)
+data class EngineOptions(val decoderFallback: Boolean = true, val passthrough: Boolean = true, val subtitles: SubtitleStyle = SubtitleStyle(), val httpProxy: String? = null, val softwareDecoding: Boolean = false)
 
 data class EngineRequest(val url: String, val headers: Map<String, String>, val startMs: Long, val live: Boolean, val buffering: BufferingMode, val options: EngineOptions = EngineOptions())
 
@@ -96,6 +109,17 @@ interface PlayerEngine {
     fun setSubtitleDelay(ms: Long): Boolean = false
     /** Moves the sound later (positive) or earlier (negative) against the picture. False when this engine cannot. */
     fun setAudioDelay(ms: Long): Boolean = false
+    /** Applies picture and sound adjustments. False when this engine cannot do any of them (picture controls are MPV's). */
+    fun applyTuning(t: PlayerTuning): Boolean = false
+    /** True when the picture controls (brightness, contrast, saturation, gamma, deinterlace) work in this engine. */
+    val supportsPictureTuning: Boolean get() = false
+    /** The sizes or bitrates a stream offers (an HLS stream with several variants); empty when there is only one. */
+    fun videoQualities(): List<TrackOption> = emptyList()
+    /** Picks one of [videoQualities]; null goes back to automatic. */
+    fun selectVideo(id: String?) {}
+    fun chapters(): List<Chapter> = emptyList()
+    /** Changes how subtitles look while they are on screen. */
+    fun applySubtitleStyle(style: SubtitleStyle) {}
 }
 
 /** Takes a picture of the frame on screen from the player's surface. */

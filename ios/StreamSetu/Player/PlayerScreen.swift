@@ -198,6 +198,7 @@ struct PlayerScreen: View {
     /// Keeps the picture size, language and other details on screen while playing (on by default).
     @AppStorage("player.streamInfo") private var streamInfo = true
     @State private var showEpisodes = false
+    @State private var showSearch = false
     @State private var importingSubtitle = false
     @AppStorage("player.tourSeen") private var tourSeen = false
     @State private var showTour = false
@@ -292,6 +293,12 @@ struct PlayerScreen: View {
                                setFill: setFill, setSpeed: setSpeed, saveFrame: saveFrame)
         }
         .sheet(isPresented: $showEpisodes) { EpisodeListSheet(playback: playback) }
+        .sheet(isPresented: $showSearch) {
+            if let c = container {
+                PlayerSearchSheet(onChannel: { Play.channel($0, queue: playback.queue, c) }, onMovie: { Play.movie($0, c) }, onEpisode: { Play.episode($0, $1, c) })
+                    .presentationDetents([.large])
+            }
+        }
         .fileImporter(isPresented: $importingSubtitle, allowedContentTypes: [.item]) { result in
             showHUD(GestureHUD(symbol: "captions.bubble", label: SubtitleImport.load(result, into: playback), level: nil), hideAfter: 2.5)
             scheduleHide()
@@ -477,6 +484,11 @@ struct PlayerScreen: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 Spacer()
+                if playback.introEnd != nil, playback.state.isPlaying {
+                    Button { playback.skipIntro() } label: { Label("Skip Intro", systemImage: "forward.end.fill").font(.system(size: 14, weight: .semibold)).padding(.horizontal, 16).frame(minHeight: 40) }
+                        .buttonStyle(.plain).foregroundStyle(.white).background(.black.opacity(0.65), in: Capsule()).overlay(Capsule().strokeBorder(.white.opacity(0.3)))
+                        .frame(maxWidth: .infinity, alignment: .trailing).transition(.opacity)
+                }
                 if let next = playback.upNext, !playback.isLive, let d = playback.duration, d > 60, d - playback.position < 30,
                    nextDismissedFor != playback.current?.itemID {
                     NextEpisodeCard(episode: next, play: { playback.playNextEpisode() }, dismiss: { nextDismissedFor = playback.current?.itemID })
@@ -546,6 +558,7 @@ struct PlayerScreen: View {
             }
             Spacer(minLength: 8)
             if landscape { ClockBattery() }
+            Button { showSearch = true; hideTask?.cancel() } label: { Image(systemName: "magnifyingglass").font(.system(size: 18, weight: .semibold)).frame(width: 44, height: 44) }.accessibilityLabel("Search the catalog")
             AirPlayButton().frame(width: 44, height: 44)
             moreMenu
         }

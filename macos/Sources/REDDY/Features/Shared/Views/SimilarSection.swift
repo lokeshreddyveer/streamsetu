@@ -9,7 +9,9 @@ struct SimilarSection: View {
     @State private var suggestions: [SimilarSuggestion] = []
 
     var body: some View {
-        Group {
+        // A task on an empty view never runs, so something always exists here: a one-point clear line holds the loading step until there is a row to show.
+        VStack(alignment: .leading, spacing: 0) {
+            Color.clear.frame(height: 1)
             if !suggestions.isEmpty {
                 VStack(alignment: .leading, spacing: Spacing.md) {
                     Text("More Like This").font(Typography.heading)

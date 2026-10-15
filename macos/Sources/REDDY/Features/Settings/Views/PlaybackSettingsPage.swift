@@ -90,6 +90,14 @@ struct PlaybackSettingsPage: View {
                 SettingsRow(title: "Preview", detail: "How subtitles will look.", divider: false) { SubtitlePreview(style: s.subtitleStyle) }
             }
 
+            SettingsGroup(title: "Subtitles online", footer: "From OpenSubtitles, using your own free account and API key (opensubtitles.com). They stay in the Keychain on this device and are sent only to OpenSubtitles when you ask for subtitles in the player.") {
+                OpenSubtitlesFields()
+            }
+
+            SettingsGroup(title: "Remembered choices", footer: "Audio language, subtitles, speed and timing come back the next time you play the same title or channel.") {
+                SettingsRow(title: "Remember settings for each title") { Toggle("", isOn: Binding(get: { ItemMemory().enabled }, set: { ItemMemory().enabled = $0 })).labelsHidden() }
+            }
+
             SettingsGroup(title: "Behaviour") {
                 SettingsRow(title: "Play next episode automatically", detail: "Only continues within the series you are watching.") { Toggle("Play next episode automatically", isOn: $s.autoPlayNextEpisode).toggleStyle(.switch) }
                 SettingsRow(title: "Remember playback position", detail: "Saves where you stop in movies and episodes so Continue Watching works. Live channels have no position to save. Off means no resume points are written.") { Toggle("Remember playback position", isOn: $s.rememberPosition).toggleStyle(.switch) }
@@ -239,3 +247,4 @@ private struct PlaybackDetailsPanel: View {
 private extension String {
     func nonEmptyOr(_ fallback: String) -> String { isEmpty ? fallback : self }
 }
+

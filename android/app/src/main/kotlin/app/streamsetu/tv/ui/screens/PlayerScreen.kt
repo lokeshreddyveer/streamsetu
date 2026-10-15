@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
-private enum class PanelKind(val title: String) { TRACKS("Audio & Subtitles"), SPEED("Speed"), PICTURE("Picture"), ENGINE("Player"), MORE("More"), SLEEP("Sleep timer"), JUMP("Jump"), SYNC("Sync"), CHANNELS("Channels"), EPISODES("Episodes") }
+private enum class PanelKind(val title: String) { TRACKS("Audio & Subtitles"), SPEED("Speed"), PICTURE("Picture"), ENGINE("Player"), MORE("More"), TUNE_PICTURE("Picture tuning"), SOUND("Sound"), SUBLOOK("Subtitle look"), SUBFIND("Subtitles online"), QUALITY("Quality"), CHAPTERS("Chapters"), JUMPTO("Go to"), SLEEP("Sleep timer"), JUMP("Jump"), SYNC("Sync"), CHANNELS("Channels"), EPISODES("Episodes") }
 
 private val Ink = Color(0xFFF2F2F2)
 private val InkDim = Color(0xB3FFFFFF)
@@ -65,7 +65,7 @@ private val InkDim = Color(0xB3FFFFFF)
  * digits type a channel number; Back asks before leaving.
  */
 @Composable
-fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit = {}) {
+fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit = {}, onOpenSeries: (Series) -> Unit = {}, onMinimize: () -> Unit = onClose) {
     val playback = c.playback
     val state by playback.state.collectAsState()
     val current by playback.current.collectAsState()
@@ -83,6 +83,16 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     var barVisible by remember { mutableStateOf(true) }
     var tick by remember { mutableIntStateOf(0) }
     var panel by remember { mutableStateOf<PanelKind?>(null) }
+    var searching by remember { mutableStateOf(false) }
+    var searchLiveOnly by remember { mutableStateOf(false) }
+    var gotoOpen by remember { mutableStateOf(false) }
+    val tuning by playback.tuning.collectAsState()
+    val styleNow by playback.subtitleStyle.collectAsState()
+    val chapters by playback.chapters.collectAsState()
+    val qualities by playback.qualities.collectAsState()
+    val nextIn by c.nextEpisodeIn.collectAsState()
+    val appCtx = androidx.compose.ui.platform.LocalContext.current
+    val onlineSubs = remember { OnlineSubtitles(appCtx, c.credentials) }
     var controlsFocused by remember { mutableStateOf(false) }
     var seekFlash by remember { mutableStateOf("") }
     var digits by remember { mutableStateOf("") }
@@ -124,7 +134,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     var duration by remember { mutableLongStateOf(0) }
     LaunchedEffect(Unit) { while (true) { position = playback.positionMs; duration = playback.durationMs; delay(if (barNow) 500 else 2000) } }
     var programmes by remember { mutableStateOf<List<EpgProgram>>(emptyList()) }
-    LaunchedEffect(item?.id) { programmes = (item as? ChannelPlayable)?.channel?.let { ch -> c.epg.resolve(listOf(ch))[ch.id] }?.let { runCatching { c.epg.upcoming(c.db, it, 3) }.getOrNull() }.orEmpty() }
+    LaunchedEffect(item?.id) { programmes = (item as? ChannelPlayable)?.channel?.let { ch -> c.epg.resolve(listOf(ch))[ch.id] }?.let { runCatching { c.epg.upcoming(c.db, it, 4) }.getOrNull() }.orEmpty() }
     // The clock ticks twice a second; only the small pieces that show it redraw. These flags change rarely, so the screen does not redraw with the clock.
     val upNextVisible by remember(item?.id) { derivedStateOf { item is EpisodePlayable && duration > 0 && duration - position in 1..30_000 && c.queue.indexOfFirst { it.id == item.id }.let { it >= 0 && it < c.queue.lastIndex } } }
     val showResumed by remember(resumedFrom) { derivedStateOf { resumedFrom > 0 && position in 1..(resumedFrom + 9000) } }
@@ -174,12 +184,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
             }
         }
 
-        val showInfo by c.settings.showStreamInfo.collectAsState()
-        if (showInfo) {
-            var info by remember { mutableStateOf("") }
-            LaunchedEffect(state) { while (true) { info = (playback.engineKind?.label ?: "") + " · " + playback.streamInfo(); delay(2000) } }
-            Label(info, Tokens.caption, InkDim, modifier = Modifier.align(Alignment.TopEnd).padding(24.dp))
-        }
+        StatsOverlay(c, Modifier.align(Alignment.TopEnd).padding(24.dp))
 
         // ---- The middle: status, or the pause and skip buttons ----
         val busy = state == PlaybackState.Resolving || state == PlaybackState.Buffering || state is PlaybackState.Retrying
@@ -209,7 +214,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                     }
                 }
             }
-            if (state == PlaybackState.Ended) Label("The end", Tokens.title, Ink, FontWeight.SemiBold)
+            if (state == PlaybackState.Ended) Column(horizontalAlignment = Alignment.CenterHorizontally) { Label("The end", Tokens.title, Ink, FontWeight.SemiBold); if (nextIn > 0) Label("Next episode in $nextIn", Tokens.body, InkDim) }
         }
         if (digits.isNotEmpty()) Label(digits, Tokens.display * 1.6f, Ink, FontWeight.Bold, modifier = Modifier.align(Alignment.TopEnd).padding(40.dp))
         AnimatedVisibility(showResumed, Modifier.align(Alignment.TopCenter).padding(top = 40.dp), enter = fadeIn(tween(ms(200))), exit = fadeOut(tween(ms(300)))) {
@@ -248,12 +253,40 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                     if (hasNextEpisode) IconControl(Icons.Filled.SkipNext, "Next episode", req()) { c.step(+1) }
                     if (item is EpisodePlayable) IconControl(Icons.Filled.List, "Episodes", req()) { panel = PanelKind.EPISODES }
                     if (live && c.queue.size > 1) IconControl(Icons.Filled.FormatListBulleted, "Channels", req()) { panel = PanelKind.CHANNELS }
+                    IconControl(Icons.Filled.Search, "Search", req()) { searching = true }
                     IconControl(Icons.Filled.Subtitles, "Audio & subtitles", req()) { panel = PanelKind.TRACKS }
                     if (!live) IconControl(Icons.Filled.Speed, if (speed == 1f) "Speed" else "Speed ${speed}×", req()) { panel = PanelKind.SPEED }
                     IconControl(Icons.Filled.AspectRatio, "Picture: ${aspect.label}", req()) { panel = PanelKind.PICTURE }
                     IconControl(Icons.Filled.Tune, "Player: ${playback.engineKind?.label ?: "-"}", req()) { panel = PanelKind.ENGINE }
                     IconControl(Icons.Filled.MoreHoriz, "More", req()) { panel = PanelKind.MORE }
                 }
+            }
+        }
+
+        // Search the whole catalog without leaving the player: a channel, movie or episode starts at once; a series opens its page.
+        if (searching) androidx.compose.ui.window.Dialog(onDismissRequest = { searching = false; searchLiveOnly = false; toRoot() }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+            val first = remember { FocusRequester() }
+            LaunchedEffect(Unit) { delay(150); runCatching { first.requestFocus() } }
+            fun done() { searching = false; searchLiveOnly = false; toRoot() }
+            Box(Modifier.fillMaxSize().background(Color(0xF2000000)).padding(horizontal = 56.dp, vertical = 40.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Label("Search", Tokens.pageTitle, Ink, FontWeight.Bold)
+                    app.streamsetu.tv.ui.screens.search.SearchContent(c, if (searchLiveOnly) setOf(ContentKind.CHANNEL) else setOf(ContentKind.CHANNEL, ContentKind.MOVIE, ContentKind.SERIES), Modifier.fillMaxSize(), entry = first, dropdown = true,
+                        onChannel = { ch -> c.play(ChannelPlayable(ch), c.queue); done() },
+                        onMovie = { m -> c.play(MoviePlayable(m), listOf(MoviePlayable(m))); done() },
+                        onSeries = { sr -> searching = false; onOpenSeries(sr) },
+                        onEpisode = { e, sr -> c.play(EpisodePlayable(e, sr), c.queue); done() })
+                }
+            }
+        }
+
+        if (gotoOpen) androidx.compose.ui.window.Dialog(onDismissRequest = { gotoOpen = false }) {
+            var text by remember { mutableStateOf("") }
+            Column(Modifier.width(420.dp).background(Color(0xFF111111), RoundedCornerShape(16.dp)).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Label("Go to time", Tokens.title, Ink, FontWeight.SemiBold)
+                Label("Hours:minutes:seconds, for example 1:23:45, or just minutes:seconds.", Tokens.caption, InkDim, maxLines = 2)
+                TvTextField(text, { text = it }, "1:23:45", Modifier.fillMaxWidth(), onDone = { PlayerMenus.parseTime(text)?.let { playback.goTo(it); gotoOpen = false; closePanel() } })
+                TvButton("Go", { PlayerMenus.parseTime(text)?.let { playback.goTo(it); gotoOpen = false; closePanel() } }, primary = true)
             }
         }
 
@@ -296,7 +329,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                         PanelKind.SPEED -> items(listOf(0.25f, 0.5f, 0.75f, 1f, 1.1f, 1.25f, 1.5f, 1.75f, 2f, 3f), key = { "v$it" }) { v -> TextOption(if (v == 1f) "Normal" else "${v}×", v == speed, if (v == speed) Modifier.focusRequester(selectedReq) else Modifier) { playback.setSpeed(v); closePanel() } }
                         PanelKind.PICTURE -> items(AspectMode.entries, key = { "p" + it.name }) { m -> TextOption(m.label, m == aspect, if (m == aspect) Modifier.focusRequester(selectedReq) else Modifier) { playback.setAspect(m); closePanel() } }
                         PanelKind.ENGINE -> items(playback.available.toList(), key = { "e" + it.name }) { k -> TextOption(k.label, k == playback.engineKind, if (k == playback.engineKind) Modifier.focusRequester(selectedReq) else Modifier, if (k == EngineKind.MPV) "MKV, AVI and unusual formats" else "HLS, MP4 and transport streams") { playback.switchEngine(k); closePanel() } }
-                        PanelKind.CHANNELS -> items(c.queue.filterIsInstance<ChannelPlayable>(), key = { "c" + it.id }) { ch -> TextOption("${ch.channel.number?.let { "$it  " } ?: ""}${ch.channel.name}", ch.id == item?.id, if (ch.id == item?.id) Modifier.focusRequester(selectedReq) else Modifier) { c.play(ch, c.queue); closePanel() } }
+                        PanelKind.CHANNELS -> { item { TextOption("Search channels…", false, Modifier, "Type a name") { searchLiveOnly = true; searching = true; panel = null } }; items(c.queue.filterIsInstance<ChannelPlayable>(), key = { "c" + it.id }) { ch -> TextOption("${ch.channel.number?.let { "$it  " } ?: ""}${ch.channel.name}", ch.id == item?.id, if (ch.id == item?.id) Modifier.focusRequester(selectedReq) else Modifier) { c.play(ch, c.queue); closePanel() } } }
                         PanelKind.EPISODES -> {
                             val eps = c.queue.filterIsInstance<EpisodePlayable>().filter { (item as? EpisodePlayable)?.episode?.season == it.episode.season }
                             items(eps, key = { "ep" + it.id }) { ep -> TextOption("${ep.episode.number}.  ${ep.episode.title}", ep.id == item?.id, if (ep.id == item?.id) Modifier.focusRequester(selectedReq) else Modifier) { c.play(ep, c.queue); closePanel() } }
@@ -308,12 +341,34 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                             item { val end by playback.sleepEndsAt.collectAsState(); TextOption("Sleep timer" + if (end > 0) ": " + ((end - System.currentTimeMillis()) / 60_000 + 1) + " min left" else "", false, if (live || resumedFrom <= 0) Modifier.focusRequester(selectedReq) else Modifier) { panel = PanelKind.SLEEP } }
                             if (!live) item { TextOption("Jump", false, Modifier) { panel = PanelKind.JUMP } }
                             item { TextOption("Sync audio & subtitles", false, Modifier) { panel = PanelKind.SYNC } }
+                            item { TextOption("Picture tuning", false, Modifier, "Brightness, contrast, saturation, decoding") { panel = PanelKind.TUNE_PICTURE } }
+                            item { TextOption("Sound", false, Modifier, "Volume boost, even out loudness") { panel = PanelKind.SOUND } }
+                            item { TextOption("Subtitle look", false, Modifier, "Size, colour, position, background") { panel = PanelKind.SUBLOOK } }
+                            item { TextOption("Find subtitles online", false, Modifier, "From OpenSubtitles, with your free key") { panel = PanelKind.SUBFIND } }
+                            if (qualities.isNotEmpty()) item { TextOption("Quality", false, Modifier, "Choose the resolution") { panel = PanelKind.QUALITY } }
+                            if (!live && chapters.isNotEmpty()) item { TextOption("Chapters", false, Modifier) { panel = PanelKind.CHAPTERS } }
+                            if (!live) item { TextOption("Go to time…", false, Modifier, "Type an exact time, or jump by tenths") { panel = PanelKind.JUMPTO } }
+                            item { var v by remember { mutableStateOf(playback.rememberPerTitle) }; TextOption("Remember settings for this title: " + if (v) "on" else "off", false, Modifier, "Audio, subtitles, speed, picture, sound") { playback.rememberPerTitle = !v; v = !v } }
+                            if (item is EpisodePlayable) item { val auto by c.settings.playNextAutomatically.collectAsState(); TextOption("Play next episode by itself: " + if (auto) "on" else "off", false, Modifier) { c.settings.setPlayNext(!auto) } }
+                            item { val sk by c.settings.seekSeconds.collectAsState(); TextOption("Skip length: $sk seconds", false, Modifier, "Press to change: 5, 10, 15, 30, 85") { c.settings.setSeekSeconds(listOf(5, 10, 15, 30, 85).let { l -> l[(l.indexOf(sk) + 1).mod(l.size)] }) } }
                             if (live && item != null) item { TextOption(if (item.id in favourites) "Remove from favorites" else "Add to favorites", false, Modifier) { scope.launch { c.user.setFavourite(item.id, ContentKind.CHANNEL, item.id !in favourites) }; closePanel() } }
+                            if (live) (item as? ChannelPlayable)?.let { cp -> programmes.firstOrNull { it.startMs > System.currentTimeMillis() + 2 * 60_000L }?.let { nx -> item { TextOption("Remind me: " + nx.title, false, Modifier, "A notification when it starts") { scope.launch { app.streamsetu.tv.Reminders.schedule(c, context, cp.channel, nx) }; closePanel() } } } }
                             if (live && c.previousLive != null) item { TextOption("Last channel", false, Modifier) { c.lastChannel(); closePanel() } }
                             item { val on by c.settings.showStreamInfo.collectAsState(); TextOption("Stream information: " + if (on) "on" else "off", false, Modifier) { c.settings.setShowStreamInfo(!on); closePanel() } }
                             if (android.os.Build.VERSION.SDK_INT >= 26) item { TextOption("Picture in Picture", false, Modifier) { closePanel(); (context as? android.app.Activity)?.enterPictureInPictureMode(android.app.PictureInPictureParams.Builder().build()) } }
+                            item { TextOption("Keep playing while I browse", false, Modifier, "The picture closes, the sound stays. Menu or Info brings it back.") { c.playback.setMinimized(true); onMinimize() } }
                             item { TextOption("Close player", false, Modifier) { onClose() } }
                         }
+                        PanelKind.TUNE_PICTURE -> items(PlayerMenus.picture(playback, tuning)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
+                        PanelKind.SOUND -> items(PlayerMenus.sound(playback, tuning)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
+                        PanelKind.SUBLOOK -> items(PlayerMenus.subtitleStyle(playback, styleNow ?: playback.currentSubtitleStyle())) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
+                        PanelKind.QUALITY -> items(PlayerMenus.quality(playback, qualities)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
+                        PanelKind.CHAPTERS -> items(PlayerMenus.chapters(playback, chapters)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
+                        PanelKind.JUMPTO -> {
+                            item { TextOption("Type a time…", false, Modifier.focusRequester(selectedReq), "For example 1:23:45") { gotoOpen = true } }
+                            items(PlayerMenus.jumpToPoints(playback)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); closePanel() } }
+                        }
+                        PanelKind.SUBFIND -> item { OnlineSubtitlesPanel(onlineSubs, playback, item, c.settings.subtitleLanguage.collectAsState().value) { closePanel() } }
                         PanelKind.SLEEP -> {
                             items(listOf(0, 15, 30, 45, 60, 90, 120), key = { "z$it" }) { m -> val end by playback.sleepEndsAt.collectAsState(); TextOption(if (m == 0) (if (end > 0) "Turn off" else "Off") else "$m minutes", m == 0 && end == 0L, if (m == 0) Modifier.focusRequester(selectedReq) else Modifier) { playback.startSleepTimer(m); closePanel() } }
                         }
@@ -397,7 +452,7 @@ private fun LiveBanner(ch: Channel, programmes: List<EpgProgram>) {
     val time = remember { DateFormat.getTimeInstance(DateFormat.SHORT) }
     val now = System.currentTimeMillis()
     val current = programmes.firstOrNull { it.isLive(now) }
-    val next = programmes.firstOrNull { it.startMs > now }
+    val upcoming = programmes.filter { it.startMs > now }.take(2)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
         ChannelLogo(ch.logoUrl, ch.name, 48.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -411,7 +466,7 @@ private fun LiveBanner(ch: Channel, programmes: List<EpgProgram>) {
                 val frac = ((now - current.startMs).toFloat() / (current.endMs - current.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
                 Box(Modifier.width(320.dp).height(3.dp).background(Color(0x40FFFFFF), RoundedCornerShape(2.dp))) { Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(Color.White, RoundedCornerShape(2.dp))) }
             }
-            if (next != null) Label("Next  ·  ${time.format(Date(next.startMs))}  ${next.title}", Tokens.caption, InkDim)
+            upcoming.forEachIndexed { i, n -> Label((if (i == 0) "Next" else "Then") + "  ·  ${time.format(Date(n.startMs))}  ${n.title}", Tokens.caption, InkDim) }
         }
     }
 }
@@ -419,4 +474,28 @@ private fun LiveBanner(ch: Channel, programmes: List<EpgProgram>) {
 private fun clock(ms: Long): String {
     val s = (ms / 1000).coerceAtLeast(0)
     return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, (s % 3600) / 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
+}
+
+
+/** Subtitles from OpenSubtitles for what is playing: a list to pick from, or a sentence about what is missing. */
+@Composable
+private fun OnlineSubtitlesPanel(client: OnlineSubtitles, playback: app.streamsetu.core.playback.PlaybackController, item: Playable?, language: String, onDone: () -> Unit) {
+    var hits by remember { mutableStateOf<List<OnlineSubtitles.Hit>?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val title = (item as? EpisodePlayable)?.series?.title ?: item?.title.orEmpty()
+    val year = (item as? MoviePlayable)?.movie?.year
+    LaunchedEffect(item?.id) {
+        if (!client.configured) { message = "Add your free OpenSubtitles key, account name and password in Settings, Subtitles & Accessibility."; return@LaunchedEffect }
+        runCatching { client.search(title, year, language) }.onSuccess { hits = it; if (it.isEmpty()) message = "No subtitles found for this title." }.onFailure { message = it.message ?: "The search did not work." }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        message?.let { Label(it, Tokens.body, InkDim, maxLines = 5) }
+        if (message == null && hits == null) Label("Searching…", Tokens.body, InkDim)
+        hits?.forEach { h ->
+            TextOption(h.label, false, Modifier) {
+                scope.launch { message = "Downloading…"; runCatching { client.download(h) }.onSuccess { playback.addSubtitle(it, "Online"); onDone() }.onFailure { message = it.message ?: "That did not work." } }
+            }
+        }
+    }
 }

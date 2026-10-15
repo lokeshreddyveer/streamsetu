@@ -34,6 +34,7 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
         MPVLib.setOptionString("vo", "gpu")
         MPVLib.setOptionString("gpu-context", "android")
         MPVLib.setOptionString("opengl-es", "yes")
+        MPVLib.setOptionString("volume-max", "150")
         MPVLib.setOptionString("hwdec", "mediacodec,mediacodec-copy")
         MPVLib.setOptionString("hwdec-codecs", "h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1")
         MPVLib.setOptionString("ao", "audiotrack,opensles")
@@ -92,9 +93,7 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
         val extra = request.headers.filterKeys { it != "User-Agent" }.map { "${it.key}: ${it.value}".replace(",", "%2C") }
         MPVLib.setPropertyString("http-header-fields", extra.joinToString(","))
         val st = request.options.subtitles
-        MPVLib.setPropertyString("sub-font-size", (55 * st.scale).toInt().toString())
-        MPVLib.setPropertyString("sub-border-size", if (st.outline) "3" else "0")
-        MPVLib.setPropertyString("sub-back-color", if (st.darkBackground) "#B3000000" else "#00000000")
+        applySubtitleStyle(st)
         MPVLib.setPropertyString("http-proxy", request.options.httpProxy ?: "")
         MPVLib.setPropertyString("pause", "no")
         if (request.startMs > 5_000) MPVLib.command(arrayOf("loadfile", request.url, "replace", "-1", "start=${request.startMs / 1000}"))
@@ -110,6 +109,37 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
             AspectMode.FILL -> { MPVLib.setPropertyDouble("panscan", 1.0); MPVLib.setPropertyDouble("video-zoom", 0.0) }
             AspectMode.ZOOM -> { MPVLib.setPropertyDouble("panscan", 1.0); MPVLib.setPropertyDouble("video-zoom", 0.2) }
         }
+    }
+
+    override val supportsPictureTuning get() = true
+
+    /** Picture controls, loudness and hardware decoding, live. */
+    override fun applyTuning(t: PlayerTuning): Boolean {
+        if (!initialised) return false
+        MPVLib.setPropertyInt("brightness", t.brightness); MPVLib.setPropertyInt("contrast", t.contrast)
+        MPVLib.setPropertyInt("saturation", t.saturation); MPVLib.setPropertyInt("gamma", t.gamma)
+        MPVLib.setPropertyString("deinterlace", if (t.deinterlace) "yes" else "no")
+        MPVLib.setPropertyString("hwdec", if (t.softwareDecoding) "no" else "mediacodec,mediacodec-copy")
+        MPVLib.setPropertyInt("volume", t.boostPercent.coerceIn(100, 150))
+        MPVLib.setPropertyString("af", if (t.normalizeLoudness) "loudnorm" else "")
+        return true
+    }
+
+    override fun chapters(): List<Chapter> {
+        if (!initialised) return emptyList()
+        val n = MPVLib.getPropertyInt("chapter-list/count") ?: return emptyList()
+        return (0 until n).map { i ->
+            Chapter(MPVLib.getPropertyString("chapter-list/$i/title")?.takeIf { it.isNotBlank() } ?: "Chapter ${i + 1}", ((MPVLib.getPropertyDouble("chapter-list/$i/time") ?: 0.0) * 1000).toLong())
+        }
+    }
+
+    override fun applySubtitleStyle(style: SubtitleStyle) {
+        if (!initialised) return
+        MPVLib.setPropertyString("sub-font-size", (55 * style.scale).toInt().toString())
+        MPVLib.setPropertyString("sub-border-size", if (style.outline) "3" else "0")
+        MPVLib.setPropertyString("sub-back-color", if (style.darkBackground) "#B3000000" else "#00000000")
+        MPVLib.setPropertyString("sub-color", "#%06X".format(style.color and 0xFFFFFF))
+        MPVLib.setPropertyInt("sub-pos", (100 - style.raise * 6).coerceIn(50, 100))
     }
 
     override fun setVideoEnabled(enabled: Boolean) { if (initialised) MPVLib.setPropertyString("vid", if (enabled) "auto" else "no") }
@@ -184,6 +214,7 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
         return linkedMapOf(
             "Video" to listOf("${prop("video-params/w")}×${prop("video-params/h")}", prop("video-format"), prop("container-fps").toDoubleOrNull()?.let { "%.0f fps".format(it) }.orEmpty()).filter { it.isNotBlank() && it != "×" }.joinToString(" · ").ifBlank { "none" },
             "Audio" to listOf(prop("audio-codec-name"), prop("audio-params/channel-count").takeIf { it.isNotBlank() }?.let { "$it ch" }.orEmpty()).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "none" },
+            "Video bitrate" to (prop("video-bitrate").toDoubleOrNull()?.takeIf { it > 0 }?.let { "${(it / 1000).toInt()} kbps" } ?: "unknown"),
             "Decoder" to prop("hwdec-current").ifBlank { "software" },
             "Buffered ahead" to (prop("demuxer-cache-duration").toDoubleOrNull()?.let { "%.0f s".format(it) } ?: "unknown"),
             "Dropped frames" to prop("vo-drop-frame-count").ifBlank { "0" },

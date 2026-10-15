@@ -48,7 +48,7 @@ struct CollectionsView: View {
                 EmptyState(symbol: "square.stack", title: "No collections yet", message: "Group channels, movies and series your own way. Channels in a collection also appear as a list in Live TV.").listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
             ForEach(collections) { c in
-                NavigationLink { CollectionDetailView(collection: c) } label: { Label(c.name, systemImage: "square.stack") }
+                NavigationLink { CollectionDetailView(collection: c) } label: { LibraryRow(symbol: "square.stack.fill", tint: .indigo, title: c.name, count: nil) }
                     .swipeActions { Button(role: .destructive) { try? container?.favoritesRepo.deleteCollection(id: c.id); reload() } label: { Label("Delete", systemImage: "trash") } }
             }
         }
@@ -59,7 +59,11 @@ struct CollectionsView: View {
             Button("Create") { _ = try? container?.favoritesRepo.createCollection(name: newName.trimmingCharacters(in: .whitespaces)); newName = ""; reload() }
             Button("Cancel", role: .cancel) { newName = "" }
         }
-        .navigationDestination(for: LibraryItem.self) { DetailView(item: $0) }
+        .listTools(sort: nil, canClear: !collections.isEmpty, clearLabel: "Delete All Collections", confirmTitle: "Delete all collections?",
+                   confirmMessage: "Every collection is deleted. The movies, series and channels in them stay in your library.") {
+            for col in collections { try? container?.favoritesRepo.deleteCollection(id: col.id) }
+            reload(); state.catalogVersion += 1
+        }
         .task(id: state.catalogVersion) { reload() }
     }
 
@@ -74,32 +78,36 @@ struct CollectionDetailView: View {
     @State private var titles: [LibraryItem] = []
     @State private var name = ""
     @State private var renaming = false
+    @State private var sort: TitleSort = .recent
+    @State private var editing = false
 
     var body: some View {
-        List {
-            if channels.isEmpty, titles.isEmpty { EmptyState(symbol: "square.stack", title: "Empty", message: "Add items from their menus.").listRowBackground(Color.clear) }
-            if !channels.isEmpty {
-                Section("Channels") {
-                    ForEach(channels) { c in
-                        Button { if let container { Play.channel(c, queue: channels, container) } } label: { ChannelRow(channel: c) }.buttonStyle(.press)
-                            .swipeActions { Button(role: .destructive) { remove(c.id) } label: { Label("Remove", systemImage: "minus.circle") } }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                if channels.isEmpty, titles.isEmpty { EmptyState(symbol: "square.stack", title: "Empty", message: "Add items from their menus.") }
+                if !channels.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ListHeader(title: "Channels", count: channels.count)
+                        ChannelTileGrid(channels: sort.apply(channels), editing: editing, onPlay: { ch in if let container { Play.channel(ch, queue: channels, container) } }, onRemove: { remove($0.id) })
                     }
-                }.listRowBackground(ColorTokens.surface)
-            }
-            if !titles.isEmpty {
-                Section("Movies and Series") {
-                    ForEach(titles) { t in
-                        NavigationLink(value: t) { HStack(spacing: 12) {
-                            ArtworkImage(url: t.posterURL, kind: .poster, contentMode: .fill, symbol: "film").frame(width: 40, height: 58).clipShape(RoundedRectangle(cornerRadius: 6))
-                            Text(t.title).lineLimit(2)
-                        } }
-                        .swipeActions { Button(role: .destructive) { remove(t.id) } label: { Label("Remove", systemImage: "minus.circle") } }
+                }
+                if !titles.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ListHeader(title: "Movies and Series", count: titles.count)
+                        TitleGrid(items: sort.apply(titles), editing: editing, onRemove: { remove($0.id) })
                     }
-                }.listRowBackground(ColorTokens.surface)
-            }
+                }
+            }.padding(16)
         }
         .navigationTitle(collection.name).themed(collection.name)
+        .editButton($editing, enabled: !channels.isEmpty || !titles.isEmpty)
         .toolbar { TrailingPills { Button("Rename") { name = collection.name; renaming = true } } }
+        .listTools(sort: $sort, canClear: !channels.isEmpty || !titles.isEmpty, clearLabel: "Remove Everything from This Collection", confirmTitle: "Empty this collection?",
+                   confirmMessage: "Everything in “\(collection.name)” is removed from it. The collection stays, and nothing leaves your library.") {
+            for ch in channels { try? container?.favoritesRepo.remove(itemID: ch.id, fromCollection: collection.id) }
+            for t in titles { try? container?.favoritesRepo.remove(itemID: t.id, fromCollection: collection.id) }
+            channels = []; titles = []; state.catalogVersion += 1
+        }
         .alert("Rename Collection", isPresented: $renaming) {
             TextField("Name", text: $name)
             Button("Save") { try? container?.favoritesRepo.renameCollection(id: collection.id, name: name); state.catalogVersion += 1 }
@@ -108,7 +116,7 @@ struct CollectionDetailView: View {
         .task(id: state.catalogVersion) { await load() }
     }
 
-    private func remove(_ id: String) { try? container?.favoritesRepo.remove(itemID: id, fromCollection: collection.id); state.catalogVersion += 1 }
+    private func remove(_ id: String) { try? container?.favoritesRepo.remove(itemID: id, fromCollection: collection.id); channels.removeAll { $0.id == id }; titles.removeAll { $0.id == id }; state.catalogVersion += 1 }
 
     private func load() async {
         guard let c = container else { return }

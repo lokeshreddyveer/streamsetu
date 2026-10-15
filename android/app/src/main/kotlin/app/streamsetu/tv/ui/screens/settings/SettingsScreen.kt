@@ -252,7 +252,16 @@ fun SubtitleSettings(c: AppContainer) {
         ChoiceRow("Size", options = listOf("SMALL" to "Small", "MEDIUM" to "Medium", "LARGE" to "Large", "XLARGE" to "Extra large"), value = size) { s.setSubtitleSize(it) }
         ChoiceRow("Background", options = listOf("NONE" to "None", "DARK" to "Dark box"), value = bg) { s.setSubtitleBackground(it) }
         ToggleRow("Outline", "A dark edge around the letters.", outline) { s.setSubtitleOutline(it) }
-        SettingRow("Subtitle delay", "Shifts subtitles earlier or later.", "Not available", enabled = false, reason = "Only the MPV engine can do this, and it is not exposed yet.")
+        SettingRow("Subtitle delay", "Shifts subtitles earlier or later. Open More, then Sync audio & subtitles while watching (MPV player).", "In the player")
+    }
+    SettingGroup("Find subtitles online", "From OpenSubtitles, using your own free account and API key (opensubtitles.com, Consumers). They stay on this device and are sent only to OpenSubtitles when you ask for subtitles in the player.") {
+        var key by remember { mutableStateOf(c.credentials.load("os.key").orEmpty()) }
+        var user by remember { mutableStateOf(c.credentials.load("os.user").orEmpty()) }
+        var pass by remember { mutableStateOf(c.credentials.load("os.pass").orEmpty()) }
+        fun save(name: String, v: String) { if (v.isBlank()) c.credentials.delete(name) else c.credentials.save(name, v.trim()) }
+        TvTextField(key, { key = it.trim(); save("os.key", key) }, "OpenSubtitles API key", Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), secret = true)
+        TvTextField(user, { user = it.trim(); save("os.user", user) }, "OpenSubtitles account name", Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp))
+        TvTextField(pass, { pass = it; save("os.pass", pass) }, "OpenSubtitles password", Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), secret = true)
     }
     SettingGroup("Accessibility") {
         ChoiceRow("Animation", "Reduced and Off remove sliding and fading. Android's own \"remove animations\" setting is also respected.", listOf(app.streamsetu.core.settings.AnimationLevel.FULL to "Full", app.streamsetu.core.settings.AnimationLevel.REDUCED to "Reduced", app.streamsetu.core.settings.AnimationLevel.OFF to "Off"), anim) { ui.setAnimation(it) }

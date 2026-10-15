@@ -71,6 +71,7 @@ struct SearchView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.immediately)      // scrolling the results pulls the keyboard away so they can be seen, also in landscape
     }
 
     /// Movies, Series and Live TV search: the results as tiles in a grid, like those screens themselves.
@@ -96,7 +97,7 @@ struct SearchView: View {
             }
             .padding(.vertical, 12)
         }
-        .scrollDismissesKeyboard(.interactively)
+        .scrollDismissesKeyboard(.immediately)
     }
 
     private func row(_ r: SearchResult) -> some View {

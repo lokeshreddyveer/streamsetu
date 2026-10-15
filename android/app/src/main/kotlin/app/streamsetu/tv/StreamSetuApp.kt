@@ -20,6 +20,7 @@ import app.streamsetu.core.sync.SyncService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** The single place screens ask for what they need. Everything inside is built by Hilt (see di/AppModule); this class only adds the app-wide behaviour that joins them. */
@@ -56,14 +57,26 @@ class AppContainer @Inject constructor(
     /** The channels Multi-View opens with (set by the player when it hands over). */
     var multiViewStart: List<app.streamsetu.core.model.Channel> = emptyList()
 
+    /** Seconds left before the next episode starts by itself; 0 when none is waiting. */
+    val nextEpisodeIn = kotlinx.coroutines.flow.MutableStateFlow(0)
+
     init {
         appScope.launch { runCatching { db.catalog().deleteDividers() } }      // divider rows read by an earlier version
         // "Play next episode automatically": when an episode ends, the next one of the same series starts.
+        // The next episode follows after a short countdown that the player shows ("Next episode in 5"); anything else the person does cancels it.
+        var countdown: kotlinx.coroutines.Job? = null
         appScope.launch {
             playback.state.collect { st ->
+                countdown?.cancel(); nextEpisodeIn.value = 0
                 if (st == app.streamsetu.core.playback.PlaybackState.Ended && settings.playNextAutomatically.value) {
                     val ep = playback.current.value as? EpisodePlayable ?: return@collect
-                    catalog.nextEpisode(ep.episode)?.takeIf { app.streamsetu.core.data.repo.EpisodePlan.contiguous(ep.episode, it) }?.let { n -> catalog.series(n.seriesId)?.let { s -> kotlinx.coroutines.withContext(Dispatchers.Main) { play(EpisodePlayable(n, s), queue) } } }
+                    val n = catalog.nextEpisode(ep.episode)?.takeIf { app.streamsetu.core.data.repo.EpisodePlan.contiguous(ep.episode, it) } ?: return@collect
+                    val series = catalog.series(n.seriesId) ?: return@collect
+                    countdown = appScope.launch {
+                        for (i in 5 downTo 1) { nextEpisodeIn.value = i; delay(1000) }
+                        nextEpisodeIn.value = 0
+                        kotlinx.coroutines.withContext(Dispatchers.Main) { play(EpisodePlayable(n, series), queue) }
+                    }
                 }
             }
         }

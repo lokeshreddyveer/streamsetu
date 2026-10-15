@@ -10,17 +10,34 @@ struct MoreView: View {
         OptionalStack(embedded: embedded) {
             List {
                 Section {
-                    NavigationLink { FavouritesView() } label: { Label("Favourites", systemImage: "heart") }
-                    NavigationLink { WatchLaterView() } label: { Label("Watch Later", systemImage: "bookmark") }
-                    NavigationLink { CollectionsView() } label: { Label("Collections", systemImage: "square.stack") }
-                    NavigationLink { HistoryView() } label: { Label("Watch History", systemImage: "clock.arrow.circlepath") }
-                    NavigationLink { FilesView() } label: { Label("Files and Servers", systemImage: "externaldrive") }
+                    NavigationLink { FavouritesView() } label: { LibraryRow(symbol: "heart.fill", tint: .pink, title: "Favourites", count: state.favoriteIDs.count) }
+                    NavigationLink { WatchLaterView() } label: { LibraryRow(symbol: "bookmark.fill", tint: .orange, title: "Watch Later", count: state.watchLaterIDs.count) }
+                    NavigationLink { CollectionsView() } label: { LibraryRow(symbol: "square.stack.fill", tint: .indigo, title: "Collections", count: nil) }
+                    NavigationLink { HistoryView() } label: { LibraryRow(symbol: "clock.arrow.circlepath", tint: .teal, title: "Watch History", count: nil) }
+                    NavigationLink { FilesView() } label: { LibraryRow(symbol: "externaldrive.fill", tint: .gray, title: "Files and Servers", count: nil) }
                 }.listRowBackground(ColorTokens.surface)
-                Section { NavigationLink { StatisticsView() } label: { Label("Statistics", systemImage: "chart.bar") } }.listRowBackground(ColorTokens.surface)
+                Section { NavigationLink { StatisticsView() } label: { LibraryRow(symbol: "chart.bar.fill", tint: .green, title: "Statistics", count: nil) } }.listRowBackground(ColorTokens.surface)
             }
             .navigationTitle("Library").themed("Library")
             .miniPlayerInset()
         }
+    }
+}
+
+/// One line of the Library list: a coloured icon tile, the name, and how many are in it.
+struct LibraryRow: View {
+    let symbol: String
+    let tint: Color
+    let title: String
+    let count: Int?
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: symbol).font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
+                .frame(width: 36, height: 36).background(tint.gradient, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            Text(title).appFont(16, .medium)
+            Spacer()
+            if let count, count > 0 { Text("\(count)").appFont(14).foregroundStyle(.secondary) }
+        }.padding(.vertical, 4)
     }
 }
 
@@ -29,33 +46,47 @@ struct FavouritesView: View {
     @Environment(\.container) private var container
     @State private var channels: [Channel] = []
     @State private var titles: [LibraryItem] = []
+    @State private var sort: TitleSort = .recent
+    @State private var editing = false
+    @State private var loaded = false
 
     var body: some View {
-        List {
-            if channels.isEmpty, titles.isEmpty {
-                EmptyState(symbol: "heart", title: "No favourites yet", message: "Tap the heart on a channel, movie or series.").listRowBackground(Color.clear).listRowSeparator(.hidden)
-            }
-            if !channels.isEmpty {
-                Section("Channels") {
-                    ForEach(channels) { c in
-                        Button { if let container { Play.channel(c, queue: channels, container) } } label: { ChannelRow(channel: c, isFavorite: true) }.buttonStyle(.press)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                if channels.isEmpty, titles.isEmpty, loaded {
+                    EmptyState(symbol: "heart", title: "No favourites yet", message: "Tap the heart on a channel, movie or series.")
+                }
+                if !channels.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ListHeader(title: "Channels", count: channels.count)
+                        ChannelTileGrid(channels: sort.apply(channels), editing: editing,
+                                        onPlay: { c in if let container { Play.channel(c, queue: channels, container) } }, onRemove: { unfavourite($0.id, .channel) })
                     }
-                }.listRowBackground(ColorTokens.surface)
-            }
-            if !titles.isEmpty {
-                Section("Movies and Series") {
-                    ForEach(titles) { t in
-                        NavigationLink(value: t) { HStack(spacing: 12) {
-                            ArtworkImage(url: t.posterURL, kind: .poster, contentMode: .fill, symbol: "film").frame(width: 44, height: 62).clipShape(RoundedRectangle(cornerRadius: 6))
-                            Text(t.title).lineLimit(2)
-                        } }
+                }
+                if !titles.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ListHeader(title: "Movies and Series", count: titles.count)
+                        TitleGrid(items: sort.apply(titles), editing: editing, onRemove: { unfavourite($0.id, $0.kind) })
                     }
-                }.listRowBackground(ColorTokens.surface)
-            }
+                }
+            }.padding(16)
         }
         .navigationTitle("Favourites").themed("Favourites")
-        .navigationDestination(for: LibraryItem.self) { DetailView(item: $0) }
+        .editButton($editing, enabled: !channels.isEmpty || !titles.isEmpty)
+        .listTools(sort: $sort, canClear: !channels.isEmpty || !titles.isEmpty, clearLabel: "Remove All Favourites", confirmTitle: "Remove all favourites?",
+                   confirmMessage: "This removes every channel, movie and series from Favourites. The titles themselves stay in your library.") {
+            for c in channels { state.toggleFavorite(c.id, kind: .channel) }
+            for t in titles { state.toggleFavorite(t.id, kind: t.kind) }
+            channels = []; titles = []; editing = false
+        }
+        .miniPlayerInset()
         .task(id: state.catalogVersion) { await load() }
+    }
+
+    private func unfavourite(_ id: String, _ kind: ContentKind) {
+        state.toggleFavorite(id, kind: kind)
+        channels.removeAll { $0.id == id }; titles.removeAll { $0.id == id }
+        if channels.isEmpty && titles.isEmpty { editing = false }
     }
 
     private func load() async {
@@ -68,7 +99,7 @@ struct FavouritesView: View {
             let series = ((try? c.favoritesRepo.favoriteIDs(kind: .series)) ?? []).compactMap { try? c.catalog.seriesItem(id: $0) }.map { LibraryItem.series($0) }
             return (chans, movies + series)
         }.value
-        channels = ch; titles = ti
+        channels = ch; titles = ti; loaded = true
     }
 }
 
@@ -76,6 +107,7 @@ struct HistoryView: View {
     @Environment(AppState.self) private var state
     @Environment(\.container) private var container
     @State private var items: [ContinueItem] = []
+    @State private var confirmClear = false
 
     var body: some View {
         List {
@@ -85,17 +117,35 @@ struct HistoryView: View {
                     guard let c = container else { return }
                     switch r.content { case .movie(let m): Play.movie(m, c); case .episode(let e, let s): Play.episode(e, s, c) }
                 } label: {
-                    HStack(spacing: 12) {
-                        ArtworkImage(url: r.artworkURL, kind: .backdrop, contentMode: .fill, symbol: "play.rectangle").frame(width: 100, height: 56).clipShape(RoundedRectangle(cornerRadius: 6))
+                    HStack(spacing: 14) {
+                        ZStack(alignment: .bottom) {
+                            ArtworkImage(url: r.artworkURL, kind: .backdrop, contentMode: .fill, symbol: "play.rectangle").frame(width: 132, height: 74)
+                            ProgressStrip(fraction: r.progress.fraction)
+                        }.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(r.title).appFont(14, .medium).lineLimit(2)
-                            ProgressView(value: r.progress.fraction).tint(ColorTokens.accentDefault)
+                            Text(r.title).appFont(15, .semibold).lineLimit(2)
+                            Text(r.progress.completed ? "Watched" : "\(Int(r.progress.fraction * 100))% watched").appFont(12).foregroundStyle(.secondary)
                         }
+                        Spacer(minLength: 0)
                     }
                 }.buttonStyle(.press)
+                .swipeActions { Button(role: .destructive) { try? container?.historyRepo.clearProgress(itemID: r.id); items.removeAll { $0.id == r.id }; state.catalogVersion += 1 } label: { Label("Remove", systemImage: "trash") } }
             }
         }
         .navigationTitle("Watch History").themed("Watch History")
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !items.isEmpty {
+                Button(role: .destructive) { confirmClear = true } label: { Label("Clear Watch History", systemImage: "trash").frame(maxWidth: .infinity) }
+                    .buttonStyle(.bordered).controlSize(.large).padding(.horizontal, 16).padding(.vertical, 8).background(ColorTokens.background)
+            }
+        }
+        .confirmationDialog("Clear watch history?", isPresented: $confirmClear, titleVisibility: .visible) {
+            Button("Clear Watch History", role: .destructive) {
+                try? container?.historyRepo.clearHistory(); try? container?.historyRepo.clearResumePoints(sourcePrefix: nil)
+                items = []; state.catalogVersion += 1
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("This removes everything you have watched and the places saved in each title. Favourites and lists are not touched.") }
         .task(id: state.catalogVersion) {
             guard let c = container else { return }
             let source = state.activeSourceID
@@ -138,6 +188,14 @@ struct PlaybackSettingsView: View {
                 TextField("Preferred subtitle language (e.g. en)", text: $s.preferredSubtitleLanguage).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Toggle("Show subtitles by default", isOn: $s.subtitlesByDefault)
             }.listRowBackground(ColorTokens.surface)
+            Section {
+                OpenSubtitlesFields()
+            } header: { Text("Subtitles online") } footer: { Text("From OpenSubtitles, using your own free account and API key (opensubtitles.com). They stay in the Keychain on this device and are sent only to OpenSubtitles when you ask for subtitles in the player.") }
+            .listRowBackground(ColorTokens.surface)
+            Section {
+                Toggle("Remember settings for each title", isOn: Binding(get: { ItemMemory().enabled }, set: { ItemMemory().enabled = $0 }))
+            } footer: { Text("Audio language, subtitles, speed and timing come back the next time you play the same title or channel.") }
+            .listRowBackground(ColorTokens.surface)
             Section("Subtitle style") {
                 VStack(alignment: .leading) { Text("Size \(Int(s.subtitleSize))%").font(.subheadline); Slider(value: $s.subtitleSize, in: 60...200, step: 10) }
                 VStack(alignment: .leading) { Text("Background \(Int(s.subtitleBackground * 100))%").font(.subheadline); Slider(value: $s.subtitleBackground, in: 0...1) }

@@ -359,6 +359,10 @@ struct PlayerOptionsSheet: View {
     @State private var audioDelayMS = 0
     @State private var subtitleDelayMS = 0
     @State private var subtitleSize = 100.0
+    @State private var showOnlineSubs = false
+    @State private var goToText = ""
+    @State private var picture = PictureAdjustments()
+    @State private var remember = ItemMemory().enabled
 
     var body: some View {
         NavigationStack {
@@ -435,6 +439,24 @@ struct PlayerOptionsSheet: View {
                         }.buttonStyle(.bordered)
                     }
                 }
+                Section("This Title") {
+                    if !playback.isLive {
+                        HStack {
+                            TextField("Go to time, for example 1:23:45", text: $goToText).keyboardType(.numbersAndPunctuation).submitLabel(.go).onSubmit { goTo() }
+                            Button("Go") { goTo() }.disabled(PlaybackCoordinator.parseTime(goToText) == nil)
+                        }
+                    }
+                    Button { showOnlineSubs = true } label: { Label("Find subtitles online", systemImage: "captions.bubble") }
+                    Toggle("Remember settings for this title", isOn: Binding(get: { remember }, set: { remember = $0; ItemMemory().enabled = $0 }))
+                }
+                if playback.capabilities.pictureAdjustments {
+                    Section("Picture tuning") {
+                        tuning("Brightness", $picture.brightness); tuning("Contrast", $picture.contrast); tuning("Saturation", $picture.saturation); tuning("Gamma", $picture.gamma)
+                        if !picture.isDefault { Button("Reset picture tuning", role: .destructive) { picture = PictureAdjustments(); playback.setPicture(picture) } }
+                    }
+                } else {
+                    Section("Picture tuning") { Text("Brightness, contrast, saturation and gamma work in the MPV player. Switch the player in the Player section.").font(.footnote).foregroundStyle(.secondary) }
+                }
                 Section("Picture") {
                     Picker("Size", selection: Binding(get: { fill }, set: { setFill($0) })) { Text("Fit").tag(false); Text("Fill").tag(true) }.pickerStyle(.segmented)
                     Picker("Shape", selection: $aspect) { ForEach(AspectRatioOption.presets) { Text($0.title).tag($0) } }
@@ -463,9 +485,11 @@ struct PlayerOptionsSheet: View {
                 }
             }
             .fileImporter(isPresented: $importingSubtitle, allowedContentTypes: [.item]) { addSubtitle($0) }
+            .sheet(isPresented: $showOnlineSubs) { OnlineSubtitleSheet().presentationDetents([.medium, .large]) }
             .navigationTitle("Options").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .onAppear {
+                picture = container?.settings.picture ?? PictureAdjustments()
                 audioDelayMS = Int((playback.audioDelay * 1000).rounded()); subtitleDelayMS = Int((playback.subtitleDelay * 1000).rounded())
                 subtitleSize = container?.settings.subtitleSize ?? 100
             }
@@ -489,6 +513,18 @@ struct PlayerOptionsSheet: View {
             Button { ms.wrappedValue = max(range.lowerBound, ms.wrappedValue - 50); set(ms.wrappedValue) } label: { Image(systemName: "minus.circle").frame(width: 40, height: 40) }.buttonStyle(.plain).accessibilityLabel("\(title) earlier")
             Text("\(ms.wrappedValue > 0 ? "+" : "")\(ms.wrappedValue) ms").monospacedDigit().frame(minWidth: 84)
             Button { ms.wrappedValue = min(range.upperBound, ms.wrappedValue + 50); set(ms.wrappedValue) } label: { Image(systemName: "plus.circle").frame(width: 40, height: 40) }.buttonStyle(.plain).accessibilityLabel("\(title) later")
+        }
+    }
+
+    private func goTo() {
+        guard let t = PlaybackCoordinator.parseTime(goToText) else { return }
+        playback.goTo(t); goToText = ""; dismiss()
+    }
+
+    private func tuning(_ name: String, _ value: Binding<Int>) -> some View {
+        VStack(alignment: .leading) {
+            Text("\(name)  \(value.wrappedValue > 0 ? "+" : "")\(value.wrappedValue)").font(.subheadline)
+            Slider(value: Binding(get: { Double(value.wrappedValue) }, set: { value.wrappedValue = Int($0); playback.setPicture(picture) }), in: -100...100, step: 5)
         }
     }
 

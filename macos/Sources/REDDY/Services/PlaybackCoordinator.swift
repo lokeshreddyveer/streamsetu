@@ -84,6 +84,9 @@ final class PlaybackCoordinator {
     private let historyService: HistoryService
     private let catalog: CatalogRepository
     private let settings: AppSettings
+    private let itemMemory = ItemMemory()
+    private var memoryEntry: ItemMemory.Entry?
+    private let introSkip = IntroSkip()
     private let diagnostics: DiagnosticsService
     private let videoPrefs: VideoPreferencesRepository
     private let recovery = PlaybackRecoveryService()
@@ -318,7 +321,10 @@ final class PlaybackCoordinator {
         Task { try? await engine.seek(to: target) }
     }
 
-    func seek(by delta: TimeInterval) { seek(to: position + delta) }
+    func seek(by delta: TimeInterval) {
+        if let series = currentEpisode?.1, !isLive, introSkip.isOpeningSkip(from: position, to: position + delta) { introSkip.learn(seriesID: series.id, end: position + delta) }
+        seek(to: position + delta)
+    }
 
     func stop() {
         if sleepTimer != nil, sleepTask != nil, !(sleepTimer?.hasEnded() ?? false) { cancelSleepTimer() }
@@ -539,10 +545,10 @@ final class PlaybackCoordinator {
         if kind != activeEngine { switchEngine(kind) }
     }
 
-    func setRate(_ r: Double) { rate = r; engine.setRate(r) }
+    func setRate(_ r: Double) { rate = r; engine.setRate(r); remember() }
 
-    func selectAudio(_ id: String?) { engine.selectAudioTrack(id: id); refreshTracks() }
-    func selectSubtitle(_ id: String?) { engine.selectSubtitleTrack(id: id); refreshTracks() }
+    func selectAudio(_ id: String?) { engine.selectAudioTrack(id: id); refreshTracks(); remember() }
+    func selectSubtitle(_ id: String?) { engine.selectSubtitleTrack(id: id); refreshTracks(); remember() }
     func applySubtitleStyle() { engine.applySubtitleStyle(settings.subtitleStyle) }
 
     func setAudioOutput(uid: String?) { factory.avEngine.setAudioOutput(uid: uid.nilIfEmpty) }
@@ -589,8 +595,8 @@ final class PlaybackCoordinator {
     // MARK: quality, audio and subtitle timing (engine capabilities decide what is available)
 
     func selectQuality(_ id: String?) { engine.selectQuality(id: id); selectedQualityID = engine.selectedQualityID }
-    func setAudioDelay(_ s: Double) { audioDelay = max(-5, min(5, s)); engine.setAudioDelay(audioDelay) }
-    func setSubtitleDelay(_ s: Double) { subtitleDelay = max(-10, min(10, s)); engine.setSubtitleDelay(subtitleDelay) }
+    func setAudioDelay(_ s: Double) { audioDelay = max(-5, min(5, s)); engine.setAudioDelay(audioDelay); remember() }
+    func setSubtitleDelay(_ s: Double) { subtitleDelay = max(-10, min(10, s)); engine.setSubtitleDelay(subtitleDelay); remember() }
     /// Colour controls for this session and, saved, for every stream from now on.
     var picture: PictureAdjustments { settings.picture }
     func setPicture(_ p: PictureAdjustments) { settings.picture = p.clamped(); engine.setPicture(settings.picture) }
@@ -629,6 +635,7 @@ final class PlaybackCoordinator {
         do {
             let request = try resolve()
             current = request
+            memoryEntry = itemMemory.entry(for: request.itemID)
             loadLayout(for: request.itemID)
             start(request)
         } catch {
@@ -966,11 +973,53 @@ final class PlaybackCoordinator {
         subtitleTracks = engine.availableSubtitleTracks()
         guard !appliedPreferredTracks, !audioTracks.isEmpty || !subtitleTracks.isEmpty else { return }
         appliedPreferredTracks = true
+        // What was chosen for this title last time beats the general language settings.
+        if let m = memoryEntry {
+            if let l = m.audioLanguage, let t = audioTracks.first(where: { AudioTrackManager.matches($0.language, l) }) { engine.selectAudioTrack(id: t.id) }
+            if m.subtitleLanguage == "off" { engine.selectSubtitleTrack(id: nil) }
+            else if let l = m.subtitleLanguage, let t = subtitleTracks.first(where: { AudioTrackManager.matches($0.language, l) }) { engine.selectSubtitleTrack(id: t.id) }
+            if m.rate != 1 { rate = m.rate; engine.setRate(m.rate) }
+            if m.audioDelay != 0 { audioDelay = m.audioDelay; engine.setAudioDelay(m.audioDelay) }
+            if m.subtitleDelay != 0 { subtitleDelay = m.subtitleDelay; engine.setSubtitleDelay(m.subtitleDelay) }
+            audioTracks = engine.availableAudioTracks(); subtitleTracks = engine.availableSubtitleTracks()
+            return
+        }
         if let i = AudioTrackManager.preferredIndex(in: audioTracks, languages: settings.audioLanguages) { engine.selectAudioTrack(id: audioTracks[i].id) }
         if settings.subtitlesByDefault, let i = SubtitleManager.preferredIndex(in: subtitleTracks, languages: settings.subtitleLanguages) {
             engine.selectSubtitleTrack(id: subtitleTracks[i].id)
         }
         audioTracks = engine.availableAudioTracks(); subtitleTracks = engine.availableSubtitleTracks()
+    }
+
+    // MARK: remembered choices, skip intro, go to time
+
+    /// Whether audio, subtitles, speed and timing come back the next time the same title plays.
+    var remembersPerTitle: Bool { get { itemMemory.enabled } set { itemMemory.enabled = newValue } }
+
+    private func remember() {
+        guard let id = current?.itemID else { return }
+        let e = ItemMemory.Entry(audioLanguage: audioTracks.first(where: \.isSelected)?.language, subtitleLanguage: subtitleTracks.first(where: \.isSelected).map { $0.language ?? "" } ?? "off",
+                                 rate: rate, audioDelay: audioDelay, subtitleDelay: subtitleDelay)
+        memoryEntry = e
+        itemMemory.save(e, for: id)
+    }
+
+    /// Where the opening of this episode ends, while it is still on screen; nil for anything else.
+    var introEnd: TimeInterval? {
+        guard !isLive, let series = currentEpisode?.1 else { return nil }
+        return introSkip.target(seriesID: series.id, position: position)
+    }
+
+    func skipIntro() { if let end = introEnd { seek(to: end) } }
+
+    /// Jumps to a point in a movie or episode.
+    func goTo(_ seconds: TimeInterval) { seek(to: seconds) }
+
+    /// "1:23:45", "83:45" or "45" (seconds) as seconds; nil when it is not a time.
+    nonisolated static func parseTime(_ text: String) -> TimeInterval? {
+        let parts = text.split(separator: ":").map { Double($0.trimmingCharacters(in: .whitespaces)) }
+        guard !parts.isEmpty, parts.count <= 3, parts.allSatisfy({ $0 != nil && $0! >= 0 }) else { return nil }
+        return parts.reduce(0) { $0 * 60 + $1! }
     }
 
     private func step(_ delta: Int) {

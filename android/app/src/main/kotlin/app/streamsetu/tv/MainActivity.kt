@@ -99,6 +99,13 @@ class MainActivity : ComponentActivity() {
 
     override fun dispatchKeyEvent(e: android.view.KeyEvent): Boolean {
         if (e.action == android.view.KeyEvent.ACTION_DOWN && e.keyCode in android.view.KeyEvent.KEYCODE_DPAD_UP..android.view.KeyEvent.KEYCODE_DPAD_RIGHT) app.streamsetu.tv.UISound.noteDpad()
+        // While the player is minimized (the sound keeps playing under the browsing screens): Play/Pause pauses it, Menu or Info brings the picture back.
+        if (e.action == android.view.KeyEvent.ACTION_DOWN && nav.top != Overlay.Player && container.playback.audioOnly.value && container.playback.current.value != null) {
+            when (e.keyCode) {
+                android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, android.view.KeyEvent.KEYCODE_MEDIA_PLAY, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE -> { container.playback.togglePause(); return true }
+                android.view.KeyEvent.KEYCODE_MENU, android.view.KeyEvent.KEYCODE_INFO -> { container.playback.setMinimized(false); nav.open(Overlay.Player); return true }
+            }
+        }
         val select = e.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || e.keyCode == android.view.KeyEvent.KEYCODE_ENTER || e.keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
         if (!select || nav.top == Overlay.Player) return super.dispatchKeyEvent(e)
         if (hold.onSelect(e.action == android.view.KeyEvent.ACTION_DOWN, e.repeatCount)) return true
@@ -200,12 +207,13 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
         }
         if (showSplash) app.streamsetu.tv.ui.screens.library.LogoReveal(reduced) { showSplash = false; splashDone = true }
         app.streamsetu.tv.ui.components.TvUpdatePrompt(c, suppress = nav.top != null || nav.base != Base.Shell)
+        if (nav.top != Overlay.Player) app.streamsetu.tv.ui.components.TvMiniPlayer(c)
         androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalInOverlay provides true) {
             nav.top?.let { top -> app.streamsetu.tv.ui.components.FadeIn(top) {
                 when (val o = top) {
                     is Overlay.MovieDetail -> app.streamsetu.tv.ui.screens.detail.MovieDetailScreen(o.movie, c, nav)
                     is Overlay.SeriesDetail -> app.streamsetu.tv.ui.screens.detail.SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
-                    is Overlay.Player -> PlayerScreen(c, onClose = { closePlayer(c, nav) }, onMultiView = { openMultiView(c, nav) })
+                    is Overlay.Player -> PlayerScreen(c, onClose = { closePlayer(c, nav) }, onMultiView = { openMultiView(c, nav) }, onOpenSeries = { sr -> closePlayer(c, nav); nav.open(Overlay.SeriesDetail(sr)) }, onMinimize = { nav.liveFullscreen = false; nav.close() })
                     is Overlay.MultiView -> app.streamsetu.tv.ui.screens.MultiViewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> nav.close(); play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch), c.queue.ifEmpty { listOf(app.streamsetu.core.model.ChannelPlayable(ch)) }) })
                     is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                     is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav)

@@ -17,6 +17,9 @@ struct PlayerControlsOverlay: View {
     @State private var hideTask: Task<Void, Never>?
     @State private var showDiagnostics = false
     @State private var showPicture = false
+    @State private var showSearch = false
+    @State private var showOnlineSubs = false
+    @State private var showGoTo = false
     @State private var dismissedBufferingHint = false
     @State private var size: CGSize = .zero
     @State private var lastDrag: CGSize = .zero
@@ -58,6 +61,11 @@ struct PlayerControlsOverlay: View {
             if let next = playback.upNext, !playback.isLive, let d = playback.duration, d > 60, d - playback.position < 30, upNextDismissedFor != playback.current?.itemID, playback.state.isPlaying {
                 upNextCard(next).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(.bottom, 110).padding(.trailing, 16).transition(.opacity)
             }
+            if playback.introEnd != nil, playback.state.isPlaying {
+                Button { playback.skipIntro() } label: { Label("Skip Intro", systemImage: "forward.end.fill").font(.system(size: 13, weight: .semibold)).padding(.horizontal, 14).padding(.vertical, 9) }
+                    .buttonStyle(.plain).foregroundStyle(.white).background(.black.opacity(0.65), in: Capsule()).overlay(Capsule().strokeBorder(.white.opacity(0.3)))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(.bottom, 110).padding(.trailing, 16).transition(.opacity)
+            }
             VStack(spacing: 0) {
                 topBar
                 Spacer()
@@ -80,6 +88,12 @@ struct PlayerControlsOverlay: View {
             }
         }
         .onChange(of: playback.current?.itemID) { _, _ in loopA = nil; loopB = nil; resumedAt = nil }
+        .sheet(isPresented: $showOnlineSubs) { OnlineSubtitleSheet() }
+        .sheet(isPresented: $showGoTo) { GoToTimeSheet { playback.goTo($0) } }
+        .sheet(isPresented: $showSearch) {
+            PlayerSearchSheet(onChannel: { playback.play(channel: $0, queue: playback.queue) }, onMovie: { playback.play(movie: $0) }, onEpisode: { playback.play(episode: $0, series: $1) })
+                .frame(width: 520, height: 520)
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSMenu.didBeginTrackingNotification)) { _ in menuOpen = true; visible = true }
         .onReceive(NotificationCenter.default.publisher(for: NSMenu.didEndTrackingNotification)) { _ in menuOpen = false; reveal() }
     }
@@ -173,6 +187,7 @@ struct PlayerControlsOverlay: View {
             }
             .layoutPriority(1)
             Spacer(minLength: 8)
+            IconButton(symbol: "magnifyingglass", help: "Search the catalog") { showSearch = true; visible = true }
         }
         .padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 24)
         .background(LinearGradient(colors: [.black.opacity(0.75), .clear], startPoint: .top, endPoint: .bottom))
@@ -297,6 +312,7 @@ struct PlayerControlsOverlay: View {
         if playback.availableEngines.count > 1 { engineMenu }
         if playback.activeEngine == .avPlayer, PiPManager.shared.isSupported { IconButton(symbol: "pip.enter", help: "Picture in Picture") { PiPManager.shared.toggle() } }
         if playback.activeEngine == .avPlayer { AirPlayButton().frame(width: 32, height: 32) }
+        extrasMenu
         sleepMenu
         if playback.capabilities.pictureAdjustments { pictureButton }
         if hasTools { toolsMenu }
@@ -320,6 +336,7 @@ struct PlayerControlsOverlay: View {
                 Section("Engine") { ForEach(Array(playback.availableEngines).sorted { $0.rawValue < $1.rawValue }) { e in Button { playback.switchEngine(e) } label: { Label(e.rawValue, systemImage: e == playback.activeEngine ? "checkmark" : "") } } }
             }
             if playback.activeEngine == .avPlayer, PiPManager.shared.isSupported { Button("Picture in Picture") { PiPManager.shared.toggle() } }
+            Section("This Title") { extrasItems }
             Menu("Sleep Timer") {
                 ForEach(SleepTimer.presets, id: \.self) { m in Button("Stop after \(m) minutes") { playback.startSleepTimer(minutes: m) } }
                 if playback.sleepTimer != nil { Divider(); Button("Cancel Sleep Timer") { playback.cancelSleepTimer() } }
@@ -423,6 +440,17 @@ struct PlayerControlsOverlay: View {
     }
 
     /// "Stop playback after…". While one is running the icon is lit and the menu says how long is left.
+    @ViewBuilder private var extrasItems: some View {
+        if !playback.isLive { Button("Go to Time…") { showGoTo = true } }
+        Button("Find Subtitles Online…") { showOnlineSubs = true }
+        Toggle("Remember Settings for This Title", isOn: Binding(get: { playback.remembersPerTitle }, set: { playback.remembersPerTitle = $0 }))
+    }
+
+    private var extrasMenu: some View {
+        Menu { extrasItems } label: { chip("slider.horizontal.3") }
+            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Go to a time, subtitles online, remembered settings").accessibilityLabel("Title options")
+    }
+
     private var sleepMenu: some View {
         Menu {
             if let t = playback.sleepTimer {
