@@ -62,32 +62,7 @@ class AppContainer @Inject constructor(
 
     init {
         appScope.launch { runCatching { db.catalog().deleteDividers() } }
-        // Plex pictures used to be saved with the access token in their address. This removes it from what an earlier version stored.
-        appScope.launch {
-            runCatching {
-                val raw = db.openHelper.writableDatabase
-                for ((table, column) in listOf("movies" to "posterUrl", "series" to "posterUrl", "series" to "backdropUrl", "episodes" to "imageUrl"))
-                    raw.execSQL("UPDATE $table SET $column = substr($column, 1, instr($column, '?X-Plex-Token=') - 1) WHERE $column LIKE '%?X-Plex-Token=%'")
-            }
-        }      // divider rows read by an earlier version
-        // "Play next episode automatically": when an episode ends, the next one of the same series starts.
-        // The next episode follows after a short countdown that the player shows ("Next episode in 5"); anything else the person does cancels it.
-        var countdown: kotlinx.coroutines.Job? = null
-        appScope.launch {
-            playback.state.collect { st ->
-                countdown?.cancel(); nextEpisodeIn.value = 0
-                if (st == app.streamsetu.core.playback.PlaybackState.Ended && settings.playNextAutomatically.value) {
-                    val ep = playback.current.value as? EpisodePlayable ?: return@collect
-                    val n = catalog.nextEpisode(ep.episode)?.takeIf { app.streamsetu.core.data.repo.EpisodePlan.contiguous(ep.episode, it) } ?: return@collect
-                    val series = catalog.series(n.seriesId) ?: return@collect
-                    countdown = appScope.launch {
-                        for (i in 5 downTo 1) { nextEpisodeIn.value = i; delay(1000) }
-                        nextEpisodeIn.value = 0
-                        kotlinx.coroutines.withContext(Dispatchers.Main) { play(EpisodePlayable(n, series), queue) }
-                    }
-                }
-            }
-        }
+        appScope.launch { runCatching { PlexTokenCleanup.run(db.openHelper.writableDatabase) } }
     }
 
     private var featuredCache: List<Playable>? = null

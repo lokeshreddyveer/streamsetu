@@ -93,7 +93,7 @@ class ContextMenuTest {
         openMenu()
         rule.onNodeWithText("First action").performKeyInput { keyDown(Key.DirectionCenter); keyUp(Key.DirectionCenter) }
         rule.onNodeWithText("First action").performKeyInput { pressKey(Key.DirectionCenter) }; rule.waitForIdle()     // chooses and closes
-        rule.onNodeWithTag("card").requestFocus(); rule.waitForIdle()                                                    // the card is still there to take focus
-        rule.onNodeWithTag("card").assertIsFocused()
+        rule.mainClock.advanceTimeBy(1000); rule.waitForIdle()
+        rule.onNodeWithTag("card").assertIsFocused()          // nothing asks for focus here: the window closing has to give it back by itself
     }
 }

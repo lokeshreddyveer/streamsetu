@@ -87,12 +87,7 @@ final class AppContainer {
         details = DetailService(catalog: catalog, indexer: indexer, sources: sources)
         featured = FeaturedService(catalog: catalog, details: details)
         artwork = ArtworkService(cache: ImageCache(root: StorageService.caches, http: http, headers: { [sources] url in sources.artworkHeaders(for: url) }))
-        // Plex pictures used to be saved with the access token in their address; this removes it from what an earlier version stored.
-        try? db.write { c in
-            for (table, column) in [("movies", "poster_url"), ("movies", "backdrop_url"), ("series", "poster_url"), ("series", "backdrop_url"), ("episodes", "image_url")] {
-                try c.execute("UPDATE \(table) SET \(column) = substr(\(column), 1, instr(\(column), '?X-Plex-Token=') - 1) WHERE \(column) LIKE '%?X-Plex-Token=%'")
-            }
-        }
+        try? PlexTokenCleanup.run(db)
         memoryGuard = MemoryPressureGuard { [artwork] in await artwork.relieveMemory() }
         diagnostics = DiagnosticsService(db: db, catalog: catalog)
         reminders = ReminderService()

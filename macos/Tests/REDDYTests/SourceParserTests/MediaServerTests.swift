@@ -147,3 +147,21 @@ private func list(_ s: String) -> [[String: Any]] { (try? JSONSerialization.json
         #expect(manager.artworkHeaders(for: URL(string: "http://plex.local:8080/x.jpg")!).isEmpty)       // same name, another port: not the server
     }
 }
+
+@Suite struct PlexTokenCleanupTests {
+    @Test func aStoredPictureAddressLosesItsTokenAndOthersAreLeftAlone() throws {
+        let db = try TestSupport.makeDB()
+        let source = try TestSupport.makeSource(db, name: "Plex", type: .plex)
+        var withToken = TestSupport.movie(source, "1", "Alien"); withToken.posterURL = "http://plex:32400/library/metadata/1/thumb/9?X-Plex-Token=SECRET"
+        var clean = TestSupport.movie(source, "2", "Heat"); clean.posterURL = "http://img.example/heat.jpg"
+        let catalog = SQLiteCatalogRepository(db: db)
+        try db.write { c in
+            for m in [withToken, clean] { try c.execute("INSERT INTO movies(id, source_id, provider_id, title, normalized_title, poster_url, stream_ref, created_at, updated_at, last_seen_at) VALUES(?,?,?,?,?,?,?,?,?,?)", [m.id, m.sourceID, m.providerID, m.title, m.normalizedTitle, m.posterURL, m.streamRef, Date(), Date(), Date()]) }
+        }
+        try PlexTokenCleanup.run(db)
+        #expect(try catalog.movie(id: withToken.id)?.posterURL == "http://plex:32400/library/metadata/1/thumb/9")
+        #expect(try catalog.movie(id: clean.id)?.posterURL == "http://img.example/heat.jpg")
+        try PlexTokenCleanup.run(db)                                    // running it again changes nothing
+        #expect(try catalog.movie(id: withToken.id)?.posterURL == "http://plex:32400/library/metadata/1/thumb/9")
+    }
+}
