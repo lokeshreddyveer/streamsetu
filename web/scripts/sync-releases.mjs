@@ -31,7 +31,10 @@ if (args.tag) {
     process.exit(1);
   }
   const entry = entryFor(args.tag, { mac: args.mac, android: args.android, ios: args.ios });
-  index.releases = [entry, ...index.releases.filter((r) => r.tag !== args.tag)].sort((a, b) => b.tag.localeCompare(a.tag, "en", { numeric: true }));
+  // The list is newest first, in the order releases were made: a tag is not a reliable date when two releases share a day.
+  const at = index.releases.findIndex((r) => r.tag === args.tag);
+  if (at >= 0) index.releases[at] = entry;
+  else index.releases = [entry, ...index.releases];
   fs.writeFileSync(indexFile, JSON.stringify(index, null, 2) + "\n");
   console.log(`Site updated for ${args.tag}`);
 } else {

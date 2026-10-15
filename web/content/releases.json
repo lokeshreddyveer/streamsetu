@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.10.14.2",
+      "title": "14 October 2026",
+      "summary": "Mac 2.6.0, Android and Fire TV 0.11.0, iPhone and iPad 0.7.0: a timeline of the whole franchise on every film.",
+      "date": "2026-10-14",
+      "mac": "2.6.0",
+      "android": "0.11.0",
+      "ios": "0.7.0"
+    },
+    {
       "tag": "2026.10.16",
       "title": "16 October 2026",
       "summary": "Mac 2.5.1, Android and Fire TV 0.10.1, iPhone and iPad 0.6.1: a security and reliability pass.",
