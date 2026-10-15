@@ -76,6 +76,7 @@ object Similarity {
         val tNorm2 = sqrt(tWords.sumOf { idf(it) * idf(it) }).takeIf { it > 0 }
 
         val out = ArrayList<Result>()
+        val weak = ArrayList<Result>()
         for (c in candidates) {
             var total = 0.0; var best = 0.0; var reason = ""
             fun add(points: Double, why: String) { if (points <= 0) return; total += points; if (points > best) { best = points; reason = why } }
@@ -110,7 +111,7 @@ object Similarity {
             if (target.folder != null && target.folder == c.folder) add(1.0, "From the same folder")
             // Only titles with a real reason are suggested: closeness in year or rating alone is not enough.
             val meaningful = reason in setOf("Same franchise", "Same director", "Same genre", "Shared cast", "Similar story")
-            if (meaningful && total > 1.0) out += Result(c.id, total + (c.rating ?: 0.0) / 100.0, reason)
+            if (meaningful && total > 1.0) out += Result(c.id, total + (c.rating ?: 0.0) / 100.0, reason) else if (total > 1.0) weak += Result(c.id, total, reason)
         }
         // When there is too little to go on (no plots, no facts), fall back to the same folder so the row is never empty.
         if (out.size < 6 && target.folder != null) {
@@ -118,6 +119,8 @@ object Similarity {
             candidates.filter { it.id !in have && it.folder == target.folder }.sortedWith(compareBy({ -(it.rating ?: 0.0) }, { abs((it.year ?: 0) - (target.year ?: 0)) })).take(10 - out.size)
                 .forEach { out += Result(it.id, 0.5, "From the same folder") }
         }
+        // Still thin (a catalog with no plots, genres or facts): add the closest by language, year and rating, saying so.
+        if (out.size < 6) { val have = out.map { it.id }.toSet(); weak.filter { it.id !in have }.sortedByDescending { it.score }.take(10 - out.size).forEach { out += it.copy(score = 0.4, reason = if (it.reason == "Same language") "Same language" else "Similar year and rating") } }
         return out.sortedByDescending { it.score }.take(limit)
     }
 }

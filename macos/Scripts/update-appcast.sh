@@ -2,7 +2,7 @@
 # Adds a release to the update feed (appcast.xml at the root of the StreamSetu repo) so installed copies of the Mac app offer it.
 # The DMG is signed with the update key kept in this Mac's Keychain (account "streamsetu"; made by Sparkle's generate_keys).
 #
-#   Scripts/update-appcast.sh <version> <build> [notes]
+#   RELEASE_TAG=<tag of the release that holds the DMG> Scripts/update-appcast.sh <version> <build> [notes]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VERSION="${1:?usage: update-appcast.sh <version> <build> [notes]}"; BUILD="${2:?usage: update-appcast.sh <version> <build> [notes]}"; NOTES="${3:-StreamSetu $VERSION}"
@@ -12,7 +12,7 @@ DMG="dist/StreamSetu-$VERSION.dmg"
 SIGN="$(.build/artifacts/sparkle/Sparkle/bin/sign_update --account streamsetu "$DMG")"     # sparkle:edSignature="…" length="…"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 gh repo clone "$REPO" "$WORK/repo" -- --depth 1 --filter=blob:none >/dev/null 2>&1
-URL="https://github.com/$REPO/releases/download/mac-v$VERSION/StreamSetu-$VERSION.dmg"
+URL="https://github.com/$REPO/releases/download/${RELEASE_TAG:-mac-v$VERSION}/StreamSetu-$VERSION.dmg"
 python3 - "$WORK/repo/appcast.xml" "$VERSION" "$BUILD" "$URL" "$SIGN" "$NOTES" <<'PY'
 import sys, os, email.utils, html
 path, version, build, url, sign, notes = sys.argv[1:7]

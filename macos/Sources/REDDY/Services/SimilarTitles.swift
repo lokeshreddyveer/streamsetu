@@ -84,6 +84,7 @@ enum SimilarTitles {
         let tNorm2 = sqrt(tWords.reduce(0) { $0 + idf($1) * idf($1) })
 
         var out: [(SimilarSuggestion, Double)] = []
+        var weak: [(SimilarSuggestion, Double)] = []
         for c in candidates {
             var total = 0.0, best = 0.0, reason = ""
             func add(_ points: Double, _ why: String) { guard points > 0 else { return }; total += points; if points > best { best = points; reason = why } }
@@ -114,6 +115,7 @@ enum SimilarTitles {
             if let tf = target.folder, tf == c.folder { add(1, "From the same folder") }
             let meaningful = ["Same franchise", "Same director", "Same genre", "Shared cast", "Similar story"].contains(reason)
             if meaningful, total > 1 { out.append((SimilarSuggestion(item: c.item, reason: reason), total + (c.rating ?? 0) / 100)) }
+            else if total > 1 { weak.append((SimilarSuggestion(item: c.item, reason: reason == "Same language" ? reason : "Similar year and rating"), total)) }
         }
         // Too little to go on (no plots, genres or facts): fall back to the same folder so the row is never empty.
         if out.count < 6, let tf = target.folder {
@@ -121,6 +123,11 @@ enum SimilarTitles {
             let fill = candidates.filter { !have.contains($0.item.id) && $0.folder == tf }
                 .sorted { ($0.rating ?? 0) > ($1.rating ?? 0) }.prefix(10 - out.count)
             for c in fill { out.append((SimilarSuggestion(item: c.item, reason: "From the same folder"), 0.5)) }
+        }
+        // Still thin (a catalog with no plots, genres or facts): add the closest by language, year and rating, saying so.
+        if out.count < 6 {
+            let have = Set(out.map { $0.0.id })
+            for w in weak.filter({ !have.contains($0.0.id) }).sorted(by: { $0.1 > $1.1 }).prefix(10 - out.count) { out.append((w.0, 0.4)) }
         }
         return out.sorted { $0.1 > $1.1 }.prefix(limit).map(\.0)
     }

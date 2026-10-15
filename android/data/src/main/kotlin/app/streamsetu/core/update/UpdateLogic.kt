@@ -13,7 +13,7 @@ import kotlinx.serialization.json.longOrNull
 
 data class ReleaseAsset(val name: String, val url: String, val size: Long)
 
-/** One published Android release: its tag (`android-v0.6.2`), the version in it, the notes, and the files attached. */
+/** One published release that carries Android files: its tag, the Android version in it, the notes, and the files attached. */
 data class ReleaseInfo(val tag: String, val version: String, val notes: String, val assets: List<ReleaseAsset>)
 
 /**
@@ -22,6 +22,7 @@ data class ReleaseInfo(val tag: String, val version: String, val notes: String, 
  */
 object UpdateLogic {
     const val TAG_PREFIX = "android-v"
+    private val apkVersion = Regex("""\d+(?:\.\d+)+""")
     private val lenient = Json { ignoreUnknownKeys = true; isLenient = true }
 
     /** "0.6.2" -> [0, 6, 2]. A leading "v" and anything after a "-" (a pre-release label) are ignored; a part that is not a number counts as 0. */
@@ -38,13 +39,16 @@ object UpdateLogic {
         return false
     }
 
-    /** Reads GitHub's `releases` list and keeps only published Android releases (not drafts, not pre-releases, not the Mac ones). Anything unreadable is left out. */
+    /**
+     * Reads GitHub's `releases` list and keeps the published releases that carry an Android APK (not drafts, not pre-releases). One release holds every app, so a
+     * release is recognised by its files, and the Android version is the one in the APK's name ("StreamSetu-FireTV-0.9.1.apk" is 0.9.1); the older
+     * `android-v0.6.2` tags still work. Anything unreadable is left out.
+     */
     fun parse(json: String): List<ReleaseInfo> {
         val root = runCatching { lenient.parseToJsonElement(json) }.getOrNull() as? JsonArray ?: return emptyList()
         return root.mapNotNull { el ->
             val o = el as? JsonObject ?: return@mapNotNull null
             val tag = o["tag_name"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
-            if (!tag.startsWith(TAG_PREFIX)) return@mapNotNull null
             if (o["draft"]?.jsonPrimitive?.booleanOrNull == true || o["prerelease"]?.jsonPrimitive?.booleanOrNull == true) return@mapNotNull null
             val assets = (o["assets"] as? JsonArray).orEmpty().mapNotNull { a ->
                 val ao = a as? JsonObject ?: return@mapNotNull null
@@ -52,7 +56,9 @@ object UpdateLogic {
                 val url = ao["browser_download_url"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
                 ReleaseAsset(name, url, ao["size"]?.jsonPrimitive?.longOrNull ?: 0L)
             }
-            ReleaseInfo(tag, tag.removePrefix(TAG_PREFIX), o["body"]?.jsonPrimitive?.contentOrNull.orEmpty(), assets)
+            val apk = assets.firstOrNull { it.name.endsWith(".apk", true) } ?: return@mapNotNull null
+            val version = apkVersion.find(apk.name)?.value ?: tag.removePrefix(TAG_PREFIX).removePrefix("v")
+            ReleaseInfo(tag, version, o["body"]?.jsonPrimitive?.contentOrNull.orEmpty(), assets)
         }
     }
 

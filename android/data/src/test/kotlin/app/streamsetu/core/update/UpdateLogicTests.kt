@@ -87,4 +87,15 @@ class UpdateLogicTests {
         assertNull(UpdateLogic.checksumFor("short abc123", "x.apk"))
         assertNotNull(UpdateLogic.checksumFor(sum.uppercase(), "x.apk"))
     }
+
+    @Test fun oneReleaseForEveryAppIsReadByItsApkNames() {
+        val json = """[{"tag_name":"2026.10.14","draft":false,"prerelease":false,"body":"x","assets":[
+            {"name":"StreamSetu-2.4.0.dmg","browser_download_url":"https://x/mac.dmg","size":9},
+            {"name":"StreamSetu-FireTV-0.9.1.apk","browser_download_url":"https://x/tv.apk","size":9},
+            {"name":"StreamSetu-Android-0.9.1.apk","browser_download_url":"https://x/ph.apk","size":9}]}]"""
+        val r = UpdateLogic.parse(json).single()
+        assertEquals("0.9.1", r.version)
+        assertEquals("https://x/tv.apk", UpdateLogic.pickAsset(r, television = true)?.url)
+        assertEquals("https://x/ph.apk", UpdateLogic.pickAsset(r, television = false)?.url)
+    }
 }
