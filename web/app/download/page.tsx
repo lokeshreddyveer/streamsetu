@@ -11,23 +11,23 @@ export default function Download() {
       <h1>Download</h1>
       <p className="lead">Release of {prettyDate(latest.date)}. One release holds every app; pick your device.</p>
 
-      <div className="grid four">
-        <article className="card">
+      <div className="dl-grid">
+        <article className="dl">
           <h3>Mac</h3>
           <p className="muted">Version {latest.mac}. Apple silicon and Intel, macOS 14 or later. Signed and notarized by Apple, and it updates itself.</p>
           <a className="button" href={d.mac}>Download for Mac</a>
         </article>
-        <article className="card">
+        <article className="dl">
           <h3>iPhone and iPad</h3>
           <p className="muted">Version {latest.ios}, through TestFlight. Open to the first 100 testers.</p>
           <a className="button" href={site.testflight}>Join the TestFlight</a>
         </article>
-        <article className="card">
+        <article className="dl">
           <h3>Fire TV and Android TV</h3>
           <p className="muted">Version {latest.android}. Made for the remote. Android 5.1 or later.</p>
           <a className="button" href={d.tv}>Download for TV</a>
         </article>
-        <article className="card">
+        <article className="dl">
           <h3>Android phone and tablet</h3>
           <p className="muted">Version {latest.android}. Touch layout. Android 5.1 or later.</p>
           <a className="button" href={d.android}>Download for phone</a>

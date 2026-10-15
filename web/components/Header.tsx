@@ -13,7 +13,7 @@ export function Header() {
     <header className="top">
       <div className="wrap top-row">
         <Link href="/" className="brand" aria-label="StreamSetu home">
-          <Image src="/img/icon.png" alt="" width={34} height={34} priority />
+          <Image src="/img/icon.png" alt="" width={36} height={36} priority />
           <span>Stream<b>Setu</b></span>
         </Link>
         <nav aria-label="Main">

@@ -9,12 +9,13 @@ export default function Features() {
     <main className="wrap page">
       <h1>Features</h1>
       <p className="lead">The same app on every device, laid out for the screen in front of you: a remote on a television, touch on a phone, a pointer on a Mac.</p>
-      <div className="grid">
-        {features.map((f) => (
-          <article key={f.title} className="card">
+      <div className="rows">
+        {features.map((f, i) => (
+          <div key={f.title} className="row">
+            <span className="n">{String(i + 1).padStart(2, "0")}</span>
             <h3>{f.title}</h3>
             <p>{f.text}</p>
-          </article>
+          </div>
         ))}
       </div>
 
