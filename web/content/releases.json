@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.10.16",
+      "title": "16 October 2026",
+      "summary": "Mac 2.5.1, Android and Fire TV 0.10.1, iPhone and iPad 0.6.1: a security and reliability pass.",
+      "date": "2026-10-16",
+      "mac": "2.5.1",
+      "android": "0.10.1",
+      "ios": "0.6.1"
+    },
+    {
       "tag": "2026.10.15",
       "title": "15 October 2026",
       "summary": "Mac 2.5.0, Android and Fire TV 0.10.0, iPhone and iPad 0.6.0: a much stronger player in every app, More like this that actually shows, and tidier Favourites, Watch Later, Collections and Watch History.",
