@@ -52,8 +52,8 @@ struct WindowChrome: NSViewRepresentable {
         private func showButtonsIfPointerIsInCorner(animated: Bool = true) {
             guard let w = window else { return }
             let p = w.mouseLocationOutsideOfEventStream
-            let top = w.contentLayoutRect.maxY
-            let inCorner = p.x >= 0 && p.x < 96 && p.y > top - barHeight && p.y <= top + 40
+            let top = w.frame.height      // the window's own top edge: the content runs under the title bar, so its layout rect would sit lower
+            let inCorner = p.x >= 0 && p.x < 90 && p.y > top - barHeight && p.y <= top
             let show = inCorner || w.styleMask.contains(.fullScreen)
             guard show != buttonsShown || !animated else { return }
             buttonsShown = show
