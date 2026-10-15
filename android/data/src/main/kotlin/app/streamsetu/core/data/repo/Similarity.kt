@@ -107,7 +107,9 @@ object Similarity {
         val tStem = stem(target.title); val tId = identity(target.title)
         val tWords = words(target.plot)
         val tLang = languageOf(target.title, target.folder)
-        val candidates = pool.filter { it.id != target.id && identity(it.title) != tId }
+        // One suggestion per film: dubs and quality copies of it carry different tags but share a name and a year.
+        val seen = HashSet<String>()
+        val candidates = pool.filter { it.id != target.id && identity(it.title) != tId && seen.add("${stem(it.title)}|${it.year ?: 0}") }
         // How rare a plot word is in this pool: a word in every plot says nothing, a word in three says a lot.
         val df = HashMap<String, Int>()
         val candWords = candidates.associate { it.id to words(it.plot) }

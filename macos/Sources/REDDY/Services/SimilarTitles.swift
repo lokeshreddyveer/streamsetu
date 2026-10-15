@@ -119,7 +119,9 @@ enum SimilarTitles {
         let tWords = words(target.plot)
         let tLang = language(target.item.title, target.folder)
         let tCast = Set((extras?.cast ?? []).map(normalize)), tDirectors = Set((extras?.directors ?? []).map(normalize))
-        let candidates = pool.filter { $0.item.id != target.item.id && identity($0.item.title) != tID }
+        // One suggestion per film: dubs and quality copies of it carry different tags but share a name and a year.
+        var seen = Set<String>()
+        let candidates = pool.filter { $0.item.id != target.item.id && identity($0.item.title) != tID && seen.insert("\(stem($0.item.title))|\($0.item.year ?? 0)").inserted }
         var df: [String: Int] = [:]
         let candWords = Dictionary(candidates.map { ($0.item.id, words($0.plot)) }, uniquingKeysWith: { a, _ in a })
         for ws in candWords.values { for w in ws { df[w, default: 0] += 1 } }
