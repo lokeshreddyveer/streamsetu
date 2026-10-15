@@ -27,6 +27,7 @@ import app.streamsetu.tv.nav.Navigator
 import app.streamsetu.tv.nav.Overlay
 import app.streamsetu.tv.play
 import app.streamsetu.tv.ui.components.Label
+import app.streamsetu.tv.ui.components.TimelineRail
 import app.streamsetu.tv.ui.components.PosterPlaceholder
 import app.streamsetu.tv.ui.components.Spinner
 import app.streamsetu.tv.ui.screens.SeriesDetailViewModel
@@ -101,16 +102,13 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
             if (franchise.size > 1) item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Timeline  ·  ${franchise.size} films")
-                    LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(0.dp)) {
                         items(franchise.withIndex().toList(), key = { it.value.id }) { (i, m) ->
                             val here = m.id == movie.id
-                            Column(Modifier.width(112.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                PhonePoster(m.title, m.posterUrl, { if (!here) { nav.close(); nav.open(Overlay.MovieDetail(m)) } }, Modifier.fillMaxWidth(), subtitle = if (here) "You are here" else null)
-                                Box(Modifier.fillMaxWidth().height(14.dp), Alignment.CenterStart) {
-                                    Box(Modifier.fillMaxWidth().height(2.dp).background(Tokens.textTertiary))
-                                    Box(Modifier.size(if (here) 14.dp else 9.dp).background(if (here) Tokens.accent else Tokens.textSecondary, androidx.compose.foundation.shape.CircleShape))
-                                }
-                                Label("${i + 1}  ·  ${m.year ?: "?"}", Ph.small, if (here) Tokens.text else Tokens.textSecondary, if (here) FontWeight.Bold else FontWeight.Normal)
+                            Column(Modifier.width(122.dp).padding(end = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                PhonePoster(m.title, m.posterUrl, { if (!here) { nav.close(); nav.open(Overlay.MovieDetail(m)) } }, Modifier.fillMaxWidth())
+                                TimelineRail(i, franchise.size, franchise.indexOfFirst { it.id == movie.id }.coerceAtLeast(0))
+                                Label(m.year?.toString() ?: "", Ph.small, if (here) Tokens.accent else Tokens.text, FontWeight.SemiBold)
                             }
                         }
                     }

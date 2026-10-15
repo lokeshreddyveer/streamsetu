@@ -20,19 +20,33 @@ fun FranchiseTimeline(films: List<Movie>, currentId: String, onOpen: (Movie) -> 
     if (films.size < 2) return
     Column {
         SectionTitle("Timeline  ·  ${films.size} films" + (films.mapNotNull { it.year }.let { y -> if (y.isEmpty()) "" else "  ·  ${y.min()} – ${y.max()}" }))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
             items(films.withIndex().toList(), key = { it.value.id }) { (i, m) ->
                 val here = m.id == currentId
-                Column(Modifier.width(Tokens.posterWidth), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(Modifier.width(Tokens.posterWidth + 14.dp).padding(end = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     PosterCard(m.title, m.posterUrl, { if (!here) onOpen(m) }, subtitle = if (here) "You are here" else null)
-                    // The line runs through the dots, in this card's own width and the gap to the next one.
-                    Box(Modifier.fillMaxWidth().height(14.dp), Alignment.CenterStart) {
-                        Box(Modifier.fillMaxWidth().height(2.dp).background(Tokens.textTertiary))
-                        Box(Modifier.size(if (here) 14.dp else 9.dp).background(if (here) Tokens.accent else Tokens.textSecondary, CircleShape))
-                    }
-                    Label("${i + 1}  ·  ${m.year ?: "?"}", Tokens.small, if (here) Tokens.text else Tokens.textSecondary, if (here) FontWeight.Bold else FontWeight.Normal)
+                    TimelineRail(i, films.size, films.indexOfFirst { it.id == currentId }.coerceAtLeast(0))
+                    Label(m.year?.toString() ?: "", Tokens.small, if (here) Tokens.accent else Tokens.text, FontWeight.SemiBold)
                 }
             }
+        }
+    }
+}
+
+/** One piece of the line through the numbered dots; the part up to the open film is lit. It runs the card's width plus its gap, so the pieces meet. */
+@Composable
+fun TimelineRail(index: Int, count: Int, hereIndex: Int) {
+    val lit = Tokens.accent
+    val dim = Tokens.textTertiary.copy(alpha = 0.4f)
+    val reached = index <= hereIndex
+    Box(Modifier.fillMaxWidth().height(28.dp), Alignment.Center) {
+        Row(Modifier.fillMaxWidth().height(3.dp)) {
+            Box(Modifier.weight(1f).fillMaxHeight().background(if (index == 0) Color.Transparent else if (reached) lit else dim))
+            Box(Modifier.weight(1f).fillMaxHeight().background(if (index == count - 1) Color.Transparent else if (index < hereIndex) lit else dim))
+        }
+        val size = if (index == hereIndex) 28.dp else 22.dp
+        Box(Modifier.size(size).background(if (reached) lit else dim, CircleShape), Alignment.Center) {
+            Label("${index + 1}", Tokens.small, if (reached) Color.White else Tokens.textSecondary, FontWeight.Bold)
         }
     }
 }
