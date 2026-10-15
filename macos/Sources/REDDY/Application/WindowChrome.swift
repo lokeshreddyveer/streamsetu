@@ -2,8 +2,8 @@ import SwiftUI
 import AppKit
 
 /// Makes the main window's chrome deterministic. The app draws its own top bar, so the window's title bar must be
-/// transparent and must not push content down; the three window buttons stay native, centred inside the bar, and are hidden until the pointer
-/// goes to the top-left corner.
+/// transparent and must not push content down; the window's own three buttons are hidden and `TrafficLights` draws them in the bar instead, so their
+/// size, spacing and position are ours and they line up with the wordmark in every window state. They appear when the pointer is in the top-left corner.
 ///
 /// Without this the bar sits inside the title bar's safe area, whose inset differs between a normal window, a maximised
 /// one and fullscreen, so the bar's position depended on the window state. The root shell also ignores the top safe area
@@ -39,7 +39,6 @@ struct WindowChrome: NSViewRepresentable {
                 return event
             }
             apply()
-            showButtonsIfPointerIsInCorner(animated: false)
             DispatchQueue.main.async { [weak self] in self?.apply() }     // AppKit lays the title bar out after the window appears
         }
 
@@ -54,14 +53,9 @@ struct WindowChrome: NSViewRepresentable {
             let p = w.mouseLocationOutsideOfEventStream
             let top = w.frame.height      // the window's own top edge: the content runs under the title bar, so its layout rect would sit lower
             let inCorner = p.x >= 0 && p.x < 90 && p.y > top - barHeight && p.y <= top
-            let show = inCorner || w.styleMask.contains(.fullScreen)
-            guard show != buttonsShown || !animated else { return }
-            buttonsShown = show
-            for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
-                guard let b = w.standardWindowButton(type) else { continue }
-                if animated { NSAnimationContext.runAnimationGroup { $0.duration = 0.15; b.animator().alphaValue = show ? 1 : 0 } }
-                else { b.alphaValue = show ? 1 : 0 }
-            }
+            guard inCorner != buttonsShown else { return }
+            buttonsShown = inCorner
+            NotificationCenter.default.post(name: .trafficLightsCorner, object: w, userInfo: ["hot": inCorner])
         }
 
         func apply() {
@@ -73,22 +67,11 @@ struct WindowChrome: NSViewRepresentable {
             if !w.styleMask.contains(.fullSizeContentView) { w.styleMask.insert(.fullSizeContentView) }
             if w.titlebarSeparatorStyle != .none { w.titlebarSeparatorStyle = .none }
             if w.isMovableByWindowBackground { w.isMovableByWindowBackground = false }     // the bar itself is the drag area (see WindowDragArea)
-            guard !w.styleMask.contains(.fullScreen) else { showButtonsIfPointerIsInCorner(animated: false); return }
-            centerTrafficLights(in: w)
-            showButtonsIfPointerIsInCorner(animated: false)
-        }
-
-        /// Native close / minimise / zoom buttons, vertically centred in the bar rather than hugging the top edge.
-        private func centerTrafficLights(in w: NSWindow) {
-            guard let close = w.standardWindowButton(.closeButton), let container = close.superview?.superview, let content = w.contentView else { return }
-            let height = barHeight
-            let target = NSRect(x: container.frame.origin.x, y: content.frame.height - height, width: container.frame.width, height: height)
-            if container.frame != target { container.frame = target }
             for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
-                guard let b = w.standardWindowButton(type) else { continue }
-                let y = ((height - b.frame.height) / 2).rounded()
-                if b.frame.origin.y != y { b.setFrameOrigin(NSPoint(x: b.frame.origin.x, y: y)) }
+                if let b = w.standardWindowButton(type), !b.isHidden { b.isHidden = true }
             }
         }
     }
 }
+
+extension Notification.Name { static let trafficLightsCorner = Notification.Name("trafficLightsCorner") }

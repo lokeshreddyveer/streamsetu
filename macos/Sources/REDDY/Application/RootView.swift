@@ -101,6 +101,7 @@ struct MainShell: View {
         .frame(minWidth: 1024, minHeight: 680)
         .background(GeometryReader { g in Color.clear.onAppear { width = g.size.width }.onChange(of: g.size.width) { _, w in width = w } })
         .background(WindowChrome(barHeight: LayoutTokens.headerHeight))
+        .overlay(alignment: .topLeading) { TrafficLights() }
         .background(ThemeBackdrop().ignoresSafeArea())
         .environment(state).environment(router).environment(container.settings)
         // Panels, menus and dialogs fade and settle instead of popping in. Opacity and a slight scale only: nothing moves the layout.
