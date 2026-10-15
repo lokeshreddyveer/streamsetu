@@ -1,110 +1,113 @@
 # StreamSetu for Windows: architecture plan
 
-Status: plan only. Nothing is built yet.
+Status: plan only. Nothing is built yet. Decision made: a fully native Windows app.
 
 ## Decision
 
-Build the Windows app in **Kotlin with Compose Multiplatform for Desktop**, sharing the Android app's logic, and play video with **libmpv**.
+**C# on .NET 8 with WinUI 3 (Windows App SDK), playing video with libmpv.** It looks and behaves like a Windows app: Mica window, native menus, keyboard and touch, media keys, Windows notifications, system dark and light.
 
-Why this and not the alternatives:
+The cost is honest and known: this is a third codebase next to the Apple app (Swift) and the Android app (Kotlin). Every rule that exists in both, such as search ranking, More Like This, the parsers and the catalog, has to be written once more in C#. The plan below limits that cost instead of hiding it.
 
-| Option | Reuse | Fit for Windows | Cost |
-|---|---|---|---|
-| **Kotlin + Compose Desktop (chosen)** | The Android catalog, parsing, search, sources and UI building blocks | Good. Installer, tray, keyboard and mouse all work | Medium |
-| WinUI 3 with C# | None. Every rule is written a third time | Best look and Store fit | High, and every later feature is built three times |
-| Tauri or Electron | Little | Heavy runtime; video in a web view is the weak spot for IPTV | Medium |
-| Swift on Windows | Mac code is Swift, but SwiftUI does not run on Windows | Not usable for the interface | High |
+## Two projects, so most of it can be built and tested on a Mac
 
-The Android app is the newest and most complete code, and its logic modules are already close to plain Kotlin. Counted from the source today: `core-model` and `core-network` have no Android imports; `data` has 28 files, 6 of which touch Android.
-
-## Layers
+WinUI only compiles on Windows. Almost nothing else has to. So the code is split:
 
 ```
 windows/
-  app            Compose Desktop interface (new): window, navigation, screens
-  player         libmpv wrapper (new): load, seek, tracks, delay, picture options
-  platform       Windows services (new): secure storage, file dialogs, tray, updates
-shared (taken out of android/ into plain Kotlin/JVM modules)
-  core-model     titles, channels, episodes
-  core-network   HTTP, XMLTV, M3U, Xtream, Stalker, Jellyfin, Emby, Plex, WebDAV
-  data           catalog, search, similarity, favourites, history, sync
-  core-ui-kit    components that do not depend on Android (posters, rows, chips)
+  StreamSetu.Core/        class library, net8.0: no Windows APIs
+  StreamSetu.Core.Tests/  tests that run on a Mac, Linux or Windows with `dotnet test`
+  StreamSetu.Windows/     the WinUI 3 app: windows, pages, mpv, tray, secure storage
+  StreamSetu.Windows.Tests/  interface and player tests; run on Windows only
 ```
 
-The Android modules keep working: they depend on the shared modules, and nothing in `android/` changes behaviour.
+`StreamSetu.Core` holds everything that is plain logic, so it can be written and tested from this Mac:
 
-## What each piece becomes
-
-| Need | Android today | Windows |
+| Core area | Ported from | Notes |
 |---|---|---|
-| Database | Room | The same schema and SQL on SQLite (Room's Kotlin Multiplatform release, or SQLDelight). Search keeps its FTS index |
-| Logins | Android Keystore | Windows Credential Manager (DPAPI), through JNA |
-| Player | ExoPlayer and MPV | **MPV only**, with Direct3D 11 hardware decoding. One engine means fewer surprises |
-| Settings | SharedPreferences | A small file in the user's AppData |
-| Background refresh | WorkManager | Refresh on open and on a timer while the app runs; a tray icon keeps it available |
-| Updates | GitHub release check | Same check against the repository's release (an `.msi` or `.msix` in release `2026.xx.xx`), with the SHA-256 shown |
-| Layout | Remote and touch | Window with mouse, keyboard, and trackpad; resizable; fullscreen player |
-| Language | Hindi, Telugu, English tables | The same tables |
+| Models (channel, movie, series, episode, source) | Android `core-model` | Same names and fields |
+| Parsers: M3U, Xtream JSON, XMLTV, Stalker, Jellyfin, Emby, Plex, WebDAV, HDHomeRun, TVHeadend, Enigma2 | Android `core-network` and `data` | Same test fixtures: the existing Kotlin and Swift test inputs become shared data files, so all three apps must give the same answer |
+| Catalog and search (SQLite, FTS5, smart query, spelling fix) | Mac `SQLiteCatalogRepository`, Android `SearchRepository` | `Microsoft.Data.Sqlite` with FTS5 |
+| More Like This ranking | Android `Similarity.kt`, Mac `SimilarTitles.swift` | Same weights and reasons |
+| Favourites, lists, history, resume, per-title memory, intro skip | Both | |
+| Updates check against the GitHub release | Android `UpdateLogic` | |
+| Translations | Android `I18n` tables | Hindi, Telugu, English |
 
-## The hard part: video and controls in one window
+`StreamSetu.Windows` holds only what needs Windows: pages, navigation, the mpv window, Credential Locker for logins (DPAPI), notifications, the tray, file pickers.
 
-MPV draws into a native window handle. A Compose interface cannot normally draw on top of a native video surface (the "airspace" problem). Options, in order of preference:
+## Shared test data keeps three apps honest
 
-1. Give mpv a child window and put the controls in a second, transparent, borderless window that follows it. Reliable, and is how several desktop players do it.
-2. Render mpv into an OpenGL texture with its render API and draw the picture inside Compose. Cleaner, but more code and harder to keep smooth.
-3. A native overlay for controls only.
+Today the Mac and Android each carry their own test fixtures. The new Core tests will read the same files from a top-level `testdata/` folder (playlists, XMLTV, search cases, ranking cases). Android and Mac tests can adopt them over time. When a rule changes, one fixture changes and the three suites say which app drifted.
 
-**First task is a spike to prove option 1** with the real controls (pause, seek bar, audio and subtitle menus, search) before anything else is built.
+## Player
 
-## Features for the first release
+**libmpv only.** Direct3D 11 hardware decoding, one engine, the same options already built elsewhere: tracks, timing, speed, go to time, picture tuning, volume boost, A-B loop, OpenSubtitles.
 
-Parity with what the other apps do best, in this order:
-1. Add a playlist (Xtream, M3U link or file, Stalker, Jellyfin, Emby, Plex, WebDAV) with a connection test.
-2. Live TV with groups, the guide, and favourites.
-3. Movies and series with resume, More Like This, and search (including search inside the player).
-4. The player options already shared everywhere: tracks, timing, speed, go to time, Skip Intro, remembered choices, OpenSubtitles, picture tuning, volume boost, stats.
-5. Folders, lists, collections, history, backup and restore.
-6. Hindi and Telugu.
+Video and controls in one window is the hardest part, because mpv draws into a native window handle and XAML draws its own surface (the "airspace" problem). Options:
 
-Later: Multi-View, reminders (Windows notifications), casting, SMTC media keys and the system volume overlay.
+1. **mpv in a child window with the controls in a transparent, borderless overlay window** that follows it. Reliable, and what other desktop players do. Preferred.
+2. mpv render API into a swap chain panel inside XAML, so controls are normal XAML on top. Cleaner and better looking, harder to keep smooth.
+3. Controls only in a separate window.
+
+**The first task is a spike of 1 and 2 with real controls**, before the rest is built. The result decides the player design.
+
+## Interface
+
+| Area | Plan |
+|---|---|
+| Shell | `NavigationView` with Home, Live TV, Movies, Series, TV Guide, Search, Libraries, Settings, like the Mac sidebar |
+| Home and lists | Banner and poster rows, virtualized grids (`ItemsRepeater` or `GridView`) |
+| Live TV | Folders, channel list, guide grid |
+| Player | Fullscreen and windowed, mouse, keyboard, media keys, Windows media overlay (SMTC) |
+| Settings | Same groups as the other apps |
+| Theme | StreamSetu cyan and gold, system dark and light, high contrast respected |
+| Accessibility | UI Automation names on every control; keyboard navigation everywhere |
+
+## Packaging, signing and updates
+
+- **MSIX** installer, built from the project, with an automatic dependency on the Windows App Runtime.
+- **Signing is required** for installs without warnings. Microsoft Trusted Signing or a standard code-signing certificate; either needs identity verification that can take days. Arrange it early.
+- **Distribution:** direct download from the single release first; Microsoft Store later (it signs for you and updates the app, at the price of a Store review).
+- **Updates:** a check against the release, with SHA-256, plus an App Installer file for MSIX when distributed directly.
+
+## Tooling and what I can and cannot do from this Mac
+
+| Task | Here | Needs Windows |
+|---|---|---|
+| Write all C# | yes | |
+| Build and test `StreamSetu.Core` | yes, once the .NET 8 SDK is installed (`brew install dotnet`) | |
+| Build the WinUI app, run it, test the player | | **yes**: Windows 10 or 11, Visual Studio 2022 with the Windows App SDK workload |
+| GitHub Actions `windows-latest` build, tests and MSIX | I can write the workflow; it runs in the cloud | |
+| Judging how it looks and feels | | **yes** |
+
+Without a Windows machine I can write and unit-test all the logic here and let GitHub's Windows runner prove the app compiles, but I could not see it or play a stream. A real Windows PC is needed for the player spike and every interface check.
 
 ## Phases
 
 | Phase | Goal | Done when |
 |---|---|---|
-| 0. Spike | mpv plays a stream with controls over it in a Compose window | Smooth playback at 1080p with a live seek bar and a menu on top |
-| 1. Shared code | Move the logic modules out of Android without changing Android | Android builds and every Android test still passes; the same modules compile for the JVM |
-| 2. Core app | Add a playlist, browse, play | A real Xtream login shows channels, movies and series and plays them |
-| 3. Full player and lists | The features above | Feature list passes on a Windows 10 and a Windows 11 machine |
-| 4. Release | Installer, signing, updates | A signed installer upgrades over the previous one and keeps data |
+| 0. Spike (needs Windows) | mpv plays a stream with controls over it | Smooth 1080p, live seek bar, a menu on top, in both overlay designs |
+| 1. Core | Models, parsers, catalog, search, sources, shared test data | `dotnet test` passes on the Mac and in CI; fixtures match the Android and Mac results |
+| 2. App shell | Window, navigation, add a playlist, Live TV, Movies, Series | A real Xtream login browses and plays |
+| 3. Full player and lists | Every shared player option, favourites, history, collections, backup | Feature list passes on Windows 10 and 11 |
+| 4. Polish and release | Accessibility, Hindi and Telugu, MSIX, signing, updates | A signed installer upgrades over the last one and keeps data |
 
-## Packaging, signing and updates
-
-- Installer: `jpackage` builds an `.msi` (or `.msix`). The app ships its own runtime, so users install nothing else.
-- Signing: Windows shows a warning for unsigned installers. A code-signing certificate is needed (Microsoft's Trusted Signing service or a standard certificate); this is a cost and an identity check to arrange before the first public build.
-- Distribution: direct download from the release, as for the other apps. The Microsoft Store can come later.
-- Updates: in-app check against the release, like Android.
-
-## Tests
-
-- The shared modules keep their existing unit tests and run them on the JVM.
-- New: player wrapper tests with a fake mpv, a database test on Windows paths, and a smoke test that starts the app and opens a local test stream.
-- GitHub Actions gets a `windows-latest` job that builds, tests and produces the installer.
+Later: Multi-View, reminders as Windows notifications, casting, a Store listing.
 
 ## Risks
 
 | Risk | Plan |
 |---|---|
-| Controls over the video | The Phase 0 spike decides this before more is built |
-| libmpv licence: builds are GPL unless built without GPL parts | Check the licence of the build chosen, as was flagged for the Mac. Settle before release |
-| Windows needs its own real-device testing | Test on a Windows 10 and a Windows 11 machine; I cannot do this from a Mac |
-| A fourth implementation of every new feature | Put new logic in the shared modules first; only the interface is Windows-specific |
-| Code-signing certificate | Arrange it early; it can take days to verify an identity |
+| Player overlay (airspace) | Phase 0 spike, before anything depends on it |
+| Three codebases drift | Shared `testdata/`, and new logic written in the same shape in all three |
+| libmpv licence | The chosen Windows build must be checked: builds with GPL parts make the app GPL. The Mac was flagged the same way. Settle before release |
+| No Windows machine here | Needed for Phase 0 and every visual check |
+| Code-signing certificate | Apply early |
+| WinUI 3 maturity | Pin the Windows App SDK version; keep UI code thin so a bug can be worked around in one place |
 
-## Questions for you
+## Questions that still need an answer
 
-1. Is Kotlin with Compose Desktop acceptable, or do you prefer a fully native WinUI 3 app (more polish on Windows, but three codebases)?
+1. **Do you have a Windows 10 or 11 PC I can use for testing** (you running builds and sending screenshots), or should I plan around GitHub's cloud runner only?
 2. Direct download first, or the Microsoft Store from the start?
-3. Windows 10 and 11, or 11 only?
-4. Do you have, or are you willing to get, a code-signing certificate?
-5. A Windows machine to test on: yours, or a virtual machine on this Mac (slower, no real GPU)?
+3. Windows 10 and 11, or 11 only? (Windows 10 support ended in October 2025; supporting it costs little with WinUI 3 but needs testing.)
+4. Will you get a code-signing certificate, or do you want to use Microsoft's Trusted Signing?
+5. May I install the .NET 8 SDK on this Mac so I can start Phase 1?
