@@ -40,7 +40,7 @@ android {
             matchingFallbacks += "release"
         }
         release {
-            // With no keystore.properties the release build is signed with the debug key, so it can still be installed for testing; it must not be distributed.
+            // Signed with the release key. Without keystore.properties there is none, and the build stops (see the check below) instead of quietly using the debug key.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
@@ -87,4 +87,12 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation(libs.profileinstaller)       // installs the precompiled start-up profile (ours and Compose's) so the first scroll is not the slow one
+}
+
+// A release build must carry the release certificate: an APK signed with the debug key cannot be updated by the real one. For a throwaway test build pass -PallowDebugSigned=true.
+gradle.taskGraph.whenReady {
+    val buildsRelease = allTasks.any { it.project == project && it.name in setOf("assembleRelease", "bundleRelease", "packageRelease") }
+    if (buildsRelease && !keystoreProps.containsKey("storeFile") && project.findProperty("allowDebugSigned") != "true") {
+        throw GradleException("No release keystore: create android/keystore.properties, or pass -PallowDebugSigned=true for a build that is only for testing and must not be distributed.")
+    }
 }

@@ -18,7 +18,7 @@ export const platforms = [
 export const highlights = [
   { title: "Everything in one library", text: "Add as many playlists and servers as you like and see them as one library. A film that sits in two of them is one film to you." },
   { title: "Find it in a second", text: "Search runs on your own device, so it is quick and works offline. Type \"hindi movies 2024\" and it understands." },
-  { title: "Nothing leaves your device", text: "No account to make, nothing to sign in to, no ads and no tracking. Your logins sit in the system's secure storage." },
+  { title: "Nothing leaves your device", text: "No account to make, nothing to sign in to, no ads and no tracking. Your library, logins and history stay on your device. The few optional extras that contact someone else, such as iCloud sync, TMDB artwork or subtitles, are off until you turn them on, and the privacy policy lists each one." },
 ];
 
 export const features = [

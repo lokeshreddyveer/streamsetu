@@ -1,6 +1,7 @@
 package app.streamsetu.tv.ui.components
 
 import androidx.compose.ui.input.key.Key
+import app.streamsetu.tv.OpeningPress
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -11,19 +12,28 @@ import androidx.compose.ui.input.key.type
  * the release would choose the first item and close the menu. Until OK has been let go of once (or has not been held for a moment), the menu ignores OK.
  * The menu's being open never depends on whether the finger stays on the button.
  */
-class SelectKeyGuard(private val now: () -> Long = { System.currentTimeMillis() }, private val quietMs: Long = 400) {
+class SelectKeyGuard(private val now: () -> Long = { System.currentTimeMillis() }, private val quietMs: Long = 400, private val opening: () -> Long = { OpeningPress.downTime }) {
     var armed = false; private set
     private var lastDown = now()
 
-    /** True when this OK event is part of the opening press and must be swallowed. */
-    fun swallow(down: Boolean): Boolean {
+    /**
+     * True when this OK event is part of the opening press and must be swallowed. When the opening press is known, its events are told apart by their down time, so it does not matter
+     * how long the key is held or whether the remote sends repeats; any other press counts as a new one. When it is not known, OK is ignored until it has been let go of once.
+     */
+    fun swallow(down: Boolean, downTime: Long = 0L): Boolean {
         if (armed) return false
+        val press = opening()
+        if (press != 0L && downTime != 0L) {
+            if (downTime == press) { if (!down) armed = true; return true }
+            armed = true
+            return false
+        }
         if (down) lastDown = now() else armed = true
         return true
     }
 
-    /** Called every so often: OK has not been held for [quietMs], so the opening press is over. */
-    fun tick() { if (!armed && now() - lastDown > quietMs) armed = true }
+    /** Called every so often. Without a known opening press, OK not having been held for [quietMs] means the press is over. */
+    fun tick() { if (!armed && opening() == 0L && now() - lastDown > quietMs) armed = true }
 
     companion object {
         fun isSelect(e: KeyEvent) = e.key == Key.DirectionCenter || e.key == Key.Enter || e.key == Key.NumPadEnter

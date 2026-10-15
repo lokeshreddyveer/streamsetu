@@ -39,7 +39,7 @@ fun ContextMenu(title: String, subtitle: String? = null, actions: List<MenuActio
     val guard = remember { SelectKeyGuard() }
     LaunchedEffect(Unit) { while (!guard.armed) { delay(60); guard.tick() } }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().onPreviewKeyEvent { e -> SelectKeyGuard.isSelect(e) && guard.swallow(SelectKeyGuard.isDown(e)) }, Alignment.Center) {
+        Box(Modifier.fillMaxSize().onPreviewKeyEvent { e -> SelectKeyGuard.isSelect(e) && guard.swallow(SelectKeyGuard.isDown(e), e.nativeKeyEvent.downTime) }, Alignment.Center) {
             Column(Modifier.width(300.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Label(title, Tokens.title, Tokens.text, FontWeight.Bold)
                 if (subtitle != null) Label(subtitle, Tokens.small, Tokens.textSecondary)

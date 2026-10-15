@@ -11,6 +11,31 @@ final class SourceManager: @unchecked Sendable {
 
     let headersStore: SourceHeadersStore
 
+    // MARK: pictures on a Plex server
+
+    private var artworkTokens: [String: String] = [:]
+    private var artworkLoadedAt = Date.distantPast
+
+    private static func serverKey(_ url: URL) -> String? {
+        guard let host = url.host else { return nil }
+        return "\(host):\(url.port ?? (url.scheme == "https" ? 443 : 80))"
+    }
+
+    /// Headers for a picture request: the access token, only when the address is that of one of the person's Plex servers.
+    func artworkHeaders(for url: URL) -> [String: String] {
+        guard let key = Self.serverKey(url) else { return [:] }
+        return lock.withLock {
+            if Date().timeIntervalSince(artworkLoadedAt) > 30 {
+                artworkTokens = [:]
+                for s in ((try? catalog.sources()) ?? []) where s.type == .plex && s.enabled {
+                    if let u = URL(string: s.baseURL), let k = Self.serverKey(u), let token = secure.credentials(for: s)?.password, !token.isEmpty { artworkTokens[k] = token }
+                }
+                artworkLoadedAt = Date()
+            }
+            return artworkTokens[key].map { ["X-Plex-Token": $0] } ?? [:]
+        }
+    }
+
     init(catalog: CatalogRepository, credentials: CredentialStore, http: HTTPClient, headers: SourceHeadersStore = SourceHeadersStore()) {
         self.headersStore = headers
         self.catalog = catalog

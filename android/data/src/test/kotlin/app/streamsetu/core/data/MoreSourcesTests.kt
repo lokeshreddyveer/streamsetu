@@ -61,12 +61,12 @@ class MoreSourcesTests {
         assertEquals(1800, eps.single().durationSec); assertEquals("jf:e1.mp4", eps.single().streamRef)
     }
 
-    @Test fun plexCatalogAndStreamUrlCarryTheToken() {
+    @Test fun plexStreamUrlCarriesTheTokenButAStoredPictureAddressDoesNot() {
         val client = PlexClient(); val s = src(SourceType.PLEX, "http://plex:32400", null)
         val movies = objs("""[{"ratingKey":"10","title":"Heat","year":1995,"thumb":"/library/metadata/10/thumb/1","Genre":[{"tag":"Crime"}],"Media":[{"Part":[{"key":"/library/parts/55/1/file.mkv"}]}],"addedAt":100}]""")
         val c = client.mapCatalog(s, "http://plex:32400", "T0K", movies, emptyList())
         assertEquals("plex:/library/parts/55/1/file.mkv", c.movies.single().streamRef); assertEquals(100_000L, c.movies.single().addedAt)
-        assertTrue(c.movies.single().posterUrl!!.endsWith("?X-Plex-Token=T0K"))
+        assertEquals("http://plex:32400/library/metadata/10/thumb/1", c.movies.single().posterUrl)        // no token in a stored address; the image loader adds it as a header
         assertEquals("http://plex:32400/library/parts/55/1/file.mkv?X-Plex-Token=T0K", client.streamUrl(s, "T0K", "plex:/library/parts/55/1/file.mkv"))
         assertTrue(client.mapCatalog(s, "http://plex:32400", "T", objs("""[{"ratingKey":"11","title":"No file"}]"""), emptyList()).movies.isEmpty())    // nothing to play
     }

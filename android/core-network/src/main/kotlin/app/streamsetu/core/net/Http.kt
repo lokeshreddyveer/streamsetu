@@ -25,8 +25,27 @@ object Http {
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .followRedirects(true).followSslRedirects(true)
+            .addInterceptor { chain -> chain.proceed(chain.request().let { r -> r.newBuilder().tag(Origin::class.java, Origin(r.url.host, r.url.port)).build() }) }       // where the call started, for the check below
+            .addNetworkInterceptor(::dropSecretsAfterLeaving)
             .addInterceptor { chain -> chain.request().let { r -> chain.proceed(if (r.header("User-Agent") == null) r.newBuilder().header("User-Agent", USER_AGENT).build() else r) } }   // the app's own name only when the request names none
             .build()
+    }
+
+    private class Origin(val host: String, val port: Int)
+
+    private val secretHeader = Regex("(?i)auth|token|key|secret|cookie|password")
+
+    /**
+     * A login or token written on a request goes only to the server it was written for. OkHttp already drops the standard Authorization header when a redirect leaves the host, but
+     * not headers such as X-Plex-Token or X-Emby-Token or one the person typed, so those are removed here at every hop that is not the original server.
+     */
+    private fun dropSecretsAfterLeaving(chain: okhttp3.Interceptor.Chain): okhttp3.Response {
+        val request = chain.request()
+        val origin = request.tag(Origin::class.java)
+        if (origin == null || (origin.host == request.url.host && origin.port == request.url.port)) return chain.proceed(request)
+        val builder = request.newBuilder()
+        request.headers.names().filter { secretHeader.containsMatchIn(it) }.forEach { builder.removeHeader(it) }
+        return chain.proceed(builder.build())
     }
 
     private val localAddress = Regex("^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.|127\\.|169\\.254\\.)")

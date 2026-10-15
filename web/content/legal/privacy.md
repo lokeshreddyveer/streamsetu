@@ -20,13 +20,14 @@ StreamSetu connects only to the places below, and only for the reason given.
 - **StreamSetu's log service (on by default, and you can turn it off).** When a stream fails for good, or when you press Send My Log Now, the recent playback log is sent to a server run by the developer, hosted by Supabase in London (United Kingdom). It contains which player was used, timings and error codes, your app version, system version and device model, and a random report number made on your device that groups one device's reports (it is not linked to any account). Server names in the log are replaced with server-1, server-2 and so on. It never contains your logins, passwords, playlist names, titles or stream addresses. It is used only to fix playback problems, is not shared with anyone else, and is deleted after 30 days. You can see exactly what would be sent, including the report number, under See exactly what is sent in Send Feedback. To have a report deleted sooner, email contact@lokeshreddy.dev with that number.
 - **Apple iCloud (optional, off by default).** If you turn on iCloud sync, your library data and settings are stored in your own private iCloud account, and logins can travel through iCloud Keychain. We cannot see them. You can turn sync off at any time and delete the data from Settings > Apple Account > iCloud.
 - **The Movie Database (optional).** If you add your own TMDB key, StreamSetu sends a title and year to TMDB to fetch artwork, details and trailers.
+- **OpenSubtitles (optional).** If you add your own OpenSubtitles key, account name and password and ask for subtitles in the player, StreamSetu sends the title, its year and a language code to opensubtitles.com to find subtitles, and your account name and password to sign in so a file can be downloaded. They are kept in the Keychain (on Android, in encrypted storage) and are sent nowhere else.
 - **Apple's iTunes catalogue.** When you open a movie or series page, the title and year may be sent to Apple's public iTunes Search service to find an official trailer clip.
 - **YouTube.** If you tap Watch Trailer and the trailer is a YouTube video, the video is shown by YouTube's own player, which can set its own cookies and is covered by Google's privacy policy.
 - **Apple.** The App Store, TestFlight and iCloud are Apple services under Apple's privacy policy.
 
 ## Security
 
-Credentials are stored in the Keychain, connections use TLS with certificate validation, and sensitive addresses and tokens are removed from logs. The optional App Lock uses Face ID, Touch ID or your device passcode.
+Credentials are stored in the Keychain (on Android, in encrypted storage). An access token for a media server is sent only to that server, and is removed from a request if a redirect sends it to another one. The phone-assisted setup on a TV sends what you type over your home network without encryption, so use it on your own Wi-Fi only. Connections use TLS with certificate validation, and sensitive addresses and tokens are removed from logs. The optional App Lock uses Face ID, Touch ID or your device passcode.
 
 ## Your choices
 

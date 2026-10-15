@@ -19,7 +19,7 @@ data class PhoneSetup(val type: String, val name: String, val address: String, v
  */
 class PhoneSetupServer(private val onReceived: (PhoneSetup) -> Unit) {
     private var server: ServerSocket? = null
-    private val token = ByteArray(5).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
+    private val token = ByteArray(16).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
     private val expiresAt = System.currentTimeMillis() + 5 * 60_000L
     @Volatile private var used = false
     val secondsLeft: Int get() = ((expiresAt - System.currentTimeMillis()) / 1000).toInt().coerceAtLeast(0)
@@ -33,6 +33,9 @@ class PhoneSetupServer(private val onReceived: (PhoneSetup) -> Unit) {
     }
 
     fun stop() { runCatching { server?.close() }; server = null }
+
+    /** Compared in constant time, so the answer does not reveal how much of a guess was right. */
+    private fun sameToken(given: String) = java.security.MessageDigest.isEqual(given.toByteArray(), token.toByteArray())
 
     private fun handle(sock: Socket) = thread(isDaemon = true) {
         sock.use {
@@ -50,11 +53,11 @@ class PhoneSetupServer(private val onReceived: (PhoneSetup) -> Unit) {
                 val valid = System.currentTimeMillis() < expiresAt && !used
                 if (method == "GET") {
                     val t = path.substringAfter("t=", "").substringBefore('&')
-                    if (t == token && valid) send("200 OK", form()) else send("403 Forbidden", page("This link has expired", "Start again on the TV."))
+                    if (sameToken(t) && valid) send("200 OK", form()) else send("403 Forbidden", page("This link has expired", "Start again on the TV."))
                 } else if (method == "POST" && length in 1..8192) {
                     val body = ByteArray(length).also { var n = 0; while (n < length) { val r = inp.read(it, n, length - n); if (r < 0) break; n += r } }.toString(Charsets.UTF_8)
                     val f = body.split('&').mapNotNull { kv -> kv.split('=', limit = 2).takeIf { it.size == 2 }?.let { URLDecoder.decode(it[0], "UTF-8") to URLDecoder.decode(it[1], "UTF-8") } }.toMap()
-                    if (f["t"] == token && valid && !f["address"].isNullOrBlank()) {
+                    if (sameToken(f["t"].orEmpty()) && valid && !f["address"].isNullOrBlank()) {
                         used = true
                         onReceived(PhoneSetup(f["type"] ?: "xtream", f["name"].orEmpty().take(60), f["address"].orEmpty().trim().take(500), f["user"].orEmpty().trim().take(100), f["password"].orEmpty().take(200)))
                         send("200 OK", page("Sent to your TV", "Approve it on the TV with the remote. You can close this page."))

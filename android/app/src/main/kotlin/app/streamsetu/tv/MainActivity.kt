@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
         }
         val select = e.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || e.keyCode == android.view.KeyEvent.KEYCODE_ENTER || e.keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
         if (!select || nav.top == Overlay.Player) return super.dispatchKeyEvent(e)
-        if (hold.onSelect(e.action == android.view.KeyEvent.ACTION_DOWN, e.repeatCount)) return true
+        if (hold.onSelect(e.action == android.view.KeyEvent.ACTION_DOWN, e.repeatCount, e.downTime)) return true
         return super.dispatchKeyEvent(e)
     }
 

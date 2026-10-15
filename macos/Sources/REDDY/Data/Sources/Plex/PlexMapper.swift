@@ -6,9 +6,10 @@ struct PlexMapper: Sendable {
     let base: String
     let token: String
 
+    /// The picture's address, without the token: addresses are stored and shown in places a secret must not reach. The image cache adds the token as a header for this server.
     func art(_ path: String?) -> String? {
         guard let p = path, !p.isEmpty else { return nil }
-        return "\(base)\(p)\(p.contains("?") ? "&" : "?")X-Plex-Token=\(token)"
+        return "\(base)\(p)"
     }
 
     func partKey(_ d: [String: Any]) -> (key: String, ext: String)? {

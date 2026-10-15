@@ -178,7 +178,8 @@ class PlexClient {
             cats.getOrPut(id) { CategoryEntity(id, source.id, kind.name, g, cats.size) }
             return id
         }
-        fun art(path: String?) = path?.takeIf { it.startsWith("/") }?.let { "$base$it?X-Plex-Token=${enc(token)}" }
+        // The token is not written into the address: addresses are stored and shown in places a secret must not reach. The image loader adds it as a header (see ArtworkAuth).
+        fun art(path: String?) = path?.takeIf { it.startsWith("/") }?.let { "$base$it" }
         val m = movies.mapNotNull { o ->
             val key = o.str("ratingKey") ?: return@mapNotNull null
             val part = o.arr("Media").firstOrNull()?.arr("Part")?.firstOrNull()?.str("key") ?: return@mapNotNull null
@@ -205,7 +206,7 @@ class PlexClient {
         val key = e.str("ratingKey") ?: return@mapNotNull null
         val part = e.arr("Media").firstOrNull()?.arr("Part")?.firstOrNull()?.str("key") ?: return@mapNotNull null
         EpisodeEntity("${source.id}:ep:$key", seriesId, season, e.int("index") ?: 0, e.str("title") ?: "Episode", e.str("summary"),
-            e.str("thumb")?.takeIf { it.startsWith("/") }?.let { "$base$it?X-Plex-Token=${enc(token)}" }, e.num("duration")?.let { (it / 1000).toInt() }, "plex:$part")
+            e.str("thumb")?.takeIf { it.startsWith("/") }?.let { "$base$it" }, e.num("duration")?.let { (it / 1000).toInt() }, "plex:$part")
     }
 
     /** The file's address with the token added. */

@@ -217,10 +217,14 @@ class PlaybackController(
     private var firstFrameLogged = false
     private var loggedStart = false      // a play is logged once, however many times it is retried or moved to the other engine
 
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) { main.post { if (waitingForNetwork) { waitingForNetwork = false; restart() } } }
+    }
+    private var networkCallbackRegistered = false
+
     init {
-        connectivity.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) { main.post { if (waitingForNetwork) { waitingForNetwork = false; restart() } } }
-        })
+        connectivity.registerDefaultNetworkCallback(networkCallback)
+        networkCallbackRegistered = true
     }
 
     private fun engineFor(kind: EngineKind): PlayerEngine = engines.getOrPut(kind) {
@@ -500,7 +504,12 @@ class PlaybackController(
         if (pausedByLifecycle) { pausedByLifecycle = false; _engine.value?.play() }
     }
 
-    fun release() { stop(); engines.values.forEach { it.release() }; engines.clear(); scope.coroutineContext[Job]?.cancel() }
+    fun release() {
+        stop()
+        if (networkCallbackRegistered) { networkCallbackRegistered = false; runCatching { connectivity.unregisterNetworkCallback(networkCallback) } }
+        engines.values.forEach { it.release() }; engines.clear()
+        scope.coroutineContext[Job]?.cancel()
+    }
 
     private fun isOnline(): Boolean {
         val n = connectivity.activeNetwork ?: return false

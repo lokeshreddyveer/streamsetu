@@ -76,4 +76,28 @@ class HoldToSelectTests {
         now = 300; g.swallow(true); now = 600; g.tick(); assertFalse(g.armed)     // a repeat 300 ms ago: still held
         now = 800; g.tick(); assertTrue(g.armed)
     }
+
+    // A remote that sends no repeats while the key is held: the press is still recognised as the one that opened the menu.
+    @Test fun aLongHoldWithoutRepeatsIsStillTheOpeningPress() {
+        var now = 0L
+        val g = SelectKeyGuard(now = { now }, quietMs = 400, opening = { 5_000L })
+        now = 900; g.tick(); assertFalse(g.armed)                                  // far longer than the quiet time, key still down
+        assertTrue(g.swallow(down = false, downTime = 5_000L)); assertTrue(g.armed)   // its release is swallowed
+        assertFalse(g.swallow(down = true, downTime = 9_000L))                      // a new press works
+    }
+
+    @Test fun aNewPressWorksEvenIfTheReleaseOfTheOpeningOneNeverArrived() {
+        val g = SelectKeyGuard(now = { 0 }, quietMs = 400, opening = { 5_000L })
+        assertTrue(g.swallow(down = true, downTime = 5_000L))
+        assertFalse(g.swallow(down = true, downTime = 7_000L))
+    }
+
+    @Test fun theHoldRecordsWhichPressItWas() {
+        var pending: (() -> Unit)? = null
+        val hold = HoldToSelect(hasHandler = { true }, schedule = { _, run -> pending = run }, cancel = { pending = null }, fire = {})
+        OpeningPress.downTime = 0
+        hold.onSelect(down = true, repeatCount = 0, downTime = 1234L)
+        pending?.invoke()
+        assertEquals(1234L, OpeningPress.downTime)
+    }
 }

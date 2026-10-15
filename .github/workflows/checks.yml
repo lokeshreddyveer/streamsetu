@@ -1,0 +1,46 @@
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Unit and interface tests
+        working-directory: android
+        run: ./gradlew :app:testDebugUnitTest :data:testDebugUnitTest :core-network:testDebugUnitTest :core-media:testDebugUnitTest
+      - name: A release build must refuse to be signed with the debug key
+        working-directory: android
+        run: |
+          if ./gradlew :app:assembleRelease --dry-run; then echo "A release build was allowed without a release key"; exit 1; fi
+
+  mac:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test
+        working-directory: macos
+        run: swift test
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build for the simulator
+        working-directory: ios
+        run: python3 Scripts/generate-project.py && xcodebuild -project StreamSetu.xcodeproj -scheme StreamSetu -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+
+  legal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 legal/sync-legal.py --check

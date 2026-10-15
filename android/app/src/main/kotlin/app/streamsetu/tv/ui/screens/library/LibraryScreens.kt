@@ -511,7 +511,7 @@ fun PhoneSetupDialog(onFilled: (SourceType, LibraryViewModel.Form) -> Unit, onCl
                     else -> {
                         Label("Scan with your phone", Tokens.title, Tokens.text, FontWeight.Bold)
                         link?.let { u -> QrCode(u, Modifier.size(170.dp)); Label(u, Tokens.caption, Tokens.textSecondary, maxLines = 2) }
-                        Label("Valid for ${left / 60}:%02d. Works on your home network only.".format(left % 60), Tokens.small, Tokens.textTertiary)
+                        Label("Valid for ${left / 60}:%02d. Works on your home network only, and is not encrypted: use it on your own Wi-Fi, not a shared one.".format(left % 60), Tokens.small, Tokens.textTertiary)
                         TvButton("Cancel", onClose, Modifier.focusRequester(first))
                     }
                 }

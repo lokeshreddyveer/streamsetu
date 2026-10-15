@@ -155,10 +155,12 @@ class PlaybackService : Service() {
         const val ACTION_PREVIOUS = "app.streamsetu.PREVIOUS"
         const val ACTION_STOP = "app.streamsetu.STOP"
 
-        /** Starts the service. Called while the app is on screen, which is the only time the system allows it. */
-        fun start(context: Context) {
+        /** Starts the service. Called while the app is on screen, which is the only time the system allows it. False, and a line in the log, when the system refuses. */
+        fun start(context: Context): Boolean {
             val i = Intent(context, PlaybackService::class.java)
-            runCatching { if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i) }
+            return runCatching { if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i) }
+                .onFailure { android.util.Log.w("PlaybackService", "The background playback service could not start: ${it.message}") }
+                .isSuccess
         }
     }
 }

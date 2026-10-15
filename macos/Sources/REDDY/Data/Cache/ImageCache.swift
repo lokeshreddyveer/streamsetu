@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 actor ImageCache {
     private let policy: CachePolicy
     private let http: HTTPClient
+    private let headers: @Sendable (URL) -> [String: String]
     private let root: URL
     private let memory = NSCache<NSString, CGImageBox>()
     private var inFlight: [String: Task<CGImage?, Never>] = [:]
@@ -18,8 +19,8 @@ actor ImageCache {
 
     final class CGImageBox { let image: CGImage; init(_ i: CGImage) { image = i } }
 
-    init(root: URL, policy: CachePolicy = .default, http: HTTPClient) {
-        self.root = root; self.policy = policy; self.http = http
+    init(root: URL, policy: CachePolicy = .default, http: HTTPClient, headers: @escaping @Sendable (URL) -> [String: String] = { _ in [:] }) {
+        self.root = root; self.policy = policy; self.http = http; self.headers = headers
         memory.totalCostLimit = policy.memoryLimitBytes
         StorageService.ensure(root)
     }
@@ -88,7 +89,9 @@ actor ImageCache {
 
     private func download(_ url: URL, kind: ArtworkKind, key: String) async -> CGImage? {
         do {
-            let data = try await http.data(http.builder.get(url), maxBytes: http.config.maxImageBytes)
+            var request = http.builder.get(url)
+            for (name, value) in headers(url) { request.setValue(value, forHTTPHeaderField: name) }
+            let data = try await http.data(request, maxBytes: http.config.maxImageBytes)
             guard let img = Self.decode(data, maxPixel: kind.maxPixel, policy: policy) else { return nil }
             if let encoded = Self.encode(img) { try? encoded.write(to: fileURL(key, kind), options: .atomic) }
             writesSinceTrim += 1

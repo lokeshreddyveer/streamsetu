@@ -52,7 +52,7 @@ private func list(_ s: String) -> [[String: Any]] { (try? JSONSerialization.json
         let m = PlexMapper(source: src, base: "http://plex:32400", token: "TT")
         let movies = m.movies(list(#"[{"ratingKey":"12","title":"Alien","year":1979,"summary":"Space.","rating":8.4,"duration":7020000,"thumb":"/library/metadata/12/thumb/1","Genre":[{"tag":"Horror"}],"Media":[{"Part":[{"key":"/library/parts/55/1/file.mkv","container":"mkv"}]}],"addedAt":1700000000},{"ratingKey":"13","title":"No media"}]"#))
         #expect(movies.count == 1 && movies[0].durationSeconds == 7020 && movies[0].categoryName == "Horror")
-        #expect(movies[0].posterURL == "http://plex:32400/library/metadata/12/thumb/1?X-Plex-Token=TT")
+        #expect(movies[0].posterURL == "http://plex:32400/library/metadata/12/thumb/1")        // no token in a stored address
         let p = PlexProvider(source: src, token: "TT", http: HTTPClient())
         #expect(try p.streamURL(kind: .movie, ref: movies[0].streamRef).absoluteString == "http://plex:32400/library/parts/55/1/file.mkv?X-Plex-Token=TT")
     }
@@ -133,5 +133,17 @@ private func list(_ s: String) -> [[String: Any]] { (try? JSONSerialization.json
         #expect(SourceManager.authorization(for: Credentials(username: "u", password: "p")) == "Basic dTpw")
         #expect(SourceManager.authorization(for: Credentials(username: nil, password: "tok")) == "Bearer tok")
         #expect(SourceManager.authorization(for: Credentials(username: nil, password: nil, url: "http://x")) == nil)
+    }
+
+    @Test func aPlexTokenGoesOnlyToItsOwnServer() throws {
+        let db = try TestSupport.makeDB()
+        let catalog = SQLiteCatalogRepository(db: db)
+        let store = InMemoryCredentialStore()
+        try store.save(Credentials(username: nil, password: "TT", url: nil), ref: "plex-ref")
+        try catalog.save(source: PlaylistSource(name: "Plex", type: .plex, baseURL: "http://plex.local:32400", credentialRef: "plex-ref"))
+        let manager = SourceManager(catalog: catalog, credentials: store, http: HTTPClient())
+        #expect(manager.artworkHeaders(for: URL(string: "http://plex.local:32400/library/metadata/1/thumb")!) == ["X-Plex-Token": "TT"])
+        #expect(manager.artworkHeaders(for: URL(string: "http://elsewhere.example:32400/x.jpg")!).isEmpty)
+        #expect(manager.artworkHeaders(for: URL(string: "http://plex.local:8080/x.jpg")!).isEmpty)       // same name, another port: not the server
     }
 }

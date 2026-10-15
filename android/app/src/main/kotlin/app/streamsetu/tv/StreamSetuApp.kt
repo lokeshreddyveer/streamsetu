@@ -61,7 +61,15 @@ class AppContainer @Inject constructor(
     val nextEpisodeIn = kotlinx.coroutines.flow.MutableStateFlow(0)
 
     init {
-        appScope.launch { runCatching { db.catalog().deleteDividers() } }      // divider rows read by an earlier version
+        appScope.launch { runCatching { db.catalog().deleteDividers() } }
+        // Plex pictures used to be saved with the access token in their address. This removes it from what an earlier version stored.
+        appScope.launch {
+            runCatching {
+                val raw = db.openHelper.writableDatabase
+                for ((table, column) in listOf("movies" to "posterUrl", "series" to "posterUrl", "series" to "backdropUrl", "episodes" to "imageUrl"))
+                    raw.execSQL("UPDATE $table SET $column = substr($column, 1, instr($column, '?X-Plex-Token=') - 1) WHERE $column LIKE '%?X-Plex-Token=%'")
+            }
+        }      // divider rows read by an earlier version
         // "Play next episode automatically": when an episode ends, the next one of the same series starts.
         // The next episode follows after a short countdown that the player shows ("Next episode in 5"); anything else the person does cancels it.
         var countdown: kotlinx.coroutines.Job? = null
@@ -138,7 +146,7 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
     private val images = okhttp3.Dispatcher().apply { maxRequests = 16; maxRequestsPerHost = 6 }
 
     override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
-        .okHttpClient(okhttp3.OkHttpClient.Builder().dispatcher(images).build())
+        .okHttpClient(okhttp3.OkHttpClient.Builder().dispatcher(images).addInterceptor(ArtworkAuth(container.sources, container.credentials)).build())
         .diskCache { coil.disk.DiskCache.Builder().directory(java.io.File(cacheDir, "image_cache")).maxSizeBytes(160L * 1024 * 1024).build() }
         .crossfade(false)
         .memoryCache { coil.memory.MemoryCache.Builder(this).maxSizePercent(if (Perf.lowEnd(this)) 0.12 else 0.22).build() }
@@ -182,7 +190,7 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             // Phones: while something plays, the media service keeps it alive in the background and shows the lock-screen controls.
             var running = false
             container.playback.current.collect { item ->
-                if (item != null && !running) { running = true; PlaybackService.start(this@StreamSetuApp) }
+                if (item != null && !running) running = PlaybackService.start(this@StreamSetuApp)
                 if (item == null) running = false
             }
         }
