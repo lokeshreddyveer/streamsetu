@@ -94,20 +94,20 @@ The artwork in these screenshots comes from the provider's own playlist. StreamS
 
 | Platform | What to get | Notes |
 |---|---|---|
-| **Mac** | [`StreamSetu-2.4.0.dmg`](../../releases/download/mac-v2.4.0/StreamSetu-2.4.0.dmg) (all Mac releases are tagged `mac-v…`) | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
-| **Fire TV and Android TV** | [`StreamSetu-FireTV-0.9.0.apk`](../../releases/download/android-v0.9.0/StreamSetu-FireTV-0.9.0.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
-| **Android phone and tablet** | [`StreamSetu-Android-0.9.0.apk`](../../releases/download/android-v0.9.0/StreamSetu-Android-0.9.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
+| **Mac** | [`StreamSetu-2.4.1.dmg`](../../releases/download/2026.10.14/StreamSetu-2.4.1.dmg) (one release holds every app) | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
+| **Fire TV and Android TV** | [`StreamSetu-FireTV-0.9.1.apk`](../../releases/download/2026.10.14/StreamSetu-FireTV-0.9.1.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
+| **Android phone and tablet** | [`StreamSetu-Android-0.9.1.apk`](../../releases/download/2026.10.14/StreamSetu-Android-0.9.1.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
 | **iPhone and iPad** | TestFlight (version 0.5.0) | Ask for an invitation at contact@lokeshreddy.dev. |
 
 The two Android files hold the same build, listed separately so each device has its own download. The app picks the remote or touch layout by itself. Every download has a SHA-256 checksum in its release notes. Verify it with `shasum -a 256 <file>`.
 
-Every download is on this repository's [Releases](../../releases) page: `mac-v…` for the Mac, `android-v…` for Android and Fire TV. How releases are made is in [docs/RELEASING.md](docs/RELEASING.md).
+Every download is on this repository's [Releases](../../releases) page: one release per update, named by date, with the Mac, Android and Fire TV files and a section for each app. How releases are made is in [docs/RELEASING.md](docs/RELEASING.md).
 
 If you have a Mac copy older than 2.3.1, it cannot update itself (the old update feed was removed when everything moved into this repository). Download 2.3.1 once from the table above; it updates itself from then on.
 
 ### Installing on Android phone or tablet
 
-1. Download `StreamSetu-Android-0.9.0.apk` on the phone.
+1. Download `StreamSetu-Android-0.9.1.apk` on the phone.
 2. Open it and, when asked, allow installs from your browser or files app.
 3. Open StreamSetu.
 
