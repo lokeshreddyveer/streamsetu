@@ -3,6 +3,15 @@
   <channel>
     <title>StreamSetu</title>
     <item>
+      <title>StreamSetu 2.5.0</title>
+      <pubDate>Thu, 15 Oct 2026 01:23:45 -0000</pubDate>
+      <sparkle:version>250</sparkle:version>
+      <sparkle:shortVersionString>2.5.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[Mac 2.5.0, Android and Fire TV 0.10.0, iPhone and iPad 0.6.0: a much stronger player in every app, More like this that actually shows, and tidier Favourites, Watch Later, Collections and Watch History.]]></description>
+      <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/2026.10.15/StreamSetu-2.5.0.dmg" type="application/octet-stream" sparkle:edSignature="21P8PcqWIhSZOcAsG4fzgVDyYvIY6bNPgXQy5b5ZkEuQLexQhol2tFNBzlcCMVjsE3ag8bYDLi7tDCjooUesAQ==" length="64801850"/>
+    </item>
+    <item>
       <title>StreamSetu 2.4.1</title>
       <pubDate>Thu, 15 Oct 2026 00:22:39 -0000</pubDate>
       <sparkle:version>241</sparkle:version>
@@ -29,5 +38,5 @@
       <description><![CDATA[Updates now come from the one StreamSetu repository. If you have an older copy, download this one once; it updates itself from then on.]]></description>
       <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/mac-v2.3.1/StreamSetu-2.3.1.dmg" type="application/octet-stream" sparkle:edSignature="C6eMDAYgR8nLbI0cQYXeeDf/ZITqwbIqLWvhz++8pB6E8Tq9U1ITGr10mGAIOMsW4pkgqoWbtKb2Me6cLZcOAg==" length="64424077"/>
     </item>
-      </channel>
+        </channel>
 </rss>
