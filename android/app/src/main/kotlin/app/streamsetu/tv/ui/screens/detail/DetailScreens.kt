@@ -61,6 +61,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
     var info by remember { mutableStateOf<app.streamsetu.core.sync.SyncService.MovieInfo?>(null) }
     var variants by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var related by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Movie>>>(emptyList()) }
+    var franchise by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var more by remember { mutableStateOf(false) }
     var chooseOpen by remember { mutableStateOf(false) }
     val sources by c.library.entries.collectAsState(initial = emptyList())
@@ -70,6 +71,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
         delay(120); runCatching { first.requestFocus() }
         info = runCatching { c.sync.movieInfo(movie) }.getOrNull()
         variants = runCatching { c.search.movieVariants(movie.title) }.getOrDefault(emptyList())
+        franchise = runCatching { c.search.franchiseOf(movie) }.getOrDefault(emptyList())
         val facts = info?.let { app.streamsetu.core.data.repo.Similarity.facts(it.genre, it.cast, it.director) }
         runCatching { c.search.similarMovies(movie, facts) { m -> c.sync.movieInfo(m)?.let { app.streamsetu.core.data.repo.Similarity.facts(it.genre, it.cast, it.director) } }.collect { related = it } }
     }
@@ -118,6 +120,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { variants.forEach { v -> Chip("${sourceName(v.sourceId)}  ·  ${v.streamRef.substringAfterLast(':', "").uppercase()}", if (v.id == movie.id) Tokens.accent else Tokens.textSecondary) } }
                 }
             }
+            if (franchise.size > 1) item { FranchiseTimeline(franchise, movie.id) { m -> nav.close(); nav.open(Overlay.MovieDetail(m)) } }
             if (related.isNotEmpty()) item {
                 Column {
                     SectionTitle("More like this")

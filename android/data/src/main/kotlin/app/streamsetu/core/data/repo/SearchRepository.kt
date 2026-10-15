@@ -142,4 +142,16 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
         fun item(m: Series) = Similarity.Item(m.id, m.title, m.year, m.rating?.toDoubleOrNull(), m.plot, m.categoryId)
         Similarity.rank(item(series), null, pool.map(::item)).mapNotNull { r -> byId[r.id]?.let { Suggestion(it, r.reason) } }
     }
+
+    /** The films of the open movie's franchise found anywhere in the library, in release order (see [Similarity.franchise]); empty when it has no sequels or siblings. */
+    suspend fun franchiseOf(movie: Movie): List<Movie> = withContext(Dispatchers.IO) {
+        val words = Similarity.stem(movie.title).split(' ').filter { it.isNotEmpty() }.take(2)
+        if (words.isEmpty()) return@withContext emptyList()
+        val locked = folders.lockedIdsNow()
+        val hits = SearchIndex.query(db.openHelper.readableDatabase, SearchText.matchQuery(words.joinToString(" ")), library.sourceIds.value, listOf("MOVIE"), 200).filter { it.folderId == null || it.folderId !in locked }
+        val pool = db.catalog().moviesByIds(hits.map { it.itemId }).map { it.toModel() }
+        val byId = (pool + movie).associateBy { it.id }
+        fun item(m: Movie) = Similarity.Item(m.id, m.title, m.year, m.rating?.toDoubleOrNull(), m.plot, m.categoryId)
+        Similarity.franchise(item(movie), pool.map(::item)).mapNotNull { byId[it.id] }
+    }
 }

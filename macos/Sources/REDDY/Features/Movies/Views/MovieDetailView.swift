@@ -39,6 +39,7 @@ struct MovieDetailView: View {
                     }.padding(.top, Spacing.lg)
                 }
                 .padding(.horizontal, Spacing.section).padding(.bottom, Spacing.md)
+                FranchiseTimeline(currentID: m.id, movie: m) { PlayActions.open($0, router: router) }.padding(.horizontal, Spacing.section).padding(.bottom, Spacing.md)
                 SimilarSection(item: .movie(m)).padding(.horizontal, Spacing.section).padding(.bottom, Spacing.section)
             }
         }

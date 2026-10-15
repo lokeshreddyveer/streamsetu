@@ -34,16 +34,33 @@ enum SimilarTitles {
         return nil
     }
 
-    /// What is left of a title once the year, quality tags, language and sequel markers are removed: "John Wick 3 (2019)" → "john wick".
-    static func stem(_ title: String) -> String {
+    private static let markerWords: Set<String> = ["part", "chapter", "vol", "volume"]
+
+    /// The words of a title's main part (before a colon or a dash) once the year, quality tags and language are removed.
+    private static func headWords(_ title: String) -> [String] {
         var head = title
         if let r = head.range(of: ":") { head = String(head[..<r.lowerBound]) }
         if let r = head.range(of: " - ") { head = String(head[..<r.lowerBound]) }
-        var words = normalize(head).split(separator: " ").map(String.init).filter { w in
+        return normalize(head).split(separator: " ").map(String.init).filter { w in
             !(w.count == 4 && w.allSatisfy(\.isNumber) && (w.hasPrefix("19") || w.hasPrefix("20"))) && !noise.contains(w) && !languages.contains(w)
         }
-        while words.count > 1, let last = words.last, last.allSatisfy(\.isNumber) || roman.contains(last) || ["part", "chapter", "vol", "volume"].contains(last) { words.removeLast() }
+    }
+
+    private static func isMarker(_ w: String) -> Bool { w.allSatisfy(\.isNumber) || roman.contains(w) || markerWords.contains(w) }
+
+    /// What is left of a title once the year, quality, language and sequel markers are removed: "John Wick 3 (2019)" becomes "john wick".
+    static func stem(_ title: String) -> String {
+        var words = headWords(title)
+        while words.count > 1, let last = words.last, isMarker(last) { words.removeLast() }
         return words.joined(separator: " ")
+    }
+
+    /// True for "John Wick 3", "Mission Impossible II", "Rocky Part 2": the title carries a sequel number.
+    static func sequelMarked(_ title: String) -> Bool { let w = headWords(title); return w.count > 1 && isMarker(w.last!) }
+
+    private static func lead(_ stem: String) -> String {
+        for article in ["the ", "a ", "an "] where stem.hasPrefix(article) { return String(stem.dropFirst(article.count)) }
+        return stem
     }
 
     /// A title with only its year, quality tags and language removed: two titles with the same identity are the same film or show (a dub, another quality), not a suggestion for each other.
@@ -54,10 +71,37 @@ enum SimilarTitles {
     }
 
     private static func sameFranchise(_ a: String, _ b: String) -> Bool {
-        guard !a.isEmpty, !b.isEmpty else { return false }
-        if a == b { return true }
-        let x = a.split(separator: " "), y = b.split(separator: " ")
+        let x0 = lead(a), y0 = lead(b)
+        guard !x0.isEmpty, !y0.isEmpty else { return false }
+        if x0 == y0 { return true }
+        let x = x0.split(separator: " "), y = y0.split(separator: " ")
+        // The first two words must match. Leading articles are ignored, so "The Amazing Spider-Man" is not "The Amazing Bulk".
         return x.count >= 2 && y.count >= 2 && x[0] == y[0] && x[1] == y[1]
+    }
+
+    /// The films of the same franchise as [target], with the target among them, in the order they came out. A sequel or another film of the series counts (the first words of the
+    /// title match once the year, quality, language and sequel number are removed); a dub or another quality of the same film does not appear twice. Fewer than two films is no
+    /// franchise, and the result is empty.
+    static func franchise(target: Candidate, pool: [Candidate], limit: Int = 12) -> [LibraryItem] {
+        let stem = stem(target.item.title)
+        guard !stem.isEmpty else { return [] }
+        func score(_ c: Candidate) -> Int { (c.rating ?? 0) > 0 ? 1 : 0 }
+        let oneWord = lead(stem).split(separator: " ").count == 1
+        // A one-word name ("Crash", "Heat") is a franchise only through a sequel number: two unrelated films can share it.
+        let siblings = pool.filter { $0.item.id != target.item.id && sameFranchise(stem, Self.stem($0.item.title)) && (!oneWord || sequelMarked($0.item.title) || sequelMarked(target.item.title)) }
+        // Provider titles carry tags in every shape ("[Tam, Tel, Hin]", "(Telugu)", "(4K)"), so copies of one film are told apart by its release year, not by its name.
+        var byFilm: [String: Candidate] = [:]
+        var order: [String] = []
+        for c in [target] + siblings {
+            let key = c.item.year.map(String.init) ?? identity(c.item.title)
+            if let have = byFilm[key] {
+                if have.item.id != target.item.id, c.item.id == target.item.id || score(c) > score(have) || (score(c) == score(have) && c.item.title.count < have.item.title.count) { byFilm[key] = c }
+            } else { byFilm[key] = c; order.append(key) }
+        }
+        guard byFilm.count >= 2 else { return [] }
+        return order.compactMap { byFilm[$0] }
+            .sorted { ($0.item.year ?? Int.max, $0.item.title) < ($1.item.year ?? Int.max, $1.item.title) }
+            .prefix(limit).map(\.item)
     }
 
     private static func words(_ plot: String?) -> Set<String> {
@@ -162,5 +206,13 @@ struct SimilarService: Sendable {
         var seen = Set<String>()
         let unique = pool.filter { seen.insert($0.id).inserted }
         return SimilarTitles.rank(target: candidate(item), extras: extras, pool: unique.map(candidate), known: known)
+    }
+
+    /// The franchise of an open movie, found anywhere in the library, in release order; empty when it has no sequels or siblings.
+    func franchise(of movie: Movie) -> [LibraryItem] {
+        let words = SimilarTitles.stem(movie.title).split(separator: " ").prefix(2).joined(separator: " ")
+        guard !words.isEmpty else { return [] }
+        let found = ((try? catalog.movies(VODQuery(search: words, sort: .recentlyAdded, limit: 200))) ?? []).map { LibraryItem.movie($0) }
+        return SimilarTitles.franchise(target: candidate(.movie(movie)), pool: found.map(candidate))
     }
 }

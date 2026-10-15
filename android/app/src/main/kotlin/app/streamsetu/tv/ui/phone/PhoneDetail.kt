@@ -57,6 +57,7 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
     val progress = allProgress[movie.id]
     var info by remember { mutableStateOf<SyncService.MovieInfo?>(null) }
     var variants by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var franchise by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var related by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Movie>>>(emptyList()) }
     var chooseOpen by remember { mutableStateOf(false) }
     val sources by c.library.entries.collectAsState(initial = emptyList())
@@ -64,6 +65,7 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
     LaunchedEffect(movie.id) {
         info = runCatching { c.sync.movieInfo(movie) }.getOrNull()
         variants = runCatching { c.search.movieVariants(movie.title) }.getOrDefault(emptyList())
+        franchise = runCatching { c.search.franchiseOf(movie) }.getOrDefault(emptyList())
         val facts = info?.let { app.streamsetu.core.data.repo.Similarity.facts(it.genre, it.cast, it.director) }
         runCatching { c.search.similarMovies(movie, facts) { m -> c.sync.movieInfo(m)?.let { app.streamsetu.core.data.repo.Similarity.facts(it.genre, it.cast, it.director) } }.collect { related = it } }
     }
@@ -94,6 +96,24 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                     info?.director?.takeIf { it.isNotBlank() }?.let { Label("Director  ·  $it", Ph.small, Tokens.textSecondary, maxLines = 2) }
                     info?.cast?.takeIf { it.isNotBlank() }?.let { Label("Cast  ·  $it", Ph.small, Tokens.textSecondary, maxLines = 4) }
                     Label("From  ·  ${sourceName(movie.sourceId)}", Ph.caption, Tokens.textTertiary)
+                }
+            }
+            if (franchise.size > 1) item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionHeader("Timeline  ·  ${franchise.size} films")
+                    LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(franchise.withIndex().toList(), key = { it.value.id }) { (i, m) ->
+                            val here = m.id == movie.id
+                            Column(Modifier.width(112.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                PhonePoster(m.title, m.posterUrl, { if (!here) { nav.close(); nav.open(Overlay.MovieDetail(m)) } }, Modifier.fillMaxWidth(), subtitle = if (here) "You are here" else null)
+                                Box(Modifier.fillMaxWidth().height(14.dp), Alignment.CenterStart) {
+                                    Box(Modifier.fillMaxWidth().height(2.dp).background(Tokens.textTertiary))
+                                    Box(Modifier.size(if (here) 14.dp else 9.dp).background(if (here) Tokens.accent else Tokens.textSecondary, androidx.compose.foundation.shape.CircleShape))
+                                }
+                                Label("${i + 1}  ·  ${m.year ?: "?"}", Ph.small, if (here) Tokens.text else Tokens.textSecondary, if (here) FontWeight.Bold else FontWeight.Normal)
+                            }
+                        }
+                    }
                 }
             }
             if (related.isNotEmpty()) item {

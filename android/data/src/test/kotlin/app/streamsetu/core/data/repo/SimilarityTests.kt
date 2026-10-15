@@ -69,4 +69,45 @@ class SimilarityTests {
         val r = Similarity.rank(target, null, listOf(m("a", "Beta (Hindi)", folder = "HINDI"), m("b", "Gamma (Tamil)", folder = "TAMIL")))
         assertEquals(listOf("b"), r.map { it.id })
     }
+
+    @Test fun aFranchiseIsListedInTheOrderTheFilmsCameOut() {
+        val target = m("t", "Spider-Man: Far From Home (2019)", 2019)
+        val pool = listOf(m("a", "Spider-Man: No Way Home (2021)", 2021), m("b", "Spider-Man: Homecoming (2017)", 2017), m("c", "Toy Story (1995)", 1995), m("d", "Spider-Man: Brand New Day (2026)", 2026))
+        assertEquals(listOf("b", "t", "a", "d"), Similarity.franchise(target, pool).map { it.id })
+    }
+
+    @Test fun aDubOfTheSameFilmAppearsOnlyOnce() {
+        val target = m("t", "John Wick (2014)", 2014)
+        val pool = listOf(m("a", "John Wick 2 (2017) (Hindi)", 2017, rating = 7.4), m("b", "John Wick 2 (2017) (English)", 2017, rating = null), m("c", "John Wick 3 (2019)", 2019))
+        val ids = Similarity.franchise(target, pool).map { it.id }
+        assertEquals(listOf("t", "a", "c"), ids)
+    }
+
+    @Test fun aFilmWithNoSequelsIsNotAFranchise() {
+        assertTrue(Similarity.franchise(m("t", "Sully (2016)", 2016), listOf(m("a", "Toy Story (1995)", 1995))).isEmpty())
+    }
+
+    @Test fun theOpenFilmIsKeptEvenIfAnotherCopyLooksBetter() {
+        val target = m("t", "Heat (1995)", 1995, rating = null)
+        val pool = listOf(m("a", "Heat (1995) (Hindi)", 1995, rating = 8.0), m("b", "Heat 2 (2026)", 2026))
+        assertEquals(listOf("t", "b"), Similarity.franchise(target, pool).map { it.id })
+    }
+
+    @Test fun unrelatedFilmsThatShareAThemeOrAnArticleAreNotAFranchise() {
+        val target = m("t", "The Amazing Spider-Man (2012)", 2012)
+        val pool = listOf(m("a", "The Amazing Bulk (2012)", 2012), m("b", "The Amazing Colossal Man (1957)", 1957), m("c", "The Amazing Spider-Man 2 (2014)", 2014))
+        assertEquals(listOf("t", "c"), Similarity.franchise(target, pool).map { it.id })
+    }
+
+    @Test fun twoUnrelatedFilmsWithTheSameOneWordNameAreNotAFranchise() {
+        assertTrue(Similarity.franchise(m("t", "Crash (2004)", 2004), listOf(m("a", "Crash (1996)", 1996))).isEmpty())
+        assertEquals(listOf("a", "t"), Similarity.franchise(m("t", "Rocky II (1979)", 1979), listOf(m("a", "Rocky (1976)", 1976))).map { it.id })
+    }
+
+    @Test fun everyTagShapeOfTheSameFilmIsOneFilm() {
+        val target = m("t", "John Wick (2014) (Telugu)", 2014)
+        val pool = listOf(m("a", "John Wick (2014)[Tam, Tel, Hin, Kan, Eng]", 2014, rating = 7.4), m("b", "John Wick Chapter 1 - Keanu Reeves (2014)", 2014), m("c", "John Wick: Chapter 2 (2017)[Tam, Tel]", 2017), m("d", "John Wick: Chapter 2 (2017) (Telugu)", 2017))
+        assertEquals(listOf(2014, 2017), Similarity.franchise(target, pool).map { it.year })
+        assertEquals("t", Similarity.franchise(target, pool).first().id)       // the open film is the one shown for its year
+    }
 }

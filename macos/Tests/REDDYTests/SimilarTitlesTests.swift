@@ -56,4 +56,30 @@ import Foundation
         #expect(r.first?.item.title == "B")
         #expect(r.first?.reason == "Similar story")
     }
+
+    @Test func unrelatedFilmsThatShareAThemeOrAnArticleAreNotAFranchise() {
+        let target = cand("t", "The Amazing Spider-Man (2012)", year: 2012)
+        let pool = [cand("a", "The Amazing Bulk (2012)", year: 2012), cand("b", "The Amazing Colossal Man (1957)", year: 1957), cand("c", "The Amazing Spider-Man 2 (2014)", year: 2014)]
+        #expect(SimilarTitles.franchise(target: target, pool: pool).map(\.title) == ["The Amazing Spider-Man (2012)", "The Amazing Spider-Man 2 (2014)"])
+    }
+
+    @Test func twoUnrelatedFilmsWithTheSameOneWordNameAreNotAFranchise() {
+        #expect(SimilarTitles.franchise(target: cand("t", "Crash (2004)", year: 2004), pool: [cand("a", "Crash (1996)", year: 1996)]).isEmpty)
+        #expect(SimilarTitles.franchise(target: cand("t", "Rocky II (1979)", year: 1979), pool: [cand("a", "Rocky (1976)", year: 1976)]).map(\.title) == ["Rocky (1976)", "Rocky II (1979)"])
+    }
+
+    @Test func everyTagShapeOfTheSameFilmIsOneFilm() {
+        let target = cand("t", "John Wick (2014) (Telugu)", year: 2014)
+        let pool = [cand("a", "John Wick (2014)[Tam, Tel, Hin, Kan, Eng]", year: 2014, rating: "7.4"), cand("b", "John Wick Chapter 1 - Keanu Reeves (2014)", year: 2014),
+                    cand("c", "John Wick: Chapter 2 (2017)[Tam, Tel]", year: 2017), cand("d", "John Wick: Chapter 2 (2017) (Telugu)", year: 2017)]
+        let result = SimilarTitles.franchise(target: target, pool: pool)
+        #expect(result.map(\.year) == [2014, 2017])
+        #expect(result.first?.id == target.item.id)           // the open film is the one shown for its year
+    }
+
+    @Test func aFranchiseIsListedInTheOrderTheFilmsCameOut() {
+        let target = cand("t", "Spider-Man: Far From Home (2019)", year: 2019)
+        let pool = [cand("a", "Spider-Man: No Way Home (2021)", year: 2021), cand("b", "Spider-Man: Homecoming (2017)", year: 2017), cand("c", "Toy Story (1995)", year: 1995)]
+        #expect(SimilarTitles.franchise(target: target, pool: pool).map(\.year) == [2017, 2019, 2021])
+    }
 }

@@ -30,25 +30,66 @@ object Similarity {
     /** The language written in a title or folder name: "Tamil", from "Sully (2016) (Tamil)" or "ENGLISH | FHD". */
     fun languageOf(vararg texts: String?): String? = texts.asSequence().filterNotNull().flatMap { normalize(it).split(' ').asSequence() }.firstOrNull { it in languages }
 
-    /** What is left of a title once the year, quality tags, language and sequel markers are removed: "Rolling Loud: The Movie (2026) (HDCAM)" → "rolling loud". */
-    fun stem(title: String): String {
+    private val markerWords = setOf("part", "chapter", "vol", "volume")
+
+    /** The words of a title's main part (before a colon or a dash) once the year, quality tags and language are removed. */
+    private fun headWords(title: String): MutableList<String> {
         val head = title.substringBefore(':').substringBefore(" - ")
-        val words = normalize(head).split(' ').filter { it.isNotEmpty() }
-            .filter { !(it.length == 4 && it.all(Char::isDigit) && (it.startsWith("19") || it.startsWith("20"))) && it !in noise && it !in languages }
-            .toMutableList()
-        while (words.size > 1 && (words.last().all(Char::isDigit) || roman.matches(words.last()) || words.last() in setOf("part", "chapter", "vol", "volume"))) words.removeAt(words.size - 1)
+        return normalize(head).split(' ').filter { it.isNotEmpty() }
+            .filter { !(it.length == 4 && it.all(Char::isDigit) && (it.startsWith("19") || it.startsWith("20"))) && it !in noise && it !in languages }.toMutableList()
+    }
+
+    private fun isMarker(w: String) = w.all(Char::isDigit) || roman.matches(w) || w in markerWords
+
+    /** What is left of a title once the year, quality, language and sequel markers are removed: "Rolling Loud: The Movie (2026) (HDCAM)" becomes "rolling loud". */
+    fun stem(title: String): String {
+        val words = headWords(title)
+        while (words.size > 1 && isMarker(words.last())) words.removeAt(words.size - 1)
         return words.joinToString(" ")
     }
+
+    /** True for "John Wick 3", "Mission Impossible II", "Rocky Part 2": the title carries a sequel number. */
+    fun sequelMarked(title: String): Boolean = headWords(title).let { it.size > 1 && isMarker(it.last()) }
 
     /** A title with only its year, quality tags and language removed: two titles with the same identity are the same film or show (a dub, another quality), not a suggestion for each other. */
     fun identity(title: String): String = normalize(title).split(' ').filter { it.isNotEmpty() && !(it.length == 4 && it.all(Char::isDigit) && (it.startsWith("19") || it.startsWith("20"))) && it !in noise && it !in languages }.joinToString(" ")
 
+    private val leadingArticle = Regex("^(the|a|an) ")
+    private fun lead(stem: String) = leadingArticle.replace(stem, "")
+
     private fun sameFranchise(a: String, b: String): Boolean {
-        if (a.isEmpty() || b.isEmpty()) return false
-        if (a == b) return true
-        val x = a.split(' '); val y = b.split(' ')
+        val x0 = lead(a); val y0 = lead(b)
+        if (x0.isEmpty() || y0.isEmpty()) return false
+        if (x0 == y0) return true
+        val x = x0.split(' '); val y = y0.split(' ')
+        // The first two words must match. Leading articles are ignored, so "The Amazing Spider-Man" is not "The Amazing Bulk".
         return x.size >= 2 && y.size >= 2 && x[0] == y[0] && x[1] == y[1]
     }
+
+    /**
+     * The films of the same franchise as [target], with the target among them, in the order they came out. A sequel or another film of the series counts (the first words of the
+     * title match once the year, quality, language and sequel number are removed); a dub or another quality of the same film does not appear twice. Fewer than two films is no
+     * franchise, and the result is empty.
+     */
+    fun franchise(target: Item, pool: List<Item>, limit: Int = 12): List<Item> {
+        val stem = stem(target.title)
+        if (stem.isEmpty()) return emptyList()
+        val oneWord = lead(stem).split(' ').size == 1
+        // A one-word name ("Crash", "Heat") is a franchise only through a sequel number: two unrelated films can share it.
+        val siblings = pool.filter { it.id != target.id && sameFranchise(stem, stem(it.title)) && (!oneWord || sequelMarked(it.title) || sequelMarked(target.title)) }
+        // Provider titles carry tags in every shape ("[Tam, Tel, Hin]", "(Telugu)", "(4K)"), so copies of one film are told apart by its release year, not by its name.
+        val byFilm = LinkedHashMap<String, Item>()
+        for (c in listOf(target) + siblings) {
+            val key = c.year?.toString() ?: identity(c.title)
+            val have = byFilm[key]
+            if (have == null) byFilm[key] = c
+            else if (have.id != target.id && (c.id == target.id || score(c) > score(have) || (score(c) == score(have) && c.title.length < have.title.length))) byFilm[key] = c
+        }
+        if (byFilm.size < 2) return emptyList()
+        return byFilm.values.sortedWith(compareBy<Item>({ it.year ?: Int.MAX_VALUE }, { it.title })).take(limit)
+    }
+
+    private fun score(i: Item) = if ((i.rating ?: 0.0) > 0) 1 else 0
 
     private fun words(plot: String?): Set<String> = if (plot.isNullOrBlank()) emptySet() else normalize(plot).split(' ').filter { it.length >= 4 && it !in stop && it !in languages }.toSet()
 

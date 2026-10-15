@@ -53,6 +53,7 @@ struct DetailView: View {
                     facts
                     if let error { Label(error, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange) }
                     if item.isSeries { episodes }
+                    if case .movie(let m) = item { FranchiseTimeline(currentID: m.id, movie: m, useLinks: true) }
                     SimilarRow(item: item, extras: extras)
                 }.padding(.horizontal, 16).frame(maxWidth: 820, alignment: .leading)
                     .frame(maxWidth: .infinity).background(ColorTokens.background).zIndex(1)      // slides over the banner as it recedes
