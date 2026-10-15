@@ -7,61 +7,30 @@ struct GeneralSettingsPage: View {
     var body: some View {
         @Bindable var s = settings
         SettingsPage {
-            SettingsGroup(title: "Theme", footer: "Every theme is dark and restyles the whole app, including the sidebar, at once.") {
-                ThemePicker(selection: $s.theme, custom: $s.customTheme)
-            }
-
-            SettingsGroup(title: "Appearance") {
-                VStack(alignment: .leading, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Accent colour")
-                        Text("Used for the selected tab, buttons and progress. The first swatch follows the theme.").font(.callout).foregroundStyle(.secondary)
-                    }
-                    AccentPicker(selection: $s.accent)
-                }
-                .padding(.vertical, 2)
-                SettingsRow(title: "Language", detail: "The language of the app's own wording. Titles and descriptions come from your playlists and stay as they are. Some text is still in English.") {
-                    Picker("Language", selection: $s.language) { ForEach(AppLanguage.allCases) { Text($0.label).tag($0) } }.pickerStyle(.menu).fixedSize()
-                }
-                SettingsRow(title: "Density", detail: "Card size in grids, and row height in channel lists and the sidebar.") {
-                    Picker("Density", selection: $s.density) { ForEach(LayoutDensity.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
-                }
-                SettingsRow(title: "Reduce animation", detail: "Turns off transitions and hover animation throughout the app.") { Toggle("Reduce animation", isOn: $s.reduceMotion).toggleStyle(.switch) }
-                SettingsRow(title: "Increase contrast", detail: "Brighter text and stronger outlines. Also follows the system Increase Contrast setting.") { Toggle("Increase contrast", isOn: $s.highContrast).toggleStyle(.switch) }
-                SettingsRow(title: "Sidebar at launch", detail: "The sidebar can always be collapsed from its header.", divider: false) {
-                    Picker("Sidebar at launch", selection: $s.sidebarLaunch) { ForEach(SidebarLaunch.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
-                }
-            }
-
             SettingsGroup(title: "Browsing") {
                 SettingsRow(title: "Open channels with", detail: s.clickBehavior == .singleClick ? "One click on a channel starts it." : "Double-click starts a channel; a single click only selects it. Return also plays.") {
                     Picker("Open channels with", selection: $s.clickBehavior) { ForEach(ClickBehavior.allCases) { Text($0.title).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Group quality variants", detail: "Shows HD, FHD and 4K copies of a channel as one entry with a Streams menu.") { Toggle("Group quality variants", isOn: $s.collapseDuplicates).toggleStyle(.switch) }
-                SettingsRow(title: "Hide empty folders", detail: "Folders the provider lists but that currently hold nothing. They are never deleted.") { Toggle("Hide empty folders", isOn: $s.hideEmptyFolders).toggleStyle(.switch) }
+                SettingsRow(title: "Group quality variants", detail: "Shows HD, FHD and 4K copies of a channel as one entry with a Streams menu.") { Toggle("Group quality variants", isOn: $s.collapseDuplicates) }
+                SettingsRow(title: "Hide empty folders", detail: "Folders the provider lists but that currently hold nothing. They are never deleted.") { Toggle("Hide empty folders", isOn: $s.hideEmptyFolders) }
                 SettingsRow(title: "Movies and series order", detail: "How Movies and Series are sorted when you open them.") {
                     Picker("Movies and series order", selection: $s.defaultLibrarySort) { ForEach(LibrarySortPreference.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
                 SettingsRow(title: "Channel order", detail: "Provider order follows the playlist; alphabetical sorts by name.") {
                     Picker("Channel order", selection: $s.defaultChannelSort) { ForEach(ChannelSortPreference.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Remember last folder", detail: "Return to the folder you were in when you come back to a tab.", divider: false) { Toggle("Remember last folder", isOn: $s.rememberFolders).toggleStyle(.switch) }
+                SettingsRow(title: "Remember last folder", detail: "Return to the folder you were in when you come back to a tab.", divider: false) { Toggle("Remember last folder", isOn: $s.rememberFolders) }
             }
-
-            ParentalSettingsGroup()
-            AppLockSettingsGroup()
-            ProxySettingsGroup()
-            VPNSettingsGroup()
 
             SettingsGroup(title: "At launch", footer: "StreamSetu always opens on Home → Discover. This only adds playback on top of that.") {
                 SettingsRow(title: "Resume the last channel", detail: "Starts the live channel that was playing when you last quit, in the bottom player.", divider: false) {
-                    Toggle("Resume the last channel", isOn: $s.resumeLastChannel).toggleStyle(.switch)
+                    Toggle("Resume the last channel", isOn: $s.resumeLastChannel)
                 }
             }
 
             SettingsGroup(title: "Notifications", footer: notificationFooter) {
                 SettingsRow(title: "Programme reminders", detail: "Adds a bell to upcoming programmes. Reminders are local notifications; nothing leaves this Mac.") {
-                    Toggle("Programme reminders", isOn: $s.remindersEnabled).toggleStyle(.switch)
+                    Toggle("Programme reminders", isOn: $s.remindersEnabled)
                 }
                 SettingsRow(title: "macOS permission", detail: notification.title, divider: false) {
                     switch notification {

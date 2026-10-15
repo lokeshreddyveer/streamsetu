@@ -38,7 +38,7 @@ struct PlaybackSettingsPage: View {
             SettingsGroup(title: "Live TV") {
                 SettingsRow(title: "Pause and rewind live TV", detail: "Keeps a few minutes of the channel in memory so you can pause it and wind back. Uses up to about 400 MB while a channel plays.",
                             note: mpvUsable ? "Applies to channels MPV plays, from the next channel you start." : "Needs the MPV engine, which isn't available on this Mac.", divider: false) {
-                    Toggle("Pause and rewind live TV", isOn: $s.liveRewind).toggleStyle(.switch).disabled(!mpvUsable)
+                    Toggle("Pause and rewind live TV", isOn: $s.liveRewind).disabled(!mpvUsable)
                 }
             }
 
@@ -64,7 +64,7 @@ struct PlaybackSettingsPage: View {
                 SettingsRow(title: "Preferred language") {
                     Picker("Preferred subtitle language", selection: $s.preferredSubtitleLanguage) { ForEach(Self.languages, id: \.0) { Text($0.1).tag($0.0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Show by default", detail: "Turns subtitles on when a track in your language exists.") { Toggle("Show subtitles by default", isOn: $s.subtitlesByDefault).toggleStyle(.switch) }
+                SettingsRow(title: "Show by default", detail: "Turns subtitles on when a track in your language exists.") { Toggle("Show subtitles by default", isOn: $s.subtitlesByDefault) }
                 SettingsRow(title: "Size") {
                     HStack { Slider(value: $s.subtitleSize, in: 60...200, step: 10).frame(width: 180); Text("\(Int(s.subtitleSize))%").monospacedDigit().frame(width: 44, alignment: .trailing) }
                         .onChange(of: s.subtitleSize) { _, _ in container?.playback.applySubtitleStyle() }
@@ -84,7 +84,7 @@ struct PlaybackSettingsPage: View {
                 }
                 let outlineOK = container?.playback.capabilities(of: .mpv) != nil
                 SettingsRow(title: "Outline and shadow", detail: "Keeps text readable over bright scenes.", note: outlineOK ? nil : "Needs the MPV engine, which isn't available on this Mac.") {
-                    Toggle("Outline and shadow", isOn: $s.subtitleOutline).toggleStyle(.switch).disabled(!outlineOK)
+                    Toggle("Outline and shadow", isOn: $s.subtitleOutline).disabled(!outlineOK)
                         .onChange(of: s.subtitleOutline) { _, _ in container?.playback.applySubtitleStyle() }
                 }
                 SettingsRow(title: "Preview", detail: "How subtitles will look.", divider: false) { SubtitlePreview(style: s.subtitleStyle) }
@@ -99,10 +99,10 @@ struct PlaybackSettingsPage: View {
             }
 
             SettingsGroup(title: "Behaviour") {
-                SettingsRow(title: "Play next episode automatically", detail: "Only continues within the series you are watching.") { Toggle("Play next episode automatically", isOn: $s.autoPlayNextEpisode).toggleStyle(.switch) }
-                SettingsRow(title: "Remember playback position", detail: "Saves where you stop in movies and episodes so Continue Watching works. Live channels have no position to save. Off means no resume points are written.") { Toggle("Remember playback position", isOn: $s.rememberPosition).toggleStyle(.switch) }
+                SettingsRow(title: "Play next episode automatically", detail: "Only continues within the series you are watching.") { Toggle("Play next episode automatically", isOn: $s.autoPlayNextEpisode) }
+                SettingsRow(title: "Remember playback position", detail: "Saves where you stop in movies and episodes so Continue Watching works. Live channels have no position to save. Off means no resume points are written.") { Toggle("Remember playback position", isOn: $s.rememberPosition) }
                 SettingsRow(title: "Resume automatically", detail: s.rememberPosition ? "Continue a partly watched title where it stopped instead of from the start." : "Needs “Remember playback position”.") {
-                    Toggle("Resume automatically", isOn: $s.resumeAutomatically).toggleStyle(.switch).disabled(!s.rememberPosition)
+                    Toggle("Resume automatically", isOn: $s.resumeAutomatically).disabled(!s.rememberPosition)
                 }
             }
 
@@ -131,12 +131,12 @@ struct PlaybackSettingsPage: View {
                 }
                 SettingsRow(title: "Downmix to stereo", detail: "Mixes 5.1 and 7.1 audio down to two channels, for speakers and headphones.",
                             note: mpvUsable ? "Applies from the next stream you start." : "Needs the MPV engine, which isn't available on this Mac.", divider: false) {
-                    Toggle("Downmix to stereo", isOn: $s.stereoDownmix).toggleStyle(.switch).disabled(!mpvUsable)
+                    Toggle("Downmix to stereo", isOn: $s.stereoDownmix).disabled(!mpvUsable)
                 }
             }
 
             SettingsDisclosure(title: "Troubleshooting", footer: "Details come from the stream playing right now. Nothing here is sent anywhere.") {
-                SettingsRow(title: "Show stream information", detail: "A small overlay with resolution, bitrate and dropped frames.") { Toggle("Show stream information", isOn: $s.showDiagnosticsOverlay).toggleStyle(.switch) }
+                SettingsRow(title: "Show stream information", detail: "A small overlay with resolution, bitrate and dropped frames.") { Toggle("Show stream information", isOn: $s.showDiagnosticsOverlay) }
                 PlaybackDetailsPanel()
                 SettingsActions {
                     Button(role: .destructive) { confirmReset = true } label: { Label("Restore Playback Defaults…", systemImage: "arrow.uturn.backward") }

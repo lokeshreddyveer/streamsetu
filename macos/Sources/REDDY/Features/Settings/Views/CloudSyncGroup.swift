@@ -10,11 +10,11 @@ struct CloudSyncGroup: View {
         let status = container?.cloud.status
         SettingsGroup(title: "iCloud", footer: "Playlists, favourites, collections, watch history and resume positions, folder organisation and settings follow you to your other devices through your own private iCloud. The channels, movies and series themselves are downloaded separately on each device. Nothing is sent to anyone else.") {
             SettingsRow(title: "Sync with iCloud", detail: "Needs the same Apple ID on every device.") {
-                Toggle("Sync with iCloud", isOn: $s.iCloudSync).labelsHidden().toggleStyle(.switch)
+                Toggle("Sync with iCloud", isOn: $s.iCloudSync).labelsHidden()
                     .onChange(of: s.iCloudSync) { _, _ in Task { await container?.updateCloudSync() } }
             }
             SettingsRow(title: "Sync logins", detail: "Playlist logins and your TMDB key travel in iCloud Keychain, end-to-end encrypted by Apple. Turn this off to enter logins on each device.") {
-                Toggle("Sync logins", isOn: $s.syncLogins).labelsHidden().toggleStyle(.switch).disabled(!s.iCloudSync)
+                Toggle("Sync logins", isOn: $s.syncLogins).labelsHidden().disabled(!s.iCloudSync)
                     .onChange(of: s.syncLogins) { _, _ in Task { await container?.updateCloudSync() } }
             }
             if s.iCloudSync, let status {

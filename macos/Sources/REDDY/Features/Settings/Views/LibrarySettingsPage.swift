@@ -35,7 +35,7 @@ struct LibrarySettingsPage: View {
                     Picker("Refresh automatically", selection: $s.catalogRefresh) { ForEach(RefreshInterval.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
                 SettingsRow(title: "Refresh when the app opens", detail: "Playlists more than an hour old are refreshed as the app opens, even when the schedule above is Manual.") {
-                    Toggle("", isOn: $s.refreshOnOpen).labelsHidden().toggleStyle(.switch)
+                    Toggle("", isOn: $s.refreshOnOpen).labelsHidden()
                 }
                 SettingsValueRow(title: "Current state", value: syncState, tone: state.isSyncing ? .warning : .normal, divider: !state.sources.isEmpty)
                 syncList
@@ -81,7 +81,7 @@ struct LibrarySettingsPage: View {
                 backupToggle("Preferences", .preferences)
                 backupToggle("Viewing history and resume points", .history, divider: false)
                 SettingsRow(title: "Back up automatically", detail: "Once a week, StreamSetu saves a backup here and keeps the newest five. It never contains passwords.") {
-                    Toggle("Back up automatically", isOn: $s.autoBackup).toggleStyle(.switch)
+                    Toggle("Back up automatically", isOn: $s.autoBackup)
                 }
                 SettingsActions {
                     Button { NSWorkspace.shared.open(StorageService.backups) } label: { Label("Show Backups in Finder", systemImage: "folder") }
@@ -96,7 +96,7 @@ struct LibrarySettingsPage: View {
             // MARK: maintenance (technical, collapsed until asked for)
             SettingsGroup(title: "Maintenance", footer: "Storage use, database checks and the search index. You rarely need these; they are here for when something looks wrong.") {
                 SettingsRow(title: "Show maintenance tools", detail: "Cache sizes, database verification and search index rebuild.", divider: false) {
-                    Toggle("Show maintenance tools", isOn: $showMaintenance.animation(AnimationTokens.standard)).toggleStyle(.switch)
+                    Toggle("Show maintenance tools", isOn: $showMaintenance.animation(AnimationTokens.standard))
                 }
             }
             if showMaintenance {
@@ -205,7 +205,7 @@ struct LibrarySettingsPage: View {
 
     private func backupToggle(_ title: String, _ option: BackupOptions, divider: Bool = true) -> some View {
         SettingsRow(title: title, divider: divider) {
-            Toggle(title, isOn: Binding(get: { vm.backupOptions.contains(option) }, set: { on in if on { vm.backupOptions.insert(option) } else { vm.backupOptions.remove(option) } })).toggleStyle(.switch)
+            Toggle(title, isOn: Binding(get: { vm.backupOptions.contains(option) }, set: { on in if on { vm.backupOptions.insert(option) } else { vm.backupOptions.remove(option) } }))
         }
     }
 

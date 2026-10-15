@@ -1,10 +1,10 @@
 import SwiftUI
 
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case general = "General", playback = "Playback", library = "Library", advanced = "Advanced"
+    case general = "General", appearance = "Appearance", playback = "Playback", library = "Library", privacy = "Privacy", advanced = "Advanced"
     var id: String { rawValue }
     var symbol: String {
-        switch self { case .general: "gearshape"; case .playback: "play.rectangle"; case .library: "books.vertical"; case .advanced: "wrench.and.screwdriver" }
+        switch self { case .general: "gearshape"; case .appearance: "paintbrush"; case .playback: "play.rectangle"; case .library: "books.vertical"; case .privacy: "hand.raised"; case .advanced: "wrench.and.screwdriver" }
     }
 }
 
@@ -18,12 +18,14 @@ struct SettingsView: View {
     var body: some View {
         TabView(selection: $tab) {
             GeneralSettingsPage().tabItem { Label("General", systemImage: "gearshape") }.tag(SettingsTab.general)
+            AppearanceSettingsPage().tabItem { Label("Appearance", systemImage: "paintbrush") }.tag(SettingsTab.appearance)
             PlaybackSettingsPage().tabItem { Label("Playback", systemImage: "play.rectangle") }.tag(SettingsTab.playback)
             LibrarySettingsPage(vm: library).tabItem { Label("Library", systemImage: "books.vertical") }.tag(SettingsTab.library)
+            PrivacySettingsPage().tabItem { Label("Privacy", systemImage: "hand.raised") }.tag(SettingsTab.privacy)
             AdvancedSettingsPage(vm: advanced).tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }.tag(SettingsTab.advanced)
         }
-        .frame(width: 660)
-        .frame(minHeight: 460, idealHeight: 600, maxHeight: 900)
+        .frame(width: 720)
+        .frame(minHeight: 520, idealHeight: 760, maxHeight: 900)
         .reddyTheme(settings)
     }
 }

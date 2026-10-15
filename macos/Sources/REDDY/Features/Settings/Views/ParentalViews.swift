@@ -221,7 +221,7 @@ struct VPNSettingsGroup: View {
                 Button("Open Network Settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Network-Settings.extension")!) }
             }
             SettingsRow(title: "Pause if the VPN drops", detail: "Only while something is playing.") {
-                Toggle("", isOn: $s.vpnPause).toggleStyle(.switch).labelsHidden()
+                Toggle("", isOn: $s.vpnPause).labelsHidden()
             }
         }
     }

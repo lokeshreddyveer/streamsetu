@@ -1,32 +1,39 @@
 import SwiftUI
 
-/// One page of settings, drawn with the system's grouped form so it looks and behaves like any other Mac settings window.
+/// One page of settings, set out like Safari's: each group's name in a column on the left, its rows in a column on the right.
 struct SettingsPage<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
-        Form { content }
-            .formStyle(.grouped)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 30) { content }
+                .padding(.horizontal, 26).padding(.vertical, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 
-/// A titled section of rows; the footer explains the group in plain language.
+/// A named group: the name on the left, the rows on the right with the footer under them.
 struct SettingsGroup<Content: View>: View {
     let title: String
     var footer: String?
     @ViewBuilder var content: Content
 
     var body: some View {
-        Section {
-            content
-        } header: {
-            Text(title.loc)
-        } footer: {
-            if let footer { Text(footer.loc).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+        HStack(alignment: .top, spacing: 22) {
+            Text(title.loc).font(.system(size: 13, weight: .semibold)).multilineTextAlignment(.trailing)
+                .frame(width: 130, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 14) {
+                content
+                if let footer {
+                    Text(footer.loc).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
 
-/// One row: label and optional explanation on the left, the control on the right. `note` explains why a control is unavailable.
+/// One row: the label and its explanation on the left, the control on the right. `note` explains why a control is unavailable.
 struct SettingsRow<Control: View>: View {
     let title: String
     var detail: String?
@@ -35,14 +42,14 @@ struct SettingsRow<Control: View>: View {
     @ViewBuilder var control: Control
 
     var body: some View {
-        LabeledContent {
-            control.labelsHidden()
-        } label: {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title.loc)
                 if let detail { Text(detail.loc).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
                 if let note { Label(note, systemImage: "info.circle").font(.callout).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true) }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            control.labelsHidden().layoutPriority(1)
         }
     }
 }
@@ -55,7 +62,8 @@ struct SettingsValueRow: View {
     var divider = true
     enum Tone { case normal, good, warning, bad }
     var body: some View {
-        LabeledContent(title) {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            Text(title.loc).frame(maxWidth: .infinity, alignment: .leading)
             Text(value).monospacedDigit().multilineTextAlignment(.trailing).foregroundStyle(color).textSelection(.enabled)
         }
     }
@@ -146,21 +154,26 @@ struct SettingsDisclosure<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        Section {
-            Button { withAnimation(AnimationTokens.standard) { open.toggle() } } label: {
-                HStack {
-                    Text(title.loc).font(.headline)
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
-                        .rotationEffect(.degrees(open ? 90 : 0))
+        HStack(alignment: .top, spacing: 22) {
+            Color.clear.frame(width: 130, height: 1)
+            VStack(alignment: .leading, spacing: 14) {
+                Button { withAnimation(AnimationTokens.standard) { open.toggle() } } label: {
+                    HStack {
+                        Text(title.loc).font(.headline)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                            .rotationEffect(.degrees(open ? 90 : 0))
+                    }
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .accessibilityLabel(title).accessibilityValue(open ? "expanded" : "collapsed").accessibilityAddTraits(.isButton)
+                if open {
+                    content
+                    if let footer { Text(footer.loc).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(title).accessibilityValue(open ? "expanded" : "collapsed").accessibilityAddTraits(.isButton)
-            if open { content }
-        } footer: {
-            if let footer, open { Text(footer.loc).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
