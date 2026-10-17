@@ -177,13 +177,16 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
 
     // ---- Xtream ----------------------------------------------------------------------------------------------
 
+    /** Many Xtream panels cut their lists short, or refuse them, for a client they do not know, so the lists are asked for as a player they know would (the Apple apps do the same). */
+    private fun xtreamAgent(s: Source) = s.userAgent?.takeIf { it.isNotBlank() } ?: "VLC/3.0.20 LibVLC/3.0.20"
+
     private suspend fun syncXtream(s: Source): Result {
         val user = s.username.orEmpty()
         val pass = credentials.load(SourceRepository.credentialRef(s.id)).orEmpty()
         val host = s.address
-        fun fetch(action: String) = Xtream.parseArray(Http.text(Xtream.api(host, user, pass, action), s.userAgent))
+        fun fetch(action: String) = Xtream.parseArray(Http.text(Xtream.api(host, user, pass, action), xtreamAgent(s)))
 
-        val auth = Xtream.parseObject(Http.text(Xtream.api(host, user, pass), s.userAgent))
+        val auth = Xtream.parseObject(Http.text(Xtream.api(host, user, pass), xtreamAgent(s)))
         val info = auth?.get("user_info") as? JsonObject
         if (info == null || info.int("auth") == 0) error("The server refused the login. Check the user name and password.")
         info.str("max_connections")?.toIntOrNull()?.let { resolver?.rememberMaxConnections(s.id, it) }
@@ -226,7 +229,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         if (src.type == SourceType.JELLYFIN || src.type == SourceType.EMBY || src.type == SourceType.PLEX) return@withContext loadMediaEpisodes(src, series)
         if (src.type != SourceType.XTREAM) return@withContext 0
         val pass = credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()
-        val obj = Xtream.parseObject(Http.text(Xtream.api(src.address, src.username.orEmpty(), pass, "get_series_info", "&series_id=${series.providerId}"))) ?: return@withContext 0
+        val obj = Xtream.parseObject(Http.text(Xtream.api(src.address, src.username.orEmpty(), pass, "get_series_info", "&series_id=${series.providerId}"), xtreamAgent(src))) ?: return@withContext 0
         val seasons = obj["episodes"] as? JsonObject ?: return@withContext 0
         val out = ArrayList<EpisodeEntity>()
         for ((seasonKey, list) in seasons) {
@@ -272,7 +275,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         if (src.type != SourceType.XTREAM) return@withContext null
         val vodId = movie.streamRef.split(':').getOrNull(1) ?: return@withContext null
         val pass = credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()
-        val obj = runCatching { Xtream.parseObject(Http.text(Xtream.api(src.address, src.username.orEmpty(), pass, "get_vod_info", "&vod_id=$vodId"))) }.getOrNull() ?: return@withContext null
+        val obj = runCatching { Xtream.parseObject(Http.text(Xtream.api(src.address, src.username.orEmpty(), pass, "get_vod_info", "&vod_id=$vodId"), xtreamAgent(src))) }.getOrNull() ?: return@withContext null
         val info = obj["info"] as? JsonObject ?: return@withContext null
         val backdrop = ((info["backdrop_path"] as? kotlinx.serialization.json.JsonArray)?.firstOrNull() as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
         MovieInfo(info.str("plot") ?: info.str("description"), info.str("cast") ?: info.str("actors"), info.str("director"), info.str("genre"),
