@@ -93,7 +93,7 @@ struct OnboardingView: View {
             if restore.phase != .idle {
                 Text(restore.detail).font(.footnote).foregroundStyle(restore.phase == .nothingFound ? .orange : .secondary).multilineTextAlignment(.center).frame(maxWidth: 340)
             }
-            Text("M3U or JSON links and files, or a login for Xtream, Stalker, Jellyfin, Emby, Plex, HDHomeRun or TVHeadend. No content is included.").font(.caption).foregroundStyle(.tertiary).multilineTextAlignment(.center).frame(maxWidth: 340)
+            Text("M3U or JSON links and files, or a login for Xtream, Jellyfin, Emby, Plex, HDHomeRun or TVHeadend. No content is included.").font(.caption).foregroundStyle(.tertiary).multilineTextAlignment(.center).frame(maxWidth: 340)
             Spacer()
         }
         .padding(28).frame(maxWidth: .infinity, maxHeight: .infinity).background(ColorTokens.background)

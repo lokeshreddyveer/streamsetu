@@ -4,6 +4,15 @@ import Observation
 enum AddSourceKind: String, CaseIterable, Identifiable {
     case xtream = "Xtream", m3uURL = "M3U or JSON link", m3uFile = "M3U or JSON file", stalker = "Stalker / MAG portal", jellyfin = "Jellyfin", emby = "Emby", plex = "Plex", hdhomerun = "HDHomeRun", tvheadend = "TVHeadend", enigma2 = "Enigma2 receiver", stream = "Single stream"
     var id: String { rawValue }
+    /// What the Type menu offers. The App Store build leaves out the Stalker / MAG portal type (it presents a set-top-box identity, and is
+    /// mostly used with services that are not licensed); every other build keeps it.
+    static var offered: [AddSourceKind] {
+        #if STREAMSETU_APPSTORE
+        allCases.filter { $0 != .stalker }
+        #else
+        allCases
+        #endif
+    }
     /// Types that ask for a server, a user name and a password.
     var usesLogin: Bool { self == .xtream || self == .jellyfin || self == .emby || self == .tvheadend || self == .enigma2 }
 }

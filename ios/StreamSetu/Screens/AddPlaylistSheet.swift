@@ -23,7 +23,7 @@ struct AddPlaylistSheet: View {
                     }
                 } footer: { Text(vm.detectionNote ?? "Paste a playlist link, an Xtream or media server address, or a single stream, and the form fills itself in.") }.listRowBackground(ColorTokens.surface)
                 Section {
-                    Picker("Type", selection: $vm.kind) { ForEach(AddSourceKind.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
+                    Picker("Type", selection: $vm.kind) { ForEach(AddSourceKind.offered) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
                 }.listRowBackground(ColorTokens.surface)
                 Section {
                     TextField("Name (optional)", text: $vm.name).textInputAutocapitalization(.words)
