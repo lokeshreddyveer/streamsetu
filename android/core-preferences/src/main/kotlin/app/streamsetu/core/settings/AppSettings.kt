@@ -70,6 +70,9 @@ class AppSettings(context: Context) {
     fun setStallPatience(v: String) { prefs.edit().putString("stall", v).apply(); _stall.value = v }
     fun engineFor(sourceId: String): EnginePreference? = prefs.getString("engine.$sourceId", null)?.let { n -> EnginePreference.entries.firstOrNull { it.name == n } }
     fun setEngineFor(sourceId: String, v: EnginePreference?) { prefs.edit().apply { if (v == null) remove("engine.$sourceId") else putString("engine.$sourceId", v.name) }.apply() }
+    /** The engine chosen for one kind of viewing ("LIVE", "MOVIES" or "CATCHUP"); null means the app-wide setting. A connection's own choice still wins. */
+    fun engineForKind(kind: String): EnginePreference? = prefs.getString("engine.kind.$kind", null)?.let { n -> EnginePreference.entries.firstOrNull { it.name == n } }
+    fun setEngineForKind(kind: String, v: EnginePreference?) { prefs.edit().apply { if (v == null) remove("engine.kind.$kind") else putString("engine.kind.$kind", v.name) }.apply() }
     fun liveBufferFor(sourceId: String): BufferingMode? = prefs.getString("bufferLive.$sourceId", null)?.let { n -> BufferingMode.entries.firstOrNull { it.name == n } }
     fun setLiveBufferFor(sourceId: String, v: BufferingMode?) { prefs.edit().apply { if (v == null) remove("bufferLive.$sourceId") else putString("bufferLive.$sourceId", v.name) }.apply() }
 

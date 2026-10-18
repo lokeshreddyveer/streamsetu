@@ -176,6 +176,12 @@ struct PlaybackSettingsView: View {
                                                         set: { new in if new == .mpv, settings.enginePreference != .mpv { confirmMPV = true } else { settings.enginePreference = new } })) {
                         ForEach(PlaybackEnginePreference.allCases) { Text($0.rawValue).tag($0) }
                     }
+                    ForEach(AppSettings.ViewingKind.allCases) { kind in
+                        Picker("For \(kind.title)", selection: Binding(get: { settings.engineChoice(for: kind) }, set: { settings.setEngineChoice($0, for: kind) })) {
+                            Text("Same as above").tag(PlaybackEnginePreference?.none)
+                            ForEach(PlaybackEnginePreference.allCases) { Text($0.rawValue).tag(PlaybackEnginePreference?.some($0)) }
+                        }
+                    }
                 } header: { Text("Player engine") } footer: {
                     Text("Automatic uses Apple's player for movies, episodes and HLS, and MPV for live TV and for formats Apple's player can't open (MKV, RTSP, AVI). MPV doesn't support Picture in Picture or AirPlay.")
                 }.listRowBackground(ColorTokens.surface)

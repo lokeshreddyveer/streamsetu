@@ -86,6 +86,24 @@ final class AppSettings {
     var stereoDownmix: Bool { didSet { save(stereoDownmix, "downmix") } }
     var subtitleOutline: Bool { didSet { save(subtitleOutline, "suboutline") } }
 
+    // MARK: one player engine for each kind of viewing
+
+    /// What a stream is, for choosing its player: live TV, a movie or episode, or a past programme from the provider's archive.
+    enum ViewingKind: String, CaseIterable, Identifiable {
+        case live, movies, catchup
+        var id: String { rawValue }
+        var title: String { switch self { case .live: "Live TV"; case .movies: "Movies and series"; case .catchup: "Past programmes" } }
+    }
+
+    /// The engine chosen for one kind of viewing; nil means "use the app-wide setting". A playlist's or channel's own choice still wins over it.
+    func engineChoice(for kind: ViewingKind) -> PlaybackEnginePreference? {
+        d.string(forKey: "engine.kind.\(kind.rawValue)").flatMap(PlaybackEnginePreference.init(rawValue:))
+    }
+    func setEngineChoice(_ v: PlaybackEnginePreference?, for kind: ViewingKind) {
+        let key = "engine.kind.\(kind.rawValue)"
+        if let v { d.set(v.rawValue, forKey: key) } else { d.removeObject(forKey: key) }
+    }
+
     // MARK: per-playlist playback overrides
 
     /// Engine and buffering chosen for one playlist. Nil means "use the app-wide setting". IPTV providers differ, so a playlist

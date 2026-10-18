@@ -166,6 +166,14 @@ struct PlaybackSettingsPage: View {
             SettingsRow(title: "Engine", detail: "Automatic is recommended.", divider: !engines.isEmpty) {
                 Picker("Engine", selection: $s.enginePreference) { ForEach(PlaybackEnginePreference.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
             }
+            ForEach(AppSettings.ViewingKind.allCases) { kind in
+                SettingsRow(title: "For \(kind.title)", detail: kind == .live ? "A playlist's or channel's own choice still comes first." : nil) {
+                    Picker(kind.title, selection: Binding(get: { settings.engineChoice(for: kind) }, set: { settings.setEngineChoice($0, for: kind) })) {
+                        Text("Use the engine above").tag(PlaybackEnginePreference?.none)
+                        ForEach(PlaybackEnginePreference.allCases) { Text($0.rawValue).tag(PlaybackEnginePreference?.some($0)) }
+                    }.pickerStyle(.menu).fixedSize()
+                }
+            }
             if s.enginePreference == .mpv, !mpvUsable, let problem = mpv?.problem {
                 MessageLine(message: .init(text: "MPV is selected but unavailable, so AVPlayer will be used. \(problem)", kind: .failure))
             }

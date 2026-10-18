@@ -163,6 +163,10 @@ fun PlaybackSettings(c: AppContainer) {
     SettingGroup("Player engine", "Automatic uses ExoPlayer (Media3) for HLS, MP4, DASH and MPEG-TS, and MPV for MKV, AVI and RTSP. If a format is not supported, the other engine is tried once; the same stream is retried, never a different one.") {
         ChoiceRow("Default engine", options = listOf(EnginePreference.AUTOMATIC to "Automatic", EnginePreference.EXOPLAYER to "Media3 ExoPlayer", EnginePreference.MPV to if (mpv) "MPV" else "MPV (not available)"), value = engine) { if (it != EnginePreference.MPV || mpv) s.setEngine(it) }
         if (!mpv) InfoRow("MPV", "Not available", "MPV needs Android 8 or later.")
+        listOf("LIVE" to "Live TV", "MOVIES" to "Movies and series", "CATCHUP" to "Past programmes").forEach { (kind, label) ->
+            val chosen = s.engineForKind(kind)
+            ChoiceRow("Engine for $label", if (kind == "LIVE") "A connection's own choice below still comes first." else null, listOf<Pair<EnginePreference?, String>>(null to "Use the default", EnginePreference.AUTOMATIC to "Automatic", EnginePreference.EXOPLAYER to "Media3 ExoPlayer", EnginePreference.MPV to if (mpv) "MPV" else "MPV (not available)"), chosen) { s.setEngineForKind(kind, it); tick++ }
+        }
         if (conns.size > 1 || (conns.isNotEmpty() && s.engineFor(conns.first().id) != null)) conns.forEach { src ->
             val over = s.engineFor(src.id)
             ChoiceRow("Engine for ${src.name}", "Overrides the default for this connection only.", listOf<Pair<EnginePreference?, String>>(null to "Use global default", EnginePreference.AUTOMATIC to "Automatic", EnginePreference.EXOPLAYER to "Media3 ExoPlayer") + (if (mpv) listOf(EnginePreference.MPV to "MPV") else emptyList()), over) { s.setEngineFor(src.id, it); tick++ }

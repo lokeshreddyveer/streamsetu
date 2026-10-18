@@ -286,7 +286,8 @@ class PlaybackController(
         val url = resolver.resolve(item.sourceId, item.streamRef)
         if (url == null) { _state.value = PlaybackState.Failed(PlaybackError(ErrorKind.NOT_FOUND, "The playlist for this item is gone or has no login.")); return }
         val container = StreamContainer.of(url, item.isLive)
-        val preference = settings.engineFor(item.sourceId) ?: settings.enginePreference.value
+        val viewing = when { item is app.streamsetu.core.model.CatchUpPlayable -> "CATCHUP"; item.isLive -> "LIVE"; else -> "MOVIES" }
+        val preference = settings.engineFor(item.sourceId) ?: settings.engineForKind(viewing) ?: settings.enginePreference.value
         // A file on this device is opened through Android's content system, which only ExoPlayer can do.
         val kind = forced ?: if (url.startsWith("content://")) EngineKind.EXOPLAYER else EngineSelector.select(container, preference, available)
         android.util.Log.i("Playback", "start ${if (item.isLive) "live" else "vod"} '${item.title}' container=$container engine=${kind.label} (preference=${preference.label}) host=${runCatching { java.net.URI(url).host }.getOrNull()}")

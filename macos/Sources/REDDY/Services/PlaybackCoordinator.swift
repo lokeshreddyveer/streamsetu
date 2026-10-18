@@ -673,7 +673,8 @@ final class PlaybackCoordinator {
 
     /// The one place that decides which player a stream goes to (the most specific choice wins: channel, then playlist, then the app setting).
     private func chooseEngine(for request: PlaybackRequest, channelPreference: PlaybackEnginePreference?) -> PlaybackEngineKind {
-        EngineSelector.select(container: StreamCapabilities.container(for: request.url, isLive: request.isLive), preference: settings.enginePreference,
+        let viewing: AppSettings.ViewingKind = request.isCatchup ? .catchup : request.isLive ? .live : .movies
+        return EngineSelector.select(container: StreamCapabilities.container(for: request.url, isLive: request.isLive), preference: settings.engineChoice(for: viewing) ?? settings.enginePreference,
                               playlistPreference: settings.engineOverride(for: request.sourceID), channelPreference: channelPreference, available: factory.available)
     }
 
