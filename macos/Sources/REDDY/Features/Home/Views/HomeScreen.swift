@@ -60,6 +60,8 @@ struct LibraryItemCard: View {
                 Button("View details") { PlayActions.open(item, router: router) }
                 Button(state.isFavorite(item.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(item.id, kind: item.kind) }
                 Button(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(item.id, kind: item.kind) }
+                QueueMenu(item: item)
+                FavoriteOrderMenu(item: item)
                 CollectionMenu(itemID: item.id, kind: item.kind)
                 if let removal { Divider(); Button(removal.title, role: .destructive, action: removal.action) }
             }

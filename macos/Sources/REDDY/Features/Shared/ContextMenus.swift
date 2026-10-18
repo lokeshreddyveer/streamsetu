@@ -70,6 +70,8 @@ struct MovieContextMenu: View {
         Button("Details") { router.open(movie: movie) }
         Button(state.isFavorite(movie.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(movie.id, kind: .movie) }
         Button(state.isWatchLater(movie.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(movie.id, kind: .movie) }
+        QueueMenu(item: .movie(movie))
+        FavoriteOrderMenu(item: .movie(movie))
         CollectionMenu(itemID: movie.id, kind: .movie)
         Divider()
         Button("Hide") { try? container?.favoritesRepo.hide(movie.id, kind: "movie"); state.catalogVersion += 1 }
@@ -85,8 +87,39 @@ struct SeriesContextMenu: View {
         Button("Details") { router.open(series: series) }
         Button(state.isFavorite(series.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(series.id, kind: .series) }
         Button(state.isWatchLater(series.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(series.id, kind: .series) }
+        QueueMenu(item: .series(series))
+        FavoriteOrderMenu(item: .series(series))
         CollectionMenu(itemID: series.id, kind: .series)
         Divider()
         Button("Hide") { try? container?.favoritesRepo.hide(series.id, kind: "series"); state.catalogVersion += 1 }
+    }
+}
+
+/// "Play Next" and "Add to Queue" (or "Remove from Queue") for a title, in its context menu.
+struct QueueMenu: View {
+    let item: LibraryItem
+    @Environment(\.container) private var container
+    @Environment(AppState.self) private var state
+    var body: some View {
+        if let q = container?.watchQueue {
+            if q.contains(item.id) {
+                Button("Remove from Queue") { q.remove(item.id) }
+            } else {
+                Button("Play Next") { q.add(item, next: true); state.toasts.show("“\(item.title)” plays next", symbol: "text.line.first.and.arrowtriangle.forward") }
+                Button("Add to Queue") { q.add(item); state.toasts.show("Added “\(item.title)” to the queue", symbol: "text.badge.plus") }
+            }
+        }
+    }
+}
+
+/// "Move to Front" and "Move to End" for a title that is a favourite: the order the favourites are shown in is the person's own.
+struct FavoriteOrderMenu: View {
+    let item: LibraryItem
+    @Environment(AppState.self) private var state
+    var body: some View {
+        if state.isFavorite(item.id) {
+            Button("Move to Front of Favorites") { state.moveFavorite(item.id, kind: item.kind, toFront: true) }
+            Button("Move to End of Favorites") { state.moveFavorite(item.id, kind: item.kind, toFront: false) }
+        }
     }
 }

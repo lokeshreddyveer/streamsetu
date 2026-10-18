@@ -100,6 +100,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TvButton(if (movie.id in favs) "Favorited" else "Favorite", { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in favs) } }, icon = if (movie.id in favs) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder)
                         TvButton(if (movie.id in later) "In Watch Later" else "Watch Later", { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in later, UserRepository.WATCH_LATER) } }, icon = if (movie.id in later) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder)
+                        QueueButtonTv(c, ContentKind.MOVIE, movie.id, movie.title)
                         if (variants.size > 1) TvButton("Choose Stream", { chooseOpen = true }, icon = Icons.Filled.SwapHoriz)
                         TvButton(if (more) "Less" else "More Information", { more = !more }, icon = Icons.Filled.Info)
                         TvButton("Edit", { editing = true }, icon = Icons.Filled.Edit)
@@ -198,6 +199,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TvButton(if (s.id in favs) "Favorited" else "Favorite", { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in favs) } }, icon = if (s.id in favs) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder)
                         TvButton(if (s.id in later) "In Watch Later" else "Watch Later", { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in later, UserRepository.WATCH_LATER) } }, icon = if (s.id in later) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder)
+                        QueueButtonTv(c, ContentKind.SERIES, s.id, s.title)
                         if (variants.size > 1) TvButton("Choose Source", { chooseOpen = true }, icon = Icons.Filled.SwapHoriz)
                         TvButton("Edit", { editing = true }, icon = Icons.Filled.Edit)
                     }
@@ -242,4 +244,12 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
     episodeMenu?.let { ep -> app.streamsetu.tv.ui.screens.home.HomeMenuHost(app.streamsetu.tv.ui.screens.home.HomeTarget.Episode(s, EpisodePlayable(ep, s)), app.streamsetu.tv.ui.screens.home.RowKind.EPISODES, homeVm, c, nav) { episodeMenu = null } }
     if (editing) OverrideDialog(s.title, overrides[series0.id]?.posterUrl.orEmpty(), onSave = { t, p -> scope.launch { c.collections.setOverride(series0.id, t.takeIf { it != series0.title }, p) }; editing = false }, onReset = { scope.launch { c.collections.clearOverride(series0.id) }; editing = false }, onClose = { editing = false })
     if (chooseOpen) ContextMenu("Choose Source", "Opens that connection's copy of this series.", variants.map { v -> MenuAction(sourceName(v.sourceId) + if (v.id == s.id) "  (current)" else "", Icons.Filled.SwapHoriz, enabled = v.id != s.id) { nav.close(); nav.open(Overlay.SeriesDetail(v)) } }, onClose = { chooseOpen = false })
+}
+
+/** "Add to Queue" or "In Queue" on a title's page: the line of titles that play one after another. A press adds it; a press on one already there takes it out. */
+@Composable
+fun QueueButtonTv(c: AppContainer, kind: ContentKind, id: String, title: String) {
+    val queued by c.watchQueue.items.collectAsState()
+    val inQueue = queued.any { it.id == id }
+    TvButton(if (inQueue) "In Queue" else "Add to Queue", { if (inQueue) c.watchQueue.remove(id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(kind, id, title)) }, icon = if (inQueue) Icons.Filled.Check else Icons.Filled.Add)
 }

@@ -922,8 +922,12 @@ final class PlaybackCoordinator {
         guard let r = current, !r.isCatchup else { return }
         try? historyRepo.markWatched(itemID: r.itemID, kind: r.kind, seriesID: r.seriesID, duration: duration ?? position)
         endSession(outcome: "ended", error: nil)
+        if !r.isLive, queueAdvance?() == true { return }          // a title the person lined up comes before the next episode
         if r.kind == .episode, settings.autoPlayNextEpisode, upNext != nil { playNextEpisode() }
     }
+
+    /// Plays the title at the front of the person's queue and returns true; false when the queue is empty. Set by the app, which knows how to start a series.
+    var queueAdvance: (() -> Bool)?
 
     // MARK: ticking, progress, tracks
 
@@ -1033,6 +1037,7 @@ final class PlaybackCoordinator {
     func skipCredits() {
         guard let series = currentEpisode?.1, let d = duration else { return }
         if episodeMarks.isCreditsSkip(from: position, to: d, duration: d) { episodeMarks.learn(seriesID: series.id, from: position, duration: d) }
+        if queueAdvance?() == true { return }
         if upNext != nil { playNextEpisode() } else { seek(to: d) }
     }
 

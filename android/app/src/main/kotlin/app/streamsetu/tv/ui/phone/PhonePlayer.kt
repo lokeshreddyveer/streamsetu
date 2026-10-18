@@ -58,7 +58,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.onSizeChanged
 import kotlin.math.abs
 
-private enum class Panel { SEARCH, SEARCH_LIVE, TUNE, SOUND, SUBLOOK, SUBFIND, QUALITY, CHAPTERS, JUMPTO, AUDIO, SUBS, SPEED, PICTURE, ENGINE, EPISODES, CHANNELS, MORE, SLEEP, SYNC, CAST }
+private enum class Panel { SEARCH, SEARCH_LIVE, TUNE, SOUND, SUBLOOK, SUBFIND, QUALITY, CHAPTERS, QUEUE, JUMPTO, AUDIO, SUBS, SPEED, PICTURE, ENGINE, EPISODES, CHANNELS, MORE, SLEEP, SYNC, CAST }
 
 private val Ink = Color(0xFFF2F2F2)
 private val InkDim = Color(0xB3FFFFFF)
@@ -105,6 +105,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
     val chapters by playback.chapters.collectAsState()
     val qualities by playback.qualities.collectAsState()
     val nextIn by c.nextEpisodeIn.collectAsState()
+    val lined by c.watchQueue.items.collectAsState()
     val onlineSubs = remember { app.streamsetu.tv.ui.screens.OnlineSubtitles(context, c.credentials) }
     var subHits by remember { mutableStateOf<List<app.streamsetu.tv.ui.screens.OnlineSubtitles.Hit>?>(null) }
     var subMessage by remember { mutableStateOf<String?>(null) }
@@ -333,6 +334,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
         Panel.SOUND -> Sheet("Sound", PlayerMenus.sound(playback, tuning).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
         Panel.SUBLOOK -> Sheet("Subtitle look", PlayerMenus.subtitleStyle(playback, styleNow ?: playback.currentSubtitleStyle()).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
         Panel.QUALITY -> Sheet("Quality", PlayerMenus.quality(playback, qualities).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
+        Panel.QUEUE -> Sheet("Up next", lined.map { t -> SheetItem(t.title, Icons.Filled.Close, false, "Tap to take it out of the queue") { c.watchQueue.remove(t.id) } } + SheetItem("Clear the queue", Icons.Filled.Delete) { c.watchQueue.clear(); panel = null }, close)
         Panel.CHAPTERS -> Sheet("Chapters", PlayerMenus.chapters(playback, chapters).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
         Panel.JUMPTO -> Sheet("Go to", listOf(SheetItem("Type a time…", Icons.Filled.Edit) { gotoOpen = true }) + PlayerMenus.jumpToPoints(playback).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
         Panel.SUBFIND -> {
@@ -392,6 +394,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
             add(SheetItem("Subtitle look", Icons.Filled.FormatSize, false, "Size, colour, position, background", true, true) { panel = Panel.SUBLOOK })
             add(SheetItem("Find subtitles online", Icons.Filled.Subtitles, false, "From OpenSubtitles, with your free key", true, true) { panel = Panel.SUBFIND })
             if (qualities.isNotEmpty()) add(SheetItem("Quality", Icons.Filled.HighQuality, false, "Choose the resolution", true, true) { panel = Panel.QUALITY })
+            if (!live && lined.isNotEmpty()) add(SheetItem("Up next: ${lined.size} in the queue", Icons.Filled.List, false, null, true, true) { panel = Panel.QUEUE })
             if (!live && chapters.isNotEmpty()) add(SheetItem("Chapters", Icons.Filled.List, false, null, true, true) { panel = Panel.CHAPTERS })
             if (!live) add(SheetItem("Go to time…", Icons.Filled.Schedule, false, "Type an exact time, or jump by tenths", true, true) { panel = Panel.JUMPTO })
             if (live) (item as? ChannelPlayable)?.let { cp -> epgNext?.let { nx -> add(SheetItem("Remind me: " + nx.title, Icons.Filled.Notifications, false, "A notification when it starts") { subScope.launch { app.streamsetu.tv.Reminders.schedule(c, context, cp.channel, nx) } }) } }

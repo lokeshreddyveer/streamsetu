@@ -113,6 +113,10 @@ class AppSettings(context: Context) {
     val subtitleOutline: StateFlow<Boolean> = _subOutline
     fun setSubtitleOutline(v: Boolean) { prefs.edit().putBoolean("subOutline", v).apply(); _subOutline.value = v }
 
+    // ---- The queue of titles lined up to play ----
+    fun queueRaw(): String = prefs.getString("watchQueue", "") ?: ""
+    fun setQueueRaw(v: String) { prefs.edit().putString("watchQueue", v).apply() }
+
     // ---- Frame rate ----
     private val _matchFps = flow(prefs.getBoolean("matchFrameRate", false))
     /** Switches the TV to the refresh rate that suits the video (24, 25, 30, 50 or 60 per second). Off by default: the screen goes dark for a moment while it switches. */

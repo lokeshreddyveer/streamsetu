@@ -30,6 +30,13 @@ final class SQLiteFavoritesRepository: FavoritesRepository {
         }
     }
 
+    func move(_ id: String, kind: ContentKind, toFront: Bool) throws {
+        try db.write { c in
+            let edge = try c.scalarInt(toFront ? "SELECT COALESCE(MIN(sort_order),0)-1 FROM favorites WHERE kind=?" : "SELECT COALESCE(MAX(sort_order),0)+1 FROM favorites WHERE kind=?", [kind.rawValue])
+            try c.execute("UPDATE favorites SET sort_order=? WHERE item_id=? AND kind=?", [edge, id, kind.rawValue])
+        }
+    }
+
     // MARK: collections
 
     func collections() throws -> [CatalogCollection] {

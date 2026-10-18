@@ -116,6 +116,8 @@ struct LibraryScreen: View {
         Button("View details") { open(item) }
         Button(state.isFavorite(item.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(item.id, kind: item.kind) }
         Button(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(item.id, kind: item.kind); if selection == .shortcut(.watchLater) { Task { await vm.reset(container!, selection: selection, source: state.activeSourceID) } } }
+        QueueMenu(item: item)
+        FavoriteOrderMenu(item: item)
         CollectionMenu(itemID: item.id, kind: item.kind)
         Divider()
         Button("Hide") { try? container?.favoritesRepo.hide(item.id, kind: item.kind.rawValue); state.catalogVersion += 1 }

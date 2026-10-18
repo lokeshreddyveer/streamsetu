@@ -46,6 +46,7 @@ struct WatchLaterView: View {
 struct TitleMenu: View {
     let item: LibraryItem
     @Environment(AppState.self) private var state
+    @Environment(\.container) private var container
 
     var body: some View {
         Button(state.isFavorite(item.id) ? "Remove from Favourites" : "Add to Favourites", systemImage: state.isFavorite(item.id) ? "heart.slash" : "heart") {
@@ -54,6 +55,33 @@ struct TitleMenu: View {
         Button(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later", systemImage: state.isWatchLater(item.id) ? "bookmark.slash" : "bookmark") {
             state.toggleWatchLater(item.id, kind: item.kind)
         }
+        if let q = container?.watchQueue {
+            if q.contains(item.id) {
+                Button("Remove from Queue", systemImage: "text.badge.minus") { q.remove(item.id) }
+            } else {
+                Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { q.add(item, next: true) }
+                Button("Add to Queue", systemImage: "text.badge.plus") { q.add(item) }
+            }
+        }
         CollectionMenu(itemID: item.id, kind: item.kind)
+    }
+}
+
+/// The queue button on a title's page: line it up to play next, or take it out of the line.
+struct QueueButton: View {
+    let item: LibraryItem
+    @Environment(\.container) private var container
+    var body: some View {
+        if let q = container?.watchQueue {
+            Menu {
+                if q.contains(item.id) {
+                    Button("Remove from Queue", systemImage: "text.badge.minus") { q.remove(item.id) }
+                } else {
+                    Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { q.add(item, next: true) }
+                    Button("Add to Queue", systemImage: "text.badge.plus") { q.add(item) }
+                }
+            } label: { Image(systemName: q.contains(item.id) ? "text.badge.checkmark" : "text.badge.plus").frame(width: 24, height: 24) }
+                .buttonStyle(.bordered).controlSize(.large).tint(q.contains(item.id) ? .blue : nil).accessibilityLabel("Queue")
+        }
     }
 }

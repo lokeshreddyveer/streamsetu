@@ -12,6 +12,7 @@ import app.streamsetu.core.data.repo.CatalogRepository
 import app.streamsetu.core.data.repo.SourceRepository
 import app.streamsetu.core.data.repo.UserRepository
 import app.streamsetu.core.model.*
+import kotlinx.coroutines.flow.first
 import app.streamsetu.core.net.StreamResolver
 import app.streamsetu.core.playback.PlaybackController
 import app.streamsetu.core.security.CredentialStore
@@ -60,11 +61,61 @@ class AppContainer @Inject constructor(
     /** Seconds left before the next episode starts by itself; 0 when none is waiting. */
     val nextEpisodeIn = kotlinx.coroutines.flow.MutableStateFlow(0)
 
+    /** The titles lined up to play after the one on screen. */
+    val watchQueue = app.streamsetu.core.data.repo.WatchQueue(object : app.streamsetu.core.data.repo.QueueStore {
+        override fun read() = settings.queueRaw()
+        override fun write(value: String) = settings.setQueueRaw(value)
+    })
+
+    private var advanceJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * What happens when something that is not live ends: the next title in the queue starts at once; otherwise, when "Play the next episode by itself" is on and
+     * there is a next episode, a short countdown (shown by the player) and then that episode. Any press of Back or a new start cancels the countdown.
+     */
+    private fun advanceAfterEnd() {
+        advanceJob?.cancel()
+        val item = playback.current.value ?: return
+        if (item.isLive || item is app.streamsetu.core.model.CatchUpPlayable) return
+        advanceJob = appScope.launch {
+            watchQueue.popNext()?.let { playQueued(it); return@launch }
+            val hasNext = item is EpisodePlayable && queue.indexOfFirst { it.id == item.id }.let { it >= 0 && it < queue.lastIndex }
+            if (!hasNext || !settings.playNextAutomatically.value) return@launch
+            for (n in 5 downTo 1) {
+                nextEpisodeIn.value = n
+                kotlinx.coroutines.delay(1000)
+                if (playback.state.value != app.streamsetu.core.playback.PlaybackState.Ended || playback.current.value?.id != item.id) { nextEpisodeIn.value = 0; return@launch }
+            }
+            nextEpisodeIn.value = 0
+            step(+1)
+        }
+    }
+
+    /** Starts a title taken from the queue: a movie plays; a series plays the episode that would be watched next (or the first one). */
+    suspend fun playQueued(t: app.streamsetu.core.data.repo.QueuedTitle) {
+        when (t.kind) {
+            ContentKind.MOVIE -> catalog.movie(t.id)?.let { play(MoviePlayable(it)) }
+            ContentKind.SERIES -> {
+                val series = catalog.series(t.id) ?: return
+                var eps = catalog.episodesOnce(series.id)
+                if (eps.isEmpty()) { runCatching { sync.loadEpisodes(series) }; eps = catalog.episodesOnce(series.id) }
+                if (eps.isEmpty()) return
+                val progress = user.allProgress().first().filterValues { it.seriesId == series.id }
+                val plan = app.streamsetu.core.data.repo.EpisodePlan.of(eps, progress)
+                val ordered = eps.sortedWith(compareBy({ it.season }, { it.number })).map { EpisodePlayable(it, series) }
+                val next = (plan.inProgress ?: plan.forward)?.takeIf { !plan.allFinished || plan.inProgress != null } ?: ordered.first().episode
+                play(EpisodePlayable(next, series), ordered)
+            }
+            else -> {}
+        }
+    }
+
     /** Reads who is in each movie, a little at a time, so people can be searched for (see [app.streamsetu.core.sync.PeopleIndexer]). */
     val people = app.streamsetu.core.sync.PeopleIndexer(db, sync) { playback.current.value != null }
 
     init {
         appScope.launch { runCatching { db.catalog().deleteDividers() } }
+        appScope.launch { playback.state.collect { if (it == app.streamsetu.core.playback.PlaybackState.Ended) advanceAfterEnd() } }
         appScope.launch { runCatching { PlexTokenCleanup.run(db.openHelper.writableDatabase) } }
     }
 

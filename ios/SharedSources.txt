@@ -220,3 +220,5 @@ Data/Database/Schema/SchemaV12.swift
 Data/Repositories/PeopleIndex.swift
 Domain/Protocols/PeopleReporting.swift
 Services/PeopleIndexService.swift
+Services/WatchQueue.swift
+Services/QueuePlayback.swift

@@ -54,6 +54,12 @@ final class AppState {
         container.onNewEpisodesChanged = { [weak self] in self?.reloadNewEpisodes() }
         reloadNewEpisodes()
         container.scheduler.start()
+        let queue = container.watchQueue
+        container.playback.queueAdvance = { [weak self] in
+            guard let self, let next = queue.popNext() else { return false }
+            self.container.play(queued: next) { [weak self] message in self?.toasts.show(message, symbol: "exclamationmark.triangle.fill", kind: .warning) }
+            return true
+        }
         container.vpn.onDrop = { [weak self] in
             guard let self else { return }
             let c = self.container
@@ -73,6 +79,12 @@ final class AppState {
         try? container.favoritesRepo.setFavorite(id, kind: kind, on: on)
         if on { favoriteIDs.insert(id) } else { favoriteIDs.remove(id) }
         return on
+    }
+
+    /// Puts a favourite first or last in its list; the lists reload.
+    func moveFavorite(_ id: String, kind: ContentKind, toFront: Bool) {
+        try? container.favoritesRepo.move(id, kind: kind, toFront: toFront)
+        catalogVersion += 1
     }
 
     func isWatchLater(_ id: String) -> Bool { watchLaterIDs.contains(id) }

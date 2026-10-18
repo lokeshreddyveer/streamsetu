@@ -13,6 +13,8 @@ struct PlayerControlsOverlay: View {
     var onClose: (() -> Void)?
 
     @Environment(AppSettings.self) private var settings
+    @Environment(\.container) private var container
+    @Environment(AppState.self) private var appState: AppState?          // the separate player window has none
     @State private var visible = true
     @State private var hideTask: Task<Void, Never>?
     @State private var showDiagnostics = false
@@ -316,6 +318,7 @@ struct PlayerControlsOverlay: View {
         sleepMenu
         if playback.capabilities.pictureAdjustments { pictureButton }
         if hasTools { toolsMenu }
+        if !playback.isLive, let q = container?.watchQueue, !q.items.isEmpty { queueMenu(q) }
         if playback.screenshotSupported { IconButton(symbol: "camera", help: "Save screenshot") { saveScreenshot() } }
         IconButton(symbol: "info.circle", help: "Stream info", active: showDiagnostics) { showDiagnostics.toggle() }
     }
@@ -359,6 +362,22 @@ struct PlayerControlsOverlay: View {
     }
 
     private var hasTools: Bool { playback.capabilities.chapters || playback.capabilities.abLoop || playback.capabilities.frameStep || playback.capabilities.volumeBoost }
+
+    /// What is lined up to play next: each title can be taken out, or played now.
+    private func queueMenu(_ q: WatchQueue) -> some View {
+        Menu {
+            Section("Up next (\(q.items.count))") {
+                ForEach(q.items) { item in
+                    Menu(item.title) {
+                        Button("Play Now") { q.remove(item.id); if let c = container { PlayActions(container: c, toasts: appState?.toasts ?? ToastCenter()).play(item) } }
+                        Button("Remove from Queue") { q.remove(item.id) }
+                    }
+                }
+            }
+            Button("Clear Queue", role: .destructive) { q.clear() }
+        } label: { chip("list.bullet") }
+            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Up next: \(q.items.count) in the queue").accessibilityLabel("Queue")
+    }
 
     private var toolsMenu: some View {
         Menu { toolItems } label: { chip("wand.and.stars") }

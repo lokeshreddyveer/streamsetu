@@ -91,6 +91,8 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Chip(if (movie.id in favs) "Favorited" else "Favorite", movie.id in favs, { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in favs) } }, icon = Icons.Filled.Favorite)
                         Chip(if (movie.id in later) "In Watch Later" else "Watch Later", movie.id in later, { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in later, UserRepository.WATCH_LATER) } }, icon = Icons.Filled.Bookmark)
+                        val queued by c.watchQueue.items.collectAsState(); val inQueue = queued.any { it.id == movie.id }
+                        Chip(if (inQueue) "In queue" else "Add to queue", inQueue, { if (inQueue) c.watchQueue.remove(movie.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.MOVIE, movie.id, movie.title)) }, icon = Icons.Filled.Add)
                         if (variants.size > 1) Chip("Choose stream", false, { chooseOpen = true }, icon = Icons.Filled.SwapHoriz)
                     }
                     (info?.plot ?: movie.plot)?.takeIf { it.isNotBlank() }?.let { Label(it, Ph.body, Tokens.textSecondary, maxLines = 12, modifier = Modifier.padding(top = 4.dp)) }
@@ -173,6 +175,8 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Chip(if (s.id in favs) "Favorited" else "Favorite", s.id in favs, { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in favs) } }, icon = Icons.Filled.Favorite)
                         Chip(if (s.id in later) "In Watch Later" else "Watch Later", s.id in later, { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in later, UserRepository.WATCH_LATER) } }, icon = Icons.Filled.Bookmark)
+                        val queued by c.watchQueue.items.collectAsState(); val inQueue = queued.any { it.id == s.id }
+                        Chip(if (inQueue) "In queue" else "Add to queue", inQueue, { if (inQueue) c.watchQueue.remove(s.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.SERIES, s.id, s.title)) }, icon = Icons.Filled.Add)
                     }
                     s.plot?.takeIf { it.isNotBlank() }?.let { Label(it, Ph.body, Tokens.textSecondary, maxLines = 8, modifier = Modifier.padding(top = 4.dp)) }
                 }

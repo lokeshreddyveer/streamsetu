@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
-private enum class PanelKind(val title: String) { TRACKS("Audio & Subtitles"), SPEED("Speed"), PICTURE("Picture"), ENGINE("Player"), MORE("More"), TUNE_PICTURE("Picture tuning"), SOUND("Sound"), SUBLOOK("Subtitle look"), SUBFIND("Subtitles online"), QUALITY("Quality"), CHAPTERS("Chapters"), JUMPTO("Go to"), SLEEP("Sleep timer"), JUMP("Jump"), SYNC("Sync"), CHANNELS("Channels"), EPISODES("Episodes") }
+private enum class PanelKind(val title: String) { TRACKS("Audio & Subtitles"), SPEED("Speed"), PICTURE("Picture"), ENGINE("Player"), MORE("More"), TUNE_PICTURE("Picture tuning"), SOUND("Sound"), SUBLOOK("Subtitle look"), SUBFIND("Subtitles online"), QUALITY("Quality"), CHAPTERS("Chapters"), QUEUE("Up next"), JUMPTO("Go to"), SLEEP("Sleep timer"), JUMP("Jump"), SYNC("Sync"), CHANNELS("Channels"), EPISODES("Episodes") }
 
 private val Ink = Color(0xFFF2F2F2)
 private val InkDim = Color(0xB3FFFFFF)
@@ -91,6 +91,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     val chapters by playback.chapters.collectAsState()
     val qualities by playback.qualities.collectAsState()
     val nextIn by c.nextEpisodeIn.collectAsState()
+    val lined by c.watchQueue.items.collectAsState()
     val appCtx = androidx.compose.ui.platform.LocalContext.current
     val onlineSubs = remember { OnlineSubtitles(appCtx, c.credentials) }
     var controlsFocused by remember { mutableStateOf(false) }
@@ -349,6 +350,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                         PanelKind.MORE -> {
                             if (live) item { TextOption("Multi-View", false, Modifier) { onMultiView() } }
                             if (!live && playback.introEndMs() != null) item { TextOption("Skip intro", false, Modifier.focusRequester(selectedReq)) { playback.skipIntro(); closePanel() } }
+                            if (!live && lined.isNotEmpty()) item { TextOption("Up next: ${lined.size} in the queue", false, Modifier) { panel = PanelKind.QUEUE } }
                             if (!live && playback.recapEndMs() != null) item { TextOption("Skip recap", false, Modifier.focusRequester(selectedReq)) { playback.skipRecap(); closePanel() } }
                             if (!live && playback.creditsShowing()) item { TextOption("Skip credits", false, Modifier.focusRequester(selectedReq)) { if (hasNextEpisode) { playback.noteCreditsSkip(); c.step(+1) } else playback.skipCreditsToEnd(); closePanel() } }
                             if (!live && resumedFrom > 0) item { TextOption("Start over", false, Modifier.focusRequester(selectedReq)) { playback.startOver(); closePanel() } }
@@ -377,6 +379,10 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                         PanelKind.SOUND -> items(PlayerMenus.sound(playback, tuning)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
                         PanelKind.SUBLOOK -> items(PlayerMenus.subtitleStyle(playback, styleNow ?: playback.currentSubtitleStyle())) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
                         PanelKind.QUALITY -> items(PlayerMenus.quality(playback, qualities)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
+                        PanelKind.QUEUE -> {
+                            items(lined) { t -> TextOption(t.title, false, Modifier, "Press OK to take it out of the queue") { c.watchQueue.remove(t.id) } }
+                            item { TextOption("Clear the queue", false, Modifier) { c.watchQueue.clear(); closePanel() } }
+                        }
                         PanelKind.CHAPTERS -> items(PlayerMenus.chapters(playback, chapters)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
                         PanelKind.JUMPTO -> {
                             item { TextOption("Type a time…", false, Modifier.focusRequester(selectedReq), "For example 1:23:45") { gotoOpen = true } }

@@ -43,6 +43,7 @@ final class AppContainer {
     let metadata: MetadataMatchService
     let newEpisodes: NewEpisodeService
     let people: PeopleIndexService
+    let watchQueue: WatchQueue
     /// Set by the app: called on the main actor when the list of series with new episodes changed.
     var onNewEpisodesChanged: (@MainActor () -> Void)?
     private(set) var cloud: CloudSyncCoordinator!
@@ -109,6 +110,7 @@ final class AppContainer {
                                         busy: { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } })
         people = PeopleIndexService(index: PeopleIndex(db: db), catalog: catalog, sources: sources, indexer: indexer,
                                     busy: { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } })
+        watchQueue = WatchQueue(catalog: catalog)
         let peopleService = people
         let newEpisodeService = newEpisodes
         Task { [weak self] in

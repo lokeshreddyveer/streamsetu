@@ -586,6 +586,17 @@ struct PlayerScreen: View {
             if !playback.isLive {
                 Button { playback.seek(by: 85); showHUD(GestureHUD(symbol: "forward.fill", label: "+85 s", level: nil), hideAfter: 0.8) } label: { Label("Skip 85 Seconds", systemImage: "forward.fill") }
                 if playback.currentSeries != nil { Button { showEpisodes = true } label: { Label("Episodes", systemImage: "list.number") } }
+                if let q = container?.watchQueue, !q.items.isEmpty {
+                    Menu {
+                        ForEach(q.items) { item in
+                            Menu(item.title) {
+                                Button("Play Now") { q.remove(item.id); container?.play(queued: item) { _ in } }
+                                Button("Remove from Queue") { q.remove(item.id) }
+                            }
+                        }
+                        Button("Clear Queue", role: .destructive) { q.clear() }
+                    } label: { Label("Up Next (\(q.items.count))", systemImage: "list.bullet") }
+                }
             }
             if playback.isCatchup { Button { playback.goLiveFromCatchup() } label: { Label("Go Live", systemImage: "dot.radiowaves.left.and.right") } }
             if let ch = playback.currentChannel, ch.archiveDays > 0 { Button { showCatchUp = true } label: { Label("Earlier Programmes", systemImage: "clock.arrow.circlepath") } }

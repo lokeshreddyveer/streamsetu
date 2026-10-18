@@ -5,6 +5,8 @@ protocol FavoritesRepository: Sendable {
     func setFavorite(_ id: String, kind: ContentKind, on: Bool) throws
     func favoriteIDs(kind: ContentKind) throws -> [String]
     func reorder(kind: ContentKind, ids: [String]) throws
+    /// Puts one favourite first (or last) in its list, leaving the others in the order they were.
+    func move(_ id: String, kind: ContentKind, toFront: Bool) throws
 
     func collections() throws -> [CatalogCollection]
     func createCollection(name: String) throws -> CatalogCollection
