@@ -42,6 +42,7 @@ final class AppContainer {
     let statistics: StatisticsService
     let metadata: MetadataMatchService
     let newEpisodes: NewEpisodeService
+    let people: PeopleIndexService
     /// Set by the app: called on the main actor when the list of series with new episodes changed.
     var onNewEpisodesChanged: (@MainActor () -> Void)?
     private(set) var cloud: CloudSyncCoordinator!
@@ -106,10 +107,14 @@ final class AppContainer {
                                        catalog: catalog, settings: settings, diagnostics: diagnostics, videoPrefs: videoPrefs)
         newEpisodes = NewEpisodeService(db: db, catalog: catalog, history: history, details: details,
                                         busy: { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } })
+        people = PeopleIndexService(index: PeopleIndex(db: db), catalog: catalog, sources: sources, indexer: indexer,
+                                    busy: { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } })
+        let peopleService = people
         let newEpisodeService = newEpisodes
         Task { [weak self] in
             // After a playlist was read, look (gently, never while something plays) for new episodes of the series being watched.
             await self?.sync.setOnCompleted { id in
+                peopleService.start()
                 let n = await newEpisodeService.refresh(sourceID: id)
                 if n > 0 { await MainActor.run { self?.onNewEpisodesChanged?() } }
             }
@@ -153,6 +158,9 @@ final class AppContainer {
 
     /// Begins syncing when the person has switched it on. Call once the app has started.
     func startCloudIfEnabled() async { await updateCloudSync() }
+
+    /// Carries on reading who is in the movies, a little at a time (see `PeopleIndexService`).
+    func startPeopleIndex() { people.start() }
 
     /// Makes iCloud sync and the login storage match the two switches in Settings.
     func updateCloudSync() async {

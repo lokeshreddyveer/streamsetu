@@ -62,6 +62,8 @@ struct XtreamVODDTO: Decodable, Sendable {
 struct XtreamSeriesDTO: Decodable, Sendable {
     let series_id: Flex?
     let name: Flex?
+    let cast: Flex?
+    let director: Flex?
     let cover: Flex?
     let plot: Flex?
     let genre: Flex?

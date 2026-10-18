@@ -213,13 +213,23 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             MovieEntity("${s.id}:mv:$id", s.id, o.str("category_id")?.let { "${s.id}:MOVIE:$it" }, o.str("name") ?: "Movie $id", o.str("stream_icon"),
                 year(o.str("year") ?: o.str("releaseDate")), o.str("rating"), null, "movie:$id:${o.str("container_extension") ?: "mp4"}", o.str("added")?.toLongOrNull() ?: 0)
         }
-        val series = fetch("get_series").mapNotNull { o ->
+        val seriesList = fetch("get_series")
+        val series = seriesList.mapNotNull { o ->
             val id = o.str("series_id") ?: return@mapNotNull null
             SeriesEntity("${s.id}:sr:$id", s.id, o.str("category_id")?.let { "${s.id}:SERIES:$it" }, o.str("name") ?: "Series $id", o.str("cover"),
                 (o["backdrop_path"] as? kotlinx.serialization.json.JsonArray)?.firstOrNull()?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content },
                 year(o.str("year") ?: o.str("releaseDate")), o.str("rating"), o.str("plot"), id, o.str("last_modified")?.toLongOrNull() ?: 0)
         }
         replace(s.id, categories, channels, movies, series)
+        // A series list already names the cast and directors: they are kept so a person can be searched for.
+        runCatching {
+            val raw = db.openHelper.writableDatabase
+            seriesList.forEach { o ->
+                val id = o.str("series_id") ?: return@forEach
+                val names = splitNames(o.str("cast")) + splitNames(o.str("director"))
+                if (names.isNotEmpty()) app.streamsetu.core.data.db.PeopleIndex.save(raw, "${s.id}:sr:$id", "SERIES", s.id, names, app.streamsetu.core.data.repo.SearchText::normalize)
+            }
+        }
         return Result(channels.size, movies.size, series.size)
     }
 
@@ -263,6 +273,22 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             if (fresh.isNotEmpty()) db.extras().putNewEpisodes(fresh.map { app.streamsetu.core.data.db.NewEpisodeEntity(it.id, series.id, System.currentTimeMillis()) })
         }
         return rows.size
+    }
+
+    private fun splitNames(s: String?): List<String> = s.orEmpty().split(',', '/', '|').map { it.trim() }.filter { it.isNotEmpty() }
+
+    /**
+     * The people in a movie, for the cast index: null when this kind of playlist has no details, an empty list when the playlist knows nobody, and an
+     * exception when the playlist could not be reached (so the caller can try again later instead of marking the movie as asked about).
+     */
+    suspend fun peopleOf(movie: app.streamsetu.core.model.Movie): List<String>? = withContext(Dispatchers.IO) {
+        val src = sources.get(movie.sourceId) ?: return@withContext null
+        if (src.type != SourceType.XTREAM) return@withContext null
+        val vodId = movie.streamRef.split(':').getOrNull(1) ?: return@withContext null
+        val pass = credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()
+        val obj = Xtream.parseObject(Http.text(Xtream.api(src.address, src.username.orEmpty(), pass, "get_vod_info", "&vod_id=$vodId"), xtreamAgent(src))) ?: return@withContext emptyList()
+        val info = obj["info"] as? JsonObject ?: return@withContext emptyList()
+        splitNames(info.str("cast") ?: info.str("actors")) + splitNames(info.str("director"))
     }
 
     data class MovieInfo(val plot: String?, val cast: String?, val director: String?, val genre: String?, val duration: String?, val backdrop: String?, val releaseDate: String?)

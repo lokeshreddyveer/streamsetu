@@ -77,6 +77,17 @@ struct XtreamMapper: Sendable {
         }
     }
 
+    /// The cast and directors a series list names, by series id.
+    func seriesPeople(_ dtos: [XtreamSeriesDTO]) -> [String: [String]] {
+        var out: [String: [String]] = [:]
+        for d in dtos {
+            guard let pid = d.series_id?.nonEmpty else { continue }
+            let names = ProviderExtras.names(d.cast?.nonEmpty) + ProviderExtras.names(d.director?.nonEmpty)
+            if !names.isEmpty { out[ItemID.make(source: source.id, kind: .series, provider: pid)] = names }
+        }
+        return out
+    }
+
     func movieDetail(_ dto: XtreamVODInfoDTO) -> MovieDetail {
         let i = dto.info
         let rel = i?.releasedate?.nonEmpty ?? i?.release_date?.nonEmpty

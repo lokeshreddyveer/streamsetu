@@ -46,6 +46,8 @@ class MainActivity : ComponentActivity() {
         else requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         setContent { if (phone) app.streamsetu.tv.ui.phone.PhoneApp(container, nav, onExit = { finish() }) else StreamSetuTV(container, nav, onExit = { finish() }) }
         handle(intent)
+        // A little after the first screens are up, start reading who is in the movies (see PeopleIndexer).
+        android.os.Handler(mainLooper).postDelayed({ container.people.start() }, 20_000)
     }
 
     override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); handle(intent) }

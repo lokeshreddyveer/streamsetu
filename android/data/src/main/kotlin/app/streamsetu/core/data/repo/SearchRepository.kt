@@ -3,6 +3,7 @@ package app.streamsetu.core.data.repo
 import android.content.Context
 import app.streamsetu.core.data.db.AppDatabase
 import app.streamsetu.core.data.db.SearchHit
+import app.streamsetu.core.data.db.PeopleIndex
 import app.streamsetu.core.data.db.SearchIndex
 import app.streamsetu.core.model.*
 import kotlinx.coroutines.Dispatchers
@@ -63,7 +64,11 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
             .sortedWith(compareByDescending<Pair<SearchHit, Int>> { it.second }.thenBy { it.first.title.length }.thenBy { it.first.itemId }).map { it.first }
         // One logical title across combined sources shows once (same normalised title, same kind), keeping the first connection's record.
         val seen = HashSet<String>()
-        val unique = ranked.filter { seen.add(it.kind + "|" + SearchText.normalize(it.title)) }.take(limit)
+        // Titles with a person of that name come after the titles named like it: a film called "Keanu" still comes before the films with Keanu Reeves.
+        val withPerson = if (scope.folderId != null || scope.year != null) emptyList() else
+            PeopleIndex.hits(raw, SearchText.tokens(typed), sources, kinds.filter { it == "MOVIE" || it == "SERIES" }, 60)
+                .filter { it.folderId == null || it.folderId !in locked }.filter { h -> ranked.none { it.itemId == h.itemId } }
+        val unique = (ranked + withPerson).filter { seen.add(it.kind + "|" + SearchText.normalize(it.title)) }.take(limit)
         fun ids(kind: ContentKind) = unique.filter { it.kind == kind.name }.map { it.itemId }
         val order = unique.withIndex().associate { it.value.itemId to it.index }
         val c = db.catalog()

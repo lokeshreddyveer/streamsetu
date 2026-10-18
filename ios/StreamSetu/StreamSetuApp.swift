@@ -82,6 +82,7 @@ final class IOSCoordinator {
             UserDefaults.standard.set(marks, forKey: "startup.timings")
             phase = .ready                                  // the app opens now; iCloud starts in the background, it is never waited for
             Task { await c.startCloudIfEnabled() }
+            Task { try? await Task.sleep(nanoseconds: 20_000_000_000); c.startPeopleIndex() }
             c.autoBackup.runIfDue()
             resumeLastChannelIfWanted(c, s)
         } catch {

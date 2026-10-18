@@ -7,6 +7,8 @@ struct LibrarySettingsPage: View {
     @Environment(AppState.self) private var state
     @Environment(AppRouter.self) private var router
     @State private var showMaintenance = false
+    @State private var people: (done: Int, total: Int) = (0, 0)
+    private func refreshPeople() { if let c = container { people = c.people.progress } }
 
     private func n(_ v: Int) -> String { v.formatted() }
     private func bytes(_ v: Int64) -> String { ByteCountFormatter.string(fromByteCount: v, countStyle: .file) }
@@ -93,6 +95,15 @@ struct LibrarySettingsPage: View {
                 MessageLine(message: vm.backupMessage)
             }
 
+            // MARK: people
+            SettingsGroup(title: "Cast and directors", footer: "So you can search for an actor or a director. StreamSetu asks your playlists about one movie at a time, slowly and never while something is playing, and keeps what it learns. Searching for a name finds the titles read so far.") {
+                SettingsValueRow(title: "Movies read", value: "\(n(people.done)) of \(n(people.total))")
+                SettingsActions {
+                    Button { container?.startPeopleIndex(); Task { try? await Task.sleep(nanoseconds: 3_000_000_000); refreshPeople() } } label: { Label("Read More Now", systemImage: "person.2") }
+                        .disabled(people.done >= people.total)
+                }
+            }
+
             // MARK: maintenance (technical, collapsed until asked for)
             SettingsGroup(title: "Maintenance", footer: "Storage use, database checks and the search index. You rarely need these; they are here for when something looks wrong.") {
                 SettingsRow(title: "Show maintenance tools", detail: "Cache sizes, database verification and search index rebuild.", divider: false) {
@@ -150,6 +161,7 @@ struct LibrarySettingsPage: View {
             }
         }
         .task { if let c = container { await vm.refresh(c) } }
+        .task { while !Task.isCancelled { refreshPeople(); try? await Task.sleep(nanoseconds: 5_000_000_000) } }          // the count moves while it works
         .task(id: state.catalogVersion) { if let c = container { await vm.refresh(c) } }
         .confirmationDialog("Restore this backup?", isPresented: $vm.confirmRestore, titleVisibility: .visible) {
             Button("Restore") { if let c = container { vm.applyRestore(c, state: state) } }

@@ -153,6 +153,7 @@ actor CatalogSyncService {
                     let fetch = try await provider.categoryFetch(.series); let cats = fetch.categories; Self.logRejections(fetch, kind: .series)
                     setState(.indexing)
                     let r = try indexer.commitSeries(source: source, categories: cats, series: all)
+                    if let people = (provider as? PeopleReporting)?.takeSeriesPeople() { PeopleIndex(db: db).saveSeries(people, sourceID: sourceID) }
                     p.seriesCount = r.total
                     try? catalog.recordCategoryStats(sourceID: sourceID, kind: .series, fetch: fetch, reconcile: r.categories)
                     try catalog.recordSync(sourceID: sourceID, scope: "series", success: true, itemCount: r.total, etag: nil, lastModified: nil, error: nil)

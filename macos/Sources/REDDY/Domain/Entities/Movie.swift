@@ -32,6 +32,11 @@ struct ProviderExtras: Sendable, Equatable {
     var tmdbID: Int?
     var isEmpty: Bool { trailerKey == nil && cast.isEmpty && directors.isEmpty && country == nil && ageRating == nil }
 
+    /// The names in a provider's "A, B / C" style string.
+    static func names(_ s: String?) -> [String] {
+        (s ?? "").split(whereSeparator: { ",/|".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
     /// Builds extras from the raw strings a provider sends; nil when there is nothing useful in them.
     static func make(trailer: String?, cast: String?, director: String?, country: String?, age: String?, tmdb: String?) -> ProviderExtras? {
         func list(_ s: String?) -> [String] {

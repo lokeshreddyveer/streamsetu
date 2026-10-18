@@ -55,6 +55,11 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
         ToggleRow("Refresh when the app opens", "Reads every connection and its guide a few seconds after launch, one at a time, and never while something is playing.", onStart) { c.settings.setRefreshOnStart(it) }
         ChoiceRow("Refresh catalogs in the background", options = listOf(0 to "Only when I ask", 12 to "Every 12 hours", 24 to "Every day"), value = hours) { c.settings.setBackgroundSyncHours(it); app.streamsetu.tv.CatalogSyncWorker.schedule(ctx, it) }
     }
+    SettingGroup("Cast and directors", "So you can search for an actor or a director. StreamSetu asks your connections about one movie at a time, slowly and never while something is playing, and keeps what it learns. Searching for a name finds the titles read so far.") {
+        val progress by produceState(c.people.progress()) { while (true) { value = c.people.progress(); kotlinx.coroutines.delay(5_000) } }
+        InfoRow("Movies read", "%,d of %,d".format(progress.first, progress.second))
+        if (progress.first < progress.second) ActionRow("Read more now", "Carries on where it stopped.", "Read", confirm = false) { c.people.start() }
+    }
     SettingGroup("Libraries") {
         InfoRow("Libraries", libs.size.toString(), libs.joinToString(", ") { it.name }.ifBlank { "none" })
         ActionRow("Manage combined libraries", "Opens Choose Your Library: hold OK on a library to edit its members.", "Open", confirm = false) { c.library.close(); nav.toChooser() }

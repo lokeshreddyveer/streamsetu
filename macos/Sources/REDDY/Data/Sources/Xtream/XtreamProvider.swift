@@ -1,6 +1,6 @@
 import Foundation
 
-final class XtreamProvider: SourceProvider, @unchecked Sendable {
+final class XtreamProvider: SourceProvider, PeopleReporting, @unchecked Sendable {
     let source: PlaylistSource
     private let client: XtreamClient
     private let account: XtreamAccount
@@ -61,10 +61,17 @@ final class XtreamProvider: SourceProvider, @unchecked Sendable {
         }
     }
 
+    private let peopleLock = NSLock()
+    private var seriesPeople: [String: [String]] = [:]
+    private func keepSeriesPeople(_ p: [String: [String]]) { peopleLock.withLock { seriesPeople = p } }
+    func takeSeriesPeople() -> [String: [String]] { peopleLock.withLock { let p = seriesPeople; seriesPeople = [:]; return p } }
+
     func series() -> AsyncThrowingStream<[Series], Error> {
-        .producing { [client, mapper, names] c in
+        .producing { [client, mapper, names, weak self] c in
             let cats = names(try await client.seriesCategories())
-            let all = mapper.series(try await client.seriesList(), names: cats)
+            let list = try await client.seriesList()
+            let all = mapper.series(list, names: cats)
+            self?.keepSeriesPeople(mapper.seriesPeople(list))
             for b in all.chunked(into: 2000) { try Task.checkCancellation(); c.yield(b) }
         }
     }

@@ -28,12 +28,17 @@ final class SQLiteSearchRepository: SearchRepository {
         sql += " ORDER BY (d.normalized = ?) DESC, (d.normalized LIKE ? || '%') DESC, bm25(catalog_fts, 10.0, 6.0, 2.0, 1.0, 1.0, 0.5) LIMIT \(max(1, limit))"
         args.append(norm); args.append(norm)
 
-        return try db.read { c in
+        let found = try db.read { c in
             try c.query(sql, args) { r in
                 SearchHit(itemID: r.string(0), kind: ContentKind(rawValue: r.string(1)) ?? .channel, sourceID: r.uuid(2) ?? UUID(),
                           title: r.string(3), category: r.optString(4))
             }
         }
+        // Titles with a person of that name come after the titles named like it: a film called "Keanu" still comes before the films with Keanu Reeves.
+        guard filters.category == nil, filters.language == nil, filters.genre == nil else { return found }
+        let have = Set(found.map(\.itemID))
+        let withPerson = PeopleIndex(db: db).hits(term: trimmed, kinds: filters.kinds, sourceID: filters.sourceID, limit: limit).filter { !have.contains($0.itemID) }
+        return Array((found + withPerson).prefix(max(1, limit)))
     }
 
     func recordSearch(_ term: String) throws {

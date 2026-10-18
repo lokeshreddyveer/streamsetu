@@ -3,6 +3,8 @@ import SwiftUI
 /// How the library is organised, refreshed and shown.
 struct LibrarySettingsView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(\.container) private var container
+    @State private var people: (done: Int, total: Int) = (0, 0)
 
     var body: some View {
         @Bindable var s = settings
@@ -23,12 +25,19 @@ struct LibrarySettingsView: View {
                 Toggle("Programme reminders", isOn: $s.remindersEnabled)
                 Toggle("Resume the last channel when the app opens", isOn: $s.resumeLastChannel)
             }.listRowBackground(ColorTokens.surface)
+            Section {
+                LabeledContent("Movies read", value: "\(people.done.formatted()) of \(people.total.formatted())")
+                Button("Read More Now") { container?.startPeopleIndex() }.disabled(people.done >= people.total)
+            } header: { Text("Cast and directors") } footer: {
+                Text("So you can search for an actor or a director. StreamSetu asks your playlists about one movie at a time, slowly and never while something is playing, and keeps what it learns.")
+            }.listRowBackground(ColorTokens.surface)
             Section("Organise") {
                 NavigationLink("Folders") { FoldersView() }
                 NavigationLink("Backup and Restore") { BackupView() }
                 NavigationLink("Storage and Maintenance") { StorageView() }
             }.listRowBackground(ColorTokens.surface)
         }
+        .task { while !Task.isCancelled { if let c = container { people = c.people.progress }; try? await Task.sleep(nanoseconds: 5_000_000_000) } }
         .navigationTitle("Library and Guide").themed("Library and Guide")
     }
 }

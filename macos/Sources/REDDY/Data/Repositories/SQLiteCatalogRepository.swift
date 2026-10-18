@@ -68,6 +68,8 @@ final class SQLiteCatalogRepository: CatalogRepository {
             let prefix = id.uuidString.lowercased() + "|"
             // Cascades remove catalog rows; user data and the search index are keyed by item id and cleaned explicitly.
             try c.execute("DELETE FROM search_docs WHERE source_id=?", [id])
+            try c.execute("DELETE FROM people WHERE source_id=?", [id.uuidString.lowercased()])
+            try c.execute("DELETE FROM people_done WHERE source_id=?", [id.uuidString.lowercased()])
             for t in ["favorites", "recently_watched", "watch_progress", "hidden_items", "metadata_overrides", "collection_items", "video_layouts"] {
                 try c.execute("DELETE FROM \(t) WHERE substr(item_id,1,37)=?", [prefix])
             }

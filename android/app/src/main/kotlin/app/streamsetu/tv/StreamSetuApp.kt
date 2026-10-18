@@ -60,6 +60,9 @@ class AppContainer @Inject constructor(
     /** Seconds left before the next episode starts by itself; 0 when none is waiting. */
     val nextEpisodeIn = kotlinx.coroutines.flow.MutableStateFlow(0)
 
+    /** Reads who is in each movie, a little at a time, so people can be searched for (see [app.streamsetu.core.sync.PeopleIndexer]). */
+    val people = app.streamsetu.core.sync.PeopleIndexer(db, sync) { playback.current.value != null }
+
     init {
         appScope.launch { runCatching { db.catalog().deleteDividers() } }
         appScope.launch { runCatching { PlexTokenCleanup.run(db.openHelper.writableDatabase) } }
@@ -78,6 +81,7 @@ class AppContainer @Inject constructor(
     suspend fun syncWithGuide(sourceId: String): SyncService.Result {
         val r = sync.sync(sourceId)
         featuredCache = null
+        people.start()
         runCatching {
             val src = sources.get(sourceId) ?: return@runCatching
             val fallback = if (src.type == SourceType.XTREAM) {

@@ -216,3 +216,7 @@ Services/OnlineSubtitles.swift
 Features/Shared/Views/OnlineSubtitleSheet.swift
 Data/Database/PlexTokenCleanup.swift
 Features/Shared/Views/FranchiseTimeline.swift
+Data/Database/Schema/SchemaV12.swift
+Data/Repositories/PeopleIndex.swift
+Domain/Protocols/PeopleReporting.swift
+Services/PeopleIndexService.swift
