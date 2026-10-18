@@ -146,6 +146,33 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         out
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** The row "For You": titles like the last few things watched, and the names of those, for the line under the heading. */
+    data class ForYou(val items: List<FavItem>, val because: String)
+
+    /** Never anything already watched, one entry for each film however many copies the library holds, and nothing until there is enough to go on. */
+    val forYou: StateFlow<ForYou?> = recentWatched.mapLatest { watched ->
+        val seeds = watched.filter { it !is FavItem.Ch }.take(4)
+        if (seeds.isEmpty()) return@mapLatest null
+        val seen = watched.map { it.id }.toSet()
+        val lists = seeds.map { seed ->
+            when (seed) {
+                is FavItem.Mv -> c.search.similarMovies(seed.movie, null) { null }.first().filter { it.reason != "Same language" }.map { FavItem.Mv(it.item) as FavItem }
+                is FavItem.Sr -> c.search.similarSeries(seed.series).filter { it.reason != "Same language" }.map { FavItem.Sr(it.item) as FavItem }
+                else -> emptyList()
+            }.filter { it.id !in seen }.toMutableList()
+        }
+        val out = ArrayList<FavItem>(); val keys = HashSet<String>()
+        while (out.size < 14 && lists.any { it.isNotEmpty() }) {
+            for (l in lists) {
+                if (l.isEmpty() || out.size >= 14) continue
+                val item = l.removeAt(0)
+                val year = when (item) { is FavItem.Mv -> item.movie.year; is FavItem.Sr -> item.series.year; else -> null }
+                if (keys.add(app.streamsetu.core.data.repo.Similarity.stem(item.title) + "|" + (year ?: 0))) out += item
+            }
+        }
+        if (out.size < 6) null else ForYou(out, seeds.take(2).joinToString(", ") { "“${it.title}”" })
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     val order: List<String> get() = visibleRows(c.ui.homeOrder(DEFAULT_ORDER), hiddenRows.value)
 
     // ---- Actions behind the long-press menu (the screen only passes typed identities in) ----
@@ -191,5 +218,5 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         return if (left >= 1) "${left}m left" else "Almost done"
     }
 
-    companion object { val DEFAULT_ORDER = listOf("continue", "live", "favorites", "later", "movies", "series", "categories") }
+    companion object { val DEFAULT_ORDER = listOf("continue", "live", "favorites", "later", "foryou", "movies", "series", "categories") }
 }

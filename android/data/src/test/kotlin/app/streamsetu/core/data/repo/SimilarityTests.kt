@@ -110,4 +110,10 @@ class SimilarityTests {
         assertEquals(listOf(2014, 2017), Similarity.franchise(target, pool).map { it.year })
         assertEquals("t", Similarity.franchise(target, pool).first().id)       // the open film is the one shown for its year
     }
+
+    @Test fun twoSmallWordsAloneAreNotAFranchise() {
+        val target = m("t", "It's a Medical Miracle (2026)", 2026)
+        val pool = listOf(m("a", "It's a Good Day to Die (2024)", 2024), m("b", "It's a Medical Miracle 2 (2027)", 2027))
+        assertEquals(listOf("t", "b"), Similarity.franchise(target, pool).map { it.id })
+    }
 }

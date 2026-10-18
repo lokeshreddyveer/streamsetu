@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
         app.streamsetu.tv.UISound.pause()
         runCatching { frames.stop() }
         container.playback.onBackground()
+        ContinueWidget.refresh(this)
         super.onStop()
     }
 

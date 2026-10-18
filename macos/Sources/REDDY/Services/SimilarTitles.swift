@@ -70,13 +70,17 @@ enum SimilarTitles {
         }.joined(separator: " ")
     }
 
+    private static let smallWords: Set<String> = ["its", "a", "an", "the", "i", "my", "me", "in", "on", "of", "to", "and", "is", "are", "one", "all", "no", "you", "we", "our", "your", "this", "that", "with", "from", "for", "not", "too", "his", "her", "how", "what", "when", "who"]
+
     private static func sameFranchise(_ a: String, _ b: String) -> Bool {
         let x0 = lead(a), y0 = lead(b)
         guard !x0.isEmpty, !y0.isEmpty else { return false }
         if x0 == y0 { return true }
         let x = x0.split(separator: " "), y = y0.split(separator: " ")
-        // The first two words must match. Leading articles are ignored, so "The Amazing Spider-Man" is not "The Amazing Bulk".
-        return x.count >= 2 && y.count >= 2 && x[0] == y[0] && x[1] == y[1]
+        // The first two words must match. Leading articles are ignored, so "The Amazing Spider-Man" is not "The Amazing Bulk", and two small words
+        // alone ("It's a Medical Miracle", "It's a Good Day to Die") do not make a franchise: one of the two has to be a word with some weight.
+        guard x.count >= 2, y.count >= 2, x[0] == y[0], x[1] == y[1] else { return false }
+        return x[0..<2].contains { $0.count >= 4 && !smallWords.contains(String($0)) }
     }
 
     /// The films of the same franchise as [target], with the target among them, in the order they came out. A sequel or another film of the series counts (the first words of the

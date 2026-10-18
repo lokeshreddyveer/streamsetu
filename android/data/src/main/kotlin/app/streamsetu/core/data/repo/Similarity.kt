@@ -57,13 +57,17 @@ object Similarity {
     private val leadingArticle = Regex("^(the|a|an) ")
     private fun lead(stem: String) = leadingArticle.replace(stem, "")
 
+    private val smallWords = setOf("its", "a", "an", "the", "i", "my", "me", "in", "on", "of", "to", "and", "is", "are", "one", "all", "no", "you", "we", "our", "your", "this", "that", "with", "from", "for", "not", "too", "his", "her", "how", "what", "when", "who")
+
     private fun sameFranchise(a: String, b: String): Boolean {
         val x0 = lead(a); val y0 = lead(b)
         if (x0.isEmpty() || y0.isEmpty()) return false
         if (x0 == y0) return true
         val x = x0.split(' '); val y = y0.split(' ')
-        // The first two words must match. Leading articles are ignored, so "The Amazing Spider-Man" is not "The Amazing Bulk".
-        return x.size >= 2 && y.size >= 2 && x[0] == y[0] && x[1] == y[1]
+        // The first two words must match. Leading articles are ignored, so "The Amazing Spider-Man" is not "The Amazing Bulk", and two small words
+        // alone ("It's a Medical Miracle", "It's a Good Day to Die") do not make a franchise: one of the two has to be a word with some weight.
+        if (x.size < 2 || y.size < 2 || x[0] != y[0] || x[1] != y[1]) return false
+        return x.take(2).any { it.length >= 4 && it !in smallWords }
     }
 
     /**

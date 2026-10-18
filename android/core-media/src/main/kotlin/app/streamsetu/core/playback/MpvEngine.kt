@@ -208,6 +208,8 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
 
     override fun audioTracks() = tracks("audio")
     override fun subtitleTracks() = tracks("sub")
+    override fun frameRate(): Float = runCatching { MPVLib.getPropertyString("container-fps") }.getOrNull()?.toFloatOrNull() ?: 0f
+
     override fun diagnostics(): Map<String, String> {
         if (!initialised) return emptyMap()
         fun prop(n: String) = runCatching { MPVLib.getPropertyString(n) }.getOrNull().orEmpty()

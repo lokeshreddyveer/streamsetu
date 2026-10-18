@@ -102,6 +102,18 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
 
+    // Match the screen's refresh rate to the video, when the person has turned that on. The mode is given back when the player closes.
+    val matchFps by c.settings.matchFrameRate.collectAsState()
+    DisposableEffect(matchFps) { onDispose { setDisplayMode(context, null) } }
+    LaunchedEffect(matchFps, state, item?.id) {
+        if (!matchFps || state != PlaybackState.Playing) return@LaunchedEffect
+        repeat(8) {
+            val fps = playback.frameRate()
+            if (fps > 0f) { setDisplayMode(context, fps); return@LaunchedEffect }
+            delay(500)
+        }
+    }
+
     fun poke() { barVisible = true; tick++ }
     fun toRoot() { runCatching { root.requestFocus() } }
     fun closePanel() { panel = null; toRoot() }
@@ -337,6 +349,8 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                         PanelKind.MORE -> {
                             if (live) item { TextOption("Multi-View", false, Modifier) { onMultiView() } }
                             if (!live && playback.introEndMs() != null) item { TextOption("Skip intro", false, Modifier.focusRequester(selectedReq)) { playback.skipIntro(); closePanel() } }
+                            if (!live && playback.recapEndMs() != null) item { TextOption("Skip recap", false, Modifier.focusRequester(selectedReq)) { playback.skipRecap(); closePanel() } }
+                            if (!live && playback.creditsShowing()) item { TextOption("Skip credits", false, Modifier.focusRequester(selectedReq)) { if (hasNextEpisode) { playback.noteCreditsSkip(); c.step(+1) } else playback.skipCreditsToEnd(); closePanel() } }
                             if (!live && resumedFrom > 0) item { TextOption("Start over", false, Modifier.focusRequester(selectedReq)) { playback.startOver(); closePanel() } }
                             item { val end by playback.sleepEndsAt.collectAsState(); TextOption("Sleep timer" + if (end > 0) ": " + ((end - System.currentTimeMillis()) / 60_000 + 1) + " min left" else "", false, if (live || resumedFrom <= 0) Modifier.focusRequester(selectedReq) else Modifier) { panel = PanelKind.SLEEP } }
                             if (!live) item { TextOption("Jump", false, Modifier) { panel = PanelKind.JUMP } }
@@ -498,4 +512,20 @@ private fun OnlineSubtitlesPanel(client: OnlineSubtitles, playback: app.streamse
             }
         }
     }
+}
+
+/** Asks the TV to run at the refresh rate that suits a video of [fps] frames a second; null gives the screen back to the system. Does nothing where the TV has no suitable mode. */
+@Suppress("DEPRECATION")
+private fun setDisplayMode(context: android.content.Context, fps: Float?) {
+    var ctx = context
+    while (ctx is android.content.ContextWrapper && ctx !is android.app.Activity) ctx = ctx.baseContext
+    val activity = ctx as? android.app.Activity ?: return
+    val display = activity.windowManager.defaultDisplay ?: return
+    val attrs = activity.window.attributes
+    if (fps == null) { if (attrs.preferredDisplayModeId != 0) { attrs.preferredDisplayModeId = 0; activity.window.attributes = attrs }; return }
+    fun mode(m: android.view.Display.Mode) = app.streamsetu.core.playback.DisplayMode(m.modeId, m.physicalWidth, m.physicalHeight, m.refreshRate)
+    val current = display.mode?.let(::mode) ?: return
+    val pick = app.streamsetu.core.playback.DisplayModes.best(display.supportedModes.map(::mode), current, fps) ?: return
+    attrs.preferredDisplayModeId = pick.id
+    activity.window.attributes = attrs
 }

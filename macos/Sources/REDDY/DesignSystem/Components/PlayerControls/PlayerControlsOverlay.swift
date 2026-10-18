@@ -61,8 +61,8 @@ struct PlayerControlsOverlay: View {
             if let next = playback.upNext, !playback.isLive, let d = playback.duration, d > 60, d - playback.position < 30, upNextDismissedFor != playback.current?.itemID, playback.state.isPlaying {
                 upNextCard(next).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(.bottom, 110).padding(.trailing, 16).transition(.opacity)
             }
-            if playback.introEnd != nil, playback.state.isPlaying {
-                Button { playback.skipIntro() } label: { Label("Skip Intro", systemImage: "forward.end.fill").font(.system(size: 13, weight: .semibold)).padding(.horizontal, 14).padding(.vertical, 9) }
+            if playback.state.isPlaying, let button = skipButton {
+                Button { button.action() } label: { Label(button.title, systemImage: "forward.end.fill").font(.system(size: 13, weight: .semibold)).padding(.horizontal, 14).padding(.vertical, 9) }
                     .buttonStyle(.plain).foregroundStyle(.white).background(.black.opacity(0.65), in: Capsule()).overlay(Capsule().strokeBorder(.white.opacity(0.3)))
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(.bottom, 110).padding(.trailing, 16).transition(.opacity)
             }
@@ -349,6 +349,14 @@ struct PlayerControlsOverlay: View {
     }
 
     // MARK: tools only some players have
+
+    /// The one skip button offered right now: the recap, the opening or the credits.
+    private var skipButton: (title: String, action: () -> Void)? {
+        if playback.recapEnd != nil { return ("Skip Recap", { playback.skipRecap() }) }
+        if playback.introEnd != nil { return ("Skip Intro", { playback.skipIntro() }) }
+        if playback.creditsShowing { return ("Skip Credits", { playback.skipCredits() }) }
+        return nil
+    }
 
     private var hasTools: Bool { playback.capabilities.chapters || playback.capabilities.abLoop || playback.capabilities.frameStep || playback.capabilities.volumeBoost }
 

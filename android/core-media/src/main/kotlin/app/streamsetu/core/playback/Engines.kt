@@ -97,6 +97,8 @@ interface PlayerEngine {
     fun streamInfo(): String
     /** Facts about the stream playing now, for the diagnostics screen (no addresses, no logins). */
     fun diagnostics(): Map<String, String>
+    /** The frame rate of the video playing now, or 0 when it is not known yet. */
+    fun frameRate(): Float = 0f
     fun setSpeed(speed: Float)
     fun setAspect(mode: AspectMode)
     /** 0 to 1. Used by Multi-View, where one picture at a time has sound. */
@@ -140,5 +142,25 @@ object FrameGrab {
             }
             else -> done(null)
         }
+    }
+}
+
+/** One way the screen can run: its size and how many times a second it draws. */
+data class DisplayMode(val id: Int, val width: Int, val height: Int, val fps: Float)
+
+/** Picks the screen mode that shows a video without judder: the same size as now, and a refresh rate that is a whole multiple of the video's frame rate. */
+object DisplayModes {
+    private fun multiple(refresh: Float, content: Float): Int? {
+        for (m in 1..5) if (kotlin.math.abs(refresh - content * m) < 0.2f) return m
+        return null
+    }
+
+    /** The mode to switch to, or null when the screen already fits (or nothing fits and it is better left alone). */
+    fun best(modes: List<DisplayMode>, current: DisplayMode, contentFps: Float): DisplayMode? {
+        if (contentFps < 10f) return null
+        if (multiple(current.fps, contentFps) != null) return null
+        return modes.filter { it.width == current.width && it.height == current.height }
+            .mapNotNull { m -> multiple(m.fps, contentFps)?.let { m to it } }
+            .minWithOrNull(compareBy({ it.second }, { kotlin.math.abs(it.first.fps - contentFps * it.second) }))?.first        // the fewest repeats of a frame, then the closest rate
     }
 }

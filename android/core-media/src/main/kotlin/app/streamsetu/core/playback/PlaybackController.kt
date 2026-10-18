@@ -187,6 +187,32 @@ class PlaybackController(
 
     fun skipIntro() { val end = introEndMs() ?: return; userSeeked = true; _engine.value?.seekTo(end) }
 
+    /** Where the recap at the start of this episode ends, while it is on screen; null for anything else. */
+    fun recapEndMs(): Long? {
+        if (_current.value !is app.streamsetu.core.model.EpisodePlayable) return null
+        return EpisodeMarks.recapEnd(_chapters.value, positionMs, durationMs)
+    }
+
+    fun skipRecap() { val end = recapEndMs() ?: return; userSeeked = true; _engine.value?.seekTo(end) }
+
+    /** True once the credits of this episode have started and there is still something to skip. */
+    fun creditsShowing(): Boolean {
+        val item = _current.value as? app.streamsetu.core.model.EpisodePlayable ?: return false
+        val d = durationMs
+        val start = EpisodeMarks.creditsStart(_chapters.value, d, introPrefs.getLong("credits." + introKey(item), 0L)) ?: return false
+        return positionMs >= start && d - positionMs > 3_000
+    }
+
+    /** Called when the person skips the credits (to the next episode or to the end): the distance from the end is remembered for the rest of the series. */
+    fun noteCreditsSkip() {
+        val item = _current.value as? app.streamsetu.core.model.EpisodePlayable ?: return
+        val d = durationMs
+        if (EpisodeMarks.isCreditsSkip(positionMs, d, d)) introPrefs.edit().putLong("credits." + introKey(item), d - positionMs).apply()
+    }
+
+    /** Skips to the end of the episode; the app then moves on by itself if it is set to. */
+    fun skipCreditsToEnd() { noteCreditsSkip(); userSeeked = true; _engine.value?.let { it.seekTo(it.durationMs) } }
+
     /** A forward jump early in an episode is taken as skipping the opening: where it landed is remembered for the rest of the series. */
     private fun maybeLearnIntro(fromMs: Long, toMs: Long) {
         val item = _current.value as? app.streamsetu.core.model.EpisodePlayable ?: return
@@ -402,10 +428,12 @@ class PlaybackController(
     fun togglePause() { val e = _engine.value ?: return; if (e.isPlaying) e.pause() else e.play() }
     fun seekBy(deltaMs: Long) {
         val e = _engine.value ?: return; userSeeked = true
-        if (_current.value?.isLive == false) { val to = (e.positionMs + deltaMs).coerceIn(0, e.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE); maybeLearnIntro(e.positionMs, to); e.seekTo(to) }
+        if (_current.value?.isLive == false) { val to = (e.positionMs + deltaMs).coerceIn(0, e.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE); maybeLearnIntro(e.positionMs, to); if (EpisodeMarks.isCreditsSkip(e.positionMs, to, e.durationMs)) noteCreditsSkip(); e.seekTo(to) }
     }
     val positionMs: Long get() = _engine.value?.positionMs ?: 0
     val durationMs: Long get() = _engine.value?.durationMs ?: 0
+    /** The frame rate of the video playing now, or 0 while it is not known. */
+    fun frameRate(): Float = _engine.value?.frameRate() ?: 0f
     val engineKind: EngineKind? get() = _engine.value?.kind
     fun streamInfo(): String = _engine.value?.streamInfo().orEmpty()
 
@@ -533,4 +561,34 @@ object IntroSkip {
 
     /** True for a forward jump of at least 25 seconds that starts and ends inside the first five minutes. */
     fun isOpeningSkip(fromMs: Long, toMs: Long) = fromMs < WINDOW_MS && toMs <= WINDOW_MS && toMs - fromMs >= MIN_JUMP_MS
+}
+
+/** The recap at the start of an episode and the credits at its end: found from chapter titles when the file has them, and for credits also learned from the person's own jump near the end. */
+object EpisodeMarks {
+    const val RECAP_WINDOW_MS = 8 * 60_000L
+    const val CREDITS_WINDOW_MS = 12 * 60_000L
+    const val SHORTEST_MS = 10 * 60_000L
+    private val recapWords = listOf("recap", "previously", "previous", "last time", "story so far")
+    private val creditsWords = listOf("credit", "outro", "ending", "end card")
+
+    private fun named(chapters: List<Chapter>, words: List<String>) = chapters.indexOfFirst { c -> c.title.lowercase().let { t -> words.any { it in t } } }
+
+    /** Where the recap ends, while [positionMs] is inside it; null otherwise. */
+    fun recapEnd(chapters: List<Chapter>, positionMs: Long, durationMs: Long): Long? {
+        val i = named(chapters, recapWords).takeIf { it >= 0 && chapters[it].startMs < RECAP_WINDOW_MS } ?: return null
+        val end = if (i + 1 < chapters.size) chapters[i + 1].startMs else minOf(chapters[i].startMs + 90_000, if (durationMs > 0) durationMs else Long.MAX_VALUE)
+        return if (positionMs >= chapters[i].startMs - 1_000 && positionMs < end - 3_000) end else null
+    }
+
+    /** Where the credits start: a chapter called credits, else the distance from the end that an earlier skip in this series taught the app. */
+    fun creditsStart(chapters: List<Chapter>, durationMs: Long, learnedLeadMs: Long?): Long? {
+        if (durationMs < SHORTEST_MS) return null
+        val i = named(chapters, creditsWords)
+        if (i >= 0 && chapters[i].startMs > durationMs / 2) return chapters[i].startMs
+        return learnedLeadMs?.takeIf { it > 0 }?.let { durationMs - it }
+    }
+
+    /** A jump (or a press of Next Episode) from the last twelve minutes to the last twenty seconds is the person skipping the credits. */
+    fun isCreditsSkip(fromMs: Long, toMs: Long, durationMs: Long) =
+        durationMs >= SHORTEST_MS && durationMs - fromMs <= CREDITS_WINDOW_MS && durationMs - fromMs >= 20_000 && durationMs - toMs <= 20_000
 }

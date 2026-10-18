@@ -79,6 +79,8 @@ final class DiscoverService: Sendable {
             shelves.append(DiscoverShelf(id: "trending", title: "Trending in Your Library", caption: caption, items: Array((trending + fill).prefix(size))))
         }
 
+        if let forYou = try forYouShelf(sourceID: sourceID, size: size) { shelves.append(forYou) }
+
         let topMovies = try catalog.movies(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { (Double($0.rating ?? "") ?? 0) > 0 }.prefix(size)
         if !topMovies.isEmpty { shelves.append(DiscoverShelf(id: "top-movies", title: "Top Movies This Week", caption: "Ranked by your provider's ratings · not a chart", items: items(Array(topMovies), []), ranked: true)) }
         let topShows = try catalog.series(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { (Double($0.rating ?? "") ?? 0) > 0 }.prefix(size)
@@ -101,6 +103,34 @@ final class DiscoverService: Sendable {
             ?? recentSeries.first { $0.backdropURL != nil || $0.posterURL != nil }.map { LibraryItem.series($0) }
             ?? recentMovies.first.map { LibraryItem.movie($0) } ?? recentSeries.first.map { LibraryItem.series($0) }
         return DiscoverContent(hero: hero, shelves: shelves)
+    }
+
+    /// Titles like the last few things that were watched here, skipping everything already watched. nil until there is enough to go on.
+    private func forYouShelf(sourceID: UUID?, size: Int) throws -> DiscoverShelf? {
+        var seeds: [LibraryItem] = []
+        for id in try history.recentIDs(kind: .movie, limit: 4) { if let m = try catalog.movie(id: id), sourceID == nil || m.sourceID == sourceID { seeds.append(.movie(m)) } }
+        var seenSeries = Set<String>()
+        for id in try history.recentIDs(kind: .episode, limit: 8) {
+            if let e = try catalog.episode(id: id), seenSeries.insert(e.seriesID).inserted, let s = try catalog.seriesItem(id: e.seriesID), sourceID == nil || s.sourceID == sourceID { seeds.append(.series(s)) }
+            if seenSeries.count == 3 { break }
+        }
+        guard !seeds.isEmpty else { return nil }
+        let watched = Set(seeds.map(\.id))
+        let similar = SimilarService(catalog: catalog)
+        // Each seed gives its best matches; they are taken in turns so one favourite does not fill the row.
+        var lists = seeds.map { similar.suggestions(for: $0, extras: nil).filter { !watched.contains($0.item.id) && $0.reason != "Same language" }.map(\.item) }
+        var out: [LibraryItem] = []
+        var seen = Set<String>()
+        while out.count < size, lists.contains(where: { !$0.isEmpty }) {
+            for i in lists.indices where !lists[i].isEmpty && out.count < size {
+                let item = lists[i].removeFirst()
+                // Copies of one film (a dub, another quality) count once.
+                if seen.insert("\(SimilarTitles.stem(item.title))|\(item.year ?? 0)").inserted { out.append(item) }
+            }
+        }
+        guard out.count >= 6 else { return nil }
+        let names = seeds.prefix(2).map { "“\($0.title)”" }.joined(separator: ", ")
+        return DiscoverShelf(id: "for-you", title: "For You", caption: "Because you watched \(names)", items: out)
     }
 
     /// Items from the largest matching categories, newest first. nil when nothing matches.

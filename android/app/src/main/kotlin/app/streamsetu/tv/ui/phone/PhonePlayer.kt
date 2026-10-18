@@ -222,8 +222,23 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
             }
         }
         // The opening of an episode: one tap jumps past it (the length is learned from the person's own skips in the series).
-        val introEnd = remember(position, item) { if (live) null else playback.introEndMs() }
-        if (introEnd != null && !failed) PillButton("Skip intro", { playback.skipIntro(); poke() }, Modifier.align(Alignment.BottomEnd).windowInsetsPadding(WindowInsets.systemBars).padding(end = 16.dp, bottom = if (controls) 132.dp else 36.dp), icon = Icons.Filled.SkipNext)
+        val skipLabel = remember(position, item) {
+            when {
+                live -> null
+                playback.recapEndMs() != null -> "Skip recap"
+                playback.introEndMs() != null -> "Skip intro"
+                playback.creditsShowing() -> "Skip credits"
+                else -> null
+            }
+        }
+        if (skipLabel != null && !failed) PillButton(skipLabel, {
+            when (skipLabel) {
+                "Skip recap" -> playback.skipRecap()
+                "Skip intro" -> playback.skipIntro()
+                else -> if (hasNext) { playback.noteCreditsSkip(); c.step(+1) } else playback.skipCreditsToEnd()
+            }
+            poke()
+        }, Modifier.align(Alignment.BottomEnd).windowInsetsPadding(WindowInsets.systemBars).padding(end = 16.dp, bottom = if (controls) 132.dp else 36.dp), icon = Icons.Filled.SkipNext)
         if (hint.isNotEmpty()) Label(hint, Ph.body, Color.White, FontWeight.SemiBold, modifier = Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.statusBars).padding(top = 64.dp).background(Color(0x99000000), RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 8.dp))
         if (resumedFrom > 0 && position in 1..(resumedFrom + 8000) && !controls) Label("Resumed at ${clock(resumedFrom)}", Ph.small, Ink, modifier = Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp).background(Color(0x99000000), RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 6.dp))
 

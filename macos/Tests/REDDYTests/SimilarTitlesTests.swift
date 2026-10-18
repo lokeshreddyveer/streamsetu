@@ -82,4 +82,10 @@ import Foundation
         let pool = [cand("a", "Spider-Man: No Way Home (2021)", year: 2021), cand("b", "Spider-Man: Homecoming (2017)", year: 2017), cand("c", "Toy Story (1995)", year: 1995)]
         #expect(SimilarTitles.franchise(target: target, pool: pool).map(\.year) == [2017, 2019, 2021])
     }
+
+    @Test func twoSmallWordsAloneAreNotAFranchise() {
+        let target = cand("t", "It's a Medical Miracle (2026)", year: 2026)
+        let pool = [cand("a", "It's a Good Day to Die (2024)", year: 2024), cand("b", "It's a Medical Miracle 2 (2027)", year: 2027)]
+        #expect(SimilarTitles.franchise(target: target, pool: pool).map(\.year) == [2026, 2027])
+    }
 }

@@ -221,6 +221,8 @@ class ExoEngine(context: Context) : PlayerEngine {
         p.trackSelectionParameters = b.build()
     }
 
+    override fun frameRate(): Float = player?.videoFormat?.frameRate?.takeIf { it > 0 } ?: 0f
+
     override fun diagnostics(): Map<String, String> {
         val p = player ?: return emptyMap()
         val v = p.videoFormat; val a = p.audioFormat

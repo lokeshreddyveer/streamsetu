@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="14dp"
+    android:background="#E6101218">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_continue_title"
+        android:textColor="#F5AD42"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="6dp" />
+
+    <TextView android:id="@+id/row1_title" style="@style/WidgetRowTitle" />
+    <TextView android:id="@+id/row1_detail" style="@style/WidgetRowDetail" />
+    <TextView android:id="@+id/row2_title" style="@style/WidgetRowTitle" />
+    <TextView android:id="@+id/row2_detail" style="@style/WidgetRowDetail" />
+    <TextView android:id="@+id/row3_title" style="@style/WidgetRowTitle" />
+    <TextView android:id="@+id/row3_detail" style="@style/WidgetRowDetail" />
+</LinearLayout>

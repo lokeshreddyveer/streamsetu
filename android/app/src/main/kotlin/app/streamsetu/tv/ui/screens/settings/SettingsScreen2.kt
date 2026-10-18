@@ -112,7 +112,7 @@ fun FavouriteSettings(c: AppContainer) {
     val history by c.user.history(500).collectAsState(initial = emptyList())
     var order by remember { mutableStateOf(c.ui.homeOrder(HomeViewModel.DEFAULT_ORDER)) }
     var msg by remember { mutableStateOf<String?>(null) }
-    val names = mapOf("continue" to "Continue Watching", "live" to "Recently Watched Live TV", "favorites" to "Favorites", "later" to "Watch Later", "movies" to "Recently Added Movies", "series" to "Recently Added Series", "categories" to "Browse by Category")
+    val names = mapOf("continue" to "Continue Watching", "live" to "Recently Watched Live TV", "favorites" to "Favorites", "later" to "Watch Later", "foryou" to "For You", "movies" to "Recently Added Movies", "series" to "Recently Added Series", "categories" to "Browse by Category")
     SettingGroup("Lists") {
         InfoRow("Favorites", favs.size.toString(), "Channels, movies and series. Hold OK on any of them to add or remove.")
         InfoRow("Watch Later", later.size.toString())

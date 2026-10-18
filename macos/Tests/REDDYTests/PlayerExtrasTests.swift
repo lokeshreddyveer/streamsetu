@@ -52,4 +52,27 @@ import Foundation
         #expect(s.target(seriesID: "s", position: 138) == nil)                       // already at the end of it
         #expect(s.target(seriesID: "other", position: 30) == 90)
     }
+
+    @Test func aRecapIsFoundFromItsChapterAndSkippedToTheNextOne() {
+        let marks = EpisodeMarks(defaults: defaults())
+        let chapters = [PlaybackChapter(time: 0, title: "Previously on"), PlaybackChapter(time: 75, title: "Opening"), PlaybackChapter(time: 1500, title: "End Credits")]
+        #expect(marks.recapEnd(chapters: chapters, position: 20, duration: 1560) == 75)
+        #expect(marks.recapEnd(chapters: chapters, position: 74, duration: 1560) == nil)       // already at the end of it
+        #expect(marks.recapEnd(chapters: chapters, position: 300, duration: 1560) == nil)
+        #expect(marks.recapEnd(chapters: [PlaybackChapter(time: 0, title: "Chapter 1")], position: 10, duration: 1560) == nil)
+    }
+
+    @Test func creditsComeFromAChapterOrFromTheFirstSkipInTheSeries() {
+        let marks = EpisodeMarks(defaults: defaults())
+        let chapters = [PlaybackChapter(time: 0, title: "Episode"), PlaybackChapter(time: 1500, title: "End Credits")]
+        #expect(marks.creditsStart(seriesID: "s", chapters: chapters, duration: 1560) == 1500)
+        #expect(marks.creditsStart(seriesID: "s", chapters: [], duration: 1560) == nil)       // nothing known yet
+        #expect(marks.isCreditsSkip(from: 1480, to: 1550, duration: 1560))
+        #expect(!marks.isCreditsSkip(from: 600, to: 700, duration: 1560))                     // not near the end
+        #expect(!marks.isCreditsSkip(from: 1480, to: 1500, duration: 1560))                   // does not reach the end
+        marks.learn(seriesID: "s", from: 1480, duration: 1560)
+        #expect(marks.creditsStart(seriesID: "s", chapters: [], duration: 1700) == 1620)      // 80 seconds before the end, for every episode of the series
+        #expect(marks.creditsStart(seriesID: "other", chapters: [], duration: 1700) == nil)
+        #expect(marks.creditsStart(seriesID: "s", chapters: [], duration: 300) == nil)        // too short to have credits
+    }
 }

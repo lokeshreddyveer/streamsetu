@@ -168,6 +168,10 @@ fun PlaybackSettings(c: AppContainer) {
             ChoiceRow("Engine for ${src.name}", "Overrides the default for this connection only.", listOf<Pair<EnginePreference?, String>>(null to "Use global default", EnginePreference.AUTOMATIC to "Automatic", EnginePreference.EXOPLAYER to "Media3 ExoPlayer") + (if (mpv) listOf(EnginePreference.MPV to "MPV") else emptyList()), over) { s.setEngineFor(src.id, it); tick++ }
         }
     }
+    SettingGroup("Picture") {
+        val matchFps by s.matchFrameRate.collectAsState()
+        ToggleRow("Match the TV's frame rate", "Switches the TV to 24, 25, 30, 50 or 60 Hz to suit the video, so motion is smooth. The screen goes dark for a moment when it switches, and only TVs that offer those modes can do it.", matchFps) { s.setMatchFrameRate(it) }
+    }
     SettingGroup("Buffering", "A bigger buffer rides out a slow provider but delays a channel change a little. Takes effect on the next stream.") {
         ChoiceRow("Live TV buffer", options = listOf(BufferingMode.LOW_LATENCY to "Low latency", BufferingMode.AUTOMATIC to "Balanced", BufferingMode.LARGE to "Stable"), value = liveBuf) { s.setLiveBuffering(it) }
         ChoiceRow("Movies and series buffer", options = listOf(BufferingMode.AUTOMATIC to "Balanced", BufferingMode.LARGE to "Stable"), value = vodBuf) { s.setVodBuffering(it) }

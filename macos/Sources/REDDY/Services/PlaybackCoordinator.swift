@@ -87,6 +87,7 @@ final class PlaybackCoordinator {
     private let itemMemory = ItemMemory()
     private var memoryEntry: ItemMemory.Entry?
     private let introSkip = IntroSkip()
+    private let episodeMarks = EpisodeMarks()
     private let diagnostics: DiagnosticsService
     private let videoPrefs: VideoPreferencesRepository
     private let recovery = PlaybackRecoveryService()
@@ -323,6 +324,7 @@ final class PlaybackCoordinator {
 
     func seek(by delta: TimeInterval) {
         if let series = currentEpisode?.1, !isLive, introSkip.isOpeningSkip(from: position, to: position + delta) { introSkip.learn(seriesID: series.id, end: position + delta) }
+        if let series = currentEpisode?.1, !isLive, let d = duration, episodeMarks.isCreditsSkip(from: position, to: position + delta, duration: d) { episodeMarks.learn(seriesID: series.id, from: position, duration: d) }
         seek(to: position + delta)
     }
 
@@ -1011,6 +1013,27 @@ final class PlaybackCoordinator {
     }
 
     func skipIntro() { if let end = introEnd { seek(to: end) } }
+
+    /// Where the recap at the start of this episode ends, while it is on screen; nil for anything else.
+    var recapEnd: TimeInterval? {
+        guard !isLive, currentEpisode != nil else { return nil }
+        return episodeMarks.recapEnd(chapters: chapters, position: position, duration: duration)
+    }
+
+    func skipRecap() { if let end = recapEnd { seek(to: end) } }
+
+    /// True once the credits of this episode have started and there is still something to skip.
+    var creditsShowing: Bool {
+        guard !isLive, let series = currentEpisode?.1, let d = duration, let start = episodeMarks.creditsStart(seriesID: series.id, chapters: chapters, duration: d) else { return false }
+        return position >= start && d - position > 3
+    }
+
+    /// Skipping the credits plays the next episode when there is one, and otherwise goes to the end.
+    func skipCredits() {
+        guard let series = currentEpisode?.1, let d = duration else { return }
+        if episodeMarks.isCreditsSkip(from: position, to: d, duration: d) { episodeMarks.learn(seriesID: series.id, from: position, duration: d) }
+        if upNext != nil { playNextEpisode() } else { seek(to: d) }
+    }
 
     /// Jumps to a point in a movie or episode.
     func goTo(_ seconds: TimeInterval) { seek(to: seconds) }

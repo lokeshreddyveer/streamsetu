@@ -451,6 +451,14 @@ struct PlayerScreen: View {
         }
     }
 
+    /// The one skip button offered right now: the recap, the opening or the credits.
+    private var skipButton: (title: String, action: () -> Void)? {
+        if playback.recapEnd != nil { return ("Skip Recap", { playback.skipRecap() }) }
+        if playback.introEnd != nil { return ("Skip Intro", { playback.skipIntro() }) }
+        if playback.creditsShowing { return ("Skip Credits", { playback.skipCredits() }) }
+        return nil
+    }
+
     // MARK: overlays on the picture
 
     @ViewBuilder private var status: some View {
@@ -484,8 +492,8 @@ struct PlayerScreen: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 Spacer()
-                if playback.introEnd != nil, playback.state.isPlaying {
-                    Button { playback.skipIntro() } label: { Label("Skip Intro", systemImage: "forward.end.fill").font(.system(size: 14, weight: .semibold)).padding(.horizontal, 16).frame(minHeight: 40) }
+                if playback.state.isPlaying, let skip = skipButton {
+                    Button { skip.action() } label: { Label(skip.title, systemImage: "forward.end.fill").font(.system(size: 14, weight: .semibold)).padding(.horizontal, 16).frame(minHeight: 40) }
                         .buttonStyle(.plain).foregroundStyle(.white).background(.black.opacity(0.65), in: Capsule()).overlay(Capsule().strokeBorder(.white.opacity(0.3)))
                         .frame(maxWidth: .infinity, alignment: .trailing).transition(.opacity)
                 }

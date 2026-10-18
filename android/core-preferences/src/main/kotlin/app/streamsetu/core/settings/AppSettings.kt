@@ -110,6 +110,12 @@ class AppSettings(context: Context) {
     val subtitleOutline: StateFlow<Boolean> = _subOutline
     fun setSubtitleOutline(v: Boolean) { prefs.edit().putBoolean("subOutline", v).apply(); _subOutline.value = v }
 
+    // ---- Frame rate ----
+    private val _matchFps = flow(prefs.getBoolean("matchFrameRate", false))
+    /** Switches the TV to the refresh rate that suits the video (24, 25, 30, 50 or 60 per second). Off by default: the screen goes dark for a moment while it switches. */
+    val matchFrameRate: StateFlow<Boolean> = _matchFps
+    fun setMatchFrameRate(v: Boolean) { prefs.edit().putBoolean("matchFrameRate", v).apply(); _matchFps.value = v }
+
     // ---- Live TV ----
     private val _invert = flow(prefs.getBoolean("invertChannelKeys", false))
     /** Off: Up is the next channel. On: Up is the previous one. */

@@ -47,6 +47,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val favs by vm.favourites.collectAsState()
     val later by vm.watchLater.collectAsState()
     val recent by vm.recentWatched.collectAsState()
+    val forYou by vm.forYou.collectAsState()
     val laterIds by vm.watchLaterIds.collectAsState()
     val favIds by vm.favouriteIds.collectAsState()
     val movies by vm.recentMovies.collectAsState()
@@ -104,6 +105,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     } }
                     "favorites" -> if (favs.isNotEmpty()) rail("Favorites", pad) { items(favs, key = { "f" + it.id }) { f -> FavCard(f, c, nav, RowKind.FAVORITES, ::longOn) } }
                     "later" -> if (later.isNotEmpty()) rail("Watch Later", pad) { items(later, key = { "w" + it.id }) { f -> FavCard(f, c, nav, RowKind.WATCH_LATER, ::longOn) } }
+                    "foryou" -> forYou?.let { fy -> rail("For You  ·  Because you watched ${fy.because}", pad) { items(fy.items, key = { "y" + it.id }) { f -> FavCard(f, c, nav, RowKind.OTHER, ::longOn) } } }
                     "movies" -> if (movies.isNotEmpty()) rail("Recently Added Movies", pad) { items(movies, key = { "m" + it.id }) { m ->
                         PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, subtitle = m.year?.toString(), badge = if (m.id in favIds) "♥" else ratingBadge(m.rating), onLongClick = { longOn(HomeTarget.Film(m), RowKind.OTHER) })
                     } }

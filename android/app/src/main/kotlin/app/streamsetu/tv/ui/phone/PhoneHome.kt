@@ -46,6 +46,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val favs by vm.favourites.collectAsState()
     val later by vm.watchLater.collectAsState()
     val recent by vm.recentWatched.collectAsState()
+    val forYou by vm.forYou.collectAsState()
     val movies by vm.recentMovies.collectAsState()
     val series by vm.recentSeries.collectAsState()
     val favIds by vm.favouriteIds.collectAsState()
@@ -108,6 +109,21 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
             }
             if (favs.isNotEmpty()) item { Rail("Favorites", favs, c, nav, onMovie = ::movieMenu, onSeries = ::seriesMenu) { nav.open(Overlay.Collection("favorites")) } }
             if (later.isNotEmpty()) item { Rail("Watch Later", later, c, nav, onMovie = ::movieMenu, onSeries = ::seriesMenu) { nav.open(Overlay.Collection("later")) } }
+            forYou?.let { fy -> item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionHeader("For You")
+                    Label("Because you watched ${fy.because}", Ph.small, Tokens.textSecondary, modifier = Modifier.padding(horizontal = Ph.gutter))
+                    LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(fy.items, key = { "y" + it.kind() + it.id }) { f ->
+                            when (f) {
+                                is FavItem.Mv -> PhonePoster(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, Modifier.width(112.dp), subtitle = f.movie.year?.toString())
+                                is FavItem.Sr -> PhonePoster(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, Modifier.width(112.dp), subtitle = f.series.year?.toString())
+                                is FavItem.Ch -> {}
+                            }
+                        }
+                    }
+                }
+            } }
             if (movies.isNotEmpty()) item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Recently Added Movies", action = "See all", onAction = { nav.tab = Tab.MOVIES })
