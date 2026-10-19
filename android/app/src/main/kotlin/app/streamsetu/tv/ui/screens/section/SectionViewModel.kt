@@ -41,9 +41,59 @@ abstract class FolderViewModel(protected val c: AppContainer, val kind: ContentK
 /** What a poster shows, whether it stands for a movie or a series. */
 data class Card(val id: String, val title: String, val posterUrl: String?, val year: Int?, val rating: String?, val sourceId: String, val movie: Movie? = null, val series: Series? = null)
 
-data class ContentFilter(val sourceId: String? = null, val decade: Int? = null) {
-    val active get() = sourceId != null || decade != null
-    fun accepts(c: Card): Boolean = (sourceId == null || c.sourceId == sourceId) && (decade == null || (c.year != null && c.year / 10 * 10 == decade))
+/** How far along a title is, for the Status filter. */
+enum class WatchStatus(val label: String) { UNWATCHED("Not watched"), IN_PROGRESS("Started"), WATCHED("Watched"), FAVORITES("Favorites"), NEW_EPISODES("New episodes") }
+
+/** What the filter needs to know about the person's own lists to judge a title. */
+data class FilterContext(
+    val watched: Set<String> = emptySet(), val partial: Set<String> = emptySet(), val favourites: Set<String> = emptySet(), val newSeries: Set<String> = emptySet(),
+    val folderNames: Map<String, String> = emptyMap(),
+)
+
+/** Everything the Filter sheet can narrow by. Each choice is kept only while the screen is open. */
+data class ContentFilter(
+    val sourceId: String? = null, val decade: Int? = null, val language: String? = null, val folderId: String? = null,
+    val quality: String? = null, val minRating: Float? = null, val status: WatchStatus? = null,
+) {
+    val active get() = sourceId != null || decade != null || language != null || folderId != null || quality != null || minRating != null || status != null
+    /** How many separate choices are made, for the badge on the Filter button. */
+    val count get() = listOfNotNull(sourceId, decade, language, folderId, quality, minRating, status).size
+
+    fun accepts(c: Card, ctx: FilterContext = FilterContext()): Boolean {
+        if (sourceId != null && c.sourceId != sourceId) return false
+        if (decade != null && (c.year == null || c.year / 10 * 10 != decade)) return false
+        val categoryId = c.movie?.categoryId ?: c.series?.categoryId
+        if (folderId != null && categoryId != folderId) return false
+        if (language != null && app.streamsetu.core.data.repo.TitleLanguages.of(c.title, ctx.folderNames[categoryId]) != language) return false
+        if (quality != null && quality !in app.streamsetu.core.data.repo.QualityBadges.from(listOf(c.title, ctx.folderNames[categoryId]), 9)) return false
+        if (minRating != null && (c.rating?.toFloatOrNull() ?: 0f) < minRating) return false
+        return when (status) {
+            null -> true
+            WatchStatus.UNWATCHED -> c.id !in ctx.watched && c.id !in ctx.partial
+            WatchStatus.IN_PROGRESS -> c.id in ctx.partial
+            WatchStatus.WATCHED -> c.id in ctx.watched
+            WatchStatus.FAVORITES -> c.id in ctx.favourites
+            WatchStatus.NEW_EPISODES -> c.id in ctx.newSeries
+        }
+    }
+}
+
+/** The choices the open list actually has, so the sheet never offers a language or a quality that would show nothing. Names are in alphabetical order. */
+data class FilterOptions(val languages: List<String> = emptyList(), val qualities: List<String> = emptyList(), val folders: List<Pair<String, String>> = emptyList()) {
+    companion object {
+        fun of(cards: List<Card>, ctx: FilterContext): FilterOptions {
+            val languages = sortedSetOf<String>(String.CASE_INSENSITIVE_ORDER); val qualities = sortedSetOf<String>(String.CASE_INSENSITIVE_ORDER); val folders = HashMap<String, String>()
+            for (c in cards) {
+                val categoryId = c.movie?.categoryId ?: c.series?.categoryId
+                val folder = ctx.folderNames[categoryId]
+                app.streamsetu.core.data.repo.TitleLanguages.of(c.title, folder)?.let { languages += it }
+                qualities += app.streamsetu.core.data.repo.QualityBadges.from(listOf(c.title, folder), 9).filter { it in FILTER_QUALITIES }
+                if (categoryId != null && folder != null) folders[categoryId] = folder
+            }
+            return FilterOptions(languages.toList(), FILTER_QUALITIES.filter { it in qualities }, folders.toList().sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.second }))
+        }
+        val FILTER_QUALITIES = listOf("4K", "1080p", "720p", "HDR", "Dolby Vision")
+    }
 }
 
 /**
@@ -63,9 +113,14 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
     protected abstract fun source(b: Browse, s: SortSpec): Flow<List<Card>>
 
     /** null while loading (a skeleton is shown), then the list. */
-    val cards: StateFlow<List<Card>?> = combine(browse, sort) { b, s -> b to s }
+    private val unfiltered: StateFlow<List<Card>?> = combine(browse, sort) { b, s -> b to s }
         .flatMapLatest { (b, s) -> source(b, s).map<List<Card>, List<Card>?> { it } }      // the previous list stays until the new one is ready: no blank or skeleton flash between folders
-        .combine(filter) { list, f -> if (f.active) list?.filter { f.accepts(it) } else list }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    /** The person's own lists, which the Status filter reads. Filled in once those lists exist, below. */
+    private val filterContext = MutableStateFlow(FilterContext())
+    val filterOptions: StateFlow<FilterOptions> = combine(unfiltered, filterContext) { list, ctx -> FilterOptions.of(list.orEmpty(), ctx) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FilterOptions())
+    val cards: StateFlow<List<Card>?> = combine(unfiltered, filter, filterContext) { list, f, ctx -> if (f.active) list?.filter { f.accepts(it, ctx) } else list }
         .combine(c.collections.overrides) { list, ov -> if (ov.isEmpty()) list else list?.map { card -> ov[card.id]?.let { o -> card.copy(title = o.title ?: card.title, posterUrl = o.posterUrl ?: card.posterUrl) } ?: card } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
@@ -82,6 +137,14 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
     fun addToCollection(col: String, itemId: String) = viewModelScope.launch { c.collections.add(col, itemId) }
     fun removeFromCollection(col: String, itemId: String) = viewModelScope.launch { c.collections.remove(col, itemId) }
     val progress: StateFlow<Map<String, WatchProgress>> = c.user.allProgress().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    init {
+        viewModelScope.launch {
+            combine(c.watchedTitles, c.partialTitles, favourites, newSeries, folders) { watched, partial, favs, news, folders ->
+                FilterContext(watched, partial.keys, favs, news, folders.associate { it.id to it.title })
+            }.collect { filterContext.value = it }
+        }
+    }
 
     init { viewModelScope.launch { availability.value = runCatching { c.browse.availability() }.getOrDefault(availability.value) } }
 

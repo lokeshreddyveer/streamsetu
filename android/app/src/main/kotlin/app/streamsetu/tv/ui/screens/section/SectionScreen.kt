@@ -70,6 +70,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val newSeries by vm.newSeries.collectAsState()
     val avail by vm.availability.collectAsState()
     val sources by vm.sources.collectAsState()
+    val filterOptions by vm.filterOptions.collectAsState()
     val collections by vm.collections.collectAsState()
     val posterSize by c.ui.posterSize.collectAsState()
     val showMeta by c.ui.showPosterMeta.collectAsState()
@@ -139,7 +140,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                     Label((if (n == null) "Loading…" else "%,d ${if (kind == ContentKind.MOVIE) "movies" else "series"}".format(n)) + "  ·  " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources") + (if (sort != SortSpec.defaultFor(kind)) "  ·  Sort: ${sort.field.label}" else "  ·  Newest first".takeIf { sort.field == SortField.ADDED && sort.ascending }.orEmpty()), Tokens.small, Tokens.textSecondary)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ToolButton(if (filter.active) "Filter •" else "Filter", Icons.Filled.FilterList) { filterOpen = true }
+                    ToolButton(if (filter.active) "Filter · ${filter.count}" else "Filter", Icons.Filled.FilterList) { filterOpen = true }
                     ToolButton("Sort", Icons.Filled.SwapVert) { sortOpen = true }
                     ToolButton("View", Icons.Filled.GridView) { c.ui.setPosterSize(PosterSize.entries[(posterSize.ordinal + 1) % PosterSize.entries.size]) }
                 }
@@ -192,7 +193,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     }
 
     if (sortOpen) SortSheet(kind, sort, avail, onApply = vm::applySort, onClose = { sortOpen = false })
-    if (filterOpen) FilterSheet(filter, sources, onApply = { vm.filter.value = it }, onClose = { filterOpen = false })
+    if (filterOpen) FilterSheet(filter, sources, filterOptions, onApply = { vm.filter.value = it }, onClose = { filterOpen = false })
     // The search steps aside while a title is open and comes back, with the same words and results, when Back leaves it.
     if (searchOpen && nav.top == null) SectionSearch(c, kind, onOpen = onOpen, onClose = { searchOpen = false })
     menuFor?.let { card ->
@@ -265,27 +266,43 @@ private fun SkeletonPoster() {
     }
 }
 
-/** Which connection and which decade to show. Only the connection choice appears when the library has several. */
+/**
+ * What to narrow the list by: connection, language, folder, quality, release decade, rating and how far along a title is. Choices that depend on the list (languages, folders,
+ * qualities, connections) are the ones it really has, in alphabetical order, and the box at the top finds a choice by its name.
+ */
 @Composable
-private fun FilterSheet(current: ContentFilter, sources: List<LibraryEntry>, onApply: (ContentFilter) -> Unit, onClose: () -> Unit) {
+private fun FilterSheet(current: ContentFilter, sources: List<LibraryEntry>, options: FilterOptions, onApply: (ContentFilter) -> Unit, onClose: () -> Unit) {
     var draft by remember { mutableStateOf(current) }
+    var query by remember { mutableStateOf("") }
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(100); runCatching { first.requestFocus() } }
+    val q = query.trim()
+    fun shown(label: String) = q.isEmpty() || label.contains(q, ignoreCase = true)
+    val connections = if (sources.size > 1) sources.map { it.name to it.id.removePrefix("src:") }.sortedBy { it.first.lowercase() } else emptyList()
     androidx.compose.ui.window.Dialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize(), Alignment.CenterEnd) {
-            Column(Modifier.padding(end = 16.dp).width(290.dp).fillMaxHeight(0.92f).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Label("Filter", Tokens.title, Tokens.text, FontWeight.Bold)
+            Column(Modifier.padding(end = 16.dp).width(340.dp).fillMaxHeight(0.94f).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Label(if (draft.count > 0) "Filter  ·  ${draft.count}" else "Filter", Tokens.title, Tokens.text, FontWeight.Bold)
+                TvTextField(query, { query = it }, "Search the filters", Modifier.fillMaxWidth().focusRequester(first), leadingIcon = Icons.Filled.Search)
                 androidx.compose.foundation.lazy.LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (sources.size > 1) {
-                        item { Eyebrow("Connection", Modifier.padding(vertical = 4.dp)) }
-                        item { OptionLine("All connections", draft.sourceId == null, Modifier.focusRequester(first)) { draft = draft.copy(sourceId = null) } }
-                        sources.forEach { s -> item(key = s.id) { OptionLine(s.name, draft.sourceId == s.id.removePrefix("src:"), Modifier) { draft = draft.copy(sourceId = s.id.removePrefix("src:")) } } }
+                    fun section(title: String, rows: List<Triple<String, Boolean, () -> Unit>>, anyLabel: String? = null, anyOn: Boolean = false, onAny: () -> Unit = {}) {
+                        val visible = rows.filter { shown(it.first) }
+                        val anyVisible = anyLabel != null && (q.isEmpty() || shown(anyLabel) || shown(title))
+                        if (visible.isEmpty() && !anyVisible) return
+                        item(key = "h-$title") { Eyebrow(title, Modifier.padding(top = 10.dp, bottom = 4.dp)) }
+                        if (anyVisible) item(key = "any-$title") { OptionLine(anyLabel!!, anyOn, Modifier) { onAny() } }
+                        visible.forEach { (label, on, pick) -> item(key = "$title|$label") { OptionLine(label, on, Modifier, pick) } }
                     }
-                    item { Eyebrow("Release decade", Modifier.padding(top = 10.dp, bottom = 4.dp)) }
-                    item { OptionLine("Any year", draft.decade == null, if (sources.size <= 1) Modifier.focusRequester(first) else Modifier) { draft = draft.copy(decade = null) } }
-                    listOf(2020, 2010, 2000, 1990, 1980, 1970).forEach { d -> item(key = "d$d") { OptionLine("${d}s", draft.decade == d, Modifier) { draft = draft.copy(decade = d) } } }
+                    section("Connection", connections.map { (name, id) -> Triple(name, draft.sourceId == id) { draft = draft.copy(sourceId = id) } }, "All connections", draft.sourceId == null) { draft = draft.copy(sourceId = null) }
+                    section("Language", options.languages.map { l -> Triple(l, draft.language == l) { draft = draft.copy(language = l) } }, "Any language", draft.language == null) { draft = draft.copy(language = null) }
+                    section("Folder", options.folders.map { (id, name) -> Triple(name, draft.folderId == id) { draft = draft.copy(folderId = id) } }, "Any folder", draft.folderId == null) { draft = draft.copy(folderId = null) }
+                    section("Quality", options.qualities.map { l -> Triple(l, draft.quality == l) { draft = draft.copy(quality = l) } }, "Any quality", draft.quality == null) { draft = draft.copy(quality = null) }
+                    section("Status", WatchStatus.entries.map { st -> Triple(st.label, draft.status == st) { draft = draft.copy(status = st) } }, "Everything", draft.status == null) { draft = draft.copy(status = null) }
+                    section("Rating", listOf(9f, 8f, 7f, 6f).map { r -> Triple("${r.toInt()}+ stars", draft.minRating == r) { draft = draft.copy(minRating = r) } }, "Any rating", draft.minRating == null) { draft = draft.copy(minRating = null) }
+                    section("Release decade", listOf(2020, 2010, 2000, 1990, 1980, 1970).map { d -> Triple("${d}s", draft.decade == d) { draft = draft.copy(decade = d) } }, "Any year", draft.decade == null) { draft = draft.copy(decade = null) }
+                    if (q.isNotEmpty()) item(key = "none") { Label("Nothing is called that. Clear the box to see every filter.", Tokens.caption, Tokens.textTertiary, modifier = Modifier.padding(8.dp)) }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { TvButton("Apply", { onApply(draft); onClose() }, primary = true); TvButton("Reset", { draft = ContentFilter() }) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { TvButton("Apply", { onApply(draft); onClose() }, primary = true); TvButton("Reset", { draft = ContentFilter(); query = "" }) }
             }
         }
     }

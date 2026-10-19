@@ -237,6 +237,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Quality and sound badges on movie and series pages (4K, HDR, Dolby Vision, Atmos, 5.1) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Subtitles fetched by themselves when a title has none in your language, with your OpenSubtitles account | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Green tick on watched titles and a bar on started ones | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Filter Movies and Series by connection, language, folder, quality, rating, decade and watch status, with a box to find a filter by name | – | – | – | – | ✓ |
 | Match the TV's frame rate to the video (24, 25, 30, 50, 60 Hz) | – | – | – | – | ✓ |
 | Downloads to watch without a connection, with progress on the poster | ✓ | ✓ | ✓ | ✓ | – |
 | Record a live channel | ✓ | – | – | ✓ | ✓ |
