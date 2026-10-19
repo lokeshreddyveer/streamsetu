@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.10.18.2",
+      "title": "18 October 2026 (2)",
+      "summary": "Mac 2.8.0, Android and Fire TV 0.13.0, iPhone and iPad 1.1: automatic subtitles, share links, quality badges and a first-run guide.",
+      "date": "2026-10-18",
+      "mac": "2.8.0",
+      "android": "0.13.0",
+      "ios": "1.1"
+    },
+    {
       "tag": "2026.10.18",
       "title": "18 October 2026",
       "summary": "Mac 2.7.0, Android and Fire TV 0.12.0, iPhone and iPad 1.1: actor search, a queue, downloads, recording, and skip recap and credits.",
