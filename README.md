@@ -239,7 +239,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Green tick on watched titles and a bar on started ones | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Filter Movies and Series by language, quality, rating, decade and watch status, in the Sort menu on Mac, iPhone and iPad and in the Filter panel on TV (which also has a box to find a filter by name and can narrow by connection) | ✓ | ✓ | ✓ | – | ✓ |
 | Match the TV's frame rate to the video (24, 25, 30, 50, 60 Hz) | – | – | – | – | ✓ |
-| Downloads to watch without a connection, with progress on the poster | ✓ | ✓ | ✓ | ✓ | – |
+| Downloads to watch without a connection, with a ring that fills and a percentage on the button and the poster | ✓ | ✓ | ✓ | ✓ | – |
 | Record a live channel | ✓ | – | – | ✓ | ✓ |
 | Share a channel, movie or series as a `streamsetu://` link | ✓ | ✓ | ✓ | ✓ | – |
 | All playlists together, Apple / Combined libraries, Android | ✓ | ✓ | ✓ | ✓ | ✓ |
