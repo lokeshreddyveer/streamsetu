@@ -25,6 +25,21 @@ else
   gh release create "$TAG" "$DMG" "$TV" "$PHONE" --repo "$REPO" --title "$TITLE" --notes-file "$BODY" --latest
 fi
 RELEASE_TAG="$TAG" macos/Scripts/update-appcast.sh "$MAC" "$MAC_BUILD" "$(sed -n 's/^- //p' "$NOTES" | head -1)"
+# The README's download table points at this release, so it is rewritten here; the feature table is edited by hand with the features.
+IOS_VERSION="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' ios/Scripts/generate-project.py | head -1)"
+python3 - "$TAG" "$MAC" "$ANDROID" "$IOS_VERSION" <<'PY'
+import re, sys
+tag, mac, android, ios = sys.argv[1:5]
+text = open("README.md").read()
+text = re.sub(r"releases/download/[^/]+/StreamSetu-\d[\d.]*\.dmg", f"releases/download/{tag}/StreamSetu-{mac}.dmg", text)
+text = text.replace(re.search(r"`StreamSetu-\d[\d.]*\.dmg`", text).group(0), f"`StreamSetu-{mac}.dmg`")
+for kind in ("FireTV", "Android"):
+    text = re.sub(rf"releases/download/[^/]+/StreamSetu-{kind}-\d[\d.]*\.apk", f"releases/download/{tag}/StreamSetu-{kind}-{android}.apk", text)
+    text = re.sub(rf"`StreamSetu-{kind}-\d[\d.]*\.apk`", f"`StreamSetu-{kind}-{android}.apk`", text)
+text = re.sub(r"(testflight\.apple\.com/join/\w+\), version )[\d.]+", rf"\g<1>{ios}", text)
+open("README.md", "w").write(text)
+PY
+git add README.md && git commit -qm "README download table for $TAG" || true
 # The website reads the same notes and version numbers, so it is refreshed with every release.
 IOS="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' ios/Scripts/generate-project.py | head -1)"
 ( cd web && node scripts/sync-releases.mjs --tag "$TAG" --mac "$MAC" --android "$ANDROID" --ios "$IOS" && ./host.sh restart ) || echo "! The website was not refreshed. Run web/host.sh start"

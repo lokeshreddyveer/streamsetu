@@ -46,7 +46,7 @@ struct PosterCard: View {
             ZStack(alignment: .bottom) {
                 ArtworkImage(url: item.posterURL ?? item.backdropURL, kind: .poster, contentMode: .fill, symbol: item.isSeries ? "rectangle.stack" : "film")
                     .frame(width: width, height: width * 1.5)
-                if let progress, progress > 0 { ProgressStrip(fraction: progress) }
+                if let shown = progress ?? state.partialProgress(item.id), shown > 0 { ProgressStrip(fraction: shown) }
             }
             .overlay(alignment: .topLeading) {
                 if item.isSeries, state.hasNewEpisodes(item.id) {

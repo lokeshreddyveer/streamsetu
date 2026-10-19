@@ -190,6 +190,9 @@ fun PosterPlaceholder(title: String, modifier: Modifier = Modifier) {
 }
 
 /** The ids of movies and series watched to the end, provided once at the top of the app. */
+/** How far along each started movie or series is, provided once at the top of the app. */
+val LocalPartialProgress = androidx.compose.runtime.compositionLocalOf<Map<String, Float>> { emptyMap() }
+
 val LocalWatched = androidx.compose.runtime.compositionLocalOf<Set<String>> { emptySet() }
 
 /** For each movie or series id: how far its download is (a series shows its most active episode). */
@@ -230,7 +233,8 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
         Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(2f / 3f), scaleOnFocus = app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE, onLongClick = onLongClick) { _ ->
             // With a picture to come, a flat dark tile is enough underneath (a title gradient only when there is no picture): less to draw and lay out per card.
             if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else { Box(Modifier.fillMaxSize().background(Tokens.card)); AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-            if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
+            val shown = if (progress > 0f) progress else itemId?.let { LocalPartialProgress.current[it] } ?: 0f
+            if (shown > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Color(0xB3000000), RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Tokens.text, FontWeight.SemiBold) }
             if (itemId != null) LocalDownloadStatus.current[itemId]?.let { (st, f) -> DownloadBadge(st, f) }
             if (itemId != null && itemId in LocalWatched.current) WatchedTick()

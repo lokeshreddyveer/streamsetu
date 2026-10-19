@@ -130,6 +130,21 @@ final class SQLiteHistoryRepository: HistoryRepository {
         }
     }
 
+    func partialProgress() throws -> [String: Double] {
+        try db.read { d in
+            var out: [String: Double] = [:]
+            for row in try d.query("SELECT item_id, position_seconds / duration_seconds FROM watch_progress WHERE kind='movie' AND completed=0 AND position_seconds>30 AND duration_seconds>0", [], { ($0.string(0), $0.double(1)) }) {
+                out[row.0] = min(0.99, row.1)
+            }
+            let series = try d.query("""
+                SELECT e.series_id, SUM(CASE WHEN p.completed = 1 THEN 1.0 WHEN p.duration_seconds > 0 THEN p.position_seconds / p.duration_seconds ELSE 0 END) / COUNT(*) AS f
+                FROM episodes e LEFT JOIN watch_progress p ON p.item_id = e.id GROUP BY e.series_id HAVING f > 0 AND f < 1
+                """, [], { ($0.string(0), $0.double(1)) })
+            for row in series { out[row.0] = row.1 }
+            return out
+        }
+    }
+
     func markWatched(itemID: String, kind: ContentKind, seriesID: String?, duration: Double) throws {
         try saveProgress(WatchProgress(itemID: itemID, kind: kind, seriesID: seriesID, positionSeconds: duration, durationSeconds: duration,
                                        updatedAt: Date(), completed: true))

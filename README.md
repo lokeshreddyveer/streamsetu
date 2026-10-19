@@ -94,10 +94,10 @@ The artwork in these screenshots comes from the provider's own playlist. StreamS
 
 | Platform | What to get | Notes |
 |---|---|---|
-| **Mac** | [`StreamSetu-2.4.1.dmg`](../../releases/download/2026.10.14/StreamSetu-2.4.1.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
-| **Fire TV and Android TV** | [`StreamSetu-FireTV-0.9.1.apk`](../../releases/download/2026.10.14/StreamSetu-FireTV-0.9.1.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
-| **Android phone and tablet** | [`StreamSetu-Android-0.9.1.apk`](../../releases/download/2026.10.14/StreamSetu-Android-0.9.1.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
-| **iPhone and iPad** | [Join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 0.6.0 | Open to the first 100 testers. After that, ask for an invitation at contact@lokeshreddy.dev. |
+| **Mac** | [`StreamSetu-2.8.0.dmg`](../../releases/download/2026.10.18.2/StreamSetu-2.8.0.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
+| **Fire TV and Android TV** | [`StreamSetu-FireTV-0.13.0.apk`](../../releases/download/2026.10.18.2/StreamSetu-FireTV-0.13.0.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
+| **Android phone and tablet** | [`StreamSetu-Android-0.13.0.apk`](../../releases/download/2026.10.18.2/StreamSetu-Android-0.13.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
+| **iPhone and iPad** | [Join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 1.1 | Open to the first 100 testers. After that, ask for an invitation at contact@lokeshreddy.dev. |
 | **Windows** | Coming soon | Not released yet. |
 
 The two Android files hold the same build, listed separately so each device has its own download. The app picks the remote or touch layout by itself. Every download has a SHA-256 checksum in its release notes. Verify it with `shasum -a 256 <file>`.
@@ -108,7 +108,7 @@ If you have a Mac copy older than 2.3.1, it cannot update itself (the old update
 
 ### Installing on Android phone or tablet
 
-1. Download `StreamSetu-Android-0.9.1.apk` on the phone.
+1. Download `StreamSetu-Android-0.13.0.apk` on the phone.
 2. Open it and, when asked, allow installs from your browser or files app.
 3. Open StreamSetu.
 
@@ -186,7 +186,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Xtream Codes login | ✓ | ✓ | ✓ | ✓ | ✓ |
 | M3U link | ✓ | ✓ | ✓ | ✓ | ✓ |
 | M3U file from the device | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Stalker / Ministra portal | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Stalker / Ministra portal | ✓ | – | – | ✓ | ✓ |
 | Jellyfin, Emby, Plex | ✓ | ✓ | ✓ | ✓ | ✓ |
 | HDHomeRun, TVHeadend, Enigma2 | ✓ | ✓ | ✓ | ✓ | ✓ |
 | WebDAV server and local video files | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -228,6 +228,19 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Search that works offline | ✓ | ✓ | ✓ | ✓ | ✓ |
 | New-episode badge on series you watch | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Smart lists: Unwatched, Unwatched favorites, Added in 30 days | ✓ | ✓ | ✓ | – | – |
+| Search by actor or director, read from your playlists one movie at a time | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Queue: Play Next and Add to Queue | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Favorites in your own order | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Skip recap and Skip credits, as well as Skip intro | ✓ | ✓ | ✓ | ✓ | ✓ |
+| For You row and a timeline of a film's whole franchise | ✓ | ✓ | ✓ | ✓ | ✓ |
+| A different player engine for Live TV, movies, series and past programmes | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Quality and sound badges on movie and series pages (4K, HDR, Dolby Vision, Atmos, 5.1) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Subtitles fetched by themselves when a title has none in your language, with your OpenSubtitles account | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Green tick on watched titles and a bar on started ones | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Match the TV's frame rate to the video (24, 25, 30, 50, 60 Hz) | – | – | – | – | ✓ |
+| Downloads to watch without a connection, with progress on the poster | ✓ | ✓ | ✓ | ✓ | – |
+| Record a live channel | ✓ | – | – | ✓ | ✓ |
+| Share a channel, movie or series as a `streamsetu://` link | ✓ | ✓ | ✓ | ✓ | – |
 | All playlists together, Apple / Combined libraries, Android | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Hide, rename and check channels, Channel Manager, health check | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Watch statistics | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -248,7 +261,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | "Continue watching" row on the Android TV home screen | – | – | – | – | ✓ Android TV; not Fire TV |
 | Updates itself | ✓ Sparkle | TestFlight | TestFlight | ✓ checks GitHub, asks before installing | ✓ checks GitHub, asks before installing |
 
-The iPad runs the iPhone app, laid out for the larger screen. On the Apple apps, Picture in Picture and AirPlay work for streams AVPlayer plays; a stream played by mpv does not support them. Android phones and tablets run the same app as the Fire TV, with a touch layout chosen automatically when the device is not a television.
+Stalker portals are left out of the iPhone and iPad builds that go through TestFlight and the App Store, because Apple reviews a portal's set-top-box identity differently; the Mac and Android apps keep them. The iPad runs the iPhone app, laid out for the larger screen. On the Apple apps, Picture in Picture and AirPlay work for streams AVPlayer plays; a stream played by mpv does not support them. Android phones and tablets run the same app as the Fire TV, with a touch layout chosen automatically when the device is not a television.
 
 ### iCloud sync
 
@@ -322,7 +335,7 @@ On the Mac, iPhone and iPad, **iCloud sync** keeps your setup the same on every 
 - Everything works with a Fire TV remote: arrows, OK, **hold OK for a menu**, Back, and digits.
 - Back always goes one step up: close a menu → leave a page → folders → sidebar → Home → library chooser.
 - Smooth, restrained motion with one shared set of timings; reduced-motion is respected.
-- Optional soft **interface sounds** (original tones, off by default during playback volume rules, never touching the TV's volume).
+- Optional soft **interface sounds**, off until you turn them on in Settings. Five sets of original tones (Signature, Wood, Crystal, Soft, Arcade) plus Minimal; they never touch the TV's volume.
 
 ### Privacy and safety
 
@@ -349,12 +362,11 @@ The Fire TV app has been developed and tested on a Fire TV Stick 4K (Fire OS 7).
 | Folder | Contents |
 |---|---|
 | `macos/` | The Mac app and the release scripts, build, sign, notarize, publish, update feed |
-| `web/` | The website (Next.js). `web/host.sh start` runs it at http://localhost:4300; each release refreshes it |
+| `web/` | The website (Next.js) and the privacy pages. `web/host.sh start` runs it at http://localhost:4300; each release refreshes it |
 | `appcast.xml` | The update feed the Mac app reads |
 | `docs/RELEASING.md` | Where each download comes from and how a release is made |
 | `ios/` | The iPhone and iPad app, shares most code with the Mac app |
 | `android/` | The Fire TV and Android TV app |
-| `web/` | The website and privacy pages |
 | `legal/` | Privacy policy and terms |
 | `branding/` | Icons and artwork |
 
@@ -364,7 +376,7 @@ The Fire TV app has been developed and tested on a Fire TV Stick 4K (Fire OS 7).
 core-model        data classes, sorting and capability models
 core-security     Android Keystore credential store
 core-network      HTTP client, M3U / Xtream / XMLTV parsers
-core-database     Room database (v5) plus the text-search index
+core-database     Room database (v6) plus the text-search index
 core-preferences  settings and appearance preferences
 core-media        playback coordinator, ExoPlayer and mpv engines, recovery policy
 core-ui           shared motion timings, reduced-motion handling
@@ -379,11 +391,12 @@ More detail is in [`android/ARCHITECTURE.md`](android/ARCHITECTURE.md), and what
 | Target | Command | Needs |
 |---|---|---|
 | Android, debug | `cd android && ./gradlew :app:assembleDebug` | JDK 17, Android SDK |
-| Android, tests | `./gradlew :data:testDebugUnitTest :core-media:testDebugUnitTest :app:testDebugUnitTest` | same |
-| Android, signed release | `cd android && ./release.sh 1.0.0 12` | your own `android/keystore.properties`, storeFile, storePassword, keyAlias, keyPassword. Without it the APK is debug-signed and for testing only. |
+| Android, tests | `cd android && ./gradlew :app:testDebugUnitTest :data:testDebugUnitTest :core-network:testDebugUnitTest :core-media:testDebugUnitTest` | same |
+| Android, signed release | `cd android && ./build-release.sh 0.13.0 130` (version name, version code) | your own `android/keystore.properties`, storeFile, storePassword, keyAlias, keyPassword. Without it the APK is debug-signed and for testing only. |
 | Mac, tests | `cd macos && Scripts/run-tests.sh` | Xcode command line tools |
-| Mac, release | `cd macos && Scripts/build-release.sh` | libmpv in `macos/third_party/`, not in this repository, a Developer ID certificate, a notarization profile |
-| iPhone | scripts in `Scripts/` generate the Xcode project | Xcode, an Apple developer account for devices |
+| Mac, release | `cd macos && Scripts/release-signed.sh 2.8.0 280` (builds, signs, notarizes) | libmpv in `macos/third_party/`, not in this repository, a Developer ID certificate, a notarization profile |
+| iPhone and iPad | `python3 ios/Scripts/generate-project.py` makes the Xcode project; `ios/Scripts/testflight.sh <build>` archives and uploads to TestFlight | Xcode, an Apple developer account |
+| A whole release | `MAC=2.8.0 MAC_BUILD=280 ANDROID=0.13.0 Scripts/release.sh <tag> docs/releases/<tag>.md` | the files above built first; see [docs/RELEASING.md](docs/RELEASING.md) |
 
 ## Known limits
 
@@ -392,9 +405,10 @@ More detail is in [`android/ARCHITECTURE.md`](android/ARCHITECTURE.md), and what
 - The "Continue watching" row on the home screen works on Android TV and Google TV, not on a Fire TV, which has its own home screen.
 - Hindi and Telugu cover the main screens and the most common words; long explanations in Settings are still English. The wording was written without a native-speaker review, so corrections are welcome.
 - On the Mac, real Siri phrases need an app built with Xcode (App Intents); the Mac build is not, so Shortcuts reaches it through "Open URL" with `streamsetu://` links.
-- Refresh-rate matching, audio delay and subtitle delay are not offered on Fire TV.
+- Audio delay and subtitle delay need the mpv player. Matching the TV's frame rate is on Fire TV and Android TV only, and only on TVs that can switch their refresh rate.
+- Stalker portals are not offered in the iPhone and iPad builds distributed through TestFlight and the App Store.
+- Recording a live channel is on the Mac, Android phone and Fire TV, not on iPhone and iPad. Downloads are not on Fire TV.
 - Catch-up needs a provider that offers an archive, and some providers read the start time in their own time zone (there is a setting for it).
-- The Fire TV app is newer than the Mac and iPhone apps and has had less testing on real devices.
 
 ## Support and feedback
 

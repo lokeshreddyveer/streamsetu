@@ -70,7 +70,7 @@ struct LibraryScreen: View {
         } else {
             LazyVGrid(columns: Array(repeating: GridItem(.fixed(layout.cardWidth), spacing: 12, alignment: .top), count: layout.columns), alignment: .leading, spacing: 16) {
                 ForEach(vm.items) { item in
-                    ReddyPosterCard(model: PosterCardModel(item: item, progress: vm.progress[item.id], isFavorite: state.isFavorite(item.id), isNew: state.hasNewEpisodes(item.id), isWatched: state.isWatched(item.id)), width: layout.cardWidth,
+                    ReddyPosterCard(model: PosterCardModel(item: item, progress: vm.progress[item.id] ?? state.partialProgress(item.id), isFavorite: state.isFavorite(item.id), isNew: state.hasNewEpisodes(item.id), isWatched: state.isWatched(item.id)), width: layout.cardWidth,
                                     onOpen: { open(item) }, onPlay: { play(item) })
                         .contextMenu { menu(item) }
                         .task { if let c = container { await vm.loadMoreIfNeeded(c, current: item, selection: selection, source: state.activeSourceID) } }

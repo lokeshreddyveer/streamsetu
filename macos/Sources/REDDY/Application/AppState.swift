@@ -25,11 +25,15 @@ final class AppState {
     /// Movies and series watched to the end (the tick on a poster).
     private(set) var watchedIDs: Set<String> = []
     func isWatched(_ id: String) -> Bool { watchedIDs.contains(id) }
+    /// Started but not finished: the bar along the bottom of a poster.
+    private(set) var partialIDs: [String: Double] = [:]
+    func partialProgress(_ id: String) -> Double? { partialIDs[id] }
     func reloadWatched() {
         let repo = container.historyRepo
         Task { @MainActor in
-            let ids = await Task.detached { (try? repo.watchedTitleIDs()) ?? [] }.value
+            let (ids, partial) = await Task.detached { ((try? repo.watchedTitleIDs()) ?? [], (try? repo.partialProgress()) ?? [:]) }.value
             if ids != watchedIDs { watchedIDs = ids }
+            if partial != partialIDs { partialIDs = partial }
         }
     }
     /// Movies and series saved to watch later. A built-in list, kept with the person's other lists.

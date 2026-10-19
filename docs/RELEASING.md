@@ -16,4 +16,4 @@ The Android apps find updates by looking for a release with an APK and reading t
 
 Signing material is never in the repository: the Mac Developer ID certificate and notary profile are in the Keychain, the Sparkle update key is in the Keychain (account `streamsetu`), and the Android release key is in `~/Documents/keys/streamsetu-android/` (linked as `android/keystore.properties`, ignored by git).
 
-After a release, update the download table in the top-level `README.md`.
+`Scripts/release.sh` rewrites the download table in the top-level `README.md` for the new release and commits it. The feature table in the README is edited by hand, in the same commit as the feature.

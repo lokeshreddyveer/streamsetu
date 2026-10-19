@@ -8,6 +8,8 @@ import androidx.room.RawQuery
 import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
+data class PartialRow(val id: String, val fraction: Double)
+
 @Dao
 interface SourceDao {
     @Query("SELECT * FROM sources ORDER BY sortOrder, name") fun observe(): Flow<List<SourceEntity>>
@@ -118,6 +120,9 @@ interface UserDao {
     /** Movies watched to the end, and series whose episodes were all watched (the Watched tick on a poster). */
     @Query("SELECT itemId FROM progress WHERE completed = 1 AND kind = 'MOVIE' UNION SELECT e.seriesId FROM episodes e LEFT JOIN progress p ON p.itemId = e.id AND p.completed = 1 GROUP BY e.seriesId HAVING COUNT(p.itemId) = COUNT(*)")
     fun watchedTitles(): Flow<List<String>>
+    /** Started but not finished: a movie by its position, a series by its episodes watched (the bar along the bottom of a poster). */
+    @Query("SELECT itemId AS id, CAST(positionMs AS REAL) / durationMs AS fraction FROM progress WHERE kind = 'MOVIE' AND completed = 0 AND positionMs > 30000 AND durationMs > 0 UNION ALL SELECT e.seriesId AS id, SUM(CASE WHEN p.completed = 1 THEN 1.0 WHEN p.durationMs > 0 THEN CAST(p.positionMs AS REAL) / p.durationMs ELSE 0 END) / COUNT(*) AS fraction FROM episodes e LEFT JOIN progress p ON p.itemId = e.id GROUP BY e.seriesId HAVING fraction > 0 AND fraction < 1")
+    fun partialTitles(): Flow<List<PartialRow>>
     @Query("DELETE FROM progress WHERE itemId = :id") suspend fun clearProgress(id: String)
     @Query("DELETE FROM progress") suspend fun clearAllProgress()
 

@@ -79,6 +79,10 @@ class AppContainer @Inject constructor(
     val watchedTitles: kotlinx.coroutines.flow.StateFlow<Set<String>> = db.user().watchedTitles().map { it.toSet() }
         .stateIn(appScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptySet<String>())
 
+    /** How far along each started movie or series is (0 to 1), for the bar on posters. */
+    val partialTitles: kotlinx.coroutines.flow.StateFlow<Map<String, Float>> = db.user().partialTitles().map { rows -> rows.associate { it.id to it.fraction.toFloat().coerceIn(0f, 0.99f) } }
+        .stateIn(appScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyMap<String, Float>())
+
     /** The titles lined up to play after the one on screen. */
     val watchQueue = app.streamsetu.core.data.repo.WatchQueue(object : app.streamsetu.core.data.repo.QueueStore {
         override fun read() = settings.queueRaw()
