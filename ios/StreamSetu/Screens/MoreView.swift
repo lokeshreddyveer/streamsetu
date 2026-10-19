@@ -14,6 +14,7 @@ struct MoreView: View {
                     NavigationLink { WatchLaterView() } label: { LibraryRow(symbol: "bookmark.fill", tint: .orange, title: "Watch Later", count: state.watchLaterIDs.count) }
                     NavigationLink { CollectionsView() } label: { LibraryRow(symbol: "square.stack.fill", tint: .indigo, title: "Collections", count: nil) }
                     NavigationLink { HistoryView() } label: { LibraryRow(symbol: "clock.arrow.circlepath", tint: .teal, title: "Watch History", count: nil) }
+                    NavigationLink { DownloadsView() } label: { LibraryRow(symbol: "arrow.down.circle.fill", tint: .blue, title: "Downloads", count: nil) }
                     NavigationLink { FilesView() } label: { LibraryRow(symbol: "externaldrive.fill", tint: .gray, title: "Files and Servers", count: nil) }
                 }.listRowBackground(ColorTokens.surface)
                 Section { NavigationLink { StatisticsView() } label: { LibraryRow(symbol: "chart.bar.fill", tint: .green, title: "Statistics", count: nil) } }.listRowBackground(ColorTokens.surface)

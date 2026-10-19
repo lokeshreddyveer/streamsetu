@@ -46,6 +46,7 @@ struct DetailView: View {
                         Button { state.toggleWatchLater(item.id, kind: item.kind) } label: { Image(systemName: state.isWatchLater(item.id) ? "bookmark.fill" : "bookmark").frame(width: 24, height: 24).symbolEffect(.bounce, value: state.isWatchLater(item.id)) }
                             .buttonStyle(.bordered).controlSize(.large).tint(state.isWatchLater(item.id) ? .orange : nil).accessibilityLabel(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later")
                         QueueButton(item: item)
+                        if case .movie(let m) = item { DownloadButton(itemID: m.id, compact: true) { $0.enqueue(movie: m) }.buttonStyle(.bordered).controlSize(.large) }
                     }
                     if let overview = (movie?.overview ?? detail?.series.overview ?? item.overview), !overview.isEmpty {
                         Text(overview).appFont(14).foregroundStyle(.white.opacity(0.85))
@@ -132,6 +133,7 @@ struct DetailView: View {
             }
             VStack(spacing: 0) {
                 ForEach(detail.episodes.filter { $0.seasonNumber == season }.sorted { $0.episodeNumber < $1.episodeNumber }) { e in
+                    HStack(spacing: 6) {
                     Button { if let container { Play.episode(e, detail.series, container) } } label: {
                         HStack(spacing: 12) {
                             ArtworkImage(url: e.imageURL ?? detail.series.backdropURL, kind: .still, contentMode: .fill, symbol: "play.rectangle").frame(width: 112, height: 63).clipShape(RoundedRectangle(cornerRadius: 6))
@@ -143,6 +145,8 @@ struct DetailView: View {
                             Image(systemName: "play.circle").foregroundStyle(.secondary)
                         }.padding(.vertical, 8).contentShape(Rectangle())
                     }.buttonStyle(.press)
+                    DownloadButton(itemID: e.id, compact: true) { $0.enqueue(episode: e, series: detail.series) }.buttonStyle(.borderless).font(.system(size: 22)).foregroundStyle(.secondary).frame(width: 44, height: 44)
+                    }
                     Divider().overlay(ColorTokens.line)
                 }
             }

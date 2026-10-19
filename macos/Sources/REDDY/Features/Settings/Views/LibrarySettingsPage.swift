@@ -95,6 +95,11 @@ struct LibrarySettingsPage: View {
                 MessageLine(message: vm.backupMessage)
             }
 
+            // MARK: downloads
+            SettingsGroup(title: "Downloads", footer: "Movies and episodes saved on this Mac to watch without a connection. They are kept out of backups and can be removed here at any time. A download pauses while something is playing.") {
+                DownloadsList()
+            }
+
             // MARK: people
             SettingsGroup(title: "Cast and directors", footer: "So you can search for an actor or a director. StreamSetu asks your playlists about one movie at a time, slowly and never while something is playing, and keeps what it learns. Searching for a name finds the titles read so far.") {
                 SettingsValueRow(title: "Movies read", value: "\(n(people.done)) of \(n(people.total))")

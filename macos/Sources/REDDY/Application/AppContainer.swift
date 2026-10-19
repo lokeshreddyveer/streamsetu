@@ -44,6 +44,7 @@ final class AppContainer {
     let newEpisodes: NewEpisodeService
     let people: PeopleIndexService
     let watchQueue: WatchQueue
+    let downloads: DownloadService
     /// Set by the app: called on the main actor when the list of series with new episodes changed.
     var onNewEpisodesChanged: (@MainActor () -> Void)?
     private(set) var cloud: CloudSyncCoordinator!
@@ -102,10 +103,15 @@ final class AppContainer {
         maintenance = LibraryMaintenanceService(db: db, health: health)
         backup = BackupService(db: db, catalog: catalog, sources: sources)
         dataReset = DataResetService(db: db, catalog: catalog, sources: sources, history: historyRepo)
-        let resolver = StreamResolver(catalog: catalog, sources: sources, history: historyRepo)
+        let localFiles = LocalFiles()
+        let resolver = StreamResolver(catalog: catalog, sources: sources, history: historyRepo, localFiles: localFiles)
         channelHealth = ChannelHealthService(resolver: resolver)
         playback = PlaybackCoordinator(factory: PlaybackEngineFactory(), resolver: resolver, history: historyRepo, historyService: history,
                                        catalog: catalog, settings: settings, diagnostics: diagnostics, videoPrefs: videoPrefs)
+        downloads = DownloadService(db: db, catalog: catalog, resolver: resolver, defaults: settings.defaultsStore,
+                                    busy: { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } })
+        let downloadDB = db
+        localFiles.set { DownloadService.savedFile(for: $0, in: downloadDB) }
         newEpisodes = NewEpisodeService(db: db, catalog: catalog, history: history, details: details,
                                         busy: { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } })
         people = PeopleIndexService(index: PeopleIndex(db: db), catalog: catalog, sources: sources, indexer: indexer,

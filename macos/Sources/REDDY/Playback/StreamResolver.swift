@@ -6,9 +6,11 @@ final class StreamResolver: Sendable {
     let catalog: CatalogRepository
     let sources: SourceManager
     let history: HistoryRepository
+    /// Where a saved copy of a movie or episode is found, when there is one.
+    let localFiles: LocalFiles
 
-    init(catalog: CatalogRepository, sources: SourceManager, history: HistoryRepository) {
-        self.catalog = catalog; self.sources = sources; self.history = history
+    init(catalog: CatalogRepository, sources: SourceManager, history: HistoryRepository, localFiles: LocalFiles = LocalFiles()) {
+        self.catalog = catalog; self.sources = sources; self.history = history; self.localFiles = localFiles
     }
 
     private func provider(_ id: UUID) throws -> SourceProvider {
@@ -43,7 +45,14 @@ final class StreamResolver: Sendable {
         return r
     }
 
-    func resolve(movie m: Movie, resume: Bool = true) throws -> PlaybackRequest {
+    func resolve(movie m: Movie, resume: Bool = true, allowLocal: Bool = true) throws -> PlaybackRequest {
+        if allowLocal, let saved = localFiles.url(for: m.id) {
+            var r = PlaybackRequest(itemID: m.id, kind: .movie, sourceID: m.sourceID, title: m.title,
+                                    subtitle: [m.releaseYear.map(String.init), "Saved on this device"].compactMap { $0 }.joined(separator: " · "),
+                                    artworkURL: m.backdropURL ?? m.posterURL, url: saved, isLive: false)
+            if resume, let p = try history.progress(for: m.id), !p.completed { r.startPosition = p.positionSeconds }
+            return r
+        }
         let url = try provider(m.sourceID).streamURL(kind: .movie, ref: m.streamRef)
         var r = PlaybackRequest(itemID: m.id, kind: .movie, sourceID: m.sourceID, title: m.title,
                                 subtitle: [m.releaseYear.map(String.init), m.categoryName].compactMap { $0 }.joined(separator: " · "),
@@ -53,7 +62,14 @@ final class StreamResolver: Sendable {
         return r
     }
 
-    func resolve(episode e: Episode, series: Series, resume: Bool = true) throws -> PlaybackRequest {
+    func resolve(episode e: Episode, series: Series, resume: Bool = true, allowLocal: Bool = true) throws -> PlaybackRequest {
+        if allowLocal, let saved = localFiles.url(for: e.id) {
+            var r = PlaybackRequest(itemID: e.id, kind: .episode, sourceID: series.sourceID, title: series.title,
+                                    subtitle: "S\(e.seasonNumber) E\(e.episodeNumber) · \(e.title)", artworkURL: e.imageURL ?? series.backdropURL ?? series.posterURL,
+                                    url: saved, isLive: false, seriesID: series.id)
+            if resume, let p = try history.progress(for: e.id), !p.completed { r.startPosition = p.positionSeconds }
+            return r
+        }
         let url = try provider(series.sourceID).streamURL(kind: .episode, ref: e.streamRef)
         var r = PlaybackRequest(itemID: e.id, kind: .episode, sourceID: series.sourceID, title: series.title,
                                 subtitle: "S\(e.seasonNumber) E\(e.episodeNumber) · \(e.title)",

@@ -222,3 +222,7 @@ Domain/Protocols/PeopleReporting.swift
 Services/PeopleIndexService.swift
 Services/WatchQueue.swift
 Services/QueuePlayback.swift
+Data/Database/Schema/SchemaV13.swift
+Services/DownloadRecords.swift
+Services/DownloadService.swift
+Features/Shared/Views/DownloadViews.swift

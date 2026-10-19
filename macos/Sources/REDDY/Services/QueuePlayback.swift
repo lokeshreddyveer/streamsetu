@@ -24,4 +24,18 @@ extension AppContainer {
             }
         }
     }
+
+    /// Plays a saved movie or episode from the copy on this device.
+    @MainActor func playSaved(_ r: DownloadRecord) {
+        switch r.kind {
+        case .movie:
+            if let m = (try? catalog.movie(id: r.itemID)) ?? nil { playback.play(movie: m) }
+        case .episode:
+            if let e = (try? catalog.episode(id: r.itemID)) ?? nil, let s = (try? catalog.seriesItem(id: e.seriesID)) ?? nil { playback.play(episode: e, series: s) }
+        default: break
+        }
+        #if os(iOS)
+        playback.isExpanded = true
+        #endif
+    }
 }

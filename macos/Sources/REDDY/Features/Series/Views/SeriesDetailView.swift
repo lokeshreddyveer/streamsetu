@@ -48,7 +48,7 @@ struct SeriesDetailView: View {
                     else {
                         LazyVStack(spacing: Spacing.sm) {
                             ForEach(vm.episodesInSeason) { ep in
-                                EpisodeRow(episode: ep, progress: vm.progress[ep.id], onPlay: { container?.playback.play(episode: ep, series: s); router.closeDetail() },
+                                EpisodeRow(episode: ep, series: s, progress: vm.progress[ep.id], onPlay: { container?.playback.play(episode: ep, series: s); router.closeDetail() },
                                            onToggleWatched: { watched in if let c = container { vm.markWatched(ep, s, c, watched: watched) } })
                             }
                         }
@@ -69,6 +69,7 @@ struct SeriesDetailView: View {
 
 struct EpisodeRow: View {
     let episode: Episode
+    var series: Series?
     let progress: WatchProgress?
     var onPlay: () -> Void
     var onToggleWatched: (Bool) -> Void
@@ -84,6 +85,7 @@ struct EpisodeRow: View {
                 HStack {
                     Text("\(episode.episodeNumber). \(episode.title)").font(Typography.bodyMedium).lineLimit(1)
                     Spacer()
+                    if let series { DownloadButton(itemID: episode.id, compact: true) { $0.enqueue(episode: episode, series: series) }.buttonStyle(.plain).menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().foregroundStyle(ColorTokens.textSecondary) }
                     if let d = episode.durationSeconds, d > 0 { Text(DurationFormatter.short(d)).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary) }
                     if progress?.completed == true { Label("Watched", systemImage: "checkmark.circle.fill").font(Typography.caption).foregroundStyle(ColorTokens.success).labelStyle(.iconOnly) }
                 }
