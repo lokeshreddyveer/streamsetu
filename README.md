@@ -238,6 +238,8 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Subtitles fetched by themselves when a title has none in your language, with your OpenSubtitles account | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Green tick on watched titles and a bar on started ones | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Filter Movies and Series by language, quality, rating, decade and watch status, in the Sort menu on Mac, iPhone and iPad and in the Filter panel on TV (which also has a box to find a filter by name and can narrow by connection) | ✓ | ✓ | ✓ | – | ✓ |
+| Opening animation when the app starts (tap to skip; fades only with Reduce Motion) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Play a stream in another app (VLC, MX Player, IINA, Infuse and others) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Match the TV's frame rate to the video (24, 25, 30, 50, 60 Hz) | – | – | – | – | ✓ |
 | Downloads to watch without a connection, with a ring that fills and a percentage on the button and the poster | ✓ | ✓ | ✓ | ✓ | – |
 | Record a live channel | ✓ | – | – | ✓ | ✓ |

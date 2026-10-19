@@ -49,6 +49,8 @@ struct RootView: View {
         }
     }
 
+    @State private var opening = !OpeningPlayed.done
+
     var body: some View {
         @Bindable var router = router
         Group {
@@ -60,6 +62,7 @@ struct RootView: View {
         }
         .loggingNotice()
         .background(ColorTokens.background)
+        .overlay { if opening { OpeningAnimation { BrandMark() } onDone: { opening = false } } }
         .onChange(of: contrast, initial: true) { _, c in ThemeStore.state.systemContrast = c == .increased }
         .dynamicTypeSize(...DynamicTypeSize.accessibility2)      // the layouts hold up to here; larger sizes would break them
         .sheet(isPresented: $router.presentAdd) { AddPlaylistSheet() }

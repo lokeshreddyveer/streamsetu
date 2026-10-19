@@ -235,3 +235,5 @@ Features/Shared/Views/DownloadCornerBadge.swift
 Services/LibraryFilter.swift
 Features/Shared/Views/LibraryFilterMenus.swift
 Services/ExternalPlayer.swift
+Features/Shared/Views/OpeningAnimation.swift
+Data/Database/Schema/SchemaV14.swift

@@ -3,8 +3,13 @@ import AppKit
 
 struct RootView: View {
     let coordinator: AppCoordinator
+    @State private var opening = !OpeningPlayed.done
 
     var body: some View {
+        content.overlay { if opening { OpeningAnimation { BrandIcon(size: 104) } onDone: { opening = false }.transition(.opacity) } }
+    }
+
+    @ViewBuilder private var content: some View {
         switch coordinator.phase {
         case .starting:
             VStack(spacing: Spacing.lg) { Image(systemName: "play.tv.fill").font(.system(size: 44)).foregroundStyle(ColorTokens.accentDefault); ProgressView(); Text("Opening your library…").foregroundStyle(ColorTokens.textSecondary) }
