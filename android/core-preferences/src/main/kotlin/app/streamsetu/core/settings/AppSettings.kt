@@ -113,6 +113,11 @@ class AppSettings(context: Context) {
     val subtitleOutline: StateFlow<Boolean> = _subOutline
     fun setSubtitleOutline(v: Boolean) { prefs.edit().putBoolean("subOutline", v).apply(); _subOutline.value = v }
 
+    private val _autoSubs = flow(prefs.getBoolean("autoSubtitles", false))
+    /** Fetches a subtitle from OpenSubtitles by itself when a film or episode has none in the chosen language. Needs the free account set up under Subtitles. */
+    val autoSubtitles: StateFlow<Boolean> = _autoSubs
+    fun setAutoSubtitles(v: Boolean) { prefs.edit().putBoolean("autoSubtitles", v).apply(); _autoSubs.value = v }
+
     // ---- The queue of titles lined up to play ----
     fun queueRaw(): String = prefs.getString("watchQueue", "") ?: ""
     fun setQueueRaw(v: String) { prefs.edit().putString("watchQueue", v).apply() }

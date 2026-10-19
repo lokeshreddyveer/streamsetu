@@ -68,6 +68,8 @@ final class AppSettings {
     var audioProcessing: AudioProcessingMode { didSet { save(audioProcessing.rawValue, "audioproc") } }
     var preferredSubtitleLanguage: String { didSet { save(preferredSubtitleLanguage, "slang") } }
     var subtitlesByDefault: Bool { didSet { save(subtitlesByDefault, "subsdefault") } }
+    /// Fetches a subtitle from OpenSubtitles by itself when a film or episode has none in the chosen language. Needs the free account set up under Playback.
+    var autoSubtitles: Bool { didSet { save(autoSubtitles, "autosubs") } }
     var subtitleSize: Double { didSet { save(subtitleSize, "subsize") } }
     var subtitleBackground: Double { didSet { save(subtitleBackground, "subbg") } }
     var subtitleColor: SubtitleColor { didSet { save(subtitleColor.rawValue, "subcolor") } }
@@ -222,6 +224,7 @@ final class AppSettings {
         audioProcessing = get("audioproc", Defaults.audioProcessing)
         preferredSubtitleLanguage = str("slang", "")
         subtitlesByDefault = bool("subsdefault", false)
+        autoSubtitles = bool("autosubs", false)
         subtitleSize = Self.clamp(dbl("subsize", Defaults.subtitleSize), 60...200)
         subtitleBackground = Self.clamp(dbl("subbg", Defaults.subtitleBackground), 0...1)
         subtitleColor = get("subcolor", Defaults.subtitleColor)
@@ -259,7 +262,7 @@ final class AppSettings {
     func resetPlayback() {
         enginePreference = Defaults.engine; hardwareDecoding = Defaults.hardware; deinterlace = Defaults.deinterlace
         videoQuality = Defaults.quality; bufferingMode = Defaults.buffering; audioProcessing = Defaults.audioProcessing
-        preferredAudioLanguage = ""; audioOutputUID = ""; preferredSubtitleLanguage = ""; subtitlesByDefault = false
+        preferredAudioLanguage = ""; audioOutputUID = ""; preferredSubtitleLanguage = ""; subtitlesByDefault = false; autoSubtitles = false
         subtitleSize = Defaults.subtitleSize; subtitleBackground = Defaults.subtitleBackground; subtitleColor = Defaults.subtitleColor; subtitlePosition = Defaults.subtitlePosition
         autoPlayNextEpisode = true; rememberPosition = true; resumeAutomatically = true; showDiagnosticsOverlay = false
         liveRewind = true; autoBackup = true; renderingProfile = .balanced; stereoDownmix = false; subtitleOutline = true; toneMapping = .automatic; picture = PictureAdjustments()

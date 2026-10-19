@@ -774,7 +774,7 @@ final class PlaybackCoordinator {
             if let id = current?.itemID { refusedAt[id] = nil }
             if !recordedPlay, let src = current?.sourceID, current?.isLive == true { pacer.recordSuccess(src) }
             if !recordedPlay {
-                recordedPlay = true; onFirstPlay()
+                recordedPlay = true; onFirstPlay(); fetchSubtitleIfWanted()
                 if let r = current { StartStats.shared.recordStart(source: r.sourceID, engine: activeEngine, live: r.isLive, seconds: Date().timeIntervalSince(tapAt)) }
                 // Audio and subtitle tracks can arrive a little after the picture starts: look again a few times.
                 let gen = generation
@@ -796,6 +796,32 @@ final class PlaybackCoordinator {
         case .failed(let e):
             handleFailure(e)
         default: break
+        }
+    }
+
+    /// Asked to find a subtitle file for the title playing (its name, the series' name, the language); set by the app, which holds the OpenSubtitles account.
+    var subtitleFetcher: (@Sendable (_ title: String, _ year: Int?, _ language: String, _ season: Int?, _ episode: Int?) async -> URL?)?
+    private var autoSubtitleItem: String?
+
+    /// A few seconds in, a film or episode with no subtitles in the chosen language gets the most downloaded one from OpenSubtitles, when the person turned that on.
+    private func fetchSubtitleIfWanted() {
+        guard settings.autoSubtitles, let r = current, !r.isLive, r.kind != .channel, autoSubtitleItem != r.itemID, capabilities.externalSubtitles, let fetch = subtitleFetcher else { return }
+        autoSubtitleItem = r.itemID
+        let gen = generation
+        let language = settings.subtitleLanguages.first ?? "en"
+        let title = currentSeries?.title ?? currentMovie?.title ?? r.title
+        let year = currentMovie?.releaseYear
+        // An episode is asked for by its season and number: a subtitle for the wrong episode is worse than none.
+        let season = currentEpisode?.0.seasonNumber, episode = currentEpisode?.0.episodeNumber
+        if r.kind == .episode, season == nil || episode == nil { return }
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            guard let self, gen == self.generation else { return }
+            refreshTracks()
+            if memoryEntry?.subtitleLanguage == "off" { return }                                                                           // the person turned them off for this title
+            if self.subtitleTracks.contains(where: { AudioTrackManager.matches($0.language, language) }) { return }                       // there already are some
+            guard let url = await fetch(title, year, language, season, episode), gen == self.generation else { return }
+            self.loadSubtitleFile(url)
         }
     }
 

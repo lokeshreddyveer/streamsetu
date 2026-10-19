@@ -91,6 +91,7 @@ struct PlaybackSettingsPage: View {
             }
 
             SettingsGroup(title: "Subtitles online", footer: "From OpenSubtitles, using your own free account and API key (opensubtitles.com). They stay in the Keychain on this device and are sent only to OpenSubtitles when you ask for subtitles in the player.") {
+                SettingsRow(title: "Fetch automatically", detail: "When a film or episode has no subtitles in your language, gets the most downloaded one by itself a few seconds after it starts. Choose your subtitle language above.") { Toggle("Fetch subtitles automatically", isOn: $s.autoSubtitles) }
                 OpenSubtitlesFields()
             }
 

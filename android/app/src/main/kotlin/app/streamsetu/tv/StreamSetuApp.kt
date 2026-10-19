@@ -103,6 +103,35 @@ class AppContainer @Inject constructor(
         }
     }
 
+    private var subtitleItem: String? = null
+
+    /**
+     * A few seconds into a film or episode with no subtitles in the chosen language, the most downloaded one from OpenSubtitles is loaded, when the person turned that on
+     * and set up the free account. An episode is asked for by its season and number: a subtitle for the wrong episode is worse than none.
+     */
+    private fun fetchSubtitleIfWanted() {
+        val item = playback.current.value ?: return
+        if (!settings.autoSubtitles.value || item.isLive || item is app.streamsetu.core.model.CatchUpPlayable || subtitleItem == item.id) return
+        val online = app.streamsetu.tv.ui.screens.OnlineSubtitles(context, credentials)
+        if (!online.configured || settings.subtitleMode.value == "OFF") return
+        subtitleItem = item.id
+        val language = settings.subtitleLanguage.value.ifBlank { "en" }
+        appScope.launch {
+            kotlinx.coroutines.delay(6_000)
+            if (playback.current.value?.id != item.id) return@launch
+            if (playback.subtitleTracks.value.any { it.language?.startsWith(language, true) == true }) return@launch
+            val hit = runCatching {
+                when (item) {
+                    is EpisodePlayable -> online.search(item.series.title, null, language, item.episode.season, item.episode.number)
+                    is MoviePlayable -> online.search(item.movie.title, item.movie.year, language)
+                    else -> emptyList()
+                }.firstOrNull()
+            }.getOrNull() ?: return@launch
+            val file = runCatching { online.download(hit) }.getOrNull() ?: return@launch
+            if (playback.current.value?.id == item.id) playback.addSubtitle(file, "$language (automatic)")
+        }
+    }
+
     /** Starts a title taken from the queue: a movie plays; a series plays the episode that would be watched next (or the first one). */
     suspend fun playQueued(t: app.streamsetu.core.data.repo.QueuedTitle) {
         when (t.kind) {
@@ -128,6 +157,7 @@ class AppContainer @Inject constructor(
     init {
         appScope.launch { runCatching { db.catalog().deleteDividers() } }
         appScope.launch { playback.state.collect { if (it == app.streamsetu.core.playback.PlaybackState.Ended) advanceAfterEnd() } }
+        appScope.launch { playback.state.collect { if (it == app.streamsetu.core.playback.PlaybackState.Playing) fetchSubtitleIfWanted() } }
         appScope.launch { runCatching { PlexTokenCleanup.run(db.openHelper.writableDatabase) } }
     }
 

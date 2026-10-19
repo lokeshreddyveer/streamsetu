@@ -194,6 +194,7 @@ struct PlaybackSettingsView: View {
                 TextField("Preferred audio language (e.g. en)", text: $s.preferredAudioLanguage).textInputAutocapitalization(.never).autocorrectionDisabled()
                 TextField("Preferred subtitle language (e.g. en)", text: $s.preferredSubtitleLanguage).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Toggle("Show subtitles by default", isOn: $s.subtitlesByDefault)
+                Toggle("Fetch subtitles automatically", isOn: $s.autoSubtitles)
             }.listRowBackground(ColorTokens.surface)
             Section {
                 OpenSubtitlesFields()

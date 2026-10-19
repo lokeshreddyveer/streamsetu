@@ -29,9 +29,9 @@ class OnlineSubtitles(context: Context, private val store: app.streamsetu.core.s
     private fun builder(path: String) = Request.Builder().url(base + path).header("Api-Key", apiKey).header("User-Agent", "StreamSetu v1").header("Accept", "application/json")
 
     /** Subtitles for a title in a language ("en", "hi", "te"…), best matches first. */
-    suspend fun search(title: String, year: Int?, language: String): List<Hit> = withContext(Dispatchers.IO) {
+    suspend fun search(title: String, year: Int?, language: String, season: Int? = null, episode: Int? = null): List<Hit> = withContext(Dispatchers.IO) {
         val q = java.net.URLEncoder.encode(title.replace(Regex("""\(.*?\)|\[.*?]"""), " ").replace(Regex("\\s+"), " ").trim(), "UTF-8")
-        val url = "/subtitles?query=$q&languages=${language.ifBlank { "en" }}" + (year?.let { "&year=$it" } ?: "") + "&order_by=download_count"
+        val url = "/subtitles?query=$q&languages=${language.ifBlank { "en" }}" + (year?.let { "&year=$it" } ?: "") + (if (season != null && episode != null) "&type=episode&season_number=$season&episode_number=$episode" else "") + "&order_by=download_count"
         Http.client.newCall(builder(url).build()).execute().use { r ->
             if (!r.isSuccessful) error(if (r.code == 401 || r.code == 403) "The API key was not accepted." else "OpenSubtitles answered ${r.code}.")
             val data = JSONObject(r.body?.string().orEmpty()).optJSONArray("data") ?: return@use emptyList()

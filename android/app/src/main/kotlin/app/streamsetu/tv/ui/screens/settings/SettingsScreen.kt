@@ -263,6 +263,8 @@ fun SubtitleSettings(c: AppContainer) {
         SettingRow("Subtitle delay", "Shifts subtitles earlier or later. Open More, then Sync audio & subtitles while watching (MPV player).", "In the player")
     }
     SettingGroup("Find subtitles online", "From OpenSubtitles, using your own free account and API key (opensubtitles.com, Consumers). They stay on this device and are sent only to OpenSubtitles when you ask for subtitles in the player.") {
+        val auto by s.autoSubtitles.collectAsState()
+        ToggleRow("Fetch automatically", "When a film or episode has no subtitles in your language, loads the most downloaded one a few seconds in. Needs the account below.", auto) { s.setAutoSubtitles(it) }
         var key by remember { mutableStateOf(c.credentials.load("os.key").orEmpty()) }
         var user by remember { mutableStateOf(c.credentials.load("os.user").orEmpty()) }
         var pass by remember { mutableStateOf(c.credentials.load("os.pass").orEmpty()) }

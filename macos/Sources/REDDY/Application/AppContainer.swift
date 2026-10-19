@@ -117,6 +117,14 @@ final class AppContainer {
         people = PeopleIndexService(index: PeopleIndex(db: db), catalog: catalog, sources: sources, indexer: indexer,
                                     busy: { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } })
         watchQueue = WatchQueue(catalog: catalog)
+        let subtitleCredentials = credentials
+        playback.subtitleFetcher = { title, year, language, season, episode in
+            let account = OnlineSubtitles.Account.load(from: subtitleCredentials)
+            guard account.isComplete else { return nil }
+            let service = OnlineSubtitles(account: account)
+            guard let best = try? await service.search(title: title, year: year, language: language, season: season, episode: episode).first else { return nil }
+            return try? await service.download(best)
+        }
         let peopleService = people
         let newEpisodeService = newEpisodes
         Task { [weak self] in

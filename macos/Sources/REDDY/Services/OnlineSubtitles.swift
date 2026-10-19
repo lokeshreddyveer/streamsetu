@@ -24,10 +24,11 @@ struct OnlineSubtitles: Sendable {
     }
 
     /// Subtitles for a title in a language ("en", "hi", "te"…), most downloaded first.
-    func search(title: String, year: Int?, language: String) async throws -> [Hit] {
+    func search(title: String, year: Int?, language: String, season: Int? = nil, episode: Int? = nil) async throws -> [Hit] {
         let clean = title.replacingOccurrences(of: #"\(.*?\)|\[.*?\]"#, with: " ", options: .regularExpression).split(separator: " ").joined(separator: " ")
         var q = "/subtitles?query=\(clean.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? clean)&languages=\(language.isEmpty ? "en" : language)&order_by=download_count"
         if let year { q += "&year=\(year)" }
+        if let season, let episode { q += "&type=episode&season_number=\(season)&episode_number=\(episode)" }
         let (data, response) = try await URLSession.shared.data(for: request(q))
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw Failure.message(http.statusCode == 401 || http.statusCode == 403 ? "The API key was not accepted." : "OpenSubtitles answered \(http.statusCode).")
