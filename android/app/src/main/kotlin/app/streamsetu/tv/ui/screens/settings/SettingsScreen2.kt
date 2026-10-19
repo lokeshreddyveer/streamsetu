@@ -55,6 +55,29 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
         ToggleRow("Refresh when the app opens", "Reads every connection and its guide a few seconds after launch, one at a time, and never while something is playing.", onStart) { c.settings.setRefreshOnStart(it) }
         ChoiceRow("Refresh catalogs in the background", options = listOf(0 to "Only when I ask", 12 to "Every 12 hours", 24 to "Every day"), value = hours) { c.settings.setBackgroundSyncHours(it); app.streamsetu.tv.CatalogSyncWorker.schedule(ctx, it) }
     }
+    SettingGroup("Downloads", "Movies and episodes saved on this device to watch without a connection. They pause while something is playing and carry on from where they stopped. Choose Download on a movie or an episode.") {
+        val saved by c.downloads.items.collectAsState()
+        val wifi = remember { mutableStateOf(c.downloads.wifiOnly) }
+        if (saved.isEmpty()) InfoRow("Nothing is saved yet", "")
+        saved.forEach { t ->
+            val status = when (t.state) {
+                app.streamsetu.core.data.repo.SaveState.DONE -> "Saved  ·  " + app.streamsetu.core.data.repo.SavedTitles.size(t.bytesTotal)
+                app.streamsetu.core.data.repo.SaveState.DOWNLOADING -> "${(t.fraction * 100).toInt()} %"
+                app.streamsetu.core.data.repo.SaveState.QUEUED -> "Waiting"
+                app.streamsetu.core.data.repo.SaveState.PAUSED -> "Paused"
+                app.streamsetu.core.data.repo.SaveState.FAILED -> "Failed"
+            }
+            InfoRow(t.title, status, listOfNotNull(t.subtitle, t.error).joinToString("  ·  ").ifBlank { null })
+            when (t.state) {
+                app.streamsetu.core.data.repo.SaveState.DONE -> ActionRow("Play ${t.title}", null, "Play", confirm = false) { app.streamsetu.tv.playSaved(c, nav, t) }
+                app.streamsetu.core.data.repo.SaveState.DOWNLOADING, app.streamsetu.core.data.repo.SaveState.QUEUED -> ActionRow("Pause ${t.title}", null, "Pause", confirm = false) { c.downloads.pause(t.itemId) }
+                else -> ActionRow("Resume ${t.title}", null, "Resume", confirm = false) { c.downloads.resume(t.itemId) }
+            }
+            ActionRow("Remove ${t.title}", "Deletes the saved copy from this device.", "Remove", danger = true) { c.downloads.remove(t.itemId) }
+        }
+        if (saved.isNotEmpty()) InfoRow("Space used", app.streamsetu.core.data.repo.SavedTitles.size(c.downloads.totalBytes))
+        ToggleRow("Only on Wi-Fi", "Off lets downloads use mobile data too.", wifi.value) { c.downloads.wifiOnly = it; wifi.value = it }
+    }
     SettingGroup("Cast and directors", "So you can search for an actor or a director. StreamSetu asks your connections about one movie at a time, slowly and never while something is playing, and keeps what it learns. Searching for a name finds the titles read so far.") {
         val progress by produceState(c.people.progress()) { while (true) { value = c.people.progress(); kotlinx.coroutines.delay(5_000) } }
         InfoRow("Movies read", "%,d of %,d".format(progress.first, progress.second))

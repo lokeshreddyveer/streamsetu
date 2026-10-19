@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 /** The single place screens ask for what they need. Everything inside is built by Hilt (see di/AppModule); this class only adds the app-wide behaviour that joins them. */
 @Singleton
 class AppContainer @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext val context: android.content.Context,
     val appScope: CoroutineScope,
     val db: AppDatabase,
     val credentials: CredentialStore,
@@ -60,6 +61,12 @@ class AppContainer @Inject constructor(
 
     /** Seconds left before the next episode starts by itself; 0 when none is waiting. */
     val nextEpisodeIn = kotlinx.coroutines.flow.MutableStateFlow(0)
+
+    /** Movies and episodes saved on this device to watch without a connection. */
+    val downloads = Downloads(context, resolver, {
+        val s = playback.state.value
+        s == app.streamsetu.core.playback.PlaybackState.Playing || s == app.streamsetu.core.playback.PlaybackState.Buffering || s == app.streamsetu.core.playback.PlaybackState.Resolving
+    }, appScope).also { d -> app.streamsetu.core.playback.LocalFiles.finder = { id -> d.localUri(id) } }
 
     /** The titles lined up to play after the one on screen. */
     val watchQueue = app.streamsetu.core.data.repo.WatchQueue(object : app.streamsetu.core.data.repo.QueueStore {
@@ -234,5 +241,20 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
         val hours = getSharedPreferences("settings", MODE_PRIVATE).getInt("bgSyncHours", 0)
         CatalogSyncWorker.schedule(this, hours)
         AutoBackupWorker.schedule(this, container.settings.automaticBackups.value)
+    }
+}
+
+/** Plays a movie or episode from its saved copy on this device. */
+fun playSaved(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator, t: app.streamsetu.core.data.repo.SavedTitle) {
+    c.appScope.launch {
+        when (t.kind) {
+            ContentKind.MOVIE -> c.catalog.movie(t.itemId)?.let { play(c, nav, MoviePlayable(it)) }
+            ContentKind.EPISODE -> {
+                val e = c.catalog.episode(t.itemId) ?: return@launch
+                val series = c.catalog.series(e.seriesId) ?: return@launch
+                play(c, nav, EpisodePlayable(e, series))
+            }
+            else -> {}
+        }
     }
 }

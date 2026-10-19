@@ -283,7 +283,7 @@ class PlaybackController(
         if (isStrict(item.sourceId)) { _engine.value?.takeIf { _state.value != PlaybackState.Idle }?.stop(); if (_engine.value != null) closedAt[item.sourceId] = System.currentTimeMillis() }
         val wait = 3500 - (System.currentTimeMillis() - (closedAt[item.sourceId] ?: 0L))
         if (wait in 1..3500) { android.util.Log.i("Playback", "pacing: waiting ${wait} ms for the provider"); delay(wait) }
-        val url = resolver.resolve(item.sourceId, item.streamRef)
+        val url = LocalFiles.find(item.id) ?: resolver.resolve(item.sourceId, item.streamRef)          // a saved copy plays from the device
         if (url == null) { _state.value = PlaybackState.Failed(PlaybackError(ErrorKind.NOT_FOUND, "The playlist for this item is gone or has no login.")); return }
         val container = StreamContainer.of(url, item.isLive)
         val viewing = when { item is app.streamsetu.core.model.CatchUpPlayable -> "CATCHUP"; item.isLive -> "LIVE"; else -> "MOVIES" }
@@ -592,4 +592,10 @@ object EpisodeMarks {
     /** A jump (or a press of Next Episode) from the last twelve minutes to the last twenty seconds is the person skipping the credits. */
     fun isCreditsSkip(fromMs: Long, toMs: Long, durationMs: Long) =
         durationMs >= SHORTEST_MS && durationMs - fromMs <= CREDITS_WINDOW_MS && durationMs - fromMs >= 20_000 && durationMs - toMs <= 20_000
+}
+
+/** Where a saved copy of a movie or episode is found, when there is one (set by the app, which keeps the downloads). */
+object LocalFiles {
+    @Volatile var finder: ((String) -> String?)? = null
+    fun find(itemId: String): String? = finder?.invoke(itemId)
 }

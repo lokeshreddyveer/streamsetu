@@ -91,6 +91,8 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Chip(if (movie.id in favs) "Favorited" else "Favorite", movie.id in favs, { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in favs) } }, icon = Icons.Filled.Favorite)
                         Chip(if (movie.id in later) "In Watch Later" else "Watch Later", movie.id in later, { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in later, UserRepository.WATCH_LATER) } }, icon = Icons.Filled.Bookmark)
+                        val saved by c.downloads.items.collectAsState(); val saving = saved.firstOrNull { it.itemId == movie.id }
+                        Chip(downloadLabel(saving), saving?.state == app.streamsetu.core.data.repo.SaveState.DONE, { downloadTap(c, saving) { c.downloads.enqueue(movie) } }, icon = Icons.Filled.Download)
                         val queued by c.watchQueue.items.collectAsState(); val inQueue = queued.any { it.id == movie.id }
                         Chip(if (inQueue) "In queue" else "Add to queue", inQueue, { if (inQueue) c.watchQueue.remove(movie.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.MOVIE, movie.id, movie.title)) }, icon = Icons.Filled.Add)
                         if (variants.size > 1) Chip("Choose stream", false, { chooseOpen = true }, icon = Icons.Filled.SwapHoriz)
@@ -198,6 +200,17 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                         Label(listOfNotNull(e.durationSec?.takeIf { it > 0 }?.let { "${it / 60} min" }, if (p?.completed == true) "Watched" else if (p != null && p.fraction > 0) "${minutes(p.durationMs - p.positionMs)}m left" else null).joinToString("  ·  "), Ph.caption, Tokens.textSecondary)
                     }
                     if (p?.completed == true) Icon(Icons.Filled.CheckCircle, Tokens.success, 18.dp)
+                    val saved by c.downloads.items.collectAsState(); val saving = saved.firstOrNull { it.itemId == e.id }
+                    Tap({ downloadTap(c, saving) { c.downloads.enqueue(e, s) } }, Modifier.size(40.dp)) {
+                        Box(Modifier.fillMaxSize(), Alignment.Center) {
+                            when (saving?.state) {
+                                app.streamsetu.core.data.repo.SaveState.DONE -> Icon(Icons.Filled.DownloadDone, Tokens.success, 22.dp)
+                                app.streamsetu.core.data.repo.SaveState.DOWNLOADING -> Label("${(saving.fraction * 100).toInt()}", Ph.caption, Tokens.accent, FontWeight.SemiBold)
+                                app.streamsetu.core.data.repo.SaveState.QUEUED, app.streamsetu.core.data.repo.SaveState.PAUSED -> Icon(Icons.Filled.Pause, Tokens.textSecondary, 22.dp)
+                                else -> Icon(Icons.Filled.Download, Tokens.textSecondary, 22.dp)
+                            }
+                        }
+                    }
                 }
             }
             if (similar.isNotEmpty()) item {
@@ -209,5 +222,26 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                 }
             }
         }
+    }
+}
+
+/** The words on the Download chip for a title's state: what it does when pressed is in [downloadTap]. */
+internal fun downloadLabel(t: app.streamsetu.core.data.repo.SavedTitle?): String = when (t?.state) {
+    null -> "Download"
+    app.streamsetu.core.data.repo.SaveState.QUEUED -> "Waiting"
+    app.streamsetu.core.data.repo.SaveState.DOWNLOADING -> "Saving ${(t.fraction * 100).toInt()}%"
+    app.streamsetu.core.data.repo.SaveState.PAUSED -> "Paused"
+    app.streamsetu.core.data.repo.SaveState.DONE -> "Saved"
+    app.streamsetu.core.data.repo.SaveState.FAILED -> "Try again"
+}
+
+/** One press: start it, pause it, carry on, or (when it is saved) remove the saved copy. */
+internal fun downloadTap(c: AppContainer, t: app.streamsetu.core.data.repo.SavedTitle?, start: () -> Unit) {
+    when (t?.state) {
+        null -> start()
+        app.streamsetu.core.data.repo.SaveState.FAILED -> { c.downloads.remove(t.itemId); start() }
+        app.streamsetu.core.data.repo.SaveState.QUEUED, app.streamsetu.core.data.repo.SaveState.DOWNLOADING -> c.downloads.pause(t.itemId)
+        app.streamsetu.core.data.repo.SaveState.PAUSED -> c.downloads.resume(t.itemId)
+        app.streamsetu.core.data.repo.SaveState.DONE -> c.downloads.remove(t.itemId)
     }
 }
