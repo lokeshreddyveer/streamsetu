@@ -63,6 +63,15 @@ import Foundation
         #expect(try repo.watchedTitleIDs().contains(series.id))
     }
 
+    @Test func savingProgressTellsTheListener() throws {
+        final class Counter: @unchecked Sendable { var n = 0 }
+        let counter = Counter()
+        repo.onProgressChanged = { counter.n += 1 }
+        try watched(eps[0], finished: false)
+        try repo.clearProgress(itemID: eps[0].id)
+        #expect(counter.n == 2)
+    }
+
     @Test func aSeriesNeverWatchedIsNotInTheRow() throws {
         #expect(try service.upNext().isEmpty)
     }

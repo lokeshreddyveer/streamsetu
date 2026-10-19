@@ -28,6 +28,18 @@ final class AppState {
     /// Started but not finished: the bar along the bottom of a poster.
     private(set) var partialIDs: [String: Double] = [:]
     func partialProgress(_ id: String) -> Double? { partialIDs[id] }
+    private var watchedReloadPending = false
+    /// Resume points are saved every few seconds while something plays; the posters catch up at most once every two seconds.
+    func scheduleWatchedReload() {
+        guard !watchedReloadPending else { return }
+        watchedReloadPending = true
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            watchedReloadPending = false
+            reloadWatched()
+        container.historyRepo.onProgressChanged = { [weak self] in Task { @MainActor in self?.scheduleWatchedReload() } }
+        }
+    }
     func reloadWatched() {
         let repo = container.historyRepo
         Task { @MainActor in

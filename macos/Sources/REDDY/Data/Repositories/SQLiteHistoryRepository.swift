@@ -4,6 +4,9 @@ final class SQLiteHistoryRepository: HistoryRepository {
     let db: DatabaseManager
     init(db: DatabaseManager) { self.db = db }
 
+    /// Told after resume points are saved or removed, so the ticks and bars on posters can follow what was just watched. Set once at start-up.
+    nonisolated(unsafe) var onProgressChanged: (@Sendable () -> Void)?
+
     func recordPlay(itemID: String, kind: ContentKind, title: String) throws {
         try db.write { c in
             let now = Date()
@@ -97,6 +100,7 @@ final class SQLiteHistoryRepository: HistoryRepository {
                     updated_at=excluded.updated_at, completed=excluded.completed, series_id=COALESCE(excluded.series_id, watch_progress.series_id)
                 """, [p.itemID, p.kind.rawValue, p.seriesID, p.positionSeconds, p.durationSeconds, p.updatedAt, done])
         }
+        onProgressChanged?()
     }
 
     func progress(for itemID: String) throws -> WatchProgress? {
@@ -150,7 +154,7 @@ final class SQLiteHistoryRepository: HistoryRepository {
                                        updatedAt: Date(), completed: true))
     }
 
-    func clearProgress(itemID: String) throws { try db.write { try $0.execute("DELETE FROM watch_progress WHERE item_id=?", [itemID]) } }
+    func clearProgress(itemID: String) throws { try db.write { try $0.execute("DELETE FROM watch_progress WHERE item_id=?", [itemID]) }; onProgressChanged?() }
 
     // MARK: sessions
 
