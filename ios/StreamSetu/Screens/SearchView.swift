@@ -20,6 +20,7 @@ struct SearchView: View {
     private var recentStore: RecentSearches { RecentSearches(scope: tab.rawValue) }
     private var prompt: String { tab == .all ? "Channels, movies, series" : "Search \(tab.rawValue.lowercased())" }
 
+    @Environment(\.verticalSizeClass) private var vertical
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var posterWidth: CGFloat { sizeClass == .regular ? 150 : 108 }
 
@@ -27,7 +28,7 @@ struct SearchView: View {
         @Bindable var router = router
         OptionalStack(embedded: embedded) {
             Group { if tab == .all { list } else { grid } }
-            .navigationTitle("Search").themed("Search")
+            .navigationTitle("Search").navigationBarTitleDisplayMode(vertical == .compact ? .inline : .automatic).themed("Search")
             .searchable(text: $router.query, isPresented: $presented, placement: .navigationBarDrawer(displayMode: .always), prompt: prompt)
             .searchSuggestions {
                 if router.query.isEmpty {

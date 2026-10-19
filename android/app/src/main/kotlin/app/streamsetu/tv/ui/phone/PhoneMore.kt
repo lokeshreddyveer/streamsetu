@@ -219,7 +219,7 @@ fun PhoneSearch(c: AppContainer, nav: Navigator) {
     val blank = q.isBlank()
     val found = results.flat(tab)
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().imePadding()) {
         Row(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.statusBars).padding(start = 4.dp, end = Ph.gutter, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             IconTap(Icons.Filled.ArrowBack, "Back", { nav.tab = nav.searchFrom })
             Row(Modifier.weight(1f).height(46.dp).clip(RoundedCornerShape(23.dp)).background(Tokens.elevated).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
