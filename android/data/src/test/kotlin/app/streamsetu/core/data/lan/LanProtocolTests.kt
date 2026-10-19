@@ -136,4 +136,26 @@ class LanProtocolTests {
         assertArrayEquals("hello".toByteArray(), receiver.open(sender.seal("hello".toByteArray())))
         assertEquals(65, a.publicX963.size); assertEquals(16, a.deviceId.length); assertNull(null)
     }
+
+    private fun unhex(s: String) = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
+    private fun hex(b: ByteArray) = b.joinToString("") { "%02x".format(it) }
+
+    /** The same numbers the Apple apps work out (their test has the same values); if these differ, the two kinds of device cannot talk to each other. */
+    @Test fun theCryptographyMatchesTheNumbersFromTheAppleApps() {
+        val pubA = unhex("040217e617f0b6443928278f96999e69a23a4f2c152bdf6d6cdf66e5b80282d4ed194a7debcb97712d2dda3ca85aa8765a56f45fc758599652f2897c65306e5794")
+        val pubB = unhex("04d65a93977caa3d1b081852ff57a79e465f1660577304baead505dd3a48589cf350185e895372df6221ea3a137557e473fddb6755f05bd507c3c533fce9c91285")
+        val privA = LanCrypto.pkcs8FromScalar(ByteArray(32) { 0x11 }); val privB = LanCrypto.pkcs8FromScalar(ByteArray(32) { 0x22 })
+        val z = LanCrypto.sharedSecret(privA, pubB)
+        assertEquals("ccfc261f58193c98ca4ad4a53bbac6f0ee29bc4d48438090446908622ca79af6", hex(z))
+        assertArrayEquals(z, LanCrypto.sharedSecret(privB, pubA))
+        val key = LanCrypto.sessionKey(z, ByteArray(16) { it.toByte() }, ByteArray(16) { (16 + it).toByte() })
+        assertEquals("a48b506918bd86d0a1c9b82fb660e2e50f776fa06db1a39b6bb78e0115e7dbe2", hex(key))
+        assertEquals("402091", LanCrypto.comparisonDigits(z, pubA, pubB))
+        val sender = LanCrypto.Channel(key, 0)
+        assertEquals("a4fd7a2bf16c11516c2453d157a6210464a8ebb07461180a6de733f158fa15b4", hex(sender.seal("hello streamsetu".toByteArray())))
+        assertEquals("a6c088b12781d5f759f4372a646ff748f7f174d2f3", hex(sender.seal("again".toByteArray())))
+        assertEquals("2bad0fd610d99eae", LanCrypto.deviceId(pubA))
+        val receiver = LanCrypto.Channel(key, 1)
+        assertArrayEquals("hello streamsetu".toByteArray(), receiver.open(unhex("a4fd7a2bf16c11516c2453d157a6210464a8ebb07461180a6de733f158fa15b4")))
+    }
 }

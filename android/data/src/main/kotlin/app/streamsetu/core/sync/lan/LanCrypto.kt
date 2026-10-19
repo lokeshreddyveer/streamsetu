@@ -55,6 +55,9 @@ object LanCrypto {
         return KeyFactory.getInstance("EC").generatePublic(ECPublicKeySpec(point, curve))
     }
 
+    /** The private key for a raw 32-byte scalar, as PKCS#8 (used to check the code against numbers worked out by the Apple apps). */
+    fun pkcs8FromScalar(scalar: ByteArray): ByteArray = KeyFactory.getInstance("EC").generatePrivate(java.security.spec.ECPrivateKeySpec(BigInteger(1, scalar), curve)).encoded
+
     fun privateKey(pkcs8: ByteArray): PrivateKey = KeyFactory.getInstance("EC").generatePrivate(PKCS8EncodedKeySpec(pkcs8))
 
     /** The 32-byte shared secret between our private key and the other device's public key. */
