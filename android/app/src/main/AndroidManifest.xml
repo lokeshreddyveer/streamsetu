@@ -21,6 +21,7 @@
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
     <application
+        android:largeHeap="true"
         android:name=".StreamSetuApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

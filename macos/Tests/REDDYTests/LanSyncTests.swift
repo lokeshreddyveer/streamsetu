@@ -152,3 +152,81 @@ private func run(_ a: Device, _ b: Device, _ pair: (Link, Link) = links()) async
         print("VECTOR idA", a.deviceId)
     }
 }
+
+@Suite struct LanDataAdapterTests {
+    let phone: DatabaseManager, tv: DatabaseManager
+    let phoneSource: PlaylistSource, tvSource: PlaylistSource
+    let phoneAdapter: LanDataAdapter, tvAdapter: LanDataAdapter
+
+    init() throws {
+        phone = try TestSupport.makeDB(); tv = try TestSupport.makeDB()
+        phoneSource = try TestSupport.makeSource(phone); tvSource = try TestSupport.makeSource(tv)     // the same playlist address on both
+        phoneAdapter = LanDataAdapter(db: phone); tvAdapter = LanDataAdapter(db: tv)
+    }
+
+    private func id(_ s: PlaylistSource, _ kind: String, _ provider: String) -> String { "\(s.id.uuidString.lowercased())|\(kind)|\(provider)" }
+
+    @Test func aFavoriteFromAnotherDeviceArrivesUnderThisDevicesOwnPlaylistId() async throws {
+        try tv.write { c in try c.execute("INSERT INTO favorites(item_id, kind, created_at, sort_order) VALUES(?, 'movie', ?, 0)", [self.id(self.tvSource, "movie", "77"), Date(timeIntervalSince1970: 1000)]) }
+        let applied = await phoneAdapter.apply(await tvAdapter.snapshot())
+        #expect(applied == 1)
+        let ids = try phone.read { try $0.query("SELECT item_id FROM favorites", [], { $0.string(0) }) }
+        #expect(ids == [id(phoneSource, "movie", "77")])
+    }
+
+    @Test func aRemovalTravelsAndAnOlderChangeCannotUndoIt() async throws {
+        try tv.write { c in try c.execute("INSERT INTO favorites(item_id, kind, created_at, sort_order) VALUES(?, 'movie', ?, 0)", [self.id(self.tvSource, "movie", "5"), Date(timeIntervalSince1970: 1000)]) }
+        _ = await phoneAdapter.apply(await tvAdapter.snapshot())
+        try await Task.sleep(nanoseconds: 5_000_000)
+        try phone.write { c in try c.execute("DELETE FROM favorites WHERE item_id = ?", [self.id(self.phoneSource, "movie", "5")]) }
+        _ = await tvAdapter.apply(await phoneAdapter.snapshot())
+        #expect(try tv.read { try $0.scalarInt("SELECT COUNT(*) FROM favorites") } == 0)
+        let old = LanRecord(kind: "fav", key: [LanSourceKey.of("http://example.com/p.m3u"), "movie", "5", "favorites"], ts: 1, value: ["at": .int(1)])
+        #expect(await phoneAdapter.apply([old]) == 0)
+    }
+
+    @Test func watchLaterTravelsAsTheLaterList() async throws {
+        let item = id(tvSource, "series", "9")
+        try tv.write { c in
+            try c.execute("INSERT INTO collections(id, name, created_at) VALUES('watch-later', 'Watch Later', ?)", [Date()])
+            try c.execute("INSERT INTO collection_items(collection_id, item_id, kind, sort_order, added_at) VALUES('watch-later', ?, 'series', 0, ?)", [item, Date(timeIntervalSince1970: 2000)])
+        }
+        let sent = await tvAdapter.snapshot()
+        #expect(sent.contains { $0.kind == "fav" && $0.key.last == "later" })
+        #expect(!sent.contains { $0.kind == "col" || $0.kind == "colitem" })
+        _ = await phoneAdapter.apply(sent)
+        let rows = try phone.read { try $0.query("SELECT collection_id, item_id FROM collection_items", [], { ($0.string(0), $0.string(1)) }) }
+        #expect(rows.count == 1 && rows[0].0 == "watch-later" && rows[0].1 == id(phoneSource, "series", "9"))
+    }
+
+    @Test func resumePointsKeepTheirPositionAndSeries() async throws {
+        try tv.write { c in
+            try c.execute("INSERT INTO watch_progress(item_id, kind, series_id, position_seconds, duration_seconds, updated_at, completed) VALUES(?, 'episode', ?, 90, 1800, ?, 0)",
+                          [self.id(self.tvSource, "episode", "9"), self.id(self.tvSource, "series", "3"), Date(timeIntervalSince1970: 5000)])
+        }
+        _ = await phoneAdapter.apply(await tvAdapter.snapshot())
+        let row = try phone.read { try $0.queryOne("SELECT series_id, position_seconds, completed FROM watch_progress WHERE item_id = ?", [self.id(self.phoneSource, "episode", "9")], { ($0.string(0), $0.double(1), $0.bool(2)) }) }
+        #expect(row?.0 == id(phoneSource, "series", "3") && row?.1 == 90 && row?.2 == false)
+    }
+
+    @Test func itemsOfAPlaylistThisDeviceLacksAreIgnored() async throws {
+        let other = LanRecord(kind: "fav", key: ["ffffffffffffffff", "movie", "1", "favorites"], ts: 10, value: ["at": .int(10)])
+        #expect(await phoneAdapter.apply([other]) == 0)
+    }
+
+    @Test func whatWasAppliedKeepsTheTimeItWasMadeAndIsNotSentBackAsNews() async throws {
+        try tv.write { c in try c.execute("INSERT INTO favorites(item_id, kind, created_at, sort_order) VALUES(?, 'movie', ?, 0)", [self.id(self.tvSource, "movie", "8"), Date(timeIntervalSince1970: 1000)]) }
+        let sent = try #require(await tvAdapter.snapshot().first { $0.kind == "fav" })
+        try await Task.sleep(nanoseconds: 5_000_000)
+        _ = await phoneAdapter.apply([sent])
+        let back = try #require(await phoneAdapter.snapshot().first { $0.kind == "fav" })
+        #expect(back.ts == sent.ts)
+        #expect(await tvAdapter.apply([back]) == 0)
+    }
+
+    @Test func idsRoundTrip() {
+        let item = LanIds.parse("0f8fad5b-d9cb-469f-a165-70867728950e|series|42")
+        #expect(item == LanIds.Item(sourceId: "0f8fad5b-d9cb-469f-a165-70867728950e", kind: "series", provider: "42"))
+        #expect(LanIds.parse("nope") == nil)
+    }
+}

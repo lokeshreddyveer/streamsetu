@@ -53,6 +53,7 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
     var sheet by remember { mutableStateOf<Pair<String, List<SheetItem>>?>(null) }
     var folderSheet by remember { mutableStateOf(false) }
     val grid = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    LaunchedEffect(grid) { snapshotFlow { grid.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }.collect { last -> if (last >= (vm.cards.value?.size ?: 0) - 60) vm.loadMore() } }
     LaunchedEffect(browse) { grid.scrollToItem(0) }
     val shown = folders.filter { !it.pref.hidden }
     val folderName = (browse as? Browse.Folder)?.let { b -> folders.firstOrNull { it.id == b.id }?.title }

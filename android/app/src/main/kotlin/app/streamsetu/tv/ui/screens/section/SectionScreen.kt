@@ -98,6 +98,8 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
         }
     }
     LaunchedEffect(gridState) { snapshotFlow { gridState.firstVisibleItemIndex }.collect { vm.scrollIndex = it } }
+    // Near the end of what is loaded, the next page is asked for.
+    LaunchedEffect(gridState) { snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }.collect { last -> if (last >= (vm.cards.value?.size ?: 0) - 90) vm.loadMore() } }
     // A different folder starts at its top, so the grid does not keep an offset from the previous one.
     var shownBrowse by remember { mutableStateOf(browse) }
     LaunchedEffect(browse, cards) { if (shownBrowse != browse && cards != null) { shownBrowse = browse; gridState.scrollToItem(0) } }

@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeToSequence
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -45,6 +46,27 @@ object Xtream {
             is JsonArray -> el.mapNotNull { it as? JsonObject }
             is JsonObject -> el.values.mapNotNull { it as? JsonObject }       // some servers answer with an object keyed by id
             else -> emptyList()
+        }
+    }
+
+    /**
+     * Reads a list from a provider one item at a time, without holding the whole answer in memory: a library of tens of thousands of films is tens of megabytes of text, and a TV
+     * stick with a small heap used to run out of memory part way, which ended as a shorter library without a word. A list that starts like a list but breaks off part way is an
+     * error (so the library already stored is kept, not replaced by half of one); an answer that is empty or not a list at all is an empty list, as before.
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    fun forEachObject(input: java.io.InputStream, onItem: (JsonObject) -> Unit) {
+        val stream = java.io.BufferedInputStream(input, 64 * 1024)
+        stream.mark(3)
+        if (!(stream.read() == 0xEF && stream.read() == 0xBB && stream.read() == 0xBF)) stream.reset()      // a byte order mark in front of the text is skipped
+        stream.mark(8192)
+        var first = -1
+        for (i in 0 until 8192) { val b = stream.read(); if (b < 0) break; if (!b.toChar().isWhitespace()) { first = b; break } }
+        stream.reset()
+        when (first.toChar()) {
+            '[' -> json.decodeToSequence(stream, kotlinx.serialization.json.JsonElement.serializer(), kotlinx.serialization.json.DecodeSequenceMode.ARRAY_WRAPPED).forEach { (it as? JsonObject)?.let(onItem) }
+            '{' -> parseArray(stream.readBytes().decodeToString()).forEach(onItem)       // some servers answer with an object keyed by id
+            else -> {}
         }
     }
 

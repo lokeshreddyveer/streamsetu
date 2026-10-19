@@ -37,7 +37,7 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
 
     fun movies(browse: Browse, sort: SortSpec, limit: Int = 600): Flow<List<Movie>> = query(ContentKind.MOVIE, browse, sort, limit) { db.browse().movies(it).map { l -> l.map { e -> e.toModel() } } }
     fun series(browse: Browse, sort: SortSpec, limit: Int = 600): Flow<List<Series>> = query(ContentKind.SERIES, browse, sort, limit) { db.browse().series(it).map { l -> l.map { e -> e.toModel() } } }
-    fun channels(browse: Browse, sort: SortSpec, limit: Int = 3000): Flow<List<Channel>> = query(ContentKind.CHANNEL, browse, sort, limit) { db.browse().channels(it).map { l -> l.map { e -> e.toModel() } } }
+    fun channels(browse: Browse, sort: SortSpec, limit: Int = 40000): Flow<List<Channel>> = query(ContentKind.CHANNEL, browse, sort, limit) { db.browse().channels(it).map { l -> l.map { e -> e.toModel() } } }
 
     private fun <T> query(kind: ContentKind, browse: Browse, sort: SortSpec, limit: Int, run: (androidx.sqlite.db.SupportSQLiteQuery) -> Flow<T>): Flow<T> =
         combine(library.sourceIds, folders.lockedIds(kind), db.browse().favoriteFolders(kind.name)) { ids, locked, favFolders -> Triple(ids, locked, favFolders) }

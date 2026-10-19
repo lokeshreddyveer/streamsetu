@@ -102,6 +102,7 @@ data class FilterOptions(val languages: List<String> = emptyList(), val qualitie
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderViewModel(c, kind) {
+    companion object { const val PAGE = 600 }
     val browse = MutableStateFlow<Browse>(Browse.All)
     val filter = MutableStateFlow(ContentFilter())
     var scrollIndex = 0
@@ -110,11 +111,15 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
     val availability = MutableStateFlow(SortAvailability(false, false, false, false))
     val sources: StateFlow<List<LibraryEntry>> = c.library.entries.map { all -> all.filter { it.kind == LibraryEntry.Kind.CONNECTION && it.id.removePrefix("src:") in c.library.sourceIds.value } }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    protected abstract fun source(b: Browse, s: SortSpec): Flow<List<Card>>
+    /** How many titles are asked for: a page at first, and another page each time the person scrolls near the end, so a library of tens of thousands is all reachable. */
+    val limit = MutableStateFlow(PAGE)
+    fun loadMore() { val shown = unfiltered.value?.size ?: return; if (shown >= limit.value) limit.value = limit.value + PAGE }
+
+    protected abstract fun source(b: Browse, s: SortSpec, limit: Int): Flow<List<Card>>
 
     /** null while loading (a skeleton is shown), then the list. */
-    private val unfiltered: StateFlow<List<Card>?> = combine(browse, sort) { b, s -> b to s }
-        .flatMapLatest { (b, s) -> source(b, s).map<List<Card>, List<Card>?> { it } }      // the previous list stays until the new one is ready: no blank or skeleton flash between folders
+    private val unfiltered: StateFlow<List<Card>?> = combine(browse, sort, limit) { b, s, n -> Triple(b, s, n) }
+        .flatMapLatest { (b, s, n) -> source(b, s, n).map<List<Card>, List<Card>?> { it } }      // the previous list stays until the new one is ready: no blank or skeleton flash between folders
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     /** The person's own lists, which the Status filter reads. Filled in once those lists exist, below. */
     private val filterContext = MutableStateFlow(FilterContext())
@@ -150,7 +155,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
 
     /** The provider folder (or All) the person was last in, so leaving a shortcut returns there. */
     var lastFolder: Browse = Browse.All
-    fun select(b: Browse) { if (browse.value != b) { if (b is Browse.Folder || b == Browse.All || b is Browse.Collection) lastFolder = b; browse.value = b; scrollIndex = 0 } }
+    fun select(b: Browse) { if (browse.value != b) { limit.value = PAGE; if (b is Browse.Folder || b == Browse.All || b is Browse.Collection) lastFolder = b; browse.value = b; scrollIndex = 0 } }
     fun applySort(spec: SortSpec) = c.browse.setSort(kind, (browse.value as? Browse.Folder)?.id, spec)
     fun toggle(id: String, list: String) = viewModelScope.launch {
         val on = (if (list == UserRepository.FAVOURITES) favourites else watchLater).value.contains(id)
@@ -183,7 +188,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
 
 @HiltViewModel
 class MoviesSectionViewModel @Inject constructor(c: AppContainer) : SectionViewModel(c, ContentKind.MOVIE) {
-    override fun source(b: Browse, s: SortSpec) = c.browse.movies(b, s).map { l -> l.map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, movie = it) } }
+    override fun source(b: Browse, s: SortSpec, limit: Int) = c.browse.movies(b, s, limit).map { l -> l.map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, movie = it) } }
 
     override fun setWatched(card: Card, watched: Boolean) { viewModelScope.launch { c.user.setWatched(card.id, ContentKind.MOVIE, null, watched) } }
 
@@ -202,7 +207,7 @@ class MoviesSectionViewModel @Inject constructor(c: AppContainer) : SectionViewM
 
 @HiltViewModel
 class SeriesSectionViewModel @Inject constructor(c: AppContainer) : SectionViewModel(c, ContentKind.SERIES) {
-    override fun source(b: Browse, s: SortSpec) = c.browse.series(b, s).map { l -> l.map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, series = it) } }
+    override fun source(b: Browse, s: SortSpec, limit: Int) = c.browse.series(b, s, limit).map { l -> l.map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, series = it) } }
 
     override fun setWatched(card: Card, watched: Boolean) {}
 

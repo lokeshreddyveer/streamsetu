@@ -29,3 +29,6 @@ dependencies {
     testImplementation(libs.okhttp.mockwebserver)
 
 }
+
+// A TV stick has little memory: the tests run with a small heap, so a list read whole instead of as a stream fails here as it would there.
+tasks.withType<Test>().configureEach { maxHeapSize = "128m" }
