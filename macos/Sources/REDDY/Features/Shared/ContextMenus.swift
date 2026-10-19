@@ -48,6 +48,7 @@ struct ChannelContextMenu: View {
         Button("Play", action: onPlay)
         Button(state.isFavorite(channel.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(channel.id, kind: .channel); onChanged() }
         CollectionMenu(itemID: channel.id, kind: .channel)
+        ShareLinkButton(link: DeepLink.link(channel: channel.name), name: channel.name)
         Button("Add to Multi-View") {
             guard let mv = container?.multiView else { return }
             switch mv.add(channel) {
@@ -73,6 +74,7 @@ struct MovieContextMenu: View {
         QueueMenu(item: .movie(movie))
         FavoriteOrderMenu(item: .movie(movie))
         CollectionMenu(itemID: movie.id, kind: .movie)
+        ShareLinkButton(link: DeepLink.link(movie: movie.title), name: movie.title)
         Divider()
         Button("Hide") { try? container?.favoritesRepo.hide(movie.id, kind: "movie"); state.catalogVersion += 1 }
     }
@@ -90,6 +92,7 @@ struct SeriesContextMenu: View {
         QueueMenu(item: .series(series))
         FavoriteOrderMenu(item: .series(series))
         CollectionMenu(itemID: series.id, kind: .series)
+        ShareLinkButton(link: DeepLink.link(series: series.title), name: series.title)
         Divider()
         Button("Hide") { try? container?.favoritesRepo.hide(series.id, kind: "series"); state.catalogVersion += 1 }
     }

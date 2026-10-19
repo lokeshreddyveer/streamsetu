@@ -245,6 +245,8 @@ fun WelcomeScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
         Spacer(Modifier.height(10.dp))
         Label("StreamSetu does not provide channels, movies or subscriptions.", Tokens.small, Tokens.textTertiary)
         Spacer(Modifier.height(4.dp))
+        Label("1. Add your playlist or login   2. Let it load, big lists take a minute   3. Search, add favorites, press play", Tokens.small, Tokens.textSecondary)
+        Spacer(Modifier.height(4.dp))
         Label("Arrow keys move  ·  OK chooses  ·  hold OK for options  ·  Back goes back", Tokens.small, Tokens.textTertiary)
         Spacer(Modifier.height(26.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {

@@ -84,6 +84,7 @@ struct OnboardingView: View {
                 Text("A bridge to your own TV. Add a playlist you are allowed to use and everything is kept on this device.")
                     .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 360)
             }
+            FirstRunSteps().frame(maxWidth: 340)
             Button { router.presentAdd = true } label: { Label("Add a Playlist", systemImage: "plus").frame(maxWidth: 280) }
                 .buttonStyle(.borderedProminent).controlSize(.large)
             Button { if let container { Task { await restore.start(container: container, state: state) } } } label: {

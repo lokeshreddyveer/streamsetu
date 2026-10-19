@@ -68,6 +68,7 @@ struct TitleMenu: View {
             }
         }
         CollectionMenu(itemID: item.id, kind: item.kind)
+        ShareLinkButton(link: item.isSeries ? DeepLink.link(series: item.title) : DeepLink.link(movie: item.title), name: item.title)
     }
 }
 

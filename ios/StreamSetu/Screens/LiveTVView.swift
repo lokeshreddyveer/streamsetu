@@ -75,6 +75,7 @@ struct LiveTVView: View {
     @ViewBuilder private func menu(_ c: Channel) -> some View {
         Button(state.isFavorite(c.id) ? "Remove from Favourites" : "Add to Favourites", systemImage: "heart") { state.toggleFavorite(c.id, kind: .channel) }
         CollectionMenu(itemID: c.id, kind: .channel)
+        ShareLinkButton(link: DeepLink.link(channel: c.name), name: c.name)
         Button("Rename…", systemImage: "pencil") { newName = c.name; renaming = c }
         Button("Hide Channel", systemImage: "eye.slash", role: .destructive) { try? container?.favoritesRepo.hide(c.id, kind: "channel"); state.catalogVersion += 1 }
         Button("Add to Multi-View", systemImage: "rectangle.split.2x2") {

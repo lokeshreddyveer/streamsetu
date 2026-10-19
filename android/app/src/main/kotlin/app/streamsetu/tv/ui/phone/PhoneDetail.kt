@@ -96,6 +96,7 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                         Chip(downloadLabel(saving), saving?.state == app.streamsetu.core.data.repo.SaveState.DONE, { downloadTap(c, saving) { c.downloads.enqueue(movie) } }, icon = Icons.Filled.Download)
                         val queued by c.watchQueue.items.collectAsState(); val inQueue = queued.any { it.id == movie.id }
                         Chip(if (inQueue) "In queue" else "Add to queue", inQueue, { if (inQueue) c.watchQueue.remove(movie.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.MOVIE, movie.id, movie.title)) }, icon = Icons.Filled.Add)
+                        Chip("Share link", false, { shareTitle(c.context, "movie", movie.title) }, icon = Icons.Filled.Share)
                         if (variants.size > 1) Chip("Choose stream", false, { chooseOpen = true }, icon = Icons.Filled.SwapHoriz)
                     }
                     (info?.plot ?: movie.plot)?.takeIf { it.isNotBlank() }?.let { Label(it, Ph.body, Tokens.textSecondary, maxLines = 12, modifier = Modifier.padding(top = 4.dp)) }
@@ -181,6 +182,7 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                         Chip(if (s.id in later) "In Watch Later" else "Watch Later", s.id in later, { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in later, UserRepository.WATCH_LATER) } }, icon = Icons.Filled.Bookmark)
                         val queued by c.watchQueue.items.collectAsState(); val inQueue = queued.any { it.id == s.id }
                         Chip(if (inQueue) "In queue" else "Add to queue", inQueue, { if (inQueue) c.watchQueue.remove(s.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.SERIES, s.id, s.title)) }, icon = Icons.Filled.Add)
+                        Chip("Share link", false, { shareTitle(c.context, "series", s.title) }, icon = Icons.Filled.Share)
                     }
                     s.plot?.takeIf { it.isNotBlank() }?.let { Label(it, Ph.body, Tokens.textSecondary, maxLines = 8, modifier = Modifier.padding(top = 4.dp)) }
                 }

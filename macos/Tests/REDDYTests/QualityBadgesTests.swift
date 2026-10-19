@@ -24,3 +24,14 @@ import Testing
         #expect(QualityBadges.from(["Some Film (2020)", "ENGLISH | 4K"]) == ["4K"])
     }
 }
+
+@Suite("Share links") struct ShareLinkTests {
+    @Test func aSharedMovieLinkParsesBackToTheSameTitle() {
+        let url = DeepLink.link(movie: "Spider-Man: No Way Home & more")!
+        #expect(DeepLink.parse(url) == .playMovie(title: "Spider-Man: No Way Home & more"))
+    }
+    @Test func aSharedChannelAndSeriesLinkParseBack() {
+        #expect(DeepLink.parse(DeepLink.link(channel: "Star Maa HD")!) == .playChannel(name: "Star Maa HD"))
+        #expect(DeepLink.parse(DeepLink.link(series: "Money Heist")!) == .findSeries(title: "Money Heist"))
+    }
+}

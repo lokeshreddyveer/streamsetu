@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
     /** `streamsetu://play?kind=channel|movie|series&q=name[&engine=auto|exoplayer|mpv]`: starts something by name (used for testing and voice shortcuts). */
     private fun handle(intent: android.content.Intent?) {
         val uri = intent?.data ?: return
-        if (uri.scheme != "streamsetu" || uri.host != "play") return
+        if (uri.scheme != "streamsetu" || (uri.host != "play" && uri.host != "watch")) return
         val c = container
         // A link from the home screen's Continue watching row (or a reminder) names the exact item.
         uri.getQueryParameter("id")?.let { id ->
@@ -68,10 +68,13 @@ class MainActivity : ComponentActivity() {
             return
         }
         uri.getQueryParameter("engine")?.let { e -> c.settings.setEngine(app.streamsetu.core.playback.EnginePreference.entries.firstOrNull { it.name.equals(e, true) || (e == "auto" && it.name == "AUTOMATIC") } ?: app.streamsetu.core.playback.EnginePreference.AUTOMATIC) }
-        val q = uri.getQueryParameter("q") ?: return
+        // Links shared from the Apple apps and from the share button: ?channel=, ?movie= or ?series= with the name.
+        val named = listOf("channel", "movie", "series").firstOrNull { uri.getQueryParameter(it) != null }
+        val q = uri.getQueryParameter("q") ?: named?.let { uri.getQueryParameter(it) } ?: return
+        val kind = uri.getQueryParameter("kind") ?: named
         c.appScope.launch {
             val r = c.catalog.search(q, 1)
-            val item: app.streamsetu.core.model.Playable? = when (uri.getQueryParameter("kind")) {
+            val item: app.streamsetu.core.model.Playable? = when (kind) {
                 "movie" -> r.movies.firstOrNull()?.let { app.streamsetu.core.model.MoviePlayable(it) }
                 "series" -> r.series.firstOrNull()?.let { s -> c.sync.loadEpisodes(s); c.catalog.episodesOnce(s.id).firstOrNull()?.let { app.streamsetu.core.model.EpisodePlayable(it, s) } }
                 else -> r.channels.firstOrNull()?.let { app.streamsetu.core.model.ChannelPlayable(it) }

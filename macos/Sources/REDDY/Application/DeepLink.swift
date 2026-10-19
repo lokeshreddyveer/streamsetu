@@ -49,6 +49,17 @@ enum DeepLink: Equatable {
         }
     }
 
+    /// The link that opens a channel, a film or a series by name on another device that has StreamSetu and the same title in its playlist.
+    static func link(channel name: String) -> URL? { build("play", "channel", name) }
+    static func link(movie title: String) -> URL? { build("watch", "movie", title) }
+    static func link(series title: String) -> URL? { build("watch", "series", title) }
+
+    private static func build(_ action: String, _ key: String, _ value: String) -> URL? {
+        var parts = URLComponents()
+        parts.scheme = scheme; parts.host = action; parts.queryItems = [URLQueryItem(name: key, value: String(value.prefix(120)))]
+        return parts.url
+    }
+
     /// An address worth putting in the Add Playlist form: http(s), with a host, and not absurdly long.
     static func validAddress(_ s: String) -> String? {
         let t = s.trimmingCharacters(in: .whitespacesAndNewlines)

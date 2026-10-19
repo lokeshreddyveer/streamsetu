@@ -15,6 +15,7 @@ struct OnboardingView: View {
                 Text("StreamSetu").font(.system(size: 26, weight: .heavy)).foregroundStyle(.white)
                 Text("Add a playlist").font(Typography.title)
                 Text("StreamSetu plays the playlists and logins you already have. Nothing is included with the app.").font(Typography.row).foregroundStyle(ColorTokens.textSecondary)
+                FirstRunSteps().padding(.vertical, 4)
                 AddSourceForm { added in state.reload(); state.switchPlaylist(added.id); router.navigate(.home, .shortcut(.discover)) }
                 Divider()
                 HStack(spacing: 10) {

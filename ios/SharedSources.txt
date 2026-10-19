@@ -229,3 +229,5 @@ Features/Shared/Views/DownloadViews.swift
 Services/RecordingService.swift
 Services/QualityBadges.swift
 Features/Shared/Views/QualityBadgeRow.swift
+Features/Onboarding/Views/FirstRunSteps.swift
+Features/Shared/Views/ShareLinkButton.swift
