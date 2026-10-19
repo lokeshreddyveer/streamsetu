@@ -20,6 +20,7 @@ interface SourceDao {
     @Query("UPDATE sources SET lastError = :error WHERE id = :id") suspend fun setError(id: String, error: String?)
     @Query("UPDATE sources SET lastOpenedAt = :at WHERE id = :id") suspend fun touch(id: String, at: Long)
     @Query("UPDATE sources SET name = :name WHERE id = :id") suspend fun rename(id: String, name: String)
+    @Query("UPDATE sources SET epgUrl = :url WHERE id = :id") suspend fun setGuide(id: String, url: String?)
     @Query("UPDATE sources SET enabled = :enabled WHERE id = :id") suspend fun setEnabled(id: String, enabled: Boolean)
 }
 

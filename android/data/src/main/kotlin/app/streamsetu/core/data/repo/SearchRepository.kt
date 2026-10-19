@@ -40,6 +40,10 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
         val list = (listOf(q) + recentIn(scope).filter { !it.equals(q, true) }).take(8)
         prefs.edit().putString("recent.$scope", list.joinToString("\n")).apply()
     }
+    /** The text last typed on a screen's search, kept while the app runs so Back from a title returns to the same results. */
+    private val lastTyped = HashMap<String, String>()
+    fun lastIn(scope: String): String = lastTyped[scope].orEmpty()
+    fun setLastIn(scope: String, query: String) { if (query.isEmpty()) lastTyped.remove(scope) else lastTyped[scope] = query }
     fun clearIn(scope: String) { prefs.edit().remove("recent.$scope").apply() }
 
     fun clearHistory() { prefs.edit().remove("recent").apply(); _recent.value = emptyList() }

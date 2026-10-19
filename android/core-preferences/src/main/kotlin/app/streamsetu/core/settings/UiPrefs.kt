@@ -85,7 +85,7 @@ class UiPrefs(context: Context) {
     fun setHomeRowHidden(id: String, hidden: Boolean) { val n = if (hidden) _homeHidden.value + id else _homeHidden.value - id; prefs.edit().putString("homeHidden", n.joinToString(",")).apply(); _homeHidden.value = n }
 
     // ---- Interface sounds ----
-    private val _soundsOn = flow(prefs.getBoolean("soundsOn", true))
+    private val _soundsOn = flow(prefs.getBoolean("soundsOn", false))
     val soundsEnabled: StateFlow<Boolean> = _soundsOn
     fun setSoundsEnabled(v: Boolean) { prefs.edit().putBoolean("soundsOn", v).apply(); _soundsOn.value = v }
     private val _soundTheme = flow(prefs.getString("soundTheme", "SIGNATURE")!!)

@@ -186,6 +186,14 @@ class AppContainer @Inject constructor(
         return r
     }
 
+    /** Saves the guide address for a connection and reads that guide now. Returns the number of programmes found. */
+    suspend fun setGuideAddress(sourceId: String, url: String?): Int {
+        sources.setGuide(sourceId, url)
+        val src = sources.get(sourceId) ?: return 0
+        val fallback = if (src.type == SourceType.XTREAM) "${app.streamsetu.core.parse.Xtream.normalizeHost(src.address)}/xmltv.php?username=${src.username.orEmpty()}&password=${credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()}" else null
+        return runCatching { epg.refresh(src, fallback, resolver.headers(src.id)) }.getOrDefault(-1)
+    }
+
     /** The live channel watched before the current one (the iPhone app's Last Channel). */
     var previousLive: Playable? = null
     fun lastChannel() { previousLive?.let { play(it, queue) } }

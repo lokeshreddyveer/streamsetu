@@ -14,8 +14,12 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src
 
 def n(seconds): return int(seconds * SR)
 
+PITCH = 1.0
+SUFFIX = ""
+
 def tone(freq, dur, amp=1.0, attack=0.004, tau=0.08, partials=((1.0, 1.0, 1.0),), settle=0.0, settle_tau=0.03, shimmer=0.0):
     """A struck tone. partials = (frequency ratio, amplitude, decay scale). settle = a small drop from a slightly higher start (a pluck's pitch settling)."""
+    freq *= PITCH
     out = [0.0] * n(dur)
     for ratio, a, ts in partials:
         phase = 0.0
@@ -86,6 +90,7 @@ def finish(x, peak_db=-10.0, fade_in=0.002, fade_out=0.03):
     return [v * g for v in x]
 
 def save(name, x):
+    name += SUFFIX
     path = os.path.join(OUT, name + ".wav")
     with wave.open(path, "wb") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
@@ -164,5 +169,16 @@ def build():
     place(pl, tone(G5, 0.3, amp=0.6, tau=0.08, partials=BELL), 0.12); place(pl, tone(C6, 0.35, amp=0.5, tau=0.09, partials=BELL), 0.14)
     save("ui_play", room(finish(pl, -4), 0.16))
 
+# More sets of the same tones: a different instrument and register for each. The first is the original.
+THEMES = {
+    "": (1.0, BELL, GLASS),
+    "_wood": (0.5, ((1.0, 1.0, 1.0), (3.9, 0.4, 0.25), (9.0, 0.1, 0.12)), ((1.0, 1.0, 1.0), (3.9, 0.25, 0.3))),        # a marimba: warm, short
+    "_crystal": (1.5, ((1.0, 1.0, 1.0), (2.0, 0.4, 0.5), (3.0, 0.2, 0.3), (4.2, 0.1, 0.2)), ((1.0, 1.0, 1.0), (2.0, 0.3, 0.5))),  # high and bright
+    "_soft": (0.75, ((1.0, 1.0, 1.0), (2.0, 0.08, 0.4)), ((1.0, 1.0, 1.0),)),                                              # nearly pure sine, rounded
+    "_arcade": (1.0, ((1.0, 1.0, 1.0), (3.0, 0.33, 0.9), (5.0, 0.2, 0.7), (7.0, 0.14, 0.5)), ((1.0, 1.0, 1.0), (3.0, 0.3, 0.8))),  # square-ish bleeps
+}
+
 if __name__ == "__main__":
-    build()
+    for suffix, (pitch, bell, glass) in THEMES.items():
+        PITCH, SUFFIX, BELL, GLASS = pitch, suffix, bell, glass
+        build()

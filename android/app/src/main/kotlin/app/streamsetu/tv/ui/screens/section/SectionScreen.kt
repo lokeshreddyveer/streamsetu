@@ -192,7 +192,8 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
 
     if (sortOpen) SortSheet(kind, sort, avail, onApply = vm::applySort, onClose = { sortOpen = false })
     if (filterOpen) FilterSheet(filter, sources, onApply = { vm.filter.value = it }, onClose = { filterOpen = false })
-    if (searchOpen) SectionSearch(c, kind, onOpen = { card -> searchOpen = false; onOpen(card) }, onClose = { searchOpen = false })
+    // The search steps aside while a title is open and comes back, with the same words and results, when Back leaves it.
+    if (searchOpen && nav.top == null) SectionSearch(c, kind, onOpen = onOpen, onClose = { searchOpen = false })
     menuFor?.let { card ->
         val target: HomeTarget? = card.movie?.let { HomeTarget.Film(it) } ?: card.series?.let { HomeTarget.Show(it) }
         val rowKind = when (browse) { Browse.Continue -> RowKind.CONTINUE; Browse.Favorites -> RowKind.FAVORITES; Browse.WatchLater -> RowKind.WATCH_LATER; else -> RowKind.OTHER }

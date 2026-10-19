@@ -40,20 +40,21 @@ import kotlinx.coroutines.delay
 fun SearchContent(
     c: AppContainer, kinds: Set<ContentKind>, modifier: Modifier = Modifier,
     onChannel: (Channel) -> Unit, onMovie: (Movie) -> Unit, onSeries: (Series) -> Unit, entry: FocusRequester? = null,
-    dropdown: Boolean = false,
+    dropdown: Boolean = false, restore: Boolean = false,
     onEpisode: (Episode, Series) -> Unit = { _, _ -> }, onFolder: (ContentKind, String) -> Unit = { _, _ -> }, onCollection: (String, ContentKind) -> Unit = { _, _ -> },
 ) {
-    var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<GlobalResults?>(null) }
     var typeFilter by remember { mutableStateOf<ContentKind?>(null) }
     // Opened from Movies, Series or Live TV: only that kind. Opened from the Search page: everything, with chips to narrow it.
     val tab = when (typeFilter ?: kinds.singleOrNull()) { ContentKind.CHANNEL -> SearchTab.LIVE; ContentKind.MOVIE -> SearchTab.MOVIES; ContentKind.SERIES -> SearchTab.SERIES; else -> SearchTab.ALL }
     val scopeKey = (kinds.singleOrNull()?.let { when (it) { ContentKind.CHANNEL -> SearchTab.LIVE; ContentKind.MOVIE -> SearchTab.MOVIES; else -> SearchTab.SERIES } } ?: SearchTab.ALL).name
+    var query by remember { mutableStateOf(if (restore) c.search.lastIn(scopeKey) else "") }
     var recent by remember { mutableStateOf(c.search.recentIn(scopeKey)) }
     fun remember() { c.search.rememberIn(scopeKey, query); recent = c.search.recentIn(scopeKey) }
 
     LaunchedEffect(Unit) { c.globalSearch.warmUp() }
     LaunchedEffect(query, tab) {
+        if (restore) c.search.setLastIn(scopeKey, query)
         if (query.isBlank()) { results = null; return@LaunchedEffect }
         results = null
         delay(150)
@@ -173,13 +174,14 @@ private fun ChannelCardSmall(x: SearchItem, onClick: () -> Unit) = Focusable(onC
 /** Search inside Movies or Series: movies only, or series only. */
 @Composable
 fun SectionSearch(c: AppContainer, kind: ContentKind, onOpen: (Card) -> Unit, onClose: () -> Unit) {
+    val scope = when (kind) { ContentKind.CHANNEL -> SearchTab.LIVE; ContentKind.MOVIE -> SearchTab.MOVIES; else -> SearchTab.SERIES }.name
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(120); runCatching { first.requestFocus() } }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    Dialog(onDismissRequest = { c.search.setLastIn(scope, ""); onClose() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Box(Modifier.fillMaxSize().background(Tokens.background).padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label(if (kind == ContentKind.MOVIE) "Search Movies" else "Search Series", Tokens.display, Tokens.text, FontWeight.Bold)
-                SearchContent(c, setOf(kind), Modifier.fillMaxSize(), entry = first,
+                SearchContent(c, setOf(kind), Modifier.fillMaxSize(), entry = first, restore = true,
                     onChannel = {}, onMovie = { m -> onOpen(Card(m.id, m.title, m.posterUrl, m.year, m.rating, m.sourceId, movie = m)) }, onSeries = { s -> onOpen(Card(s.id, s.title, s.posterUrl, s.year, s.rating, s.sourceId, series = s)) })
             }
         }

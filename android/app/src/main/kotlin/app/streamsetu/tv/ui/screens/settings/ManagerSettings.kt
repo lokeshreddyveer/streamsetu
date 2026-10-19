@@ -91,11 +91,15 @@ fun ChannelManagerSettings(c: AppContainer) {
     var checking by remember { mutableStateOf(false) }
     var menuFor by remember { mutableStateOf<ChannelEntity?>(null) }
     var prompt by remember { mutableStateOf<Triple<ChannelEntity, Boolean, String>?>(null) }   // channel, true = guide id (false = name), start text
+    var guideFor by remember { mutableStateOf<app.streamsetu.core.model.Source?>(null) }
+    var guideText by remember { mutableStateOf("") }
     var msg by remember { mutableStateOf<String?>(null) }
 
     if (withChannels.isEmpty()) { SettingGroup("Channels") { InfoRow("No live channels yet", "", "Add a connection with live TV, then manage its channels here.") }; return }
     SettingGroup("Channel Manager", "Hide channels you never watch, give one a better name, or tie it to the right guide channel. This only changes how things look on this device; a refresh of the playlist keeps your changes.") {
         if (withChannels.size > 1) ChoiceRow("Connection", options = withChannels.map { it.id to it.name }, value = sourceId ?: "") { sourceId = it; health = emptyMap() }
+        val current = withChannels.firstOrNull { it.id == sourceId }
+        if (current != null) ActionRow("Guide (EPG) address", if (current.epgUrl.isNullOrBlank()) "The provider's own guide is used. Paste an XMLTV link here to use another one." else current.epgUrl!!, "Change") { guideText = current.epgUrl.orEmpty(); guideFor = current }
         TvTextField(query, { query = it }, "Find a channel by name", Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), leadingIcon = Icons.Filled.Search)
         ActionRow("Check the channels listed below", "Asks each one for its first few kilobytes, three at a time. Takes a minute or two. A channel that does not answer in time is not counted as dead.", if (checking) "Checking…" else "Check", confirm = false, enabled = !checking && rows.isNotEmpty()) {
             checking = true; health = emptyMap()
@@ -130,6 +134,24 @@ fun ChannelManagerSettings(c: AppContainer) {
             add(MenuAction("Set the guide channel…", Icons.Filled.Schedule) { prompt = Triple(ch, true, ch.epgId.orEmpty()) })
             if (p != null) add(MenuAction("Undo my changes", Icons.Filled.Restore) { scope.launch { c.db.catalog().channel(ch.id)?.let { _ -> }; c.channelPrefs.reset(ch); msg = "Changes undone. The provider's name and guide id return after the next refresh." } })
         }, onClose = { menuFor = null })
+    }
+    guideFor?.let { src ->
+        Dialog(onDismissRequest = { guideFor = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Column(Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(20.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Label("Guide for ${src.name}", Tokens.title, Tokens.text, FontWeight.Bold)
+                    Label("An XMLTV link (.xml or .xml.gz). Empty goes back to the provider's guide. The guide is read right after you save.", Tokens.small, Tokens.textSecondary)
+                    TvTextField(guideText, { guideText = it }, "https://…/guide.xml", Modifier.fillMaxWidth())
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TvButton("Save", {
+                            val text = guideText; guideFor = null; msg = "Reading the guide…"
+                            scope.launch { val n = c.setGuideAddress(src.id, text); msg = if (n > 0) "Guide read: $n programmes." else if (n == 0) "Saved, but that guide has no programmes in the next two days." else "Saved, but the guide could not be read from that address." }
+                        }, primary = true)
+                        TvButton("Cancel", { guideFor = null })
+                    }
+                }
+            }
+        }
     }
     prompt?.let { (ch, forGuide, start) ->
         var text by remember { mutableStateOf(start) }

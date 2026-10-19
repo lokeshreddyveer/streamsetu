@@ -68,7 +68,8 @@ class SoundPolicy {
 object UISound {
     private val policy = SoundPolicy()
     private var pool: SoundPool? = null
-    private val ids = HashMap<UISoundEvent, Int>()
+    private val ids = HashMap<Pair<String, UISoundEvent>, Int>()
+    private val suffixes = mapOf("SIGNATURE" to "", "WOOD" to "_wood", "CRYSTAL" to "_crystal", "SOFT" to "_soft", "ARCADE" to "_arcade")
     private var settings: () -> SoundSettings = { SoundSettings() }
     private var videoPlaying: () -> Boolean = { false }
     @Volatile private var lastDpadAt = 0L
@@ -78,9 +79,11 @@ object UISound {
         this.settings = settings; this.videoPlaying = videoPlaying
         val p = SoundPool.Builder().setMaxStreams(3)
             .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()).build()
-        UISoundEvent.entries.forEach { e ->
-            val res = context.resources.getIdentifier(e.raw, "raw", context.packageName)
-            if (res != 0) ids[e] = p.load(context, res, 1)
+        suffixes.forEach { (theme, suffix) ->
+            UISoundEvent.entries.forEach { e ->
+                val res = context.resources.getIdentifier(e.raw + suffix, "raw", context.packageName)
+                if (res != 0) ids[theme to e] = p.load(context, res, 1)
+            }
         }
         pool = p
     }
@@ -93,8 +96,9 @@ object UISound {
 
     fun play(e: UISoundEvent) {
         val p = pool ?: return
-        val id = ids[e] ?: return
-        val g = policy.decide(e, System.currentTimeMillis(), settings(), videoPlaying()) ?: return
+        val chosen = settings()
+        val id = ids[chosen.theme to e] ?: ids["SIGNATURE" to e] ?: return
+        val g = policy.decide(e, System.currentTimeMillis(), chosen, videoPlaying()) ?: return
         p.play(id, g, g, 1, 0, 1f)
     }
 
