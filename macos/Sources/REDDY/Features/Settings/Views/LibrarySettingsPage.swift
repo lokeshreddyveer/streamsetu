@@ -95,6 +95,11 @@ struct LibrarySettingsPage: View {
                 MessageLine(message: vm.backupMessage)
             }
 
+            // MARK: recordings
+            SettingsGroup(title: "Recordings", footer: "Live channels recorded while you watched them, kept on this Mac and out of backups. Recording uses the MPV player and the connection you are already watching with, so it needs no second one.") {
+                RecordingsList()
+            }
+
             // MARK: downloads
             SettingsGroup(title: "Downloads", footer: "Movies and episodes saved on this Mac to watch without a connection. They are kept out of backups and can be removed here at any time. A download pauses while something is playing.") {
                 DownloadsList()

@@ -176,6 +176,12 @@ final class MPVPlayerEngine: PlaybackEngine {
         if userPaused { send(.pause) }
     }
 
+    /// MPV can write what it reads to a file while it plays (`stream-record`), so a recording costs no second connection.
+    func setRecording(to file: URL?) -> Bool {
+        guard let c = core else { return false }
+        return lib.setProperty?(c.ctx, "stream-record", file?.path ?? "") == 0
+    }
+
     func setVolume(_ v: Double) { if let c = core { _ = lib.setProperty?(c.ctx, "volume", String(Int(min(1.3, max(0, v)) * 100))) } }
     func setMuted(_ m: Bool) { if let c = core { _ = lib.setProperty?(c.ctx, "mute", m ? "yes" : "no") } }
     func setRate(_ r: Double) { if let c = core { _ = lib.setProperty?(c.ctx, "speed", String(r)) } }

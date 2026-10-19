@@ -318,6 +318,7 @@ struct PlayerControlsOverlay: View {
         sleepMenu
         if playback.capabilities.pictureAdjustments { pictureButton }
         if hasTools { toolsMenu }
+        if playback.canRecord || playback.recording != nil { recordChip }
         if !playback.isLive, let q = container?.watchQueue, !q.items.isEmpty { queueMenu(q) }
         if playback.screenshotSupported { IconButton(symbol: "camera", help: "Save screenshot") { saveScreenshot() } }
         IconButton(symbol: "info.circle", help: "Stream info", active: showDiagnostics) { showDiagnostics.toggle() }
@@ -362,6 +363,22 @@ struct PlayerControlsOverlay: View {
     }
 
     private var hasTools: Bool { playback.capabilities.chapters || playback.capabilities.abLoop || playback.capabilities.frameStep || playback.capabilities.volumeBoost }
+
+    /// The red dot that starts and stops recording the channel being watched; while it records it shows how long.
+    private var recordChip: some View {
+        Button {
+            if playback.recording != nil { playback.stopRecording(); appState?.toasts.show("Recording saved. Find it in Settings > Library > Recordings.", symbol: "record.circle") }
+            else { playback.startRecording { appState?.toasts.show($0, symbol: "exclamationmark.triangle.fill", kind: .warning) } }
+        } label: {
+            if let r = playback.recording {
+                TimelineView(.periodic(from: r.since, by: 1)) { ctx in
+                    HStack(spacing: 5) { Circle().fill(.red).frame(width: 8, height: 8); Text(DurationFormatter.clock(ctx.date.timeIntervalSince(r.since))).font(.system(size: 12, weight: .semibold).monospacedDigit()) }
+                        .padding(.horizontal, 8).frame(height: 28)
+                }
+            } else { chip("record.circle") }
+        }
+        .buttonStyle(.plain).help(playback.recording != nil ? "Stop recording" : "Record this channel").accessibilityLabel(playback.recording != nil ? "Stop recording" : "Record this channel")
+    }
 
     /// What is lined up to play next: each title can be taken out, or played now.
     private func queueMenu(_ q: WatchQueue) -> some View {

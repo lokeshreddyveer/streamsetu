@@ -55,6 +55,18 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
         ToggleRow("Refresh when the app opens", "Reads every connection and its guide a few seconds after launch, one at a time, and never while something is playing.", onStart) { c.settings.setRefreshOnStart(it) }
         ChoiceRow("Refresh catalogs in the background", options = listOf(0 to "Only when I ask", 12 to "Every 12 hours", 24 to "Every day"), value = hours) { c.settings.setBackgroundSyncHours(it); app.streamsetu.tv.CatalogSyncWorker.schedule(ctx, it) }
     }
+    SettingGroup("Recordings", "Live channels recorded while you watched them, kept on this device. Recording uses the MPV player and the connection you are already watching with, so it needs no second one. Choose Record this channel in the player's menu.") {
+        val files by produceState(emptyList<app.streamsetu.core.data.repo.RecordingFiles.Item>()) { while (true) { value = app.streamsetu.core.data.repo.RecordingFiles.list(c.recordingsFolder); kotlinx.coroutines.delay(3_000) } }
+        if (files.isEmpty()) InfoRow("Nothing is recorded yet", "")
+        files.forEach { r ->
+            InfoRow(r.title, app.streamsetu.core.data.repo.SavedTitles.size(r.bytes), DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(java.util.Date(r.startedAt)))
+            ActionRow("Play ${r.title}", null, "Play", confirm = false) {
+                val movie = app.streamsetu.core.model.Movie(app.streamsetu.core.data.repo.RecordingFiles.playId(r.file.name), "recordings", null, r.title + " (recorded)", null, null, null, null, "", 0)
+                app.streamsetu.tv.play(c, nav, app.streamsetu.core.model.MoviePlayable(movie))
+            }
+            ActionRow("Remove ${r.title}", "Deletes the recording from this device.", "Remove", danger = true) { r.file.delete() }
+        }
+    }
     SettingGroup("Downloads", "Movies and episodes saved on this device to watch without a connection. They pause while something is playing and carry on from where they stopped. Choose Download on a movie or an episode.") {
         val saved by c.downloads.items.collectAsState()
         val wifi = remember { mutableStateOf(c.downloads.wifiOnly) }

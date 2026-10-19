@@ -84,3 +84,34 @@ struct DownloadsList: View {
         .buttonStyle(.borderless)
     }
 }
+
+#if os(macOS)
+/// Everything recorded from live channels: play it, reveal it, remove it, and how much room it takes.
+struct RecordingsList: View {
+    @Environment(\.container) private var container
+    @State private var items: [Recordings.Item] = []
+
+    var body: some View {
+        Group {
+            if items.isEmpty {
+                Text("Nothing is recorded yet. While a live channel plays with the MPV player, press the red dot in its controls.").foregroundStyle(.secondary)
+            } else {
+                ForEach(items) { item in
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(item.title).lineLimit(1)
+                            Text(item.date.formatted(date: .abbreviated, time: .shortened) + "  ·  " + DownloadNaming.megabytes(item.bytes)).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 8)
+                        Button { container?.playback.play(file: item.url, title: item.title + " (recorded)") } label: { Image(systemName: "play.fill") }.accessibilityLabel("Play")
+                        Button { NSWorkspace.shared.activateFileViewerSelecting([item.url]) } label: { Image(systemName: "folder") }.accessibilityLabel("Show in Finder")
+                        Button(role: .destructive) { try? FileManager.default.removeItem(at: item.url); items = Recordings.all() } label: { Image(systemName: "trash") }.accessibilityLabel("Remove")
+                    }.buttonStyle(.borderless)
+                }
+                LabeledContent("Space used", value: DownloadNaming.megabytes(items.reduce(0) { $0 + $1.bytes }))
+            }
+        }
+        .task { while !Task.isCancelled { items = Recordings.all(); try? await Task.sleep(nanoseconds: 3_000_000_000) } }
+    }
+}
+#endif

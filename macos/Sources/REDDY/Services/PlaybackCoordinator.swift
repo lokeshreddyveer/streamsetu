@@ -330,6 +330,7 @@ final class PlaybackCoordinator {
 
     func stop() {
         if sleepTimer != nil, sleepTask != nil, !(sleepTimer?.hasEnded() ?? false) { cancelSleepTimer() }
+        stopRecording()
         saveProgress(force: true)
         cancelWork()
         endSession(outcome: "stopped", error: nil)
@@ -617,6 +618,7 @@ final class PlaybackCoordinator {
     // MARK: starting
 
     private func reset(for kind: ContentKind) {
+        stopRecording()
         saveProgress(force: true)
         endSession(outcome: "switched", error: nil)
         attempt = 0
@@ -924,6 +926,39 @@ final class PlaybackCoordinator {
         endSession(outcome: "ended", error: nil)
         if !r.isLive, queueAdvance?() == true { return }          // a title the person lined up comes before the next episode
         if r.kind == .episode, settings.autoPlayNextEpisode, upNext != nil { playNextEpisode() }
+    }
+
+    // MARK: recording a live channel
+
+    /// What is being recorded now: the file and when it began. Nil when nothing is.
+    private(set) var recording: (file: URL, since: Date)?
+
+    /// True when the player in use can write the stream to a file (MPV).
+    var canRecord: Bool { isLive && engine.kind == .mpv && !(current?.isCatchup ?? false) }
+
+    /// Starts writing the channel being watched to a file. After a few seconds the file is checked: if nothing arrived the recording is dropped and the person told.
+    func startRecording(toast: @escaping @MainActor (String) -> Void) {
+        guard canRecord, recording == nil, let channel = currentChannel else { return }
+        let started = Date()
+        let file = Recordings.folder.appendingPathComponent(Recordings.fileName(channel: channel.name, at: started))
+        guard engine.setRecording(to: file) else { toast("This channel can't be recorded with this player."); return }
+        recording = (file, started)
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 7_000_000_000)
+            guard let self, let r = self.recording, r.file == file else { return }
+            let size = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int64) ?? 0
+            if (size ?? 0) == 0 {
+                self.stopRecording()
+                try? FileManager.default.removeItem(at: file)
+                toast("Nothing was recorded: this channel can't be written to a file.")
+            }
+        }
+    }
+
+    func stopRecording() {
+        guard recording != nil else { return }
+        _ = engine.setRecording(to: nil)
+        recording = nil
     }
 
     /// Plays the title at the front of the person's queue and returns true; false when the queue is empty. Set by the app, which knows how to start a series.

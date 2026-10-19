@@ -106,6 +106,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
     val qualities by playback.qualities.collectAsState()
     val nextIn by c.nextEpisodeIn.collectAsState()
     val lined by c.watchQueue.items.collectAsState()
+    val recording by playback.recording.collectAsState()
     val onlineSubs = remember { app.streamsetu.tv.ui.screens.OnlineSubtitles(context, c.credentials) }
     var subHits by remember { mutableStateOf<List<app.streamsetu.tv.ui.screens.OnlineSubtitles.Hit>?>(null) }
     var subMessage by remember { mutableStateOf<String?>(null) }
@@ -394,6 +395,14 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
             add(SheetItem("Subtitle look", Icons.Filled.FormatSize, false, "Size, colour, position, background", true, true) { panel = Panel.SUBLOOK })
             add(SheetItem("Find subtitles online", Icons.Filled.Subtitles, false, "From OpenSubtitles, with your free key", true, true) { panel = Panel.SUBFIND })
             if (qualities.isNotEmpty()) add(SheetItem("Quality", Icons.Filled.HighQuality, false, "Choose the resolution", true, true) { panel = Panel.QUALITY })
+            if (live) {
+                if (recording != null || playback.canRecord()) add(SheetItem(if (recording != null) "Stop recording" else "Record this channel", Icons.Filled.FiberManualRecord, recording != null) {
+                    val ctx = context
+                    if (recording != null) { playback.stopRecording(); android.widget.Toast.makeText(ctx, "Recording saved. Find it in Settings > Libraries > Recordings.", android.widget.Toast.LENGTH_LONG).show() }
+                    else (item as? ChannelPlayable)?.let { ch -> playback.startRecording(java.io.File(c.recordingsFolder, app.streamsetu.core.data.repo.RecordingFiles.fileName(ch.channel.name, System.currentTimeMillis()))) { m -> android.widget.Toast.makeText(ctx, m, android.widget.Toast.LENGTH_LONG).show() } }
+                })
+                else add(SheetItem("Record this channel", Icons.Filled.FiberManualRecord, false, "Needs the MPV player: choose it under Player") { panel = Panel.ENGINE })
+            }
             if (!live && lined.isNotEmpty()) add(SheetItem("Up next: ${lined.size} in the queue", Icons.Filled.List, false, null, true, true) { panel = Panel.QUEUE })
             if (!live && chapters.isNotEmpty()) add(SheetItem("Chapters", Icons.Filled.List, false, null, true, true) { panel = Panel.CHAPTERS })
             if (!live) add(SheetItem("Go to time…", Icons.Filled.Schedule, false, "Type an exact time, or jump by tenths", true, true) { panel = Panel.JUMPTO })

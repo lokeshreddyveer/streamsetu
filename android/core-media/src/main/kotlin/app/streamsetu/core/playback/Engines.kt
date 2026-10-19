@@ -99,6 +99,8 @@ interface PlayerEngine {
     fun diagnostics(): Map<String, String>
     /** The frame rate of the video playing now, or 0 when it is not known yet. */
     fun frameRate(): Float = 0f
+    /** Starts (or, with null, stops) writing the stream being played to a file, over the same connection. False when this engine cannot. */
+    fun setRecording(path: String?): Boolean = false
     fun setSpeed(speed: Float)
     fun setAspect(mode: AspectMode)
     /** 0 to 1. Used by Multi-View, where one picture at a time has sound. */

@@ -92,6 +92,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     val qualities by playback.qualities.collectAsState()
     val nextIn by c.nextEpisodeIn.collectAsState()
     val lined by c.watchQueue.items.collectAsState()
+    val recording by playback.recording.collectAsState()
     val appCtx = androidx.compose.ui.platform.LocalContext.current
     val onlineSubs = remember { OnlineSubtitles(appCtx, c.credentials) }
     var controlsFocused by remember { mutableStateOf(false) }
@@ -349,6 +350,13 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                         }
                         PanelKind.MORE -> {
                             if (live) item { TextOption("Multi-View", false, Modifier) { onMultiView() } }
+                            if (live && (recording != null || playback.canRecord())) item {
+                                TextOption(if (recording != null) "Stop recording" else "Record this channel", false, Modifier) {
+                                    if (recording != null) { playback.stopRecording(); android.widget.Toast.makeText(context, "Recording saved. Find it in Settings > Libraries > Recordings.", android.widget.Toast.LENGTH_LONG).show() }
+                                    else (item as? ChannelPlayable)?.let { ch -> playback.startRecording(java.io.File(c.recordingsFolder, app.streamsetu.core.data.repo.RecordingFiles.fileName(ch.channel.name, System.currentTimeMillis()))) { m -> android.widget.Toast.makeText(context, m, android.widget.Toast.LENGTH_LONG).show() } }
+                                    closePanel()
+                                }
+                            } else if (live) item { TextOption("Record this channel", false, Modifier, "Needs the MPV player: choose it under Player") { panel = PanelKind.ENGINE } }
                             if (!live && playback.introEndMs() != null) item { TextOption("Skip intro", false, Modifier.focusRequester(selectedReq)) { playback.skipIntro(); closePanel() } }
                             if (!live && lined.isNotEmpty()) item { TextOption("Up next: ${lined.size} in the queue", false, Modifier) { panel = PanelKind.QUEUE } }
                             if (!live && playback.recapEndMs() != null) item { TextOption("Skip recap", false, Modifier.focusRequester(selectedReq)) { playback.skipRecap(); closePanel() } }

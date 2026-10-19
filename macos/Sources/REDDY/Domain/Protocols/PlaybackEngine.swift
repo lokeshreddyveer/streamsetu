@@ -86,6 +86,8 @@ protocol PlaybackEngine: AnyObject {
     func setLoop(start: Double?, end: Double?)
     /// Moves one frame forward or back and pauses.
     func frameStep(forward: Bool)
+    /// Starts (or, with nil, stops) writing the stream being played to a file, over the same connection. False when the engine cannot.
+    func setRecording(to file: URL?) -> Bool
 }
 
 struct PlaybackChapter: Identifiable, Equatable, Sendable {
@@ -98,6 +100,7 @@ extension PlaybackEngine {
     func chapters() -> [PlaybackChapter] { [] }
     func setLoop(start: Double?, end: Double?) {}
     func frameStep(forward: Bool) {}
+    func setRecording(to file: URL?) -> Bool { false }
 }
 
 /// Colour controls, each from −100 to +100 (0 = unchanged). Only MPV can apply them.

@@ -62,11 +62,16 @@ class AppContainer @Inject constructor(
     /** Seconds left before the next episode starts by itself; 0 when none is waiting. */
     val nextEpisodeIn = kotlinx.coroutines.flow.MutableStateFlow(0)
 
+    /** Where recordings of live channels are kept. */
+    val recordingsFolder: java.io.File = java.io.File(context.getExternalFilesDir(null) ?: context.filesDir, "recordings").also { it.mkdirs() }
+
     /** Movies and episodes saved on this device to watch without a connection. */
     val downloads = Downloads(context, resolver, {
         val s = playback.state.value
         s == app.streamsetu.core.playback.PlaybackState.Playing || s == app.streamsetu.core.playback.PlaybackState.Buffering || s == app.streamsetu.core.playback.PlaybackState.Resolving
-    }, appScope).also { d -> app.streamsetu.core.playback.LocalFiles.finder = { id -> d.localUri(id) } }
+    }, appScope).also { d -> app.streamsetu.core.playback.LocalFiles.finder = { id ->
+        d.localUri(id) ?: app.streamsetu.core.data.repo.RecordingFiles.fileOf(id)?.let { java.io.File(recordingsFolder, it) }?.takeIf { it.exists() }?.let { android.net.Uri.fromFile(it).toString() }
+    } }
 
     /** The titles lined up to play after the one on screen. */
     val watchQueue = app.streamsetu.core.data.repo.WatchQueue(object : app.streamsetu.core.data.repo.QueueStore {

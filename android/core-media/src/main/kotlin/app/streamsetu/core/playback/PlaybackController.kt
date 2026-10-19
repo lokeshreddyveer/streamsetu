@@ -279,6 +279,7 @@ class PlaybackController(
     }
 
     private suspend fun startNow(item: Playable, forced: EngineKind?) {
+        stopRecording()
         // A provider that allows one connection keeps the last one open for a few seconds; opening another at once is refused or very slow.
         if (isStrict(item.sourceId)) { _engine.value?.takeIf { _state.value != PlaybackState.Idle }?.stop(); if (_engine.value != null) closedAt[item.sourceId] = System.currentTimeMillis() }
         val wait = 3500 - (System.currentTimeMillis() - (closedAt[item.sourceId] ?: 0L))
@@ -433,6 +434,33 @@ class PlaybackController(
     }
     val positionMs: Long get() = _engine.value?.positionMs ?: 0
     val durationMs: Long get() = _engine.value?.durationMs ?: 0
+    // ---- Recording the channel being watched ----
+    data class RecordingInfo(val path: String, val sinceMs: Long)
+    private val _recording = MutableStateFlow<RecordingInfo?>(null)
+    /** What is being recorded now (the file and when it began), or null. */
+    val recording: StateFlow<RecordingInfo?> = _recording.asStateFlow()
+
+    /** True when the player in use can write the stream to a file (MPV). */
+    fun canRecord(): Boolean = _current.value?.let { it.isLive && it !is app.streamsetu.core.model.CatchUpPlayable } == true && _engine.value?.kind == EngineKind.MPV
+
+    /** Starts writing the channel being watched to [file]. A few seconds later the file is checked: if nothing arrived the recording is dropped and [onProblem] is told. */
+    fun startRecording(file: java.io.File, onProblem: (String) -> Unit) {
+        val e = _engine.value ?: return
+        if (_recording.value != null || !canRecord()) return
+        if (!e.setRecording(file.absolutePath)) { onProblem("This channel can't be recorded with this player."); return }
+        _recording.value = RecordingInfo(file.absolutePath, System.currentTimeMillis())
+        scope.launch {
+            delay(7_000)
+            if (_recording.value?.path == file.absolutePath && file.length() == 0L) { stopRecording(); file.delete(); onProblem("Nothing was recorded: this channel can't be written to a file.") }
+        }
+    }
+
+    fun stopRecording() {
+        if (_recording.value == null) return
+        _engine.value?.setRecording(null)
+        _recording.value = null
+    }
+
     /** The frame rate of the video playing now, or 0 while it is not known. */
     fun frameRate(): Float = _engine.value?.frameRate() ?: 0f
     val engineKind: EngineKind? get() = _engine.value?.kind
@@ -491,6 +519,7 @@ class PlaybackController(
     }
 
     fun stop() {
+        stopRecording()
         sleepJob?.cancel(); _sleepEndsAt.value = 0
         minimized = false; backgroundHold = false; _audioOnly.value = false
         saveProgress()
