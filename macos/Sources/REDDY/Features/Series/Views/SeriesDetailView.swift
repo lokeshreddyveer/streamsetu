@@ -20,6 +20,7 @@ struct SeriesDetailView: View {
                             Text(s.title).font(Typography.display).lineLimit(2)
                             Text([s.releaseYear.flatMap { s.title.contains(String($0)) ? nil : String($0) }, s.genre ?? s.categoryName, vm.detail.map { "\($0.seasons.count) season\($0.seasons.count == 1 ? "" : "s")" }].compactMap { $0 }.joined(separator: " · "))
                                 .font(Typography.bodyMedium).foregroundStyle(ColorTokens.textSecondary)
+                            QualityBadgeRow(texts: [s.title, s.categoryName])
                         }.padding(Spacing.section)
                     }
                     IconButton(symbol: "xmark", help: "Close") { router.closeDetail() }.padding(Spacing.lg)

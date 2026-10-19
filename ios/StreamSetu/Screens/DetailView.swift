@@ -34,6 +34,7 @@ struct DetailView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(item.title).appFont(26, .bold)
                     Text(meta).appFont(13).foregroundStyle(.secondary)
+                    QualityBadgeRow(texts: [item.title, item.genre])
                     HStack(spacing: 10) {
                         if item.isSeries {
                             Button { playSeries() } label: { Label(resumeEpisode == nil ? "Play" : "Resume", systemImage: "play.fill").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large)

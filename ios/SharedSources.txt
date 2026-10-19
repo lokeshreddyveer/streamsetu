@@ -227,3 +227,5 @@ Services/DownloadRecords.swift
 Services/DownloadService.swift
 Features/Shared/Views/DownloadViews.swift
 Services/RecordingService.swift
+Services/QualityBadges.swift
+Features/Shared/Views/QualityBadgeRow.swift
