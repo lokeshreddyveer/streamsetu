@@ -105,6 +105,9 @@ interface UserDao {
     @Query("DELETE FROM favorites WHERE listId = :listId") suspend fun clearList(listId: String)
     @Query("DELETE FROM favorites WHERE itemId = :itemId AND listId = :listId") suspend fun removeFavorite(itemId: String, listId: String)
     @Query("SELECT itemId FROM favorites WHERE listId = :listId ORDER BY addedAt DESC") fun favoriteIds(listId: String): Flow<List<String>>
+    /** The lists show the newest first, so "first" is the largest time and "last" the smallest. */
+    @Query("UPDATE favorites SET addedAt = (SELECT COALESCE(MAX(addedAt), 0) + 1 FROM favorites WHERE listId = :listId) WHERE itemId = :itemId AND listId = :listId") suspend fun moveFavoriteFirst(itemId: String, listId: String)
+    @Query("UPDATE favorites SET addedAt = (SELECT COALESCE(MIN(addedAt), 0) - 1 FROM favorites WHERE listId = :listId) WHERE itemId = :itemId AND listId = :listId") suspend fun moveFavoriteLast(itemId: String, listId: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putProgress(p: ProgressEntity)
     @Query("SELECT * FROM progress WHERE itemId = :id") suspend fun progress(id: String): ProgressEntity?

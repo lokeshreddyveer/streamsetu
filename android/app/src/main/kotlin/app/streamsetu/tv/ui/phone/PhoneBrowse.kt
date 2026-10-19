@@ -99,6 +99,7 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
                             add(SheetItem(if (card.id in favs) "Remove from favorites" else "Add to favorites", Icons.Filled.Favorite) { vm.toggle(card.id, UserRepository.FAVOURITES) })
                             add(SheetItem(if (card.id in later) "Remove from Watch Later" else "Watch Later", Icons.Filled.Bookmark) { vm.toggle(card.id, UserRepository.WATCH_LATER) })
                             if (card.movie != null) add(SheetItem(if (p?.completed == true) "Mark as unwatched" else "Mark as watched", Icons.Filled.CheckCircle) { vm.setWatched(card, p?.completed != true) })
+                            addAll(queueItems(c, card.id, if (card.movie != null) ContentKind.MOVIE else ContentKind.SERIES, card.title))
                         } },
                     )
                 }

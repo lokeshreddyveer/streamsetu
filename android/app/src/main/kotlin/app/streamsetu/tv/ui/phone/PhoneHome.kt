@@ -58,12 +58,12 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
         SheetItem(if (m.id in favIds) "Remove from favorites" else "Add to favorites", Icons.Filled.Favorite) { vm.setFavorite(m.id, ContentKind.MOVIE, m.id !in favIds) },
         SheetItem("Watch later", Icons.Filled.Bookmark) { vm.toggleWatchLater(m.id, ContentKind.MOVIE) },
         SheetItem("Details", Icons.Filled.Info) { nav.open(Overlay.MovieDetail(m)) },
-    ) }
+    ) + queueItems(c, m.id, ContentKind.MOVIE, m.title) + favoriteOrderItems(m.id in favIds) { front -> vm.moveFavorite(m.id, ContentKind.MOVIE, front) } }
     fun seriesMenu(s: Series) { sheet = s.title to listOf(
         SheetItem("Open", Icons.Filled.PlayArrow) { nav.open(Overlay.SeriesDetail(s)) },
         SheetItem(if (s.id in favIds) "Remove from favorites" else "Add to favorites", Icons.Filled.Favorite) { vm.setFavorite(s.id, ContentKind.SERIES, s.id !in favIds) },
         SheetItem("Watch later", Icons.Filled.Bookmark) { vm.toggleWatchLater(s.id, ContentKind.SERIES) },
-    ) }
+    ) + queueItems(c, s.id, ContentKind.SERIES, s.title) + favoriteOrderItems(s.id in favIds) { front -> vm.moveFavorite(s.id, ContentKind.SERIES, front) } }
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -173,3 +173,16 @@ fun ChannelTile(ch: app.streamsetu.core.model.Channel, now: String?, onClick: ()
         if (now != null) Label(now, 11.sp, Tokens.textTertiary)
     }
 }
+
+/** "Play next", "Add to queue" or "Remove from queue" for a movie or series in a long-press sheet. */
+internal fun queueItems(c: AppContainer, id: String, kind: ContentKind, title: String): List<SheetItem> =
+    if (c.watchQueue.contains(id)) listOf(SheetItem("Remove from queue", Icons.Filled.Close) { c.watchQueue.remove(id) })
+    else listOf(
+        SheetItem("Play next", Icons.Filled.SkipNext) { c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(kind, id, title), next = true) },
+        SheetItem("Add to queue", Icons.Filled.Add) { c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(kind, id, title)) })
+
+/** "Move to front" and "Move to end" for a favourite, so the order of the favourites is the person's own. */
+internal fun favoriteOrderItems(isFavorite: Boolean, move: (front: Boolean) -> Unit): List<SheetItem> =
+    if (!isFavorite) emptyList() else listOf(
+        SheetItem("Move to front of favorites", Icons.Filled.ArrowUpward) { move(true) },
+        SheetItem("Move to end of favorites", Icons.Filled.ArrowDownward) { move(false) })

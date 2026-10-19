@@ -16,6 +16,11 @@ class UserRepository(private val db: AppDatabase) {
         if (on) dao.putFavorite(FavoriteEntity(itemId, kind.name, list, System.currentTimeMillis())) else dao.removeFavorite(itemId, list)
     }
 
+    /** Puts one favourite first or last in its list, leaving the others where they were. */
+    suspend fun moveFavourite(itemId: String, toFront: Boolean, list: String = FAVOURITES) {
+        if (toFront) dao.moveFavoriteFirst(itemId, list) else dao.moveFavoriteLast(itemId, list)
+    }
+
     suspend fun progress(itemId: String): WatchProgress? = dao.progress(itemId)?.toModel()
 
     /** Remembers where playback stopped. Within the last 30 s (or 95 %) counts as finished. */

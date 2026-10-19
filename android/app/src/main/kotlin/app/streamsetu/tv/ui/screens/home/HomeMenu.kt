@@ -111,7 +111,18 @@ fun HomeMenuHost(target: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppCon
         }
     }
 
-    if (!chooser && !info && confirmSeries == null) ContextMenu(title, null, actionsFor(st).map { a -> MenuAction(label(a), icon(a)) { run(a) } } + extra, onClose = onClose)
+    // The queue of titles to play one after another, and the person's own order of the favourites.
+    val queued by c.watchQueue.items.collectAsState()
+    val queueActions = if (target is HomeTarget.Film || target is HomeTarget.Show) {
+        if (queued.any { it.id == favId }) listOf(MenuAction("Remove from queue", Icons.Filled.RemoveCircleOutline) { c.watchQueue.remove(favId) })
+        else listOf(
+            MenuAction("Play next", Icons.Filled.SkipNext) { c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(contentKind, favId, title), next = true) },
+            MenuAction("Add to queue", Icons.Filled.Add) { c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(contentKind, favId, title)) })
+    } else emptyList()
+    val orderActions = if (favId in favs) listOf(
+        MenuAction("Move to front of favorites", Icons.Filled.ArrowUpward) { vm.moveFavorite(favId, contentKind, true) },
+        MenuAction("Move to end of favorites", Icons.Filled.ArrowDownward) { vm.moveFavorite(favId, contentKind, false) }) else emptyList()
+    if (!chooser && !info && confirmSeries == null) ContextMenu(title, null, actionsFor(st).map { a -> MenuAction(label(a), icon(a)) { run(a) } } + queueActions + orderActions + extra, onClose = onClose)
     confirmSeries?.let { watched -> ContextMenu(if (watched) "Mark every episode watched?" else "Mark every episode unwatched?", "This changes all episodes of ${title}.", listOf(MenuAction(if (watched) "Mark all watched" else "Mark all unwatched", Icons.Filled.Check) { (target as? HomeTarget.Show)?.let { vm.setSeriesWatched(it.series, watched) } }, MenuAction("Cancel", Icons.Filled.Close) {}), onClose = { confirmSeries = null; onClose() }) }
     if (chooser) ContextMenu("Choose source", "Opens only this play. Your default is unchanged.", variants.map { v ->
         MenuAction((entries.firstOrNull { it.id == "src:${v.sourceId}" }?.name ?: "Connection") + if (v.id == itemId) "  (current)" else "", Icons.Filled.SwapHoriz) {

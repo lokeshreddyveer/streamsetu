@@ -183,6 +183,7 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         else -> listOf(id)
     }
     fun setFavorite(id: String, kind: ContentKind, on: Boolean) = viewModelScope.launch { logicalIds(id, kind).forEach { c.user.setFavourite(it, kind, on) }; app.streamsetu.tv.UISound.play(if (on) app.streamsetu.tv.UISoundEvent.FAVORITE_ADD else app.streamsetu.tv.UISoundEvent.FAVORITE_REMOVE) }
+    fun moveFavorite(id: String, kind: ContentKind, toFront: Boolean) = viewModelScope.launch { logicalIds(id, kind).forEach { c.user.moveFavourite(it, toFront) } }
     fun setWatchLater(id: String, kind: ContentKind, on: Boolean) = viewModelScope.launch { logicalIds(id, kind).forEach { c.user.setFavourite(it, kind, on, UserRepository.WATCH_LATER) }; app.streamsetu.tv.UISound.play(if (on) app.streamsetu.tv.UISoundEvent.WATCH_LATER_ADD else app.streamsetu.tv.UISoundEvent.WATCH_LATER_REMOVE) }
     fun setWatched(id: String, kind: ContentKind, seriesId: String?, watched: Boolean) = viewModelScope.launch { c.user.setWatched(id, kind, seriesId, watched) }
     /** Takes a title out of Continue Watching: only its resume point goes; watch history stays. */

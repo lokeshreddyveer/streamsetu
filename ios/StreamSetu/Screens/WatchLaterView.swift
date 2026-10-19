@@ -55,6 +55,10 @@ struct TitleMenu: View {
         Button(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later", systemImage: state.isWatchLater(item.id) ? "bookmark.slash" : "bookmark") {
             state.toggleWatchLater(item.id, kind: item.kind)
         }
+        if state.isFavorite(item.id) {
+            Button("Move to Front of Favourites", systemImage: "arrow.up.to.line") { state.moveFavorite(item.id, kind: item.kind, toFront: true) }
+            Button("Move to End of Favourites", systemImage: "arrow.down.to.line") { state.moveFavorite(item.id, kind: item.kind, toFront: false) }
+        }
         if let q = container?.watchQueue {
             if q.contains(item.id) {
                 Button("Remove from Queue", systemImage: "text.badge.minus") { q.remove(item.id) }
