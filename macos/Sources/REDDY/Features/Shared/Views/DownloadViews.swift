@@ -1,6 +1,21 @@
 import SwiftUI
 
 /// "Download" on a movie or episode, which turns into its progress, and then into a menu to remove the saved copy.
+/// A ring that fills as a download proceeds, as Netflix shows it, with a small stop square inside while it runs.
+struct DownloadRing: View {
+    let fraction: Double
+    var size: CGFloat = 18
+    var body: some View {
+        ZStack {
+            Circle().stroke(.secondary.opacity(0.35), lineWidth: 2)
+            Circle().trim(from: 0, to: max(0.04, min(1, fraction))).stroke(.tint, style: StrokeStyle(lineWidth: 2, lineCap: .round)).rotationEffect(.degrees(-90))
+                .animation(.linear(duration: 0.4), value: fraction)
+            RoundedRectangle(cornerRadius: 1).fill(.tint).frame(width: size * 0.3, height: size * 0.3)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 struct DownloadButton: View {
     let itemID: String
     var compact = false
@@ -25,7 +40,7 @@ struct DownloadButton: View {
                 Menu {
                     Button("Pause") { d.pause(itemID) }
                     Button("Cancel Download", role: .destructive) { d.remove(itemID) }
-                } label: { label("\(Int((r?.fraction ?? 0) * 100)) %", "arrow.down.circle.fill") }
+                } label: { ringLabel(r?.fraction ?? 0) }
             case .paused?:
                 Menu {
                     Button("Resume") { d.resume(itemID) }
@@ -35,6 +50,11 @@ struct DownloadButton: View {
                 Menu { Button("Remove Download", role: .destructive) { d.remove(itemID) } } label: { label("Downloaded", "checkmark.circle.fill") }
             }
         }
+    }
+
+    @ViewBuilder private func ringLabel(_ fraction: Double) -> some View {
+        if compact { DownloadRing(fraction: fraction).accessibilityLabel("Downloading, \(Int(fraction * 100)) percent") }
+        else { HStack(spacing: 6) { DownloadRing(fraction: fraction); Text("\(Int(fraction * 100))%").monospacedDigit() } }
     }
 
     @ViewBuilder private func label(_ text: String, _ symbol: String) -> some View {
@@ -65,7 +85,9 @@ struct DownloadsList: View {
                 Text(r.title).lineLimit(1)
                 if let s = r.subtitle, !s.isEmpty { Text(s).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
                 switch r.state {
-                case .downloading: ProgressView(value: r.fraction)
+                case .downloading:
+                    ProgressView(value: r.fraction)
+                    Text("\(Int(r.fraction * 100))%  ·  \(DownloadNaming.megabytes(r.bytesDone)) of \(DownloadNaming.megabytes(r.bytesTotal))").font(.caption).monospacedDigit().foregroundStyle(.secondary)
                 case .done: Text(DownloadNaming.megabytes(r.bytesTotal)).font(.caption).foregroundStyle(.secondary)
                 case .queued: Text("Waiting").font(.caption).foregroundStyle(.secondary)
                 case .paused: Text(r.error ?? "Paused").font(.caption).foregroundStyle(.secondary)
@@ -75,7 +97,7 @@ struct DownloadsList: View {
             Spacer(minLength: 8)
             switch r.state {
             case .done: Button { container?.playSaved(r) } label: { Image(systemName: "play.fill") }.accessibilityLabel("Play")
-            case .downloading: Button { d.pause(r.itemID) } label: { Image(systemName: "pause.fill") }.accessibilityLabel("Pause")
+            case .downloading: Button { d.pause(r.itemID) } label: { ZStack { DownloadRing(fraction: r.fraction, size: 24); Image(systemName: "pause.fill").font(.system(size: 8)) } }.accessibilityLabel("Pause")
             case .paused, .failed: Button { d.resume(r.itemID) } label: { Image(systemName: "arrow.clockwise") }.accessibilityLabel("Resume")
             case .queued: EmptyView()
             }

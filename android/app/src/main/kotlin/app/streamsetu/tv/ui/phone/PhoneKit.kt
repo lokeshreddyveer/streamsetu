@@ -70,13 +70,27 @@ fun IconTap(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Mod
 }
 
 @Composable
-fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null) {
+fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, progress: Float? = null) {
     Row(
         modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (selected) Tokens.accent else Tokens.elevated).semantics { this.selected = selected; role = Role.Button }.clickable(onClick = onClick).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        if (icon != null) Icon(icon, if (selected) Color(0xFF04141A) else Tokens.textSecondary, 16.dp)
+        if (progress != null) DownloadRing(progress, if (selected) Color(0xFF04141A) else Tokens.accent, 18.dp)
+        else if (icon != null) Icon(icon, if (selected) Color(0xFF04141A) else Tokens.textSecondary, 16.dp)
         Label(text, Ph.small, if (selected) Color(0xFF04141A) else Tokens.text, FontWeight.Medium)
+    }
+}
+
+/** A ring that fills as a download proceeds, with a small stop square inside, as Netflix draws it. */
+@Composable
+fun DownloadRing(progress: Float, ink: Color, size: Dp) {
+    val animated by androidx.compose.animation.core.animateFloatAsState(progress.coerceIn(0.04f, 1f), androidx.compose.animation.core.tween(400), label = "download")
+    androidx.compose.foundation.Canvas(Modifier.size(size)) {
+        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        drawArc(ink.copy(alpha = 0.3f), 0f, 360f, false, style = stroke)
+        drawArc(ink, -90f, 360f * animated, false, style = stroke)
+        val side = this.size.minDimension * 0.28f
+        drawRect(ink, androidx.compose.ui.geometry.Offset((this.size.width - side) / 2, (this.size.height - side) / 2), androidx.compose.ui.geometry.Size(side, side))
     }
 }
 

@@ -93,7 +93,6 @@ struct LibraryView: View {
     @Environment(\.container) private var container
     @State private var model: LibraryModel
     @State private var lockedPick: String?
-    @State private var showFilter = false
     @State private var featured: [LibraryItem] = []
 
     init(kind: ContentKind) { self.kind = kind; _model = State(initialValue: LibraryModel(kind: kind)) }
@@ -132,30 +131,22 @@ struct LibraryView: View {
                     NavigationLink { SearchView(embedded: true, tab: kind == .movie ? .movies : .series) } label: { Image(systemName: "magnifyingglass").pillIcon() }.accessibilityLabel("Search")
                     Menu {
                         Picker("Sort", selection: $model.sort) { ForEach(VODSort.allCases) { Text($0.rawValue).tag($0) } }
-                    } label: { Image(systemName: "arrow.up.arrow.down.circle").pillIcon() }.accessibilityLabel("Sort")
-                    Button { showFilter = true } label: {
-                        Image(systemName: model.categoryID != nil || model.filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle").pillIcon()
-                    }.accessibilityLabel("Filter")
+                        LibraryFilterMenus(kind: kind, filter: $model.filter, options: model.filterOptions)
+                    } label: { Image(systemName: model.filter.isActive ? "arrow.up.arrow.down.circle.fill" : "arrow.up.arrow.down.circle").pillIcon() }
+                    .accessibilityLabel(model.filter.isActive ? "Sort and filter, \(model.filter.count) filters on" : "Sort and filter")
+                    Menu {
+                        Button { model.categoryID = nil } label: { Label("All", systemImage: model.categoryID == nil ? "checkmark" : "") }
+                        Divider()
+                        ForEach(model.categories) { cat in
+                            Button {
+                                if let p = container?.parental, p.isLocked(cat.id), p.isRestricting { lockedPick = cat.id } else { model.categoryID = cat.id }
+                            } label: { Label(cat.name, systemImage: model.categoryID == cat.id ? "checkmark" : (container?.parental.isLocked(cat.id) == true ? "lock" : "")) }
+                        }
+                    } label: { Image(systemName: "line.3.horizontal.decrease.circle").pillIcon() }.accessibilityLabel("Folders")
                 }
             }
             .refreshable { state.syncAll() }
             .miniPlayerInset()
-            .sheet(isPresented: $showFilter) {
-                NavigationStack {
-                    LibraryFilterPanel(kind: kind, filter: $model.filter, options: model.filterOptions, folders: model.categories, selectedFolderID: model.categoryID,
-                                       isLocked: { container?.parental.isLocked($0) == true },
-                                       pickFolder: { cat in
-                                           guard let cat else { model.categoryID = nil; return }
-                                           if let p = container?.parental, p.isLocked(cat.id), p.isRestricting { lockedPick = cat.id; showFilter = false } else { model.categoryID = cat.id }
-                                       })
-                        .navigationTitle("Filter").navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .topBarLeading) { Button("Reset") { model.filter = LibraryFilter(); model.categoryID = nil }.disabled(!model.filter.isActive && model.categoryID == nil) }
-                            ToolbarItem(placement: .confirmationAction) { Button("Done") { showFilter = false } }
-                        }
-                }
-                .presentationDetents([.medium, .large])
-            }
             .sheet(isPresented: Binding(get: { lockedPick != nil }, set: { if !$0 { lockedPick = nil } })) { UnlockSheet { model.categoryID = lockedPick } }
         }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(String(describing: model.filter))-\(model.sort.rawValue)-\(model.shelf.rawValue)-\(state.watchLaterIDs.count)-\(state.favoriteIDs.count)") { if let c = container { await model.reload(c, source: state.activeSourceID) } }

@@ -233,4 +233,4 @@ Features/Onboarding/Views/FirstRunSteps.swift
 Features/Shared/Views/ShareLinkButton.swift
 Features/Shared/Views/DownloadCornerBadge.swift
 Services/LibraryFilter.swift
-Features/Shared/Views/LibraryFilterPanel.swift
+Features/Shared/Views/LibraryFilterMenus.swift

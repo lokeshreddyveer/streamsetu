@@ -93,7 +93,7 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                         Chip(if (movie.id in favs) "Favorited" else "Favorite", movie.id in favs, { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in favs) } }, icon = Icons.Filled.Favorite)
                         Chip(if (movie.id in later) "In Watch Later" else "Watch Later", movie.id in later, { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in later, UserRepository.WATCH_LATER) } }, icon = Icons.Filled.Bookmark)
                         val saved by c.downloads.items.collectAsState(); val saving = saved.firstOrNull { it.itemId == movie.id }
-                        Chip(downloadLabel(saving), saving?.state == app.streamsetu.core.data.repo.SaveState.DONE, { downloadTap(c, saving) { c.downloads.enqueue(movie) } }, icon = Icons.Filled.Download)
+                        Chip(downloadLabel(saving), saving?.state == app.streamsetu.core.data.repo.SaveState.DONE, { downloadTap(c, saving) { c.downloads.enqueue(movie) } }, icon = Icons.Filled.Download, progress = saving?.takeIf { it.state == app.streamsetu.core.data.repo.SaveState.DOWNLOADING }?.fraction)
                         val queued by c.watchQueue.items.collectAsState(); val inQueue = queued.any { it.id == movie.id }
                         Chip(if (inQueue) "In queue" else "Add to queue", inQueue, { if (inQueue) c.watchQueue.remove(movie.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.MOVIE, movie.id, movie.title)) }, icon = Icons.Filled.Add)
                         Chip("Share link", false, { shareTitle(c.context, "movie", movie.title) }, icon = Icons.Filled.Share)
@@ -209,7 +209,7 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                         Box(Modifier.fillMaxSize(), Alignment.Center) {
                             when (saving?.state) {
                                 app.streamsetu.core.data.repo.SaveState.DONE -> Icon(Icons.Filled.DownloadDone, Tokens.success, 22.dp)
-                                app.streamsetu.core.data.repo.SaveState.DOWNLOADING -> Label("${(saving.fraction * 100).toInt()}", Ph.caption, Tokens.accent, FontWeight.SemiBold)
+                                app.streamsetu.core.data.repo.SaveState.DOWNLOADING -> Column(horizontalAlignment = Alignment.CenterHorizontally) { DownloadRing(saving.fraction, Tokens.accent, 22.dp); Label("${(saving.fraction * 100).toInt()}%", Ph.caption, Tokens.accent, FontWeight.SemiBold) }
                                 app.streamsetu.core.data.repo.SaveState.QUEUED, app.streamsetu.core.data.repo.SaveState.PAUSED -> Icon(Icons.Filled.Pause, Tokens.textSecondary, 22.dp)
                                 else -> Icon(Icons.Filled.Download, Tokens.textSecondary, 22.dp)
                             }

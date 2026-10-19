@@ -49,19 +49,28 @@ struct LibraryToolbar<Trailing: View>: View {
     }
 }
 
-struct SortMenu<Option: Hashable & Identifiable>: View {
+struct SortMenu<Option: Hashable & Identifiable, Extra: View>: View {
     let options: [Option]
     @Binding var selection: Option
+    var filterCount = 0
     let title: (Option) -> String
+    @ViewBuilder var extra: Extra
 
     var body: some View {
         HStack(spacing: 8) {
             Text("SORT").font(Typography.eyebrow).tracking(1.4).foregroundStyle(ColorTokens.textSecondary)
             Menu {
                 ForEach(options) { o in Button { selection = o } label: { Label(title(o), systemImage: o == selection ? "checkmark" : "") } }
-            } label: { Text(title(selection)).font(Typography.row) }
+                extra
+            } label: { Text(filterCount > 0 ? "\(title(selection)) · \(filterCount) filter\(filterCount == 1 ? "" : "s")" : title(selection)).font(Typography.row) }
                 .menuStyle(.button).menuIndicator(.visible).fixedSize()
         }
-        .accessibilityElement(children: .combine).accessibilityLabel("Sort by \(title(selection))")
+        .accessibilityElement(children: .combine).accessibilityLabel("Sort by \(title(selection))\(filterCount > 0 ? ", \(filterCount) filters on" : "")")
+    }
+}
+
+extension SortMenu where Extra == EmptyView {
+    init(options: [Option], selection: Binding<Option>, title: @escaping (Option) -> String) {
+        self.init(options: options, selection: selection, filterCount: 0, title: title) { EmptyView() }
     }
 }

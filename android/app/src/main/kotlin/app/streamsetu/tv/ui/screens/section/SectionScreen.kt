@@ -295,7 +295,6 @@ private fun FilterSheet(current: ContentFilter, sources: List<LibraryEntry>, opt
                     }
                     section("Connection", connections.map { (name, id) -> Triple(name, draft.sourceId == id) { draft = draft.copy(sourceId = id) } }, "All connections", draft.sourceId == null) { draft = draft.copy(sourceId = null) }
                     section("Language", options.languages.map { l -> Triple(l, draft.language == l) { draft = draft.copy(language = l) } }, "Any language", draft.language == null) { draft = draft.copy(language = null) }
-                    section("Folder", options.folders.map { (id, name) -> Triple(name, draft.folderId == id) { draft = draft.copy(folderId = id) } }, "Any folder", draft.folderId == null) { draft = draft.copy(folderId = null) }
                     section("Quality", options.qualities.map { l -> Triple(l, draft.quality == l) { draft = draft.copy(quality = l) } }, "Any quality", draft.quality == null) { draft = draft.copy(quality = null) }
                     section("Status", WatchStatus.entries.map { st -> Triple(st.label, draft.status == st) { draft = draft.copy(status = st) } }, "Everything", draft.status == null) { draft = draft.copy(status = null) }
                     section("Rating", listOf(9f, 8f, 7f, 6f).map { r -> Triple("${r.toInt()}+ stars", draft.minRating == r) { draft = draft.copy(minRating = r) } }, "Any rating", draft.minRating == null) { draft = draft.copy(minRating = null) }
