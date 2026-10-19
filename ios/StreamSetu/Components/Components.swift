@@ -55,10 +55,13 @@ struct PosterCard: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                if state.isWatched(item.id) {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 18)).symbolRenderingMode(.palette).foregroundStyle(.white, Color(red: 0.2, green: 0.72, blue: 0.4))
-                        .shadow(color: .black.opacity(0.5), radius: 3).padding(6).accessibilityLabel("Watched")
-                }
+                HStack(spacing: 4) {
+                    DownloadCornerBadge(titleID: item.id)
+                    if state.isWatched(item.id) {
+                        Image(systemName: "checkmark.circle.fill").font(.system(size: 18)).symbolRenderingMode(.palette).foregroundStyle(.white, Color(red: 0.2, green: 0.72, blue: 0.4))
+                            .shadow(color: .black.opacity(0.5), radius: 3).accessibilityLabel("Watched")
+                    }
+                }.padding(6)
             }
             .overlay(alignment: .topTrailing) {
                 if let r = item.ratingValue {

@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.phone
 
+import app.streamsetu.tv.ui.components.DownloadBadge
 import app.streamsetu.tv.ui.components.WatchedTick
 import android.content.Context
 import android.content.pm.PackageManager
@@ -98,6 +99,7 @@ fun PhonePoster(title: String, imageUrl: String?, onClick: () -> Unit, modifier:
             if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Color(0xB3000000), RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Ph.caption, Tokens.text, FontWeight.SemiBold) }
+            if (itemId != null) app.streamsetu.tv.ui.components.LocalDownloadStatus.current[itemId]?.let { (st, f) -> DownloadBadge(st, f) }
             if (itemId != null && itemId in app.streamsetu.tv.ui.components.LocalWatched.current) WatchedTick()
         }
         Label(title, Ph.small, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))

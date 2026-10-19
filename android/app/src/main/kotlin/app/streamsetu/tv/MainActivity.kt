@@ -48,7 +48,12 @@ class MainActivity : ComponentActivity() {
         else requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         setContent {
             val watched by container.watchedTitles.collectAsState()
-            androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalWatched provides watched) {
+            val saved by container.downloads.items.collectAsState()
+            val downloadStatus = androidx.compose.runtime.remember(saved) {
+                val order = listOf(app.streamsetu.core.data.repo.SaveState.DOWNLOADING, app.streamsetu.core.data.repo.SaveState.QUEUED, app.streamsetu.core.data.repo.SaveState.PAUSED, app.streamsetu.core.data.repo.SaveState.FAILED, app.streamsetu.core.data.repo.SaveState.DONE)
+                saved.groupBy { it.seriesId ?: it.itemId }.mapValues { (_, list) -> list.minBy { order.indexOf(it.state) }.let { it.state to it.fraction } }
+            }
+            androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalWatched provides watched, app.streamsetu.tv.ui.components.LocalDownloadStatus provides downloadStatus) {
                 if (phone) app.streamsetu.tv.ui.phone.PhoneApp(container, nav, onExit = { finish() }) else StreamSetuTV(container, nav, onExit = { finish() })
             }
         }

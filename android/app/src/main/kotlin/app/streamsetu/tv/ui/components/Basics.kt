@@ -1,5 +1,10 @@
 package app.streamsetu.tv.ui.components
 
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.shape.CircleShape
@@ -187,6 +192,29 @@ fun PosterPlaceholder(title: String, modifier: Modifier = Modifier) {
 /** The ids of movies and series watched to the end, provided once at the top of the app. */
 val LocalWatched = androidx.compose.runtime.compositionLocalOf<Set<String>> { emptySet() }
 
+/** For each movie or series id: how far its download is (a series shows its most active episode). */
+val LocalDownloadStatus = androidx.compose.runtime.compositionLocalOf<Map<String, Pair<app.streamsetu.core.data.repo.SaveState, Float>>> { emptyMap() }
+
+/** A small round badge at the bottom left of a poster for a title that is saved or being saved; the ring fills as it downloads. */
+@Composable
+fun BoxScope.DownloadBadge(state: app.streamsetu.core.data.repo.SaveState, fraction: Float, size: Dp = 22.dp) {
+    Box(Modifier.align(Alignment.BottomStart).padding(start = 6.dp, bottom = 10.dp).size(size).background(Color(0xA6000000), CircleShape), Alignment.Center) {
+        if (state == app.streamsetu.core.data.repo.SaveState.DOWNLOADING) androidx.compose.foundation.Canvas(Modifier.fillMaxSize().padding(1.dp)) {
+            val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            drawArc(Color(0x40FFFFFF), 0f, 360f, false, style = stroke)
+            drawArc(Color.White, -90f, 360f * fraction.coerceIn(0.04f, 1f), false, style = stroke)
+        }
+        val icon = when (state) {
+            app.streamsetu.core.data.repo.SaveState.QUEUED -> Icons.Filled.Schedule
+            app.streamsetu.core.data.repo.SaveState.DOWNLOADING -> Icons.Filled.ArrowDownward
+            app.streamsetu.core.data.repo.SaveState.PAUSED -> Icons.Filled.Pause
+            app.streamsetu.core.data.repo.SaveState.FAILED -> Icons.Filled.ErrorOutline
+            app.streamsetu.core.data.repo.SaveState.DONE -> Icons.Filled.DownloadDone
+        }
+        Image(icon, null, Modifier.size(size * 0.55f), colorFilter = ColorFilter.tint(if (state == app.streamsetu.core.data.repo.SaveState.DONE) Color(0xFF66D98C) else Color.White))
+    }
+}
+
 /** A green tick in the corner of a poster for something watched to the end. */
 @Composable
 fun BoxScope.WatchedTick(size: Dp = 20.dp) {
@@ -204,6 +232,7 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
             if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else { Box(Modifier.fillMaxSize().background(Tokens.card)); AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Color(0xB3000000), RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Tokens.text, FontWeight.SemiBold) }
+            if (itemId != null) LocalDownloadStatus.current[itemId]?.let { (st, f) -> DownloadBadge(st, f) }
             if (itemId != null && itemId in LocalWatched.current) WatchedTick()
         }
         Label(title, Tokens.small, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))

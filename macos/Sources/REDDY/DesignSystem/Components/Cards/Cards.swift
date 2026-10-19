@@ -134,10 +134,14 @@ struct ReddyPosterCard: View {
                     Text(t).font(.system(size: 8, weight: .semibold)).tracking(0.5).padding(.horizontal, 5).padding(.vertical, 3)
                         .background(Color(hex: 0x080A0D, opacity: 0.78), in: RoundedRectangle(cornerRadius: 3)).frame(maxWidth: .infinity, alignment: .trailing).padding(8)
                 }
-                if model.isWatched {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 17)).symbolRenderingMode(.palette).foregroundStyle(.white, Color(red: 0.2, green: 0.72, blue: 0.4))
-                        .shadow(color: .black.opacity(0.5), radius: 3).padding(7).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).accessibilityLabel("Watched")
+                HStack(spacing: 4) {
+                    DownloadCornerBadge(titleID: model.id)
+                    if model.isWatched {
+                        Image(systemName: "checkmark.circle.fill").font(.system(size: 17)).symbolRenderingMode(.palette).foregroundStyle(.white, Color(red: 0.2, green: 0.72, blue: 0.4))
+                            .shadow(color: .black.opacity(0.5), radius: 3).accessibilityLabel("Watched")
+                    }
                 }
+                .padding(7).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 if model.isFavorite { Image(systemName: "heart.fill").font(.system(size: 9)).foregroundStyle(accent).padding(6).background(.black.opacity(0.55), in: Circle()).frame(maxWidth: .infinity, alignment: .trailing).padding(.top, model.tag == nil ? 6 : 30).padding(.trailing, 6) }
             }
             .frame(width: width, height: height)

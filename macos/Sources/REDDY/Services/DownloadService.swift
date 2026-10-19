@@ -64,6 +64,15 @@ final class DownloadService: NSObject, URLSessionDownloadDelegate {
 
     // MARK: asking
 
+    /// What to show on a movie's or series' poster: the most active download of the title (for a series, any of its episodes).
+    func status(forTitle id: String) -> (state: DownloadRecord.State, fraction: Double)? {
+        let mine = records.filter { $0.itemID == id || $0.seriesID == id }
+        for state in [DownloadRecord.State.downloading, .queued, .paused, .failed, .done] {
+            if let r = mine.first(where: { $0.state == state }) { return (state, r.fraction) }
+        }
+        return nil
+    }
+
     func record(for itemID: String) -> DownloadRecord? { records.first { $0.itemID == itemID } }
 
     /// The saved file of a finished download, or nil.
