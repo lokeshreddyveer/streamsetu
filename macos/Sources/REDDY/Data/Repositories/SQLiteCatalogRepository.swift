@@ -256,6 +256,23 @@ final class SQLiteCatalogRepository: CatalogRepository {
             if kind == "movie" { sql += " AND \(alias).id NOT IN (SELECT item_id FROM watch_progress) AND \(alias).id NOT IN (SELECT item_id FROM watch_history)" }
             else { sql += " AND \(alias).id NOT IN (SELECT series_id FROM watch_progress WHERE series_id IS NOT NULL) AND \(alias).id NOT IN (SELECT e.series_id FROM episodes e JOIN watch_history h ON h.item_id = e.id)" }
         }
+        if let language = q.language, LanguageTags.known.contains(language) {
+            sql += " AND (\(alias).title LIKE '%(\(language)%' OR \(alias).title LIKE '%[\(language)%' OR \(alias).category_name LIKE '%\(language)%')"
+        }
+        if let quality = q.quality, let terms = LibraryFilterTerms.qualityTerms[quality] {
+            sql += " AND (" + terms.map { "(\(alias).title LIKE '%\($0)%' OR \(alias).category_name LIKE '%\($0)%')" }.joined(separator: " OR ") + ")"
+        }
+        if let rating = q.minRating { sql += " AND CAST(\(alias).rating AS REAL) >= ?"; args.append(rating) }
+        if let decade = q.decade { sql += " AND \(alias).release_year >= ? AND \(alias).release_year < ?"; args.append(decade); args.append(decade + 10) }
+        if let watch = q.watch {
+            let finished = kind == "movie"
+                ? "\(alias).id IN (SELECT item_id FROM watch_progress WHERE completed=1)"
+                : "\(alias).id IN (SELECT e.series_id FROM episodes e LEFT JOIN watch_progress p ON p.item_id = e.id AND p.completed = 1 GROUP BY e.series_id HAVING COUNT(p.item_id) = COUNT(*))"
+            let begun = kind == "movie"
+                ? "\(alias).id IN (SELECT item_id FROM watch_progress WHERE completed=0 AND position_seconds>30)"
+                : "\(alias).id IN (SELECT series_id FROM watch_progress WHERE series_id IS NOT NULL)"
+            sql += watch == .watched ? " AND \(finished)" : " AND \(begun) AND NOT (\(finished))"
+        }
         if q.newEpisodesOnly { sql += " AND \(alias).id IN (SELECT series_id FROM new_episodes WHERE episode_id NOT IN (SELECT item_id FROM watch_progress) AND episode_id NOT IN (SELECT item_id FROM watch_history))" }
         if let days = q.addedWithinDays {
             sql += " AND \(alias).added_at IS NOT NULL AND \(alias).added_at >= ?"
@@ -296,6 +313,27 @@ final class SQLiteCatalogRepository: CatalogRepository {
         sql += Self.order(q.sort, alias: "m", titleColumn: "title")
         if let l = q.limit { sql += " LIMIT \(l) OFFSET \(q.offset)" }
         return try db.read { try $0.query(sql, args, Self.mapMovie) }
+    }
+
+    /// The languages and qualities that at least one title (or its folder) names, in alphabetical order for languages.
+    func filterOptions(sourceID: UUID?, kind: ContentKind) throws -> LibraryFilterOptions {
+        func any(_ q: VODQuery) -> Bool {
+            var sql = kind == .movie ? "SELECT 1 FROM movies m JOIN sources s ON s.id=m.source_id AND s.enabled=1 WHERE 1=1" : "SELECT 1 FROM series x JOIN sources s ON s.id=x.source_id AND s.enabled=1 WHERE 1=1"
+            var args: [(any SQLConvertible)?] = []
+            guard vodWhere(q, alias: kind == .movie ? "m" : "x", kind: kind == .movie ? "movie" : "series", sql: &sql, args: &args) else { return false }
+            sql += " LIMIT 1"
+            return ((try? db.read { try $0.query(sql, args) { _ in 1 } }) ?? []).isEmpty == false
+        }
+        var out = LibraryFilterOptions()
+        for language in LanguageTags.known.sorted() {
+            var q = VODQuery(sourceID: sourceID); q.language = language
+            if any(q) { out.languages.append(language) }
+        }
+        for quality in LibraryFilterTerms.qualityOrder {
+            var q = VODQuery(sourceID: sourceID); q.quality = quality
+            if any(q) { out.qualities.append(quality) }
+        }
+        return out
     }
 
     func movie(id: String) throws -> Movie? {

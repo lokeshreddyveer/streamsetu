@@ -12,6 +12,10 @@ final class LibraryModel {
     enum Shelf: String, CaseIterable { case all, favourites, watchLater, unwatched, unwatchedFavourites, thisMonth, newEpisodes }
     var shelf: Shelf = .all
     var sort: VODSort = .recentlyAdded
+    /// The Filter sheet's choices (the folder stays in [categoryID]), and the languages and qualities this list really has.
+    var filter = LibraryFilter()
+    private(set) var filterOptions = LibraryFilterOptions()
+    private var optionsKey = ""
     var total = 0
     var loading = false
     private var generation = 0
@@ -38,6 +42,12 @@ final class LibraryModel {
         }
         guard gen == generation else { return }
         items = r.items; total = r.total; categories = r.categories; correctedTo = fixed; loading = false
+        let key = "\(source?.uuidString ?? "")-\(r.categories.count)"
+        if key != optionsKey, !items.isEmpty || filter.isActive == false {
+            optionsKey = key
+            let kind = kind
+            filterOptions = await Task.detached { (try? c.catalog.filterOptions(sourceID: source, kind: kind)) ?? LibraryFilterOptions() }.value
+        }
     }
 
     func loadMore(_ c: AppContainer, source: UUID?) async {
@@ -50,11 +60,12 @@ final class LibraryModel {
     }
 
     private func fetch(_ c: AppContainer, source: UUID?, offset: Int, term: String) async -> (items: [LibraryItem], total: Int, categories: [CatalogCategory]) {
-        let kind = kind, category = categoryID, sort = sort, page = page, shelf = shelf
+        let kind = kind, category = categoryID, sort = sort, page = page, shelf = shelf, filter = filter
         let parsed = SmartQueryParser.parse(term)           // "hindi movies 2024": the year is a filter and "movies" is not part of the title
         return await Task.detached {
             var q = VODQuery(sourceID: source, categoryID: category, search: parsed.text, sort: sort, limit: page, offset: offset)
             q.year = parsed.year
+            filter.apply(to: &q, kind: kind)
             switch shelf {
             case .all: break
             case .favourites: q.favoritesOnly = true
@@ -82,6 +93,7 @@ struct LibraryView: View {
     @Environment(\.container) private var container
     @State private var model: LibraryModel
     @State private var lockedPick: String?
+    @State private var showFilter = false
     @State private var featured: [LibraryItem] = []
 
     init(kind: ContentKind) { self.kind = kind; _model = State(initialValue: LibraryModel(kind: kind)) }
@@ -121,22 +133,32 @@ struct LibraryView: View {
                     Menu {
                         Picker("Sort", selection: $model.sort) { ForEach(VODSort.allCases) { Text($0.rawValue).tag($0) } }
                     } label: { Image(systemName: "arrow.up.arrow.down.circle").pillIcon() }.accessibilityLabel("Sort")
-                    Menu {
-                        Button { model.categoryID = nil } label: { Label("All", systemImage: model.categoryID == nil ? "checkmark" : "") }
-                        Divider()
-                        ForEach(model.categories) { cat in
-                            Button {
-                                if let p = container?.parental, p.isLocked(cat.id), p.isRestricting { lockedPick = cat.id } else { model.categoryID = cat.id }
-                            } label: { Label(cat.name, systemImage: model.categoryID == cat.id ? "checkmark" : (container?.parental.isLocked(cat.id) == true ? "lock" : "")) }
-                        }
-                    } label: { Image(systemName: "line.3.horizontal.decrease.circle").pillIcon() }.accessibilityLabel("Folders")
+                    Button { showFilter = true } label: {
+                        Image(systemName: model.categoryID != nil || model.filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle").pillIcon()
+                    }.accessibilityLabel("Filter")
                 }
             }
             .refreshable { state.syncAll() }
             .miniPlayerInset()
+            .sheet(isPresented: $showFilter) {
+                NavigationStack {
+                    LibraryFilterPanel(kind: kind, filter: $model.filter, options: model.filterOptions, folders: model.categories, selectedFolderID: model.categoryID,
+                                       isLocked: { container?.parental.isLocked($0) == true },
+                                       pickFolder: { cat in
+                                           guard let cat else { model.categoryID = nil; return }
+                                           if let p = container?.parental, p.isLocked(cat.id), p.isRestricting { lockedPick = cat.id; showFilter = false } else { model.categoryID = cat.id }
+                                       })
+                        .navigationTitle("Filter").navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) { Button("Reset") { model.filter = LibraryFilter(); model.categoryID = nil }.disabled(!model.filter.isActive && model.categoryID == nil) }
+                            ToolbarItem(placement: .confirmationAction) { Button("Done") { showFilter = false } }
+                        }
+                }
+                .presentationDetents([.medium, .large])
+            }
             .sheet(isPresented: Binding(get: { lockedPick != nil }, set: { if !$0 { lockedPick = nil } })) { UnlockSheet { model.categoryID = lockedPick } }
         }
-        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(model.sort.rawValue)-\(model.shelf.rawValue)-\(state.watchLaterIDs.count)-\(state.favoriteIDs.count)") { if let c = container { await model.reload(c, source: state.activeSourceID) } }
+        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(String(describing: model.filter))-\(model.sort.rawValue)-\(model.shelf.rawValue)-\(state.watchLaterIDs.count)-\(state.favoriteIDs.count)") { if let c = container { await model.reload(c, source: state.activeSourceID) } }
         .onAppear { state.reloadWatched() }
         .task(id: "featured-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") {
             guard let c = container else { return }

@@ -34,6 +34,8 @@ struct VODMetadataCoverage: Sendable, Equatable {
     var supportsDuration: Bool { supports(withDuration) }
 }
 
+enum WatchFilter: String, Sendable { case started, watched }
+
 struct VODQuery: Sendable {
     var sourceID: UUID?
     var categoryID: String?
@@ -47,6 +49,14 @@ struct VODQuery: Sendable {
     var addedWithinDays: Int?
     /// Series that gained an episode the person has not played yet (see NewEpisodeService). Not meaningful for movies.
     var newEpisodesOnly = false
+    /// The language a title is marked with ("(Telugu)" in the title, or the folder is named after it), the picture quality it names, and the lowest provider rating.
+    var language: String?
+    var quality: String?
+    var minRating: Double?
+    /// A release decade such as 2010 (2010 to 2019).
+    var decade: Int?
+    /// Titles played to the end, or started and not finished. A series is watched when every episode is.
+    var watch: WatchFilter?
     var includeHidden = false
     var ids: [String]?
     var limit: Int?

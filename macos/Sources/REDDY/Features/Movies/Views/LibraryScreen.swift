@@ -15,7 +15,7 @@ struct LibraryScreen: View {
     init(kind: ContentKind) { self.kind = kind; _vm = State(initialValue: LibraryBrowserViewModel(kind: kind)) }
 
     private var selection: SidebarSelection { router.selection }
-    private var taskKey: String { "\(selection)-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(vm.sort.rawValue)" }
+    private var taskKey: String { "\(selection)-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(vm.sort.rawValue)-\(String(describing: vm.filter))" }
 
     private var showsSlideshow: Bool { kind == .movie && selection == .shortcut(.featured) }
     private var slideshowKey: String { "\(showsSlideshow)-\(state.activeSourceID?.uuidString ?? "")-\(FeaturedPolicy.dayKey(Date()))" }
@@ -28,6 +28,7 @@ struct LibraryScreen: View {
             VStack(alignment: .leading, spacing: 10) {
                 PageHead(title: title)
                 LibraryToolbar(search: $vm.search, prompt: "Search all \(vm.noun)…", count: vm.countText, focusToken: router.focusSearch) {
+                    FilterButton(kind: kind, filter: $vm.filter, options: vm.filterOptions)
                     SortMenu(options: vm.availableSorts, selection: $vm.sort) { $0.rawValue }
                 }
                 ScrollView {
@@ -122,5 +123,30 @@ struct LibraryScreen: View {
         CollectionMenu(itemID: item.id, kind: item.kind)
         Divider()
         Button("Hide") { try? container?.favoritesRepo.hide(item.id, kind: item.kind.rawValue); state.catalogVersion += 1 }
+    }
+}
+
+/// The Filter button in the toolbar of Movies and Series: a panel with a box to find a filter by name, then language, quality, status, rating and decade.
+private struct FilterButton: View {
+    let kind: ContentKind
+    @Binding var filter: LibraryFilter
+    let options: LibraryFilterOptions
+    @State private var open = false
+
+    var body: some View {
+        Button { open.toggle() } label: {
+            Label(filter.isActive ? "Filter · \(filter.count)" : "Filter", systemImage: filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                .font(Typography.row)
+        }
+        .buttonStyle(.plain).foregroundStyle(filter.isActive ? ColorTokens.accentDefault : ColorTokens.textPrimary)
+        .popover(isPresented: $open, arrowEdge: .bottom) {
+            VStack(spacing: 0) {
+                LibraryFilterPanel(kind: kind, filter: $filter, options: options).listStyle(.sidebar)
+                Divider()
+                HStack { Button("Reset") { filter = LibraryFilter() }.disabled(!filter.isActive); Spacer(); Button("Done") { open = false }.keyboardShortcut(.defaultAction) }.padding(10)
+            }
+            .frame(width: 320, height: 460)
+        }
+        .animation(AnimationTokens.quick, value: filter.isActive)
     }
 }

@@ -37,6 +37,10 @@ final class LibraryBrowserViewModel {
     private(set) var progress: [String: Double] = [:]
     var search = ""
     var sort: LibrarySort = .recentlyAdded
+    /// The Filter button's choices, and the languages and qualities this list really has (read again when the playlist changes).
+    var filter = LibraryFilter()
+    private(set) var filterOptions = LibraryFilterOptions()
+    private var optionsKey = ""
     private(set) var coverage = VODMetadataCoverage(total: 1, rated: 1, withYear: 1, withDuration: 1)
     var availableSorts: [LibrarySort] { LibrarySort.allCases.filter { $0.isSupported(by: coverage, kind: kind) } }
 
@@ -64,6 +68,7 @@ final class LibraryBrowserViewModel {
         case .shortcut(.newEpisodes): q.newEpisodesOnly = true
         default: break
         }
+        filter.apply(to: &q, kind: kind)
         return q
     }
 
@@ -75,6 +80,11 @@ final class LibraryBrowserViewModel {
         if case .shortcut(.watchLater) = selection { watchLaterIDs = await Task.detached { Self.savedIDs(c, kind: kind) }.value }
         let found = await Task.detached { (try? c.catalog.metadataCoverage(kind: kind, sourceID: source)) ?? VODMetadataCoverage() }.value
         coverage = found
+        let optionsKey = "\(source?.uuidString ?? "")-\(found.total)"
+        if optionsKey != self.optionsKey {
+            self.optionsKey = optionsKey
+            filterOptions = await Task.detached { (try? c.catalog.filterOptions(sourceID: source, kind: kind)) ?? LibraryFilterOptions() }.value
+        }
         if !sort.isSupported(by: found, kind: kind) { sort = .recentlyAdded }               // a stored choice the data can't support
         let q = query(selection, source: source, offset: 0)
         let (page, count, heroItem) = await Task.detached { () -> ([LibraryItem], Int, LibraryItem?) in
