@@ -180,8 +180,9 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                         PosterCard(
                             card.title, card.posterUrl, { onOpen(card) }, width = posterSize.dp.dp,
                             progress = if (p != null && !p.completed) p.fraction else 0f,
+                            itemId = card.id,
                             subtitle = if (showMeta) card.year?.toString() else null,
-                            badge = listOfNotNull(if (card.id in favs) "♥" else null, if (card.id in newSeries) "NEW" else if (p?.completed == true) "✓" else ratingBadge(card.rating)).joinToString(" ").ifBlank { null },
+                            badge = listOfNotNull(if (card.id in favs) "♥" else null, if (card.id in newSeries) "NEW" else ratingBadge(card.rating)).joinToString(" ").ifBlank { null },
                             onLongClick = { menuFor = card },
                         )
                     }

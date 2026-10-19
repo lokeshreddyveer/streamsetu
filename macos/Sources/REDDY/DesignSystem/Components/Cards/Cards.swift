@@ -68,13 +68,15 @@ struct PosterCardModel: Identifiable, Hashable {
     var isFavorite = false
     /// A series with an episode the person has not played yet.
     var isNew = false
+    /// Watched to the end: a green tick in the corner.
+    var isWatched = false
 
-    init(item: LibraryItem, rank: Int? = nil, progress: Double? = nil, isFavorite: Bool = false, isNew: Bool = false) {
+    init(item: LibraryItem, rank: Int? = nil, progress: Double? = nil, isFavorite: Bool = false, isNew: Bool = false, isWatched: Bool = false) {
         id = item.id; title = item.title
         subtitle = [item.year.flatMap { item.title.contains(String($0)) ? nil : String($0) }, item.genre, item.isSeries ? "Series" : nil].compactMap { $0 }.joined(separator: " · ")
         imageURL = item.posterURL
         tag = item.isSeries ? "SERIES" : MetadataNormalizer.qualityLabel(MetadataNormalizer.normalize(item.title)).flatMap { ["4K", "FHD"].contains($0) ? $0 : nil }
-        self.rank = rank; self.progress = progress; self.isFavorite = isFavorite; self.isNew = isNew
+        self.rank = rank; self.progress = progress; self.isFavorite = isFavorite; self.isNew = isNew; self.isWatched = isWatched
     }
 }
 
@@ -131,6 +133,10 @@ struct ReddyPosterCard: View {
                 if let t = model.tag {
                     Text(t).font(.system(size: 8, weight: .semibold)).tracking(0.5).padding(.horizontal, 5).padding(.vertical, 3)
                         .background(Color(hex: 0x080A0D, opacity: 0.78), in: RoundedRectangle(cornerRadius: 3)).frame(maxWidth: .infinity, alignment: .trailing).padding(8)
+                }
+                if model.isWatched {
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 17)).symbolRenderingMode(.palette).foregroundStyle(.white, Color(red: 0.2, green: 0.72, blue: 0.4))
+                        .shadow(color: .black.opacity(0.5), radius: 3).padding(7).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).accessibilityLabel("Watched")
                 }
                 if model.isFavorite { Image(systemName: "heart.fill").font(.system(size: 9)).foregroundStyle(accent).padding(6).background(.black.opacity(0.55), in: Circle()).frame(maxWidth: .infinity, alignment: .trailing).padding(.top, model.tag == nil ? 6 : 30).padding(.trailing, 6) }
             }

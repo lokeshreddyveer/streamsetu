@@ -13,6 +13,8 @@ import app.streamsetu.core.data.repo.SourceRepository
 import app.streamsetu.core.data.repo.UserRepository
 import app.streamsetu.core.model.*
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import app.streamsetu.core.net.StreamResolver
 import app.streamsetu.core.playback.PlaybackController
 import app.streamsetu.core.security.CredentialStore
@@ -72,6 +74,10 @@ class AppContainer @Inject constructor(
     }, appScope).also { d -> app.streamsetu.core.playback.LocalFiles.finder = { id ->
         d.localUri(id) ?: app.streamsetu.core.data.repo.RecordingFiles.fileOf(id)?.let { java.io.File(recordingsFolder, it) }?.takeIf { it.exists() }?.let { android.net.Uri.fromFile(it).toString() }
     } }
+
+    /** Movies and series watched to the end, for the tick on posters. */
+    val watchedTitles: kotlinx.coroutines.flow.StateFlow<Set<String>> = db.user().watchedTitles().map { it.toSet() }
+        .stateIn(appScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptySet<String>())
 
     /** The titles lined up to play after the one on screen. */
     val watchQueue = app.streamsetu.core.data.repo.WatchQueue(object : app.streamsetu.core.data.repo.QueueStore {

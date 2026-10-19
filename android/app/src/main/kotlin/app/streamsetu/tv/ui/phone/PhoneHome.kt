@@ -116,8 +116,8 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(fy.items, key = { "y" + it.kind() + it.id }) { f ->
                             when (f) {
-                                is FavItem.Mv -> PhonePoster(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, Modifier.width(112.dp), subtitle = f.movie.year?.toString())
-                                is FavItem.Sr -> PhonePoster(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, Modifier.width(112.dp), subtitle = f.series.year?.toString())
+                                is FavItem.Mv -> PhonePoster(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, Modifier.width(112.dp), itemId = f.movie.id, subtitle = f.movie.year?.toString())
+                                is FavItem.Sr -> PhonePoster(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, Modifier.width(112.dp), itemId = f.series.id, subtitle = f.series.year?.toString())
                                 is FavItem.Ch -> {}
                             }
                         }
@@ -128,7 +128,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Recently Added Movies", action = "See all", onAction = { nav.tab = Tab.MOVIES })
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(movies, key = { "m" + it.id }) { m -> PhonePoster(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, Modifier.width(112.dp), subtitle = m.year?.toString(), badge = if (m.id in favIds) "♥" else ratingBadge(m.rating), onLong = { movieMenu(m) }) }
+                        items(movies, key = { "m" + it.id }) { m -> PhonePoster(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, Modifier.width(112.dp), itemId = m.id, subtitle = m.year?.toString(), badge = if (m.id in favIds) "♥" else ratingBadge(m.rating), onLong = { movieMenu(m) }) }
                     }
                 }
             }
@@ -136,7 +136,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Recently Added Series", action = "See all", onAction = { nav.tab = Tab.SERIES })
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(series, key = { "s" + it.id }) { s -> PhonePoster(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, Modifier.width(112.dp), subtitle = s.year?.toString(), badge = if (s.id in favIds) "♥" else ratingBadge(s.rating), onLong = { seriesMenu(s) }) }
+                        items(series, key = { "s" + it.id }) { s -> PhonePoster(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, Modifier.width(112.dp), itemId = s.id, subtitle = s.year?.toString(), badge = if (s.id in favIds) "♥" else ratingBadge(s.rating), onLong = { seriesMenu(s) }) }
                     }
                 }
             }
@@ -155,8 +155,8 @@ private fun Rail(title: String, items: List<FavItem>, c: AppContainer, nav: Navi
         LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             items(items, key = { it.kind() + it.id }) { f ->
                 when (f) {
-                    is FavItem.Mv -> PhonePoster(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, Modifier.width(112.dp), subtitle = f.movie.year?.toString(), badge = ratingBadge(f.movie.rating), onLong = { onMovie(f.movie) })
-                    is FavItem.Sr -> PhonePoster(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, Modifier.width(112.dp), subtitle = f.series.year?.toString(), badge = ratingBadge(f.series.rating), onLong = { onSeries(f.series) })
+                    is FavItem.Mv -> PhonePoster(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, Modifier.width(112.dp), itemId = f.movie.id, subtitle = f.movie.year?.toString(), badge = ratingBadge(f.movie.rating), onLong = { onMovie(f.movie) })
+                    is FavItem.Sr -> PhonePoster(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, Modifier.width(112.dp), itemId = f.series.id, subtitle = f.series.year?.toString(), badge = ratingBadge(f.series.rating), onLong = { onSeries(f.series) })
                     is FavItem.Ch -> ChannelTile(f.channel, null) { play(c, nav, ChannelPlayable(f.channel)) }
                 }
             }

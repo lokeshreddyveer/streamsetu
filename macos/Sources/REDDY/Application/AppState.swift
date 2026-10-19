@@ -22,6 +22,16 @@ final class AppState {
             if ids != newEpisodeSeriesIDs { newEpisodeSeriesIDs = ids; catalogVersion += 1 }
         }
     }
+    /// Movies and series watched to the end (the tick on a poster).
+    private(set) var watchedIDs: Set<String> = []
+    func isWatched(_ id: String) -> Bool { watchedIDs.contains(id) }
+    func reloadWatched() {
+        let repo = container.historyRepo
+        Task { @MainActor in
+            let ids = await Task.detached { (try? repo.watchedTitleIDs()) ?? [] }.value
+            if ids != watchedIDs { watchedIDs = ids }
+        }
+    }
     /// Movies and series saved to watch later. A built-in list, kept with the person's other lists.
     private(set) var watchLaterIDs: Set<String> = []
     nonisolated static let watchLaterListID = "watch-later"
@@ -53,6 +63,7 @@ final class AppState {
         }
         container.onNewEpisodesChanged = { [weak self] in self?.reloadNewEpisodes() }
         reloadNewEpisodes()
+        reloadWatched()
         container.scheduler.start()
         let queue = container.watchQueue
         container.playback.queueAdvance = { [weak self] in

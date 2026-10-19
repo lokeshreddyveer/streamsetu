@@ -127,7 +127,7 @@ fun SearchContent(
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 items(rows, key = { it.id }) { x ->
                                     val rating = (x.target as? SearchTarget.OpenMovie)?.movie?.rating ?: (x.target as? SearchTarget.OpenSeries)?.series?.rating
-                                    PosterCard(x.title, x.artworkUrl, { open(x) }, subtitle = x.subtitle.substringBefore(" · ").ifBlank { null }, badge = app.streamsetu.tv.ui.screens.section.ratingBadge(rating))
+                                    PosterCard(x.title, x.artworkUrl, { open(x) }, itemId = (x.target as? SearchTarget.OpenMovie)?.movie?.id ?: (x.target as? SearchTarget.OpenSeries)?.series?.id, subtitle = x.subtitle.substringBefore(" · ").ifBlank { null }, badge = app.streamsetu.tv.ui.screens.section.ratingBadge(rating))
                                 }
                             }
                         }

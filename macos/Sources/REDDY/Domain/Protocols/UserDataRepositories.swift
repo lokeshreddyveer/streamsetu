@@ -40,6 +40,8 @@ protocol HistoryRepository: Sendable {
     func mostPlayed(kinds: [ContentKind], since: Date, limit: Int) throws -> [(itemID: String, plays: Int)]
     func recordPlay(itemID: String, kind: ContentKind, title: String) throws
     func recentIDs(kind: ContentKind, limit: Int) throws -> [String]
+    /// Movies that were watched to the end, and series whose episodes were all watched (the Watched tick on a poster).
+    func watchedTitleIDs() throws -> Set<String>
     func clearHistory() throws
     /// Empties the "recently watched" lists (all, or one type). `sourcePrefix` limits it to one playlist ("<uuid>|").
     func clearRecent(kind: ContentKind?, sourcePrefix: String?) throws

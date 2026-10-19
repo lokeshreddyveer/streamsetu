@@ -91,8 +91,9 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
                     val p = progress[card.id]
                     PhonePoster(
                         card.title, card.posterUrl, { card.movie?.let { nav.open(Overlay.MovieDetail(it)) } ?: card.series?.let { nav.open(Overlay.SeriesDetail(it)) } },
+                        itemId = card.id,
                         subtitle = card.year?.toString(),
-                        badge = listOfNotNull(if (card.id in favs) "♥" else null, if (card.id in newSeries) "NEW" else if (p?.completed == true) "✓" else ratingBadge(card.rating)).joinToString(" ").ifBlank { null },
+                        badge = listOfNotNull(if (card.id in favs) "♥" else null, if (card.id in newSeries) "NEW" else ratingBadge(card.rating)).joinToString(" ").ifBlank { null },
                         progress = if (p != null && !p.completed) p.fraction else 0f,
                         onLong = { sheet = card.title to buildList {
                             add(SheetItem("Open", Icons.Filled.PlayArrow) { card.movie?.let { nav.open(Overlay.MovieDetail(it)) } ?: card.series?.let { nav.open(Overlay.SeriesDetail(it)) } })

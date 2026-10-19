@@ -54,6 +54,12 @@ struct PosterCard: View {
                         .background(ColorTokens.accentDefault, in: RoundedRectangle(cornerRadius: 4)).padding(6).accessibilityLabel("New episode")
                 }
             }
+            .overlay(alignment: .bottomTrailing) {
+                if state.isWatched(item.id) {
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 18)).symbolRenderingMode(.palette).foregroundStyle(.white, Color(red: 0.2, green: 0.72, blue: 0.4))
+                        .shadow(color: .black.opacity(0.5), radius: 3).padding(6).accessibilityLabel("Watched")
+                }
+            }
             .overlay(alignment: .topTrailing) {
                 if let r = item.ratingValue {
                     Label(String(format: "%.1f", r), systemImage: "star.fill").labelStyle(.titleAndIcon)

@@ -107,10 +107,10 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     "later" -> if (later.isNotEmpty()) rail("Watch Later", pad) { items(later, key = { "w" + it.id }) { f -> FavCard(f, c, nav, RowKind.WATCH_LATER, ::longOn) } }
                     "foryou" -> forYou?.let { fy -> rail("For You  ·  Because you watched ${fy.because}", pad) { items(fy.items, key = { "y" + it.id }) { f -> FavCard(f, c, nav, RowKind.OTHER, ::longOn) } } }
                     "movies" -> if (movies.isNotEmpty()) rail("Recently Added Movies", pad) { items(movies, key = { "m" + it.id }) { m ->
-                        PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, subtitle = m.year?.toString(), badge = if (m.id in favIds) "♥" else ratingBadge(m.rating), onLongClick = { longOn(HomeTarget.Film(m), RowKind.OTHER) })
+                        PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, itemId = m.id, subtitle = m.year?.toString(), badge = if (m.id in favIds) "♥" else ratingBadge(m.rating), onLongClick = { longOn(HomeTarget.Film(m), RowKind.OTHER) })
                     } }
                     "series" -> if (series.isNotEmpty()) rail("Recently Added Series", pad) { items(series, key = { "s" + it.id }) { s ->
-                        PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, subtitle = s.year?.toString(), badge = if (s.id in favIds) "♥" else ratingBadge(s.rating), onLongClick = { longOn(HomeTarget.Show(s), RowKind.OTHER) })
+                        PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, itemId = s.id, subtitle = s.year?.toString(), badge = if (s.id in favIds) "♥" else ratingBadge(s.rating), onLongClick = { longOn(HomeTarget.Show(s), RowKind.OTHER) })
                     } }
                     "categories" -> if (cols.isNotEmpty() || cats.isNotEmpty()) rail("Folders & Collections", pad) {
                         items(collectionCategories(nav, cols), key = { "x" + it.key }) { t -> CategoryCard(t.title, t.subtitle, t.icon, { t.open() }, { catMenu = t }) }
@@ -192,8 +192,8 @@ fun ChannelCard(ch: Channel, now: String?, onClick: () -> Unit, onLong: (() -> U
 internal fun FavCard(f: FavItem, c: AppContainer, nav: Navigator, row: RowKind, longOn: (HomeTarget, RowKind) -> Unit) {
     when (f) {
         is FavItem.Ch -> ChannelCard(f.channel, null, { play(c, nav, ChannelPlayable(f.channel)) }, { longOn(HomeTarget.Live(f.channel), row) })
-        is FavItem.Mv -> PosterCard(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, subtitle = f.movie.year?.toString(), badge = ratingBadge(f.movie.rating), onLongClick = { longOn(HomeTarget.Film(f.movie), row) })
-        is FavItem.Sr -> PosterCard(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, subtitle = f.series.year?.toString(), badge = ratingBadge(f.series.rating), onLongClick = { longOn(HomeTarget.Show(f.series), row) })
+        is FavItem.Mv -> PosterCard(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, itemId = f.movie.id, subtitle = f.movie.year?.toString(), badge = ratingBadge(f.movie.rating), onLongClick = { longOn(HomeTarget.Film(f.movie), row) })
+        is FavItem.Sr -> PosterCard(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, itemId = f.series.id, subtitle = f.series.year?.toString(), badge = ratingBadge(f.series.rating), onLongClick = { longOn(HomeTarget.Show(f.series), row) })
     }
 }
 

@@ -126,7 +126,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
             if (related.isNotEmpty()) item {
                 Column {
                     SectionTitle("More like this")
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(related, key = { it.item.id }) { r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, subtitle = r.reason, badge = ratingBadge(m.rating)) } }
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(related, key = { it.item.id }) { r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, itemId = m.id, subtitle = r.reason, badge = ratingBadge(m.rating)) } }
                 }
             }
         }
@@ -238,7 +238,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
             if (similar.isNotEmpty()) item {
                 Column(Modifier.padding(top = 10.dp)) {
                     SectionTitle("More like this")
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(similar, key = { it.item.id }) { r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.SeriesDetail(m)) }, subtitle = r.reason, badge = ratingBadge(m.rating)) } }
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(similar, key = { it.item.id }) { r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.SeriesDetail(m)) }, itemId = m.id, subtitle = r.reason, badge = ratingBadge(m.rating)) } }
                 }
             }
         }

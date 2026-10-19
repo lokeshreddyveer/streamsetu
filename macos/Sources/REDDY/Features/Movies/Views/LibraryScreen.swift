@@ -47,6 +47,7 @@ struct LibraryScreen: View {
             .padding(.horizontal, LayoutTokens.gutter).padding(.top, 10)
         }
         .onAppear { if !appliedDefaultSort { appliedDefaultSort = true; vm.sort = settings.defaultLibrarySort.sort } }
+        .onAppear { state.reloadWatched() }
         .task(id: taskKey) { if let c = container { await vm.reset(c, selection: selection, source: state.activeSourceID) } }
         // The slideshow depends on the playlist and the day only, so a catalog refresh or a sort change never rebuilds it.
         .task(id: slideshowKey) {
@@ -69,7 +70,7 @@ struct LibraryScreen: View {
         } else {
             LazyVGrid(columns: Array(repeating: GridItem(.fixed(layout.cardWidth), spacing: 12, alignment: .top), count: layout.columns), alignment: .leading, spacing: 16) {
                 ForEach(vm.items) { item in
-                    ReddyPosterCard(model: PosterCardModel(item: item, progress: vm.progress[item.id], isFavorite: state.isFavorite(item.id), isNew: state.hasNewEpisodes(item.id)), width: layout.cardWidth,
+                    ReddyPosterCard(model: PosterCardModel(item: item, progress: vm.progress[item.id], isFavorite: state.isFavorite(item.id), isNew: state.hasNewEpisodes(item.id), isWatched: state.isWatched(item.id)), width: layout.cardWidth,
                                     onOpen: { open(item) }, onPlay: { play(item) })
                         .contextMenu { menu(item) }
                         .task { if let c = container { await vm.loadMoreIfNeeded(c, current: item, selection: selection, source: state.activeSourceID) } }

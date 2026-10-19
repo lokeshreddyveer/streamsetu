@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.phone
 
+import app.streamsetu.tv.ui.components.WatchedTick
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -91,12 +92,13 @@ fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
 
 /** A poster for a grid or a row: artwork, a bar for how far you are, a small badge, and the title under it. Tap opens; touch and hold opens the menu. */
 @Composable
-fun PhonePoster(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, subtitle: String? = null, badge: String? = null, progress: Float = 0f, onLong: (() -> Unit)? = null) {
+fun PhonePoster(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, subtitle: String? = null, badge: String? = null, progress: Float = 0f, onLong: (() -> Unit)? = null, itemId: String? = null) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Tap(onClick, Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)).background(Tokens.card), onLong) {
             if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Color(0xB3000000), RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Ph.caption, Tokens.text, FontWeight.SemiBold) }
+            if (itemId != null && itemId in app.streamsetu.tv.ui.components.LocalWatched.current) WatchedTick()
         }
         Label(title, Ph.small, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))
         if (subtitle != null) Label(subtitle, Ph.caption, Tokens.textTertiary, modifier = Modifier.padding(horizontal = 2.dp))

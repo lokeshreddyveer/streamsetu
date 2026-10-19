@@ -56,6 +56,13 @@ import Foundation
         #expect(try service.upNext().isEmpty)
     }
 
+    @Test func aSeriesIsWatchedOnlyWhenEveryEpisodeIs() throws {
+        for e in eps.dropLast() { try watched(e, finished: true) }
+        #expect(try repo.watchedTitleIDs().contains(series.id) == false)
+        try watched(eps[3], finished: true)
+        #expect(try repo.watchedTitleIDs().contains(series.id))
+    }
+
     @Test func aSeriesNeverWatchedIsNotInTheRow() throws {
         #expect(try service.upNext().isEmpty)
     }

@@ -100,6 +100,7 @@ struct HomeView: View {
             .refreshable { state.syncAll() }
             .miniPlayerInset()
         }
+        .onAppear { state.reloadWatched() }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(state.watchLaterIDs.count)") { await load() }
         // Back from the player: Continue Watching and Recently Watched Channels show what was just played (not before, so nothing runs while it plays).
         .onChange(of: container?.playback.isExpanded ?? false) { old, now in if old && !now { Task { await load() } } }

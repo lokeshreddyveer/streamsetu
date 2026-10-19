@@ -137,6 +137,7 @@ struct LibraryView: View {
             .sheet(isPresented: Binding(get: { lockedPick != nil }, set: { if !$0 { lockedPick = nil } })) { UnlockSheet { model.categoryID = lockedPick } }
         }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(model.sort.rawValue)-\(model.shelf.rawValue)-\(state.watchLaterIDs.count)-\(state.favoriteIDs.count)") { if let c = container { await model.reload(c, source: state.activeSourceID) } }
+        .onAppear { state.reloadWatched() }
         .task(id: "featured-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") {
             guard let c = container else { return }
             let source = state.activeSourceID, kind = kind

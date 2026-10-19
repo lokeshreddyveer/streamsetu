@@ -115,6 +115,9 @@ interface UserDao {
     @Query("SELECT * FROM progress WHERE completed = 0 AND positionMs > 30000 AND kind IN ('MOVIE','EPISODE') ORDER BY updatedAt DESC LIMIT :limit") fun continueWatching(limit: Int): Flow<List<ProgressEntity>>
     @Query("SELECT * FROM progress WHERE seriesId = :seriesId") suspend fun progressForSeries(seriesId: String): List<ProgressEntity>
     @Query("SELECT * FROM progress") fun allProgress(): Flow<List<ProgressEntity>>
+    /** Movies watched to the end, and series whose episodes were all watched (the Watched tick on a poster). */
+    @Query("SELECT itemId FROM progress WHERE completed = 1 AND kind = 'MOVIE' UNION SELECT e.seriesId FROM episodes e LEFT JOIN progress p ON p.itemId = e.id AND p.completed = 1 GROUP BY e.seriesId HAVING COUNT(p.itemId) = COUNT(*)")
+    fun watchedTitles(): Flow<List<String>>
     @Query("DELETE FROM progress WHERE itemId = :id") suspend fun clearProgress(id: String)
     @Query("DELETE FROM progress") suspend fun clearAllProgress()
 

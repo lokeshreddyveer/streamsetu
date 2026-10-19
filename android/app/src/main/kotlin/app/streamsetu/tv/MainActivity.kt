@@ -1,5 +1,7 @@
 package app.streamsetu.tv
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -44,7 +46,12 @@ class MainActivity : ComponentActivity() {
         val phone = app.streamsetu.tv.ui.phone.isPhoneDevice(this)
         if (phone) androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         else requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        setContent { if (phone) app.streamsetu.tv.ui.phone.PhoneApp(container, nav, onExit = { finish() }) else StreamSetuTV(container, nav, onExit = { finish() }) }
+        setContent {
+            val watched by container.watchedTitles.collectAsState()
+            androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalWatched provides watched) {
+                if (phone) app.streamsetu.tv.ui.phone.PhoneApp(container, nav, onExit = { finish() }) else StreamSetuTV(container, nav, onExit = { finish() })
+            }
+        }
         handle(intent)
         // A little after the first screens are up, start reading who is in the movies (see PeopleIndexer).
         android.os.Handler(mainLooper).postDelayed({ container.people.start() }, 20_000)

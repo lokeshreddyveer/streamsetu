@@ -19,7 +19,7 @@ struct SimilarSection: View {
                         LazyHStack(alignment: .top, spacing: Spacing.md) {
                             ForEach(suggestions) { s in
                                 VStack(alignment: .leading, spacing: 4) {
-                                    ReddyPosterCard(model: PosterCardModel(item: s.item, isFavorite: state.isFavorite(s.id), isNew: state.hasNewEpisodes(s.id)), width: 120,
+                                    ReddyPosterCard(model: PosterCardModel(item: s.item, isFavorite: state.isFavorite(s.id), isNew: state.hasNewEpisodes(s.id), isWatched: state.isWatched(s.id)), width: 120,
                                                     onOpen: { PlayActions.open(s.item, router: router) },
                                                     onPlay: { if let c = container { PlayActions(container: c, toasts: state.toasts).play(s.item) } })
                                     Text(s.reason).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).lineLimit(1).frame(width: 120, alignment: .leading)

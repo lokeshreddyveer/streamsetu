@@ -119,6 +119,17 @@ final class SQLiteHistoryRepository: HistoryRepository {
         return out
     }
 
+    func watchedTitleIDs() throws -> Set<String> {
+        try db.read { d in
+            let movies = try d.query("SELECT item_id FROM watch_progress WHERE completed=1 AND kind='movie'", []) { $0.string(0) }
+            let series = try d.query("""
+                SELECT e.series_id FROM episodes e LEFT JOIN watch_progress p ON p.item_id = e.id AND p.completed = 1
+                GROUP BY e.series_id HAVING COUNT(p.item_id) = COUNT(*)
+                """, []) { $0.string(0) }
+            return Set(movies + series)
+        }
+    }
+
     func markWatched(itemID: String, kind: ContentKind, seriesID: String?, duration: Double) throws {
         try saveProgress(WatchProgress(itemID: itemID, kind: kind, seriesID: seriesID, positionSeconds: duration, durationSeconds: duration,
                                        updatedAt: Date(), completed: true))

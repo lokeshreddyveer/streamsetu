@@ -1,5 +1,8 @@
 package app.streamsetu.tv.ui.components
 
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
@@ -181,15 +184,27 @@ fun PosterPlaceholder(title: String, modifier: Modifier = Modifier) {
     }
 }
 
+/** The ids of movies and series watched to the end, provided once at the top of the app. */
+val LocalWatched = androidx.compose.runtime.compositionLocalOf<Set<String>> { emptySet() }
+
+/** A green tick in the corner of a poster for something watched to the end. */
+@Composable
+fun BoxScope.WatchedTick(size: Dp = 20.dp) {
+    Box(Modifier.align(Alignment.BottomEnd).padding(6.dp).size(size).background(Color(0xFF33B866), CircleShape), Alignment.Center) {
+        Image(Icons.Filled.Check, "Watched", Modifier.size(size * 0.7f), colorFilter = ColorFilter.tint(Color.White))
+    }
+}
+
 /** A poster, 150 x 218 on the Mac scaled up: artwork, title and a quiet subtitle under it. A thin bar shows how far you are. */
 @Composable
-fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null, focusRequester: FocusRequester? = null, onLongClick: (() -> Unit)? = null) {
+fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null, itemId: String? = null, focusRequester: FocusRequester? = null, onLongClick: (() -> Unit)? = null) {
     Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(2f / 3f), scaleOnFocus = app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE, onLongClick = onLongClick) { _ ->
             // With a picture to come, a flat dark tile is enough underneath (a title gradient only when there is no picture): less to draw and lay out per card.
             if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else { Box(Modifier.fillMaxSize().background(Tokens.card)); AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Color(0xB3000000), RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Tokens.text, FontWeight.SemiBold) }
+            if (itemId != null && itemId in LocalWatched.current) WatchedTick()
         }
         Label(title, Tokens.small, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))
         if (subtitle != null) Label(subtitle, Tokens.caption, Tokens.textTertiary, modifier = Modifier.padding(horizontal = 2.dp))
