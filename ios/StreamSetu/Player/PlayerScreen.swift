@@ -608,6 +608,7 @@ struct PlayerScreen: View {
                 if !playback.isLive, playback.duration != nil { Button("Stop at the end") { playback.startSleepTimerAtEndOfItem() } }
                 if playback.sleepTimer != nil { Divider(); Button("Cancel Sleep Timer", role: .destructive) { playback.cancelSleepTimer() } }
             } label: { Label("Sleep Timer", systemImage: playback.sleepTimer == nil ? "moon.zzz" : "moon.zzz.fill") }
+            ExternalPlayerMenu(playback: playback)
             Button { locked = true; withAnimation { showControls = false }; showHUD(GestureHUD(symbol: "lock.fill", label: "Controls locked", level: nil), hideAfter: 1.2) } label: { Label("Lock Controls", systemImage: "lock") }
             Divider()
             Button(role: .destructive) { playback.stop(); playback.isExpanded = false } label: { Label("Stop", systemImage: "stop.fill") }

@@ -381,6 +381,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                             item { val on by c.settings.showStreamInfo.collectAsState(); TextOption("Stream information: " + if (on) "on" else "off", false, Modifier) { c.settings.setShowStreamInfo(!on); closePanel() } }
                             if (android.os.Build.VERSION.SDK_INT >= 26) item { TextOption("Picture in Picture", false, Modifier) { closePanel(); (context as? android.app.Activity)?.enterPictureInPictureMode(android.app.PictureInPictureParams.Builder().build()) } }
                             item { TextOption("Keep playing while I browse", false, Modifier, "The picture closes, the sound stays. Menu or Info brings it back.") { c.playback.setMinimized(true); onMinimize() } }
+                            if (item != null) item { TextOption("Play in another app", false, Modifier, "VLC, MX Player and others") { closePanel(); scope.launch { ExternalPlayer.open(c, context, item) } } }
                             item { TextOption("Close player", false, Modifier) { onClose() } }
                         }
                         PanelKind.TUNE_PICTURE -> items(PlayerMenus.picture(playback, tuning)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }

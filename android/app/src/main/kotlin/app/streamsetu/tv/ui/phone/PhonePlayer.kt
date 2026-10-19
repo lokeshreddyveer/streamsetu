@@ -422,6 +422,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
             if (live) add(SheetItem("Multi-View", Icons.Filled.GridView, false, "Several channels at once") { onMultiView() })
             if (live && c.previousLive != null) add(SheetItem("Last channel", Icons.Filled.History) { c.lastChannel() })
             if (android.os.Build.VERSION.SDK_INT >= 26) add(SheetItem("Picture in picture", Icons.Filled.PictureInPictureAlt) { (context as? Activity)?.enterPictureInPictureMode(android.app.PictureInPictureParams.Builder().build()) })
+            if (item != null) add(SheetItem("Play in another app", Icons.Filled.OpenInNew, false, "VLC, MX Player and others") { castScope.launch { app.streamsetu.tv.ui.screens.ExternalPlayer.open(c, context, item) } })
             add(SheetItem("Close player", Icons.Filled.Close) { onClose() })
         }, close)
         null -> {}

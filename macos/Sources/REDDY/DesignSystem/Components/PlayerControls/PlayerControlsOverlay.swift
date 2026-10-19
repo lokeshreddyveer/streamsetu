@@ -345,6 +345,7 @@ struct PlayerControlsOverlay: View {
                 ForEach(SleepTimer.presets, id: \.self) { m in Button("Stop after \(m) minutes") { playback.startSleepTimer(minutes: m) } }
                 if playback.sleepTimer != nil { Divider(); Button("Cancel Sleep Timer") { playback.cancelSleepTimer() } }
             }
+            ExternalPlayerMenu(playback: playback)
             if hasTools { Menu("More Tools") { toolItems } }
             if playback.screenshotSupported { Button("Save Screenshot") { saveScreenshot() } }
             Button(showDiagnostics ? "Hide Stream Info" : "Show Stream Info") { showDiagnostics.toggle() }
