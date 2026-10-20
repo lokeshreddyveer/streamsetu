@@ -3,6 +3,15 @@
   <channel>
     <title>StreamSetu</title>
     <item>
+      <title>StreamSetu 2.8.6</title>
+      <pubDate>Tue, 20 Oct 2026 00:47:13 -0000</pubDate>
+      <sparkle:version>286</sparkle:version>
+      <sparkle:shortVersionString>2.8.6</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[Mac 2.8.6, Android and Fire TV 0.13.5, iPhone and iPad 1.1 (TestFlight build 59): a full Fire TV library, filters in the Sort menu, play in another app, an &quot;In folder&quot; button, download progress rings and an opening animation.]]></description>
+      <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/2026.10.19/StreamSetu-2.8.6.dmg" type="application/octet-stream" sparkle:edSignature="/KLgY/8gmHgOWqhxNuyDlJNRt5tcwzH8H6wDwJoBl/bx+sYSuLk3z+XfNFuQEKa30wuCuHc0S0Ke7bBVWawkCw==" length="65572804"/>
+    </item>
+    <item>
       <title>StreamSetu 2.8.0</title>
       <pubDate>Mon, 19 Oct 2026 01:48:50 -0000</pubDate>
       <sparkle:version>280</sparkle:version>
@@ -74,5 +83,5 @@
       <description><![CDATA[Updates now come from the one StreamSetu repository. If you have an older copy, download this one once; it updates itself from then on.]]></description>
       <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/mac-v2.3.1/StreamSetu-2.3.1.dmg" type="application/octet-stream" sparkle:edSignature="C6eMDAYgR8nLbI0cQYXeeDf/ZITqwbIqLWvhz++8pB6E8Tq9U1ITGr10mGAIOMsW4pkgqoWbtKb2Me6cLZcOAg==" length="64424077"/>
     </item>
-                </channel>
+                  </channel>
 </rss>
