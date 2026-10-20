@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.10.19",
+      "title": "19 October 2026",
+      "summary": "Mac 2.8.6, Android and Fire TV 0.13.5, iPhone and iPad 1.1 (TestFlight build 59): a full Fire TV library, filters in the Sort menu, play in another app, an \"In folder\" button, download progress rings and an opening animation.",
+      "date": "2026-10-19",
+      "mac": "2.8.6",
+      "android": "0.13.5",
+      "ios": "1.1"
+    },
+    {
       "tag": "2026.10.18.2",
       "title": "18 October 2026 (2)",
       "summary": "Mac 2.8.0, Android and Fire TV 0.13.0, iPhone and iPad 1.1: automatic subtitles, share links, quality badges and a first-run guide.",
