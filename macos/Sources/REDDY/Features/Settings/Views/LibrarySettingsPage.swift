@@ -55,6 +55,8 @@ struct LibrarySettingsPage: View {
 
             SubscriptionsGroup()
 
+            KeywordAlertsGroup()
+
             CloudSyncGroup()
 
             LanSyncGroup()

@@ -55,6 +55,7 @@ final class AppContainer {
     private(set) var profiles: ProfileService!
     let podcasts: PodcastService
     private(set) var accounts: AccountStatusService!
+    private(set) var alerts: KeywordAlertService!
     #if os(macOS)
     private(set) var scheduledRecordings: ScheduledRecordingService!
     #endif
@@ -181,6 +182,13 @@ final class AppContainer {
         scheduledRecordings = ScheduledRecordingService(find: { [catalog] in try catalog.channel(id: $0) }, resolve: { try resolver.resolve(channel: $0) }, defaults: settings.defaultsStore)
         #endif
         accounts = AccountStatusService(catalog: catalog, defaults: settings.defaultsStore, provider: { [sources] in try sources.makeProvider(for: $0) })
+        nonisolated(unsafe) let remindersStore = settings.defaultsStore          // UserDefaults is safe to read from any thread
+        alerts = KeywordAlertService(defaults: settings.defaultsStore,
+            search: { [epgRepo] term, from in
+                guard remindersStore.object(forKey: "reminders") as? Bool ?? true else { return [] }
+                return try epgRepo.searchPrograms(term: term, sourceID: nil, from: from, limit: 30).map { (program: $0.program, channelName: $0.channelName) }
+            },
+            schedule: { [reminders] program, channel in await reminders.schedule(program: program, channelName: channel) })
         profiles = ProfileService(db: db, defaults: settings.defaultsStore) { [weak self] _ in self?.profileSwitched() }
         parental.kidsMode = profiles.active.kind == .kids
         applySettings()
@@ -212,6 +220,7 @@ final class AppContainer {
 
     /// Begins syncing when the person has switched it on. Call once the app has started.
     func startCloudIfEnabled() async {
+        alerts.start()
         Task { try? await Task.sleep(nanoseconds: 8_000_000_000); await accounts.refresh() }          // when each subscription ends, a little after the first screens are up
         #if os(macOS)
         scheduledRecordings.start()

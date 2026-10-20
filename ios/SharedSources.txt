@@ -255,3 +255,5 @@ Features/Files/PodcastsView.swift
 Domain/Entities/AccountStatus.swift
 Services/AccountStatusService.swift
 Features/Settings/Views/SubscriptionsGroup.swift
+Services/KeywordAlertService.swift
+Features/Settings/Views/KeywordAlertsGroup.swift
