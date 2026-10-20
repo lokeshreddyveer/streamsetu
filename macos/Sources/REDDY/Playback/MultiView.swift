@@ -60,6 +60,8 @@ final class MultiViewModel {
     private let willStart: () -> Void
     private let guide: ([String]) -> [String: EPGProgram]
     private let lookup: ([String]) -> [Channel]
+    /// How many streams a playlist's subscription allows at once, when the provider says.
+    private let connectionLimit: (UUID) -> Int?
     /// Channel search for the in-window picker: (text, favourites only) → channels.
     let find: (String, Bool) -> [Channel]
     private let defaults: UserDefaults
@@ -67,7 +69,9 @@ final class MultiViewModel {
 
     init(resolve: @escaping (Channel) throws -> PlaybackRequest, makeEngine: @escaping () -> AVPlayerEngine = { AVPlayerEngine() },
          willStart: @escaping () -> Void = {}, guide: @escaping ([String]) -> [String: EPGProgram] = { _ in [:] },
-         lookup: @escaping ([String]) -> [Channel] = { _ in [] }, find: @escaping (String, Bool) -> [Channel] = { _, _ in [] }, defaults: UserDefaults = .standard) {
+         lookup: @escaping ([String]) -> [Channel] = { _ in [] }, find: @escaping (String, Bool) -> [Channel] = { _, _ in [] },
+         connectionLimit: @escaping (UUID) -> Int? = { _ in nil }, defaults: UserDefaults = .standard) {
+        self.connectionLimit = connectionLimit
         self.resolve = resolve; self.makeEngine = makeEngine; self.willStart = willStart; self.guide = guide; self.lookup = lookup; self.find = find; self.defaults = defaults
         layout = defaults.string(forKey: Self.layoutKey).flatMap(Layout.init(rawValue:)) ?? .grid
         presets = defaults.data(forKey: Self.presetsKey).flatMap { try? JSONDecoder().decode([Preset].self, from: $0) } ?? []
@@ -80,6 +84,26 @@ final class MultiViewModel {
     var columns: Int { tiles.count <= 1 ? 1 : 2 }
     var spotlight: Tile? { tiles.first { $0.id == spotlightID } ?? tiles.first }
     var others: [Tile] { tiles.filter { $0.id != spotlight?.id } }
+
+    // MARK: connection limit
+
+    /// A channel the person chose that would go over the provider's limit, waiting for their answer.
+    struct PendingAdd: Equatable { let channel: Channel; let message: String }
+    var pendingAdd: PendingAdd?
+
+    /// The warning for opening this channel now, or nil when it fits.
+    func connectionWarning(adding channel: Channel) -> String? {
+        ConnectionAdvice.message(tilesFromSource: tiles.filter { $0.channel.sourceID == channel.sourceID }.count, limit: connectionLimit(channel.sourceID))
+    }
+
+    /// Adds the channel, or first asks when it would go over the provider's limit.
+    func requestAdd(_ channel: Channel) {
+        if !tiles.contains(where: { $0.channel.id == channel.id }), !isFull, let message = connectionWarning(adding: channel) { pendingAdd = PendingAdd(channel: channel, message: message) }
+        else { add(channel) }
+    }
+
+    func confirmPendingAdd() { if let p = pendingAdd { pendingAdd = nil; add(p.channel) } }
+    func cancelPendingAdd() { pendingAdd = nil }
 
     // MARK: tiles
 

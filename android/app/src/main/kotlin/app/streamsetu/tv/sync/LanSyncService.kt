@@ -100,7 +100,19 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
         if (saved != null && saved.size == 2) LanCrypto.Identity(android.util.Base64.decode(saved[0], android.util.Base64.NO_WRAP), android.util.Base64.decode(saved[1], android.util.Base64.NO_WRAP))
         else LanCrypto.newIdentity().also { prefs.edit().putString("identity", android.util.Base64.encodeToString(it.privatePkcs8, android.util.Base64.NO_WRAP) + ":" + android.util.Base64.encodeToString(it.publicX963, android.util.Base64.NO_WRAP)).apply() }
     }
-    private val data by lazy { LanDataAdapter({ db.openHelper.writableDatabase }, { db.invalidationTracker.refreshVersionsAsync() }) }
+    /** Set by the app: what is playing now, and where records about other devices' playing go. */
+    var nowProvider: () -> LanDataAdapter.Now? = { null }
+    var boardSink: (List<app.streamsetu.core.sync.lan.LanRecord>) -> Unit = {}
+    private val nowKey: String get() = prefs.getString("nowKey", null) ?: java.util.UUID.randomUUID().toString().lowercase().also { prefs.edit().putString("nowKey", it).apply() }
+    val data by lazy { LanDataAdapter({ db.openHelper.writableDatabase }, { db.invalidationTracker.refreshVersionsAsync() }, nowKey, deviceName, { nowProvider() }, { boardSink(it) }) }
+
+    private var nudgeJob: Job? = null
+    /** Something worth telling the other devices about happened (playback started or stopped): sync shortly, once, however many such events come together. */
+    fun nudge() {
+        if (!_enabled.value || _trusted.value.isEmpty()) return
+        nudgeJob?.cancel()
+        nudgeJob = scope.launch { delay(3000); syncNow() }
+    }
     private val nsd get() = context.getSystemService(Context.NSD_SERVICE) as NsdManager
 
     private var server: ServerSocket? = null

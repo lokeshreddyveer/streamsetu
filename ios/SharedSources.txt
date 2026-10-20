@@ -249,6 +249,16 @@ Services/LanSync/LanSyncService.swift
 Features/Settings/Views/LanPairView.swift
 Data/Database/Schema/SchemaV16.swift
 Services/ProfileService.swift
+Services/ViewingLimits.swift
+Services/StartOver.swift
+Services/ConnectionAdvice.swift
+Services/NowPlayingBoard.swift
+Services/Connectivity.swift
+Services/UsualEvening.swift
+Services/WeeklyDigest.swift
+Services/PrivacyReport.swift
+Application/AppContainer+Insights.swift
+Features/Shared/Views/InsightsViews.swift
 Features/Shared/Views/ProfileViews.swift
 Services/Podcasts.swift
 Features/Files/PodcastsView.swift

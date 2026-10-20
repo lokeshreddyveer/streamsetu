@@ -8,6 +8,7 @@ struct TonightView: View {
 
     var body: some View {
         List {
+            if let container { Section { UsualEveningRow(container: container) }.listRowBackground(Color.clear).listRowInsets(EdgeInsets()) }
             if let plan {
                 if plan.isEmpty {
                     EmptyState(symbol: "moon.stars", title: "Nothing lined up yet", message: "Favourite a few channels with a guide, follow a series, or add a guide alert, and tonight fills in.").listRowBackground(Color.clear)

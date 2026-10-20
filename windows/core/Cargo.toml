@@ -1,0 +1,18 @@
+[package]
+name = "streamsetu-core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+
+[dependencies]
+# A small blocking HTTP client and server: the proxy streams a response straight through without holding it in memory.
+ureq = { version = "2", default-features = false, features = ["tls", "gzip"] }
+tiny_http = "0.12"
+percent-encoding = "2"
+url = "2"
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", default-features = false, features = ["windows-native"] }
+
+[target.'cfg(not(windows))'.dependencies]
+keyring = { version = "3", default-features = false, features = ["apple-native"] }

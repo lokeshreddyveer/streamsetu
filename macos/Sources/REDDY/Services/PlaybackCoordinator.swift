@@ -234,18 +234,51 @@ final class PlaybackCoordinator {
 
     /// Channels (quality copies) already tried for the channel being watched, so a failing one is never retried by the fallback.
     private var triedVariants: Set<String> = []
+    /// Watching privately: this one play leaves nothing behind. No history, resume point, watched tick, statistics, last channel, subtitle lookup or lock-screen details, and nothing to sync.
+    /// It is chosen per title ("Watch Privately") and ends with that play; what follows from it (the next episode, the next channel, another copy) stays private too.
+    private(set) var isPrivate = false
 
-    func play(channel: Channel, queue newQueue: [Channel]? = nil, isFallback: Bool = false) {
+    /// Set while a kids profile with limits is in use: asks what stops playback now, counts the time watched, and says how much is left.
+    struct ViewingGuard {
+        let block: () -> ViewingBlock?
+        let add: (Double) -> Void
+        let remaining: () -> Double?
+    }
+    var viewingGuard: ViewingGuard?
+    /// Called when something starts or stops playing, so other devices on the network can be told promptly.
+    var onSessionChange: (() -> Void)?
+    /// Why playback was stopped or refused by the profile's limit. The screen shows it until a parent adds time or the time passes.
+    var viewingBlock: ViewingBlock?
+    private var warnedMinutes: Set<Int> = []
+
+    /// Set by the app: the programme that is on now for a channel (nil without guide data).
+    var programOnNow: ((Channel) -> EPGProgram?)?
+    /// A programme that began a while ago on the channel just opened, offered as "Start from the beginning" through the provider's catch-up. It goes away after a short while.
+    private(set) var startOverOffer: EPGProgram?
+    private var startOverShownAt: Date?
+
+    /// Plays the offered programme from its start.
+    func startOver() {
+        guard let p = startOverOffer, let c = currentChannel else { return }
+        startOverOffer = nil
+        playCatchup(channel: c, program: p)
+    }
+
+    func play(channel: Channel, queue newQueue: [Channel]? = nil, isFallback: Bool = false, privately: Bool = false) {
         if !isFallback { triedVariants = [channel.id] }
         if let newQueue { queue = newQueue }
         if let c = currentChannel, c.id != channel.id { previousChannel = c }
         reset(for: .channel)
+        isPrivate = privately
         currentChannel = channel
-        settings.lastChannelID = channel.id
+        if !privately { settings.lastChannelID = channel.id }
         let pref = channelPrefs.pref(for: channel.id)
         channelVolumeTrim = pref.volumeTrim; channelEnginePreference = pref.engineChoice
         applyVolume()
         begin { try self.resolver.resolve(channel: channel) }
+        if !isFallback, let p = programOnNow?(channel), StartOver.canOffer(program: p, archiveDays: channel.archiveDays) {
+            startOverOffer = p; startOverShownAt = Date()
+        }
     }
 
     /// Plays a past programme from the provider's archive. Falls back to doing nothing (with a message) when the channel has none.
@@ -269,13 +302,14 @@ final class PlaybackCoordinator {
     /// The other copies of the film that was just started, best first: if the one playing fails for good, the next is tried.
     private var fallbackCopies: [Movie] = []
 
-    func play(movie opened: Movie, resume: Bool? = nil, bestCopy: Bool = true, remaining: [Movie] = []) {
+    func play(movie opened: Movie, resume: Bool? = nil, bestCopy: Bool = true, remaining: [Movie] = [], privately: Bool = false) {
         var movie = opened, rest = remaining
         if bestCopy, settings.bestVersionFirst, let find = movieCopies {
             let ordered = BestVersion.order(find(opened)) { [$0.title, $0.categoryName] }
             if let first = ordered.first { movie = first; rest = Array(ordered.dropFirst()) }
         }
         reset(for: .movie)
+        isPrivate = privately
         fallbackCopies = rest
         currentMovie = movie
         let shouldResume = resume ?? settings.resumeAutomatically
@@ -284,8 +318,9 @@ final class PlaybackCoordinator {
 
     /// A video from Files, Photos, a folder or a WebDAV server. It plays like a movie that belongs to no playlist, and its position is remembered.
     /// With subtitle files beside it, the player that can show them (MPV) is used.
-    func play(file url: URL, title: String, headers: [String: String] = [:], subtitles: [URL] = [], resume: Bool? = nil) {
+    func play(file url: URL, title: String, headers: [String: String] = [:], subtitles: [URL] = [], resume: Bool? = nil, privately: Bool = false) {
         reset(for: .movie)
+        isPrivate = privately
         currentMovie = nil
         let id = LocalMedia.itemID(url.isFileURL ? url.lastPathComponent + "|" + url.path : url.absoluteString)
         var request = PlaybackRequest(itemID: id, kind: .movie, sourceID: LocalMedia.sourceID, title: title, url: url, isLive: false)
@@ -307,8 +342,9 @@ final class PlaybackCoordinator {
         }
     }
 
-    func play(episode: Episode, series: Series, resume: Bool? = nil) {
+    func play(episode: Episode, series: Series, resume: Bool? = nil, privately: Bool = false) {
         reset(for: .episode)
+        isPrivate = privately
         currentEpisode = (episode, series)
         upNext = try? historyService.nextEpisode(after: episode)
         upNextSeries = series
@@ -350,6 +386,7 @@ final class PlaybackCoordinator {
         engine.stop()
         if let src = openLiveSource { pacer.closed(src); openLiveSource = nil }
         current = nil; currentChannel = nil; currentMovie = nil; currentEpisode = nil; upNext = nil
+        isPrivate = false
         waitingForNetwork = false; switchCheckTask?.cancel()
         state = .idle; position = 0; duration = nil; statusMessage = nil; audioTracks = []; subtitleTracks = []; isAudioOnly = false; playingSince = nil
         isFullscreen = false; isExpanded = false; restoreExpandedAfterFullscreen = false; showChannelSwitcher = false; cancelNumberEntry()
@@ -509,18 +546,18 @@ final class PlaybackCoordinator {
         guard showChannelSwitcher, queue.indices.contains(switcher.selected) else { closeChannelSwitcher(); return }
         let target = queue[switcher.selected]
         closeChannelSwitcher()
-        if target.id != currentChannel?.id { play(channel: target) }
+        if target.id != currentChannel?.id { play(channel: target, privately: isPrivate) }
     }
 
     func nextChannel() { step(+1) }
     func previousChannelInList() { step(-1) }
 
     /// Jump back to the channel watched before this one.
-    func lastChannel() { if let p = previousChannel { play(channel: p) } }
+    func lastChannel() { if let p = previousChannel { play(channel: p, privately: isPrivate) } }
 
     func playNextEpisode() {
         guard let e = upNext, let s = upNextSeries else { return }
-        play(episode: e, series: s)
+        play(episode: e, series: s, privately: isPrivate)
     }
 
     private func applyVolume() { engine.setVolume(effectiveVolume * (volumeBoost && engine.capabilities.volumeBoost ? 1.3 : 1)) }
@@ -632,6 +669,7 @@ final class PlaybackCoordinator {
 
     private func reset(for kind: ContentKind) {
         fallbackCopies = []
+        startOverOffer = nil
         stopRecording()
         saveProgress(force: true)
         endSession(outcome: "switched", error: nil)
@@ -644,9 +682,11 @@ final class PlaybackCoordinator {
         if kind != .episode { currentEpisode = nil; upNext = nil; upNextSeries = nil }
         audioTracks = []; subtitleTracks = []
         position = 0; duration = nil
+        isPrivate = false          // whatever starts next is an ordinary play unless it asks to be private (after the previous one's progress was handled above)
     }
 
     private func begin(_ resolve: @escaping () throws -> PlaybackRequest) {
+        if let b = viewingGuard?.block() { viewingBlock = b; stop(); return }
         tapAt = Date()
         state = .resolving
         switchedEngine = false
@@ -656,6 +696,7 @@ final class PlaybackCoordinator {
             memoryEntry = itemMemory.entry(for: request.itemID)
             loadLayout(for: request.itemID)
             start(request)
+            onSessionChange?()
         } catch {
             let e = PlaybackError.classify(error)
             current = nil
@@ -819,7 +860,7 @@ final class PlaybackCoordinator {
 
     /// A few seconds in, a film or episode with no subtitles in the chosen language gets the most downloaded one from OpenSubtitles, when the person turned that on.
     private func fetchSubtitleIfWanted() {
-        guard settings.autoSubtitles, let r = current, !r.isLive, r.kind != .channel, autoSubtitleItem != r.itemID, capabilities.externalSubtitles, let fetch = subtitleFetcher else { return }
+        guard !isPrivate, settings.autoSubtitles, let r = current, !r.isLive, r.kind != .channel, autoSubtitleItem != r.itemID, capabilities.externalSubtitles, let fetch = subtitleFetcher else { return }
         autoSubtitleItem = r.itemID
         let gen = generation
         let language = settings.subtitleLanguages.first ?? "en"
@@ -841,8 +882,10 @@ final class PlaybackCoordinator {
 
     private func onFirstPlay() {
         guard let r = current else { return }
-        try? historyRepo.recordPlay(itemID: r.itemID, kind: r.kind, title: r.title)
-        sessionID = try? historyRepo.beginSession(itemID: r.itemID, engine: activeEngine.rawValue)
+        if !isPrivate {
+            try? historyRepo.recordPlay(itemID: r.itemID, kind: r.kind, title: r.title)
+            sessionID = try? historyRepo.beginSession(itemID: r.itemID, engine: activeEngine.rawValue)
+        }
         applySubtitleStyle()
         engine.setPicture(picture)
         engine.setAudioDelay(audioDelay); engine.setSubtitleDelay(subtitleDelay); engine.setAudioProcessing(audioProcessing)
@@ -927,7 +970,7 @@ final class PlaybackCoordinator {
             saveProgress(force: true)
             if !r.isLive, let next = fallbackCopies.first, currentMovie != nil {
                 statusMessage = "That copy did not play. Trying another."
-                play(movie: next, resume: nil, bestCopy: false, remaining: Array(fallbackCopies.dropFirst()))
+                play(movie: next, resume: nil, bestCopy: false, remaining: Array(fallbackCopies.dropFirst()), privately: isPrivate)
                 return
             }
             let container = StreamCapabilities.container(for: r.url, isLive: r.isLive)
@@ -950,7 +993,7 @@ final class PlaybackCoordinator {
             triedVariants.insert(next.variant.id)
             diagnostics.record("variant fallback to \(next.label) after \(error.kind.rawValue)")
             statusMessage = "That stream isn't working. Trying \(next.label)…"
-            play(channel: next.variant, isFallback: true)
+            play(channel: next.variant, isFallback: true, privately: isPrivate)
             return true
         }
         // Every copy in this playlist has failed: the same channel in another playlist of yours is the last resort. (A login or engine problem, or a busy provider, would not be helped by it.)
@@ -961,7 +1004,7 @@ final class PlaybackCoordinator {
         let name = ((try? catalog.source(id: other.sourceID)) ?? nil)?.name ?? "another playlist"
         diagnostics.record("playlist fallback to \(name) after \(error.kind.rawValue)")
         statusMessage = "That stream isn't working. Trying it on \(name)…"
-        play(channel: other, isFallback: true)
+        play(channel: other, isFallback: true, privately: isPrivate)
         return true
     }
 
@@ -978,7 +1021,7 @@ final class PlaybackCoordinator {
 
     private func onEnded() {
         guard let r = current, !r.isCatchup else { return }
-        try? historyRepo.markWatched(itemID: r.itemID, kind: r.kind, seriesID: r.seriesID, duration: duration ?? position)
+        if !isPrivate { try? historyRepo.markWatched(itemID: r.itemID, kind: r.kind, seriesID: r.seriesID, duration: duration ?? position) }
         endSession(outcome: "ended", error: nil)
         if !r.isLive, queueAdvance?() == true { return }          // a title the person lined up comes before the next episode
         if r.kind == .episode, settings.autoPlayNextEpisode, upNext != nil { playNextEpisode() }
@@ -1033,6 +1076,8 @@ final class PlaybackCoordinator {
                 self.duration = self.engine.duration
                 n += 1
                 if n % 2 == 0 {
+                    self.enforceViewingLimit()
+                    if self.startOverOffer != nil, let t = self.startOverShownAt, Date().timeIntervalSince(t) > StartOver.showFor { self.startOverOffer = nil }
                     self.metrics = self.engine.metrics
                     if self.state == .playing { if self.playingSince == nil { self.playingSince = Date() } } else { self.playingSince = nil }
                     let audioOnly = Self.audioOnly(state: self.state, videoWidth: self.metrics.width, secondsPlaying: self.playingSince.map { Date().timeIntervalSince($0) } ?? 0,
@@ -1047,11 +1092,24 @@ final class PlaybackCoordinator {
         }
     }
 
+    /// Once a second while something plays in a profile with limits: counts the time, warns when little is left, and stops at the limit.
+    private func enforceViewingLimit() {
+        guard let g = viewingGuard, state == .playing else { return }
+        g.add(1)
+        if let b = g.block() { viewingBlock = b; warnedMinutes = []; stop(); return }
+        if let left = g.remaining() {
+            for m in [5, 1] where left <= Double(m) * 60 && !warnedMinutes.contains(m) {
+                warnedMinutes.insert(m)
+                statusMessage = m == 1 ? "1 minute left for today" : "5 minutes left for today"
+            }
+        }
+    }
+
     /// Writes the resume position now (used when the app is about to leave the screen).
     func persistProgress() { saveProgress(force: true) }
 
     private func saveProgress(force: Bool) {
-        guard settings.rememberPosition, let r = current, !r.isLive, !r.isCatchup else { return }
+        guard !isPrivate, settings.rememberPosition, let r = current, !r.isLive, !r.isCatchup else { return }
         // Read the engine itself, not only the copy the ticker refreshes twice a second, so a save made as playback stops or switches is current.
         let pos = max(position, engine.position)
         guard let d = duration ?? engine.duration, d > 0, pos > 1 else {
@@ -1146,10 +1204,11 @@ final class PlaybackCoordinator {
         guard !queue.isEmpty else { return }
         let i = currentChannel.flatMap { c in queue.firstIndex { $0.id == c.id } } ?? (delta > 0 ? -1 : 0)
         let next = queue[((i + delta) % queue.count + queue.count) % queue.count]
-        play(channel: next)
+        play(channel: next, privately: isPrivate)
     }
 
     private func endSession(outcome: String, error: String?) {
+        defer { onSessionChange?() }
         if let id = sessionID { try? historyRepo.endSession(id: id, outcome: outcome, error: error); sessionID = nil }
     }
 

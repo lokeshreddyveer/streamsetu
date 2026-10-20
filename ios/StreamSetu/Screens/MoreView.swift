@@ -268,6 +268,7 @@ struct SettingsView: View {
                     NavigationLink { PlaybackHealthView() } label: { Label("Playback Health", systemImage: "waveform.path.ecg") }
                     NavigationLink { AppearanceView() } label: { Label("Appearance", systemImage: "paintpalette") }
                     NavigationLink { ParentalView() } label: { Label("Parental Controls", systemImage: "lock.shield") }
+                    NavigationLink { PrivacyReportScreen() } label: { Label("Privacy Report", systemImage: "hand.raised") }
                 }.listRowBackground(ColorTokens.surface)
                 Section("Library") {
                     NavigationLink { LibrarySettingsView() } label: { Label("Library and Guide", systemImage: "books.vertical") }

@@ -20,7 +20,20 @@ final class LanDataAdapter: LanData, @unchecked Sendable {
     private let changed: @Sendable (Set<String>) -> Void
     static let watchLater = "watch-later"
 
-    init(db: DatabaseManager, changed: @escaping @Sendable (Set<String>) -> Void = { _ in }) { self.db = db; self.changed = changed }
+    /// What this device is playing right now, for the other devices' "Now playing" strip. Nil when nothing is, or when watching privately.
+    struct Now: Sendable { let itemID: String; let title: String; let position: Double }
+    private let nowKey: String
+    private let deviceName: String
+    private let now: @Sendable () async -> Now?
+    private let board: @Sendable ([LanRecord]) -> Void
+
+    init(db: DatabaseManager, changed: @escaping @Sendable (Set<String>) -> Void = { _ in },
+         nowKey: String = "", deviceName: String = "", now: @escaping @Sendable () async -> Now? = { nil }, board: @escaping @Sendable ([LanRecord]) -> Void = { _ in }) {
+        self.db = db; self.changed = changed; self.nowKey = nowKey; self.deviceName = deviceName; self.now = now; self.board = board
+    }
+
+    /// The local item id for an item named by playlist key, kind and provider id (nil when this device does not have that playlist).
+    func localItemID(_ key: [String]) -> String? { (try? db.read { c in self.local(try self.sources(c), key) }) ?? nil }
 
     private struct Sources { var keyOf: [String: String] = [:]; var idOf: [String: String] = [:] }
 
@@ -47,7 +60,16 @@ final class LanDataAdapter: LanData, @unchecked Sendable {
     private func ms(_ seconds: Double) -> Int64 { Int64(seconds * 1000) }
 
     func snapshot() async -> [LanRecord] {
-        (try? db.read { c in try self.collect(c) }) ?? []
+        let playing = nowKey.isEmpty ? nil : await now()
+        var out = (try? db.read { c in try self.collect(c) }) ?? []
+        if !nowKey.isEmpty {
+            let stamp = Int64(Date().timeIntervalSince1970 * 1000)
+            if let playing, let key = (try? db.read { c in self.wire(try self.sources(c), playing.itemID) }) ?? nil {
+                out.append(LanRecord(kind: "now", key: [nowKey], ts: stamp, value: ["title": .string(playing.title), "pos": .double(playing.position), "dev": .string(deviceName),
+                                                                                       "src": .string(key[0]), "kind": .string(key[1]), "prov": .string(key[2])]))
+            } else { out.append(LanRecord(kind: "now", key: [nowKey], ts: stamp, deleted: true)) }
+        }
+        return out
     }
 
     private func collect(_ c: Connection) throws -> [LanRecord] {
@@ -103,7 +125,10 @@ final class LanDataAdapter: LanData, @unchecked Sendable {
         return out
     }
 
-    func apply(_ records: [LanRecord]) async -> Int {
+    func apply(_ all: [LanRecord]) async -> Int {
+        let nowRecords = all.filter { $0.kind == "now" && $0.key.first != nowKey }
+        if !nowRecords.isEmpty { board(nowRecords) }
+        let records = all.filter { $0.kind != "now" }
         let order: [String: Int] = ["col": 0, "fav": 1, "prog": 1, "colitem": 2]
         let sorted = records.sorted { (order[$0.kind] ?? 9, $0.deleted ? 1 : 0) < (order[$1.kind] ?? 9, $1.deleted ? 1 : 0) }
         var applied = 0; var touched = Set<String>()

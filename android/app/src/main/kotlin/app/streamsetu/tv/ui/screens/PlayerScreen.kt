@@ -1,5 +1,7 @@
 package app.streamsetu.tv.ui.screens
 
+import app.streamsetu.tv.startOver
+import app.streamsetu.tv.startOverFor
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -114,6 +116,15 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
             if (fps > 0f) { setDisplayMode(context, fps); return@LaunchedEffect }
             delay(500)
         }
+    }
+
+    // A live channel whose programme began a while ago: Options offers it from its start (catch-up), and a note says so when the channel opens.
+    var startOffer by remember(item?.id) { mutableStateOf<app.streamsetu.core.data.db.EpgEntity?>(null) }
+    LaunchedEffect(item?.id) {
+        val ch = (item as? ChannelPlayable)?.channel ?: return@LaunchedEffect
+        val p = c.startOverFor(ch) ?: return@LaunchedEffect
+        startOffer = p
+        android.widget.Toast.makeText(context, "This programme began earlier. Open Options to start from the beginning.", android.widget.Toast.LENGTH_LONG).show()
     }
 
     fun poke() { barVisible = true; tick++ }
@@ -350,6 +361,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                         }
                         PanelKind.MORE -> {
                             if (live) item { TextOption("Multi-View", false, Modifier) { onMultiView() } }
+                            if (live && startOffer != null) item { TextOption("Start from the beginning", false, Modifier, "This programme began earlier. Plays it from its start through catch-up.") { (item as? ChannelPlayable)?.let { ch -> startOffer?.let { p -> c.startOver(ch.channel, p) } }; closePanel() } }
                             if (live && (recording != null || playback.canRecord())) item {
                                 TextOption(if (recording != null) "Stop recording" else "Record this channel", false, Modifier) {
                                     if (recording != null) { playback.stopRecording(); android.widget.Toast.makeText(context, "Recording saved. Find it in Settings > Libraries > Recordings.", android.widget.Toast.LENGTH_LONG).show() }

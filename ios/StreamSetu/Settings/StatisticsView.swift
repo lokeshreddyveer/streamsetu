@@ -16,6 +16,7 @@ struct StatisticsView: View {
 
     var body: some View {
         List {
+            if let container { Section { WeeklyDigestCard(container: container) }.listRowBackground(Color.clear).listRowInsets(EdgeInsets()) }
             Section { Picker("Range", selection: $range) { ForEach(Range.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).listRowBackground(Color.clear) }.listRowBackground(ColorTokens.surface)
             if let s = stats {
                 if s.isEmpty {

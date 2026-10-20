@@ -36,6 +36,8 @@ struct RootView: View {
             if let container = coordinator.container, let state = coordinator.state {
                 MainShell(router: coordinator.router, keys: coordinator.keys, container: container, state: state)
                     .overlay { if choosing(container) { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { picked = true } } } }
+                    .overlay { ViewingBlockOverlay(container: container) }
+                    .animation(.easeInOut(duration: 0.3), value: container.playback.viewingBlock)
             }
         }
     }

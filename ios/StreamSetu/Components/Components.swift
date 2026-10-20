@@ -201,17 +201,24 @@ struct ChannelTile: View {
 
 /// Starting playback from anywhere in the app.
 @MainActor enum Play {
-    static func channel(_ c: Channel, queue: [Channel], _ container: AppContainer) {
-        container.playback.play(channel: c, queue: queue.isEmpty ? [c] : queue)
+    /// `privately` plays it as a private watch: nothing about it is recorded or shown outside the app.
+    static func channel(_ c: Channel, queue: [Channel], _ container: AppContainer, privately: Bool = false) {
+        container.playback.play(channel: c, queue: queue.isEmpty ? [c] : queue, privately: privately)
         container.playback.isExpanded = true
     }
-    static func movie(_ m: Movie, _ container: AppContainer) {
-        container.playback.play(movie: m)
+    static func movie(_ m: Movie, _ container: AppContainer, privately: Bool = false) {
+        container.playback.play(movie: m, privately: privately)
         container.playback.isExpanded = true
     }
-    static func episode(_ e: Episode, _ s: Series, _ container: AppContainer) {
-        container.playback.play(episode: e, series: s)
+    static func episode(_ e: Episode, _ s: Series, _ container: AppContainer, privately: Bool = false) {
+        container.playback.play(episode: e, series: s, privately: privately)
         container.playback.isExpanded = true
+    }
+    /// A series: the episode the person would watch next (or the first).
+    static func series(_ s: Series, _ container: AppContainer, privately: Bool) async {
+        guard let detail = try? await container.details.series(id: s.id) else { return }
+        let next = ((try? container.history.resumeTarget(seriesID: s.id)) ?? nil) ?? detail.episodes.sorted { ($0.seasonNumber, $0.episodeNumber) < ($1.seasonNumber, $1.episodeNumber) }.first
+        if let next { episode(next, detail.series, container, privately: privately) }
     }
 }
 

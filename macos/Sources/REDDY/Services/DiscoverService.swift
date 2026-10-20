@@ -45,7 +45,8 @@ final class DiscoverService: Sendable {
     let catalog: CatalogRepository
     let history: HistoryRepository
 
-    init(catalog: CatalogRepository, history: HistoryRepository) { self.catalog = catalog; self.history = history }
+    private let people: PeopleIndex?
+    init(catalog: CatalogRepository, history: HistoryRepository, people: PeopleIndex? = nil) { self.catalog = catalog; self.history = history; self.people = people }
 
     static let providerShelves: [(title: String, keywords: [String], phrases: [String])] = [
         ("Netflix", ["netflix"], []),
@@ -83,6 +84,7 @@ final class DiscoverService: Sendable {
         }
 
         if let forYou = try forYouShelf(sourceID: sourceID, size: size) { shelves.append(forYou) }
+        if let cast = try castShelf(sourceID: sourceID, size: size) { shelves.append(cast) }
 
         let topMovies = try catalog.movies(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { (Double($0.rating ?? "") ?? 0) > 0 }.prefix(size)
         if !topMovies.isEmpty { shelves.append(DiscoverShelf(id: "top-movies", title: "Top Movies This Week", caption: "Ranked by your provider's ratings · not a chart", items: items(Array(topMovies), []), ranked: true)) }
@@ -134,6 +136,37 @@ final class DiscoverService: Sendable {
         guard out.count >= 6 else { return nil }
         let names = seeds.prefix(2).map { "“\($0.title)”" }.joined(separator: ", ")
         return DiscoverShelf(id: "for-you", title: "For You", caption: "Because you watched \(names)", items: out)
+    }
+
+    /// The person who is in the most of the titles watched lately (at least two), and how many.
+    static func favouritePerson(in watched: [String: [String]]) -> (name: String, titles: Int)? {
+        var counts: [String: (name: String, n: Int)] = [:]
+        for names in watched.values {
+            for name in Set(names.map { PeopleIndex.norm($0) }).subtracting([""]) {
+                let shown = names.first { PeopleIndex.norm($0) == name } ?? name
+                counts[name] = (shown, (counts[name]?.n ?? 0) + 1)
+            }
+        }
+        guard let top = counts.values.filter({ $0.n >= 2 }).max(by: { ($0.n, $1.name) < ($1.n, $0.name) }) else { return nil }
+        return (top.name, top.n)
+    }
+
+    /// "More with" the person in most of what was watched lately, from the cast already read on this device. nil until two watched titles share someone.
+    private func castShelf(sourceID: UUID?, size: Int) throws -> DiscoverShelf? {
+        guard let people else { return nil }
+        var watched: [String] = try history.recentIDs(kind: .movie, limit: 12)
+        for id in try history.recentIDs(kind: .episode, limit: 12) { if let e = try catalog.episode(id: id), !watched.contains(e.seriesID) { watched.append(e.seriesID) } }
+        guard let top = Self.favouritePerson(in: people.names(forItems: watched)) else { return nil }
+        let seen = Set(watched)
+        var out: [LibraryItem] = []
+        var dupes = Set<String>()
+        for hit in people.hits(term: top.name, kinds: [.movie, .series], sourceID: sourceID, limit: size * 3) where !seen.contains(hit.itemID) {
+            let item: LibraryItem? = hit.kind == .series ? (try catalog.seriesItem(id: hit.itemID)).map { .series($0) } : (try catalog.movie(id: hit.itemID)).map { .movie($0) }
+            if let item, dupes.insert("\(SimilarTitles.stem(item.title))|\(item.year ?? 0)").inserted { out.append(item) }
+            if out.count == size { break }
+        }
+        guard out.count >= 4 else { return nil }
+        return DiscoverShelf(id: "more-with", title: "More with \(top.name)", caption: "You watched \(top.titles) of their titles lately", items: out)
     }
 
     /// Items from the largest matching categories, newest first. nil when nothing matches.

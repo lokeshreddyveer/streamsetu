@@ -57,15 +57,19 @@ class MainActivity : ComponentActivity() {
             androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalWatched provides watched, app.streamsetu.tv.ui.components.LocalDownloadStatus provides downloadStatus, app.streamsetu.tv.ui.components.LocalPartialProgress provides partial) {
                 if (phone) androidx.compose.foundation.layout.Box {
                     app.streamsetu.tv.ui.phone.PhoneApp(container, nav, onExit = { finish() })
+                    app.streamsetu.tv.ui.screens.settings.ViewingBlockOverlay(container)
                     var picked by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(profileChosen) }
                     val many by container.profiles.profiles.collectAsState()
                     if (!picked && many.size > 1) app.streamsetu.tv.ui.screens.settings.ProfilePickerOverlay(container) { picked = true; profileChosen = true }
-                } else StreamSetuTV(container, nav, onExit = { finish() })
+                } else androidx.compose.foundation.layout.Box {
+                    StreamSetuTV(container, nav, onExit = { finish() })
+                    app.streamsetu.tv.ui.screens.settings.ViewingBlockOverlay(container)
+                }
             }
         }
         handle(intent)
         // A little after the first screens are up, start reading who is in the movies (see PeopleIndexer).
-        android.os.Handler(mainLooper).postDelayed({ container.people.start() }, 20_000)
+        android.os.Handler(mainLooper).postDelayed({ container.people.start(); app.streamsetu.tv.ui.screens.settings.refreshInsightAlarms(container) }, 20_000)
     }
 
     override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); handle(intent) }
@@ -344,7 +348,7 @@ fun openMultiView(c: AppContainer, nav: Navigator) {
 }
 
 /** Plays something and shows the player on top. */
-fun play(c: AppContainer, nav: Navigator, item: app.streamsetu.core.model.Playable, queue: List<app.streamsetu.core.model.Playable> = listOf(item)) {
-    c.play(item, queue)
+fun play(c: AppContainer, nav: Navigator, item: app.streamsetu.core.model.Playable, queue: List<app.streamsetu.core.model.Playable> = listOf(item), privately: Boolean = false) {
+    c.play(item, queue, privately = privately)
     if (nav.top != Overlay.Player) nav.open(Overlay.Player)
 }

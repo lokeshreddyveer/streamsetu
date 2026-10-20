@@ -453,6 +453,7 @@ struct PlayerScreen: View {
 
     /// The one skip button offered right now: the recap, the opening or the credits.
     private var skipButton: (title: String, action: () -> Void)? {
+        if playback.startOverOffer != nil { return ("Start from the beginning", { playback.startOver() }) }
         if playback.recapEnd != nil { return ("Skip Recap", { playback.skipRecap() }) }
         if playback.introEnd != nil { return ("Skip Intro", { playback.skipIntro() }) }
         if playback.creditsShowing { return ("Skip Credits", { playback.skipCredits() }) }
@@ -561,6 +562,7 @@ struct PlayerScreen: View {
                 HStack(spacing: 8) {
                     Text(playback.title).font(.system(size: 16, weight: .semibold)).lineLimit(1)
                     if playback.isLive { Text("LIVE").font(.system(size: 10, weight: .bold)).padding(.horizontal, 6).padding(.vertical, 2).background(.red, in: Capsule()) }
+                    if playback.isPrivate { Label("Private", systemImage: "eye.slash.fill").font(.system(size: 10, weight: .bold)).padding(.horizontal, 7).padding(.vertical, 2).background(.white.opacity(0.22), in: Capsule()).accessibilityLabel("Private viewing: nothing from this is saved") }
                 }
                 if let s = playback.subtitle, !s.isEmpty { Text(s).font(.system(size: 12)).foregroundStyle(.white.opacity(0.7)).lineLimit(1) }
             }

@@ -73,4 +73,13 @@ object PeopleIndex {
             return out
         }
     }
+
+    /** The people known for each of these titles, as written (nothing for a title not read yet). */
+    fun names(db: SupportSQLiteDatabase, ids: List<String>): Map<String, List<String>> {
+        val out = HashMap<String, MutableList<String>>()
+        for (chunk in ids.chunked(80)) db.query("SELECT itemId, name FROM people WHERE itemId IN (${chunk.joinToString(",") { "?" }})", chunk.toTypedArray<Any?>()).use { c ->
+            while (c.moveToNext()) out.getOrPut(c.getString(0)) { ArrayList() } += c.getString(1)
+        }
+        return out
+    }
 }

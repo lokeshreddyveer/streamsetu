@@ -71,7 +71,7 @@ fun HomeMenuHost(target: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppCon
     val title = when (target) { is HomeTarget.Film -> target.movie.title; is HomeTarget.Show -> target.series.title; is HomeTarget.Episode -> target.episode.title; is HomeTarget.Live -> target.channel.name }
 
     fun label(a: HomeAction) = when (a) {
-        HomeAction.PLAY -> "Play"; HomeAction.RESUME -> "Resume"; HomeAction.START_OVER -> "Start over"; HomeAction.DETAILS -> "View details"; HomeAction.OPEN_SERIES -> "Open series"
+        HomeAction.PLAY -> "Play"; HomeAction.WATCH_PRIVATELY -> "Watch privately"; HomeAction.RESUME -> "Resume"; HomeAction.START_OVER -> "Start over"; HomeAction.DETAILS -> "View details"; HomeAction.OPEN_SERIES -> "Open series"
         HomeAction.CONTINUE_SERIES -> "Continue watching"; HomeAction.REMOVE_FROM_CONTINUE -> "Remove from Continue Watching"; HomeAction.MARK_WATCHED -> "Mark as watched"
         HomeAction.MARK_UNWATCHED -> "Mark as unwatched"; HomeAction.FAVORITE -> "Add to Favorites"; HomeAction.UNFAVORITE -> "Remove from Favorites"
         HomeAction.WATCH_LATER -> "Add to Watch Later"; HomeAction.REMOVE_WATCH_LATER -> "Remove from Watch Later"; HomeAction.CHOOSE_SOURCE -> "Choose source…"
@@ -81,6 +81,7 @@ fun HomeMenuHost(target: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppCon
     }
     fun icon(a: HomeAction): ImageVector = when (a) {
         HomeAction.PLAY, HomeAction.RESUME, HomeAction.WATCH_CHANNEL, HomeAction.CONTINUE_SERIES -> Icons.Filled.PlayArrow
+        HomeAction.WATCH_PRIVATELY -> Icons.Filled.VisibilityOff
         HomeAction.START_OVER -> Icons.Filled.Replay; HomeAction.DETAILS, HomeAction.INFO -> Icons.Filled.Info; HomeAction.OPEN_SERIES -> Icons.Filled.VideoLibrary
         HomeAction.REMOVE_FROM_CONTINUE, HomeAction.REMOVE_FROM_RECENT, HomeAction.REMOVE_WATCH_LATER -> Icons.Filled.RemoveCircleOutline
         HomeAction.MARK_WATCHED, HomeAction.MARK_UNWATCHED -> Icons.Filled.Check; HomeAction.FAVORITE, HomeAction.UNFAVORITE -> Icons.Filled.Favorite
@@ -90,6 +91,12 @@ fun HomeMenuHost(target: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppCon
     fun run(a: HomeAction) {
         when (a) {
             HomeAction.PLAY, HomeAction.RESUME -> when (target) { is HomeTarget.Film -> play(c, nav, MoviePlayable(target.movie)); is HomeTarget.Episode -> play(c, nav, target.episode); else -> {} }
+            HomeAction.WATCH_PRIVATELY -> when (target) {
+                is HomeTarget.Film -> c.playBestMovie(target.movie) { play(c, nav, it, privately = true) }
+                is HomeTarget.Episode -> play(c, nav, target.episode, privately = true)
+                is HomeTarget.Live -> play(c, nav, ChannelPlayable(target.channel), privately = true)
+                is HomeTarget.Show -> nextEpisode?.let { play(c, nav, it, seriesQueue, privately = true) } ?: nav.open(Overlay.SeriesDetail(target.series))
+            }
             HomeAction.START_OVER -> { val p: Playable? = when (target) { is HomeTarget.Film -> MoviePlayable(target.movie); is HomeTarget.Episode -> target.episode; else -> null }
                 if (p != null) { scope.launch { c.user.clearResumePoint(p.id) }; c.play(p, listOf(p), startOver = true); if (nav.top != Overlay.Player) nav.open(Overlay.Player) } }
             HomeAction.DETAILS -> when (target) { is HomeTarget.Film -> nav.open(Overlay.MovieDetail(target.movie)); is HomeTarget.Episode -> nav.open(Overlay.SeriesDetail(target.series)); else -> {} }

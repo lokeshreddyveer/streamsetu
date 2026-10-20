@@ -12,6 +12,22 @@ struct ScheduledRecording: Identifiable, Codable, Equatable, Sendable {
     var end: Date
     var state: State = .scheduled
     var detail: String?
+    /// Set when the person chose "Every week": when this one is over, the same time next week is scheduled.
+    var repeatsWeekly: Bool?
+    var repeats: Bool { repeatsWeekly == true }
+
+    /// The same programme a week later; if the app was closed for longer, the first one that has not ended yet. Nil when this one does not repeat.
+    func nextWeek(after now: Date, calendar: Calendar = .current) -> ScheduledRecording? {
+        guard repeats else { return nil }
+        var s = start, e = end
+        repeat {
+            guard let ns = calendar.date(byAdding: .day, value: 7, to: s), let ne = calendar.date(byAdding: .day, value: 7, to: e) else { return nil }
+            s = ns; e = ne
+        } while e <= now
+        var next = ScheduledRecording(channelID: channelID, channelName: channelName, title: title, start: s, end: e)
+        next.repeatsWeekly = true
+        return next
+    }
 }
 
 /// Records a live programme at its time: the person presses Record in the guide, and while the app is open the Mac keeps itself awake, opens the channel's stream at the
@@ -54,10 +70,15 @@ final class ScheduledRecordingService {
 
     func isScheduled(channelID: String, start: Date) -> Bool { items.contains { $0.channelID == channelID && $0.start == start && $0.state == .scheduled } }
 
+    /// Whether the waiting recording of this programme repeats every week.
+    func repeatsWeekly(channelID: String, start: Date) -> Bool { items.contains { $0.channelID == channelID && $0.start == start && $0.state == .scheduled && $0.repeats } }
+
     @discardableResult
-    func schedule(program: EPGProgram, channel: Channel) -> Bool {
+    func schedule(program: EPGProgram, channel: Channel, weekly: Bool = false) -> Bool {
         guard program.end > Date(), !isScheduled(channelID: channel.id, start: program.start) else { return false }
-        items.append(ScheduledRecording(channelID: channel.id, channelName: channel.name, title: program.title, start: program.start, end: program.end))
+        var item = ScheduledRecording(channelID: channel.id, channelName: channel.name, title: program.title, start: program.start, end: program.end)
+        if weekly { item.repeatsWeekly = true }
+        items.append(item)
         items.sort { $0.start < $1.start }
         save()
         return true
@@ -65,12 +86,26 @@ final class ScheduledRecordingService {
 
     func cancel(channelID: String, start: Date) {
         guard let i = items.firstIndex(where: { $0.channelID == channelID && $0.start == start && $0.state == .scheduled }) else { return }
-        items.remove(at: i); save()
+        items.remove(at: i); save()          // cancelling a weekly one cancels the whole series: nothing is left to roll forward
+    }
+
+    /// Stops a recording from repeating; this week's still happens.
+    func stopRepeating(_ id: UUID) {
+        guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        items[i].repeatsWeekly = nil; save()
     }
 
     func remove(_ id: UUID) {
         running[id]?.cancel()
         items.removeAll { $0.id == id }; save()
+    }
+
+    /// When a weekly recording is over (done, failed or missed), the same time next week is put in the list, once.
+    private func rollForward(_ id: UUID, now: Date = Date()) {
+        guard let i = items.firstIndex(where: { $0.id == id }), let next = items[i].nextWeek(after: now) else { return }
+        items[i].repeatsWeekly = nil          // the series continues in the new entry
+        if !items.contains(where: { $0.channelID == next.channelID && $0.start == next.start && $0.state == .scheduled }) { items.append(next); items.sort { $0.start < $1.start } }
+        save()
     }
 
     func waitForRecordings() async { for t in Array(running.values) { await t.value } }
@@ -81,7 +116,7 @@ final class ScheduledRecordingService {
     func check() async {
         let now = Date()
         for i in items.indices where items[i].state == .scheduled {
-            if items[i].end <= now { items[i].state = .missed; items[i].detail = "The app was not open at that time."; save(); continue }
+            if items[i].end <= now { items[i].state = .missed; items[i].detail = "The app was not open at that time."; save(); rollForward(items[i].id, now: now); continue }
             if items[i].start.addingTimeInterval(-padding) <= now { begin(items[i].id) }
         }
     }
@@ -100,6 +135,7 @@ final class ScheduledRecordingService {
                 case .failure(let e): self.items[j].state = .failed; self.items[j].detail = e.localizedDescription
                 }
                 self.running[id] = nil; self.save()
+                self.rollForward(id)
             }
         }
     }

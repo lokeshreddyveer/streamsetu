@@ -1,5 +1,7 @@
 package app.streamsetu.tv.ui.phone
 
+import app.streamsetu.tv.startOver
+import app.streamsetu.tv.startOverFor
 import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
@@ -223,6 +225,14 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
                 Label("${if (flash == 1) "+" else "−"}$skip s", Ph.small, Color.White, FontWeight.SemiBold)
             }
         }
+        // A live channel whose programme began a while ago: for a short time after opening it, one tap plays the programme from its start (catch-up).
+        var offer by remember(item?.id) { mutableStateOf<app.streamsetu.core.data.db.EpgEntity?>(null) }
+        LaunchedEffect(item?.id) {
+            val ch = (item as? ChannelPlayable)?.channel ?: return@LaunchedEffect
+            offer = c.startOverFor(ch) ?: return@LaunchedEffect
+            kotlinx.coroutines.delay(app.streamsetu.core.data.repo.StartOver.SHOW_FOR_MS); offer = null
+        }
+        offer?.let { p -> if (!failed) PillButton("Start from the beginning", { (item as? ChannelPlayable)?.let { c.startOver(it.channel, p) }; offer = null }, Modifier.align(Alignment.BottomStart).windowInsetsPadding(WindowInsets.systemBars).padding(start = 16.dp, bottom = if (controls) 132.dp else 36.dp), icon = Icons.Filled.History) }
         // The opening of an episode: one tap jumps past it (the length is learned from the person's own skips in the series).
         val skipLabel = remember(position, item) {
             when {

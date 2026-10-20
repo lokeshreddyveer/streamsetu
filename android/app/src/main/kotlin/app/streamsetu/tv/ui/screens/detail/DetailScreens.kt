@@ -109,6 +109,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
                         if (resumable != null || progress?.completed == true) TvButton("Start Over", { scope.launch { c.user.clearResumePoint(movie.id) }; c.play(MoviePlayable(movie), listOf(MoviePlayable(movie)), startOver = true); if (nav.top != Overlay.Player) nav.open(Overlay.Player) }, icon = Icons.Filled.Replay)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TvButton("Watch privately", { c.playBestMovie(movie) { play(c, nav, it, privately = true) } }, icon = Icons.Filled.VisibilityOff)
                         TvButton(if (movie.id in favs) "Favorited" else "Favorite", { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in favs) } }, icon = if (movie.id in favs) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder)
                         TvButton(if (movie.id in later) "In Watch Later" else "Watch Later", { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in later, UserRepository.WATCH_LATER) } }, icon = if (movie.id in later) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder)
                         QueueButtonTv(c, ContentKind.MOVIE, movie.id, movie.title)

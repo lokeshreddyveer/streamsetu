@@ -95,4 +95,5 @@ fun ProfileSettings(c: AppContainer) {
         if (ok) { adding = false; name = ""; kids = false; usePin = false }
     }, onClose = { pinDialog = false })
     switching?.let { t -> SwitchWithPin(c, t) { switching = null } }
+    if (profiles.firstOrNull { it.id == activeId }?.kids != true) ViewingLimitSettings(c, profiles.filter { it.kids })
 }

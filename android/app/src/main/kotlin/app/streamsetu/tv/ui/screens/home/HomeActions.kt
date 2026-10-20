@@ -22,7 +22,7 @@ data class TargetState(
 )
 
 enum class HomeAction {
-    PLAY, RESUME, START_OVER, DETAILS, OPEN_SERIES, CONTINUE_SERIES,
+    PLAY, WATCH_PRIVATELY, RESUME, START_OVER, DETAILS, OPEN_SERIES, CONTINUE_SERIES,
     REMOVE_FROM_CONTINUE, MARK_WATCHED, MARK_UNWATCHED,
     FAVORITE, UNFAVORITE, WATCH_LATER, REMOVE_WATCH_LATER,
     PLAY_NEXT_EPISODE, MARK_SERIES_WATCHED, MARK_SERIES_UNWATCHED,
@@ -38,6 +38,7 @@ fun actionsFor(t: TargetState): List<HomeAction> = buildList {
     when (t.kind) {
         TargetKind.CHANNEL -> {
             add(HomeAction.WATCH_CHANNEL)
+            add(HomeAction.WATCH_PRIVATELY)
             add(if (t.isFavorite) HomeAction.UNFAVORITE else HomeAction.FAVORITE)
             add(if (t.isWatchLater) HomeAction.REMOVE_WATCH_LATER else HomeAction.WATCH_LATER)       // a saved-channel list, not a playback queue: no resume, no watched mark
             if (t.hasGuide) add(HomeAction.OPEN_GUIDE)
@@ -50,6 +51,7 @@ fun actionsFor(t: TargetState): List<HomeAction> = buildList {
             add(HomeAction.OPEN_SERIES)
             if (t.inContinue || t.hasResumePoint) add(HomeAction.CONTINUE_SERIES)
             if (t.hasNextEpisode) add(HomeAction.PLAY_NEXT_EPISODE)
+            add(HomeAction.WATCH_PRIVATELY)
             add(if (t.isFavorite) HomeAction.UNFAVORITE else HomeAction.FAVORITE)
             add(if (t.isWatchLater) HomeAction.REMOVE_WATCH_LATER else HomeAction.WATCH_LATER)
             add(if (t.seriesWatched) HomeAction.MARK_SERIES_UNWATCHED else HomeAction.MARK_SERIES_WATCHED)
@@ -58,12 +60,14 @@ fun actionsFor(t: TargetState): List<HomeAction> = buildList {
         }
         TargetKind.EPISODE -> if (t.fromEpisodeList) {
             add(if (t.hasResumePoint) HomeAction.RESUME else HomeAction.PLAY)
+            add(HomeAction.WATCH_PRIVATELY)
             if (t.hasResumePoint || t.watched) add(HomeAction.START_OVER)
             add(if (t.watched) HomeAction.MARK_UNWATCHED else HomeAction.MARK_WATCHED)
             if (t.hasVariants) add(HomeAction.CHOOSE_SOURCE)
             add(HomeAction.INFO)
         } else {
             add(if (t.hasResumePoint) HomeAction.RESUME else HomeAction.PLAY)
+            add(HomeAction.WATCH_PRIVATELY)
             if (t.hasResumePoint || t.watched) add(HomeAction.START_OVER)
             add(HomeAction.DETAILS)
             if (t.inContinue) add(HomeAction.REMOVE_FROM_CONTINUE)
@@ -74,6 +78,7 @@ fun actionsFor(t: TargetState): List<HomeAction> = buildList {
         }
         TargetKind.MOVIE -> {
             add(if (t.hasResumePoint) HomeAction.RESUME else HomeAction.PLAY)
+            add(HomeAction.WATCH_PRIVATELY)
             if (t.hasResumePoint || t.watched) add(HomeAction.START_OVER)
             add(HomeAction.DETAILS)
             if (t.inContinue) add(HomeAction.REMOVE_FROM_CONTINUE)

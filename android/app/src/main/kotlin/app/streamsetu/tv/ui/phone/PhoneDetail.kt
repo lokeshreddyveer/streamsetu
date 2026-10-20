@@ -88,6 +88,7 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                     } else if (progress?.completed == true) Label("Watched", Ph.caption, Tokens.success)
                     Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         PillButton(if (resumable != null) "Resume" else "Play", { c.playBestMovie(movie) { play(c, nav, it) } }, Modifier.weight(1f), icon = Icons.Filled.PlayArrow, primary = true)
+                        PillButton("Privately", { c.playBestMovie(movie) { play(c, nav, it, privately = true) } }, Modifier.weight(1f), icon = Icons.Filled.VisibilityOff)
                         if (resumable != null || progress?.completed == true) PillButton("Start over", { scope.launch { c.user.clearResumePoint(movie.id) }; c.play(MoviePlayable(movie), listOf(MoviePlayable(movie)), startOver = true); if (nav.top != Overlay.Player) nav.open(Overlay.Player) }, Modifier.weight(1f), icon = Icons.Filled.Replay)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -170,6 +171,7 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                     if (plan.gapBefore && forward != null) Label("Episode ${forward.number - 1} is not available. The next one on offer is episode ${forward.number}.", Ph.small, Tokens.warning, maxLines = 2)
                     Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         val ip = inProgress
+                        PillButton("Privately", { c.appScope.launch { c.playSeries(s, privately = true); kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { if (nav.top != Overlay.Player) nav.open(Overlay.Player) } } }, Modifier.weight(0.6f), icon = Icons.Filled.VisibilityOff)
                         when {
                             ip != null -> PillButton("Continue S${ip.season} E${ip.number}", { playEp(ip) }, Modifier.weight(1f), icon = Icons.Filled.PlayArrow, primary = true)
                             forward != null && watchedCount > 0 -> PillButton(if (catchUp != null) "Continue Forward S${forward.season} E${forward.number}" else "Continue S${forward.season} E${forward.number}", { playEp(forward) }, Modifier.weight(1f), icon = Icons.Filled.PlayArrow, primary = true)

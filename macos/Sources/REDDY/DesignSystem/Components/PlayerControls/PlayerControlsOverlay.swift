@@ -178,6 +178,10 @@ struct PlayerControlsOverlay: View {
                 HStack(spacing: 8) {
                     Text(playback.title).font(Typography.heading).lineLimit(1).truncationMode(.tail)
                     if playback.isLive { LiveBadge() }
+                    if playback.isPrivate {
+                        Label("Private", systemImage: "eye.slash.fill").font(.system(size: 11, weight: .semibold)).padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(Color.white.opacity(0.18), in: Capsule()).accessibilityLabel("Private viewing: nothing from this is saved")
+                    }
                 }
                 if showStreamInfo, !technicalSummary.isEmpty {
                     Text(technicalSummary).font(Typography.caption).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
@@ -357,6 +361,7 @@ struct PlayerControlsOverlay: View {
 
     /// The one skip button offered right now: the recap, the opening or the credits.
     private var skipButton: (title: String, action: () -> Void)? {
+        if playback.startOverOffer != nil { return ("Start from the beginning", { playback.startOver() }) }
         if playback.recapEnd != nil { return ("Skip Recap", { playback.skipRecap() }) }
         if playback.introEnd != nil { return ("Skip Intro", { playback.skipIntro() }) }
         if playback.creditsShowing { return ("Skip Credits", { playback.skipCredits() }) }

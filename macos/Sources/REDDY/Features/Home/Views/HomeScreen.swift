@@ -58,6 +58,7 @@ struct LibraryItemCard: View {
                         onPlay: { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item) } })
             .contextMenu {
                 Button("Play") { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item) } }
+                Button("Watch Privately", systemImage: "eye.slash") { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item, privately: true) } }
                 Button("View details") { PlayActions.open(item, router: router) }
                 Button(state.isFavorite(item.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(item.id, kind: item.kind) }
                 Button(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(item.id, kind: item.kind) }
@@ -142,6 +143,8 @@ struct DiscoverPage: View {
         GeometryReader { g in
             VStack(alignment: .leading, spacing: 10) {
                 PageHead(title: "Discover")
+                if let container { OfflineHomeBanner(container: container).padding(.horizontal, LayoutTokens.gutter) }
+                if let container { NowPlayingStrip(container: container).padding(.horizontal, LayoutTokens.gutter) }
                 if let content, !content.shelves.isEmpty { toolbar(content) }
                 ScrollView {
                     if state.hasLibrary, !slides.isEmpty {
@@ -312,6 +315,7 @@ struct RecentlyWatchedPage: View {
                             .buttonStyle(.plain).accessibilityLabel("Play \(ch.name)")
                             .contextMenu {
                                 Button("Play") { container?.playback.play(channel: ch, queue: channels) }
+                                Button("Watch Privately", systemImage: "eye.slash") { container?.playback.play(channel: ch, queue: channels, privately: true) }
                                 Divider()
                                 Button("Remove from Recently Watched", role: .destructive) { remove(ch.id) }
                             }

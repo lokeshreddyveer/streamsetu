@@ -62,6 +62,7 @@
         </activity>
         <meta-data android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME" android:value="app.streamsetu.tv.CastOptionsProvider" />
         <receiver android:name=".ReminderReceiver" android:exported="false" />
+        <receiver android:name=".NoticeReceiver" android:exported="false" />
         <receiver android:name=".record.RecordReceiver" android:exported="false" />
         <service android:name=".record.RecordService" android:exported="false" android:foregroundServiceType="dataSync" />
         <receiver android:name=".ContinueWidget" android:exported="false" android:label="@string/widget_continue_title">

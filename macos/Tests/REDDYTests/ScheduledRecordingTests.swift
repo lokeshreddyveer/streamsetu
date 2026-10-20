@@ -55,9 +55,9 @@ private final class StreamServer: @unchecked Sendable {
         let started = Date()
         await service.waitForRecordings()
         #expect(Date().timeIntervalSince(started) < 30)
-        #expect(service.items[0].state == .done)
+        #expect(service.items[0].state == .done, "ended as \(service.items[0].state): \(service.items[0].detail ?? "no detail")")
         let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])
-        #expect(files.count == 1)
+        try #require(files.count == 1)
         #expect((try files[0].resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) > 0)
         #expect(files[0].lastPathComponent.hasPrefix("News 24 - Evening Bulletin__"))
     }
@@ -79,5 +79,32 @@ private final class StreamServer: @unchecked Sendable {
         a.schedule(program: program(start: t, end: t.addingTimeInterval(600)), channel: ch)
         let b = ScheduledRecordingService(find: { _ in ch }, resolve: { _ in throw SourceError.unsupported("x") }, defaults: d, folder: FileManager.default.temporaryDirectory)
         #expect(b.items.count == 1 && b.items[0].title == "Evening Bulletin")
+    }
+}
+
+@Suite struct WeeklyRecordingTests {
+    private var cal: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "UTC")!; return c }
+    private func at(_ day: Int, _ h: Int) -> Date { cal.date(from: DateComponents(year: 2026, month: 10, day: day, hour: h))! }
+    private func weekly(_ day: Int) -> ScheduledRecording {
+        var r = ScheduledRecording(channelID: "c", channelName: "News", title: "Show", start: at(day, 20), end: at(day, 21)); r.repeatsWeekly = true; return r
+    }
+
+    @Test func aWeeklyOneIsScheduledAgainForTheSameTimeNextWeek() {
+        let next = weekly(20).nextWeek(after: at(20, 22), calendar: cal)
+        #expect(next?.start == at(27, 20) && next?.end == at(27, 21))
+        #expect(next?.repeats == true && next?.state == .scheduled && next?.title == "Show")
+    }
+    @Test func aOneOffDoesNotRepeat() {
+        var r = weekly(20); r.repeatsWeekly = nil
+        #expect(r.nextWeek(after: at(20, 22), calendar: cal) == nil)
+    }
+    @Test func afterALongGapItSkipsToTheFirstWeekNotYetOver() {
+        let next = weekly(1).nextWeek(after: at(20, 12), calendar: cal)          // the app was closed for weeks
+        #expect(next?.start == at(22, 20))
+    }
+    @Test func recordingsSavedBeforeRepeatingExistedStillLoad() throws {
+        let old = #"[{"id":"8C0E3B5E-5B1B-4B0B-9C11-0A1B2C3D4E5F","channelID":"c","channelName":"N","title":"T","start":0,"end":3600,"state":"scheduled"}]"#
+        let list = try JSONDecoder().decode([ScheduledRecording].self, from: Data(old.utf8))
+        #expect(list.first?.repeats == false)
     }
 }

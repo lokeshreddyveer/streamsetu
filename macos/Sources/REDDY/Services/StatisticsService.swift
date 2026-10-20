@@ -44,6 +44,13 @@ final class StatisticsService: Sendable {
         return Self.aggregate(rows, now: now, calendar: calendar, resolve: { [catalog] ids in Self.resolve(ids, catalog: catalog) })
     }
 
+    /// Every finished session since `since`, oldest first.
+    func sessions(since: Date) throws -> [Row] {
+        try db.read { c in
+            try c.query("SELECT item_id, started_at, ended_at FROM playback_sessions WHERE ended_at IS NOT NULL AND ended_at > started_at AND started_at >= ? ORDER BY started_at", [since]) { Row(itemID: $0.string(0), start: $0.date(1), end: $0.date(2)) }
+        }
+    }
+
     func clear() throws { try db.write { try $0.execute("DELETE FROM playback_sessions") } }
 
     // MARK: aggregation (pure apart from the resolver)

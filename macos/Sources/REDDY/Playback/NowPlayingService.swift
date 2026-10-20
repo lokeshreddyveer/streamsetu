@@ -76,9 +76,10 @@ final class NowPlayingService {
 
     func snapshot() -> NowPlayingSnapshot? {
         guard let p = playback, p.current != nil, p.state.isActive else { return nil }
-        return NowPlayingSnapshot(title: p.title, subtitle: p.subtitle ?? p.currentChannel?.categoryName, isLive: p.isLive, isPlaying: p.state == .playing,
+        // A private watch shows no title or picture on the lock screen, in Control Centre or on a paired device.
+        return NowPlayingSnapshot(title: p.isPrivate ? "Private viewing" : p.title, subtitle: p.isPrivate ? nil : (p.subtitle ?? p.currentChannel?.categoryName), isLive: p.isLive, isPlaying: p.state == .playing,
                                   position: p.position, duration: p.duration, rate: p.rate, hasQueue: p.queue.count > 1,
-                                  hasNextEpisode: p.upNext != nil, artworkURL: p.current?.artworkURL)
+                                  hasNextEpisode: p.upNext != nil, artworkURL: p.isPrivate ? nil : p.current?.artworkURL)
     }
 
     /// Publishes changes only; the system extrapolates the elapsed time between updates.

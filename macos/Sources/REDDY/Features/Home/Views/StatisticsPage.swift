@@ -23,6 +23,7 @@ struct StatisticsPage: View {
 
     var body: some View {
         PageScroll(title: "Statistics", trailing: AnyView(controls)) {
+            if let container { WeeklyDigestCard(container: container) }
             if let s = stats {
                 if s.isEmpty {
                     EmptyStateView(symbol: "chart.bar", title: "Nothing to show yet", message: "Watch something and your viewing time appears here. It stays on this Mac.").frame(height: 260)

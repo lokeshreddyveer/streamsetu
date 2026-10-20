@@ -8,6 +8,7 @@ struct TonightPage: View {
 
     var body: some View {
         PageScroll(title: "Tonight") {
+            if let container { UsualEveningRow(container: container) }
             if let plan {
                 if plan.isEmpty {
                     EmptyStateView(symbol: "moon.stars", title: "Nothing lined up yet", message: "Favourite a few channels with a guide, follow a series, or add a guide alert, and tonight fills in.").frame(height: 260)

@@ -127,6 +127,17 @@ final class LanSyncService {
 
     func forget(_ peer: LanPeer) { trust.remove(id: peer.id); trusted = trust.all() }
 
+    private var nudgeTask: Task<Void, Never>?
+    /// Something worth telling the other devices about happened (playback started or stopped): sync shortly, once, however many such events come together.
+    func nudge() {
+        guard enabled, !trusted.isEmpty else { return }
+        nudgeTask?.cancel()
+        nudgeTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if !Task.isCancelled { await self?.syncNow() }
+        }
+    }
+
     /// Syncs with every paired device that is on the network now.
     func syncNow() async {
         guard enabled else { return }

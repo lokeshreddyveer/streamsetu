@@ -186,6 +186,30 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         if (out.size < 6) null else ForYou(out, seeds.take(2).joinToString(", ") { "“${it.title}”" })
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /** The row "More with …": the person in the most of what was watched lately (at least two titles), and their other titles here. */
+    data class MoreWith(val name: String, val items: List<FavItem>, val titles: Int)
+
+    val moreWith: StateFlow<MoreWith?> = recentWatched.mapLatest { watched ->
+        val titles = watched.filter { it !is FavItem.Ch }.take(12)
+        val ids = titles.map { it.id }
+        val names = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { app.streamsetu.core.data.db.PeopleIndex.names(c.db.openHelper.readableDatabase, ids) }
+        val (name, n) = app.streamsetu.core.data.repo.FavouritePerson.pick(names) ?: return@mapLatest null
+        val seen = ids.toSet()
+        val words = app.streamsetu.core.data.db.PeopleIndex.let { name.lowercase().split(Regex("\\s+")).filter { w -> w.isNotEmpty() } }
+        val hits = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            app.streamsetu.core.data.db.PeopleIndex.hits(c.db.openHelper.readableDatabase, words, c.library.sourceIds.value.toList(), listOf("MOVIE", "SERIES"), 40)
+        }
+        val keys = HashSet<String>(); val out = ArrayList<FavItem>()
+        for (h in hits) {
+            if (h.itemId in seen) continue
+            val item: FavItem? = if (h.kind == "SERIES") c.catalog.series(h.itemId)?.let { FavItem.Sr(it) } else c.catalog.movie(h.itemId)?.let { FavItem.Mv(it) }
+            val year = when (item) { is FavItem.Mv -> item.movie.year; is FavItem.Sr -> item.series.year; else -> null }
+            if (item != null && keys.add(app.streamsetu.core.data.repo.Similarity.stem(item.title) + "|" + (year ?: 0))) out += item
+            if (out.size >= 14) break
+        }
+        if (out.size < 4) null else MoreWith(name, out, n)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     val order: List<String> get() = visibleRows(c.ui.homeOrder(DEFAULT_ORDER), hiddenRows.value)
 
     // ---- Actions behind the long-press menu (the screen only passes typed identities in) ----

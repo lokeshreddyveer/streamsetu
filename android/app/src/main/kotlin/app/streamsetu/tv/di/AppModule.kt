@@ -63,10 +63,11 @@ object AppModule {
     @Provides @Singleton
     fun playback(@ApplicationContext c: Context, resolver: StreamResolver, settings: AppSettings, user: UserRepository, db: AppDatabase, sync: SyncService, sources: SourceRepository, stats: app.streamsetu.core.data.repo.StatisticsRepository): PlaybackController = PlaybackController(
         c, resolver, settings,
-        onProgress = { item, pos, dur -> user.saveProgress(item.id, kindOf(item), (item as? EpisodePlayable)?.series?.id, pos, dur); app.streamsetu.tv.WatchNext.update(c, item, pos, dur) },
-        onStarted = { item -> user.recordPlay(item.id, kindOf(item), item.title) },
+        onProgress = { item, pos, dur -> if (!app.streamsetu.tv.PrivateWatch.on) { user.saveProgress(item.id, kindOf(item), (item as? EpisodePlayable)?.series?.id, pos, dur); app.streamsetu.tv.WatchNext.update(c, item, pos, dur) } },
+        onStarted = { item -> if (!app.streamsetu.tv.PrivateWatch.on) user.recordPlay(item.id, kindOf(item), item.title) },
         onWatched = { item, ms ->
-            // Time is added up per channel, movie and series (an episode counts for its series), for the Statistics page.
+            // Time is added up per channel, movie and series (an episode counts for its series), for the Statistics page. A private watch is not counted.
+            if (app.streamsetu.tv.PrivateWatch.on) return@PlaybackController
             when (item) {
                 is EpisodePlayable -> stats.record(item.series.id, "SERIES", item.series.title, ms)
                 is MoviePlayable -> stats.record(item.id, "MOVIE", item.title, ms)

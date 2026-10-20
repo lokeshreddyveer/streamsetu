@@ -53,6 +53,10 @@ final class AppContainer {
     private(set) var cloud: CloudSyncCoordinator!
     private(set) var lan: LanSyncService!
     private(set) var profiles: ProfileService!
+    private(set) var lanAdapter: LanDataAdapter!
+    private(set) var viewingLimits: ViewingLimits!
+    let connectivity = Connectivity()
+    let nowBoard = NowPlayingBoard()
     let podcasts: PodcastService
     private(set) var accounts: AccountStatusService!
     private(set) var alerts: KeywordAlertService!
@@ -97,7 +101,7 @@ final class AppContainer {
         globalSearch = GlobalSearchService(searchRepo: searchRepo, catalog: catalog, epg: epgRepo, favorites: favoritesRepo)
         favorites = FavoritesService(repo: favoritesRepo, catalog: catalog)
         history = HistoryService(repo: historyRepo, catalog: catalog)
-        discover = DiscoverService(catalog: catalog, history: historyRepo)
+        discover = DiscoverService(catalog: catalog, history: historyRepo, people: PeopleIndex(db: db))
         spelling = SpellingIndex(db: db)
         details = DetailService(catalog: catalog, indexer: indexer, sources: sources)
         featured = FeaturedService(catalog: catalog, details: details)
@@ -164,7 +168,8 @@ final class AppContainer {
             find: { text, favourites in
                 var q = ChannelQuery(); q.search = text; q.favoritesOnly = favourites; q.limit = 80; q.sortAlphabetically = true
                 return (try? catalog.channels(q)) ?? []
-            })
+            },
+            connectionLimit: { [unowned self] source in self.accounts.statuses[source]?.maxConnections })
         #if os(macOS)
         fullscreen = FullscreenController(playback: playback, makeWindow: { [unowned self] in
             PlayerFullscreenWindow(title: self.playback.title.isEmpty ? "StreamSetu" : self.playback.title, content: FullscreenPlayerRoot(container: self))
@@ -175,7 +180,18 @@ final class AppContainer {
         cloud = CloudSyncCoordinator(db: db, defaults: settings.defaultsStore) { [weak self] result in
             Task { @MainActor in self?.cloudApplied(result) }
         }
-        lan = LanSyncService(credentials: credentials, defaults: settings.defaultsStore, data: LanDataAdapter(db: db), deviceName: Self.deviceName) { [weak self] n in
+        let nowID: String = {
+            if let id = settings.defaultsStore.string(forKey: "lan.nowID") { return id }
+            let id = UUID().uuidString.lowercased(); settings.defaultsStore.set(id, forKey: "lan.nowID"); return id
+        }()
+        let board = nowBoard, player = playback
+        lanAdapter = LanDataAdapter(db: db, nowKey: nowID, deviceName: Self.deviceName, now: {
+            await MainActor.run {
+                guard let r = player.current, player.state.isActive, !player.isPrivate else { return nil }
+                return LanDataAdapter.Now(itemID: r.itemID.components(separatedBy: "|catchup|").first ?? r.itemID, title: player.title, position: player.position)
+            }
+        }, board: { records in Task { @MainActor in board.ingest(records) } })
+        lan = LanSyncService(credentials: credentials, defaults: settings.defaultsStore, data: lanAdapter, deviceName: Self.deviceName) { [weak self] n in
             self?.onCloudChange?(SyncApplyResult(applied: n, tables: ["favorites", "playback_progress", "collections"]))
         }
         #if os(macOS)
@@ -189,14 +205,28 @@ final class AppContainer {
                 return try epgRepo.searchPrograms(term: term, sourceID: nil, from: from, limit: 30).map { (program: $0.program, channelName: $0.channelName) }
             },
             schedule: { [reminders] program, channel in await reminders.schedule(program: program, channelName: channel) })
+        viewingLimits = ViewingLimits(defaults: settings.defaultsStore)
         profiles = ProfileService(db: db, defaults: settings.defaultsStore) { [weak self] _ in self?.profileSwitched() }
         parental.kidsMode = profiles.active.kind == .kids
+        applyViewingLimits()
+        playback.onSessionChange = { [weak self] in self?.lan.nudge() }
+        playback.programOnNow = { [epgRepo] channel in ((try? epgRepo.nowNext(channelIDs: [channel.id], at: Date())) ?? [:])[channel.id]?.first { $0.isLive(at: Date()) } }
         applySettings()
+    }
+
+    /// A kids profile with limits counts and stops playback; any other profile plays freely.
+    func applyViewingLimits() {
+        let p = profiles.active
+        playback.viewingBlock = nil
+        guard p.kind == .kids, !viewingLimits.limit(for: p.id).isOff else { playback.viewingGuard = nil; return }
+        let limits: ViewingLimits = viewingLimits, id = p.id
+        playback.viewingGuard = .init(block: { limits.block(for: id) }, add: { limits.addUsage($0, for: id) }, remaining: { limits.remaining(for: id) })
     }
 
     /// Another profile is now in use: its own data is in place, so screens reload; kids profiles hide the locked folders; sync, which carries the first profile only, pauses.
     private func profileSwitched() {
         parental.kidsMode = profiles.active.kind == .kids
+        applyViewingLimits()
         watchQueue.reload()
         Task { await updateCloudSync() }
         lan.setEnabled(settings.lanSync && profiles.isMainActive)
@@ -221,7 +251,7 @@ final class AppContainer {
     /// Begins syncing when the person has switched it on. Call once the app has started.
     func startCloudIfEnabled() async {
         alerts.start()
-        Task { try? await Task.sleep(nanoseconds: 8_000_000_000); await accounts.refresh() }          // when each subscription ends, a little after the first screens are up
+        Task { try? await Task.sleep(nanoseconds: 8_000_000_000); await accounts.refresh(); refreshWeeklyDigest(); refreshUsualEvening() }          // when each subscription ends, a little after the first screens are up
         #if os(macOS)
         scheduledRecordings.start()
         #endif

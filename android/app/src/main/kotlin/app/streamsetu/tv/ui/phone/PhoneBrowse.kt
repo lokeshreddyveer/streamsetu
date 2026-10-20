@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,6 +99,10 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
                         progress = if (p != null && !p.completed) p.fraction else 0f,
                         onLong = { sheet = card.title to buildList {
                             add(SheetItem("Open", Icons.Filled.PlayArrow) { card.movie?.let { nav.open(Overlay.MovieDetail(it)) } ?: card.series?.let { nav.open(Overlay.SeriesDetail(it)) } })
+                            add(SheetItem("Watch privately", Icons.Filled.VisibilityOff) {
+                                card.movie?.let { m -> c.playBestMovie(m) { play(c, nav, it, privately = true) } }
+                                    ?: card.series?.let { sr -> c.appScope.launch { c.playSeries(sr, privately = true); kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { if (nav.top != Overlay.Player) nav.open(Overlay.Player) } } }
+                            })
                             add(SheetItem(if (card.id in favs) "Remove from favorites" else "Add to favorites", Icons.Filled.Favorite) { vm.toggle(card.id, UserRepository.FAVOURITES) })
                             add(SheetItem(if (card.id in later) "Remove from Watch Later" else "Watch Later", Icons.Filled.Bookmark) { vm.toggle(card.id, UserRepository.WATCH_LATER) })
                             if (card.movie != null) add(SheetItem(if (p?.completed == true) "Mark as unwatched" else "Mark as watched", Icons.Filled.CheckCircle) { vm.setWatched(card, p?.completed != true) })
@@ -154,7 +159,9 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
                 val ch = g.rep
                 val program = epgIds[ch.id]?.let { now[it] }
                 Column(
-                    Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(Tokens.card).combinedClickable(onClick = { play(c, nav, ChannelPlayable(ch), list.map { ChannelPlayable(it.rep) }) }, onLongClick = { vm.toggleFavourite(ch) }).padding(horizontal = 8.dp, vertical = 12.dp),
+                    Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(Tokens.card).combinedClickable(onClick = { play(c, nav, ChannelPlayable(ch), list.map { ChannelPlayable(it.rep) }) }, onLongClick = { sheet = ch.name to listOf(
+                        SheetItem("Watch privately", Icons.Filled.VisibilityOff) { play(c, nav, ChannelPlayable(ch), list.map { ChannelPlayable(it.rep) }, privately = true) },
+                        SheetItem(if (ch.id in favs) "Remove from favorites" else "Add to favorites", Icons.Filled.Favorite) { vm.toggleFavourite(ch) }) }).padding(horizontal = 8.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Box { ChannelLogo(ch.logoUrl, ch.name, 60.dp); if (ch.id in favs) Icon(Icons.Filled.Favorite, Tokens.gold, 14.dp, Modifier.align(Alignment.TopEnd)) }

@@ -63,6 +63,8 @@ struct RootView: View {
         }
         .loggingNotice()
         .background(ColorTokens.background)
+        .overlay { if let container { ViewingBlockOverlay(container: container) } }
+        .animation(.easeInOut(duration: 0.3), value: container?.playback.viewingBlock)
         .overlay { if let container, !picked, container.profiles.isShared { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { picked = true } } } }
         .overlay { if opening { OpeningAnimation { BrandMark() } onDone: { opening = false } } }
         .onChange(of: contrast, initial: true) { _, c in ThemeStore.state.systemContrast = c == .increased }

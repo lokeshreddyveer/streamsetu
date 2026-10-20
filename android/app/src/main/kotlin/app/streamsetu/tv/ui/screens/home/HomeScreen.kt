@@ -49,6 +49,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val later by vm.watchLater.collectAsState()
     val recent by vm.recentWatched.collectAsState()
     val forYou by vm.forYou.collectAsState()
+    val moreWith by vm.moreWith.collectAsState()
     val laterIds by vm.watchLaterIds.collectAsState()
     val favIds by vm.favouriteIds.collectAsState()
     val movies by vm.recentMovies.collectAsState()
@@ -73,6 +74,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     androidx.compose.runtime.CompositionLocalProvider(LocalFocusRing provides Tokens.gold) {
         LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item(key = "header") { HomeHeader(libraryName, libraryOk) }
+            item(key = "offline") { TvOfflineAndNow(c, nav) }
             if (bannerOn && banner.isNotEmpty()) item(key = "banner") {
                 FeaturedBanner(
                     banner, 360.dp, primaryEntry = entry, startPadding = Tokens.safeHorizontal, intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuOpen,
@@ -109,7 +111,8 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     } }
                     "favorites" -> if (favs.isNotEmpty()) rail("Favorites", pad) { items(favs, key = { "f" + it.id }) { f -> FavCard(f, c, nav, RowKind.FAVORITES, ::longOn) } }
                     "later" -> if (later.isNotEmpty()) rail("Watch Later", pad) { items(later, key = { "w" + it.id }) { f -> FavCard(f, c, nav, RowKind.WATCH_LATER, ::longOn) } }
-                    "foryou" -> forYou?.let { fy -> rail("For You  ·  Because you watched ${fy.because}", pad) { items(fy.items, key = { "y" + it.id }) { f -> FavCard(f, c, nav, RowKind.OTHER, ::longOn) } } }
+                    "foryou" -> { forYou?.let { fy -> rail("For You  ·  Because you watched ${fy.because}", pad) { items(fy.items, key = { "y" + it.id }) { f -> FavCard(f, c, nav, RowKind.OTHER, ::longOn) } } }
+                        moreWith?.let { mw -> rail("More with ${mw.name}  ·  You watched ${mw.titles} of their titles lately", pad) { items(mw.items, key = { "w" + it.id }) { f -> FavCard(f, c, nav, RowKind.OTHER, ::longOn) } } } }
                     "movies" -> if (movies.isNotEmpty()) rail("Recently Added Movies", pad) { items(movies, key = { "m" + it.id }) { m ->
                         PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, itemId = m.id, subtitle = m.year?.toString(), badge = if (m.id in favIds) "♥" else ratingBadge(m.rating), onLongClick = { longOn(HomeTarget.Film(m), RowKind.OTHER) })
                     } }
@@ -212,6 +215,34 @@ private fun CategoryCard(title: String, subtitle: String, icon: ImageVector, onC
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
                 Label(title, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 2)
                 if (subtitle.isNotBlank()) Label(subtitle, Tokens.caption, Tokens.textTertiary, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** When there is no connection, the saved downloads that still play; and what the other devices are playing, with a button to carry on here. */
+@Composable
+private fun TvOfflineAndNow(c: AppContainer, nav: Navigator) {
+    val online by c.online.collectAsState()
+    val saved by c.downloads.items.collectAsState()
+    val all by c.nowBoard.entries.collectAsState()
+    var tick by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { delay(30_000); tick = System.currentTimeMillis() } }
+    val others = remember(all, tick) { c.nowBoard.current(tick) }
+    val done = saved.filter { it.state == app.streamsetu.core.data.repo.SaveState.DONE }
+    androidx.compose.animation.AnimatedVisibility(!online || others.isNotEmpty()) {
+        Column(Modifier.padding(horizontal = Tokens.safeHorizontal, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (!online) {
+                Label("You're offline", Tokens.row, Tokens.warning, FontWeight.SemiBold)
+                if (done.isEmpty()) Label("Nothing is saved for offline viewing yet.", Tokens.caption, Tokens.textSecondary)
+                else LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(done, key = { "o" + it.itemId }) { t -> Focusable({ app.streamsetu.tv.playSaved(c, nav, t) }, shape = CircleShape, container = Color(0x1AFFFFFF), hairline = true) { Label(t.title, Tokens.row, Tokens.text, modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp)) } }
+                }
+            }
+            if (online) others.forEach { e ->
+                Focusable({ c.takeOver(e, nav) }, shape = CircleShape, container = Color(0x1AFFFFFF), hairline = true) {
+                    Label("Playing on ${e.deviceName}: ${e.title}  ·  Play here", Tokens.row, Tokens.text, modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp))
+                }
             }
         }
     }

@@ -119,7 +119,7 @@ struct LibraryScreen: View {
 
     // MARK: actions
 
-    private func play(_ item: LibraryItem) { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item) } }
+    private func play(_ item: LibraryItem, privately: Bool = false) { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item, privately: privately) } }
     /// While searching, a title found because of somebody in it says who ("Cast: Mahesh Babu") where its year and genre would be.
     private func noted(_ model: PosterCardModel, _ id: String) -> PosterCardModel {
         guard let note = vm.matchNotes[id] else { return model }
@@ -131,6 +131,7 @@ struct LibraryScreen: View {
 
     @ViewBuilder private func menu(_ item: LibraryItem) -> some View {
         Button("Play") { play(item) }
+        Button("Watch Privately", systemImage: "eye.slash") { play(item, privately: true) }
         Button("View details") { open(item) }
         Button(state.isFavorite(item.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(item.id, kind: item.kind) }
         Button(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(item.id, kind: item.kind); if selection == .shortcut(.watchLater) { Task { await vm.reset(container!, selection: selection, source: state.activeSourceID) } } }

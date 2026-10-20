@@ -88,4 +88,15 @@ struct PeopleIndex: Sendable {
         }
         return out
     }
+
+    /// The people known for each of these titles, as written (empty for a title not read yet).
+    func names(forItems ids: [String]) -> [String: [String]] {
+        var out: [String: [String]] = [:]
+        for chunk in stride(from: 0, to: ids.count, by: 80).map({ Array(ids[$0..<min($0 + 80, ids.count)]) }) {
+            let sql = "SELECT item_id, name FROM people WHERE item_id IN (" + chunk.map { _ in "?" }.joined(separator: ",") + ")"
+            let rows = (try? db.read { c in try c.query(sql, chunk.map { $0 as (any SQLConvertible)? }) { ($0.string(0), $0.string(1)) } }) ?? []
+            for (id, name) in rows { out[id, default: []].append(name) }
+        }
+        return out
+    }
 }

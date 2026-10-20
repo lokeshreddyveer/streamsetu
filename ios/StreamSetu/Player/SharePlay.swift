@@ -57,6 +57,16 @@ final class SharePlayService {
         }
     }
 
+    /// Starts a session once the film or channel that was just opened is playing with the system player (it can take a few seconds to begin).
+    func startWhenReady(_ c: AppContainer) {
+        Task { [weak self] in
+            for _ in 0..<40 {
+                if self?.shareable(c) != nil, c.playback.state.isPlaying { await self?.start(c); return }
+                try? await Task.sleep(nanoseconds: 500_000_000)
+            }
+        }
+    }
+
     private func join(_ s: GroupSession<WatchTogether>, open: @escaping @MainActor (URL) -> Void) {
         session = s
         s.join()

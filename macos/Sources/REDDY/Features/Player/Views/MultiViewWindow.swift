@@ -54,6 +54,10 @@ struct MultiViewWindow: View {
             Button("Save") { model.savePreset(named: presetName); presetName = "" }
             Button("Cancel", role: .cancel) { presetName = "" }
         } message: { Text("Bring the same channels back later from the Sets menu.") }
+        .alert("Your provider's limit", isPresented: Binding(get: { model.pendingAdd != nil }, set: { if !$0 { model.cancelPendingAdd() } })) {
+            Button("Open Anyway") { model.confirmPendingAdd() }
+            Button("Cancel", role: .cancel) { model.cancelPendingAdd() }
+        } message: { Text(model.pendingAdd?.message ?? "") }
         .onDisappear { model.removeAll() }
         .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in model.refreshGuide() }
         .focusable().focused($focused).focusEffectDisabled()
@@ -356,7 +360,7 @@ private struct ChannelPicker: View {
     private func isShown(_ c: Channel) -> Bool { model.tiles.contains { $0.channel.id == c.id } }
 
     private func choose(_ c: Channel) {
-        if let replacing { model.replace(replacing, with: c) } else { model.add(c) }
+        if let replacing { model.replace(replacing, with: c) } else { model.requestAdd(c) }
         done()
     }
 }

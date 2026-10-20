@@ -248,9 +248,20 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Subscription end dates for playlists that report them (Xtream), with a warning from a week before | ✓ | ✓ | ✓ | ✓ | ✓ |
 | A live channel that stops working tries the same channel in your other playlists | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Podcasts: search, follow and play, with your place kept | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Watch Privately: play one title, series or channel without leaving history, resume points, statistics, lock-screen details or anything to sync | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Your week: time watched, the most watched title, new episodes and subscriptions ending, with an optional Sunday evening notification | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Your usual time: what you often put on around the same hour, one tap to play, with an optional reminder ten minutes before | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Privacy report: what is kept on the device and what can leave it, with each item's current state | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Viewing limits for a kids profile: minutes a day and night hours, with the profile's PIN adding time | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Start from the beginning: a live programme that began a while ago can be played from its start through catch-up | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Offline Home: with no connection, Home shows the downloads that still play | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Now playing on your other devices, with Play here, over Wi-Fi sync | ✓ | ✓ | ✓ | ✓ | ✓ |
+| "More with" a person you keep watching, built on the device from the cast already read | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Multi-view warns before opening more streams than your provider allows | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Record a programme every week | ✓ app must be open | – | – | – | – |
 | Search Movies and Series by actor or director, and by a sentence such as "telugu movies 2024 unwatched" (running time, as in "under 2 hours", on Mac, iPhone and iPad only; on Android and Fire TV it is in the main Search) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Home screen widget for Continue Watching, and a Live Activity for downloads | – | ✓ | ✓ widget | – | – |
-| SharePlay: watch a film or a live channel together over FaceTime | – | ✓ | ✓ | – | – |
+| SharePlay: watch a film or a live channel together over FaceTime, started from the player or from a film's page | – | ✓ | ✓ | – | – |
 | Match the TV's frame rate to the video (24, 25, 30, 50, 60 Hz) | – | – | – | – | ✓ |
 | Downloads to watch without a connection, with a ring that fills and a percentage on the button and the poster | ✓ | ✓ | ✓ | ✓ | – |
 | Record a live channel | ✓ | – | – | ✓ | ✓ |

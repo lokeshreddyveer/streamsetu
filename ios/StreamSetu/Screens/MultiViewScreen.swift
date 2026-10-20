@@ -58,6 +58,10 @@ struct MultiViewScreen: View {
         }
         .preferredColorScheme(.dark)
         .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in model.refreshGuide() }
+        .alert("Your provider's limit", isPresented: Binding(get: { model.pendingAdd != nil }, set: { if !$0 { model.cancelPendingAdd() } })) {
+            Button("Open Anyway") { model.confirmPendingAdd() }
+            Button("Cancel", role: .cancel) { model.cancelPendingAdd() }
+        } message: { Text(model.pendingAdd?.message ?? "") }
         .onDisappear { model.removeAll() }
     }
 
@@ -152,7 +156,7 @@ private struct MVPicker: View {
                 ForEach(results) { c in
                     let shown = model.tiles.contains { $0.channel.id == c.id }
                     Button {
-                        if let replacing { model.replace(replacing, with: c) } else { model.add(c) }
+                        if let replacing { model.replace(replacing, with: c) } else { model.requestAdd(c) }
                         dismiss()
                     } label: {
                         HStack(spacing: 12) {

@@ -59,6 +59,16 @@ fun MultiViewScreen(c: AppContainer, onClose: () -> Unit, onFullScreen: (Channel
             engine.load(EngineRequest(url, (if (ua != null) mapOf("User-Agent" to ua) else emptyMap()) + c.resolver.headers(ch.sourceId), 0, true, BufferingMode.AUTOMATIC))
         }
     }
+    // A channel that would go over the provider's limit waits for an answer first.
+    var pendingWarn by remember { mutableStateOf<Pair<Channel, String>?>(null) }
+    fun requestAdd(ch: Channel) {
+        val limit = c.resolver.accountStatus(ch.sourceId)?.maxConnections
+        val warn = if (tiles.size < 4 && tiles.none { it.channel.id == ch.id }) app.streamsetu.core.data.repo.ConnectionAdvice.message(tiles.count { it.channel.sourceId == ch.sourceId }, limit) else null
+        if (warn != null) pendingWarn = ch to warn else addTile(ch)
+    }
+    pendingWarn?.let { (ch, msg) ->
+        ContextMenu("Your provider's limit", msg, listOf(MenuAction("Open anyway", Icons.Filled.PlayArrow) { addTile(ch) }, MenuAction("Cancel", Icons.Filled.Close) {}), onClose = { pendingWarn = null })
+    }
     LaunchedEffect(Unit) { if (tiles.isEmpty()) c.multiViewStart.forEach { addTile(it) } }
     LaunchedEffect(audio, tiles.size) { tiles.forEachIndexed { i, t -> t.engine.setVolume(if (i == audio) 1f else 0f) } }
     DisposableEffect(Unit) { onDispose { tiles.forEach { runCatching { it.engine.stop(); it.engine.release() } }; tiles.clear() } }
@@ -111,7 +121,7 @@ fun MultiViewScreen(c: AppContainer, onClose: () -> Unit, onFullScreen: (Channel
             }
         }
         val choices = pool.filter { ch -> tiles.none { it.channel.id == ch.id } }.take(200)
-        Sheet("Add a channel", if (choices.isEmpty()) listOf(SheetItem("No other channels in this list", null, false) {}) else choices.map { ch -> SheetItem(ch.name, null, false) { addTile(ch) } }, onClose = { picking = false }, subtitle = "From the list you were watching")
+        Sheet("Add a channel", if (choices.isEmpty()) listOf(SheetItem("No other channels in this list", null, false) {}) else choices.map { ch -> SheetItem(ch.name, null, false) { requestAdd(ch) } }, onClose = { picking = false }, subtitle = "From the list you were watching")
     }
     menuFor?.let { i ->
         val t = tiles.getOrNull(i)

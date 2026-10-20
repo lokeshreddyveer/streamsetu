@@ -69,7 +69,20 @@ struct DetailView: View {
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, v in scrollY = v }
         .ignoresSafeArea(edges: .top)
         .navigationBarTitleDisplayMode(.inline).clearTopBar()
-        .toolbar { TrailingPills { Menu { CollectionMenu(itemID: item.id, kind: item.kind) } label: { Image(systemName: "ellipsis.circle").pillIcon() } } }
+        .toolbar { TrailingPills { Menu {
+            Button("Watch Privately", systemImage: "eye.slash") {
+                guard let container else { return }
+                if let m = movie ?? asMovie { Play.movie(m, container, privately: true) } else if item.isSeries, let detail { Task { await Play.series(detail.series, container, privately: true) } }
+            }
+            if let m = movie ?? asMovie {
+                Button("Watch Together", systemImage: "shareplay") {
+                    guard let container else { return }
+                    Play.movie(m, container)
+                    SharePlayService.shared.startWhenReady(container)
+                }
+            }
+            CollectionMenu(itemID: item.id, kind: item.kind)
+        } label: { Image(systemName: "ellipsis.circle").pillIcon() } } }
         .background(ColorTokens.background)
         .task { await load() }
         .miniPlayerInset()
@@ -149,6 +162,10 @@ struct DetailView: View {
                             Image(systemName: "play.circle").foregroundStyle(.secondary)
                         }.padding(.vertical, 8).contentShape(Rectangle())
                     }.buttonStyle(.press)
+                    .contextMenu {
+                        Button("Play", systemImage: "play.fill") { if let container { Play.episode(e, detail.series, container) } }
+                        Button("Watch Privately", systemImage: "eye.slash") { if let container { Play.episode(e, detail.series, container, privately: true) } }
+                    }
                     DownloadButton(itemID: e.id, compact: true) { $0.enqueue(episode: e, series: detail.series) }.buttonStyle(.borderless).font(.system(size: 22)).foregroundStyle(.secondary).frame(width: 44, height: 44)
                     }
                     Divider().overlay(ColorTokens.line)

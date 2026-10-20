@@ -91,10 +91,11 @@ class PlaybackService : Service() {
         }
         val st = p.state.value
         val playing = st == PlaybackState.Playing || st == PlaybackState.Buffering || st == PlaybackState.Resolving
-        val subtitle = if (item is EpisodePlayable) item.series.title else if (item.isLive) "Live" else null
+        val private = PrivateWatch.on
+        val subtitle = if (private) null else if (item is EpisodePlayable) item.series.title else if (item.isLive) "Live" else null
         val duration = if (item.isLive) -1L else p.durationMs
-        session.setMetadata(MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE, item.title).putString(MediaMetadata.METADATA_KEY_ARTIST, subtitle).putLong(MediaMetadata.METADATA_KEY_DURATION, duration)
-            .apply { artwork?.let { putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, it) } }.build())
+        session.setMetadata(MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE, if (private) PrivateWatch.TITLE else item.title).putString(MediaMetadata.METADATA_KEY_ARTIST, subtitle).putLong(MediaMetadata.METADATA_KEY_DURATION, duration)
+            .apply { if (!private) artwork?.let { putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, it) } }.build())
         val actions = SessionState.ACTION_PLAY or SessionState.ACTION_PAUSE or SessionState.ACTION_PLAY_PAUSE or SessionState.ACTION_STOP or SessionState.ACTION_SKIP_TO_NEXT or SessionState.ACTION_SKIP_TO_PREVIOUS or
             (if (item.isLive) 0L else SessionState.ACTION_SEEK_TO or SessionState.ACTION_FAST_FORWARD or SessionState.ACTION_REWIND)
         session.setPlaybackState(SessionState.Builder().setActions(actions)
@@ -104,13 +105,13 @@ class PlaybackService : Service() {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE)
         val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CHANNEL) else @Suppress("DEPRECATION") Notification.Builder(this)
         @Suppress("DEPRECATION")
-        b.setSmallIcon(android.R.drawable.ic_media_play).setContentTitle(item.title).setContentText(subtitle).setContentIntent(open).setOngoing(playing).setShowWhen(false).setVisibility(Notification.VISIBILITY_PUBLIC)
+        b.setSmallIcon(android.R.drawable.ic_media_play).setContentTitle(if (private) PrivateWatch.TITLE else item.title).setContentText(subtitle).setContentIntent(open).setOngoing(playing).setShowWhen(false).setVisibility(Notification.VISIBILITY_PUBLIC)
             .addAction(android.R.drawable.ic_media_previous, "Previous", action(1, ACTION_PREVIOUS))
             .addAction(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play, if (playing) "Pause" else "Play", action(2, ACTION_TOGGLE))
             .addAction(android.R.drawable.ic_media_next, "Next", action(3, ACTION_NEXT))
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", action(4, ACTION_STOP))
             .setStyle(Notification.MediaStyle().setMediaSession(session.sessionToken).setShowActionsInCompactView(0, 1, 2))
-        artwork?.let { b.setLargeIcon(it) }
+        if (!private) artwork?.let { b.setLargeIcon(it) }
         val n = b.build()
         if (!foreground) startForegroundNow(n)
         else (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(ID, n)

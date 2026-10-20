@@ -10,6 +10,7 @@ Devices on the same Wi-Fi keep favorites, Watch Later, collections and resume po
 | `prog` | `[sourceKey, kind, providerId]` (`kind` is `movie` or `episode`) | `{"pos": seconds, "dur": seconds, "done": bool, "series": providerSeriesId or null}` |
 | `col` | `[collectionId]` | `{"name": text, "scope": kind}` |
 | `colitem` | `[collectionId, sourceKey, kind, providerId]` | `{"at": ms}` |
+| `now` | `[deviceId]` | `{"title": text, "pos": seconds, "dev": deviceName, "src": sourceKey, "kind": kind, "prov": providerId}` what that device is playing; `del` when it stopped or is watching privately. Shown on the other devices' Home for a few minutes and never stored. A device that does not know `now` ignores it. |
 
 Every record also has `ts` (milliseconds of the last change) and `del` (true when it was removed). The newer `ts` wins; on a tie the receiver keeps what it has.
 

@@ -124,12 +124,12 @@ fun SettingsPanel(current: Category, c: AppContainer, nav: Navigator) {
         Category.SUBTITLES -> SubtitleSettings(c)
         Category.LIVE -> { LiveSettings(c); RemindersSettings(c); GuideAlertsSettings(c); ScheduledRecordingsSettings(c) }
         Category.CHANNELS -> ChannelManagerSettings(c)
-        Category.STATISTICS -> StatisticsSettings(c)
+        Category.STATISTICS -> { WeeklyDigestSettings(c, nav); StatisticsSettings(c) }
         Category.LIBRARIES -> LibrarySettings(c, nav)
         Category.SEARCH -> SearchSettings(c)
         Category.FAVOURITES -> FavouriteSettings(c)
         Category.APPEARANCE -> AppearanceSettings(c)
-        Category.PRIVACY -> PrivacySettings(c)
+        Category.PRIVACY -> { PrivacySettings(c); PrivacyReportSettings(c) }
         Category.PODCASTS -> PodcastSettings(c, nav)
         Category.PROFILES -> ProfileSettings(c)
         Category.SYNC -> SyncSettings(c)

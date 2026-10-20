@@ -73,6 +73,7 @@ struct LiveTVView: View {
     }
 
     @ViewBuilder private func menu(_ c: Channel) -> some View {
+        Button("Watch Privately", systemImage: "eye.slash") { if let container { Play.channel(c, queue: [c], container, privately: true) } }
         Button(state.isFavorite(c.id) ? "Remove from Favourites" : "Add to Favourites", systemImage: "heart") { state.toggleFavorite(c.id, kind: .channel) }
         CollectionMenu(itemID: c.id, kind: .channel)
         ShareLinkButton(link: DeepLink.link(channel: c.name), name: c.name)

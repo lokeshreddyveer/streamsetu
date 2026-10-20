@@ -52,6 +52,10 @@ struct SeriesDetailView: View {
                             ForEach(vm.episodesInSeason) { ep in
                                 EpisodeRow(episode: ep, series: s, progress: vm.progress[ep.id], onPlay: { container?.playback.play(episode: ep, series: s); router.closeDetail() },
                                            onToggleWatched: { watched in if let c = container { vm.markWatched(ep, s, c, watched: watched) } })
+                                    .contextMenu {
+                                        Button("Play") { container?.playback.play(episode: ep, series: s); router.closeDetail() }
+                                        Button("Watch Privately", systemImage: "eye.slash") { container?.playback.play(episode: ep, series: s, privately: true); router.closeDetail() }
+                                    }
                             }
                         }
                     }

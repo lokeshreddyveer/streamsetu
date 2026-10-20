@@ -22,6 +22,8 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    if let container { OfflineHomeBanner(container: container).padding(.horizontal, 16) }
+                    if let container { NowPlayingStrip(container: container).padding(.horizontal, 16) }
                     if !featured.isEmpty { FeaturedBanner(items: featured, height: wide ? 340 : 260, scrollY: scrollY) }
                     if !resume.isEmpty {
                         Shelf(title: "Continue Watching") {

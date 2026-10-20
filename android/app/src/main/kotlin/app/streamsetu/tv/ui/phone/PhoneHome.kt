@@ -4,6 +4,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -36,6 +37,7 @@ import app.streamsetu.tv.ui.screens.section.ratingBadge
 import app.streamsetu.tv.ui.theme.Tokens
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Home: a featured title, shortcuts, then rows. Everything scrolls with a finger; a tap opens, touch and hold gives the menu. */
 @Composable
@@ -48,6 +50,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val later by vm.watchLater.collectAsState()
     val recent by vm.recentWatched.collectAsState()
     val forYou by vm.forYou.collectAsState()
+    val moreWith by vm.moreWith.collectAsState()
     val movies by vm.recentMovies.collectAsState()
     val series by vm.recentSeries.collectAsState()
     val favIds by vm.favouriteIds.collectAsState()
@@ -56,18 +59,22 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
 
     fun movieMenu(m: Movie) { sheet = m.title to listOf(
         SheetItem("Play", Icons.Filled.PlayArrow) { play(c, nav, MoviePlayable(m)) },
+        SheetItem("Watch privately", Icons.Filled.VisibilityOff) { c.playBestMovie(m) { play(c, nav, it, privately = true) } },
         SheetItem(if (m.id in favIds) "Remove from favorites" else "Add to favorites", Icons.Filled.Favorite) { vm.setFavorite(m.id, ContentKind.MOVIE, m.id !in favIds) },
         SheetItem("Watch later", Icons.Filled.Bookmark) { vm.toggleWatchLater(m.id, ContentKind.MOVIE) },
         SheetItem("Details", Icons.Filled.Info) { nav.open(Overlay.MovieDetail(m)) },
     ) + queueItems(c, m.id, ContentKind.MOVIE, m.title) + favoriteOrderItems(m.id in favIds) { front -> vm.moveFavorite(m.id, ContentKind.MOVIE, front) } }
     fun seriesMenu(s: Series) { sheet = s.title to listOf(
         SheetItem("Open", Icons.Filled.PlayArrow) { nav.open(Overlay.SeriesDetail(s)) },
+        SheetItem("Watch privately", Icons.Filled.VisibilityOff) { c.appScope.launch { c.playSeries(s, privately = true); kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { if (nav.top != Overlay.Player) nav.open(Overlay.Player) } } },
         SheetItem(if (s.id in favIds) "Remove from favorites" else "Add to favorites", Icons.Filled.Favorite) { vm.setFavorite(s.id, ContentKind.SERIES, s.id !in favIds) },
         SheetItem("Watch later", Icons.Filled.Bookmark) { vm.toggleWatchLater(s.id, ContentKind.SERIES) },
     ) + queueItems(c, s.id, ContentKind.SERIES, s.title) + favoriteOrderItems(s.id in favIds) { front -> vm.moveFavorite(s.id, ContentKind.SERIES, front) } }
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            item { OfflineCard(c, nav) }
+            item { NowPlayingStrip(c, nav) }
             item {
                 PhoneTopBar("Home", leading = { RoundTap(Icons.Filled.Layers, "Libraries") { c.library.close(); nav.toChooser() } }) { RoundTap(Icons.Filled.Search, "Search") { nav.openSearch() } }
             }
@@ -104,7 +111,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Tonight on your channels")
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(tonight, key = { "t" + it.channel.id }) { l -> ChannelTile(l.channel, l.now) { play(c, nav, ChannelPlayable(l.channel), tonight.map { ChannelPlayable(it.channel) }) } }
+                        items(tonight, key = { "t" + it.channel.id }) { l -> ChannelTile(l.channel, l.now, onLong = { sheet = l.channel.name to listOf(SheetItem("Watch privately", Icons.Filled.VisibilityOff) { play(c, nav, ChannelPlayable(l.channel), tonight.map { ChannelPlayable(it.channel) }, privately = true) }) }) { play(c, nav, ChannelPlayable(l.channel), tonight.map { ChannelPlayable(it.channel) }) } }
                     }
                 }
             }
@@ -112,12 +119,27 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Recently Watched Channels")
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(live, key = { "l" + it.channel.id }) { l -> ChannelTile(l.channel, l.now) { play(c, nav, ChannelPlayable(l.channel), live.map { ChannelPlayable(it.channel) }) } }
+                        items(live, key = { "l" + it.channel.id }) { l -> ChannelTile(l.channel, l.now, onLong = { sheet = l.channel.name to listOf(SheetItem("Watch privately", Icons.Filled.VisibilityOff) { play(c, nav, ChannelPlayable(l.channel), live.map { ChannelPlayable(it.channel) }, privately = true) }) }) { play(c, nav, ChannelPlayable(l.channel), live.map { ChannelPlayable(it.channel) }) } }
                     }
                 }
             }
             if (favs.isNotEmpty()) item { Rail("Favorites", favs, c, nav, onMovie = ::movieMenu, onSeries = ::seriesMenu) { nav.open(Overlay.Collection("favorites")) } }
             if (later.isNotEmpty()) item { Rail("Watch Later", later, c, nav, onMovie = ::movieMenu, onSeries = ::seriesMenu) { nav.open(Overlay.Collection("later")) } }
+            moreWith?.let { mw -> item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionHeader("More with ${mw.name}")
+                    Label("You watched ${mw.titles} of their titles lately", Ph.small, Tokens.textSecondary, modifier = Modifier.padding(horizontal = Ph.gutter))
+                    LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(mw.items, key = { "mw" + it.kind() + it.id }) { f ->
+                            when (f) {
+                                is FavItem.Mv -> PhonePoster(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, Modifier.width(112.dp), itemId = f.movie.id, subtitle = f.movie.year?.toString())
+                                is FavItem.Sr -> PhonePoster(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, Modifier.width(112.dp), itemId = f.series.id, subtitle = f.series.year?.toString())
+                                is FavItem.Ch -> {}
+                            }
+                        }
+                    }
+                }
+            } }
             forYou?.let { fy -> item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("For You")
@@ -174,9 +196,10 @@ private fun Rail(title: String, items: List<FavItem>, c: AppContainer, nav: Navi
 }
 
 /** A channel tile: its logo, name, and what is on. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun ChannelTile(ch: app.streamsetu.core.model.Channel, now: String?, onClick: () -> Unit) {
-    Column(Modifier.width(112.dp).clip(RoundedCornerShape(12.dp)).background(Tokens.card).clickable(onClick = onClick).padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+fun ChannelTile(ch: app.streamsetu.core.model.Channel, now: String?, onLong: (() -> Unit)? = null, onClick: () -> Unit) {
+    Column(Modifier.width(112.dp).clip(RoundedCornerShape(12.dp)).background(Tokens.card).combinedClickable(onClick = onClick, onLongClick = onLong).padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         ChannelLogo(ch.logoUrl, ch.name, 56.dp)
         Label(ch.name, Ph.caption, Tokens.text, FontWeight.Medium)
         if (now != null) Label(now, 11.sp, Tokens.textTertiary)
@@ -195,3 +218,41 @@ internal fun favoriteOrderItems(isFavorite: Boolean, move: (front: Boolean) -> U
     if (!isFavorite) emptyList() else listOf(
         SheetItem("Move to front of favorites", Icons.Filled.ArrowUpward) { move(true) },
         SheetItem("Move to end of favorites", Icons.Filled.ArrowDownward) { move(false) })
+
+/** At the top of Home when there is no connection: says so and offers what plays without one, the saved downloads. */
+@Composable
+private fun OfflineCard(c: AppContainer, nav: Navigator) {
+    val online by c.online.collectAsState()
+    val saved by c.downloads.items.collectAsState()
+    androidx.compose.animation.AnimatedVisibility(!online) {
+        val done = saved.filter { it.state == app.streamsetu.core.data.repo.SaveState.DONE }
+        Column(Modifier.fillMaxWidth().padding(horizontal = Ph.gutter).background(Tokens.surface, RoundedCornerShape(14.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Label("You're offline", Ph.body, Tokens.text, FontWeight.SemiBold)
+            if (done.isEmpty()) Label("Nothing is saved for offline viewing yet. Choose Download on a movie or an episode while you are online.", Ph.small, Tokens.textSecondary)
+            else {
+                Label("These are saved on this device and play without a connection.", Ph.small, Tokens.textSecondary)
+                done.forEach { t -> Chip(t.title, false, { app.streamsetu.tv.playSaved(c, nav, t) }, icon = Icons.Filled.PlayArrow) }
+            }
+        }
+    }
+}
+
+/** On Home: what your other devices are playing right now, with a button to carry on here. */
+@Composable
+private fun NowPlayingStrip(c: AppContainer, nav: Navigator) {
+    val all by c.nowBoard.entries.collectAsState()
+    var tick by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(30_000); tick = System.currentTimeMillis() } }
+    val entries = remember(all, tick) { c.nowBoard.current(tick) }
+    Column(Modifier.fillMaxWidth().padding(horizontal = Ph.gutter), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        entries.forEach { e ->
+            Row(Modifier.fillMaxWidth().background(Tokens.surface, RoundedCornerShape(14.dp)).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Label(e.title, Ph.body, Tokens.text, FontWeight.Medium, maxLines = 1)
+                    Label("Playing on ${e.deviceName}", Ph.small, Tokens.textSecondary, maxLines = 1)
+                }
+                Chip("Play here", false, { c.takeOver(e, nav) }, icon = Icons.Filled.PlayArrow)
+            }
+        }
+    }
+}

@@ -49,6 +49,13 @@ struct TitleMenu: View {
     @Environment(\.container) private var container
 
     var body: some View {
+        Button("Watch Privately", systemImage: "eye.slash") {
+            guard let container else { return }
+            switch item {
+            case .movie(let m): Play.movie(m, container, privately: true)
+            case .series(let s): Task { await Play.series(s, container, privately: true) }
+            }
+        }
         Button(state.isFavorite(item.id) ? "Remove from Favourites" : "Add to Favourites", systemImage: state.isFavorite(item.id) ? "heart.slash" : "heart") {
             state.toggleFavorite(item.id, kind: item.kind)
         }

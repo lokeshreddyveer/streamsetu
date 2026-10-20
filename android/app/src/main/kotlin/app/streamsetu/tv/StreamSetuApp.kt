@@ -138,6 +138,7 @@ class AppContainer @Inject constructor(
      */
     private fun fetchSubtitleIfWanted() {
         val item = playback.current.value ?: return
+        if (PrivateWatch.on) return          // the lookup would tell a third party what is being watched
         if (!settings.autoSubtitles.value || item.isLive || item is app.streamsetu.core.model.CatchUpPlayable || subtitleItem == item.id) return
         val online = app.streamsetu.tv.ui.screens.OnlineSubtitles(context, credentials)
         if (!online.configured || settings.subtitleMode.value == "OFF") return
@@ -160,20 +161,22 @@ class AppContainer @Inject constructor(
     }
 
     /** Starts a title taken from the queue: a movie plays; a series plays the episode that would be watched next (or the first one). */
+    /** Starts a series at the episode the person would watch next (the one in progress, the next after the last finished, or the first). */
+    suspend fun playSeries(series: Series, privately: Boolean? = null) {
+        var eps = catalog.episodesOnce(series.id)
+        if (eps.isEmpty()) { runCatching { sync.loadEpisodes(series) }; eps = catalog.episodesOnce(series.id) }
+        if (eps.isEmpty()) return
+        val progress = user.allProgress().first().filterValues { it.seriesId == series.id }
+        val plan = app.streamsetu.core.data.repo.EpisodePlan.of(eps, progress)
+        val ordered = eps.sortedWith(compareBy({ it.season }, { it.number })).map { EpisodePlayable(it, series) }
+        val next = (plan.inProgress ?: plan.forward)?.takeIf { !plan.allFinished || plan.inProgress != null } ?: ordered.first().episode
+        play(EpisodePlayable(next, series), ordered, privately = privately)
+    }
+
     suspend fun playQueued(t: app.streamsetu.core.data.repo.QueuedTitle) {
         when (t.kind) {
             ContentKind.MOVIE -> catalog.movie(t.id)?.let { play(MoviePlayable(it)) }
-            ContentKind.SERIES -> {
-                val series = catalog.series(t.id) ?: return
-                var eps = catalog.episodesOnce(series.id)
-                if (eps.isEmpty()) { runCatching { sync.loadEpisodes(series) }; eps = catalog.episodesOnce(series.id) }
-                if (eps.isEmpty()) return
-                val progress = user.allProgress().first().filterValues { it.seriesId == series.id }
-                val plan = app.streamsetu.core.data.repo.EpisodePlan.of(eps, progress)
-                val ordered = eps.sortedWith(compareBy({ it.season }, { it.number })).map { EpisodePlayable(it, series) }
-                val next = (plan.inProgress ?: plan.forward)?.takeIf { !plan.allFinished || plan.inProgress != null } ?: ordered.first().episode
-                play(EpisodePlayable(next, series), ordered)
-            }
+            ContentKind.SERIES -> catalog.series(t.id)?.let { playSeries(it) }
             else -> {}
         }
     }
@@ -181,11 +184,73 @@ class AppContainer @Inject constructor(
     /** Reads who is in each movie, a little at a time, so people can be searched for (see [app.streamsetu.core.sync.PeopleIndexer]). */
     val people = app.streamsetu.core.sync.PeopleIndexer(db, sync) { playback.current.value != null }
 
+    /** How much a kids profile may watch (see [app.streamsetu.core.data.repo.ViewingLimits]); what stopped playback is held here until a parent adds time or the time passes. */
+    val viewingLimits = app.streamsetu.core.data.repo.ViewingLimits(SharedPrefsLimitStore(context))
+    val viewingBlock = kotlinx.coroutines.flow.MutableStateFlow<app.streamsetu.core.data.repo.ViewingBlock?>(null)
+    private fun activeKidsProfile() = profiles.profiles.value.firstOrNull { it.id == profiles.activeId.value && it.kids }
+
+    /** What stops playback for the profile in use right now, if anything. Only kids profiles have limits. */
+    fun blockNow(): app.streamsetu.core.data.repo.ViewingBlock? {
+        val p = activeKidsProfile() ?: return null
+        val t = java.time.LocalDateTime.now()
+        return viewingLimits.block(p.id, java.time.LocalDate.now().toEpochDay(), t.hour * 60 + t.minute)
+    }
+
+    /** What the other paired devices are playing (see [app.streamsetu.tv.sync.NowPlayingBoard]); shown on Home with a button to carry on here. */
+    val nowBoard = app.streamsetu.tv.sync.NowPlayingBoard()
+
+    /** Plays on this device what another device is playing, from the resume point the sync carried. */
+    fun takeOver(e: app.streamsetu.tv.sync.NowPlayingBoard.Entry, nav: app.streamsetu.tv.nav.Navigator) {
+        appScope.launch {
+            val id = lan.data.localItemId(e.key) ?: return@launch
+            when (e.key[1]) {
+                "channel" -> catalog.channel(id)?.let { kotlinx.coroutines.withContext(Dispatchers.Main) { play(ChannelPlayable(it)) } }
+                "movie" -> catalog.movie(id)?.let { kotlinx.coroutines.withContext(Dispatchers.Main) { play(MoviePlayable(it)) } }
+                "episode" -> catalog.episode(id)?.let { ep -> catalog.series(ep.seriesId)?.let { s -> kotlinx.coroutines.withContext(Dispatchers.Main) { play(EpisodePlayable(ep, s)) } } }
+            }
+        }
+    }
+
+    /** Whether the device has a connection right now, for screens that change when it does not. */
+    val online = kotlinx.coroutines.flow.MutableStateFlow(true)
+
     init {
+        runCatching {
+            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            online.value = cm.activeNetwork?.let { cm.getNetworkCapabilities(it)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) } == true
+            cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) { online.value = true }
+                override fun onLost(network: android.net.Network) { online.value = false }
+            })
+        }
+        appScope.launch {
+            // Counts the time watched in a kids profile once a second, warns when little is left, and stops playback at the limit.
+            val warned = mutableSetOf<Int>()
+            while (true) {
+                kotlinx.coroutines.delay(1000)
+                val p = activeKidsProfile() ?: continue
+                if (viewingLimits.limit(p.id).isOff || playback.state.value != app.streamsetu.core.playback.PlaybackState.Playing) continue
+                val day = java.time.LocalDate.now().toEpochDay()
+                viewingLimits.addUsage(p.id, 1.0, day)
+                val b = blockNow()
+                if (b != null) { warned.clear(); viewingBlock.value = b; kotlinx.coroutines.withContext(Dispatchers.Main) { playback.stop() }; continue }
+                val left = viewingLimits.remaining(p.id, day) ?: continue
+                for (m in listOf(5, 1)) if (left <= m * 60 && warned.add(m)) kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, if (m == 1) "1 minute left for today" else "5 minutes left for today", android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         appScope.launch { runCatching { db.catalog().deleteDividers() } }
         appScope.launch { playback.state.collect { if (it == app.streamsetu.core.playback.PlaybackState.Ended) advanceAfterEnd() } }
         appScope.launch { playback.state.collect { if (it == app.streamsetu.core.playback.PlaybackState.Playing) fetchSubtitleIfWanted() } }
         appScope.launch { playback.state.collect { if (it is app.streamsetu.core.playback.PlaybackState.Failed) tryNextCopy() } }
+        appScope.launch { playback.current.collect { if (it == null) PrivateWatch.on = false } }
+        lan.nowProvider = {
+            playback.current.value?.takeIf { !PrivateWatch.on && playback.state.value != app.streamsetu.core.playback.PlaybackState.Ended }
+                ?.let { app.streamsetu.core.sync.lan.LanDataAdapter.Now(if (it is EpisodePlayable) it.episode.id else it.id, it.title, playback.positionMs) }
+        }
+        lan.boardSink = { nowBoard.ingest(it) }
+        appScope.launch { playback.current.collect { lan.nudge() } }
         appScope.launch { runCatching { PlexTokenCleanup.run(db.openHelper.writableDatabase) } }
     }
 
@@ -268,11 +333,14 @@ class AppContainer @Inject constructor(
         play(next, listOf(next), keepCopies = true)
     }
 
-    fun play(item: Playable, queue: List<Playable> = listOf(item), startOver: Boolean = false, keepCopies: Boolean = false) {
+    /** `privately` null carries on as it is (a channel change, the next episode or another copy while something private plays); true or false starts afresh. */
+    fun play(item: Playable, queue: List<Playable> = listOf(item), startOver: Boolean = false, keepCopies: Boolean = false, privately: Boolean? = null) {
+        blockNow()?.let { viewingBlock.value = it; return }
+        PrivateWatch.on = PrivateWatch.resolve(privately, PrivateWatch.on, playback.current.value != null)
         if (!keepCopies) fallbackCopies = emptyList()
         playback.current.value?.takeIf { it.isLive && it.id != item.id }?.let { previousLive = it }
         this.queue = queue
-        if (item is ChannelPlayable) { settings.lastChannelId = item.id; if (!keepCopies) rememberChannelCopies(item) }
+        if (item is ChannelPlayable) { if (!PrivateWatch.on) settings.lastChannelId = item.id; if (!keepCopies) rememberChannelCopies(item) }
         queueIndex = queue.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
         UISound.play(UISoundEvent.PLAYBACK_START)
         appScope.launch {

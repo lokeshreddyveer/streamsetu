@@ -26,7 +26,16 @@ object LanIds {
  * Reads favorites, Watch Later, collections and resume points from the database as records for another device, and applies the records that come back. Items are named by the
  * playlist's key (the same on every device that has that playlist), so a playlist this device does not have is ignored and its items are left alone.
  */
-class LanDataAdapter(private val database: () -> SupportSQLiteDatabase, private val invalidate: () -> Unit = {}) : LanData {
+class LanDataAdapter(
+    private val database: () -> SupportSQLiteDatabase, private val invalidate: () -> Unit = {},
+    private val nowKey: String = "", private val deviceName: String = "", private val now: () -> Now? = { null }, private val board: (List<LanRecord>) -> Unit = {},
+) : LanData {
+    /** What this device is playing right now, for the other devices' "Now playing" strip. Null when nothing is, or when watching privately. */
+    class Now(val itemId: String, val title: String, val positionMs: Long)
+
+    /** The local item id for an item named by playlist key, kind and provider id (null when this device does not have that playlist). */
+    fun localItemId(key: List<String>): String? = if (key.size < 3) null else local(sources(database()), key)
+
     private val lists = mapOf("favourites" to "favorites", "watch-later" to "later")
     private val localList = lists.entries.associate { it.value to it.key }
 
@@ -98,10 +107,20 @@ class LanDataAdapter(private val database: () -> SupportSQLiteDatabase, private 
                 out += LanRecord("colitem", listOf(parts[0]) + key, c.getLong(1), true)
             }
         }
+        if (nowKey.isNotEmpty()) {
+            val playing = now(); val stamp = System.currentTimeMillis()
+            val key = playing?.let { wire(src, it.itemId) }
+            out += if (playing != null && key != null) LanRecord("now", listOf(nowKey), stamp, false, buildJsonObject {
+                put("title", playing.title); put("pos", playing.positionMs / 1000.0); put("dev", deviceName); put("src", key[0]); put("kind", key[1]); put("prov", key[2])
+            }) else LanRecord("now", listOf(nowKey), stamp, true)
+        }
         return out
     }
 
-    override fun apply(records: List<LanRecord>): Int {
+    override fun apply(all: List<LanRecord>): Int {
+        val nowRecords = all.filter { it.kind == "now" && it.key.firstOrNull() != nowKey }
+        if (nowRecords.isNotEmpty()) board(nowRecords)
+        val records = all.filter { it.kind != "now" }
         val db = database(); val src = sources(db); var applied = 0
         // a collection before the things in it, and a removal after an addition of the same thing
         val order = mapOf("col" to 0, "fav" to 1, "prog" to 1, "colitem" to 2)
