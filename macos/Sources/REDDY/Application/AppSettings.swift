@@ -42,6 +42,7 @@ final class AppSettings {
     /// iCloud sync. These two are choices about this device and are deliberately not synced themselves.
     var iCloudSync: Bool { didSet { save(iCloudSync, "icloudsync") } }
     var syncLogins: Bool { didSet { save(syncLogins, "icloudlogins") } }
+    var lanSync: Bool { didSet { save(lanSync, "lansync") } }
     /// Face ID / Touch ID / passcode before the app opens. A choice about this device, so it is not synced.
     var appLock: Bool { didSet { save(appLock, "applock") } }
     /// Pause playback when a connected VPN drops. About this device's network, so it is not synced.
@@ -186,6 +187,7 @@ final class AppSettings {
         ThemeStore.custom = storedCustom
         iCloudSync = bool("icloudsync", false)
         syncLogins = bool("icloudlogins", true)
+        lanSync = bool("lansync", false)
         appLock = bool("applock", false)
         vpnPause = bool("vpnpause", false)
         proxyKind = ProxyConfig.Kind(rawValue: str("proxykind", "Off")) ?? .off

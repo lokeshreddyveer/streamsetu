@@ -53,6 +53,8 @@ struct LibrarySettingsPage: View {
 
             CloudSyncGroup()
 
+            LanSyncGroup()
+
             // MARK: guide
             SettingsGroup(title: "Programme guide", footer: "The guide is downloaded from each playlist's XMLTV address. Programmes up to seven days ahead are kept.") {
                 SettingsValueRow(title: "Last successful update", value: date(vm.overview.guideUpdated))

@@ -34,7 +34,7 @@ import app.streamsetu.tv.ui.components.*
 import app.streamsetu.tv.ui.theme.Tokens
 import kotlinx.coroutines.delay
 
-/** The 13 categories, most used first; the technical ones are at the bottom. */
+/** The categories, most used first; the technical ones are at the bottom. */
 enum class Category(val title: String, val subtitle: String, val icon: ImageVector) {
     PLAYBACK("Playback", "Engine, buffering, resume and recovery", Icons.Filled.PlayArrow),
     VIDEO("Video & Display", "Picture size, decoding and screen", Icons.Filled.Tv),
@@ -48,6 +48,7 @@ enum class Category(val title: String, val subtitle: String, val icon: ImageVect
     FAVOURITES("Favorites & History", "Lists, history and Home rows", Icons.Filled.Favorite),
     APPEARANCE("Appearance & Sounds", "Posters, banner, animation, interface sounds", Icons.Filled.Palette),
     PRIVACY("Privacy & Security", "Folder PIN, relock, clearing data", Icons.Filled.Lock),
+    SYNC("Sync on this network", "Share favourites and progress over Wi-Fi", Icons.Filled.Sync),
     STORAGE("Storage & Backup", "Cache, backup and reset", Icons.Filled.Storage),
     DIAGNOSTICS("Diagnostics", "Playback facts and a safe report", Icons.Filled.Troubleshoot),
     ABOUT("About StreamSetu", "Version, licenses and support", Icons.Filled.Info),
@@ -127,6 +128,7 @@ fun SettingsPanel(current: Category, c: AppContainer, nav: Navigator) {
         Category.FAVOURITES -> FavouriteSettings(c)
         Category.APPEARANCE -> AppearanceSettings(c)
         Category.PRIVACY -> PrivacySettings(c)
+        Category.SYNC -> SyncSettings(c)
         Category.STORAGE -> StorageSettings(c)
         Category.DIAGNOSTICS -> DiagnosticsSettings(c)
         Category.ABOUT -> AboutSettings(c)

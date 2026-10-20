@@ -240,3 +240,10 @@ Features/Shared/Views/OpeningAnimation.swift
 Data/Database/Schema/SchemaV14.swift
 Data/Database/Schema/SchemaV15.swift
 Services/BestVersion.swift
+Services/LanSync/LanCrypto.swift
+Services/LanSync/LanDataAdapter.swift
+Services/LanSync/LanProtocol.swift
+Services/LanSync/LanRecords.swift
+Services/LanSync/LanTransport.swift
+Services/LanSync/LanSyncService.swift
+Features/Settings/Views/LanPairView.swift

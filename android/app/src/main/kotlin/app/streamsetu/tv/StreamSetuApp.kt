@@ -55,6 +55,9 @@ class AppContainer @Inject constructor(
     val cast: CastSupport,
     val channelPrefs: app.streamsetu.core.data.repo.ChannelPrefs,
 ) {
+    /** Keeps favourites, Watch Later, collections and resume points in step with the person's other devices on the same Wi-Fi. */
+    val lan: app.streamsetu.tv.sync.LanSyncService by lazy { app.streamsetu.tv.sync.LanSyncService(context, appScope, db) }
+
     /** What the player plays next: the channels of the list it was started from, or the episodes of a series. */
     var queue: List<Playable> = emptyList()
     var queueIndex: Int = 0
@@ -284,6 +287,7 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             val u = container.ui
             SoundSettings(u.soundsEnabled.value, u.soundTheme.value, u.soundVolume.value, u.navTones.value, u.selectionTones.value, u.confirmationTones.value, u.errorTones.value, u.soundsDuringPlayback.value)
         }, videoPlaying = { container.playback.current.value != null && container.playback.state.value == app.streamsetu.core.playback.PlaybackState.Playing })
+        container.lan.startIfEnabled()
         CrashReporter.install(this, runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?")
         container.appScope.launch {
             // "Refresh on app start": after the screen has settled, each connection is read once, one after another, and never while something plays.

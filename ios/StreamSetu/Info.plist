@@ -97,9 +97,10 @@
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_hdhomerun._tcp</string>
+		<string>_streamsetu-sync._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>StreamSetu plays streams from servers you add, including ones on your home network.</string>
+	<string>StreamSetu plays streams from servers you add, including ones on your home network, and syncs with your other devices on the same Wi-Fi.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

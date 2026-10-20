@@ -258,6 +258,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Suggestions under a movie or series by franchise, director, genre, cast and story, each with its reason | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Sync and updates** | | | | | |
 | iCloud sync between your Apple devices | ✓ | ✓ | ✓ | – | – |
+| Sync on this network (Wi-Fi, no account) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Backup and restore, and automatic weekly backups | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Refresh playlists when the app opens | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Refresh while the app is closed | – | ✓ iOS decides when | ✓ iOS decides when | ✓ | ✓ |
@@ -267,6 +268,10 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Updates itself | ✓ Sparkle | TestFlight | TestFlight | ✓ checks GitHub, asks before installing | ✓ checks GitHub, asks before installing |
 
 Stalker portals are left out of the iPhone and iPad builds that go through TestFlight and the App Store, because Apple reviews a portal's set-top-box identity differently; the Mac and Android apps keep them. The iPad runs the iPhone app, laid out for the larger screen. On the Apple apps, Picture in Picture and AirPlay work for streams AVPlayer plays; a stream played by mpv does not support them. Android phones and tablets run the same app as the Fire TV, with a touch layout chosen automatically when the device is not a television.
+
+### Sync on this network
+
+Any of your devices on the same Wi-Fi can share **favourites, Watch Later, collections and resume points** directly, with no account and no server, between Mac, iPhone, iPad, Android phones and Fire TV. It is **off by default**: turn it on in Settings, under Sync on this network, then open **Add a device** on both devices and confirm that both show the same six digits. Everything is encrypted between the two devices, and an unpaired device is refused. The protocol is written down in `docs/WIFI-SYNC.md`.
 
 ### iCloud sync
 

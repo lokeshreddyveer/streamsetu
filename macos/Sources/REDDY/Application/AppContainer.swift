@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Builds the object graph once. Views get services from here, never construct them.
 @MainActor
@@ -48,6 +51,7 @@ final class AppContainer {
     /// Set by the app: called on the main actor when the list of series with new episodes changed.
     var onNewEpisodesChanged: (@MainActor () -> Void)?
     private(set) var cloud: CloudSyncCoordinator!
+    private(set) var lan: LanSyncService!
     /// Set by the app once its state exists: called (on the main actor) when another device changed something that is on screen.
     var onCloudChange: (@MainActor (SyncApplyResult) -> Void)?
     private(set) var multiView: MultiViewModel!
@@ -163,7 +167,18 @@ final class AppContainer {
         cloud = CloudSyncCoordinator(db: db, defaults: settings.defaultsStore) { [weak self] result in
             Task { @MainActor in self?.cloudApplied(result) }
         }
+        lan = LanSyncService(credentials: credentials, defaults: settings.defaultsStore, data: LanDataAdapter(db: db), deviceName: Self.deviceName) { [weak self] n in
+            self?.onCloudChange?(SyncApplyResult(applied: n, tables: ["favorites", "playback_progress", "collections"]))
+        }
         applySettings()
+    }
+
+    static var deviceName: String {
+        #if os(macOS)
+        Host.current().localizedName ?? "Mac"
+        #else
+        UIDevice.current.name
+        #endif
     }
 
     /// Another device changed something: refresh what depends on it.
@@ -174,7 +189,7 @@ final class AppContainer {
     }
 
     /// Begins syncing when the person has switched it on. Call once the app has started.
-    func startCloudIfEnabled() async { await updateCloudSync() }
+    func startCloudIfEnabled() async { await updateCloudSync(); lan.setEnabled(settings.lanSync) }
 
     /// Carries on reading who is in the movies, a little at a time (see `PeopleIndexService`).
     func startPeopleIndex() { people.start() }

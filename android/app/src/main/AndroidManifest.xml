@@ -5,6 +5,8 @@
     <uses-sdk tools:overrideLibrary="dev.jdtech.mpv" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <!-- Lets the app hand a downloaded update to the system installer (which still asks the person to confirm). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Sound that carries on when the app is left, with controls on the lock screen. -->

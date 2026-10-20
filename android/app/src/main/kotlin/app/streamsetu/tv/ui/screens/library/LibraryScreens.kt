@@ -38,6 +38,7 @@ import app.streamsetu.tv.nav.Overlay
 import app.streamsetu.tv.ui.components.*
 import app.streamsetu.tv.ui.theme.Tokens
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
@@ -561,20 +562,22 @@ private fun HeroArt(modifier: Modifier) {
 }
 
 
-/** The opening animation: the mark fades in and rises a little, holds for a moment, then fades out into the library screen. Any key skips it. */
+/** The opening animation: the mark fades in and rises, drifts slowly larger for about six seconds, then fades out into the library screen. Any key skips it. */
 @Composable
 fun LogoReveal(reduced: Boolean, onDone: () -> Unit) {
     val a = remember { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0f) }
+    val drift = remember { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0.9f) }
     val root = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         runCatching { root.requestFocus() }
-        if (!reduced) a.animateTo(1f, androidx.compose.animation.core.tween(520, easing = app.streamsetu.core.ui.motion.Motion.Standard))
-        delay(if (reduced) 500 else 650)
+        if (!reduced) launch { drift.animateTo(1.04f, androidx.compose.animation.core.tween(6000, easing = androidx.compose.animation.core.LinearOutSlowInEasing)) }
+        if (!reduced) a.animateTo(1f, androidx.compose.animation.core.tween(1000, easing = app.streamsetu.core.ui.motion.Motion.Standard))
+        delay(if (reduced) 500 else 4900)
         a.animateTo(0f, androidx.compose.animation.core.tween(if (reduced) 0 else 320))
         onDone()
     }
     Box(Modifier.fillMaxSize().background(Night).focusRequester(root).focusable().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) { onDone(); true } else false }, Alignment.Center) {
-        Column(Modifier.graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 18.dp.toPx() }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 18.dp.toPx(); scaleX = drift.value; scaleY = drift.value }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_wordmark), null, Modifier.height(190.dp))
         }
     }
