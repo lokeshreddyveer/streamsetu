@@ -248,7 +248,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Subscription end dates for playlists that report them (Xtream), with a warning from a week before | ✓ | ✓ | ✓ | ✓ | ✓ |
 | A live channel that stops working tries the same channel in your other playlists | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Podcasts: search, follow and play, with your place kept | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Search Movies and Series by actor or director, and by a sentence such as "telugu movies 2024 under 2 hours unwatched" | ✓ Mac only for now | – | – | – | – |
+| Search Movies and Series by actor or director, and by a sentence such as "telugu movies 2024 unwatched" (running time, as in "under 2 hours", on Mac, iPhone and iPad only; on Android and Fire TV it is in the main Search) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Home screen widget for Continue Watching, and a Live Activity for downloads | – | ✓ | ✓ widget | – | – |
 | SharePlay: watch a film or a live channel together over FaceTime | – | ✓ | ✓ | – | – |
 | Match the TV's frame rate to the video (24, 25, 30, 50, 60 Hz) | – | – | – | – | ✓ |

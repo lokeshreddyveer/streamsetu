@@ -27,21 +27,34 @@ final class LibraryModel {
 
     /// Set when a search found nothing as typed and a corrected spelling did: the words actually searched for.
     var correctedTo: String?
+    /// What was understood from a sentence typed in the search box ("Telugu · 2024 · under 2 h"); empty when the search is just a title.
+    private(set) var understood: [String] = []
+    /// Titles found because of somebody in them, with who ("Cast: Mahesh Babu").
+    private(set) var matchNotes: [String: String] = [:]
 
     func reload(_ c: AppContainer, source: UUID?) async {
         generation += 1
         let gen = generation
         loading = true
-        var r = await fetch(c, source: source, offset: 0, term: query)
+        let sentence = NaturalQuery.parse(query)
+        var r = await fetch(c, source: source, offset: 0, term: query, natural: true)
+        var natural = sentence.isStructured
+        if r.items.isEmpty, natural {          // the sentence found nothing: the words as a plain title search, so a name that looks like a filter still works
+            r = await fetch(c, source: source, offset: 0, term: query, natural: false)
+            natural = false
+        }
         var fixed: String?
         let typed = query
         if r.items.isEmpty, !typed.trimmingCharacters(in: .whitespaces).isEmpty,
            let alt = await Task.detached(operation: { c.spelling.correct(typed) }).value {
-            let again = await fetch(c, source: source, offset: 0, term: alt)
+            let again = await fetch(c, source: source, offset: 0, term: alt, natural: false)
             if !again.items.isEmpty { r = again; fixed = alt }
         }
         guard gen == generation else { return }
         items = r.items; total = r.total; categories = r.categories; correctedTo = fixed; loading = false
+        understood = natural ? sentence.summary : []
+        let words = natural ? sentence.text : (fixed ?? query), shown = items.map { (id: $0.id, title: $0.title) }
+        matchNotes = words.trimmingCharacters(in: .whitespaces).isEmpty ? [:] : await Task.detached { PeopleIndex(db: c.db).matchNotes(term: words, items: shown) }.value
         let key = "\(source?.uuidString ?? "")-\(r.categories.count)"
         if key != optionsKey, !items.isEmpty || filter.isActive == false {
             optionsKey = key
@@ -54,18 +67,27 @@ final class LibraryModel {
         guard canLoadMore, !loading else { return }
         let gen = generation
         loading = true
-        let r = await fetch(c, source: source, offset: items.count, term: correctedTo ?? query)
+        let r = await fetch(c, source: source, offset: items.count, term: correctedTo ?? query, natural: !understood.isEmpty)
         guard gen == generation else { return }
         items += r.items; loading = false
     }
 
-    private func fetch(_ c: AppContainer, source: UUID?, offset: Int, term: String) async -> (items: [LibraryItem], total: Int, categories: [CatalogCategory]) {
+    private func fetch(_ c: AppContainer, source: UUID?, offset: Int, term: String, natural: Bool) async -> (items: [LibraryItem], total: Int, categories: [CatalogCategory]) {
         let kind = kind, category = categoryID, sort = sort, page = page, shelf = shelf, filter = filter
+        let sentence = natural ? NaturalQuery.parse(term) : NaturalQuery(text: term)           // "telugu movies 2024 under 2 hours": language, year and length are filters
         let parsed = SmartQueryParser.parse(term)           // "hindi movies 2024": the year is a filter and "movies" is not part of the title
         return await Task.detached {
-            var q = VODQuery(sourceID: source, categoryID: category, search: parsed.text, sort: sort, limit: page, offset: offset)
-            q.year = parsed.year
+            var q = VODQuery(sourceID: source, categoryID: category, search: sentence.isStructured ? sentence.text : parsed.text, sort: sort, limit: page, offset: offset)
+            q.year = sentence.isStructured ? sentence.year : parsed.year
             filter.apply(to: &q, kind: kind)
+            if sentence.isStructured {          // what the sentence said fills in what the filters left open
+                q.language = q.language ?? sentence.language; q.decade = q.decade ?? sentence.decade; q.quality = q.quality ?? sentence.quality
+                q.minRating = q.minRating ?? sentence.minRating; q.maxMinutes = sentence.maxMinutes; q.minMinutes = sentence.minMinutes
+                if sentence.unwatched { q.unwatchedOnly = true }
+                if sentence.started { q.watch = .started }
+                if sentence.favorites { q.favoritesOnly = true }
+                if let d = sentence.addedWithinDays { q.addedWithinDays = d }
+            }
             switch shelf {
             case .all: break
             case .favourites: q.favoritesOnly = true
@@ -113,11 +135,20 @@ struct LibraryView: View {
                 // The same slideshow as Home, only of movies (or only of series); hidden while searching or inside one folder.
                 if !featured.isEmpty, model.query.isEmpty, model.categoryID == nil, model.shelf == .all { FeaturedBanner(items: featured, height: sizeClass == .regular ? 300 : 220).padding(.top, 4) }
                 ShelfChips(selection: $model.shelf, kind: kind)
+                if !model.understood.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkle.magnifyingglass").font(.system(size: 12)).foregroundStyle(.secondary)
+                            Text("Understood as").appFont(12).foregroundStyle(.secondary)
+                            ForEach(model.understood, id: \.self) { Text($0).appFont(12, .medium).padding(.horizontal, 9).padding(.vertical, 4).background(.thinMaterial, in: Capsule()) }
+                        }.padding(.horizontal, 16)
+                    }.padding(.top, 4)
+                }
                 if let fixed = model.correctedTo { CorrectedNote(original: model.query, corrected: fixed).padding(.top, 4) }
                 if model.total > 0 { Text("\(model.total.formatted()) titles").appFont(12).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16) }
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(model.items) { item in
-                        NavigationLink(value: item) { PosterCard(item: item, width: posterWidth) }.buttonStyle(.press).contextMenu { TitleMenu(item: item) }
+                        NavigationLink(value: item) { PosterCard(item: item, width: posterWidth, note: model.matchNotes[item.id]) }.buttonStyle(.press).contextMenu { TitleMenu(item: item) }
                             .task { if item.id == model.items.last?.id, let c = container { await model.loadMore(c, source: state.activeSourceID) } }
                     }
                 }

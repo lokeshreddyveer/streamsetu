@@ -48,6 +48,37 @@ interface CatalogDao {
     /** Every channel of one connection, hidden ones too, for the Channel Manager. */
     @Query("SELECT * FROM channels WHERE sourceId = :sourceId AND name LIKE '%' || :q || '%' ORDER BY sortOrder, name LIMIT :limit") suspend fun managerChannels(sourceId: String, q: String, limit: Int): List<ChannelEntity>
     @Query("SELECT * FROM channels WHERE sourceId = :sourceId AND name = :name LIMIT 1") suspend fun channelByName(sourceId: String, name: String): ChannelEntity?
+    /** Films for a typed sentence ("telugu 2024 unwatched"): every filter is optional (an empty text, a zero or an empty word means no filter). A title, or somebody in it, matches [text]. */
+    @Query("""
+        SELECT m.* FROM movies m JOIN sources s ON s.id = m.sourceId
+        WHERE s.enabled = 1 AND s.draft = 0 AND m.sourceId IN (:sources)
+          AND (:text = '' OR LOWER(m.title) LIKE '%' || :text || '%' OR m.id IN (:personIds))
+          AND (:year = 0 OR m.year = :year) AND (:decade = 0 OR (m.year >= :decade AND m.year < :decade + 10))
+          AND (:language = '' OR m.title LIKE '%(' || :language || '%' OR m.title LIKE '%[' || :language || '%' OR m.categoryId IN (SELECT id FROM categories WHERE name LIKE '%' || :language || '%'))
+          AND (:q1 = '' OR m.title LIKE '%' || :q1 || '%' OR m.title LIKE '%' || :q2 || '%' OR m.title LIKE '%' || :q3 || '%' OR m.categoryId IN (SELECT id FROM categories WHERE name LIKE '%' || :q1 || '%' OR name LIKE '%' || :q2 || '%' OR name LIKE '%' || :q3 || '%'))
+          AND (:minRating = 0 OR CAST(m.rating AS REAL) >= :minRating)
+          AND (:unwatched = 0 OR (m.id NOT IN (SELECT itemId FROM progress) AND m.id NOT IN (SELECT itemId FROM watch_log)))
+          AND (:favorites = 0 OR m.id IN (SELECT itemId FROM favorites))
+          AND (:addedSince = 0 OR m.addedAt >= :addedSince)
+        ORDER BY m.addedAt DESC LIMIT :limit
+    """)
+    suspend fun moviesForSentence(sources: List<String>, text: String, personIds: List<String>, year: Int, decade: Int, language: String, q1: String, q2: String, q3: String, minRating: Double, unwatched: Int, favorites: Int, addedSince: Long, limit: Int): List<MovieEntity>
+
+    /** The same for series. */
+    @Query("""
+        SELECT m.* FROM series m JOIN sources s ON s.id = m.sourceId
+        WHERE s.enabled = 1 AND s.draft = 0 AND m.sourceId IN (:sources)
+          AND (:text = '' OR LOWER(m.title) LIKE '%' || :text || '%' OR m.id IN (:personIds))
+          AND (:year = 0 OR m.year = :year) AND (:decade = 0 OR (m.year >= :decade AND m.year < :decade + 10))
+          AND (:language = '' OR m.title LIKE '%(' || :language || '%' OR m.title LIKE '%[' || :language || '%' OR m.categoryId IN (SELECT id FROM categories WHERE name LIKE '%' || :language || '%'))
+          AND (:q1 = '' OR m.title LIKE '%' || :q1 || '%' OR m.title LIKE '%' || :q2 || '%' OR m.title LIKE '%' || :q3 || '%' OR m.categoryId IN (SELECT id FROM categories WHERE name LIKE '%' || :q1 || '%' OR name LIKE '%' || :q2 || '%' OR name LIKE '%' || :q3 || '%'))
+          AND (:minRating = 0 OR CAST(m.rating AS REAL) >= :minRating)
+          AND (:unwatched = 0 OR m.id NOT IN (SELECT seriesId FROM progress WHERE seriesId IS NOT NULL))
+          AND (:favorites = 0 OR m.id IN (SELECT itemId FROM favorites))
+          AND (:addedSince = 0 OR m.addedAt >= :addedSince)
+        ORDER BY m.addedAt DESC LIMIT :limit
+    """)
+    suspend fun seriesForSentence(sources: List<String>, text: String, personIds: List<String>, year: Int, decade: Int, language: String, q1: String, q2: String, q3: String, minRating: Double, unwatched: Int, favorites: Int, addedSince: Long, limit: Int): List<SeriesEntity>
     @Query("SELECT * FROM movies WHERE sourceId = :sourceId AND title = :title LIMIT 1") suspend fun movieByTitle(sourceId: String, title: String): MovieEntity?
     @Query("SELECT * FROM channels WHERE id IN (:ids)") suspend fun channelsByIds(ids: List<String>): List<ChannelEntity>
     /** Like [channelsByIds], without the channels the person hid (for search results). */

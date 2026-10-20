@@ -116,6 +116,7 @@ fun SearchContent(
                 Label("Try fewer letters or another spelling.", Tokens.body, Tokens.textSecondary)
             }
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 30.dp)) {
+                if (r.understood.isNotEmpty()) item { Label("Understood as  " + r.understood.joinToString("  \u00b7  "), Tokens.small, Tokens.accent, maxLines = 2) }
                 r.correctedTo?.let { fixed -> item { Label("Showing results for \u201c$fixed\u201d instead of \u201c${query.trim()}\u201d.", Tokens.small, Tokens.textSecondary, maxLines = 2) } }
                 SearchKind.entries.forEach { kind ->
                     val rows = r.byKind[kind].orEmpty()

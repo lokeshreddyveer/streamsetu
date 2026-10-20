@@ -39,6 +39,8 @@ struct PosterCard: View {
     let item: LibraryItem
     var width: CGFloat = 120
     var progress: Double?
+    /// Why a search found it when its own name does not say ("Cast: Mahesh Babu"); shown where the year and genre would be.
+    var note: String?
     @Environment(AppState.self) private var state
 
     var body: some View {
@@ -73,7 +75,8 @@ struct PosterCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.white.opacity(0.08)))
             Text(item.title).appFont(12, .semibold).lineLimit(2).multilineTextAlignment(.leading).frame(width: width, alignment: .leading)
-            if !item.detailLine.isEmpty { Text(item.detailLine).appFont(11).foregroundStyle(.secondary).lineLimit(1).frame(width: width, alignment: .leading) }
+            if let note { Text(note).appFont(11, .medium).foregroundStyle(ColorTokens.accentDefault).lineLimit(1).frame(width: width, alignment: .leading) }
+            else if !item.detailLine.isEmpty { Text(item.detailLine).appFont(11).foregroundStyle(.secondary).lineLimit(1).frame(width: width, alignment: .leading) }
         }
         .accessibilityElement(children: .combine)
     }

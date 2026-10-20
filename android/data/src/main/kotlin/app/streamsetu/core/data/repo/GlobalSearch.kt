@@ -35,7 +35,7 @@ sealed interface SearchTarget {
 
 data class SearchItem(val id: String, val kind: SearchKind, val title: String, val subtitle: String, val artworkUrl: String?, val target: SearchTarget, val score: Int)
 
-data class GlobalResults(val byKind: Map<SearchKind, List<SearchItem>> = emptyMap(), val correctedTo: String? = null) {
+data class GlobalResults(val byKind: Map<SearchKind, List<SearchItem>> = emptyMap(), val correctedTo: String? = null, val understood: List<String> = emptyList()) {
     val isEmpty get() = byKind.values.all { it.isEmpty() }
     fun flat(tab: SearchTab): List<SearchItem> = SearchKind.entries.filter { it in tab.kinds }.flatMap { byKind[it].orEmpty() }
 }
@@ -58,6 +58,12 @@ class GlobalSearch(
     suspend fun search(typed: String, tab: SearchTab = SearchTab.ALL, limit: Int = if (tab == SearchTab.ALL) 12 else 60): GlobalResults = withContext(Dispatchers.IO) {
         val q = typed.trim()
         if (SearchText.normalize(q).isBlank()) return@withContext GlobalResults()
+        // A sentence ("telugu movies 2024 unwatched") is filters on films and series; when it finds nothing, the words are searched as a title below.
+        val sentence = NaturalQuery.parse(q)
+        if (sentence.isStructured && (SearchKind.MOVIE in tab.kinds || SearchKind.SERIES in tab.kinds)) {
+            val found = forSentence(sentence, tab, limit)
+            if (!found.isEmpty) return@withContext found.copy(understood = sentence.summary)
+        }
         val parsed = SmartQuery.parse(q)
         val first = run(parsed.text.ifBlank { q }, tab, limit, parsed.year)
         if (!first.isEmpty) return@withContext first
@@ -65,6 +71,37 @@ class GlobalSearch(
         val p = SmartQuery.parse(alt)
         val again = run(p.text.ifBlank { alt }, tab, limit, p.year ?: parsed.year)
         if (again.isEmpty) first else again.copy(correctedTo = alt)
+    }
+
+    /** Titles with somebody in them whose name has these words (the cast and directors read from the provider). */
+    private fun people(kind: String, text: String): List<String> {
+        if (text.replace(" ", "").length < 3) return emptyList()
+        val ids = ArrayList<String>()
+        db.openHelper.readableDatabase.query("SELECT DISTINCT itemId FROM people WHERE kind = ? AND norm LIKE ? LIMIT 400", arrayOf(kind, "%$text%")).use { c -> while (c.moveToNext()) ids += c.getString(0) }
+        return ids
+    }
+
+    private suspend fun forSentence(n: NaturalQuery, tab: SearchTab, limit: Int): GlobalResults {
+        val sources = library.sourceIds.value.toList()
+        if (sources.isEmpty()) return GlobalResults()
+        val locked = folders.lockedIdsNow()
+        val terms = n.quality?.let { NaturalQuery.qualityTerms[it] ?: listOf(it) } ?: emptyList()
+        val (q1, q2, q3) = Triple(terms.getOrNull(0).orEmpty(), terms.getOrNull(1) ?: terms.getOrNull(0).orEmpty(), terms.getOrNull(2) ?: terms.getOrNull(0).orEmpty())
+        val text = SearchText.normalize(n.text)
+        val since = if (n.recent) System.currentTimeMillis() - 30L * 86_400_000L else 0L
+        val out = LinkedHashMap<SearchKind, List<SearchItem>>()
+        fun sub(year: Int?, category: String?, vararg more: String?) = listOfNotNull(year?.toString(), *more).joinToString(" · ")
+        if (SearchKind.MOVIE in tab.kinds) {
+            val rows = db.catalog().moviesForSentence(sources, text, people("movie", text), n.year ?: 0, n.decade ?: 0, n.language.orEmpty(), q1, q2, q3, n.minRating ?: 0.0, if (n.unwatched) 1 else 0, if (n.favorites) 1 else 0, since, limit * 3 + 1)
+                .filter { it.categoryId == null || it.categoryId !in locked }.take(limit)
+            if (rows.isNotEmpty()) out[SearchKind.MOVIE] = rows.map { m -> m.toModel().let { SearchItem("movie:${m.id}", SearchKind.MOVIE, it.title, sub(it.year, null, it.rating?.takeIf { r -> r.isNotBlank() }?.let { r -> "\u2605 $r" }), it.posterUrl, SearchTarget.OpenMovie(it), 0) } }
+        }
+        if (SearchKind.SERIES in tab.kinds) {
+            val rows = db.catalog().seriesForSentence(sources, text, people("series", text), n.year ?: 0, n.decade ?: 0, n.language.orEmpty(), q1, q2, q3, n.minRating ?: 0.0, if (n.unwatched) 1 else 0, if (n.favorites) 1 else 0, since, limit * 3 + 1)
+                .filter { it.categoryId == null || it.categoryId !in locked }.take(limit)
+            if (rows.isNotEmpty()) out[SearchKind.SERIES] = rows.map { s -> s.toModel().let { SearchItem("series:${s.id}", SearchKind.SERIES, it.title, sub(it.year, null, it.rating?.takeIf { r -> r.isNotBlank() }?.let { r -> "\u2605 $r" }), it.posterUrl, SearchTarget.OpenSeries(it), 0) } }
+        }
+        return GlobalResults(out)
     }
 
     /** Prepares the spelling word list in the background, so the first misspelt search is not slow. Call when the search screen opens. */

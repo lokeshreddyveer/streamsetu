@@ -249,6 +249,7 @@ fun PhoneSearch(c: AppContainer, nav: Navigator) {
             tab == SearchTab.ALL -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
                 if (found.isEmpty() && searching) item { app.streamsetu.tv.ui.components.Loading(Modifier.height(120.dp)) }
                 if (found.isEmpty() && !searching) item { Empty("No results", "Try fewer letters or another spelling.") }
+                if (results.understood.isNotEmpty()) item { app.streamsetu.tv.ui.components.Label("Understood as  " + results.understood.joinToString("  \u00b7  "), Tokens.small, Tokens.accent, maxLines = 2, modifier = Modifier.padding(horizontal = Ph.gutter)) }
                 results.correctedTo?.let { fixed -> item { CorrectedNote(q, fixed) } }
                 SearchKind.entries.filter { !results.byKind[it].isNullOrEmpty() }.forEach { kind ->
                     item(key = "h-${kind.name}") { SectionHeader(kind.title, Modifier.padding(top = 10.dp)) }
