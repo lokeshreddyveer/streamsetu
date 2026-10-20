@@ -44,6 +44,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val banner by vm.banner.collectAsState()
     val resume by vm.continueWatching.collectAsState()
     val live by vm.recentLive.collectAsState()
+    val tonight by vm.tonight.collectAsState()
     val favs by vm.favourites.collectAsState()
     val later by vm.watchLater.collectAsState()
     val recent by vm.recentWatched.collectAsState()
@@ -94,6 +95,9 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     }
                 }
             }
+            if (tonight.isNotEmpty()) rail("Tonight on your channels", pad) { items(tonight, key = { "t" + it.channel.id }) { l ->
+                ChannelCard(l.channel, l.now, { play(c, nav, ChannelPlayable(l.channel), tonight.map { ChannelPlayable(it.channel) }) }, { longOn(HomeTarget.Live(l.channel), RowKind.RECENT_LIVE) })
+            } }
             order.forEach { id ->
                 when (id) {
                     "continue" -> if (resume.isNotEmpty()) rail("Continue Watching", pad) { items(resume, key = { "c" + it.playable.id }) { r ->

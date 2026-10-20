@@ -43,6 +43,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val banner by vm.banner.collectAsState()
     val resume by vm.continueWatching.collectAsState()
     val live by vm.recentLive.collectAsState()
+    val tonight by vm.tonight.collectAsState()
     val favs by vm.favourites.collectAsState()
     val later by vm.watchLater.collectAsState()
     val recent by vm.recentWatched.collectAsState()
@@ -96,6 +97,14 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                             PhoneWide(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, Modifier.width(240.dp), progress = if (r.isNew) 0f else r.progress.fraction, badge = if (r.isNew) "NEW" else null,
                                 onLong = { sheet = r.playable.title to listOf(SheetItem("Play", Icons.Filled.PlayArrow) { play(c, nav, r.playable) }, SheetItem("Remove from Continue Watching", Icons.Filled.Close) { vm.removeFromContinue(r.playable.id) }) })
                         }
+                    }
+                }
+            }
+            if (tonight.isNotEmpty()) item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionHeader("Tonight on your channels")
+                    LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(tonight, key = { "t" + it.channel.id }) { l -> ChannelTile(l.channel, l.now) { play(c, nav, ChannelPlayable(l.channel), tonight.map { ChannelPlayable(it.channel) }) } }
                     }
                 }
             }

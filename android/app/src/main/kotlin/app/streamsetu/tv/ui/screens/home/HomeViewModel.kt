@@ -107,6 +107,19 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         ids.mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib }.let { chs -> val map = runCatching { c.epg.resolve(chs) }.getOrDefault(emptyMap()); chs.map { ch -> LiveItem(ch, map[ch.id]?.let { e -> runCatching { c.epg.upcoming(c.db, e, 1).firstOrNull()?.title }.getOrNull() }) } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Tonight: favourite channels with something on now or starting within four hours, soonest first, each with what it is ("Now · Match" or "21:30 · News"). */
+    val tonight: StateFlow<List<LiveItem>> = combine(c.user.favouriteIds(UserRepository.FAVOURITES), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->
+        val now = System.currentTimeMillis(); val limit = now + 4 * 3_600_000L
+        val clock = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT)
+        val channels = ids.toList().mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib }.take(60)
+        val guide = runCatching { c.epg.resolve(channels) }.getOrDefault(emptyMap())
+        channels.mapNotNull { ch ->
+            val epgId = guide[ch.id] ?: return@mapNotNull null
+            val p = runCatching { c.epg.upcoming(c.db, epgId, 2) }.getOrDefault(emptyList()).firstOrNull { it.endMs > now && it.startMs < limit } ?: return@mapNotNull null
+            (if (p.isLive(now)) 0L else p.startMs) to LiveItem(ch, (if (p.isLive(now)) "Now" else clock.format(java.util.Date(p.startMs))) + " · " + p.title)
+        }.sortedBy { it.first }.map { it.second }.take(14)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val favourites: StateFlow<List<FavItem>> = combine(c.user.favouriteIds(UserRepository.FAVOURITES), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->
         val list = ids.toList()
         val ch = list.mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib }.map { FavItem.Ch(it) }
