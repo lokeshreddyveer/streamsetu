@@ -157,7 +157,7 @@ final class AppSettings {
     // MARK: defaults & validation
 
     enum Defaults {
-        static let theme = AppTheme.obsidian, accent = AccentChoice.coral, density = LayoutDensity.comfortable, reduceMotion = false
+        static let theme = AppTheme.cinematic, accent = AccentChoice.coral, density = LayoutDensity.comfortable, reduceMotion = false
         static let sidebarLaunch = SidebarLaunch.expanded, click = ClickBehavior.doubleClick
         static let engine = PlaybackEnginePreference.automatic, hardware = HardwareDecoding.automatic, deinterlace = DeinterlaceMode.automatic
         static let quality = VideoQualityPreference.automatic, buffering = BufferingMode.automatic, volume = 1.0
@@ -189,6 +189,8 @@ final class AppSettings {
         proxyKind = ProxyConfig.Kind(rawValue: str("proxykind", "Off")) ?? .off
         proxyHost = str("proxyhost", "")
         proxyPort = Int(dbl("proxyport", 0))
+        // The redesign: everyone starts on the new Cinematic look once; after that their own choice is kept.
+        if !bool("design2", false) { defaults.set("Cinematic", forKey: "settings.theme"); defaults.set(true, forKey: "settings.design2") }
         theme = get("theme", Defaults.theme)
         accent = get("accent", Defaults.accent)
         density = get("density", Defaults.density)

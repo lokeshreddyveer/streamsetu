@@ -2,9 +2,9 @@ import SwiftUI
 
 /// System (SF Pro) type, sized for a compact desktop interface.
 enum Typography {
-    static let display = Font.system(size: 30, weight: .semibold)
-    static let pageTitle = Font.system(size: 23, weight: .semibold)
-    static let title = Font.system(size: 20, weight: .semibold)
+    static let display = Font.system(size: 34, weight: .bold, design: .rounded)
+    static let pageTitle = Font.system(size: 26, weight: .bold, design: .rounded)
+    static let title = Font.system(size: 21, weight: .semibold, design: .rounded)
     static let heading = Font.system(size: 16, weight: .semibold)
     static let nav = Font.system(size: 14, weight: .semibold)
     static let body = Font.system(size: 13)

@@ -38,7 +38,7 @@ struct ThemePalette: Sendable {
 
 /// The themes a person can choose. Palettes follow the well-known editor themes of the same names, adapted for this interface.
 enum AppTheme: String, CaseIterable, Identifiable, Sendable {
-    case obsidian = "Obsidian", onyx = "Onyx Gloss", piano = "Piano Black", glossyBlack = "Glossy Black", liquidGlass = "Liquid Glass", midnight = "Midnight", dracula = "Dracula", nord = "Nord"
+    case cinematic = "Cinematic", obsidian = "Obsidian", onyx = "Onyx Gloss", piano = "Piano Black", glossyBlack = "Glossy Black", liquidGlass = "Liquid Glass", midnight = "Midnight", dracula = "Dracula", nord = "Nord"
     case mocha = "Mocha", rosePine = "Rosé Pine", gruvbox = "Gruvbox"
     case solarized = "Solarized Dark", oneDark = "One Dark", monokai = "Monokai", ayu = "Ayu Mirage", everforest = "Everforest"
     case kanagawa = "Kanagawa", materialOcean = "Material Ocean", synthwave = "Synthwave", neon = "Neon"
@@ -48,7 +48,8 @@ enum AppTheme: String, CaseIterable, Identifiable, Sendable {
 
     var subtitle: String {
         switch self {
-        case .obsidian: "Smoked black. The default."
+        case .cinematic: "Ink black with a warm ember accent, soft glass and large rounded artwork. The default."
+        case .obsidian: "Smoked black."
         case .onyx: "Deep black with a glossy sheen."
         case .piano: "True black, high gloss, cool blue accent."
         case .glossyBlack: "Complete piano-black glass: frosted panels, mirror-bright edges, lit backdrop."
@@ -82,7 +83,7 @@ enum AppTheme: String, CaseIterable, Identifiable, Sendable {
     enum Group: String, CaseIterable { case black = "Black and glossy", classic = "Editor classics", colour = "Colour", yours = "Yours" }
     var group: Group {
         switch self {
-        case .obsidian, .onyx, .piano, .glossyBlack, .liquidGlass, .graphite, .neon, .crimson: .black
+        case .cinematic, .obsidian, .onyx, .piano, .glossyBlack, .liquidGlass, .graphite, .neon, .crimson: .black
         case .midnight, .dracula, .nord, .mocha, .rosePine, .gruvbox, .solarized, .oneDark, .monokai, .ayu, .everforest, .kanagawa, .materialOcean, .synthwave: .classic
         case .forest, .amber, .deepOcean, .amethyst: .colour
         case .custom: .yours
@@ -91,6 +92,9 @@ enum AppTheme: String, CaseIterable, Identifiable, Sendable {
 
     var palette: ThemePalette {
         switch self {
+        case .cinematic:
+            ThemePalette(background: 0x07080C, panel: 0x0D0F15, surface: 0x0B0D13, card: 0x13161F, elevated: 0x1B1F2B, accent: 0xFF6B3D,
+                         text: 0xF7F4EF, textSecondary: 0xA9A8B6, textTertiary: 0x76778A, bar: 0x06070A, glass: 0x0A0C12, sheen: 0.05, highlight: 0.07)
         case .obsidian:
             ThemePalette(background: 0x0B0D12, panel: 0x11141B, surface: 0x0F1218, card: 0x151922, elevated: 0x1B202A, accent: 0x2BB8F0,
                          text: 0xF5F6F8, textSecondary: 0xA2A7B2, textTertiary: 0x77808E, bar: 0x07090C, glass: 0x080A0E, sheen: 0.035, highlight: 0.0)
@@ -150,7 +154,7 @@ enum AppTheme: String, CaseIterable, Identifiable, Sendable {
 /// changes (the Mac app also rebuilds its windows, which does no harm).
 @Observable
 final class ThemeState: @unchecked Sendable {
-    var current: AppTheme = .obsidian
+    var current: AppTheme = .cinematic
     var custom = CustomTheme.standard
     /// Stronger text and outlines. On when the person turns it on in the app, or the system's Increase Contrast is on.
     var userContrast = false

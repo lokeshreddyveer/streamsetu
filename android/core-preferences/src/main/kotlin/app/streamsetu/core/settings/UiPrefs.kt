@@ -18,12 +18,16 @@ class UiPrefs(context: Context) {
     val language: StateFlow<String> = _language
     fun setLanguage(v: String) { prefs.edit().putString("language", v).apply(); _language.value = v }
 
-    private val _theme = flow(prefs.getString("theme", "OBSIDIAN") ?: "OBSIDIAN")
-    /** OBSIDIAN, AMOLED, MIDNIGHT, SLATE or FOREST: the page and card colours. */
+    // The redesign: everyone starts on the new Cinematic look and its Ember accent once; after that their own choice is kept.
+    private val _redesigned = prefs.getBoolean("design2", false).also { done ->
+        if (!done) prefs.edit().putString("theme", "CINEMATIC").putString("accent", "EMBER").putBoolean("design2", true).apply()
+    }
+    private val _theme = flow(prefs.getString("theme", "CINEMATIC") ?: "CINEMATIC")
+    /** CINEMATIC, OBSIDIAN, AMOLED, MIDNIGHT, SLATE or FOREST: the page and card colours. */
     val theme: StateFlow<String> = _theme
     fun setTheme(v: String) { prefs.edit().putString("theme", v).apply(); _theme.value = v }
-    private val _accent = flow(prefs.getString("accent", "CYAN") ?: "CYAN")
-    /** CYAN, GOLD, VIOLET, GREEN, ROSE or BLUE: the colour of highlights and primary buttons. */
+    private val _accent = flow(prefs.getString("accent", "EMBER") ?: "EMBER")
+    /** EMBER, CYAN, GOLD, VIOLET, GREEN, ROSE or BLUE: the colour of highlights and primary buttons. */
     val accent: StateFlow<String> = _accent
     fun setAccent(v: String) { prefs.edit().putString("accent", v).apply(); _accent.value = v }
 
