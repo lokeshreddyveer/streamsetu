@@ -139,7 +139,15 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                 Column(Modifier.weight(1f)) {
                     Label(title, Tokens.pageTitle, Tokens.text, FontWeight.Bold)
                     val n = cards?.size
-                    Label((if (n == null) "Loading…" else "%,d ${if (kind == ContentKind.MOVIE) "movies" else "series"}".format(n)) + "  ·  " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources") + (if (sort != SortSpec.defaultFor(kind)) "  ·  Sort: ${sort.field.label}" else "  ·  Newest first".takeIf { sort.field == SortField.ADDED && sort.ascending }.orEmpty()), Tokens.small, Tokens.textSecondary)
+                    // The whole library or folder is counted, not only the first pages that are loaded so far.
+                    val total = when {
+                        n == null || filter.active -> n
+                        browse == Browse.All -> sources.filter { filter.sourceId == null || it.id == "src:${filter.sourceId}" }.sumOf { if (kind == ContentKind.MOVIE) it.movieCount else it.seriesCount }
+                        browse is Browse.Folder -> folders.firstOrNull { it.id == (browse as Browse.Folder).id }?.count
+                        else -> n
+                    }?.coerceAtLeast(n ?: 0)
+                    val noun = if (kind == ContentKind.MOVIE) "movies" else "series"
+                    Label((if (n == null) "Loading…" else if (total != null && total > n) "%,d of %,d $noun".format(n, total) else "%,d $noun".format(n)) + "  ·  " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources") + (if (sort != SortSpec.defaultFor(kind)) "  ·  Sort: ${sort.field.label}" else "  ·  Newest first".takeIf { sort.field == SortField.ADDED && sort.ascending }.orEmpty()), Tokens.small, Tokens.textSecondary)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     ToolButton(if (filter.active) "Filter · ${filter.count}" else "Filter", Icons.Filled.FilterList) { filterOpen = true }

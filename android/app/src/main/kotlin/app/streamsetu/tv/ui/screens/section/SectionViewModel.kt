@@ -102,7 +102,7 @@ data class FilterOptions(val languages: List<String> = emptyList(), val qualitie
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderViewModel(c, kind) {
-    companion object { const val PAGE = 600 }
+    companion object { const val PAGE = 600; const val FILTERED_LIMIT = 100_000 }
     val browse = MutableStateFlow<Browse>(Browse.All)
     val filter = MutableStateFlow(ContentFilter())
     var scrollIndex = 0
@@ -113,6 +113,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
 
     /** How many titles are asked for: a page at first, and another page each time the person scrolls near the end, so a library of tens of thousands is all reachable. */
     val limit = MutableStateFlow(PAGE)
+    init { viewModelScope.launch { filter.collect { f -> limit.value = if (f.active) FILTERED_LIMIT else PAGE } } }
     fun loadMore() { val shown = unfiltered.value?.size ?: return; if (shown >= limit.value) limit.value = limit.value + PAGE }
 
     protected abstract fun source(b: Browse, s: SortSpec, limit: Int): Flow<List<Card>>
