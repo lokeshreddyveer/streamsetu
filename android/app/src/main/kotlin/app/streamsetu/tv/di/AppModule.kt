@@ -95,4 +95,5 @@ fun kindOf(p: Playable) = when (p) {
     is EpisodePlayable -> ContentKind.EPISODE
     is SeriesFeature -> ContentKind.SERIES
     is CatchUpPlayable -> ContentKind.CHANNEL
+    is UrlPlayable -> ContentKind.MOVIE
 }

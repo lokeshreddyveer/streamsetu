@@ -201,6 +201,13 @@ data class Folder(val id: String, val sourceId: String, val providerName: String
     val title get() = pref.alias?.takeIf { it.isNotBlank() } ?: providerName
 }
 
+/** Something played straight from an address that belongs to no connection, such as a podcast episode. Its place is remembered like a movie's. */
+data class UrlPlayable(override val id: String, override val title: String, val url: String, override val artworkUrl: String? = null) : Playable {
+    override val sourceId get() = "direct"
+    override val streamRef get() = url
+    override val isLive get() = false
+}
+
 /** A programme that already aired, played from the provider's archive (catch-up). It is a recording: it can be paused and skipped, but no resume point is kept. */
 data class CatchUpPlayable(val channel: Channel, val programTitle: String, val startMs: Long, val endMs: Long) : Playable {
     override val id get() = "catchup:${channel.id}:$startMs"

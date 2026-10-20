@@ -58,6 +58,9 @@ class AppContainer @Inject constructor(
     /** Keeps favourites, Watch Later, collections and resume points in step with the person's other devices on the same Wi-Fi. */
     val lan: app.streamsetu.tv.sync.LanSyncService by lazy { app.streamsetu.tv.sync.LanSyncService(context, appScope, db) }
 
+    /** Podcasts the person follows. */
+    val podcasts: app.streamsetu.tv.sync.PodcastService by lazy { app.streamsetu.tv.sync.PodcastService(context) }
+
     /** Who is using the app: each profile has its own favorites, collections, history and resume points. */
     val profiles: app.streamsetu.tv.sync.ProfileService by lazy {
         app.streamsetu.tv.sync.ProfileService(db) { p ->

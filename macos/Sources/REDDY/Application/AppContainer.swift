@@ -53,6 +53,7 @@ final class AppContainer {
     private(set) var cloud: CloudSyncCoordinator!
     private(set) var lan: LanSyncService!
     private(set) var profiles: ProfileService!
+    let podcasts: PodcastService
     #if os(macOS)
     private(set) var scheduledRecordings: ScheduledRecordingService!
     #endif
@@ -83,6 +84,7 @@ final class AppContainer {
         settings = AppSettings()
         http = HTTPClient()
         self.credentials = credentials
+        podcasts = PodcastService(defaults: settings.defaultsStore)
         sources = SourceManager(catalog: catalog, credentials: credentials, http: http, headers: SourceHeadersStore(defaults: settings.defaultsStore))
         indexer = CatalogIndexer(db: db)
         let prefs = SendableDefaults(settings.defaultsStore)

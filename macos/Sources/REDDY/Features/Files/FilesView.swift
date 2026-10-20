@@ -38,9 +38,12 @@ struct FilesView: View {
                 Button { pickingFolder = true } label: { Label("Add a Folder", systemImage: "folder.badge.plus") }
                 Button { addingServer = true } label: { Label("Add a WebDAV Server", systemImage: "externaldrive.badge.plus") }
             } header: { Text("Folders and Servers") } footer: { Text("WebDAV works with Nextcloud and most home servers (NAS). The password is kept in the Keychain.") }
+            Section {
+                NavigationLink { PodcastsView() } label: { Label("Podcasts", systemImage: "mic.fill") }
+            } footer: { Text("Follow shows and play their episodes. Your place in each episode is remembered.") }
             if let note { Section { Text(note).foregroundStyle(.secondary) } }
         }
-        .navigationTitle("Files and Servers")
+        .navigationTitle("Files, Servers and Podcasts")
         .onAppear { sources = store?.all() ?? [] }
         .fileImporter(isPresented: $pickingFile, allowedContentTypes: [.movie, .audiovisualContent, .mpeg4Movie, .quickTimeMovie, .item]) { result in
             guard case .success(let url) = result else { return }

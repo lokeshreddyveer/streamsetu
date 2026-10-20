@@ -250,3 +250,5 @@ Features/Settings/Views/LanPairView.swift
 Data/Database/Schema/SchemaV16.swift
 Services/ProfileService.swift
 Features/Shared/Views/ProfileViews.swift
+Services/Podcasts.swift
+Features/Files/PodcastsView.swift
