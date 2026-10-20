@@ -58,6 +58,14 @@ class AppContainer @Inject constructor(
     /** Keeps favourites, Watch Later, collections and resume points in step with the person's other devices on the same Wi-Fi. */
     val lan: app.streamsetu.tv.sync.LanSyncService by lazy { app.streamsetu.tv.sync.LanSyncService(context, appScope, db) }
 
+    /** Who is using the app: each profile has its own favorites, collections, history and resume points. */
+    val profiles: app.streamsetu.tv.sync.ProfileService by lazy {
+        app.streamsetu.tv.sync.ProfileService(db) { p ->
+            parental.setKids(p.kids)
+            lan.setEnabled(lan.wanted && profiles.isMainActive)
+        }.also { it.reload(); parental.setKids(it.active.kids) }
+    }
+
     /** What the player plays next: the channels of the list it was started from, or the episodes of a series. */
     var queue: List<Playable> = emptyList()
     var queueIndex: Int = 0
@@ -287,7 +295,7 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             val u = container.ui
             SoundSettings(u.soundsEnabled.value, u.soundTheme.value, u.soundVolume.value, u.navTones.value, u.selectionTones.value, u.confirmationTones.value, u.errorTones.value, u.soundsDuringPlayback.value)
         }, videoPlaying = { container.playback.current.value != null && container.playback.state.value == app.streamsetu.core.playback.PlaybackState.Playing })
-        container.lan.startIfEnabled()
+        container.lan.startIfEnabled(container.profiles.isMainActive)
         CrashReporter.install(this, runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?")
         container.appScope.launch {
             // "Refresh on app start": after the screen has settled, each connection is read once, one after another, and never while something plays.

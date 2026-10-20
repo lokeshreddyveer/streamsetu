@@ -24,6 +24,14 @@ final class ParentalControls {
     private(set) var isUnlocked = false
     private(set) var unlockedUntil: Date?
     private(set) var lockedCategoryIDs: Set<String> = []
+    /// A kids profile is in use: the locked folders stay hidden and cannot be unlocked from here (the profile's own PIN is needed to leave it).
+    var kidsMode = false {
+        didSet {
+            guard kidsMode != oldValue else { return }
+            if kidsMode { isUnlocked = false; unlockedUntil = nil; relockTask?.cancel() }
+            applyRestriction()
+        }
+    }
     /// Called whenever what is visible may have changed, so screens reload.
     var onChange: () -> Void = {}
 
@@ -56,7 +64,7 @@ final class ParentalControls {
 
     var hasPIN: Bool { defaults.string(forKey: Keys.hash) != nil }
     /// Folders are hidden right now.
-    var isRestricting: Bool { hasPIN && !isUnlocked }
+    var isRestricting: Bool { kidsMode || (hasPIN && !isUnlocked) }
     var unlockMinutes: Int {
         get { let v = defaults.integer(forKey: Keys.minutes); return v == 0 ? 15 : v }
         set { defaults.set(max(1, min(240, newValue)), forKey: Keys.minutes) }
@@ -105,7 +113,7 @@ final class ParentalControls {
     // MARK: locking
 
     func unlock(pin: String) -> UnlockResult {
-        guard hasPIN else { return .noPIN }
+        guard hasPIN, !kidsMode else { return .noPIN }
         if let until = defaults.object(forKey: Keys.lockedUntil) as? Date, until > now() { return .tooManyAttempts(retryIn: until.timeIntervalSince(now())) }
         guard matches(pin) else {
             let failures = defaults.integer(forKey: Keys.failures) + 1
@@ -163,7 +171,7 @@ final class ParentalControls {
     }
 
     private func applyRestriction() {
-        catalog.restriction.isActive = hasPIN && !isUnlocked
+        catalog.restriction.isActive = kidsMode || (hasPIN && !isUnlocked)
         onChange()
     }
 }

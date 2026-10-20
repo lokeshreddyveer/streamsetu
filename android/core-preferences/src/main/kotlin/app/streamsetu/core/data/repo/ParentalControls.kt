@@ -9,9 +9,15 @@ import kotlinx.coroutines.flow.StateFlow
 class ParentalControls(context: Context) {
     private val prefs = context.getSharedPreferences("parental", Context.MODE_PRIVATE)
     private val _hide = MutableStateFlow(prefs.getBoolean(KEY, true))
-    val hideAdult: StateFlow<Boolean> = _hide
+    private val _kids = MutableStateFlow(false)
+    private val _effective = MutableStateFlow(_hide.value)
+    /** Adult folders are hidden: by the person's choice, or always while a kids profile is in use. */
+    val hideAdult: StateFlow<Boolean> = _effective
+    /** A kids profile is in use: adult folders stay hidden and locked folders cannot be opened with the PIN. */
+    val kids: StateFlow<Boolean> = _kids
 
-    fun setHideAdult(on: Boolean) { prefs.edit().putBoolean(KEY, on).apply(); _hide.value = on }
+    fun setHideAdult(on: Boolean) { prefs.edit().putBoolean(KEY, on).apply(); _hide.value = on; _effective.value = on || _kids.value }
+    fun setKids(on: Boolean) { _kids.value = on; _effective.value = _hide.value || on }
 
     /** A 4-digit PIN for locked folders. Only a salted hash is kept, on this device. */
     val hasPin: Boolean get() = prefs.getString("pin_hash", null) != null
@@ -21,12 +27,13 @@ class ParentalControls(context: Context) {
     }
     fun clearPin() { prefs.edit().remove("pin_salt").remove("pin_hash").apply() }
     fun checkPin(pin: String): Boolean {
+        if (_kids.value) return false
         val salt = prefs.getString("pin_salt", null) ?: return false
         return hash(salt, pin) == prefs.getString("pin_hash", null)
     }
     private fun hash(salt: String, pin: String) = java.security.MessageDigest.getInstance("SHA-256").digest((salt + pin).toByteArray()).joinToString("") { "%02x".format(it) }
 
-    fun visible(category: Category, hide: Boolean = _hide.value) = !hide || !isAdultName(category.name)
+    fun visible(category: Category, hide: Boolean = _effective.value) = !hide || !isAdultName(category.name)
 
     companion object {
         private const val KEY = "hide_adult"

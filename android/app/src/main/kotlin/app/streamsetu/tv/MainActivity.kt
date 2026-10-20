@@ -153,10 +153,14 @@ inline fun <reified T : ViewModel> vm(key: String? = null, crossinline create: (
 
 /** The opening animation plays once per launch of the app, not every time the person returns to the chooser. */
 private var splashDone = false
+/** Who is watching is asked once per launch of the app. */
+private var profileChosen = false
 
 @Composable
 fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     var showSplash by remember { mutableStateOf(!splashDone) }
+    var profilePicked by remember { mutableStateOf(profileChosen) }
+    val sharedDevice by c.profiles.profiles.collectAsState()
     val systemReduced = app.streamsetu.core.ui.motion.rememberReducedMotion()
     val animation by c.ui.animation.collectAsState()
     val reduced = systemReduced || animation != app.streamsetu.core.settings.AnimationLevel.FULL
@@ -224,6 +228,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                 }
             }
         }
+        if (!profilePicked && sharedDevice.size > 1) app.streamsetu.tv.ui.screens.settings.ProfilePickerOverlay(c) { profilePicked = true; profileChosen = true }
         if (showSplash) app.streamsetu.tv.ui.screens.library.LogoReveal(reduced) { showSplash = false; splashDone = true }
         app.streamsetu.tv.ui.components.TvUpdatePrompt(c, suppress = nav.top != null || nav.base != Base.Shell)
         if (nav.top != Overlay.Player) app.streamsetu.tv.ui.components.TvMiniPlayer(c)

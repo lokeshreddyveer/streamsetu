@@ -52,6 +52,7 @@ final class AppContainer {
     var onNewEpisodesChanged: (@MainActor () -> Void)?
     private(set) var cloud: CloudSyncCoordinator!
     private(set) var lan: LanSyncService!
+    private(set) var profiles: ProfileService!
     /// Set by the app once its state exists: called (on the main actor) when another device changed something that is on screen.
     var onCloudChange: (@MainActor (SyncApplyResult) -> Void)?
     private(set) var multiView: MultiViewModel!
@@ -170,7 +171,17 @@ final class AppContainer {
         lan = LanSyncService(credentials: credentials, defaults: settings.defaultsStore, data: LanDataAdapter(db: db), deviceName: Self.deviceName) { [weak self] n in
             self?.onCloudChange?(SyncApplyResult(applied: n, tables: ["favorites", "playback_progress", "collections"]))
         }
+        profiles = ProfileService(db: db) { [weak self] _ in self?.profileSwitched() }
+        parental.kidsMode = profiles.active.kind == .kids
         applySettings()
+    }
+
+    /// Another profile is now in use: its own data is in place, so screens reload; kids profiles hide the locked folders; sync, which carries the first profile only, pauses.
+    private func profileSwitched() {
+        parental.kidsMode = profiles.active.kind == .kids
+        Task { await updateCloudSync() }
+        lan.setEnabled(settings.lanSync && profiles.isMainActive)
+        onCloudChange?(SyncApplyResult(applied: 1, tables: ["favorites", "playback_progress", "collections", "profiles"]))
     }
 
     static var deviceName: String {
@@ -189,7 +200,7 @@ final class AppContainer {
     }
 
     /// Begins syncing when the person has switched it on. Call once the app has started.
-    func startCloudIfEnabled() async { await updateCloudSync(); lan.setEnabled(settings.lanSync) }
+    func startCloudIfEnabled() async { await updateCloudSync(); lan.setEnabled(settings.lanSync && profiles.isMainActive) }
 
     /// Carries on reading who is in the movies, a little at a time (see `PeopleIndexService`).
     func startPeopleIndex() { people.start() }
@@ -198,7 +209,7 @@ final class AppContainer {
     func updateCloudSync() async {
         let refs = ((try? catalog.sources()) ?? []).compactMap(\.credentialRef) + [MetadataMatchService.keyRef]
         (credentials as? StandardCredentialStore)?.applySync(settings.iCloudSync && settings.syncLogins, refs: refs)
-        await cloud.setEnabled(settings.iCloudSync)
+        await cloud.setEnabled(settings.iCloudSync && profiles.isMainActive)
     }
 
     /// Pushes the refresh preferences into the services that act on them, now and every time one of them changes.

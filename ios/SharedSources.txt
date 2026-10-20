@@ -247,3 +247,6 @@ Services/LanSync/LanRecords.swift
 Services/LanSync/LanTransport.swift
 Services/LanSync/LanSyncService.swift
 Features/Settings/Views/LanPairView.swift
+Data/Database/Schema/SchemaV16.swift
+Services/ProfileService.swift
+Features/Shared/Views/ProfileViews.swift

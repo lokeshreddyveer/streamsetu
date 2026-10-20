@@ -4,10 +4,13 @@ import AppKit
 struct RootView: View {
     let coordinator: AppCoordinator
     @State private var opening = !OpeningPlayed.done
+    @State private var picked = ProfilePicked.done
 
     var body: some View {
         content.overlay { if opening { OpeningAnimation { BrandIcon(size: 104) } onDone: { opening = false }.transition(.opacity) } }
     }
+
+    private func choosing(_ c: AppContainer) -> Bool { !picked && c.profiles.isShared }
 
     @ViewBuilder private var content: some View {
         switch coordinator.phase {
@@ -28,6 +31,7 @@ struct RootView: View {
         case .ready:
             if let container = coordinator.container, let state = coordinator.state {
                 MainShell(router: coordinator.router, keys: coordinator.keys, container: container, state: state)
+                    .overlay { if choosing(container) { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { picked = true } } } }
             }
         }
     }

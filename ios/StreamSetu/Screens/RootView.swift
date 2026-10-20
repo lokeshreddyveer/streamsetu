@@ -50,6 +50,7 @@ struct RootView: View {
     }
 
     @State private var opening = !OpeningPlayed.done
+    @State private var picked = ProfilePicked.done
 
     var body: some View {
         @Bindable var router = router
@@ -62,6 +63,7 @@ struct RootView: View {
         }
         .loggingNotice()
         .background(ColorTokens.background)
+        .overlay { if let container, !picked, container.profiles.isShared { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { picked = true } } } }
         .overlay { if opening { OpeningAnimation { BrandMark() } onDone: { opening = false } } }
         .onChange(of: contrast, initial: true) { _, c in ThemeStore.state.systemContrast = c == .increased }
         .dynamicTypeSize(...DynamicTypeSize.accessibility2)      // the layouts hold up to here; larger sizes would break them

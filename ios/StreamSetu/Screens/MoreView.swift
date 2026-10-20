@@ -272,6 +272,7 @@ struct SettingsView: View {
                     NavigationLink { LibrarySettingsView() } label: { Label("Library and Guide", systemImage: "books.vertical") }
                     NavigationLink { ArtworkSettingsView() } label: { Label("Artwork and Details", systemImage: "photo.on.rectangle.angled") }
                     NavigationLink { ChannelManagerView() } label: { Label("Channel Manager", systemImage: "slider.horizontal.3") }
+                    NavigationLink { ProfilesView() } label: { Label("Profiles", systemImage: "person.2") }
                     NavigationLink { CloudSyncView() } label: { Label("iCloud Sync", systemImage: "icloud") }
                     NavigationLink { LanSyncView() } label: { Label("Sync on this network", systemImage: "wifi") }
                     NavigationLink { ProxyView() } label: { Label("Proxy", systemImage: "network") }

@@ -79,7 +79,7 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
 
     private val prefs get() = context.getSharedPreferences("lan", Context.MODE_PRIVATE)
     private val trust = PrefsTrust(context)
-    private val _enabled = MutableStateFlow(prefs.getBoolean("enabled", false))
+    private val _enabled = MutableStateFlow(false)
     private val _found = MutableStateFlow<List<Found>>(emptyList())
     private val _trusted = MutableStateFlow(trust.all())
     private val _prompt = MutableStateFlow<Prompt?>(null)
@@ -111,16 +111,19 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
     private val resolving = Mutex()
     private val busy = java.util.Collections.synchronizedSet(HashSet<String>())
 
-    /** Starts or stops to match the switch in Settings. */
-    fun setEnabled(on: Boolean) {
-        prefs.edit().putBoolean("enabled", on).apply()
+    /** What the person chose in Settings (sync is paused while another profile is in use, whatever this says). */
+    val wanted: Boolean get() = prefs.getBoolean("enabled", false)
+
+    /** Starts or stops to match the switch in Settings. A call from the profile switcher passes `wanted && main profile` without changing the choice. */
+    fun setEnabled(on: Boolean, remember: Boolean = false) {
+        if (remember) prefs.edit().putBoolean("enabled", on).apply()
         if (on == _enabled.value && (on == (server != null))) return
         _enabled.value = on
         if (on) start() else stop()
     }
 
     /** Called once the app has started. */
-    fun startIfEnabled() { if (_enabled.value && server == null) start() }
+    fun startIfEnabled(mainProfile: Boolean = true) { if (wanted && mainProfile && server == null) { _enabled.value = true; start() } }
 
     private fun protocol() = LanProtocol(identity, deviceName, trust, data, { _pairingOpen.value }, { digits, name -> ask(digits, name) })
 

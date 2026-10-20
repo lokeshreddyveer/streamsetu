@@ -51,6 +51,8 @@ struct LibrarySettingsPage: View {
 
             ArtworkMatchingGroup()
 
+            ProfilesGroup()
+
             CloudSyncGroup()
 
             LanSyncGroup()
