@@ -53,6 +53,9 @@ final class AppContainer {
     private(set) var cloud: CloudSyncCoordinator!
     private(set) var lan: LanSyncService!
     private(set) var profiles: ProfileService!
+    #if os(macOS)
+    private(set) var scheduledRecordings: ScheduledRecordingService!
+    #endif
     /// Set by the app once its state exists: called (on the main actor) when another device changed something that is on screen.
     var onCloudChange: (@MainActor (SyncApplyResult) -> Void)?
     private(set) var multiView: MultiViewModel!
@@ -171,6 +174,9 @@ final class AppContainer {
         lan = LanSyncService(credentials: credentials, defaults: settings.defaultsStore, data: LanDataAdapter(db: db), deviceName: Self.deviceName) { [weak self] n in
             self?.onCloudChange?(SyncApplyResult(applied: n, tables: ["favorites", "playback_progress", "collections"]))
         }
+        #if os(macOS)
+        scheduledRecordings = ScheduledRecordingService(find: { [catalog] in try catalog.channel(id: $0) }, resolve: { try resolver.resolve(channel: $0) }, defaults: settings.defaultsStore)
+        #endif
         profiles = ProfileService(db: db) { [weak self] _ in self?.profileSwitched() }
         parental.kidsMode = profiles.active.kind == .kids
         applySettings()
@@ -200,7 +206,11 @@ final class AppContainer {
     }
 
     /// Begins syncing when the person has switched it on. Call once the app has started.
-    func startCloudIfEnabled() async { await updateCloudSync(); lan.setEnabled(settings.lanSync && profiles.isMainActive) }
+    func startCloudIfEnabled() async {
+        #if os(macOS)
+        scheduledRecordings.start()
+        #endif
+        await updateCloudSync(); lan.setEnabled(settings.lanSync && profiles.isMainActive) }
 
     /// Carries on reading who is in the movies, a little at a time (see `PeopleIndexService`).
     func startPeopleIndex() { people.start() }

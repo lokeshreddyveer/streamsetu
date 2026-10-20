@@ -72,6 +72,7 @@ struct ProgramPopover: View {
     @Environment(AppState.self) private var state
     @Environment(AppSettings.self) private var settings
     @State private var hasReminder = false
+    @State private var recording = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
@@ -88,10 +89,16 @@ struct ProgramPopover: View {
                 if program.start > Date() && settings.remindersEnabled {
                     SecondaryButton(title: hasReminder ? "Cancel Reminder" : "Remind Me", symbol: hasReminder ? "bell.slash" : "bell") { toggle() }
                 }
+                if program.end > Date(), let rec = container?.scheduledRecordings {
+                    SecondaryButton(title: recording ? "Cancel Recording" : "Record", symbol: recording ? "stop.circle" : "record.circle") {
+                        if recording { rec.cancel(channelID: channel.id, start: program.start); recording = false }
+                        else if rec.schedule(program: program, channel: channel) { recording = true; state.toasts.show("Will record \(program.title)", symbol: "record.circle", kind: .info) }
+                    }
+                }
             }
         }
         .padding(Spacing.lg).frame(width: 380, alignment: .leading)
-        .task { hasReminder = await container?.reminders.hasReminder(programID: program.id) ?? false }
+        .task { hasReminder = await container?.reminders.hasReminder(programID: program.id) ?? false; recording = container?.scheduledRecordings.isScheduled(channelID: channel.id, start: program.start) ?? false }
     }
 
     private func toggle() {

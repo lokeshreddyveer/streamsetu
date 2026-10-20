@@ -108,6 +108,35 @@ struct DownloadsList: View {
 }
 
 #if os(macOS)
+/// Recordings set up in the guide: what is waiting, what is recording now and how earlier ones ended.
+struct ScheduledRecordingsList: View {
+    @Environment(\.container) private var container
+    var body: some View {
+        if let service = container?.scheduledRecordings, !service.items.isEmpty {
+            ForEach(service.items) { r in
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(r.title).lineLimit(1)
+                        Text("\(r.channelName)  ·  \(r.start.formatted(date: .abbreviated, time: .shortened))  ·  " + status(r)).font(.caption).foregroundStyle(r.state == .failed || r.state == .missed ? Color.orange : Color.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Button(role: .destructive) { service.remove(r.id) } label: { Image(systemName: r.state == .scheduled || r.state == .recording ? "xmark" : "trash") }.accessibilityLabel(r.state == .scheduled ? "Cancel" : "Remove")
+                }.buttonStyle(.borderless)
+            }
+            Text("A scheduled recording opens its own connection to your provider, and the app has to be open at that time. The Mac stays awake while it records.").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+    private func status(_ r: ScheduledRecording) -> String {
+        switch r.state {
+        case .scheduled: return "Waiting"
+        case .recording: return "Recording now"
+        case .done: return "Recorded"
+        case .failed: return r.detail ?? "Did not finish"
+        case .missed: return r.detail ?? "Missed"
+        }
+    }
+}
+
 /// Everything recorded from live channels: play it, reveal it, remove it, and how much room it takes.
 struct RecordingsList: View {
     @Environment(\.container) private var container

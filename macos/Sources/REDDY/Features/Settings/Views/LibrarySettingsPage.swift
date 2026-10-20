@@ -101,6 +101,7 @@ struct LibrarySettingsPage: View {
 
             // MARK: recordings
             SettingsGroup(title: "Recordings", footer: "Live channels recorded while you watched them, kept on this Mac and out of backups. Recording uses the MPV player and the connection you are already watching with, so it needs no second one.") {
+                ScheduledRecordingsList()
                 RecordingsList()
             }
 

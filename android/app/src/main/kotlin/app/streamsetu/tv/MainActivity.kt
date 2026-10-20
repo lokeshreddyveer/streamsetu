@@ -55,7 +55,12 @@ class MainActivity : ComponentActivity() {
                 saved.groupBy { it.seriesId ?: it.itemId }.mapValues { (_, list) -> list.minBy { order.indexOf(it.state) }.let { it.state to it.fraction } }
             }
             androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalWatched provides watched, app.streamsetu.tv.ui.components.LocalDownloadStatus provides downloadStatus, app.streamsetu.tv.ui.components.LocalPartialProgress provides partial) {
-                if (phone) app.streamsetu.tv.ui.phone.PhoneApp(container, nav, onExit = { finish() }) else StreamSetuTV(container, nav, onExit = { finish() })
+                if (phone) androidx.compose.foundation.layout.Box {
+                    app.streamsetu.tv.ui.phone.PhoneApp(container, nav, onExit = { finish() })
+                    var picked by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(profileChosen) }
+                    val many by container.profiles.profiles.collectAsState()
+                    if (!picked && many.size > 1) app.streamsetu.tv.ui.screens.settings.ProfilePickerOverlay(container) { picked = true; profileChosen = true }
+                } else StreamSetuTV(container, nav, onExit = { finish() })
             }
         }
         handle(intent)
