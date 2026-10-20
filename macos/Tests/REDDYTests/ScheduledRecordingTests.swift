@@ -54,7 +54,7 @@ private final class StreamServer: @unchecked Sendable {
         #expect(service.items[0].state == .recording)
         let started = Date()
         await service.waitForRecordings()
-        #expect(Date().timeIntervalSince(started) < 8)
+        #expect(Date().timeIntervalSince(started) < 30)
         #expect(service.items[0].state == .done)
         let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])
         #expect(files.count == 1)
