@@ -116,10 +116,10 @@ struct LibrarySettingsPage: View {
             }
 
             // MARK: people
-            SettingsGroup(title: "Cast and directors", footer: "So you can search for an actor or a director. StreamSetu asks your playlists about one movie at a time, slowly and never while something is playing, and keeps what it learns. Searching for a name finds the titles read so far.") {
+            SettingsGroup(title: "Cast and directors", footer: "So you can search for an actor or a director. StreamSetu asks your playlists slowly in the background, never while something is playing, and keeps what it learns. Read Cast Now goes four at a time until it is done or you start something playing. Searching for a name finds the titles read so far.") {
                 SettingsValueRow(title: "Movies read", value: "\(n(people.done)) of \(n(people.total))")
                 SettingsActions {
-                    Button { container?.startPeopleIndex(); Task { try? await Task.sleep(nanoseconds: 3_000_000_000); refreshPeople() } } label: { Label("Read More Now", systemImage: "person.2") }
+                    Button { container?.startPeopleIndex(fast: true); Task { try? await Task.sleep(nanoseconds: 3_000_000_000); refreshPeople() } } label: { Label("Read Cast Now", systemImage: "person.2") }
                         .disabled(people.done >= people.total)
                 }
             }

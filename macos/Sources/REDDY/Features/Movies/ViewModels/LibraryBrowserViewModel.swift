@@ -31,6 +31,8 @@ final class LibraryBrowserViewModel {
     let kind: ContentKind
     private(set) var items: [LibraryItem] = []
     private(set) var total = 0
+    /// While searching: titles that matched because of somebody in them, with who ("Cast: Mahesh Babu").
+    private(set) var matchNotes: [String: String] = [:]
     private(set) var loading = false
     private(set) var hasMore = false
     private(set) var hero: LibraryItem?
@@ -95,6 +97,15 @@ final class LibraryBrowserViewModel {
         }.value
         guard gen == generation else { return }
         items = page; total = count; hasMore = page.count == pageSize; hero = heroItem; progress = [:]; loading = false
+        await refreshNotes(c)
+    }
+
+    private func refreshNotes(_ c: AppContainer) async {
+        let term = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !term.isEmpty else { matchNotes = [:]; return }
+        let shown = items.map { (id: $0.id, title: $0.title) }
+        let notes = await Task.detached { PeopleIndex(db: c.db).matchNotes(term: term, items: shown) }.value
+        if term == search.trimmingCharacters(in: .whitespacesAndNewlines) { matchNotes = notes }
     }
 
     private func loadContinue(_ c: AppContainer, source: UUID?, gen: Int) async {

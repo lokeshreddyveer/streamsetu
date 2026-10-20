@@ -228,7 +228,7 @@ final class AppContainer {
         await updateCloudSync(); lan.setEnabled(settings.lanSync && profiles.isMainActive) }
 
     /// Carries on reading who is in the movies, a little at a time (see `PeopleIndexService`).
-    func startPeopleIndex() { people.start() }
+    func startPeopleIndex(fast: Bool = false) { people.start(fast: fast) }
 
     /// Makes iCloud sync and the login storage match the two switches in Settings.
     func updateCloudSync() async {

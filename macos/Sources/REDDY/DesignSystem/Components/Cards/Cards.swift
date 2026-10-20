@@ -60,7 +60,7 @@ struct PosterArt: View {
 struct PosterCardModel: Identifiable, Hashable {
     let id: String
     let title: String
-    let subtitle: String
+    var subtitle: String
     let imageURL: String?
     var tag: String?
     var rank: Int?

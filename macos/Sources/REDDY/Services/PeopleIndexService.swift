@@ -23,40 +23,68 @@ final class PeopleIndexService: Sendable {
 
     var progress: (done: Int, total: Int) { index.progress() }
 
-    /// Starts a pass unless one is running. Safe to call as often as is convenient.
-    func start() {
+    /// Starts a pass unless one is running. Safe to call as often as is convenient. `fast` asks four at a time with short pauses (the person pressed "Read Cast Now"); the
+    /// default is the slow, polite pace. Either way it waits while something plays, and a playlist that keeps failing is left alone.
+    func start(fast: Bool = false) {
         guard running.begin() else { return }
-        Task.detached(priority: .background) { [self] in
+        Task.detached(priority: fast ? .utility : .background) { [self] in
             defer { running.end() }
-            await run()
+            await run(fast: fast)
         }
     }
 
-    private func run() async {
+    private enum Outcome: Sendable { case learned, nothingToLearn, failed, cancelled }
+
+    private func learn(_ id: String, _ sourceID: UUID) async -> Outcome {
+        guard let movie = try? catalog.movie(id: id), let source = try? catalog.source(id: sourceID) else { index.markDone(itemID: id, sourceID: sourceID); return .nothingToLearn }
+        do {
+            let detail = try await sources.makeProvider(for: source).movieDetail(movie)
+            try? indexer.saveMovieDetail(id: id, detail: detail)          // the story, genre and length it also carries are kept too
+            try index.save(itemID: id, kind: .movie, sourceID: sourceID, names: (detail.extras?.cast ?? []) + (detail.extras?.directors ?? []))
+            return .learned
+        } catch is CancellationError { return .cancelled }
+        catch SourceError.unsupported(_) { index.markDone(itemID: id, sourceID: sourceID); return .nothingToLearn }          // this kind of playlist has no details: nothing to learn
+        catch { return .failed }
+    }
+
+    private func run(fast: Bool) async {
         var failures: [UUID: Int] = [:]
         var giveUp = Set<UUID>()
+        let width = fast ? 4 : 1
         while !Task.isCancelled {
             if await busy() { try? await Task.sleep(nanoseconds: 8_000_000_000); continue }
-            let batch = index.pendingMovies(limit: 8).filter { !giveUp.contains($0.sourceID) }
+            let batch = index.pendingMovies(limit: fast ? 24 : 8).filter { !giveUp.contains($0.sourceID) }
             if batch.isEmpty { return }
-            for (id, sourceID) in batch {
-                if Task.isCancelled { return }
-                if await busy() { break }
-                guard let movie = try? catalog.movie(id: id), let source = try? catalog.source(id: sourceID) else { index.markDone(itemID: id, sourceID: sourceID); continue }
-                do {
-                    let detail = try await sources.makeProvider(for: source).movieDetail(movie)
-                    try? indexer.saveMovieDetail(id: id, detail: detail)          // the story, genre and length it also carries are kept too
-                    try index.save(itemID: id, kind: .movie, sourceID: sourceID, names: (detail.extras?.cast ?? []) + (detail.extras?.directors ?? []))
-                    failures[sourceID] = 0
-                } catch is CancellationError { return }
-                catch SourceError.unsupported(_) { index.markDone(itemID: id, sourceID: sourceID) }          // this kind of playlist has no details: nothing to learn
-                catch {
+            var next = 0
+            let results: [(UUID, Outcome)] = await withTaskGroup(of: (UUID, Outcome)?.self) { group in
+                func add() {
+                    guard next < batch.count else { return }
+                    let (id, sourceID) = batch[next]; next += 1
+                    group.addTask { [self] in
+                        if Task.isCancelled { return nil }
+                        if await busy() { return nil }
+                        let r = await learn(id, sourceID)
+                        try? await Task.sleep(nanoseconds: fast ? 40_000_000 : 350_000_000)
+                        return (sourceID, r)
+                    }
+                }
+                for _ in 0..<width { add() }
+                var out: [(UUID, Outcome)] = []
+                while let r = await group.next() { if let r { out.append(r) }; add() }
+                return out
+            }
+            if results.contains(where: { $0.1 == .cancelled }) { return }
+            if results.isEmpty { try? await Task.sleep(nanoseconds: 2_000_000_000); continue }          // everything waited for playback
+            for (sourceID, r) in results {
+                switch r {
+                case .learned: failures[sourceID] = 0
+                case .failed:
                     failures[sourceID, default: 0] += 1
                     if failures[sourceID, default: 0] >= 4 { giveUp.insert(sourceID) }                    // struggling: leave it until the next pass
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                default: break
                 }
-                try? await Task.sleep(nanoseconds: 350_000_000)
             }
+            if results.contains(where: { $0.1 == .failed }) { try? await Task.sleep(nanoseconds: 2_000_000_000) }
             if batch.allSatisfy({ giveUp.contains($0.sourceID) }) { return }
         }
     }

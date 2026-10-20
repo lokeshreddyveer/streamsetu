@@ -71,4 +71,21 @@ struct PeopleIndex: Sendable {
         }) ?? []
         return found.filter { kinds.contains($0.kind) }
     }
+
+    /// For a search, which of these titles matched because of somebody in them and not because of their name: "Cast: Mahesh Babu". Titles whose own name has every word are left out.
+    func matchNotes(term: String, items: [(id: String, title: String)]) -> [String: String] {
+        let words = Self.norm(term).split(separator: " ").map(String.init)
+        guard words.joined().count >= 3, !items.isEmpty else { return [:] }
+        let needing = items.filter { item in let t = Self.norm(item.title); return !words.allSatisfy { t.contains($0) } }
+        guard !needing.isEmpty else { return [:] }
+        var out: [String: String] = [:]
+        for chunk in stride(from: 0, to: needing.count, by: 80).map({ Array(needing[$0..<min($0 + 80, needing.count)]) }) {
+            var sql = "SELECT item_id, name FROM people WHERE item_id IN (" + chunk.map { _ in "?" }.joined(separator: ",") + ")"
+            var args: [(any SQLConvertible)?] = chunk.map { $0.id }
+            for w in words { sql += " AND (norm LIKE ? OR norm LIKE ?)"; args.append(w + "%"); args.append("% " + w + "%") }
+            let rows = (try? db.read { c in try c.query(sql, args) { ($0.string(0), $0.string(1)) } }) ?? []
+            for (id, name) in rows where out[id] == nil { out[id] = "Cast: " + name }
+        }
+        return out
+    }
 }
