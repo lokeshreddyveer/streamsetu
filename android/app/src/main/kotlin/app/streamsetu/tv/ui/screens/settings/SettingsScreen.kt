@@ -122,7 +122,7 @@ fun SettingsPanel(current: Category, c: AppContainer, nav: Navigator) {
         Category.VIDEO -> VideoSettings(c)
         Category.AUDIO -> AudioSettings(c)
         Category.SUBTITLES -> SubtitleSettings(c)
-        Category.LIVE -> { LiveSettings(c); RemindersSettings(c); ScheduledRecordingsSettings(c) }
+        Category.LIVE -> { LiveSettings(c); RemindersSettings(c); GuideAlertsSettings(c); ScheduledRecordingsSettings(c) }
         Category.CHANNELS -> ChannelManagerSettings(c)
         Category.STATISTICS -> StatisticsSettings(c)
         Category.LIBRARIES -> LibrarySettings(c, nav)

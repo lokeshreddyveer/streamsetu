@@ -58,6 +58,9 @@ class AppContainer @Inject constructor(
     /** Keeps favourites, Watch Later, collections and resume points in step with the person's other devices on the same Wi-Fi. */
     val lan: app.streamsetu.tv.sync.LanSyncService by lazy { app.streamsetu.tv.sync.LanSyncService(context, appScope, db) }
 
+    /** Words to watch for in the guide. */
+    val guideAlerts: app.streamsetu.tv.record.GuideAlerts by lazy { app.streamsetu.tv.record.GuideAlerts(context) }
+
     /** Podcasts the person follows. */
     val podcasts: app.streamsetu.tv.sync.PodcastService by lazy { app.streamsetu.tv.sync.PodcastService(context) }
 
@@ -316,6 +319,11 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             if (container.settings.refreshOnStart.value) container.sources.all().filter { !it.draft && it.enabled }.forEach { s ->
                 if (container.playback.current.value == null) runCatching { container.syncWithGuide(s.id) }
             }
+        }
+        container.appScope.launch {
+            // Guide alerts: every 20 minutes, after the screen has settled.
+            kotlinx.coroutines.delay(45_000)
+            while (true) { runCatching { container.guideAlerts.scan(container) }; kotlinx.coroutines.delay(20 * 60_000L) }
         }
         container.appScope.launch {
             // "Delete after watching": a saved title is removed once it was watched to the end, never while something plays.

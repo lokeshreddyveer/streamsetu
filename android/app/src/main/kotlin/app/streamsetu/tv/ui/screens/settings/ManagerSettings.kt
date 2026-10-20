@@ -172,6 +172,24 @@ fun ChannelManagerSettings(c: AppContainer) {
 }
 
 /** The reminders that are set, with a way to cancel each. */
+/** Settings, Live TV: words to watch for in the guide. */
+@Composable
+fun GuideAlertsSettings(c: AppContainer) {
+    val scope = rememberCoroutineScope()
+    val words by c.guideAlerts.words.collectAsState()
+    val found by c.guideAlerts.lastFound.collectAsState()
+    var word by remember { mutableStateOf("") }
+    var msg by remember { mutableStateOf<String?>(null) }
+    SettingGroup("Guide alerts", "Add a word, such as a sport, a team or a show. When a programme with that word is coming up in the next day and a half, you get a reminder a minute before it starts, once.") {
+        words.forEach { w -> ActionRow(w, label = "Remove", confirm = false) { c.guideAlerts.remove(w) } }
+        androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) { TvTextField(word, { word = it }, "Add a word to watch for", Modifier.fillMaxWidth()) }
+        ActionRow("Add", label = "Add", confirm = false, enabled = word.trim().length >= 2) { msg = if (c.guideAlerts.add(word)) null else "That word is already there, or you have 20 already."; if (msg == null) word = "" }
+        ActionRow("Look now", label = "Look", confirm = false) { scope.launch { val n = c.guideAlerts.scan(c); msg = if (n == 0) "Nothing new coming up." else "$n reminder${if (n == 1) "" else "s"} set." } }
+        found.take(5).forEach { InfoRow("Last set up", it) }
+        ResultLine(msg)
+    }
+}
+
 /** Recordings set up in the guide: what is waiting, what is recording and how earlier ones ended. */
 @Composable
 fun ScheduledRecordingsSettings(c: AppContainer) {

@@ -41,6 +41,8 @@ interface CatalogDao {
     @Query("SELECT * FROM channels WHERE categoryId = :categoryId AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name") fun channelsIn(categoryId: String): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE sourceId IN (:sources) AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name LIMIT :limit") fun allChannels(limit: Int, sources: List<String>): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE id = :id") suspend fun channel(id: String): ChannelEntity?
+    /** A visible channel that carries this guide id, for turning a guide entry into something that can be played. */
+    @Query("SELECT c.* FROM channels c JOIN sources s ON s.id = c.sourceId WHERE s.enabled = 1 AND s.draft = 0 AND c.epgId = :epgId AND c.id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY c.sortOrder LIMIT 1") suspend fun channelForGuideId(epgId: String): ChannelEntity?
     /** The same channel (same name, or same guide id) in the person's other enabled connections: what to try when it stops working in its own. */
     @Query("SELECT c.* FROM channels c JOIN sources s ON s.id = c.sourceId WHERE s.enabled = 1 AND s.draft = 0 AND c.sourceId != :sourceId AND (LOWER(c.name) = LOWER(:name) OR (:epgId != '' AND c.epgId = :epgId)) AND c.id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY (LOWER(c.name) = LOWER(:name)) DESC, c.sortOrder LIMIT 6") suspend fun channelCopiesElsewhere(sourceId: String, name: String, epgId: String): List<ChannelEntity>
     /** Every channel of one connection, hidden ones too, for the Channel Manager. */
@@ -98,6 +100,8 @@ interface EpgDao {
     @Query("SELECT * FROM epg WHERE channelEpgId IN (:ids) AND startMs <= :now AND endMs > :now") suspend fun nowFor(ids: List<String>, now: Long): List<EpgEntity>
     @Query("SELECT * FROM epg WHERE channelEpgId IN (:ids) AND endMs > :from AND startMs < :to ORDER BY channelEpgId, startMs") suspend fun window(ids: List<String>, from: Long, to: Long): List<EpgEntity>
     @Query("SELECT COUNT(*) FROM epg") suspend fun count(): Int
+    /** Programmes whose title has the word and that start between the two times, soonest first. */
+    @Query("SELECT * FROM epg WHERE LOWER(title) LIKE '%' || LOWER(:term) || '%' AND startMs > :from AND startMs < :to ORDER BY startMs LIMIT 40") suspend fun matching(term: String, from: Long, to: Long): List<EpgEntity>
     @Query("SELECT MAX(endMs) FROM epg") suspend fun lastEnd(): Long?
 }
 
