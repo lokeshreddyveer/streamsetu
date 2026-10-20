@@ -89,6 +89,8 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
         }
         if (saved.isNotEmpty()) InfoRow("Space used", app.streamsetu.core.data.repo.SavedTitles.size(c.downloads.totalBytes))
         ToggleRow("Only on Wi-Fi", "Off lets downloads use mobile data too.", wifi.value) { c.downloads.wifiOnly = it; wifi.value = it }
+        val deleteAfter = remember { mutableStateOf(c.downloads.deleteWhenWatched) }
+        ToggleRow("Delete after watching", "A saved movie or episode is removed once you have watched it to the end, so the device does not fill up.", deleteAfter.value) { c.downloads.deleteWhenWatched = it; deleteAfter.value = it }
     }
     SettingGroup("Cast and directors", "So you can search for an actor or a director. StreamSetu asks your connections about one movie at a time, slowly and never while something is playing, and keeps what it learns. Searching for a name finds the titles read so far.") {
         val progress by produceState(c.people.progress()) { while (true) { value = c.people.progress(); kotlinx.coroutines.delay(5_000) } }

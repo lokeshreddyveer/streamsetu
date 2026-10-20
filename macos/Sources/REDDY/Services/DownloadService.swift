@@ -19,6 +19,7 @@ final class DownloadService: NSObject, URLSessionDownloadDelegate {
     @ObservationIgnored private var starting: Set<String> = []
     @ObservationIgnored private var watcher: Task<Void, Never>?
     @ObservationIgnored private var lastSaved: [String: Int64] = [:]
+    @ObservationIgnored private var sweeps = 0
 
     /// Where the files are kept. Outside the backup: they can be big and can always be fetched again.
     nonisolated static var folder: URL {
@@ -32,6 +33,12 @@ final class DownloadService: NSObject, URLSessionDownloadDelegate {
     var wifiOnly: Bool {
         get { defaults.object(forKey: "downloads.wifiOnly") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "downloads.wifiOnly") }
+    }
+
+    /// Removes a saved movie or episode once it has been watched to the end, so a phone or Mac does not fill up. Off by default.
+    var deleteWhenWatched: Bool {
+        get { defaults.bool(forKey: "downloads.deleteWatched") }
+        set { defaults.set(newValue, forKey: "downloads.deleteWatched") }
     }
 
     init(db: DatabaseManager, catalog: SQLiteCatalogRepository, resolver: StreamResolver, defaults: UserDefaults = .standard, busy: @escaping @Sendable () async -> Bool) {
@@ -152,6 +159,16 @@ final class DownloadService: NSObject, URLSessionDownloadDelegate {
             heldForPlayback = []
         }
         if !playing { pump() }
+        sweeps += 1
+        if !playing, deleteWhenWatched, sweeps % 8 == 0 { sweepWatched() }
+    }
+
+    /// Deletes the finished downloads whose title has been watched to the end. Nothing is deleted while something plays.
+    func sweepWatched() {
+        let saved = records.filter { $0.state == .done }.map(\.itemID)
+        guard !saved.isEmpty, let watched = try? db.read({ c in try c.query("SELECT item_id FROM watch_progress WHERE completed = 1", []) { $0.string(0) } }) else { return }
+        let finished = Set(watched)
+        for id in saved where finished.contains(id) { remove(id) }
     }
 
     /// Starts the oldest waiting download when none is running.

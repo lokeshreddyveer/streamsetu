@@ -11,6 +11,7 @@ struct DownloadsView: View {
             if let d = container?.downloads {
                 Section {
                     Toggle("Only on Wi-Fi", isOn: Binding(get: { d.wifiOnly }, set: { d.wifiOnly = $0 }))
+                    Toggle("Delete after watching", isOn: Binding(get: { d.deleteWhenWatched }, set: { d.deleteWhenWatched = $0 }))
                     if !d.records.isEmpty { Button("Remove All Downloads", role: .destructive) { confirmRemoveAll = true } }
                 } footer: {
                     Text("Downloads are kept out of your device backup, pause while something is playing, and carry on from where they stopped.")

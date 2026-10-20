@@ -108,6 +108,7 @@ struct LibrarySettingsPage: View {
             // MARK: downloads
             SettingsGroup(title: "Downloads", footer: "Movies and episodes saved on this Mac to watch without a connection. They are kept out of backups and can be removed here at any time. A download pauses while something is playing.") {
                 DownloadsList()
+                if let d = container?.downloads { Toggle("Delete a download after I have watched it", isOn: Binding(get: { d.deleteWhenWatched }, set: { d.deleteWhenWatched = $0 })) }
             }
 
             // MARK: people

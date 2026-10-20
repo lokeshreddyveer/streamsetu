@@ -51,6 +51,14 @@ class Downloads(private val context: Context, private val resolver: app.streamse
     private var lastSaved = HashMap<String, Long>()
 
     /** Downloads over Wi-Fi or a cable only (the default); off lets a phone use mobile data too. */
+    /** Removes a saved title once it has been watched to the end. Off by default. */
+    var deleteWhenWatched: Boolean
+        get() = prefs.getBoolean("deleteWatched", false)
+        set(v) { prefs.edit().putBoolean("deleteWatched", v).apply() }
+
+    /** Removes the finished downloads whose title was watched to the end ([watched] holds those ids). */
+    fun sweepWatched(watched: Set<String>) { _items.value.filter { it.state == SaveState.DONE && it.itemId in watched }.forEach { remove(it.itemId) } }
+
     var wifiOnly: Boolean
         get() = prefs.getBoolean("wifiOnly", true)
         set(v) { prefs.edit().putBoolean("wifiOnly", v).apply() }

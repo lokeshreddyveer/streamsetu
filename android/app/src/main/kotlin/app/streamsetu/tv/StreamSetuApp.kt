@@ -306,6 +306,15 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             }
         }
         container.appScope.launch {
+            // "Delete after watching": a saved title is removed once it was watched to the end, never while something plays.
+            while (true) {
+                kotlinx.coroutines.delay(60_000)
+                if (!container.downloads.deleteWhenWatched || container.playback.current.value != null) continue
+                val watched = runCatching { container.db.openHelper.readableDatabase.query("SELECT itemId FROM progress WHERE completed = 1").use { c -> buildSet { while (c.moveToNext()) add(c.getString(0)) } } }.getOrDefault(emptySet())
+                container.downloads.sweepWatched(watched)
+            }
+        }
+        container.appScope.launch {
             // The language chosen in Settings (Appearance), now and whenever it changes.
             container.ui.language.collect { setting -> kotlinx.coroutines.withContext(Dispatchers.Main) { app.streamsetu.tv.ui.i18n.I18n.apply(this@StreamSetuApp, setting) } }
         }
