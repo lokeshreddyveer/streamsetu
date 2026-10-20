@@ -295,6 +295,7 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             val u = container.ui
             SoundSettings(u.soundsEnabled.value, u.soundTheme.value, u.soundVolume.value, u.navTones.value, u.selectionTones.value, u.confirmationTones.value, u.errorTones.value, u.soundsDuringPlayback.value)
         }, videoPlaying = { container.playback.current.value != null && container.playback.state.value == app.streamsetu.core.playback.PlaybackState.Playing })
+        app.streamsetu.tv.record.ScheduledRecordings.rearm(this)
         container.lan.startIfEnabled(container.profiles.isMainActive)
         CrashReporter.install(this, runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?")
         container.appScope.launch {

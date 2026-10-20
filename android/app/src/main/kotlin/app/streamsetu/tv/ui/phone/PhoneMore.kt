@@ -128,6 +128,13 @@ fun PhoneGuide(c: AppContainer, nav: Navigator, vm: GuideViewModel = hiltViewMod
                 if (android.os.Build.VERSION.SDK_INT >= 33 && remindContext.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                 remindScope.launch { val ok = app.streamsetu.tv.Reminders.schedule(c, remindContext, ch, p); android.widget.Toast.makeText(remindContext, if (ok) "You will be reminded a minute before" else "That starts too soon to remind", android.widget.Toast.LENGTH_SHORT).show() }
             })
+            if (p.endMs > System.currentTimeMillis()) {
+                val recorded = app.streamsetu.tv.record.ScheduledRecordings.isScheduled(ch.id, p.startMs)
+                add(SheetItem(if (recorded) "Cancel recording" else "Record", Icons.Filled.FiberManualRecord) {
+                    if (recorded) app.streamsetu.tv.record.ScheduledRecordings.cancel(remindContext, app.streamsetu.tv.record.ScheduledRecordings.idOf(ch.id, p.startMs))
+                    else { app.streamsetu.tv.record.ScheduledRecordings.schedule(remindContext, ch, p); android.widget.Toast.makeText(remindContext, "Will record " + p.title, android.widget.Toast.LENGTH_SHORT).show() }
+                })
+            }
         },
             onClose = { detail = null }, subtitle = "${time.format(Date(p.startMs))} – ${time.format(Date(p.endMs))}" + (p.description?.takeIf { it.isNotBlank() }?.let { "\n$it" } ?: ""))
     }

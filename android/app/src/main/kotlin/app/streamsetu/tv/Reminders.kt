@@ -86,6 +86,7 @@ class BootReceiver : BroadcastReceiver() {
             runCatching {
                 val db = EntryPointAccessors.fromApplication(context.applicationContext, SyncEntryPoint::class.java).container().db
                 db.extras().pruneReminders(System.currentTimeMillis()); db.extras().remindersNow().forEach { Reminders.arm(context, it) }
+                app.streamsetu.tv.record.ScheduledRecordings.rearm(context)
             }
             pending.finish()
         }

@@ -172,6 +172,23 @@ fun ChannelManagerSettings(c: AppContainer) {
 }
 
 /** The reminders that are set, with a way to cancel each. */
+/** Recordings set up in the guide: what is waiting, what is recording and how earlier ones ended. */
+@Composable
+fun ScheduledRecordingsSettings(c: AppContainer) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) { app.streamsetu.tv.record.ScheduledRecordings.load(context) }
+    val list by app.streamsetu.tv.record.ScheduledRecordings.items.collectAsState()
+    val time = remember { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT) }
+    SettingGroup("Scheduled recordings", "Open the TV Guide, choose a programme and pick Record. The programme is saved to this device while it is on, with a minute of padding either side. It needs a connection of its own to your provider, and Android may ask to allow alarms.") {
+        if (list.isEmpty()) InfoRow("Nothing scheduled", "")
+        list.forEach { r ->
+            val status = when (r.state) { "scheduled" -> "Waiting"; "recording" -> "Recording now"; "done" -> "Recorded"; else -> r.detail ?: "Did not finish" }
+            ActionRow(r.title, "${r.channelName} · ${time.format(Date(r.startMs))} · $status", if (r.state == "scheduled" || r.state == "recording") "Cancel" else "Remove", confirm = false) { app.streamsetu.tv.record.ScheduledRecordings.cancel(context, r.id) }
+        }
+        if (list.any { it.state != "scheduled" && it.state != "recording" }) ActionRow("Clear finished", label = "Clear", confirm = false) { app.streamsetu.tv.record.ScheduledRecordings.clearFinished(context) }
+    }
+}
+
 @Composable
 fun RemindersSettings(c: AppContainer) {
     val context = androidx.compose.ui.platform.LocalContext.current
