@@ -10,13 +10,14 @@ enum AppTab: String, CaseIterable, Identifiable, Sendable {
 
 /// Fixed shortcuts pinned at the top of a tab's sidebar.
 enum Shortcut: String, Hashable, Sendable {
-    case discover, continueWatching, recentlyWatched, watchHistory, favorites, watchLater, collections
+    case tonight, discover, continueWatching, recentlyWatched, watchHistory, favorites, watchLater, collections
     case featured, allMovies, recentlyAdded, library, allChannels, statistics
     /// Smart lists: made by rules from what the library holds and what has been played, never typed in.
     case unwatched, unwatchedFavorites, addedThisMonth, newEpisodes
 
     var title: String {
         switch self {
+        case .tonight: "Tonight"
         case .discover: "Discover"
         case .continueWatching: "Continue Watching"
         case .recentlyWatched: "Recently Watched"
@@ -39,6 +40,7 @@ enum Shortcut: String, Hashable, Sendable {
 
     var symbol: String {
         switch self {
+        case .tonight: "moon.stars"
         case .discover, .featured: "sparkle"
         case .continueWatching: "play"
         case .recentlyWatched, .recentlyAdded: "clock.arrow.circlepath"
@@ -57,7 +59,7 @@ enum Shortcut: String, Hashable, Sendable {
 
     static func pinned(for tab: AppTab) -> [Shortcut] {
         switch tab {
-        case .home: [.discover, .continueWatching, .recentlyWatched, .watchHistory, .favorites, .watchLater, .collections, .statistics]
+        case .home: [.discover, .tonight, .continueWatching, .recentlyWatched, .watchHistory, .favorites, .watchLater, .collections, .statistics]
         case .movies: [.featured, .allMovies, .recentlyAdded, .continueWatching, .favorites, .watchLater, .unwatched, .unwatchedFavorites, .addedThisMonth]
         case .series: [.library, .recentlyAdded, .continueWatching, .favorites, .watchLater, .newEpisodes, .unwatched, .unwatchedFavorites, .addedThisMonth]
         case .liveTV: [.allChannels, .recentlyAdded, .recentlyWatched, .favorites]

@@ -6,6 +6,7 @@ struct HomeScreen: View {
 
     var body: some View {
         switch router.selection {
+        case .shortcut(.tonight): TonightPage()
         case .shortcut(.continueWatching): ContinueWatchingPage()
         case .shortcut(.recentlyWatched): RecentlyWatchedPage()
         case .shortcut(.watchHistory): WatchHistoryPage()

@@ -257,3 +257,5 @@ Services/AccountStatusService.swift
 Features/Settings/Views/SubscriptionsGroup.swift
 Services/KeywordAlertService.swift
 Features/Settings/Views/KeywordAlertsGroup.swift
+Services/TonightService.swift
+Features/Home/Views/TonightPage.swift
