@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.streamsetu.core.ui.motion.LocalReducedMotion
 import app.streamsetu.core.ui.motion.Motion
 import app.streamsetu.tv.ui.theme.Tokens
@@ -67,6 +68,7 @@ fun FeaturedBanner(
     paused: Boolean = false,
     isFavorite: (BannerItem) -> Boolean = { false },
     onToggleFavorite: ((BannerItem) -> Unit)? = null,
+    eyebrow: String = "FEATURED",
 ) {
     if (items.isEmpty()) return
     val reduced = LocalReducedMotion.current
@@ -104,15 +106,22 @@ fun FeaturedBanner(
             }
         }
         // Dark left to right for the text, and a fade into the page below.
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Tokens.background.copy(alpha = 0.96f), Tokens.background.copy(alpha = 0.55f), Color.Transparent))))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Tokens.background.copy(alpha = 0.9f)), startY = height.value * 1.6f)))
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Tokens.background.copy(alpha = 0.97f), 0.42f to Tokens.background.copy(alpha = 0.72f), 0.8f to Color.Transparent)))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Tokens.background)))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Tokens.background.copy(alpha = 0.55f), 0.22f to Color.Transparent)))
 
-        Column(Modifier.align(Alignment.BottomStart).padding(start = startPadding, bottom = 14.dp).widthIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.align(Alignment.BottomStart).padding(start = startPadding, bottom = 22.dp).widthIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.background(Tokens.accent.copy(alpha = 0.16f), RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(6.dp).background(Tokens.accent, RoundedCornerShape(50)))
+                Label(eyebrow, Tokens.eyebrow, Tokens.accent, FontWeight.Bold, letterSpacing = 1.2.sp)
+            }
             AnimatedContent(i, transitionSpec = { fadeIn(tween(if (reduced) 0 else Motion.BANNER)) togetherWith fadeOut(tween(if (reduced) 0 else Motion.BANNER)) }, label = "bannerText") { idx ->
                 val it = items[idx.coerceIn(0, n - 1)]
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Label(it.title, Tokens.display, Tokens.text, FontWeight.Bold, maxLines = 2)
-                    if (it.facts.isNotEmpty()) Label(it.facts.joinToString("  ·  "), Tokens.small, Tokens.textSecondary)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Label(it.title, 36.sp, Tokens.text, FontWeight.ExtraBold, maxLines = 2)
+                    if (it.facts.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        it.facts.forEach { fact -> Label(fact, Tokens.small, Tokens.text, FontWeight.Medium, modifier = Modifier.background(Color(0x26FFFFFF), RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 3.dp)) }
+                    }
                     if (!it.synopsis.isNullOrBlank()) Label(it.synopsis, Tokens.body, Tokens.textSecondary, maxLines = 3)
                 }
             }
@@ -125,7 +134,7 @@ fun FeaturedBanner(
             }
         }
         if (n > 1) Row(Modifier.align(Alignment.BottomEnd).padding(end = Tokens.screenPadding, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            repeat(n) { d -> Box(Modifier.size(width = if (d == i) 16.dp else 5.dp, height = 5.dp).background(if (d == i) Tokens.text else Tokens.text.copy(alpha = 0.35f), RoundedCornerShape(50))) }
+            repeat(n) { d -> Box(Modifier.size(width = if (d == i) 26.dp else 8.dp, height = 4.dp).background(if (d == i) Tokens.accent else Tokens.text.copy(alpha = 0.3f), RoundedCornerShape(50))) }
         }
     }
 }

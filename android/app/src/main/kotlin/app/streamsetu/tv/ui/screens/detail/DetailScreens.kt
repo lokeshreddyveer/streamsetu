@@ -1,5 +1,7 @@
 package app.streamsetu.tv.ui.screens.detail
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -83,8 +85,15 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
         Backdrop(info?.backdrop?.takeIf { it.isNotBlank() } ?: movie.posterUrl, movie.title)
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 40.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
-                Column(Modifier.widthIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Label(movie.title, Tokens.display, Tokens.text, FontWeight.Bold, maxLines = 2)
+              Row(horizontalArrangement = Arrangement.spacedBy(28.dp), verticalAlignment = Alignment.Top) {
+                // The poster, large, as the left half of the page: a title page, not a list of buttons.
+                movie.posterUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                    androidx.compose.foundation.layout.Box(Modifier.width(210.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(Tokens.radiusPanel)).background(Tokens.card)) {
+                        coil.compose.AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                    }
+                }
+                Column(Modifier.widthIn(max = 640.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Label(movie.title, 36.sp, Tokens.text, FontWeight.ExtraBold, maxLines = 2)
                     Label(listOfNotNull(movie.year?.toString(), info?.duration?.takeIf { it.isNotBlank() && it != "00:00:00" }, info?.genre?.takeIf { it.isNotBlank() }, ratingBadge(movie.rating)).joinToString("  ·  "), Tokens.small, Tokens.textSecondary)
                     app.streamsetu.core.data.repo.QualityBadges.from(listOf(movie.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Tokens.small, Tokens.accent, FontWeight.Bold) }
                     FolderPath(c, app.streamsetu.core.model.ContentKind.MOVIE, movie.categoryId, phone = false) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.MOVIE, id) }
@@ -108,6 +117,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
                         TvButton("Edit", { editing = true }, icon = Icons.Filled.Edit)
                     }
                 }
+              }
             }
             if (more) item {
                 Column(Modifier.widthIn(max = 620.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

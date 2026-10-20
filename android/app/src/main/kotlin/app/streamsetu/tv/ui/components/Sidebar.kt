@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.components
 
+import androidx.compose.foundation.border
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -72,11 +73,12 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
     // out of the sidebar to whatever is below it in the page (the folder list), and the sidebar closes behind it.
     val requesters = remember { (Main + Other).associateWith { FocusRequester() } }
     val order = remember { Main + Other }
-    val shape = if (floating) RoundedCornerShape(20.dp) else RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)
+    val shape = if (floating) RoundedCornerShape(20.dp) else RoundedCornerShape(30.dp)
     Column(
-        (if (floating) modifier.padding(start = 16.dp, top = Tokens.safeVertical, bottom = Tokens.safeVertical).wrapContentHeight() else modifier.fillMaxHeight().padding(vertical = Tokens.safeVertical))
+        (if (floating) modifier.padding(start = 16.dp, top = Tokens.safeVertical, bottom = Tokens.safeVertical).wrapContentHeight() else modifier.padding(start = 12.dp).wrapContentHeight())
             .width(width).clip(shape)
-            .background(Color(0xFF090909))
+            .background(Tokens.panel.copy(alpha = 0.94f))
+            .border(1.dp, Tokens.lineStrong, shape)
             // Moving between two entries can report "no focus" for an instant. Gaining focus is immediate; losing it only counts if it lasts, or the panel would hide itself mid-move.
             .onFocusChanged { st ->
                 android.util.Log.d("Nav", "sidebar hasFocus=${st.hasFocus} had=$hadFocus")
@@ -84,7 +86,7 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
                 if (st.hasFocus) { if (!hadFocus) { hadFocus = true; onFocusChange(true) } }
                 else if (hadFocus) lossJob = scope.launch { delay(140); hadFocus = false; onFocusChange(false) }
             }
-            .padding(vertical = 6.dp, horizontal = 4.dp),
+            .padding(vertical = 10.dp, horizontal = 6.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp, if (floating) Alignment.Top else Alignment.CenterVertically),
     ) {
         if (floating) {
@@ -115,7 +117,7 @@ private fun SidebarEntry(t: Tab, selected: Tab, entry: FocusRequester, labelAlph
     val i = order.indexOf(t)
     val up = order.getOrNull(i - 1)?.let { requesters.getValue(it) } ?: FocusRequester.Cancel
     val down = order.getOrNull(i + 1)?.let { requesters.getValue(it) } ?: FocusRequester.Cancel
-    Focusable({ onSelect(t) }, (if (isSel) Modifier.focusRequester(entry) else Modifier).focusRequester(requesters.getValue(t))
+    Focusable({ onSelect(t) }, (if (isSel) Modifier.focusRequester(entry).background(Tokens.accent.copy(alpha = 0.16f), RoundedCornerShape(22.dp)) else Modifier).focusRequester(requesters.getValue(t))
         .focusProperties { this.up = up; this.down = down; this.left = FocusRequester.Cancel }.testTag("sidebar-${t.name}").fillMaxWidth().height(Row.dp), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color(0x26FFFFFF), shape = RoundedCornerShape(12.dp), focusSound = app.streamsetu.tv.UISoundEvent.SIDEBAR_MOVE, selectSound = app.streamsetu.tv.UISoundEvent.NAVIGATE_FORWARD) { f ->
         Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
             // The accent bar sits at the very left; the icon box is the same width in both states, so nothing shifts when the panel widens.

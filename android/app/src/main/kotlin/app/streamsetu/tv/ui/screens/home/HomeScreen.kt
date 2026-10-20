@@ -74,7 +74,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
             item(key = "header") { HomeHeader(libraryName, libraryOk) }
             if (bannerOn && banner.isNotEmpty()) item(key = "banner") {
                 FeaturedBanner(
-                    banner, 280.dp, primaryEntry = entry, startPadding = Tokens.safeHorizontal, intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuOpen,
+                    banner, 360.dp, primaryEntry = entry, startPadding = Tokens.safeHorizontal, intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuOpen,
                     onPrimary = { b -> vm.playableFor(b.id)?.let { p -> if (p is SeriesFeature) nav.open(Overlay.SeriesDetail(p.series)) else play(c, nav, p) } },
                     onDetails = { b -> when (val p = vm.playableFor(b.id)) { is SeriesFeature -> nav.open(Overlay.SeriesDetail(p.series)); is MoviePlayable -> nav.open(Overlay.MovieDetail(p.movie)); else -> {} } },
                     isListed = { b -> b.id in laterIds }, onToggleListed = { b -> vm.toggleWatchLater(b.id, if (vm.playableFor(b.id) is SeriesFeature) ContentKind.SERIES else ContentKind.MOVIE) },
@@ -147,7 +147,10 @@ private fun collectionCategories(nav: Navigator, cols: List<UserCollection>): Li
 private fun LazyListScope.rail(title: String, pad: PaddingValues, content: LazyListScope.() -> Unit) {
     item(key = "rail:$title") {
         Column {
-            Label(title, Tokens.heading, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = Tokens.safeHorizontal, top = 6.dp, bottom = 2.dp))
+            Row(Modifier.padding(start = Tokens.safeHorizontal, top = 10.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.width(4.dp).height(18.dp).background(Tokens.accent, RoundedCornerShape(2.dp)))
+                Label(title, Tokens.title, Tokens.text, FontWeight.Bold)
+            }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = pad, content = content)
         }
     }
