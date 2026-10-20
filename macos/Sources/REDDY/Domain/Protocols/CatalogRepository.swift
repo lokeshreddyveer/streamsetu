@@ -55,6 +55,9 @@ struct VODQuery: Sendable {
     var minRating: Double?
     /// A release decade such as 2010 (2010 to 2019).
     var decade: Int?
+    /// Running time limits in minutes (movies only: a series has no single length). Titles with no known length are left out when one is set.
+    var maxMinutes: Int?
+    var minMinutes: Int?
     /// Titles played to the end, or started and not finished. A series is watched when every episode is.
     var watch: WatchFilter?
     var includeHidden = false

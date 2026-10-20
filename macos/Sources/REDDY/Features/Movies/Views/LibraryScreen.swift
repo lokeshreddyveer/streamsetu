@@ -39,6 +39,14 @@ struct LibraryScreen: View {
                                           onPlay: { play($0.item) }, onInfo: { open($0.item) })
                             .padding(.bottom, 10)
                     }
+                    if !vm.understood.isEmpty {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkle.magnifyingglass").font(.system(size: 11)).foregroundStyle(ColorTokens.textSecondary)
+                            Text("Understood as").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
+                            ForEach(vm.understood, id: \.self) { Text($0).font(Typography.caption).padding(.horizontal, 8).padding(.vertical, 3).background(Color.white.opacity(0.08), in: Capsule()) }
+                            Spacer()
+                        }.padding(.bottom, 8).transition(.opacity)
+                    }
                     content(layout).padding(.bottom, 16).frame(maxWidth: .infinity, alignment: .leading)
                         .animation(AnimationTokens.page, value: vm.loading)
                 }

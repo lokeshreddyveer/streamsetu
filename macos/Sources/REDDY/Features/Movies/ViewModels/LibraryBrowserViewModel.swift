@@ -33,6 +33,8 @@ final class LibraryBrowserViewModel {
     private(set) var total = 0
     /// While searching: titles that matched because of somebody in them, with who ("Cast: Mahesh Babu").
     private(set) var matchNotes: [String: String] = [:]
+    /// What was understood from a sentence typed in the search box ("Telugu · 2024 · under 2 h"); empty when the search is just a title.
+    private(set) var understood: [String] = []
     private(set) var loading = false
     private(set) var hasMore = false
     private(set) var hero: LibraryItem?
@@ -57,8 +59,8 @@ final class LibraryBrowserViewModel {
     var noun: String { kind == .movie ? "movies" : "series" }
     var countText: String { "\(total.formatted()) title\(total == 1 ? "" : "s")" }
 
-    private func query(_ selection: SidebarSelection, source: UUID?, offset: Int, favorites: Bool = false) -> VODQuery {
-        var q = VODQuery(sourceID: source, search: search, sort: sort.vod, limit: pageSize, offset: offset)
+    private func query(_ selection: SidebarSelection, source: UUID?, offset: Int, favorites: Bool = false, natural: NaturalQuery? = nil) -> VODQuery {
+        var q = VODQuery(sourceID: source, search: natural?.text ?? search, sort: sort.vod, limit: pageSize, offset: offset)
         switch selection {
         case .folder(let id): q.categoryID = id
         case .shortcut(.favorites): q.favoritesOnly = true
@@ -71,6 +73,14 @@ final class LibraryBrowserViewModel {
         default: break
         }
         filter.apply(to: &q, kind: kind)
+        if let n = natural, n.isStructured {          // what the sentence said fills in what the filters left open
+            q.language = q.language ?? n.language; q.year = q.year ?? n.year; q.decade = q.decade ?? n.decade; q.quality = q.quality ?? n.quality
+            q.minRating = q.minRating ?? n.minRating; q.maxMinutes = n.maxMinutes; q.minMinutes = n.minMinutes
+            if n.unwatched { q.unwatchedOnly = true }
+            if n.started { q.watch = .started }
+            if n.favorites { q.favoritesOnly = true }
+            if let d = n.addedWithinDays { q.addedWithinDays = d }
+        }
         return q
     }
 
@@ -88,14 +98,24 @@ final class LibraryBrowserViewModel {
             filterOptions = await Task.detached { (try? c.catalog.filterOptions(sourceID: source, kind: kind)) ?? LibraryFilterOptions() }.value
         }
         if !sort.isSupported(by: found, kind: kind) { sort = .recentlyAdded }               // a stored choice the data can't support
-        let q = query(selection, source: source, offset: 0)
-        let (page, count, heroItem) = await Task.detached { () -> ([LibraryItem], Int, LibraryItem?) in
-            let items: [LibraryItem], n: Int
-            if kind == .movie { items = ((try? c.catalog.movies(q)) ?? []).map { .movie($0) }; n = (try? c.catalog.countMovies(q)) ?? items.count }
-            else { items = ((try? c.catalog.series(q)) ?? []).map { .series($0) }; n = (try? c.catalog.countSeries(q)) ?? items.count }
-            return (items, n, nil)
-        }.value
+        var natural = NaturalQuery.parse(search)
+        var q = query(selection, source: source, offset: 0, natural: natural)
+        func run(_ q: VODQuery) async -> ([LibraryItem], Int, LibraryItem?) {
+            await Task.detached { () -> ([LibraryItem], Int, LibraryItem?) in
+                let items: [LibraryItem], n: Int
+                if kind == .movie { items = ((try? c.catalog.movies(q)) ?? []).map { .movie($0) }; n = (try? c.catalog.countMovies(q)) ?? items.count }
+                else { items = ((try? c.catalog.series(q)) ?? []).map { .series($0) }; n = (try? c.catalog.countSeries(q)) ?? items.count }
+                return (items, n, nil)
+            }.value
+        }
+        var (page, count, heroItem) = await run(q)
+        if page.isEmpty, natural.isStructured {          // the sentence found nothing: fall back to the words as a plain title search, so a name that looks like a filter still works
+            natural = NaturalQuery(); natural.text = search
+            q = query(selection, source: source, offset: 0)
+            (page, count, heroItem) = await run(q)
+        }
         guard gen == generation else { return }
+        understood = natural.isStructured ? natural.summary : []
         items = page; total = count; hasMore = page.count == pageSize; hero = heroItem; progress = [:]; loading = false
         await refreshNotes(c)
     }
@@ -132,7 +152,8 @@ final class LibraryBrowserViewModel {
         generation += 1
         let gen = generation, kind = self.kind
         loading = true
-        let q = query(selection, source: source, offset: items.count)
+        let nat = NaturalQuery.parse(search)
+        let q = query(selection, source: source, offset: items.count, natural: understood.isEmpty ? nil : nat)
         let page = await Task.detached { () -> [LibraryItem] in
             kind == .movie ? ((try? c.catalog.movies(q)) ?? []).map { .movie($0) } : ((try? c.catalog.series(q)) ?? []).map { .series($0) }
         }.value

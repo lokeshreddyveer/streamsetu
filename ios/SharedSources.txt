@@ -256,3 +256,4 @@ Domain/Entities/AccountStatus.swift
 Services/AccountStatusService.swift
 Services/KeywordAlertService.swift
 Services/TonightService.swift
+Services/NaturalQuery.swift

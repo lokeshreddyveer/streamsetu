@@ -275,6 +275,8 @@ final class SQLiteCatalogRepository: CatalogRepository {
             sql += " AND (" + terms.map { "(\(alias).title LIKE '%\($0)%' OR \(alias).category_name LIKE '%\($0)%')" }.joined(separator: " OR ") + ")"
         }
         if let rating = q.minRating { sql += " AND CAST(\(alias).rating AS REAL) >= ?"; args.append(rating) }
+        if kind == "movie", let m = q.maxMinutes { sql += " AND \(alias).duration_seconds > 0 AND \(alias).duration_seconds <= ?"; args.append(m * 60) }
+        if kind == "movie", let m = q.minMinutes { sql += " AND \(alias).duration_seconds >= ?"; args.append(m * 60) }
         if let decade = q.decade { sql += " AND \(alias).release_year >= ? AND \(alias).release_year < ?"; args.append(decade); args.append(decade + 10) }
         if let watch = q.watch {
             let finished = kind == "movie"
