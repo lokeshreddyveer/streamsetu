@@ -3,6 +3,15 @@
   <channel>
     <title>StreamSetu</title>
     <item>
+      <title>StreamSetu 2.9.0</title>
+      <pubDate>Tue, 20 Oct 2026 05:46:09 -0000</pubDate>
+      <sparkle:version>291</sparkle:version>
+      <sparkle:shortVersionString>2.9.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[Mac 2.9.0, Android and Fire TV 0.15.0, iPhone and iPad 1.1 (TestFlight build 62): profiles, Tonight, guide alerts, podcasts, scheduled recording, and a widget for iPhone.]]></description>
+      <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/2026.10.20/StreamSetu-2.9.0.dmg" type="application/octet-stream" sparkle:edSignature="ytmTrvYyd6dz2RrCGJ06zb0XVKbh43p2AF6Hh2Ig1sxE9ar7HMIaTmsASJ8+V+hdwTXvAPalDKyDaaq08qk2DQ==" length="67311483"/>
+    </item>
+    <item>
       <title>StreamSetu 2.8.6</title>
       <pubDate>Tue, 20 Oct 2026 03:36:42 -0000</pubDate>
       <sparkle:version>287</sparkle:version>
@@ -92,5 +101,5 @@
       <description><![CDATA[Updates now come from the one StreamSetu repository. If you have an older copy, download this one once; it updates itself from then on.]]></description>
       <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/mac-v2.3.1/StreamSetu-2.3.1.dmg" type="application/octet-stream" sparkle:edSignature="C6eMDAYgR8nLbI0cQYXeeDf/ZITqwbIqLWvhz++8pB6E8Tq9U1ITGr10mGAIOMsW4pkgqoWbtKb2Me6cLZcOAg==" length="64424077"/>
     </item>
-                    </channel>
+                      </channel>
 </rss>
