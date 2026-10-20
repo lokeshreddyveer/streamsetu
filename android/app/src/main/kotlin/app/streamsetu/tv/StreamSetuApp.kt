@@ -249,10 +249,19 @@ class AppContainer @Inject constructor(
         }
     }
 
+    /** A live channel just started: the same channel in the person's other connections is kept as the last resort if this one stops working. */
+    private fun rememberChannelCopies(item: ChannelPlayable) {
+        appScope.launch {
+            val copies = runCatching { catalog.channelCopiesElsewhere(item.channel) }.getOrDefault(emptyList()).map { ChannelPlayable(it) }
+            kotlinx.coroutines.withContext(Dispatchers.Main) { if (playback.current.value?.id == item.id) fallbackCopies = copies }
+        }
+    }
+
     private fun tryNextCopy() {
         val next = fallbackCopies.firstOrNull() ?: return
         fallbackCopies = fallbackCopies.drop(1)
-        android.widget.Toast.makeText(context, "That copy did not play. Trying another.", android.widget.Toast.LENGTH_SHORT).show()
+        val what = if (next is ChannelPlayable) "That channel did not play. Trying it on another playlist." else "That copy did not play. Trying another."
+        android.widget.Toast.makeText(context, what, android.widget.Toast.LENGTH_SHORT).show()
         play(next, listOf(next), keepCopies = true)
     }
 
@@ -260,7 +269,7 @@ class AppContainer @Inject constructor(
         if (!keepCopies) fallbackCopies = emptyList()
         playback.current.value?.takeIf { it.isLive && it.id != item.id }?.let { previousLive = it }
         this.queue = queue
-        if (item is ChannelPlayable) settings.lastChannelId = item.id
+        if (item is ChannelPlayable) { settings.lastChannelId = item.id; if (!keepCopies) rememberChannelCopies(item) }
         queueIndex = queue.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
         UISound.play(UISoundEvent.PLAYBACK_START)
         appScope.launch {

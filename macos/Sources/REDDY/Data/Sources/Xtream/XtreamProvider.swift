@@ -26,6 +26,12 @@ final class XtreamProvider: SourceProvider, PeopleReporting, @unchecked Sendable
                                   outputFormats: info.allowed_output_formats?.values ?? [])
     }
 
+    func accountStatus() async throws -> AccountStatus? {
+        let info = try await client.accountDetails()
+        return AccountStatus(status: info.status?.nonEmpty ?? "Active", expires: info.exp_date?.double.flatMap { $0 > 0 ? Date(timeIntervalSince1970: $0) : nil },
+                             maxConnections: info.max_connections?.int, activeConnections: info.active_cons?.int)
+    }
+
     private func names(_ dtos: [XtreamCategoryDTO]) -> [String: String] {
         Dictionary(dtos.compactMap { d in d.category_id?.nonEmpty.map { ($0, d.category_name?.nonEmpty.map(CategoryNormalizer.clean) ?? "Category \($0)") } },
                    uniquingKeysWith: { a, _ in a })

@@ -93,6 +93,8 @@ protocol CatalogRepository: Sendable {
     func channels(_ q: ChannelQuery) throws -> [Channel]
     func channel(id: String) throws -> Channel?
     func variants(ofChannel id: String) throws -> [(variant: Channel, label: String)]
+    /// Channels with the same name (and guide id, when it has one) in the person's other enabled playlists, best-sorted first: what to try when a channel stops working everywhere in its own playlist.
+    func channelCopiesInOtherPlaylists(of channel: Channel) throws -> [Channel]
     func movies(_ q: VODQuery) throws -> [Movie]
     func movie(id: String) throws -> Movie?
     func series(_ q: VODQuery) throws -> [Series]

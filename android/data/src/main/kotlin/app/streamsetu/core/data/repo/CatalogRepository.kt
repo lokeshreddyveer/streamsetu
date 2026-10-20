@@ -27,6 +27,8 @@ class CatalogRepository(private val db: AppDatabase, private val library: Librar
     fun episodes(seriesId: String): Flow<List<Episode>> = dao.episodes(seriesId).map { l -> l.map { it.toModel() } }
 
     suspend fun channel(id: String) = dao.channel(id)?.toModel()
+    /** The same channel in the person's other enabled connections, best match first. */
+    suspend fun channelCopiesElsewhere(c: Channel): List<Channel> = dao.channelCopiesElsewhere(c.sourceId, c.name, c.epgId.orEmpty()).map { it.toModel() }
     suspend fun movie(id: String) = dao.movie(id)?.toModel()
     suspend fun series(id: String) = dao.series(id)?.toModel()
     suspend fun episode(id: String) = dao.episode(id)?.toModel()

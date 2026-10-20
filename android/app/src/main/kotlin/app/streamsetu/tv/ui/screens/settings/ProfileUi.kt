@@ -78,7 +78,7 @@ fun ProfileSettings(c: AppContainer) {
                 if (p.id != app.streamsetu.core.data.db.Profiles.MAIN) ActionRow("Remove ${p.name}", "Deletes this profile's favorites, collections and history.", label = "Remove", danger = true) { c.profiles.remove(p.id) }
             }
         }
-        ActionRow("Add a profile", label = "Add", confirm = false, enabled = profiles.size < 8) { adding = !adding }
+        ActionRow("Add a profile", if (profiles.size >= app.streamsetu.core.data.db.Profiles.MAX) "Four profiles is the most." else null, label = "Add", confirm = false, enabled = profiles.size < app.streamsetu.core.data.db.Profiles.MAX) { adding = !adding }
     }
     if (adding) SettingGroup("New profile") {
         Box(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) { TvTextField(name, { name = it }, "Name", Modifier.fillMaxWidth()) }

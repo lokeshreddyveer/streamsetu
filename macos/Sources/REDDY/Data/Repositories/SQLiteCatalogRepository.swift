@@ -222,6 +222,18 @@ final class SQLiteCatalogRepository: CatalogRepository {
         return try rows.compactMap { r in try channel(id: r.id).map { (variant: $0, label: r.label) } }
     }
 
+    func channelCopiesInOtherPlaylists(of channel: Channel) throws -> [Channel] {
+        guard !channel.normalizedName.isEmpty else { return [] }
+        let ids: [String] = try db.read { c in
+            try c.query("""
+                SELECT ch.id FROM channels ch JOIN sources s ON s.id=ch.source_id AND s.enabled=1
+                WHERE ch.source_id != ? AND (ch.normalized_name = ? OR (? != '' AND ch.epg_id = ?))
+                ORDER BY (ch.normalized_name = ?) DESC, s.sort_order, ch.sort_order LIMIT 6
+                """, [channel.sourceID.uuidString.lowercased(), channel.normalizedName, channel.epgID ?? "", channel.epgID ?? "", channel.normalizedName]) { $0.string(0) }
+        }
+        return try ids.compactMap { try self.channel(id: $0) }
+    }
+
     // MARK: movies
 
     private static let movieSelect = """

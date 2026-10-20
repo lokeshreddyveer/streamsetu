@@ -41,6 +41,8 @@ interface CatalogDao {
     @Query("SELECT * FROM channels WHERE categoryId = :categoryId AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name") fun channelsIn(categoryId: String): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE sourceId IN (:sources) AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name LIMIT :limit") fun allChannels(limit: Int, sources: List<String>): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE id = :id") suspend fun channel(id: String): ChannelEntity?
+    /** The same channel (same name, or same guide id) in the person's other enabled connections: what to try when it stops working in its own. */
+    @Query("SELECT c.* FROM channels c JOIN sources s ON s.id = c.sourceId WHERE s.enabled = 1 AND s.draft = 0 AND c.sourceId != :sourceId AND (LOWER(c.name) = LOWER(:name) OR (:epgId != '' AND c.epgId = :epgId)) AND c.id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY (LOWER(c.name) = LOWER(:name)) DESC, c.sortOrder LIMIT 6") suspend fun channelCopiesElsewhere(sourceId: String, name: String, epgId: String): List<ChannelEntity>
     /** Every channel of one connection, hidden ones too, for the Channel Manager. */
     @Query("SELECT * FROM channels WHERE sourceId = :sourceId AND name LIKE '%' || :q || '%' ORDER BY sortOrder, name LIMIT :limit") suspend fun managerChannels(sourceId: String, q: String, limit: Int): List<ChannelEntity>
     @Query("SELECT * FROM channels WHERE sourceId = :sourceId AND name = :name LIMIT 1") suspend fun channelByName(sourceId: String, name: String): ChannelEntity?

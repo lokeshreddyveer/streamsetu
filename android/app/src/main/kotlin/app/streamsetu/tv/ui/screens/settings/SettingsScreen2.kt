@@ -67,6 +67,14 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
             ActionRow("Remove ${r.title}", "Deletes the recording from this device.", "Remove", danger = true) { r.file.delete() }
         }
     }
+    SettingGroup("Subscriptions", "When each connection's subscription ends, as the provider reports it. It is read each time the connection is refreshed. You are warned from a week before one ends.") {
+        val list = c.sources.sources.collectAsState(initial = emptyList()).value.filter { !it.draft }
+        val any = list.mapNotNull { s -> c.resolver.accountStatus(s.id)?.let { s to it } }
+        if (any.isEmpty()) InfoRow("Nothing reported yet", "Refresh a connection that signs in with a user name (Xtream) to see its end date.")
+        any.forEach { (src, st) ->
+            InfoRow(src.name, st.summary(), if (st.level() == app.streamsetu.core.data.repo.AccountStatus.Level.FINE) null else "Renew it with your provider before it stops working.")
+        }
+    }
     SettingGroup("Downloads", "Movies and episodes saved on this device to watch without a connection. They pause while something is playing and carry on from where they stopped. Choose Download on a movie or an episode.") {
         val saved by c.downloads.items.collectAsState()
         val wifi = remember { mutableStateOf(c.downloads.wifiOnly) }

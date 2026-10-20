@@ -22,10 +22,15 @@ final class ProfileService {
     enum SwitchResult: Equatable { case switched, needsPIN, wrongPIN, failed }
 
     static let mainID = "main"
+    /// Everyone who shares a device: the first profile and up to three more.
+    static let maxProfiles = 4
     /// The tables that hold one person's own data. Collections come before their items.
-    static let personalTables = ["favorites", "collections", "collection_items", "watch_progress", "watch_history", "recently_watched", "search_history"]
+    static let personalTables = ["favorites", "collections", "collection_items", "watch_progress", "watch_history", "recently_watched", "search_history", "new_episodes"]
+    /// Preferences that belong to one person (the line of titles queued to play next). Each profile keeps its own copy.
+    static let personalDefaultsKeys = ["watchQueue"]
 
     private let db: DatabaseManager
+    private let defaults: UserDefaults
     private let onSwitched: @MainActor (Profile) -> Void
     private(set) var profiles: [Profile] = []
     private(set) var activeID = ProfileService.mainID
@@ -34,9 +39,10 @@ final class ProfileService {
     /// More than one profile exists, so the app asks who is watching and shows the switcher.
     var isShared: Bool { profiles.count > 1 }
     var isMainActive: Bool { activeID == Self.mainID }
+    var canAdd: Bool { profiles.count < Self.maxProfiles }
 
-    init(db: DatabaseManager, onSwitched: @escaping @MainActor (Profile) -> Void = { _ in }) {
-        self.db = db; self.onSwitched = onSwitched
+    init(db: DatabaseManager, defaults: UserDefaults = .standard, onSwitched: @escaping @MainActor (Profile) -> Void = { _ in }) {
+        self.db = db; self.defaults = defaults; self.onSwitched = onSwitched
         reload()
     }
 
@@ -60,7 +66,7 @@ final class ProfileService {
     @discardableResult
     func add(name: String, kind: Profile.Kind, pin: String?) -> Profile? {
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty, profiles.count < 8, !profiles.contains(where: { $0.name.caseInsensitiveCompare(clean) == .orderedSame }) else { return nil }
+        guard !clean.isEmpty, profiles.count < Self.maxProfiles, !profiles.contains(where: { $0.name.caseInsensitiveCompare(clean) == .orderedSame }) else { return nil }
         if kind == .kids, !(pin.map(Self.isValidPIN) ?? false) { return nil }
         if let pin, !Self.isValidPIN(pin) { return nil }
         let id = UUID().uuidString.lowercased()
@@ -108,6 +114,7 @@ final class ProfileService {
             guard checkPIN(needed, pin) else { return .wrongPIN }
         }
         do { try swapData(from: activeID, to: id) } catch { return .failed }
+        swapDefaults(from: activeID, to: id)
         reload()
         onSwitched(active)
         return .switched
@@ -115,6 +122,14 @@ final class ProfileService {
 
     /// Whether leaving the active profile needs a PIN (the person is in a kids profile).
     var leavingNeedsPIN: Bool { active.kind == .kids }
+
+    private func swapDefaults(from: String, to: String) {
+        for key in Self.personalDefaultsKeys {
+            defaults.set(defaults.object(forKey: key), forKey: "\(key).profile.\(from)")
+            if let theirs = defaults.object(forKey: "\(key).profile.\(to)") { defaults.set(theirs, forKey: key) } else { defaults.removeObject(forKey: key) }
+            defaults.removeObject(forKey: "\(key).profile.\(to)")
+        }
+    }
 
     private func columns(_ c: Connection, _ table: String) throws -> [String] {
         try c.query("SELECT name FROM pragma_table_info('\(table)')", []) { $0.string(0) }.filter { !(table == "watch_history" && $0 == "id") }

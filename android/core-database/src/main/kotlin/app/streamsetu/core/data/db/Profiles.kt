@@ -14,8 +14,10 @@ class Profile(val id: String, val name: String, val kids: Boolean, val hasPin: B
  */
 object Profiles {
     const val MAIN = "main"
+    /** Everyone who shares a device: the first profile and up to three more. */
+    const val MAX = 4
     /** The tables that hold one person's own data. Collections come before their items. */
-    val personalTables = listOf("favorites", "collections", "collection_items", "progress", "watch_log", "watch_time")
+    val personalTables = listOf("favorites", "collections", "collection_items", "progress", "watch_log", "watch_time", "new_episodes")
 
     fun create(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS profiles(id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, kids INTEGER NOT NULL DEFAULT 0, pin_salt TEXT, pin_hash TEXT, color INTEGER NOT NULL DEFAULT 0, sort_order INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)")
@@ -38,7 +40,7 @@ object Profiles {
     fun add(db: SupportSQLiteDatabase, name: String, kids: Boolean, pin: String?): Profile? {
         val clean = name.trim()
         val all = list(db)
-        if (clean.isEmpty() || all.size >= 8 || all.any { it.name.equals(clean, ignoreCase = true) }) return null
+        if (clean.isEmpty() || all.size >= MAX || all.any { it.name.equals(clean, ignoreCase = true) }) return null
         if (kids && (pin == null || !validPin(pin))) return null
         if (pin != null && !validPin(pin)) return null
         val id = java.util.UUID.randomUUID().toString()

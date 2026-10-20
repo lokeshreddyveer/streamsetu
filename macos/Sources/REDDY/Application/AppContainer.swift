@@ -54,6 +54,7 @@ final class AppContainer {
     private(set) var lan: LanSyncService!
     private(set) var profiles: ProfileService!
     let podcasts: PodcastService
+    private(set) var accounts: AccountStatusService!
     #if os(macOS)
     private(set) var scheduledRecordings: ScheduledRecordingService!
     #endif
@@ -126,7 +127,7 @@ final class AppContainer {
                                         busy: { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } })
         people = PeopleIndexService(index: PeopleIndex(db: db), catalog: catalog, sources: sources, indexer: indexer,
                                     busy: { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } })
-        watchQueue = WatchQueue(catalog: catalog)
+        watchQueue = WatchQueue(catalog: catalog, defaults: settings.defaultsStore)
         let subtitleCredentials = credentials
         playback.movieCopies = { [catalog] m in (try? catalog.movieCopies(of: m)) ?? [m] }
         playback.subtitleFetcher = { title, year, language, season, episode in
@@ -179,7 +180,8 @@ final class AppContainer {
         #if os(macOS)
         scheduledRecordings = ScheduledRecordingService(find: { [catalog] in try catalog.channel(id: $0) }, resolve: { try resolver.resolve(channel: $0) }, defaults: settings.defaultsStore)
         #endif
-        profiles = ProfileService(db: db) { [weak self] _ in self?.profileSwitched() }
+        accounts = AccountStatusService(catalog: catalog, defaults: settings.defaultsStore, provider: { [sources] in try sources.makeProvider(for: $0) })
+        profiles = ProfileService(db: db, defaults: settings.defaultsStore) { [weak self] _ in self?.profileSwitched() }
         parental.kidsMode = profiles.active.kind == .kids
         applySettings()
     }
@@ -187,6 +189,7 @@ final class AppContainer {
     /// Another profile is now in use: its own data is in place, so screens reload; kids profiles hide the locked folders; sync, which carries the first profile only, pauses.
     private func profileSwitched() {
         parental.kidsMode = profiles.active.kind == .kids
+        watchQueue.reload()
         Task { await updateCloudSync() }
         lan.setEnabled(settings.lanSync && profiles.isMainActive)
         onCloudChange?(SyncApplyResult(applied: 1, tables: ["favorites", "playback_progress", "collections", "profiles"]))
@@ -209,6 +212,7 @@ final class AppContainer {
 
     /// Begins syncing when the person has switched it on. Call once the app has started.
     func startCloudIfEnabled() async {
+        Task { try? await Task.sleep(nanoseconds: 8_000_000_000); await accounts.refresh() }          // when each subscription ends, a little after the first screens are up
         #if os(macOS)
         scheduledRecordings.start()
         #endif

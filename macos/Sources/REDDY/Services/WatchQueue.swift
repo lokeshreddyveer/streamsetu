@@ -12,8 +12,11 @@ final class WatchQueue {
 
     init(catalog: CatalogRepository, defaults: UserDefaults = .standard) {
         self.catalog = catalog; self.defaults = defaults
-        items = (defaults.stringArray(forKey: Self.key) ?? []).compactMap { Self.item(from: $0, catalog: catalog) }
+        reload()
     }
+
+    /// Reads the saved line again (another profile became the active one).
+    func reload() { items = (defaults.stringArray(forKey: Self.key) ?? []).compactMap { Self.item(from: $0, catalog: catalog) } }
 
     /// "movie:<id>" or "series:<id>" to the title, or nil when it is no longer in the library.
     private static func item(from entry: String, catalog: CatalogRepository) -> LibraryItem? {

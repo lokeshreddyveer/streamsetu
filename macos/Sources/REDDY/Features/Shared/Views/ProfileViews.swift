@@ -30,7 +30,7 @@ struct ProfilePicker: View {
         ZStack {
             ColorTokens.background.ignoresSafeArea()
             VStack(spacing: 28) {
-                Text(asking == nil ? "Who's watching?" : "Enter the PIN for \(asking!.name)").font(.system(size: 30, weight: .bold))
+                Text(asking == nil ? "Who's watching?" : (service.leavingNeedsPIN ? "Enter \(service.active.name)'s PIN to leave" : "Enter the PIN for \(asking!.name)")).font(.system(size: 30, weight: .bold)).multilineTextAlignment(.center)
                 if let p = asking {
                     ProfileAvatar(profile: p, size: 84)
                     SecureField("PIN", text: $pin).textFieldStyle(.roundedBorder).frame(width: 160).multilineTextAlignment(.center)
@@ -123,7 +123,7 @@ struct ProfilesList: View {
                     Button("OK") { go(p) }.disabled(pin.count < 4); Button("Cancel") { askFor = nil; pin = "" } }
             }
             if let message { Text(message).font(.callout).foregroundStyle(.secondary) }
-            Button { adding = true } label: { Label("Add a Profile…", systemImage: "plus") }.disabled(service.profiles.count >= 8)
+            Button { adding = true } label: { Label(service.canAdd ? "Add a Profile…" : "Four profiles is the most", systemImage: "plus") }.disabled(!service.canAdd)
         }
         .sheet(isPresented: $adding) { AddProfileSheet(service: service) }
     }

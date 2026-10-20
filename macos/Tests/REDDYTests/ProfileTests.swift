@@ -54,6 +54,35 @@ import Foundation
         #expect(service.remove(kid.id))
     }
 
+    @Test func theQueuedTitlesAndNewEpisodeMarksBelongToTheProfile() throws {
+        let db = try TestSupport.makeDB()
+        let d = UserDefaults(suiteName: "prof.\(UUID())")!
+        let service = ProfileService(db: db, defaults: d)
+        d.set(["movie:a"], forKey: "watchQueue")
+        try db.write { try $0.execute("INSERT INTO new_episodes(episode_id, series_id, discovered_at) VALUES('e1', 's1', 1)") }
+        let other = try #require(service.add(name: "B", kind: .adult, pin: nil))
+        _ = service.switchTo(other.id)
+        #expect(d.stringArray(forKey: "watchQueue") == nil)
+        #expect(try count(db, "new_episodes") == 0)
+        d.set(["series:z"], forKey: "watchQueue")
+        _ = service.switchTo(ProfileService.mainID)
+        #expect(d.stringArray(forKey: "watchQueue") == ["movie:a"])
+        #expect(try count(db, "new_episodes") == 1)
+        _ = service.switchTo(other.id)
+        #expect(d.stringArray(forKey: "watchQueue") == ["series:z"])
+    }
+
+    @Test func noMoreThanFourProfiles() throws {
+        let db = try TestSupport.makeDB()
+        let service = ProfileService(db: db)
+        #expect(service.add(name: "B", kind: .adult, pin: nil) != nil)
+        #expect(service.add(name: "C", kind: .adult, pin: nil) != nil)
+        #expect(service.add(name: "D", kind: .adult, pin: nil) != nil)
+        #expect(!service.canAdd)
+        #expect(service.add(name: "E", kind: .adult, pin: nil) == nil)
+        #expect(service.profiles.count == 4)
+    }
+
     @Test func theActiveProfileSurvivesARelaunch() throws {
         let db = try TestSupport.makeDB()
         let service = ProfileService(db: db)

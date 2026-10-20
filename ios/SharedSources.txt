@@ -252,3 +252,6 @@ Services/ProfileService.swift
 Features/Shared/Views/ProfileViews.swift
 Services/Podcasts.swift
 Features/Files/PodcastsView.swift
+Domain/Entities/AccountStatus.swift
+Services/AccountStatusService.swift
+Features/Settings/Views/SubscriptionsGroup.swift

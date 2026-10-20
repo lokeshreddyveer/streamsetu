@@ -43,6 +43,13 @@ struct XtreamClient: Sendable {
         return info
     }
 
+    /// The account as the panel describes it, without judging it: an expired or disabled account still answers, and that answer is what the person wants to see.
+    func accountDetails() async throws -> XtreamAccountDTO.UserInfo {
+        let data = try await raw(nil, maxBytes: 2 * 1024 * 1024)
+        guard let info = try? JSONDecoder().decode(XtreamAccountDTO.self, from: data).user_info else { throw XtreamError.authFailed }
+        return info
+    }
+
     /// Lists come back as `[...]`; many panels return `false`, `{}` or `null` when a section is empty.
     func list<T: Decodable>(_ action: String, _ extra: [String: String] = [:], as: T.Type = T.self) async throws -> [T] {
         try Self.decodeList(try await raw(action, extra), action: action)

@@ -223,22 +223,39 @@ private struct NavButtonStyle: ButtonStyle {
 /// Floating account menu under the header.
 struct ReddyAccountMenu: View {
     let name: String
-    var onPlaylists: () -> Void
     var onChannelManager: () -> Void
     var onAbout: () -> Void
     enum Restricted { case locked, unlocked }
     /// nil when no PIN is set, so the menu has no parental entry at all.
     var restricted: Restricted?
     var onRestricted: () -> Void = {}
+    /// The profiles on this Mac (more than one once somebody has been added), the one in use, and what to do to pick or add one.
+    var profiles: [Profile] = []
+    var activeProfileID = ""
+    var canAddProfile = true
+    var onPickProfile: (Profile) -> Void = { _ in }
+    var onAddProfile: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(name).font(Typography.rowMedium)
-                Text("Local profile · stored on this Mac").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
+                Text(profiles.count > 1 ? "Profile · \(profiles.first { $0.id == activeProfileID }?.name ?? "")" : "Local profile · stored on this Mac").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
             }.padding(.horizontal, 10).padding(.vertical, 8)
             Divider().overlay(ColorTokens.line).padding(.vertical, 3)
-            item("Manage playlists", "list.bullet.rectangle", onPlaylists)
+            if profiles.count > 1 {
+                ForEach(profiles) { p in
+                    Button { onPickProfile(p) } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: p.id == activeProfileID ? "checkmark.circle.fill" : "person.circle").frame(width: 16).foregroundStyle(p.id == activeProfileID ? ColorTokens.accentDefault : ColorTokens.textSecondary)
+                            Text(p.name + (p.kind == .kids ? "  ·  Kids" : "")).font(Typography.row); Spacer()
+                            if p.hasPIN && p.kind == .adult && p.id != activeProfileID { Image(systemName: "lock.fill").font(.system(size: 10)).foregroundStyle(ColorTokens.textTertiary) }
+                        }.padding(.horizontal, 10).padding(.vertical, 8).contentShape(Rectangle())
+                    }.buttonStyle(MenuRowStyle())
+                }
+            }
+            if canAddProfile { item("Add profile…", "person.badge.plus", onAddProfile) }
+            Divider().overlay(ColorTokens.line).padding(.vertical, 3)
             item("Channel manager", "slider.horizontal.3", onChannelManager)
             SettingsLink { menuLabel("Settings", "gearshape") }.buttonStyle(MenuRowStyle())
             if let restricted {

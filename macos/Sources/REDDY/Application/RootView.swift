@@ -7,7 +7,11 @@ struct RootView: View {
     @State private var picked = ProfilePicked.done
 
     var body: some View {
-        content.overlay { if opening { OpeningAnimation { BrandIcon(size: 104) } onDone: { opening = false }.transition(.opacity) } }
+        // The opening sits beside the content, not on it, so the content changing from "starting" to "ready" never rebuilds it (that cut it short).
+        ZStack {
+            content
+            if opening { OpeningAnimation { BrandIcon(size: 104) } onDone: { opening = false }.transition(.opacity).zIndex(10) }
+        }
     }
 
     private func choosing(_ c: AppContainer) -> Bool { !picked && c.profiles.isShared }
@@ -42,6 +46,8 @@ struct MainShell: View {
     let keys: PlayerKeyMonitor
     let container: AppContainer
     let state: AppState
+    @State private var switchingProfile = false
+    @State private var addingProfile = false
     @State private var program: EPGProgram?
     @State private var nextProgram: EPGProgram?
     @State private var folderQuery = ""
@@ -282,7 +288,7 @@ struct MainShell: View {
     }
 
     private var initials: String {
-        let n = state.libraryName ?? "R"
+        let n = container.profiles.isShared ? container.profiles.active.name : (state.libraryName ?? "R")
         return String(n.prefix(2)).uppercased()
     }
 
@@ -298,13 +304,20 @@ struct MainShell: View {
         }
         if router.accountMenuOpen {
             VStack { HStack { Spacer(); ReddyAccountMenu(name: state.libraryName ?? "StreamSetu",
-                                                         onPlaylists: { router.closeMenus(); router.modal = .playlists },
                                                          onChannelManager: { router.closeMenus(); router.modal = .channelManager },
                                                          onAbout: { router.closeMenus(); router.modal = .about },
                                                          restricted: container.parental.hasPIN ? (container.parental.isUnlocked ? .unlocked : .locked) : nil,
-                                                         onRestricted: { router.closeMenus(); if container.parental.isUnlocked { container.parental.lockNow() } else { router.modal = .unlockRestricted } }) }.padding(.trailing, 14); Spacer() }
+                                                         onRestricted: { router.closeMenus(); if container.parental.isUnlocked { container.parental.lockNow() } else { router.modal = .unlockRestricted } },
+                                                         profiles: container.profiles.profiles, activeProfileID: container.profiles.activeID, canAddProfile: container.profiles.canAdd,
+                                                         onPickProfile: { p in
+                                                             router.closeMenus()
+                                                             if container.profiles.switchTo(p.id) == .needsPIN { switchingProfile = true }     // the picker asks for the PIN
+                                                         },
+                                                         onAddProfile: { router.closeMenus(); addingProfile = true }) }.padding(.trailing, 14); Spacer() }
                 .padding(.top, LayoutTokens.headerHeight - 4).zIndex(4).transition(.opacity)
         }
+        Color.clear.frame(width: 0, height: 0).sheet(isPresented: $addingProfile) { AddProfileSheet(service: container.profiles) }
+        if switchingProfile { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { switchingProfile = false } }.zIndex(12) }
         if let m = router.movie { scrim { router.closeDetail() } ; MovieDetailView(movie: m).dialogFrame().transition(.opacity.combined(with: .scale(scale: 0.98))).zIndex(6) }
         if let s = router.series { scrim { router.closeDetail() } ; SeriesDetailView(series: s).dialogFrame().transition(.opacity.combined(with: .scale(scale: 0.98))).zIndex(6) }
         if let modal = router.modal { modalView(modal) }

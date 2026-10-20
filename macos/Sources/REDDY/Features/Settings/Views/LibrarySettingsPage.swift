@@ -53,6 +53,8 @@ struct LibrarySettingsPage: View {
 
             ProfilesGroup()
 
+            SubscriptionsGroup()
+
             CloudSyncGroup()
 
             LanSyncGroup()

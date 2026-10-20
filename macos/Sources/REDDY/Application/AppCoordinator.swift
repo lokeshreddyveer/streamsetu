@@ -39,6 +39,8 @@ final class AppCoordinator {
             Task.detached { [artwork = c.artwork] in await artwork.trim() }
             phase = .ready                                  // the app opens now; iCloud starts in the background, it is never waited for
             Task { await c.startCloudIfEnabled() }
+            Task { try? await Task.sleep(nanoseconds: 12_000_000_000); await c.accounts.refresh()
+                if let w = c.accounts.warnings().first { s.toasts.show("\(w.sourceName): \(w.text)", symbol: "exclamationmark.triangle.fill", kind: .warning) } }
             Task { try? await Task.sleep(nanoseconds: 20_000_000_000); c.startPeopleIndex() }          // after the first screens are up and playing
             c.autoBackup.runIfDue()
             resumeLastChannelIfWanted(c, s)

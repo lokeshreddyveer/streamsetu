@@ -94,6 +94,14 @@ class StreamResolver(private val sources: SourceRepository, private val credenti
     /** The number of simultaneous streams the account allows, as the provider says it. 0 when unknown. */
     fun rememberMaxConnections(sourceId: String, max: Int) { if (max > 0) prefs.edit().putInt("max.$sourceId", max).apply() }
 
+    /** What the login answer said about the subscription: its state and end date (a Unix time in seconds; 0 or missing means no end date). */
+    fun rememberAccount(sourceId: String, status: String, expSeconds: Long) { prefs.edit().putString("status.$sourceId", status.ifBlank { "Active" }).putLong("exp.$sourceId", if (expSeconds > 0) expSeconds * 1000 else 0).apply() }
+
+    fun accountStatus(sourceId: String): app.streamsetu.core.data.repo.AccountStatus? {
+        val status = prefs.getString("status.$sourceId", null) ?: return null
+        return app.streamsetu.core.data.repo.AccountStatus(status, prefs.getLong("exp.$sourceId", 0), prefs.getInt("max.$sourceId", 0))
+    }
+
     fun remember(sourceId: String, formats: List<String>) { if (formats.isNotEmpty()) prefs.edit().putString(sourceId, formats.joinToString(",")).apply() }
 
     companion object {

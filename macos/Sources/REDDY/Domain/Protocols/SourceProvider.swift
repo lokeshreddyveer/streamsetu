@@ -35,6 +35,8 @@ protocol SourceProvider: Sendable {
     func movieDetail(_ movie: Movie) async throws -> MovieDetail
     func seriesDetail(_ series: Series) async throws -> SeriesDetail
     func epgLocation() -> URL?
+    /// What the provider says about the subscription (when it ends, whether it is active), for providers that say; nil otherwise.
+    func accountStatus() async throws -> AccountStatus?
     func streamURL(kind: ContentKind, ref: String) throws -> URL
     /// Address of a past programme from the provider's archive, or nil when this provider has no catch-up.
     /// `utcOffsetMinutes` is the provider's own clock: archive addresses name the start time in it.
@@ -69,6 +71,7 @@ extension AsyncThrowingStream where Element: Sendable, Failure == Error {
 }
 
 extension SourceProvider {
+    func accountStatus() async throws -> AccountStatus? { nil }
     func resolveLink(kind: ContentKind, ref: String) async throws -> URL { throw SourceError.unsupported("links") }
     func catchupURL(ref: String, start: Date, durationMinutes: Int, utcOffsetMinutes: Int) throws -> URL? { nil }
 }

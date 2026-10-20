@@ -33,7 +33,7 @@ struct OpeningAnimation<Mark: View>: View {
         .task {
             withAnimation(.easeOut(duration: reduceMotion ? 0.2 : 1.0)) { shown = 1 }
             if !reduceMotion { withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { glow = true } }
-            try? await Task.sleep(nanoseconds: reduceMotion ? 500_000_000 : 5_700_000_000)
+            do { try await Task.sleep(nanoseconds: reduceMotion ? 500_000_000 : 5_700_000_000) } catch { return }          // a cancelled wait must not end the opening early
             finish()
         }
     }

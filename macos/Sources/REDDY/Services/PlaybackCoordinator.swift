@@ -944,11 +944,22 @@ final class PlaybackCoordinator {
     private func fallBackToAnotherVariant(after error: PlaybackError) -> Bool {
         guard let c = currentChannel else { return false }
         let all = (try? catalog.variants(ofChannel: c.id)) ?? []
-        guard all.count > 1, let next = VariantFallback.next(variants: all, tried: triedVariants, errorKind: error.kind) else { return false }
-        triedVariants.insert(next.variant.id)
-        diagnostics.record("variant fallback to \(next.label) after \(error.kind.rawValue)")
-        statusMessage = "That stream isn't working. Trying \(next.label)…"
-        play(channel: next.variant, isFallback: true)
+        if all.count > 1, let next = VariantFallback.next(variants: all, tried: triedVariants, errorKind: error.kind) {
+            triedVariants.insert(next.variant.id)
+            diagnostics.record("variant fallback to \(next.label) after \(error.kind.rawValue)")
+            statusMessage = "That stream isn't working. Trying \(next.label)…"
+            play(channel: next.variant, isFallback: true)
+            return true
+        }
+        // Every copy in this playlist has failed: the same channel in another playlist of yours is the last resort. (A login or engine problem, or a busy provider, would not be helped by it.)
+        guard VariantFallback.next(variants: [(variant: c, label: "")], tried: [], errorKind: error.kind) != nil else { return false }
+        let others = (try? catalog.channelCopiesInOtherPlaylists(of: c)) ?? []
+        guard let other = others.first(where: { !triedVariants.contains($0.id) }) else { return false }
+        triedVariants.insert(other.id)
+        let name = ((try? catalog.source(id: other.sourceID)) ?? nil)?.name ?? "another playlist"
+        diagnostics.record("playlist fallback to \(name) after \(error.kind.rawValue)")
+        statusMessage = "That stream isn't working. Trying it on \(name)…"
+        play(channel: other, isFallback: true)
         return true
     }
 

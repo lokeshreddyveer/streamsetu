@@ -81,6 +81,7 @@ struct XtreamAccountDTO: Decodable, Sendable {
         let status: Flex?
         let exp_date: Flex?
         let max_connections: Flex?
+        let active_cons: Flex?
         let allowed_output_formats: FlexList?
     }
     let user_info: UserInfo?
