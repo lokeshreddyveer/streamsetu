@@ -296,8 +296,17 @@ final class SQLiteCatalogRepository: CatalogRepository {
         let term = q.search.trimmingCharacters(in: .whitespacesAndNewlines)
         if !term.isEmpty {
             guard let m = SearchIndexer.ftsQuery(term) else { return false }
-            sql += " AND \(alias).id IN (SELECT d.item_id FROM catalog_fts f JOIN search_docs d ON d.id=f.rowid WHERE catalog_fts MATCH ? AND d.kind='\(kind)')"
+            // A title, or somebody in it: "mahesh babu" finds his films by the cast and directors read from the provider (see PeopleIndex).
+            let words = PeopleIndex.norm(term).split(separator: " ").map(String.init)
+            var byPerson = ""
+            if words.joined().count >= 3 {
+                byPerson = " OR \(alias).id IN (SELECT item_id FROM people WHERE kind='\(kind)'"
+                for w in words { byPerson += " AND (norm LIKE ? OR norm LIKE ?)" }
+                byPerson += ")"
+            }
+            sql += " AND (\(alias).id IN (SELECT d.item_id FROM catalog_fts f JOIN search_docs d ON d.id=f.rowid WHERE catalog_fts MATCH ? AND d.kind='\(kind)')\(byPerson))"
             args.append(m)
+            if !byPerson.isEmpty { for w in words { args.append(w + "%"); args.append("% " + w + "%") } }
         }
         return true
     }

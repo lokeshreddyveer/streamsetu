@@ -15,6 +15,7 @@ struct MoreView: View {
                     NavigationLink { CollectionsView() } label: { LibraryRow(symbol: "square.stack.fill", tint: .indigo, title: "Collections", count: nil) }
                     NavigationLink { HistoryView() } label: { LibraryRow(symbol: "clock.arrow.circlepath", tint: .teal, title: "Watch History", count: nil) }
                     NavigationLink { DownloadsView() } label: { LibraryRow(symbol: "arrow.down.circle.fill", tint: .blue, title: "Downloads", count: nil) }
+                    NavigationLink { TonightView() } label: { LibraryRow(symbol: "moon.stars.fill", tint: .indigo, title: "Tonight", count: nil) }
                     NavigationLink { FilesView() } label: { LibraryRow(symbol: "externaldrive.fill", tint: .gray, title: "Files and Servers", count: nil) }
                 }.listRowBackground(ColorTokens.surface)
                 Section { NavigationLink { StatisticsView() } label: { LibraryRow(symbol: "chart.bar.fill", tint: .green, title: "Statistics", count: nil) } }.listRowBackground(ColorTokens.surface)
@@ -272,6 +273,7 @@ struct SettingsView: View {
                     NavigationLink { LibrarySettingsView() } label: { Label("Library and Guide", systemImage: "books.vertical") }
                     NavigationLink { ArtworkSettingsView() } label: { Label("Artwork and Details", systemImage: "photo.on.rectangle.angled") }
                     NavigationLink { ChannelManagerView() } label: { Label("Channel Manager", systemImage: "slider.horizontal.3") }
+                    NavigationLink { GuideToolsView() } label: { Label("Subscriptions and Alerts", systemImage: "bell.badge") }
                     NavigationLink { ProfilesView() } label: { Label("Profiles", systemImage: "person.2") }
                     NavigationLink { CloudSyncView() } label: { Label("iCloud Sync", systemImage: "icloud") }
                     NavigationLink { LanSyncView() } label: { Label("Sync on this network", systemImage: "wifi") }
