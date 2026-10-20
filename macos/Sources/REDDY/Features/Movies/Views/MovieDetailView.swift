@@ -29,6 +29,7 @@ struct MovieDetailView: View {
                         Text(m.title).font(Typography.display).lineLimit(3)
                         metaLine
                         QualityBadgeRow(texts: [m.title, m.categoryName])
+                        FolderPathButton(name: m.categoryName) { if let id = m.categoryID { router.movie = nil; router.openFolder(.movies, categoryID: id) } }
                         if let o = m.overview { Text(o).font(Typography.body).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true) }
                         else if loading { SkeletonBlock(height: 14); SkeletonBlock(width: 280, height: 14) }
                         actions

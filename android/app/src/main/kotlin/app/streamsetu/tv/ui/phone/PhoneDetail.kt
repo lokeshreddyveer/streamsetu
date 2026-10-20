@@ -81,6 +81,7 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                     Label(movie.title, Ph.title, Tokens.text, FontWeight.Bold, maxLines = 3)
                     Label(listOfNotNull(movie.year?.toString(), info?.duration?.takeIf { it.isNotBlank() && it != "00:00:00" }, info?.genre?.takeIf { it.isNotBlank() }, ratingBadge(movie.rating)).joinToString("  ·  "), Ph.small, Tokens.textSecondary, maxLines = 2)
                     app.streamsetu.core.data.repo.QualityBadges.from(listOf(movie.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Ph.small, Tokens.accent, FontWeight.Bold) }
+                    app.streamsetu.tv.ui.components.FolderPath(c, app.streamsetu.core.model.ContentKind.MOVIE, movie.categoryId, phone = true) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.MOVIE, id) }
                     if (resumable != null) {
                         androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(4.dp).background(Tokens.elevated, RoundedCornerShape(2.dp))) { Box(Modifier.fillMaxWidth(resumable.fraction).fillMaxHeight().background(Tokens.accent, RoundedCornerShape(2.dp))) }
                         Label("${minutes(resumable.durationMs - resumable.positionMs)} min left", Ph.caption, Tokens.textSecondary)
@@ -165,6 +166,7 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                     Label(s.title, Ph.title, Tokens.text, FontWeight.Bold, maxLines = 3)
                     Label(listOfNotNull(s.year?.toString(), if (seasons.isNotEmpty()) "${seasons.size} season${if (seasons.size == 1) "" else "s"}" else null, ratingBadge(s.rating), if (episodes.isNotEmpty()) (if (plan.allFinished) "All watched" else "$watchedCount of ${episodes.size} watched") else null).joinToString("  ·  "), Ph.small, Tokens.textSecondary, maxLines = 2)
                     app.streamsetu.core.data.repo.QualityBadges.from(listOf(s.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Ph.small, Tokens.accent, FontWeight.Bold) }
+                    app.streamsetu.tv.ui.components.FolderPath(c, app.streamsetu.core.model.ContentKind.SERIES, s.categoryId, phone = true) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.SERIES, id) }
                     if (plan.gapBefore && forward != null) Label("Episode ${forward.number - 1} is not available. The next one on offer is episode ${forward.number}.", Ph.small, Tokens.warning, maxLines = 2)
                     Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         val ip = inProgress

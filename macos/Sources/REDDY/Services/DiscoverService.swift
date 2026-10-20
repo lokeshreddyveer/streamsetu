@@ -12,6 +12,9 @@ enum LibraryItem: Identifiable, Hashable, Sendable {
     var backdropURL: String? { switch self { case .movie(let m): m.backdropURL; case .series(let s): s.backdropURL } }
     var overview: String? { switch self { case .movie(let m): m.overview; case .series(let s): s.overview } }
     var isSeries: Bool { if case .series = self { true } else { false } }
+    /// The provider's folder the title is in.
+    var categoryID: String? { switch self { case .movie(let m): m.categoryID; case .series(let s): s.categoryID } }
+    var categoryName: String? { switch self { case .movie(let m): m.categoryName; case .series(let s): s.categoryName } }
     var kind: ContentKind { isSeries ? .series : .movie }
     var sourceID: UUID { switch self { case .movie(let m): m.sourceID; case .series(let s): s.sourceID } }
     var durationSeconds: Double? { if case .movie(let m) = self { m.durationSeconds } else { nil } }

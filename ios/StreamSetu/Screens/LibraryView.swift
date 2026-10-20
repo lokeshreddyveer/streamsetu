@@ -90,6 +90,7 @@ final class LibraryModel {
 struct LibraryView: View {
     let kind: ContentKind
     @Environment(AppState.self) private var state
+    @Environment(IOSRouter.self) private var router
     @Environment(\.container) private var container
     @State private var model: LibraryModel
     @State private var lockedPick: String?
@@ -151,6 +152,9 @@ struct LibraryView: View {
         }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(String(describing: model.filter))-\(model.sort.rawValue)-\(model.shelf.rawValue)-\(state.watchLaterIDs.count)-\(state.favoriteIDs.count)") { if let c = container { await model.reload(c, source: state.activeSourceID) } }
         .onAppear { state.reloadWatched() }
+        .onChange(of: router.pendingFolder?.id, initial: true) { _, _ in
+            if let pending = router.pendingFolder, pending.kind == kind { model.categoryID = pending.id; router.pendingFolder = nil }
+        }
         .task(id: "featured-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") {
             guard let c = container else { return }
             let source = state.activeSourceID, kind = kind

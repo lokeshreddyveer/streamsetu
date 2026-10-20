@@ -7,6 +7,8 @@ import AVKit
 struct DetailView: View {
     let item: LibraryItem
     @Environment(AppState.self) private var state
+    @Environment(IOSRouter.self) private var router
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.container) private var container
     @State private var movie: Movie?
     @State private var detail: SeriesDetail?
@@ -35,6 +37,7 @@ struct DetailView: View {
                     Text(item.title).appFont(26, .bold)
                     Text(meta).appFont(13).foregroundStyle(.secondary)
                     QualityBadgeRow(texts: [item.title, item.genre])
+                    FolderPathButton(name: item.categoryName) { if let id = item.categoryID { dismiss(); router.pendingFolder = (item.kind, id); router.go(item.isSeries ? .series : .movies) } }
                     HStack(spacing: 10) {
                         if item.isSeries {
                             Button { playSeries() } label: { Label(resumeEpisode == nil ? "Play" : "Resume", systemImage: "play.fill").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large)

@@ -87,6 +87,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
                     Label(movie.title, Tokens.display, Tokens.text, FontWeight.Bold, maxLines = 2)
                     Label(listOfNotNull(movie.year?.toString(), info?.duration?.takeIf { it.isNotBlank() && it != "00:00:00" }, info?.genre?.takeIf { it.isNotBlank() }, ratingBadge(movie.rating)).joinToString("  ·  "), Tokens.small, Tokens.textSecondary)
                     app.streamsetu.core.data.repo.QualityBadges.from(listOf(movie.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Tokens.small, Tokens.accent, FontWeight.Bold) }
+                    FolderPath(c, app.streamsetu.core.model.ContentKind.MOVIE, movie.categoryId, phone = false) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.MOVIE, id) }
                     (info?.plot ?: movie.plot)?.takeIf { it.isNotBlank() }?.let { Label(it, Tokens.body, Tokens.textSecondary, maxLines = if (more) 12 else 5) }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                         container?.let { Chip(it) }; Chip(sourceName(movie.sourceId))
@@ -181,6 +182,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                     Label(s.title, Tokens.display, Tokens.text, FontWeight.Bold, maxLines = 2)
                     Label(listOfNotNull(s.year?.toString(), if (seasons.isNotEmpty()) "${seasons.size} season${if (seasons.size == 1) "" else "s"}" else null, ratingBadge(s.rating)).joinToString("  ·  "), Tokens.small, Tokens.textSecondary)
                     app.streamsetu.core.data.repo.QualityBadges.from(listOf(s.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Tokens.small, Tokens.accent, FontWeight.Bold) }
+                    FolderPath(c, app.streamsetu.core.model.ContentKind.SERIES, s.categoryId, phone = false) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.SERIES, id) }
                     s.plot?.takeIf { it.isNotBlank() }?.let { Label(it, Tokens.body, Tokens.textSecondary, maxLines = 4) }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Chip(sourceName(s.sourceId))

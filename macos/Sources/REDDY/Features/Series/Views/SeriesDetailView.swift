@@ -21,6 +21,7 @@ struct SeriesDetailView: View {
                             Text([s.releaseYear.flatMap { s.title.contains(String($0)) ? nil : String($0) }, s.genre ?? s.categoryName, vm.detail.map { "\($0.seasons.count) season\($0.seasons.count == 1 ? "" : "s")" }].compactMap { $0 }.joined(separator: " · "))
                                 .font(Typography.bodyMedium).foregroundStyle(ColorTokens.textSecondary)
                             QualityBadgeRow(texts: [s.title, s.categoryName])
+                            FolderPathButton(name: s.categoryName) { if let id = s.categoryID { router.series = nil; router.openFolder(.series, categoryID: id) } }
                         }.padding(Spacing.section)
                     }
                     IconButton(symbol: "xmark", help: "Close") { router.closeDetail() }.padding(Spacing.lg)
