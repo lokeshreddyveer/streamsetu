@@ -10,5 +10,11 @@
 	<!-- Lets iCloud wake the app to deliver changes made on another device. -->
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- SharePlay: watching a film or a live channel together over FaceTime. -->
+	<key>com.apple.developer.group-session</key>
+	<true/>
+	<!-- Shared with the widgets: what to continue watching. -->
+	<key>com.apple.security.application-groups</key>
+	<array><string>group.app.streamsetu.shared</string></array>
 </dict>
 </plist>

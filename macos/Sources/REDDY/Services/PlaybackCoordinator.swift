@@ -97,6 +97,8 @@ final class PlaybackCoordinator {
     private var powerObservers: [NSObjectProtocol] = []
 
     private var engine: any PlaybackEngine
+    /// The system player behind what is playing now, when it is the one playing (SharePlay keeps it in step with others); nil while another engine plays.
+    var activeAVPlayer: AVPlayer? { (engine as? AVPlayerEngine)?.player }
     private var startTask: Task<Void, Never>?
     private var watchdogTask: Task<Void, Never>?
     private var recoveryTask: Task<Void, Never>?

@@ -658,6 +658,7 @@ struct EpisodeListSheet: View {
 /// What is playing, kept on screen: the picture size, the sound language, the subtitle language, the speed and the player. The sound and
 /// subtitle chips open their choices with one tap, so nothing has to be looked for in a menu.
 struct StreamInfoChips: View {
+    @Environment(\.container) private var container
     let playback: PlaybackCoordinator
     var fill = false
     var setFill: (Bool) -> Void = { _ in }
@@ -673,6 +674,7 @@ struct StreamInfoChips: View {
             audioChip
             subtitleChip
             if !playback.isLive { speedChip }
+            shareChip
             if m.stallCount > 0 { chipLabel("\(m.stallCount) pause\(m.stallCount == 1 ? "" : "s")", "exclamationmark.circle") }
             chipLabel(playback.activeEngine == .mpv ? "MPV" : "Apple", nil)
         }
@@ -733,6 +735,16 @@ struct StreamInfoChips: View {
             }
         } label: { chipLabel(name + " ▾", "captions.bubble") }
             .accessibilityLabel("Subtitles: \(name). Choose another or add a file.")
+    }
+
+    /// Watch Together: shown when the film or channel can be shared over FaceTime.
+    @ViewBuilder private var shareChip: some View {
+        if let c = container, SharePlayService.shared.shareable(c) != nil || SharePlayService.shared.active {
+            Button {
+                if SharePlayService.shared.active { SharePlayService.shared.leave() } else { Task { await SharePlayService.shared.start(c) } }
+            } label: { chipLabel(SharePlayService.shared.active ? "Leave SharePlay" : "Watch Together", "shareplay") }
+                .accessibilityLabel(SharePlayService.shared.active ? "Leave SharePlay" : "Watch together over FaceTime")
+        }
     }
 
     private var speedChip: some View {

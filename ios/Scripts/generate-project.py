@@ -117,6 +117,27 @@ sources_phase_files = []
 shared_group = tree_group("Shared (macOS sources)", shared, SHARED_ROOT, sources_phase_files, "Sources")
 app_group = tree_group("StreamSetu", app_swift, APP_DIR, sources_phase_files, "Sources")
 
+# --- the widget extension: Continue Watching widget and the download Live Activity ----------------------------------------------------
+WIDGET_DIR = "StreamSetuWidgets"
+WIDGET_NAME = "StreamSetuWidgets"
+WIDGET_BUNDLE = BUNDLE_ID + ".widgets"
+widget_swift = sorted(f for f in os.listdir(os.path.join(ROOT, WIDGET_DIR)) if f.endswith(".swift"))
+shared_ref = file_ref("Shared/WidgetShared.swift", tree="SOURCE_ROOT")
+app_shared_build = build_file(shared_ref, "WidgetShared.swift", "Sources")
+sources_phase_files.append(app_shared_build)
+widget_build_files, widget_refs = [], []
+for f in widget_swift:
+    r = file_ref(f"{WIDGET_DIR}/{f}", tree="SOURCE_ROOT")
+    widget_refs.append(r)
+    widget_build_files.append(build_file(r, f, "WidgetSources"))
+widget_build_files.append(build_file(shared_ref, "WidgetShared.swift", "WidgetSources"))
+widget_plist = file_ref(f"{WIDGET_DIR}/Info.plist", kind="text.plist.xml", tree="SOURCE_ROOT")
+widget_ent = file_ref(f"{WIDGET_DIR}/{WIDGET_NAME}.entitlements", kind="text.plist.entitlements", tree="SOURCE_ROOT")
+widget_product = oid("product", "widget")
+add(widget_product, f"{WIDGET_NAME}.appex", f'isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "{WIDGET_NAME}.appex"; sourceTree = BUILT_PRODUCTS_DIR;')
+widget_group = group(WIDGET_NAME, widget_refs + [widget_plist, widget_ent], comment=WIDGET_NAME)
+shared_group2 = group("Shared", [shared_ref])
+
 res_files = []
 res_refs = []
 for r in resources:
@@ -131,8 +152,8 @@ for code in ("en", "hi", "te"):
 plist_ref = file_ref(f"{APP_DIR}/Info.plist", kind="text.plist.xml", tree="SOURCE_ROOT")
 products_ref = oid("product")
 add(products_ref, f"{PROJECT}.app", f'isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{PROJECT}.app"; sourceTree = BUILT_PRODUCTS_DIR;')
-products_group = group("Products", [products_ref])
-main_group = group("Root", [shared_group, app_group] + res_refs + [plist_ref, products_group])
+products_group = group("Products", [products_ref, widget_product])
+main_group = group("Root", [shared_group, app_group, widget_group, shared_group2] + res_refs + [plist_ref, products_group])
 
 sources_phase = oid("phase", "sources")
 add(sources_phase, "Sources", f'isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ({", ".join(sources_phase_files)}); runOnlyForDeploymentPostprocessing = 0;')
@@ -186,6 +207,36 @@ def settings(d):
     return "{" + " ".join(f"{k} = {v};" for k, v in sorted(d.items())) + "}"
 
 
+
+widget_sources = oid("phase", "widget-sources")
+add(widget_sources, "Sources", f'isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ({", ".join(widget_build_files)}); runOnlyForDeploymentPostprocessing = 0;')
+widget_fw = oid("phase", "widget-frameworks")
+add(widget_fw, "Frameworks", 'isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;')
+widget_common = {
+    "APPLICATION_EXTENSION_API_ONLY": "YES",
+    "CODE_SIGN_ENTITLEMENTS": f"{WIDGET_DIR}/{WIDGET_NAME}.entitlements",
+    "CODE_SIGN_STYLE": "Automatic",
+    "CURRENT_PROJECT_VERSION": BUILD,
+    "GENERATE_INFOPLIST_FILE": "NO",
+    "INFOPLIST_FILE": f"{WIDGET_DIR}/Info.plist",
+    "LD_RUNPATH_SEARCH_PATHS": '"$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"',
+    "MARKETING_VERSION": VERSION,
+    "PRODUCT_BUNDLE_IDENTIFIER": WIDGET_BUNDLE,
+    "PRODUCT_NAME": '"$(TARGET_NAME)"',
+    "SKIP_INSTALL": "YES",
+    "SWIFT_EMIT_LOC_STRINGS": "YES",
+}
+if TEAM:
+    widget_common["DEVELOPMENT_TEAM"] = TEAM
+wd, wr = oid("cfg", "widget", "Debug"), oid("cfg", "widget", "Release")
+add(wd, "Debug", f'isa = XCBuildConfiguration; buildSettings = {settings(widget_common)}; name = Debug;')
+add(wr, "Release", f'isa = XCBuildConfiguration; buildSettings = {settings(widget_common)}; name = Release;')
+wl = oid("cfglist", "widget")
+add(wl, f'Build configuration list for PBXNativeTarget "{WIDGET_NAME}"', f'isa = XCConfigurationList; buildConfigurations = ({wd}, {wr}); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')
+widget_target = oid("target", "widget")
+add(widget_target, WIDGET_NAME, f'isa = PBXNativeTarget; buildConfigurationList = {wl}; buildPhases = ({widget_sources}, {widget_fw}); buildRules = (); dependencies = (); name = "{WIDGET_NAME}"; productName = "{WIDGET_NAME}"; productReference = {widget_product}; productType = "com.apple.product-type.app-extension";')
+
+
 pd, pr = oid("cfg", "proj", "Debug"), oid("cfg", "proj", "Release")
 td, tr = oid("cfg", "target", "Debug"), oid("cfg", "target", "Release")
 add(pd, "Debug", f'isa = XCBuildConfiguration; buildSettings = {settings(proj_debug)}; name = Debug;')
@@ -197,12 +248,20 @@ add(pl, f'Build configuration list for PBXProject "{PROJECT}"', f'isa = XCConfig
 add(tl, f'Build configuration list for PBXNativeTarget "{PROJECT}"', f'isa = XCConfigurationList; buildConfigurations = ({td}, {tr}); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')
 
 target = oid("target")
-add(target, PROJECT, f'isa = PBXNativeTarget; buildConfigurationList = {tl}; buildPhases = ({sources_phase}, {fw_phase}, {res_phase}); buildRules = (); dependencies = (); packageProductDependencies = ({pkg_dep}); name = "{PROJECT}"; productName = "{PROJECT}"; productReference = {products_ref}; productType = "com.apple.product-type.application";')
+proxy = oid("proxy", "widget")
+add(proxy, "PBXContainerItemProxy", f'isa = PBXContainerItemProxy; containerPortal = {oid("project")}; proxyType = 1; remoteGlobalIDString = {widget_target}; remoteInfo = "{WIDGET_NAME}";')
+dep = oid("dependency", "widget")
+add(dep, "PBXTargetDependency", f'isa = PBXTargetDependency; target = {widget_target}; targetProxy = {proxy};')
+embed_file = oid("buildfile", "embed", "widget")
+add(embed_file, f"{WIDGET_NAME}.appex in Embed Foundation Extensions", f'isa = PBXBuildFile; fileRef = {widget_product}; settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }};')
+embed_phase = oid("phase", "embed")
+add(embed_phase, "Embed Foundation Extensions", f'isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = ({embed_file}); name = "Embed Foundation Extensions"; runOnlyForDeploymentPostprocessing = 0;')
+add(target, PROJECT, f'isa = PBXNativeTarget; buildConfigurationList = {tl}; buildPhases = ({sources_phase}, {fw_phase}, {res_phase}, {embed_phase}); buildRules = (); dependencies = ({dep});  packageProductDependencies = ({pkg_dep}); name = "{PROJECT}"; productName = "{PROJECT}"; productReference = {products_ref}; productType = "com.apple.product-type.application";')
 project = oid("project")
-add(project, "Project object", f'isa = PBXProject; attributes = {{BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 2700; LastUpgradeCheck = 2700;}}; buildConfigurationList = {pl}; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = {main_group}; packageReferences = ({pkg_ref}); productRefGroup = {products_group}; projectDirPath = ""; projectRoot = ""; targets = ({target});')
+add(project, "Project object", f'isa = PBXProject; attributes = {{BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 2700; LastUpgradeCheck = 2700;}}; buildConfigurationList = {pl}; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = {main_group}; packageReferences = ({pkg_ref}); productRefGroup = {products_group}; projectDirPath = ""; projectRoot = ""; targets = ({target}, {widget_target});')
 
 out = ["// !$*UTF8*$!", "{", "\tarchiveVersion = 1;", "\tclasses = {", "\t};", "\tobjectVersion = 56;", "\tobjects = {"]
-sections = ["XCRemoteSwiftPackageReference", "XCSwiftPackageProductDependency", "PBXBuildFile", "PBXFileReference", "PBXFrameworksBuildPhase", "PBXGroup", "PBXNativeTarget", "PBXProject", "PBXResourcesBuildPhase", "PBXSourcesBuildPhase", "XCBuildConfiguration", "XCConfigurationList"]
+sections = ["XCRemoteSwiftPackageReference", "XCSwiftPackageProductDependency", "PBXBuildFile", "PBXContainerItemProxy", "PBXCopyFilesBuildPhase", "PBXFileReference", "PBXFrameworksBuildPhase", "PBXGroup", "PBXNativeTarget", "PBXProject", "PBXResourcesBuildPhase", "PBXSourcesBuildPhase", "PBXTargetDependency", "XCBuildConfiguration", "XCConfigurationList"]
 for s in sections:
     rows = [(i, c, b) for i, c, b in objs if f"isa = {s};" in b]
     if not rows:

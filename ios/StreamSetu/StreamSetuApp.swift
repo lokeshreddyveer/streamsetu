@@ -32,7 +32,7 @@ struct StreamSetuApp: App {
             }
             .preferredColorScheme(.dark)
             .tint(coordinator.container?.settings.accent.color ?? ColorTokens.accentDefault)
-            .task { CrashCollector.shared.start(); await coordinator.boot() }
+            .task { CrashCollector.shared.start(); await coordinator.boot(); if let c = coordinator.container { WidgetBridge.shared.start(c); SharePlayService.shared.listen(c) { coordinator.open($0) } } }
             .onChange(of: scenePhase) { _, phase in coordinator.scenePhaseChanged(phase) }
         }
     }
