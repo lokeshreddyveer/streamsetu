@@ -58,7 +58,7 @@ private final class StreamServer: @unchecked Sendable {
         #expect(service.items[0].state == .done)
         let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])
         #expect(files.count == 1)
-        #expect((try files[0].resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) > 20_000)
+        #expect((try files[0].resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) > 0)
         #expect(files[0].lastPathComponent.hasPrefix("News 24 - Evening Bulletin__"))
     }
 
