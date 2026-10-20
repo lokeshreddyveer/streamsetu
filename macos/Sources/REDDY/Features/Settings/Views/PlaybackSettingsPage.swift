@@ -105,6 +105,9 @@ struct PlaybackSettingsPage: View {
                 SettingsRow(title: "Resume automatically", detail: s.rememberPosition ? "Continue a partly watched title where it stopped instead of from the start." : "Needs “Remember playback position”.") {
                     Toggle("Resume automatically", isOn: $s.resumeAutomatically).disabled(!s.rememberPosition)
                 }
+                SettingsRow(title: "Play the best version first", detail: "When a film is in your library in several qualities or folders, start with the best one (4K, then 1080p, and never a cinema recording first). If it does not play, the next best is tried.") {
+                    Toggle("Play the best version first", isOn: $s.bestVersionFirst)
+                }
             }
 
             SettingsDisclosure(title: "Advanced video", footer: "These change how MPV processes video. Most people never need them; AVPlayer ignores them.") {

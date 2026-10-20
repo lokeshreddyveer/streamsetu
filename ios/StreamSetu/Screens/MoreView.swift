@@ -168,6 +168,7 @@ struct PlaybackSettingsView: View {
             }.listRowBackground(ColorTokens.surface)
             Section("Resuming") {
                 Toggle("Resume movies and episodes where I stopped", isOn: $s.resumeAutomatically)
+                Toggle("Play the best version of a film first", isOn: $s.bestVersionFirst)
                 Toggle("Remember my position", isOn: $s.rememberPosition)
                 Toggle("Play the next episode automatically", isOn: $s.autoPlayNextEpisode)
             }.listRowBackground(ColorTokens.surface)

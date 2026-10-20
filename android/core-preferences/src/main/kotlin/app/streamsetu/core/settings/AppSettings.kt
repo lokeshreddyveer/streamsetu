@@ -32,6 +32,11 @@ class AppSettings(context: Context) {
     val subtitlesByDefault: StateFlow<Boolean> = _subsDefault
     fun setSubtitlesByDefault(v: Boolean) { prefs.edit().putBoolean("subsDefault", v).apply(); _subsDefault.value = v }
 
+    private val _bestFirst = flow(prefs.getBoolean("bestVersionFirst", true))
+    /** A film that exists in several qualities or folders starts with the best copy; if it does not play, the next best is tried. */
+    val bestVersionFirst: StateFlow<Boolean> = _bestFirst
+    fun setBestVersionFirst(v: Boolean) { prefs.edit().putBoolean("bestVersionFirst", v).apply(); _bestFirst.value = v }
+
     private val _playNext = flow(prefs.getBoolean("playNext", true))
     val playNextAutomatically: StateFlow<Boolean> = _playNext
     fun setPlayNext(v: Boolean) { prefs.edit().putBoolean("playNext", v).apply(); _playNext.value = v }

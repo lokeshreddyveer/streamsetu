@@ -118,6 +118,7 @@ final class AppContainer {
                                     busy: { [playback] in await MainActor.run { playback.state == .playing || playback.state.isBusy } })
         watchQueue = WatchQueue(catalog: catalog)
         let subtitleCredentials = credentials
+        playback.movieCopies = { [catalog] m in (try? catalog.movieCopies(of: m)) ?? [m] }
         playback.subtitleFetcher = { title, year, language, season, episode in
             let account = OnlineSubtitles.Account.load(from: subtitleCredentials)
             guard account.isComplete else { return nil }

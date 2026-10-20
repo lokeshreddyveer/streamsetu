@@ -14,7 +14,8 @@ object LanLog {
         db.execSQL("CREATE TABLE IF NOT EXISTS lan_flag(applying INTEGER NOT NULL)")
         db.execSQL("INSERT INTO lan_flag(applying) SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM lan_flag)")
         val on = "WHEN (SELECT applying FROM lan_flag) = 0"
-        fun put(kind: String, key: String, deleted: Int) = "INSERT OR REPLACE INTO lan_log(kind, key, ts, deleted) VALUES('$kind', $key, $NOW, $deleted);"
+        // An upsert, not INSERT OR REPLACE: SQLite uses the conflict rule of the statement that fired a trigger instead of the trigger's own, which could fail with a UNIQUE error.
+        fun put(kind: String, key: String, deleted: Int) = "INSERT INTO lan_log(kind, key, ts, deleted) VALUES('$kind', $key, $NOW, $deleted) ON CONFLICT(kind, key) DO UPDATE SET ts = excluded.ts, deleted = excluded.deleted;"
         val tables = listOf(
             Triple("favorites", "fav", "%s.itemId || char(1) || %s.listId"),
             Triple("progress", "prog", "%s.itemId"),
@@ -23,6 +24,7 @@ object LanLog {
         )
         for ((table, kind, keyPattern) in tables) {
             fun key(row: String) = keyPattern.replace("%s", row)
+            for (suffix in listOf("ai", "au", "ad")) db.execSQL("DROP TRIGGER IF EXISTS lan_${table}_$suffix")
             db.execSQL("CREATE TRIGGER IF NOT EXISTS lan_${table}_ai AFTER INSERT ON $table $on BEGIN ${put(kind, key("NEW"), 0)} END")
             db.execSQL("CREATE TRIGGER IF NOT EXISTS lan_${table}_au AFTER UPDATE ON $table $on BEGIN ${put(kind, key("OLD"), 1)} ${put(kind, key("NEW"), 0)} END")
             db.execSQL("CREATE TRIGGER IF NOT EXISTS lan_${table}_ad AFTER DELETE ON $table $on BEGIN ${put(kind, key("OLD"), 1)} END")

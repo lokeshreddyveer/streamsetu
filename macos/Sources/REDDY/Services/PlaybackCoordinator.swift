@@ -262,8 +262,19 @@ final class PlaybackCoordinator {
     /// Leaves catch-up and returns to the channel's live stream.
     func goLiveFromCatchup() { if isCatchup, let c = currentChannel { play(channel: c) } }
 
-    func play(movie: Movie, resume: Bool? = nil) {
+    /// Finds the copies of a film in the library (set by the container).
+    var movieCopies: (@Sendable (Movie) -> [Movie])?
+    /// The other copies of the film that was just started, best first: if the one playing fails for good, the next is tried.
+    private var fallbackCopies: [Movie] = []
+
+    func play(movie opened: Movie, resume: Bool? = nil, bestCopy: Bool = true, remaining: [Movie] = []) {
+        var movie = opened, rest = remaining
+        if bestCopy, settings.bestVersionFirst, let find = movieCopies {
+            let ordered = BestVersion.order(find(opened)) { [$0.title, $0.categoryName] }
+            if let first = ordered.first { movie = first; rest = Array(ordered.dropFirst()) }
+        }
         reset(for: .movie)
+        fallbackCopies = rest
         currentMovie = movie
         let shouldResume = resume ?? settings.resumeAutomatically
         begin { try self.resolver.resolve(movie: movie, resume: shouldResume) }
@@ -618,6 +629,7 @@ final class PlaybackCoordinator {
     // MARK: starting
 
     private func reset(for kind: ContentKind) {
+        fallbackCopies = []
         stopRecording()
         saveProgress(force: true)
         endSession(outcome: "switched", error: nil)
@@ -911,6 +923,11 @@ final class PlaybackCoordinator {
             break
         case .giveUp:
             saveProgress(force: true)
+            if !r.isLive, let next = fallbackCopies.first, currentMovie != nil {
+                statusMessage = "That copy did not play. Trying another."
+                play(movie: next, resume: nil, bestCopy: false, remaining: Array(fallbackCopies.dropFirst()))
+                return
+            }
             let container = StreamCapabilities.container(for: r.url, isLive: r.isLive)
             if error.kind == .unsupportedFormat, !factory.available.contains(.mpv), [.mkv, .rtsp, .dash].contains(container) || r.url.pathExtension.lowercased() == "avi" {
                 statusMessage = "This \(r.url.pathExtension.uppercased().isEmpty ? container.rawValue.uppercased() : r.url.pathExtension.uppercased()) video needs the MPV player engine, which isn't included in this build."

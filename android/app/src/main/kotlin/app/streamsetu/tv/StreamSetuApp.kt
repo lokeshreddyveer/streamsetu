@@ -168,6 +168,7 @@ class AppContainer @Inject constructor(
         appScope.launch { runCatching { db.catalog().deleteDividers() } }
         appScope.launch { playback.state.collect { if (it == app.streamsetu.core.playback.PlaybackState.Ended) advanceAfterEnd() } }
         appScope.launch { playback.state.collect { if (it == app.streamsetu.core.playback.PlaybackState.Playing) fetchSubtitleIfWanted() } }
+        appScope.launch { playback.state.collect { if (it is app.streamsetu.core.playback.PlaybackState.Failed) tryNextCopy() } }
         appScope.launch { runCatching { PlexTokenCleanup.run(db.openHelper.writableDatabase) } }
     }
 
@@ -208,7 +209,41 @@ class AppContainer @Inject constructor(
     var previousLive: Playable? = null
     fun lastChannel() { previousLive?.let { play(it, queue) } }
 
-    fun play(item: Playable, queue: List<Playable> = listOf(item), startOver: Boolean = false) {
+    /** The other copies of the title that was just started, best first: if the one playing fails for good, the next is tried. */
+    private var fallbackCopies: List<Playable> = emptyList()
+
+    /** The copies of a film, best first: the film itself when the setting is off or it has no other copy. A tie keeps the one the person opened first. */
+    suspend fun movieCopies(movie: Movie): List<Movie> {
+        if (!settings.bestVersionFirst.value) return listOf(movie)
+        val variants = runCatching { search.movieVariants(movie.title) }.getOrDefault(emptyList())
+        if (variants.size < 2) return listOf(movie)
+        val folderNames = runCatching { folders.folders(ContentKind.MOVIE).first().associate { it.id to it.providerName } }.getOrDefault(emptyMap())
+        val all = listOf(movie) + variants.filter { it.id != movie.id }
+        return app.streamsetu.core.data.repo.BestVersion.order(all) { m -> listOf(m.title, folderNames[m.categoryId]) }
+    }
+
+    /** Starts a film with its best copy, remembering the others to fall back on. */
+    fun playBestMovie(movie: Movie, onStart: (Playable) -> Unit) {
+        appScope.launch {
+            val copies = movieCopies(movie)
+            val chosen = copies.first()
+            kotlinx.coroutines.withContext(Dispatchers.Main) {
+                onStart(MoviePlayable(chosen))
+                fallbackCopies = copies.drop(1).map { MoviePlayable(it) }
+                if (chosen.id != movie.id) android.widget.Toast.makeText(context, "Playing the best copy of this film", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun tryNextCopy() {
+        val next = fallbackCopies.firstOrNull() ?: return
+        fallbackCopies = fallbackCopies.drop(1)
+        android.widget.Toast.makeText(context, "That copy did not play. Trying another.", android.widget.Toast.LENGTH_SHORT).show()
+        play(next, listOf(next), keepCopies = true)
+    }
+
+    fun play(item: Playable, queue: List<Playable> = listOf(item), startOver: Boolean = false, keepCopies: Boolean = false) {
+        if (!keepCopies) fallbackCopies = emptyList()
         playback.current.value?.takeIf { it.isLive && it.id != item.id }?.let { previousLive = it }
         this.queue = queue
         if (item is ChannelPlayable) settings.lastChannelId = item.id

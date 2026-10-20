@@ -345,8 +345,8 @@ import Foundation
         fresh.apply(snapshot: snap)
         #expect(fresh.theme == .piano && fresh.accent == .magenta)
         d.set("Not A Theme", forKey: "settings.theme")
-        #expect(AppSettings(defaults: d).theme == .obsidian, "an unknown stored name falls back to the default")
-        ThemeStore.current = .obsidian
+        #expect(AppSettings(defaults: d).theme == .cinematic, "an unknown stored name falls back to the default")
+        ThemeStore.current = .cinematic
     }
 
     @Test func atLeastTwentyAccents() { #expect(AccentChoice.allCases.count >= 20) }

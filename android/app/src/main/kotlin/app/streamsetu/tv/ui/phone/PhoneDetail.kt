@@ -87,7 +87,7 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                         Label("${minutes(resumable.durationMs - resumable.positionMs)} min left", Ph.caption, Tokens.textSecondary)
                     } else if (progress?.completed == true) Label("Watched", Ph.caption, Tokens.success)
                     Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        PillButton(if (resumable != null) "Resume" else "Play", { play(c, nav, MoviePlayable(movie)) }, Modifier.weight(1f), icon = Icons.Filled.PlayArrow, primary = true)
+                        PillButton(if (resumable != null) "Resume" else "Play", { c.playBestMovie(movie) { play(c, nav, it) } }, Modifier.weight(1f), icon = Icons.Filled.PlayArrow, primary = true)
                         if (resumable != null || progress?.completed == true) PillButton("Start over", { scope.launch { c.user.clearResumePoint(movie.id) }; c.play(MoviePlayable(movie), listOf(MoviePlayable(movie)), startOver = true); if (nav.top != Overlay.Player) nav.open(Overlay.Player) }, Modifier.weight(1f), icon = Icons.Filled.Replay)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

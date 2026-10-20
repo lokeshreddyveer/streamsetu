@@ -8,21 +8,27 @@ private func unhex(_ s: String) -> Data { Data(stride(from: 0, to: s.count, by: 
 /// Two queues that act as the two ends of a connection.
 private actor Pipe {
     private var items: [Data] = []
-    private var waiting: [CheckedContinuation<Data, Error>] = []
-    func put(_ d: Data) { if let w = waiting.first { waiting.removeFirst(); w.resume(returning: d) } else { items.append(d) } }
+    func put(_ d: Data) { items.append(d) }
+    /// Waits for the next frame, and gives up after three seconds, as a real connection would: a device that stopped answering must not hold the other one forever.
     func take() async throws -> Data {
-        if !items.isEmpty { return items.removeFirst() }
-        return try await withCheckedThrowingContinuation { waiting.append($0) }
+        for _ in 0..<150 {
+            if !items.isEmpty { return items.removeFirst() }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        throw LanError.badFrame
     }
 }
 
 private final class Link: LanLink, @unchecked Sendable {
     let mine: Pipe, theirs: Pipe
     var tamper = false
+    private var sent = 0
     init(mine: Pipe, theirs: Pipe) { self.mine = mine; self.theirs = theirs }
     func send(_ frame: Data) async throws {
         var f = frame
-        if tamper, f.count > 40 { f[f.count - 1] ^= 1 }
+        // The first frame is the plain hello; only the encrypted ones after it are changed in transit.
+        if tamper, sent > 0, f.count > 16 { f[f.count - 1] ^= 1 }
+        sent += 1
         await theirs.put(f)
     }
     func receive() async throws -> Data { try await mine.take() }

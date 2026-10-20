@@ -104,8 +104,8 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
                     }
                     if (resumable != null) Box(Modifier.width(220.dp).height(4.dp).background(Tokens.elevated, RoundedCornerShape(2.dp))) { Box(Modifier.fillMaxWidth(resumable.fraction).fillMaxHeight().background(Tokens.accent, RoundedCornerShape(2.dp))) }
                     Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (resumable != null) TvButton("Resume", { play(c, nav, MoviePlayable(movie)) }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
-                        else TvButton("Play", { play(c, nav, MoviePlayable(movie)) }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
+                        if (resumable != null) TvButton("Resume", { c.playBestMovie(movie) { play(c, nav, it) } }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
+                        else TvButton("Play", { c.playBestMovie(movie) { play(c, nav, it) } }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
                         if (resumable != null || progress?.completed == true) TvButton("Start Over", { scope.launch { c.user.clearResumePoint(movie.id) }; c.play(MoviePlayable(movie), listOf(MoviePlayable(movie)), startOver = true); if (nav.top != Overlay.Player) nav.open(Overlay.Player) }, icon = Icons.Filled.Replay)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

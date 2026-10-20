@@ -336,6 +336,12 @@ final class SQLiteCatalogRepository: CatalogRepository {
         return out
     }
 
+    /// The same film as it appears in the library under the same name, in any playlist or folder (for the best copy and the next best when one does not play).
+    func movieCopies(of m: Movie) throws -> [Movie] {
+        let found = try db.read { try $0.query(Self.movieSelect + " WHERE m.normalized_title=?" + restricted("m"), [m.normalizedTitle], Self.mapMovie) }
+        return found.contains { $0.id == m.id } ? found : [m] + found
+    }
+
     func movie(id: String) throws -> Movie? {
         try db.read { try $0.query(Self.movieSelect + " WHERE m.id=?" + restricted("m"), [id], Self.mapMovie).first }
     }

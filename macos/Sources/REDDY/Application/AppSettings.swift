@@ -79,6 +79,8 @@ final class AppSettings {
     var rememberPosition: Bool { didSet { save(rememberPosition, "rememberpos") } }
     /// When on, a partly watched movie or episode continues where it stopped; when off it starts from the beginning.
     var resumeAutomatically: Bool { didSet { save(resumeAutomatically, "autoresume") } }
+    /// A film that is in the library in several qualities or folders starts with the best copy; if it does not play, the next best is tried.
+    var bestVersionFirst: Bool { didSet { save(bestVersionFirst, "bestversion") } }
     var showDiagnosticsOverlay: Bool { didSet { save(showDiagnosticsOverlay, "diagoverlay") } }
     var renderingProfile: RenderingProfile { didSet { save(renderingProfile.rawValue, "rendering") } }
     /// Mixes surround audio down to two channels (MPV only; AVPlayer chooses by output device).
@@ -234,6 +236,7 @@ final class AppSettings {
         autoPlayNextEpisode = bool("autonext", true)
         rememberPosition = bool("rememberpos", true)
         resumeAutomatically = bool("autoresume", true)
+        bestVersionFirst = bool("bestversion", true)
         showDiagnosticsOverlay = bool("diagoverlay", false)
         renderingProfile = get("rendering", .balanced)
         stereoDownmix = bool("downmix", false)
@@ -266,7 +269,7 @@ final class AppSettings {
         videoQuality = Defaults.quality; bufferingMode = Defaults.buffering; audioProcessing = Defaults.audioProcessing
         preferredAudioLanguage = ""; audioOutputUID = ""; preferredSubtitleLanguage = ""; subtitlesByDefault = false; autoSubtitles = false
         subtitleSize = Defaults.subtitleSize; subtitleBackground = Defaults.subtitleBackground; subtitleColor = Defaults.subtitleColor; subtitlePosition = Defaults.subtitlePosition
-        autoPlayNextEpisode = true; rememberPosition = true; resumeAutomatically = true; showDiagnosticsOverlay = false
+        autoPlayNextEpisode = true; rememberPosition = true; resumeAutomatically = true; bestVersionFirst = true; showDiagnosticsOverlay = false
         liveRewind = true; autoBackup = true; renderingProfile = .balanced; stereoDownmix = false; subtitleOutline = true; toneMapping = .automatic; picture = PictureAdjustments()
     }
 

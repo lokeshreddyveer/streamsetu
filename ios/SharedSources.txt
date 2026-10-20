@@ -238,3 +238,5 @@ Services/ExternalPlayer.swift
 Features/Shared/Views/FolderPathButton.swift
 Features/Shared/Views/OpeningAnimation.swift
 Data/Database/Schema/SchemaV14.swift
+Data/Database/Schema/SchemaV15.swift
+Services/BestVersion.swift

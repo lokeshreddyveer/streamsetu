@@ -194,6 +194,8 @@ fun PlaybackSettings(c: AppContainer) {
     SettingGroup("Movies and series") {
         ToggleRow("Remember playback position", "Saves where you stop so Continue Watching works.", remember) { s.setRememberPosition(it) }
         ToggleRow("Resume automatically", "Continue a partly watched title where it stopped.", resume && remember, enabled = remember, reason = "Turn on Remember playback position first.") { s.setResumeAutomatically(it) }
+        val bestFirst by s.bestVersionFirst.collectAsState()
+        ToggleRow("Play the best version first", "When a film is in your library in several qualities or folders, start with the best one (4K, then 1080p, and never a cinema recording first). If it does not play, the next best is tried.", bestFirst) { s.setBestVersionFirst(it) }
         ChoiceRow("Skip interval", "How far Left and Right jump while watching.", listOf(5 to "5 seconds", 10 to "10 seconds", 15 to "15 seconds", 30 to "30 seconds"), seek) { s.setSeekSeconds(it) }
         val confirmLeave by s.confirmLeavingPlayer.collectAsState()
         ToggleRow("Ask before leaving the player", "Back shows Continue watching or Exit instead of leaving at once.", confirmLeave) { s.setConfirmLeavingPlayer(it) }
