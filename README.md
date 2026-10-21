@@ -94,9 +94,9 @@ The artwork in these screenshots comes from the provider's own playlist. StreamS
 
 | Platform | What to get | Notes |
 |---|---|---|
-| **Mac** | [`StreamSetu-2.9.0.dmg`](../../releases/download/2026.10.20/StreamSetu-2.9.0.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
-| **Fire TV and Android TV** | [`StreamSetu-FireTV-0.15.0.apk`](../../releases/download/2026.10.20/StreamSetu-FireTV-0.15.0.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
-| **Android phone and tablet** | [`StreamSetu-Android-0.15.0.apk`](../../releases/download/2026.10.20/StreamSetu-Android-0.15.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
+| **Mac** | [`StreamSetu-2.10.0.dmg`](../../releases/download/2026.10.20.1/StreamSetu-2.10.0.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
+| **Fire TV and Android TV** | [`StreamSetu-FireTV-0.16.0.apk`](../../releases/download/2026.10.20.1/StreamSetu-FireTV-0.16.0.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
+| **Android phone and tablet** | [`StreamSetu-Android-0.16.0.apk`](../../releases/download/2026.10.20.1/StreamSetu-Android-0.16.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
 | **iPhone and iPad** | [Join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 1.1 | Open to the first 100 testers. After that, ask for an invitation at contact@lokeshreddy.dev. |
 | **Windows** | Coming soon | Not released yet. |
 
@@ -108,7 +108,7 @@ If you have a Mac copy older than 2.3.1, it cannot update itself (the old update
 
 ### Installing on Android phone or tablet
 
-1. Download `StreamSetu-Android-0.15.0.apk` on the phone.
+1. Download `StreamSetu-Android-0.16.0.apk` on the phone.
 2. Open it and, when asked, allow installs from your browser or files app.
 3. Open StreamSetu.
 
