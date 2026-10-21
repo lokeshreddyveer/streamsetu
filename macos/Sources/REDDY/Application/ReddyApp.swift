@@ -29,7 +29,7 @@ struct ReddyApp: App {
         .windowResizability(.contentSize)
 
         Window("Files and Servers", id: "files") {
-            if let c = coordinator.container { NavigationStack { FilesView() }.environment(\.container, c).reddyTheme(c.settings).frame(minWidth: 480, minHeight: 420) }
+            if let c = coordinator.container { NavigationStack { OnYourDeviceView() }.environment(\.container, c).reddyTheme(c.settings).frame(minWidth: 480, minHeight: 420) }
         }
 
         Window("Keyboard Shortcuts", id: "shortcuts") {

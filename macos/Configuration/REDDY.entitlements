@@ -5,5 +5,7 @@
     <!-- Hardened Runtime, Developer ID distribution (not sandboxed). -->
     <!-- Allows loading an optional bundled libmpv that is signed with a different identity. -->
     <key>com.apple.security.cs.disable-library-validation</key><true/>
+    <!-- Reading the Photos library for On Your Device. -->
+    <key>com.apple.security.personal-information.photos-library</key><true/>
 </dict>
 </plist>

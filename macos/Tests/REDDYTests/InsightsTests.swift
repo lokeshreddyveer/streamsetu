@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import Photos
 @testable import REDDY
 
 @Suite struct ViewingLimitTests {
@@ -241,5 +242,15 @@ import Foundation
     @Test func theMessageNamesTheLimit() {
         #expect(ConnectionAdvice.message(tilesFromSource: 1, limit: 1)?.contains("1 stream at a time") == true)
         #expect(ConnectionAdvice.message(tilesFromSource: 2, limit: 2)?.contains("2 streams at a time") == true)
+    }
+}
+
+@Suite struct DeviceLibraryTests {
+    @Test func photosPermissionMapsToWhatTheScreenShows() {
+        #expect(DeviceLibrary.access(from: .authorized) == .granted)
+        #expect(DeviceLibrary.access(from: .limited) == .limited)
+        #expect(DeviceLibrary.access(from: .denied) == .denied)
+        #expect(DeviceLibrary.access(from: .restricted) == .denied)
+        #expect(DeviceLibrary.access(from: .notDetermined) == .unknown)
     }
 }

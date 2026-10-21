@@ -181,6 +181,7 @@ Services/PlaybackCoordinator.swift
 Services/StartStats.swift
 Services/LocalMedia.swift
 Features/Files/FilesView.swift
+Features/Files/OnYourDeviceView.swift
 Services/PlaybackRecoveryService.swift
 Services/ReminderService.swift
 Services/SearchService.swift

@@ -89,7 +89,7 @@ class AppContainer @Inject constructor(
         val s = playback.state.value
         s == app.streamsetu.core.playback.PlaybackState.Playing || s == app.streamsetu.core.playback.PlaybackState.Buffering || s == app.streamsetu.core.playback.PlaybackState.Resolving
     }, appScope).also { d -> app.streamsetu.core.playback.LocalFiles.finder = { id ->
-        d.localUri(id) ?: app.streamsetu.core.data.repo.RecordingFiles.fileOf(id)?.let { java.io.File(recordingsFolder, it) }?.takeIf { it.exists() }?.let { android.net.Uri.fromFile(it).toString() }
+        DeviceMedia.uriOf(id) ?: d.localUri(id) ?: app.streamsetu.core.data.repo.RecordingFiles.fileOf(id)?.let { java.io.File(recordingsFolder, it) }?.takeIf { it.exists() }?.let { android.net.Uri.fromFile(it).toString() }
     } }
 
     /** Movies and series watched to the end, for the tick on posters. */

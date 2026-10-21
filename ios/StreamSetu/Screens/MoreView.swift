@@ -16,6 +16,7 @@ struct MoreView: View {
                     NavigationLink { HistoryView() } label: { LibraryRow(symbol: "clock.arrow.circlepath", tint: .teal, title: "Watch History", count: nil) }
                     NavigationLink { DownloadsView() } label: { LibraryRow(symbol: "arrow.down.circle.fill", tint: .blue, title: "Downloads", count: nil) }
                     NavigationLink { TonightView() } label: { LibraryRow(symbol: "moon.stars.fill", tint: .indigo, title: "Tonight", count: nil) }
+                    NavigationLink { OnYourDeviceView() } label: { LibraryRow(symbol: "iphone", tint: .teal, title: "On Your Device", count: nil) }
                     NavigationLink { FilesView() } label: { LibraryRow(symbol: "externaldrive.fill", tint: .gray, title: "Files and Servers", count: nil) }
                 }.listRowBackground(ColorTokens.surface)
                 Section { NavigationLink { StatisticsView() } label: { LibraryRow(symbol: "chart.bar.fill", tint: .green, title: "Statistics", count: nil) } }.listRowBackground(ColorTokens.surface)

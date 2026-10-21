@@ -42,6 +42,7 @@ enum class Category(val title: String, val subtitle: String, val icon: ImageVect
     SUBTITLES("Subtitles & Accessibility", "Subtitle style, motion and contrast", Icons.Filled.Subtitles),
     LIVE("Live TV", "Channel keys, numbers and guide time", Icons.Filled.LiveTv),
     CHANNELS("Channel Manager", "Hide, rename and check channels", Icons.Filled.Tune),
+    DEVICE("On Your Device", "Videos and pictures stored here", Icons.Filled.PhoneAndroid),
     STATISTICS("Statistics", "What you have watched", Icons.Filled.BarChart),
     LIBRARIES("Libraries & Folders", "Connections, combined libraries, folders", Icons.Filled.Layers),
     SEARCH("Search & Catalog", "Sorting, search history and the index", Icons.Filled.Search),
@@ -124,6 +125,7 @@ fun SettingsPanel(current: Category, c: AppContainer, nav: Navigator) {
         Category.SUBTITLES -> SubtitleSettings(c)
         Category.LIVE -> { LiveSettings(c); RemindersSettings(c); GuideAlertsSettings(c); ScheduledRecordingsSettings(c) }
         Category.CHANNELS -> ChannelManagerSettings(c)
+        Category.DEVICE -> DeviceSettings(c, nav)
         Category.STATISTICS -> { WeeklyDigestSettings(c, nav); StatisticsSettings(c) }
         Category.LIBRARIES -> LibrarySettings(c, nav)
         Category.SEARCH -> SearchSettings(c)

@@ -39,6 +39,14 @@ enum NotificationPermission {
         return await current()
     }
 
+    @MainActor static func openPhotosSettings() {
+        #if os(macOS)
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos") { NSWorkspace.shared.open(url) }
+        #else
+        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+        #endif
+    }
+
     @MainActor static func openSystemSettings() {
         #if os(macOS)
         if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") { NSWorkspace.shared.open(url) }
