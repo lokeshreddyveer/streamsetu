@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.10.20.1",
+      "title": "20 October 2026, second release",
+      "summary": "Mac 2.10.0, Android and Fire TV 0.16.0, iPhone and iPad 1.1 (TestFlight build 65): Watch Privately, your week, a privacy report, kids viewing limits, start from the beginning, and more.",
+      "date": "2026-10-20",
+      "mac": "2.10.0",
+      "android": "0.16.0",
+      "ios": "1.1"
+    },
+    {
       "tag": "2026.10.20",
       "title": "20 October 2026",
       "summary": "Mac 2.9.0, Android and Fire TV 0.15.0, iPhone and iPad 1.1 (TestFlight build 62): profiles, Tonight, guide alerts, podcasts, scheduled recording, and a widget for iPhone.",
