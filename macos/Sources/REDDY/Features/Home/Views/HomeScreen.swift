@@ -134,7 +134,6 @@ struct DiscoverPage: View {
     @State private var loaded = false
     @State private var slides: [FeaturedSlide] = []
     @State private var filter = DiscoverFilter()
-    @State private var asking = false
 
     private var slideshowKey: String { "\(state.activeSourceID?.uuidString ?? "")-\(FeaturedPolicy.dayKey(Date()))-\(content != nil)" }
 
@@ -143,10 +142,7 @@ struct DiscoverPage: View {
     var body: some View {
         GeometryReader { g in
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline) {
-                    PageHead(title: "Discover"); Spacer(minLength: 12)
-                    if let container { Button { asking = true } label: { Label("Ask AI", systemImage: "sparkles") }.buttonStyle(.borderless) }
-                }
+                PageHead(title: "Discover")
                 if let container { OfflineHomeBanner(container: container).padding(.horizontal, LayoutTokens.gutter) }
                 if let container { NowPlayingStrip(container: container).padding(.horizontal, LayoutTokens.gutter) }
                 if let content, !content.shelves.isEmpty { toolbar(content) }
@@ -164,14 +160,6 @@ struct DiscoverPage: View {
             .padding(.horizontal, LayoutTokens.gutter).padding(.top, 10)
         }
         .onAppear { state.reloadWatched() }
-        .sheet(isPresented: $asking) {
-            if let container {
-                VStack(spacing: 0) {
-                    HStack { Text("Ask AI").font(.title3.weight(.semibold)); Spacer(); Button("Done") { asking = false } }.padding([.horizontal, .top], 16)
-                    AskAIView(container: container, open: { item in asking = false; PlayActions.open(item, router: router) }, search: { s in asking = false; router.searchQuery = s })
-                }.frame(minWidth: 460, minHeight: 360)
-            }
-        }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") {
             guard let c = container, state.hasLibrary else { loaded = true; return }
             let sid = state.activeSourceID

@@ -77,7 +77,7 @@ struct LibrarySettingsPage: View {
                     }.pickerStyle(.menu).fixedSize()
                 }
                 SettingsActions {
-                    Button { for src in state.sources where src.enabled { state.sync(src.id, forceGuide: true) }; vm.guideMessage = .init(text: "Guide refresh started.", kind: .info) } label: { Label("Refresh Guide", systemImage: "calendar") }
+                    Button { state.refreshGuides(); vm.guideMessage = .init(text: "Guide refresh started.", kind: .info) } label: { Label("Refresh Guide", systemImage: "calendar") }
                         .disabled(state.isSyncing || state.sources.isEmpty)
                     Button { showChannelManager() } label: { Label("Review EPG Mappings…", systemImage: "link") }
                 }

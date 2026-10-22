@@ -37,6 +37,14 @@ struct RootView: View {
         }
     }
 
+    /// The name of the screen, for the assistant.
+    private var iosScreenName: String {
+        switch router.tab {
+        case .home: "Home"; case .live: "Live TV"; case .guide: "TV Guide"; case .movies: "Movies"; case .series: "Series"; case .search: "Search"
+        case .library: "Library"; case .playlists: "Playlists"; case .settings: "Settings"; case .more: "More"
+        }
+    }
+
     private var compactOrder: [IOSRouter.Tab] { [.home, .live, .movies, .series, .more] }
 
     @ViewBuilder private func compactScreen(_ tab: IOSRouter.Tab) -> some View {
@@ -63,6 +71,19 @@ struct RootView: View {
         }
         .loggingNotice()
         .background(ColorTokens.background)
+        .overlay {
+            if let container, !state.needsOnboarding {
+                AssistantBubble(container: container, bottomInset: barHeight + 10,
+                                open: { item in router.pendingAssistantItem = item },
+                                look: { (screen: iosScreenName, item: nil, search: router.query) },
+                                perform: { p in
+                                    switch p.kind {
+                                    case .command, .playItem, .toggleList: return await SearchCommandRunner.execute(p.kind, container: container, router: router, state: state)
+                                    default: return await container.perform(p, state: state)
+                                    }
+                                })
+            }
+        }
         .overlay { if let container { ViewingBlockOverlay(container: container) } }
         .animation(.easeInOut(duration: 0.3), value: container?.playback.viewingBlock)
         .overlay { if let container, !picked, container.profiles.isShared { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { picked = true } } } }
@@ -70,6 +91,7 @@ struct RootView: View {
         .onChange(of: contrast, initial: true) { _, c in ThemeStore.state.systemContrast = c == .increased }
         .dynamicTypeSize(...DynamicTypeSize.accessibility2)      // the layouts hold up to here; larger sizes would break them
         .sheet(isPresented: $router.presentAdd) { AddPlaylistSheet() }
+        .sheet(item: $router.pendingAssistantItem) { item in NavigationStack { DetailView(item: item) }.presentationDetents([.large]) }
         .fullScreenCover(isPresented: $router.showMultiView) { if let container { MultiViewScreen(model: container.multiView) } }
         .modifier(PlayerCover(active: true))
     }

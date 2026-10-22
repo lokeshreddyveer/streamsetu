@@ -194,6 +194,18 @@ struct ReddyTopBar: View {
         .background(Color.white.opacity(searchFocused ? 0.07 : 0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(searchFocused ? accent.opacity(0.6) : ColorTokens.glassEdge))
         .onChange(of: focusToken) { _, _ in searchFocused = true }
+        .overlay(alignment: .topLeading) {
+            if searchFocused && query.isEmpty {
+                SearchIdeasPanel(pick: { query = $0 })
+                    .frame(width: 340)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(ColorTokens.glassEdge))
+                    .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                    .offset(y: 38)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: searchFocused && query.isEmpty)
     }
 
     private var accountButton: some View {

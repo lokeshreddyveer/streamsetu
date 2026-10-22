@@ -53,6 +53,25 @@ final class MetadataMatchService: Sendable {
 
     func removeKey() throws { try credentials.delete(ref: Self.keyRef) }
 
+    /// A person's real filmography from TMDB: their films and series, most popular first. Used by Ask AI so answers come from facts, not from an AI's memory.
+    func filmography(of name: String) async throws -> AskLibrary.TMDBFilmography? {
+        let found = try await get("/3/search/person", query: [URLQueryItem(name: "query", value: name), URLQueryItem(name: "include_adult", value: "false")])
+        guard let top = ((try? JSONSerialization.jsonObject(with: found)) as? [String: Any])?["results"] as? [[String: Any]],
+              let person = top.first(where: { ($0["known_for_department"] as? String) == "Acting" }) ?? top.first, let id = person["id"] as? Int else { return nil }
+        var credits: [(title: String, year: Int?, isShow: Bool, pop: Double)] = []
+        for (path, isShow) in [("/3/person/\(id)/movie_credits", false), ("/3/person/\(id)/tv_credits", true)] {
+            guard let data = try? await get(path, query: []), let j = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { continue }
+            let rows = ((j["cast"] as? [[String: Any]]) ?? []) + ((j["crew"] as? [[String: Any]]) ?? []).filter { ($0["job"] as? String) == "Director" }
+            for r in rows {
+                guard let t = (r[isShow ? "name" : "title"] as? String), !t.isEmpty else { continue }
+                let y = ((r[isShow ? "first_air_date" : "release_date"] as? String) ?? "").prefix(4)
+                credits.append((t, Int(y), isShow, (r["popularity"] as? Double) ?? 0))
+            }
+        }
+        guard !credits.isEmpty else { return nil }
+        return AskLibrary.TMDBFilmography(name: (person["name"] as? String) ?? name, credits: credits.sorted { $0.pop > $1.pop }.prefix(120).map { ($0.title, $0.year, $0.isShow) })
+    }
+
     /// Asks TMDB to confirm the key works.
     func verifyKey() async throws { _ = try await get("/3/configuration", query: []) }
 

@@ -52,9 +52,18 @@ struct SearchView: View {
     /// Home's search: one list with a section for each kind of result.
     private var list: some View {
         List {
+            if !isBlank, let container {
+                ForEach(SearchCommands.parse(router.query)) { cmd in
+                    Button { SearchCommandRunner.run(cmd, container: container, router: router, state: state) } label: {
+                        Label(cmd.title, systemImage: cmd.symbol).appFont(15, .medium).frame(maxWidth: .infinity, alignment: .leading)
+                    }.buttonStyle(.press).listRowBackground(ColorTokens.surface)
+                }
+            }
+            if !isBlank, let container { SmartPicksCard(container: container, query: router.query, open: { opened = $0 }).listRowBackground(Color.clear).listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)) }
             if isBlank {
                 EmptyState(symbol: "magnifyingglass", title: "Search your library", message: "Channels, movies, series and episodes from every playlist.")
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
+                SearchIdeasPanel(pick: { router.query = $0 }).listRowBackground(Color.clear).listRowSeparator(.hidden)
             } else if results.isEmpty, !searching {
                 EmptyState(symbol: "questionmark.circle", title: "No results", message: "Try fewer letters or another spelling.")
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)

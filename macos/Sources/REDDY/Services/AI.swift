@@ -197,7 +197,7 @@ struct AIClient: Sendable {
 
     // MARK: plumbing
 
-    private func request(_ url: String, body: [String: Any]) throws -> URLRequest {
+    func request(_ url: String, body: [String: Any]) throws -> URLRequest {
         guard let u = URL(string: url) else { throw AIError.network("That address is not valid.") }
         var r = URLRequest(url: u, timeoutInterval: 60)
         r.httpMethod = "POST"
@@ -207,7 +207,7 @@ struct AIClient: Sendable {
         return r
     }
 
-    private func json(_ r: URLRequest) async throws -> [String: Any] {
+    func json(_ r: URLRequest) async throws -> [String: Any] {
         let data: Data, http: HTTPURLResponse
         do { (data, http) = try await transport(r) } catch let e as AIError { throw e } catch { throw AIError.network(error.localizedDescription) }
         let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]

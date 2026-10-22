@@ -23,6 +23,11 @@ final class SQLiteHistoryRepository: HistoryRepository {
         try db.read { try $0.query("SELECT item_id FROM recently_watched WHERE kind=? ORDER BY last_played DESC LIMIT ?", [kind.rawValue, limit]) { $0.string(0) } }
     }
 
+    /// The first column of a read-only query, as text. Used by the Ask AI lookups.
+    func rawStrings(_ sql: String, _ args: [(any SQLConvertible)?]) throws -> [String] {
+        try db.read { try $0.query(sql, args) { $0.string(0) } }
+    }
+
     func watchLog(limit: Int) throws -> [WatchLogEntry] {
         try db.read { c in
             try c.query("SELECT item_id, kind, title, played_at FROM watch_history ORDER BY played_at DESC LIMIT ?", [limit]) {

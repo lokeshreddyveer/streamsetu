@@ -41,6 +41,7 @@ fun SearchContent(
     c: AppContainer, kinds: Set<ContentKind>, modifier: Modifier = Modifier,
     onChannel: (Channel) -> Unit, onMovie: (Movie) -> Unit, onSeries: (Series) -> Unit, entry: FocusRequester? = null,
     dropdown: Boolean = false, restore: Boolean = false,
+    above: @Composable (String) -> Unit = {},
     onEpisode: (Episode, Series) -> Unit = { _, _ -> }, onFolder: (ContentKind, String) -> Unit = { _, _ -> }, onCollection: (String, ContentKind) -> Unit = { _, _ -> },
 ) {
     var results by remember { mutableStateOf<GlobalResults?>(null) }
@@ -96,6 +97,7 @@ fun SearchContent(
             if (ContentKind.MOVIE in kinds) TypeChip("Movies", typeFilter == ContentKind.MOVIE) { typeFilter = ContentKind.MOVIE }
             if (ContentKind.SERIES in kinds) TypeChip("Series", typeFilter == ContentKind.SERIES) { typeFilter = ContentKind.SERIES }
         }
+        if (query.isNotBlank()) above(query)
         val r = results
         when {
             query.isBlank() -> LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -201,6 +203,7 @@ fun SearchScreen(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
             onSeries = { s -> nav.open(app.streamsetu.tv.nav.Overlay.SeriesDetail(s)) },
             onEpisode = { e, s -> app.streamsetu.tv.play(c, nav, EpisodePlayable(e, s)) },
             onFolder = { k, id -> nav.openFolderTab(k, id) },
-            onCollection = { id, k -> nav.openCollection(k, id) })
+            onCollection = { id, k -> nav.openCollection(k, id) },
+            above = { typed -> SearchActions(c, nav, typed) })
     }
 }

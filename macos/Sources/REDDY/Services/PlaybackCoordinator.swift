@@ -13,7 +13,29 @@ import Observation
 final class PlaybackCoordinator {
     // MARK: observable state
 
-    private(set) var state: PlaybackState = .idle { didSet { sleepGuard.update(hold: SleepPolicy.shouldKeepAwake(state: state, hasPlayback: current != nil)) } }
+    private(set) var state: PlaybackState = .idle {
+        didSet {
+            sleepGuard.update(hold: SleepPolicy.shouldKeepAwake(state: state, hasPlayback: current != nil))
+            if state != oldValue { noteForTimeline(state) }
+        }
+    }
+    /// The last failure and when it happened, kept after a retry replaces the state, so what went wrong can still be explained.
+    private(set) var lastError: PlaybackError?
+    private(set) var lastErrorAt: Date?
+    /// The last few things that happened to this session, newest last ("buffering", "failed: provider busy", "engine → MPV"). Read by the assistant to explain a problem.
+    private(set) var timeline: [(at: Date, text: String)] = []
+    private func noteForTimeline(_ s: PlaybackState) {
+        if case .failed(let e) = s { lastError = e; lastErrorAt = Date() }
+        let text: String
+        switch s {
+        case .idle: text = "stopped"; case .resolving: text = "resolving the address"; case .preparing: text = "preparing"; case .buffering: text = "buffering"
+        case .playing: text = "playing"; case .paused: text = "paused"; case .seeking: text = "seeking"; case .ended: text = "ended"; case .recovering: text = "reconnecting"
+        case .failed(let e): text = "failed: \(e.kind.rawValue)"
+        }
+        timeline.append((Date(), text))
+        if timeline.count > 40 { timeline.removeFirst(timeline.count - 40) }
+    }
+
     private(set) var current: PlaybackRequest?
     private(set) var position: TimeInterval = 0
     private(set) var duration: TimeInterval?
@@ -615,7 +637,9 @@ final class PlaybackCoordinator {
 
     func selectAudio(_ id: String?) { engine.selectAudioTrack(id: id); refreshTracks(); remember() }
     func selectSubtitle(_ id: String?) { engine.selectSubtitleTrack(id: id); refreshTracks(); remember() }
-    func applySubtitleStyle() { engine.applySubtitleStyle(settings.subtitleStyle) }
+    /// How many times the subtitle style was pushed to the engine (read by tests of the settings effects).
+    private(set) var subtitleStyleApplications = 0
+    func applySubtitleStyle() { subtitleStyleApplications += 1; engine.applySubtitleStyle(settings.subtitleStyle) }
 
     func setAudioOutput(uid: String?) { factory.avEngine.setAudioOutput(uid: uid.nilIfEmpty) }
 

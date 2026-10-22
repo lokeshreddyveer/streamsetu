@@ -195,6 +195,11 @@ final class IOSRouter {
     var tab: Tab = .home
     /// Set by a title's page ("In folder …") and taken by Movies or Series, which then opens that folder.
     var pendingFolder: (kind: ContentKind, id: String)?
+    /// Words typed in the top search for a list's own search box (filters and ordering are read from them there), and the shelf to show; each is used once.
+    var pendingLibraryQuery: String?
+    /// A title chosen in the assistant: the root view opens its page.
+    var pendingAssistantItem: LibraryItem?
+    var pendingShelf: String?
     /// On iPhone, Search, Guide, Library and Settings live inside the More tab so Movies and Series stay on the bar.
     enum MoreRoute: Hashable { case search, guide, library, playlists, settings }
     var morePath: [MoreRoute] = []

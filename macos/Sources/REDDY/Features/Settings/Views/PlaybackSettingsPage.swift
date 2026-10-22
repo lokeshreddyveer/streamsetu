@@ -67,25 +67,25 @@ struct PlaybackSettingsPage: View {
                 SettingsRow(title: "Show by default", detail: "Turns subtitles on when a track in your language exists.") { Toggle("Show subtitles by default", isOn: $s.subtitlesByDefault) }
                 SettingsRow(title: "Size") {
                     HStack { Slider(value: $s.subtitleSize, in: 60...200, step: 10).frame(width: 180); Text("\(Int(s.subtitleSize))%").monospacedDigit().frame(width: 44, alignment: .trailing) }
-                        .onChange(of: s.subtitleSize) { _, _ in container?.playback.applySubtitleStyle() }
+                        .onChange(of: s.subtitleSize) { _, _ in container?.settingChanged("subtitleSize") }
                 }
                 SettingsRow(title: "Background opacity") {
                     HStack { Slider(value: $s.subtitleBackground, in: 0...1).frame(width: 180); Text("\(Int(s.subtitleBackground * 100))%").monospacedDigit().frame(width: 44, alignment: .trailing) }
-                        .onChange(of: s.subtitleBackground) { _, _ in container?.playback.applySubtitleStyle() }
+                        .onChange(of: s.subtitleBackground) { _, _ in container?.settingChanged("subtitleBackground") }
                 }
                 SettingsRow(title: "Text colour") {
                     Picker("Text colour", selection: $s.subtitleColor) { ForEach(SubtitleColor.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
-                        .onChange(of: s.subtitleColor) { _, _ in container?.playback.applySubtitleStyle() }
+                        .onChange(of: s.subtitleColor) { _, _ in container?.settingChanged("subtitleColor") }
                 }
                 let positionOK = container?.playback.capabilities(of: .mpv)?.subtitlePosition ?? false
                 SettingsRow(title: "Vertical position", note: positionOK ? nil : "Needs the MPV engine, which isn't available on this Mac.") {
                     Slider(value: $s.subtitlePosition, in: 0...1).frame(width: 180).disabled(!positionOK)
-                        .onChange(of: s.subtitlePosition) { _, _ in container?.playback.applySubtitleStyle() }
+                        .onChange(of: s.subtitlePosition) { _, _ in container?.settingChanged("subtitlePosition") }
                 }
                 let outlineOK = container?.playback.capabilities(of: .mpv) != nil
                 SettingsRow(title: "Outline and shadow", detail: "Keeps text readable over bright scenes.", note: outlineOK ? nil : "Needs the MPV engine, which isn't available on this Mac.") {
                     Toggle("Outline and shadow", isOn: $s.subtitleOutline).disabled(!outlineOK)
-                        .onChange(of: s.subtitleOutline) { _, _ in container?.playback.applySubtitleStyle() }
+                        .onChange(of: s.subtitleOutline) { _, _ in container?.settingChanged("subtitleOutline") }
                 }
                 SettingsRow(title: "Preview", detail: "How subtitles will look.", divider: false) { SubtitlePreview(style: s.subtitleStyle) }
             }
@@ -131,7 +131,7 @@ struct PlaybackSettingsPage: View {
                 SettingsRow(title: "Volume normalization", detail: s.audioProcessing.explanation,
                             note: mpvUsable ? "Applies to streams MPV plays." : "Needs the MPV engine, which isn't available on this Mac.") {
                     Picker("Volume normalization", selection: $s.audioProcessing) { ForEach(AudioProcessingMode.allCases) { Text($0.title).tag($0) } }.pickerStyle(.menu).fixedSize().disabled(!mpvUsable)
-                        .onChange(of: s.audioProcessing) { _, m in container?.playback.setAudioProcessing(m) }
+                        .onChange(of: s.audioProcessing) { _, _ in container?.settingChanged("audioProcessing") }
                 }
                 SettingsRow(title: "Downmix to stereo", detail: "Mixes 5.1 and 7.1 audio down to two channels, for speakers and headphones.",
                             note: mpvUsable ? "Applies from the next stream you start." : "Needs the MPV engine, which isn't available on this Mac.", divider: false) {

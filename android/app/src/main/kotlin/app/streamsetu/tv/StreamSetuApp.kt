@@ -212,6 +212,16 @@ class AppContainer @Inject constructor(
             search.movieVariants(name).firstOrNull { app.streamsetu.core.data.repo.TraktItem.matches(listed, it.title, it.year) }?.let { if (seen.add(it.id)) found += FoundTitle(it.title, it.year, false, movie = it) }
             search.seriesVariants(name).firstOrNull { app.streamsetu.core.data.repo.TraktItem.matches(listed, it.title, it.year) }?.let { if (seen.add(it.id)) found += FoundTitle(it.title, it.year, true, series = it) }
         }
+        // The AI's own search sentence ("telugu thriller 2020s") is run on the library too, so a request is answered even when none of the named titles are here.
+        if (s.search.isNotBlank() && found.size < 8) runCatching {
+            val r = globalSearch.search(s.search, app.streamsetu.core.data.repo.SearchTab.ALL, 12)
+            for (x in r.byKind[app.streamsetu.core.data.repo.SearchKind.MOVIE].orEmpty() + r.byKind[app.streamsetu.core.data.repo.SearchKind.SERIES].orEmpty()) {
+                val t = x.target
+                if (t is app.streamsetu.core.data.repo.SearchTarget.OpenMovie && seen.add(t.movie.id)) found += FoundTitle(t.movie.title, t.movie.year, false, movie = t.movie)
+                if (t is app.streamsetu.core.data.repo.SearchTarget.OpenSeries && seen.add(t.series.id)) found += FoundTitle(t.series.title, t.series.year, true, series = t.series)
+                if (found.size >= 12) break
+            }
+        }
         return s to found
     }
 

@@ -60,6 +60,9 @@ struct VODQuery: Sendable {
     var minMinutes: Int?
     /// Titles played to the end, or started and not finished. A series is watched when every episode is.
     var watch: WatchFilter?
+    /// Genres wanted (any of them) and genres left out, matched against a title's genre and its folder's name.
+    var genres: [String] = []
+    var excludeGenres: [String] = []
     var includeHidden = false
     var ids: [String]?
     var limit: Int?

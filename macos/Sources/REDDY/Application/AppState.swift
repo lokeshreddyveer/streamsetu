@@ -254,8 +254,12 @@ final class AppState {
         }
     }
 
-    func sync(_ id: UUID, forceGuide: Bool = false) { Task { await container.sync.start(sourceID: id, forceGuide: forceGuide) } }
+    /// A seam for tests: told of every refresh asked for, with whether the guide was forced.
+    var syncHook: ((UUID, Bool) -> Void)?
+    func sync(_ id: UUID, forceGuide: Bool = false) { syncHook?(id, forceGuide); Task { await container.sync.start(sourceID: id, forceGuide: forceGuide) } }
     func syncAll() { for s in sources where s.enabled { sync(s.id) } }
+    /// Refreshes the guide of every playlist that is on, even one that looks fresh enough: what the Settings "Refresh guide" button does, and what the assistant offers.
+    func refreshGuides() { for s in sources where s.enabled { sync(s.id, forceGuide: true) } }
     func cancelSync(_ id: UUID) { Task { await container.sync.cancel(sourceID: id) } }
 
     func sourceName(_ id: UUID) -> String { sources.first { $0.id == id }?.name ?? "" }

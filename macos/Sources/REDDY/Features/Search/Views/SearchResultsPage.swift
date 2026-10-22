@@ -9,6 +9,9 @@ struct SearchResultsPage: View {
     let onActivate: (SearchResult) -> Void
     @FocusState private var focused: Bool
     @Environment(\.reddyAccent) private var accent
+    @Environment(\.container) private var container
+    @Environment(AppRouter.self) private var router
+    @Environment(AppState.self) private var state
 
     private static let preview = 6
 
@@ -17,6 +20,8 @@ struct SearchResultsPage: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     header
+                    commandRows
+                    if let container { SmartPicksCard(container: container, query: model.term, open: { PlayActions.open($0, router: router) }, force: model.searched && model.visible.isEmpty && model.term.split(separator: " ").count >= 2).padding(.bottom, 8) }
                     tabs.padding(.bottom, 6)
                     content
                 }
@@ -36,6 +41,27 @@ struct SearchResultsPage: View {
     }
 
     // MARK: pieces
+
+    /// Things the words ask for besides a search ("go to live tv", "play Inception", "add Jersey to watch later"): each is a row, and nothing happens until it is chosen.
+    @ViewBuilder private var commandRows: some View {
+        let commands = SearchCommands.parse(model.term)
+        if !commands.isEmpty, let container {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(commands) { c in
+                    Button { SearchCommandRunner.run(c, container: container, router: router, state: state) } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: c.symbol).frame(width: 20).foregroundStyle(accent)
+                            Text(c.title).font(Typography.rowMedium).lineLimit(1)
+                            Spacer()
+                            Image(systemName: "return").font(.caption).foregroundStyle(ColorTokens.textTertiary)
+                        }
+                        .padding(.horizontal, 12).padding(.vertical, 9).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous)).contentShape(Rectangle())
+                    }.buttonStyle(.plain)
+                }
+            }.padding(.bottom, 8)
+        }
+    }
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -71,11 +97,19 @@ struct SearchResultsPage: View {
         .accessibilityElement(children: .contain).accessibilityLabel("Result types")
     }
 
+    /// When a name finds nothing, say that the cast is still being read (and how much), so an actor's films missing is not mistaken for them not being there.
+    private var castHint: String {
+        guard let container, model.term.split(separator: " ").count >= 2 else { return "" }
+        let p = PeopleIndex(db: container.db).progress()
+        guard p.total > 0, Double(p.done) / Double(p.total) < 0.9 else { return "" }
+        return " If it is an actor, their films may not be read yet: the cast has been read for \(Int(Double(p.done) / Double(p.total) * 100))% of your films. A TMDB key in Settings finds them right away."
+    }
+
     @ViewBuilder private var content: some View {
         if model.loading && !model.searched {
             ProgressView().controlSize(.small).padding(.vertical, 14)
         } else if model.visible.isEmpty {
-            EmptyStateView(symbol: "magnifyingglass", title: "No results", message: "Nothing matches “\(model.term)” in any of your playlists\(model.tab == .all ? "" : " under \(model.tab.rawValue)").").frame(height: 260)
+            EmptyStateView(symbol: "magnifyingglass", title: "No results", message: "Nothing matches “\(model.term)” in any of your playlists\(model.tab == .all ? "" : " under \(model.tab.rawValue)")." + castHint).frame(height: 260)
         } else if model.tab == .all {
             ForEach(SearchResultKind.allCases, id: \.self) { kind in
                 let rows = model.results.byKind[kind] ?? []

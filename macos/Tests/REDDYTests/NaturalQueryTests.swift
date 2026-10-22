@@ -27,7 +27,7 @@ import Foundation
         #expect(NaturalQuery.parse("drama longer than 2.5 hours").minMinutes == 150)
         #expect(NaturalQuery.parse("action 90s").decade == 1990)
         #expect(NaturalQuery.parse("thriller rated 8+").minRating == 8)
-        #expect(NaturalQuery.parse("best rated english").minRating == 8)
+        #expect(NaturalQuery.parse("best rated english").sort == .rating)
         #expect(NaturalQuery.parse("my favourites in 1080p").favorites)
         #expect(NaturalQuery.parse("recently added telugu").addedWithinDays == 30)
     }

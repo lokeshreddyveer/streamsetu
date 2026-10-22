@@ -87,6 +87,8 @@ final class LibraryModel {
                 if sentence.started { q.watch = .started }
                 if sentence.favorites { q.favoritesOnly = true }
                 if let d = sentence.addedWithinDays { q.addedWithinDays = d }
+                q.genres = sentence.genres; q.excludeGenres = sentence.excludeGenres
+                if let s = sentence.sort { q.sort = s }
             }
             switch shelf {
             case .all: break
@@ -183,6 +185,12 @@ struct LibraryView: View {
         }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(String(describing: model.filter))-\(model.sort.rawValue)-\(model.shelf.rawValue)-\(state.watchLaterIDs.count)-\(state.favoriteIDs.count)") { if let c = container { await model.reload(c, source: state.activeSourceID) } }
         .onAppear { state.reloadWatched() }
+        .onChange(of: router.pendingLibraryQuery, initial: true) { _, _ in
+            guard router.tab == (kind == .movie ? .movies : .series), router.pendingLibraryQuery != nil || router.pendingShelf != nil else { return }
+            model.shelf = router.pendingShelf.flatMap { LibraryModel.Shelf(rawValue: $0) } ?? .all
+            model.query = router.pendingLibraryQuery ?? ""
+            router.pendingLibraryQuery = nil; router.pendingShelf = nil
+        }
         .onChange(of: router.pendingFolder?.id, initial: true) { _, _ in
             if let pending = router.pendingFolder, pending.kind == kind { model.categoryID = pending.id; router.pendingFolder = nil }
         }

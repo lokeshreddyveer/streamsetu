@@ -24,6 +24,10 @@ struct SettingsView: View {
             PrivacySettingsPage().tabItem { Label("Privacy", systemImage: "hand.raised") }.tag(SettingsTab.privacy)
             AdvancedSettingsPage(vm: advanced).tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }.tag(SettingsTab.advanced)
         }
+        .overlay(alignment: .topTrailing) {
+            Button { AssistantLauncher.shared.ask("I need help with a setting or a problem. What can you check?"); AssistantLauncher.bringMainWindowForward() } label: { Label("Ask Setu", systemImage: "sparkles").font(.callout) }
+                .buttonStyle(.bordered).controlSize(.small).padding(.top, 6).padding(.trailing, 10).help("Ask the assistant about a setting, or to diagnose a problem")
+        }
         .frame(width: 720)
         .frame(minHeight: 520, idealHeight: 760, maxHeight: 900)
         .reddyTheme(settings)

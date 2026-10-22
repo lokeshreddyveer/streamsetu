@@ -255,6 +255,9 @@ Services/StartOver.swift
 Services/Debrid.swift
 Services/Trakt.swift
 Services/AI.swift
+Services/AskLibrary.swift
+Services/AskBrain.swift
+Services/SearchCommands.swift
 Features/Shared/Views/AIViews.swift
 Features/Shared/Views/IntegrationViews.swift
 Security/PINThrottle.swift
@@ -274,3 +277,17 @@ Services/AccountStatusService.swift
 Services/KeywordAlertService.swift
 Services/TonightService.swift
 Services/NaturalQuery.swift
+Services/SearchIdeas.swift
+Services/AssistantAgent.swift
+Application/AppContainer+Assistant.swift
+Features/Shared/Views/AssistantView.swift
+Services/AssistantKnowledge.swift
+Services/AssistantEngine.swift
+Services/AssistantToolbox.swift
+Services/AssistantDiagnostics.swift
+Services/AssistantRouter.swift
+Services/AssistantActions.swift
+Application/AppContainer+AssistantDiagnostics.swift
+Application/AppContainer+SettingEffects.swift
+Services/AssistantDiscovery.swift
+Services/AssistantRefinement.swift

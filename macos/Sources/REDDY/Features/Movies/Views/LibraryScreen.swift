@@ -57,7 +57,8 @@ struct LibraryScreen: View {
             .padding(.horizontal, LayoutTokens.gutter).padding(.top, 10)
         }
         .onAppear { if !appliedDefaultSort { appliedDefaultSort = true; vm.sort = settings.defaultLibrarySort.sort } }
-        .onAppear { state.reloadWatched() }
+        .onAppear { state.reloadWatched(); takeLibraryQuery() }
+        .onChange(of: router.libraryQuery) { _, _ in takeLibraryQuery() }
         .task(id: taskKey) { if let c = container { await vm.reset(c, selection: selection, source: state.activeSourceID) } }
         // The slideshow depends on the playlist and the day only, so a catalog refresh or a sort change never rebuilds it.
         .task(id: slideshowKey) {
@@ -140,5 +141,13 @@ struct LibraryScreen: View {
         CollectionMenu(itemID: item.id, kind: item.kind)
         Divider()
         Button("Hide") { try? container?.favoritesRepo.hide(item.id, kind: item.kind.rawValue); state.catalogVersion += 1 }
+    }
+
+    /// A command typed in the top search put words for this list's own search box: they are used once, so the filters and ordering in them apply here.
+    private func takeLibraryQuery() {
+        guard let q = router.libraryQuery else { return }
+        router.libraryQuery = nil
+        vm.search = q
+        if let c = container { vm.scheduleSearch(c, selection: selection, source: state.activeSourceID) }
     }
 }

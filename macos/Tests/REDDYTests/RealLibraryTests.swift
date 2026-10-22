@@ -31,3 +31,55 @@ import Foundation
         }
     }
 }
+
+@Suite("Real library smart search (opt-in)", .enabled(if: ProcessInfo.processInfo.environment["REDDY_DB_COPY"] != nil))
+@MainActor struct RealSmartSearchTests {
+    @Test func presetsAgainstTheRealLibrary() async throws {
+        let path = ProcessInfo.processInfo.environment["REDDY_DB_COPY"]!
+        let c = try AppContainer(databasePath: path, credentials: InMemoryCredentialStore())
+        for q in ["something for date night", "top rated telugu movies", "a movie with the kids", "something short before bed", "mahesh babu movies", "hindi movies 2020s unwatched"] {
+            print("QUERY", q, "looksLikeARequest:", c.looksLikeARequest(q))
+            do {
+                let a = try await c.askWhatToWatch(q, useAI: false)
+                print("  results:", a.results.count, "| intent:", a.intent.summary, "| note:", a.note.prefix(90), "| first:", a.results.prefix(3).map { $0.item.title })
+            } catch { print("  THREW:", error) }
+        }
+    }
+}
+
+@Suite("Real library assistant search (opt-in)", .enabled(if: ProcessInfo.processInfo.environment["REDDY_DB_COPY"] != nil))
+@MainActor struct RealAssistantSearchTests {
+    @Test func searchEverythingFindsChannelsAndSeries() async throws {
+        let c = try AppContainer(databasePath: ProcessInfo.processInfo.environment["REDDY_DB_COPY"]!, credentials: InMemoryCredentialStore())
+        for q in ["biggboss", "bigg boss", "bigg boss telugu", "biggboss telugu", "BiggBoss Telugu"] {
+            let t = AssistantToolbox(container: c)
+            let out = await t.run("search_everything", ["query": .string(q)])
+            print("SEARCH", q, "->", out.prefix(420).replacingOccurrences(of: "\n", with: " | "))
+        }
+        for q in ["biggboss telugu", "bigg boss", "star maa"] {
+            let t0 = Date()
+            let r = await AssistantToolbox(container: c).fastNameReply(q)
+            print("FAST", q, String(format: "%.0f ms", Date().timeIntervalSince(t0) * 1000), "->", r?.say ?? "nil", "| posters:", r?.answer?.results.count ?? 0, "| buttons:", r?.proposals.count ?? 0)
+        }
+    }
+}
+
+
+@Suite("Real library vague requests (opt-in)", .enabled(if: ProcessInfo.processInfo.environment["REDDY_DB_COPY"] != nil))
+@MainActor struct RealVagueRequestTests {
+    @Test func vagueRequestsAgainstTheRealLibrary() async throws {
+        let c = try AppContainer(databasePath: ProcessInfo.processInfo.environment["REDDY_DB_COPY"]!, credentials: InMemoryCredentialStore())
+        for q in ["play something", "play somwthing", "play something best series", "play a movie", "play Star", "play zzzqqq"] {
+            let t0 = Date(); let t = AssistantToolbox(container: c)
+            let named = c.assistantNamesATitle(q), cmds = c.assistantCommandProposals(q)
+            let r = await t.discoveryReply(q)
+            let ms = Int(Date().timeIntervalSince(t0) * 1000)
+            let titles = (r?.answer?.results ?? []).prefix(5).map { res -> String in
+                let rating: String = { switch res.item { case .movie(let m): m.rating ?? "-"; case .series(let s): s.rating ?? "-" } }()
+                return "\(res.item.title) [\(res.item.isSeries ? "series" : "movie") ★\(rating)]"
+            }
+            let offers = (r?.proposals ?? []).map(\.title) + (cmds ?? []).map(\.title)
+            print("VAGUE", q, "|", ms, "ms | discovery:", r != nil, "| exact title:", named, "| titles:", titles, "| buttons:", offers, "| say:", r?.say ?? "-")
+        }
+    }
+}

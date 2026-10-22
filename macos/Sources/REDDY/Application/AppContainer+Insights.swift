@@ -96,26 +96,62 @@ extension AppContainer {
         playback.isExpanded = true
     }
 
+    /// Whether the chosen AI can be asked from the search box (one is chosen, and this is not a kids profile).
+    var aiAvailable: Bool { !parental.kidsMode && ai.load().isReady }
+
+    /// Whether what was typed reads like a request (a person, a language, a mood…) and not just a title, so the search can offer smart picks. Read on the device; nothing is sent.
+    func looksLikeARequest(_ text: String) -> Bool {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard t.count >= 6, t.contains(" "), !parental.kidsMode else { return false }
+        let i = LocalIntent.parse(t) { PeopleIndex(db: db).canonicalName(for: $0) }
+        if !i.guessedPeople.isEmpty, !metadata.hasKey, !ai.load().isReady { var j = i; j.people = []; j.guessedPeople = []; return !j.isEmpty }          // a name the index does not know can only be checked with TMDB or an AI
+        return !i.people.isEmpty || !i.genres.isEmpty || !i.languages.isEmpty || i.year != nil || i.decade != nil || i.maxMinutes != nil || i.minRating != nil || !i.excludeGenres.isEmpty || i.surprise || (i.keywords.count >= 2 && t.split(separator: " ").count >= 4)
+    }
+
     var ai: AIStore { AIStore(defaults: settings.defaultsStore, credentials: credentials) }
 
-    /// Asks the chosen AI what to watch, then looks for its suggestions in the library on this device.
-    func askWhatToWatch(_ request: String) async throws -> (suggestion: WatchSuggestion, found: [LibraryItem]) {
+    /// Understands the request (with the chosen AI when there is one, and always with the library's own cast index), then finds the answers in the library on this device.
+    /// The AI never supplies titles to show: it reads the words, and (with no TMDB key) says what a person is known for, which is only used to look for those titles in the library.
+    func askWhatToWatch(_ request: String, previous: WatchIntent? = nil, useAI: Bool = true) async throws -> AskAnswer {
         guard !parental.kidsMode else { throw AIError.unavailable("The AI is not available in a kids profile.") }
-        let answer = try await AIClient(config: ai.load()).ask(system: WatchAdvisor.system, prompt: WatchAdvisor.prompt(request))
-        guard let suggestion = WatchAdvisor.parse(answer) else { throw AIError.unreadable }
-        let catalog = self.catalog
-        let found: [LibraryItem] = await Task.detached {
-            var out: [LibraryItem] = [], seen = Set<String>()
-            for t in suggestion.titles {
-                let (name, year) = WatchAdvisor.split(t)
-                guard name.count >= 2 else { continue }
-                var q = VODQuery(); q.search = name; q.limit = 25
-                let listed = TraktListed(title: name, year: year, isShow: false)
-                for m in (try? catalog.movies(q)) ?? [] where TraktMatching.matches(listed: listed, title: m.title, year: m.releaseYear ?? MetadataNormalizer.year(from: m.title)) { if seen.insert(m.id).inserted { out.append(.movie(m)) }; break }
-                for s in (try? catalog.series(q)) ?? [] where TraktMatching.matches(listed: listed, title: s.title, year: s.releaseYear) { if seen.insert(s.id).inserted { out.append(.series(s)) }; break }
+        let index = PeopleIndex(db: db)
+        let local = LocalIntent.parse(request) { words in index.canonicalName(for: words) }
+        var intent = local
+        var aiNote: String?
+        let config = useAI ? ai.load() : AIConfig(provider: .apple)
+        if useAI, config.isReady {
+            do {
+                let answer = try await AIClient(config: config).ask(system: IntentAdvisor.system, prompt: IntentAdvisor.prompt(request, previous: previous))
+                if var fromAI = IntentAdvisor.parse(answer) {
+                    // A name the AI gave is trusted only once it is a name the cast index knows (or TMDB resolves, below); otherwise the words are kept as a title search.
+                    fromAI.people = fromAI.people.compactMap { index.canonicalName(for: $0.lowercased()) ?? ((metadata.hasKey || config.isReady) ? $0 : nil) }
+                    // An AI that names a person must not also invent a language or genre the request never mentioned (small on-device models do).
+                    if !fromAI.people.isEmpty || !local.people.isEmpty {
+                        let said = request.lowercased()
+                        fromAI.languages = fromAI.languages.filter { said.contains($0.lowercased()) }
+                        if local.genres.isEmpty { fromAI.genres = [] }
+                    }
+                    intent = local.merged(with: fromAI)
+                }
+            } catch let e as AIError where config.provider != .apple { aiNote = e.localizedDescription }
+            catch { aiNote = nil }
+        }
+        if let previous { intent = previous.refined(by: intent) }
+        var lib = AskLibrary(catalog: catalog, people: index, history: historyRepo)
+        lib.request = request
+        lib.taste = await Task.detached { [catalog, historyRepo] in TasteProfile.learn(history: historyRepo, catalog: catalog, people: index) }.value
+        if useAI, config.isReady, settings.defaultsStore.object(forKey: "askai.judge") as? Bool ?? true {
+            lib.judge = { system, prompt in try? await AIClient(config: config).ask(system: system, prompt: prompt) }
+        }
+        if metadata.hasKey { let m = metadata; lib.filmography = { name in try? await m.filmography(of: name) } }
+        else if useAI, config.isReady {
+            lib.filmography = { name in
+                guard let answer = try? await AIClient(config: config).ask(system: KnownForAdvisor.system, prompt: KnownForAdvisor.prompt(name)) else { return nil }
+                return KnownForAdvisor.parse(answer, name: name)
             }
-            return out
-        }.value
-        return (suggestion, found)
+        }
+        var out = await lib.answer(intent)
+        if let aiNote { out.note = "The AI could not be reached (" + aiNote + "). Showing what the library itself found. " + out.note }
+        return out
     }
 }

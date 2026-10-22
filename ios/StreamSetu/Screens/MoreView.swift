@@ -16,7 +16,6 @@ struct MoreView: View {
                     NavigationLink { HistoryView() } label: { LibraryRow(symbol: "clock.arrow.circlepath", tint: .teal, title: "Watch History", count: nil) }
                     NavigationLink { DownloadsView() } label: { LibraryRow(symbol: "arrow.down.circle.fill", tint: .blue, title: "Downloads", count: nil) }
                     NavigationLink { TonightView() } label: { LibraryRow(symbol: "moon.stars.fill", tint: .indigo, title: "Tonight", count: nil) }
-                    NavigationLink { AskAIScreen() } label: { LibraryRow(symbol: "sparkles", tint: .indigo, title: "Ask AI", count: nil) }
                     NavigationLink { IntegrationsScreen() } label: { LibraryRow(symbol: "link.badge.plus", tint: .purple, title: "Trakt, Debrid and AI", count: nil) }
                     NavigationLink { OnYourDeviceView() } label: { LibraryRow(symbol: "iphone", tint: .teal, title: "On Your Device", count: nil) }
                     NavigationLink { FilesView() } label: { LibraryRow(symbol: "externaldrive.fill", tint: .gray, title: "Files and Servers", count: nil) }

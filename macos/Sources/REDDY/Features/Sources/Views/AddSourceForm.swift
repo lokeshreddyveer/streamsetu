@@ -70,6 +70,7 @@ struct AddSourceForm: View {
             }
             HStack {
                 Text("StreamSetu is a player for services you are authorized to use.").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
+                Button { AssistantLauncher.shared.ask("How do I add a \(vm.kind.rawValue) source? What do I fill in?"); AssistantLauncher.bringMainWindowForward() } label: { Label("Help me with this", systemImage: "sparkles") }.buttonStyle(.plain).foregroundStyle(.secondary)
                 Spacer()
                 if vm.isWorking { ProgressView().controlSize(.small) }
                 PrimaryButton(title: vm.isWorking ? "Connecting…" : "Add Source", symbol: "plus") {

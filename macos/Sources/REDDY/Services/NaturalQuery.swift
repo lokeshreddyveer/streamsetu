@@ -16,9 +16,14 @@ struct NaturalQuery: Equatable, Sendable {
     var started = false
     var favorites = false
     var addedWithinDays: Int?
+    /// How the person asked for the list to be ordered ("top rated", "newest", "a to z", "shortest first").
+    var sort: VODSort?
+    /// Genres asked for and genres left out ("thriller", "not horror").
+    var genres: [String] = []
+    var excludeGenres: [String] = []
 
     /// True when at least one filter was found, so the caller knows the search was understood and not just a title.
-    var isStructured: Bool { language != nil || year != nil || decade != nil || quality != nil || minRating != nil || maxMinutes != nil || minMinutes != nil || unwatched || started || favorites || addedWithinDays != nil }
+    var isStructured: Bool { language != nil || year != nil || decade != nil || quality != nil || minRating != nil || maxMinutes != nil || minMinutes != nil || unwatched || started || favorites || sort != nil || !genres.isEmpty || !excludeGenres.isEmpty || addedWithinDays != nil }
 
     /// "Telugu · 2024 · under 2 h · unwatched": what was understood, for showing under the search box.
     var summary: [String] {
@@ -34,6 +39,9 @@ struct NaturalQuery: Equatable, Sendable {
         if started { out.append("unfinished") }
         if favorites { out.append("favourites") }
         if addedWithinDays != nil { out.append("added recently") }
+        out += genres
+        out += excludeGenres.map { "no \($0)" }
+        if let sort { out.append("sorted: " + sort.rawValue.lowercased()) }
         return out
     }
 
@@ -66,7 +74,17 @@ struct NaturalQuery: Equatable, Sendable {
                 let full = d < 100 ? (d >= 30 ? 1900 + d : 2000 + d) : d
                 if full % 10 == 0, (1930...2020).contains(full) { q.decade = full; i += 1; continue }
             }
-            if ["top", "best", "highly"].contains(t), ["rated", "rating"].contains(word(i + 1) ?? "") { q.minRating = 8; i += 2; continue }
+            // ordering: "top rated", "highest rated", "newest", "oldest", "a to z", "z to a", "shortest", "longest"
+            if ["top", "best", "highest", "highly"].contains(t), ["rated", "rating"].contains(word(i + 1) ?? "") { q.sort = .rating; i += 2; continue }          // ordered by rating, not cut off: playlists often have no rating on many titles
+            if t == "newest" { q.sort = .year; i += 1; if word(i) == "first" { i += 1 }; continue }
+            if t == "oldest" { q.sort = .yearOldest; i += 1; if word(i) == "first" { i += 1 }; continue }
+            if ["alphabetical", "alphabetically", "a-z"].contains(t) { q.sort = .title; i += 1; continue }
+            if t == "a", word(i + 1) == "to", word(i + 2) == "z" { q.sort = .title; i += 3; continue }
+            if t == "z", word(i + 1) == "to", word(i + 2) == "a" { q.sort = .titleDescending; i += 3; continue }
+            if t == "shortest" { q.sort = .durationShortest; i += 1; if word(i) == "first" { i += 1 }; continue }
+            if t == "longest" { q.sort = .durationLongest; i += 1; if word(i) == "first" { i += 1 }; continue }
+            if ["not", "no", "without", "except", "avoid"].contains(t), let n = word(i + 1), let g = LocalIntent.genreWords[n] { if !q.excludeGenres.contains(g) { q.excludeGenres.append(g) }; i += 2; continue }
+            if let g = LocalIntent.genreWords[t] { if !q.genres.contains(g) { q.genres.append(g) }; rest.append(t); i += 1; continue }          // kept in the words for now: whether it is a filter or part of a title is decided below
             if t.hasSuffix("+"), let r = Double(t.dropLast()), (1...10).contains(r) { q.minRating = r; i += 1; continue }
             if ["rated", "rating"].contains(t), let n = word(i + 1), let r = Double(n.hasSuffix("+") ? String(n.dropLast()) : n), (1...10).contains(r) { q.minRating = r; i += 2; continue }
             if ["recent", "recently", "latest"].contains(t) { q.addedWithinDays = 30; i += 1; if word(i) == "added" { i += 1 }; continue }
@@ -78,6 +96,9 @@ struct NaturalQuery: Equatable, Sendable {
             if filler.contains(t) { i += 1; continue }
             rest.append(String(raw.lowercased().contains(t) ? t : t)); i += 1
         }
+        // A genre word is a filter only when the rest of the words are filters too ("telugu thriller", "thriller movies 2015"); beside a real title word it is part of the title ("action heist").
+        let titleWords = rest.filter { LocalIntent.genreWords[$0] == nil }
+        if titleWords.isEmpty && tokens.count > 1 { rest = [] } else { q.genres = [] }
         q.text = rest.joined(separator: " ")
         if !q.isStructured { q = NaturalQuery(); q.text = raw.trimmingCharacters(in: .whitespacesAndNewlines) }
         return q

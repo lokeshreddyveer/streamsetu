@@ -127,6 +127,7 @@ struct PlayerControlsOverlay: View {
             if let alt = playback.availableEngines.first(where: { $0 != playback.activeEngine }) {
                 Button("Try \(alt.rawValue)") { dismissedBufferingHint = true; playback.switchEngine(alt) }.buttonStyle(.bordered).controlSize(.small)
             }
+            Button { AssistantLauncher.shared.ask("Why does this stream keep buffering? Diagnose it.") } label: { Label("Ask Setu", systemImage: "sparkles") }.buttonStyle(.bordered).controlSize(.small)
             Button { dismissedBufferingHint = true } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .bold)) }.buttonStyle(.plain).foregroundStyle(.white.opacity(0.7))
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
@@ -153,6 +154,7 @@ struct PlayerControlsOverlay: View {
                     if let alt = playback.availableEngines.first(where: { $0 != playback.activeEngine }) {
                         SecondaryButton(title: "Use \(alt.rawValue)") { playback.switchEngine(alt) }
                     }
+                    SecondaryButton(title: "Ask Setu", symbol: "sparkles") { AssistantLauncher.shared.ask("Why did this fail? Diagnose it and tell me what to do.") }
                 }
             }.padding(Spacing.xl).background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: LayoutTokens.radiusLarge))
         case .ended:

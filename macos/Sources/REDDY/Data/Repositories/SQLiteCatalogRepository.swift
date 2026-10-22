@@ -292,6 +292,11 @@ final class SQLiteCatalogRepository: CatalogRepository {
         if let quality = q.quality, let terms = LibraryFilterTerms.qualityTerms[quality] {
             sql += " AND (" + terms.map { "(\(alias).title LIKE '%\($0)%' OR \(alias).category_name LIKE '%\($0)%')" }.joined(separator: " OR ") + ")"
         }
+        if !q.genres.isEmpty {
+            sql += " AND (" + q.genres.map { _ in "\(alias).genre LIKE ? OR \(alias).category_name LIKE ?" }.joined(separator: " OR ") + ")"
+            for g in q.genres { args.append("%\(g)%"); args.append("%\(g)%") }
+        }
+        for g in q.excludeGenres { sql += " AND COALESCE(\(alias).genre,'') NOT LIKE ? AND COALESCE(\(alias).category_name,'') NOT LIKE ?"; args.append("%\(g)%"); args.append("%\(g)%") }
         if let rating = q.minRating { sql += " AND CAST(\(alias).rating AS REAL) >= ?"; args.append(rating) }
         if kind == "movie", let m = q.maxMinutes { sql += " AND \(alias).duration_seconds > 0 AND \(alias).duration_seconds <= ?"; args.append(m * 60) }
         if kind == "movie", let m = q.minMinutes { sql += " AND \(alias).duration_seconds >= ?"; args.append(m * 60) }

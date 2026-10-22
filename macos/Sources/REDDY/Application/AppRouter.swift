@@ -115,6 +115,8 @@ final class AppRouter {
     var searchResultsFocus = 0
     /// Category to preselect in a tab (set by other screens, consumed once).
     var pendingFolder: String?
+    /// Words for the next list screen's own search box, set by a command typed in the top search ("open movies: top rated telugu"). Consumed once.
+    var libraryQuery: String?
 
     static func defaultSelection(for tab: AppTab) -> SidebarSelection { .shortcut(Shortcut.pinned(for: tab)[0]) }
 

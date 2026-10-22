@@ -110,6 +110,17 @@ struct MainShell: View {
                 .animation(AnimationTokens.standard, value: playback.current != nil && !(router.tab == .liveTV && playback.isLive))
                 overlays
             }
+            if !state.needsOnboarding {
+                AssistantBubble(container: container, bottomInset: playback.current != nil && !(router.tab == .liveTV && playback.isLive) ? 96 : 20,
+                                open: { PlayActions.open($0, router: router) },
+                                look: { (screen: assistantScreenName, item: router.movie.map { .movie($0) } ?? router.series.map { .series($0) }, search: router.searchQuery) },
+                                perform: { p in
+                                    switch p.kind {
+                                    case .command, .playItem, .toggleList: return await SearchCommandRunner.execute(p.kind, container: container, router: router, state: state)
+                                    default: return await container.perform(p, state: state)
+                                    }
+                                })
+            }
             VStack { Spacer(); HStack { Spacer(); ToastHost(center: state.toasts) } }.padding(.bottom, LivePlayerLayout.shouldShowMiniPlayer(onLiveTV: router.tab == .liveTV, isLive: playback.isLive, livePreviewVisible: playback.livePreviewVisible, hasPlayback: playback.current != nil) ? BottomPlayerLayout.height(isLive: playback.isLive) + 8 : 12)
         }
         // The root shell owns the top edge: the bar starts at the window's top in every window state, so it is never pushed
@@ -371,6 +382,14 @@ struct MainShell: View {
             if let s = try? c.catalog.seriesItem(id: sid) { router.open(series: s) }
         default: p.isExpanded = true
         }
+    }
+
+    /// The name of the screen, for the assistant.
+    private var assistantScreenName: String {
+        if router.isSearching { return "Search results" }
+        if router.movie != nil { return "A movie's page" }
+        if router.series != nil { return "A series' page" }
+        switch router.selection { case .shortcut(let sc): return router.tab.title + ": " + sc.title; case .folder: return router.tab.title + ": a folder" }
     }
 
     private func setQuery(_ q: String) {

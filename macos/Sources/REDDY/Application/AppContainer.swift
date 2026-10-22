@@ -50,6 +50,8 @@ final class AppContainer {
     let downloads: DownloadService
     /// Set by the app: called on the main actor when the list of series with new episodes changed.
     var onNewEpisodesChanged: (@MainActor () -> Void)?
+    /// The last value of each setting whose effect was applied, so the same change is not applied twice (see `settingChanged`).
+    var appliedSettingValues: [String: String] = [:]
     private(set) var cloud: CloudSyncCoordinator!
     private(set) var lan: LanSyncService!
     private(set) var profiles: ProfileService!

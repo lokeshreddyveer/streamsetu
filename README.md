@@ -278,6 +278,14 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Hindi and Telugu, the main screens; some text is still English | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **More like this** | | | | | |
 | Suggestions under a movie or series by franchise, director, genre, cast and story, each with its reason | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Assistant and your own services** | | | | | |
+| Setu, an assistant in a chat bubble: finds something to watch, answers about your screen, settings and playback problems, and offers actions you tap to confirm (new: tried on the Mac first) | ✓ | ✓ | ✓ | – | – |
+| Bring your own AI: Apple Intelligence, Gemini, OpenRouter, Claude, OpenAI, Groq, NVIDIA, Ollama Cloud, or Ollama on your network, with each one's price and free limit shown | ✓ | ✓ | ✓ | ✓ without Apple Intelligence | ✓ without Apple Intelligence |
+| Ask AI from the search box when a request finds nothing | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Search box commands: go to a screen, play, resume, last channel, add or remove a favourite or Watch Later | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Sort and filter words in the search box ("top rated telugu movies", "newest series", "comedy not horror"), and moods ("date night", "something short") | ✓ | ✓ | ✓ | some words | some words |
+| Trakt: tells Trakt what you watch and copies your watchlist into Watch Later, with your own Trakt app keys | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Debrid: play Real-Debrid, AllDebrid and Premiumize links with your own token (magnet links are not accepted on iPhone and iPad) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Sync and updates** | | | | | |
 | iCloud sync between your Apple devices | ✓ | ✓ | ✓ | – | – |
 | Sync on this network (Wi-Fi, no account) | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -369,10 +377,17 @@ On the Mac, iPhone and iPad, **iCloud sync** keeps your setup the same on every 
 - Smooth, restrained motion with one shared set of timings; reduced-motion is respected.
 - Optional soft **interface sounds**, off until you turn them on in Settings. Five sets of original tones (Signature, Wood, Crystal, Soft, Arcade) plus Minimal; they never touch the TV's volume.
 
+### Assistant, Trakt and debrid
+
+- **Setu** (Mac, iPhone and iPad) is a chat opened from a round button at the bottom right. It answers from your own library and from the app's own numbers, and everything it suggests is a button you tap. A tick appears only when the action worked; when it did not, it says why. It is switched off in a kids profile. On iPhone and iPad it is new and has not yet been tried on a device.
+- **Your own AI.** You choose the service and add your own key. The key is kept in the system's secure storage and sent only to that service. Only the words you type are sent, plus, if you leave the eye button on, the name of the screen, what is playing and a few library counts. Playlist addresses, logins and tokens are never sent.
+- **Trakt and debrid** use your own accounts and keys, and do nothing until you sign in.
+- The AI answers from what the model knows. It has no live web search.
+
 ### Privacy and safety
 
 - The Android apps can check GitHub for a newer release (Settings, About, Updates). It is on by default, runs once a day, and only when nothing is playing. Only the public release list is requested, and nothing about you is sent. A downloaded file is used only if its checksum matches the release notes and it is signed with the same key as the installed app, and the system installer always asks you to confirm. You can turn the check off.
-- No account, no advertising, no analytics, no crash reporting sent anywhere.
+- No account, no advertising, no analytics, no crash reporting sent anywhere. The only exceptions are services you set up yourself: your AI, Trakt, a debrid service, TMDB and OpenSubtitles, each with your own key and each told only what it needs.
 - Logins live in the system's secure storage (Android Keystore, Apple Keychain) and are never shown, logged or exported.
 - Diagnostic reports and backups remove addresses, user names, passwords and tokens.
 - Folder locks are a real PIN lock: the PIN is stored only as a salted hash, and locked titles are also left out of search and banners.
@@ -442,6 +457,9 @@ More detail is in [`android/ARCHITECTURE.md`](android/ARCHITECTURE.md), and what
 - Stalker portals are not offered in the iPhone and iPad builds distributed through TestFlight and the App Store.
 - Recording a live channel is on the Mac, Android phone and Fire TV, not on iPhone and iPad. Downloads are not on Fire TV.
 - Catch-up needs a provider that offers an archive, and some providers read the start time in their own time zone (there is a setting for it).
+- Setu is on the Mac, iPhone and iPad. Android and Fire TV have commands and an Ask AI row in the search box, but not the chat, the instant name answers or the problem diagnosis yet.
+- Apple Intelligence's on-device model is weak at who was in which film; for actors, use another model or add a TMDB key.
+- Trakt and debrid have been tested against recorded replies, not with real accounts.
 
 ## Support and feedback
 

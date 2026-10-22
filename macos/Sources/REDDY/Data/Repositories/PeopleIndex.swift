@@ -89,6 +89,13 @@ struct PeopleIndex: Sendable {
         return out
     }
 
+    /// The way a name is written in the cast index, when words (already lower case) are a whole name there: "mahesh babu" -> "Mahesh Babu". Nil when nobody has that name.
+    func canonicalName(for words: String) -> String? {
+        let n = Self.norm(words)
+        guard n.count >= 4 else { return nil }
+        return (try? db.read { c in try c.queryOne("SELECT name FROM people WHERE norm = ? LIMIT 1", [n]) { $0.string(0) } }) ?? nil
+    }
+
     /// The people known for each of these titles, as written (empty for a title not read yet).
     func names(forItems ids: [String]) -> [String: [String]] {
         var out: [String: [String]] = [:]

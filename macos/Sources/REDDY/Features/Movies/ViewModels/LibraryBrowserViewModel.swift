@@ -80,6 +80,8 @@ final class LibraryBrowserViewModel {
             if n.started { q.watch = .started }
             if n.favorites { q.favoritesOnly = true }
             if let d = n.addedWithinDays { q.addedWithinDays = d }
+            q.genres = n.genres; q.excludeGenres = n.excludeGenres
+            if let s = n.sort { q.sort = s }          // "top rated" or "newest" in the search box orders the list
         }
         return q
     }
