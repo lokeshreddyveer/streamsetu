@@ -11,6 +11,15 @@ enum class AIProvider(val title: String, val needsKey: Boolean, val keyHelp: Str
     GEMINI("Google Gemini", true, "Free key at aistudio.google.com/apikey", "gemini-2.5-flash-lite",
         "Free tier with no card (low limits: roughly a couple of requests a minute and tens to a thousand a day, depending on the model; Google may use free-tier data to improve its products). Paid: about \$0.10 to \$0.30 per million words in and \$0.40 to \$2.50 out for the small models.",
         "https://ai.google.dev/gemini-api/docs/pricing"),
+    GROQ("Groq", true, "Free key at console.groq.com/keys", "llama-3.3-70b-versatile",
+        "Free tier with no card, but with limits: about 30 requests a minute and roughly 1,000 a day on the 70B model (the smaller model allows more). Very fast. Paid: about \$0.59 per million words in and \$0.79 out for the 70B model.",
+        "https://console.groq.com/docs/rate-limits"),
+    NVIDIA("NVIDIA", true, "Free key at build.nvidia.com (sign in, then Get API Key)", "meta/llama-3.3-70b-instruct",
+        "Free for trying things out: about 40 requests a minute, and the limit cannot be raised on the free tier. Your own limit is shown on build.nvidia.com once you are signed in. It is meant for testing, so use it lightly.",
+        "https://build.nvidia.com"),
+    OLLAMA_CLOUD("Ollama Cloud", true, "Key at ollama.com/settings/keys", "gpt-oss:120b",
+        "Has a free plan with light use (a limit on how much computer time you use, resetting every few hours and weekly, and one request at a time); paid plans from about \$20 a month raise it. Billing details vary, so check ollama.com.",
+        "https://ollama.com/pricing"),
     OPENROUTER("OpenRouter", true, "Key at openrouter.ai/keys", "meta-llama/llama-3.3-70b-instruct:free",
         "Free models (names ending in :free): 20 requests a minute, and 50 a day, or 1,000 a day once you have bought \$10 of credit. Paid models are billed at the price of the model you choose.",
         "https://openrouter.ai/docs/api/reference/limits"),
@@ -39,6 +48,9 @@ class AIClient(private val config: AIConfig, private val web: Web = LiveWeb) {
         if (!config.isReady) throw AIException("Choose an AI in Settings first.")
         return when (config.provider) {
             AIProvider.GEMINI -> gemini(system, prompt)
+            AIProvider.GROQ -> chat("https://api.groq.com/openai/v1/chat/completions", system, prompt)
+            AIProvider.NVIDIA -> chat("https://integrate.api.nvidia.com/v1/chat/completions", system, prompt)
+            AIProvider.OLLAMA_CLOUD -> ollama(system, prompt, "https://ollama.com", config.key.trim())
             AIProvider.OPENROUTER -> chat("https://openrouter.ai/api/v1/chat/completions", system, prompt, mapOf("X-Title" to "StreamSetu"))
             AIProvider.OPENAI -> chat("https://api.openai.com/v1/chat/completions", system, prompt)
             AIProvider.CLAUDE -> claude(system, prompt)
@@ -78,12 +90,12 @@ class AIClient(private val config: AIConfig, private val web: Web = LiveWeb) {
         return text.ifEmpty { throw AIException("The AI's answer could not be read. Try asking again.") }
     }
 
-    private suspend fun ollama(system: String, prompt: String): String {
-        var base = config.effectiveBase
+    private suspend fun ollama(system: String, prompt: String, fixedBase: String? = null, bearer: String? = null): String {
+        var base = fixedBase ?: config.effectiveBase
         if (!base.contains("://")) base = "http://$base"
         base = base.trimEnd('/')
         val body = buildJsonObject { put("model", config.effectiveModel); put("stream", false); put("messages", msgs(system, prompt)) }
-        val j = send("$base/api/chat", body, emptyMap())
+        val j = send("$base/api/chat", body, if (bearer != null) mapOf("Authorization" to "Bearer $bearer") else emptyMap())
         val text = j.obj()?.get("message").obj()?.get("content").str().orEmpty()
         return text.ifEmpty { throw AIException("The AI's answer could not be read. Try asking again.") }
     }

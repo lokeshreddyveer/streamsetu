@@ -7,13 +7,16 @@ import FoundationModels
 /// The AI the person has chosen to ask. They bring their own account: an API key from the provider (kept in the Keychain and sent only to that provider), or Apple Intelligence, which runs
 /// on the device and needs no key, or a model of their own on their network (Ollama). Only the words the person types are sent: never a playlist address, a login, or what they have watched.
 enum AIProvider: String, CaseIterable, Codable, Sendable, Identifiable {
-    case apple, gemini, openRouter, claude, openAI, ollama
+    case apple, gemini, groq, nvidia, openRouter, claude, openAI, ollamaCloud, ollama
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .apple: "Apple Intelligence"
         case .gemini: "Google Gemini"
+        case .groq: "Groq"
+        case .nvidia: "NVIDIA"
+        case .ollamaCloud: "Ollama Cloud"
         case .openRouter: "OpenRouter"
         case .claude: "Anthropic Claude"
         case .openAI: "OpenAI"
@@ -26,6 +29,9 @@ enum AIProvider: String, CaseIterable, Codable, Sendable, Identifiable {
         switch self {
         case .apple: "Nothing to add: it runs on this device."
         case .gemini: "Free key at aistudio.google.com/apikey"
+        case .groq: "Free key at console.groq.com/keys"
+        case .nvidia: "Free key at build.nvidia.com (sign in, then Get API Key)"
+        case .ollamaCloud: "Key at ollama.com/settings/keys"
         case .openRouter: "Key at openrouter.ai/keys"
         case .claude: "Key at console.anthropic.com"
         case .openAI: "Key at platform.openai.com/api-keys"
@@ -37,6 +43,9 @@ enum AIProvider: String, CaseIterable, Codable, Sendable, Identifiable {
         switch self {
         case .apple: ""
         case .gemini: "gemini-2.5-flash-lite"
+        case .groq: "llama-3.3-70b-versatile"
+        case .nvidia: "meta/llama-3.3-70b-instruct"
+        case .ollamaCloud: "gpt-oss:120b"
         case .openRouter: "meta-llama/llama-3.3-70b-instruct:free"
         case .claude: "claude-haiku-5-5"
         case .openAI: "gpt-4o-mini"
@@ -50,6 +59,9 @@ enum AIProvider: String, CaseIterable, Codable, Sendable, Identifiable {
         switch self {
         case .apple: "Free. Runs on this device, so it needs a supported device with Apple Intelligence switched on. English and several other languages."
         case .gemini: "Free tier with no card (low limits: roughly a couple of requests a minute and tens to a thousand a day, depending on the model; Google may use free-tier data to improve its products). Paid: about $0.10 to $0.30 per million words in and $0.40 to $2.50 out for the small models."
+        case .groq: "Free tier with no card, but with limits: about 30 requests a minute and roughly 1,000 a day on the 70B model (the smaller model allows more). Very fast. Paid: about $0.59 per million words in and $0.79 out for the 70B model."
+        case .nvidia: "Free for trying things out: about 40 requests a minute, and the limit cannot be raised on the free tier. Your own limit is shown on build.nvidia.com once you are signed in. It is meant for testing, so use it lightly."
+        case .ollamaCloud: "Has a free plan with light use (a limit on how much computer time you use, resetting every few hours and weekly, and one request at a time); paid plans from about $20 a month raise it. Billing details vary, so check ollama.com."
         case .openRouter: "Free models (names ending in :free): 20 requests a minute, and 50 a day, or 1,000 a day once you have bought $10 of credit. Paid models are billed at the price of the model you choose."
         case .claude: "No free API tier. Small model about $0.10 to $1 per million words in and $0.50 to $5 out; mid-size about $3 in and $15 out."
         case .openAI: "No free API tier. Small models about $0.15 to $0.75 per million words in and $0.60 to $4.50 out."
@@ -60,6 +72,9 @@ enum AIProvider: String, CaseIterable, Codable, Sendable, Identifiable {
         switch self {
         case .apple: "https://www.apple.com/apple-intelligence/"
         case .gemini: "https://ai.google.dev/gemini-api/docs/pricing"
+        case .groq: "https://console.groq.com/docs/rate-limits"
+        case .nvidia: "https://build.nvidia.com"
+        case .ollamaCloud: "https://ollama.com/pricing"
         case .openRouter: "https://openrouter.ai/docs/api/reference/limits"
         case .claude: "https://docs.anthropic.com/en/docs/about-claude/pricing"
         case .openAI: "https://openai.com/api/pricing/"
@@ -125,6 +140,9 @@ struct AIClient: Sendable {
         case .apple: return try await onDevice(system, prompt)
         case .gemini: return try await gemini(system, prompt)
         case .openRouter: return try await chatCompletions("https://openrouter.ai/api/v1/chat/completions", system, prompt, extra: ["X-Title": "StreamSetu"])
+        case .groq: return try await chatCompletions("https://api.groq.com/openai/v1/chat/completions", system, prompt)
+        case .nvidia: return try await chatCompletions("https://integrate.api.nvidia.com/v1/chat/completions", system, prompt)
+        case .ollamaCloud: return try await ollama(system, prompt, base: "https://ollama.com", bearer: config.key.trimmingCharacters(in: .whitespaces))
         case .openAI: return try await chatCompletions("https://api.openai.com/v1/chat/completions", system, prompt)
         case .claude: return try await claude(system, prompt)
         case .ollama: return try await ollama(system, prompt)
@@ -165,11 +183,12 @@ struct AIClient: Sendable {
         return text
     }
 
-    private func ollama(_ system: String, _ prompt: String) async throws -> String {
-        var base = config.effectiveBase
+    private func ollama(_ system: String, _ prompt: String, base fixedBase: String? = nil, bearer: String? = nil) async throws -> String {
+        var base = fixedBase ?? config.effectiveBase
         if !base.contains("://") { base = "http://" + base }
         while base.hasSuffix("/") { base.removeLast() }
-        let r = try request(base + "/api/chat", body: ["model": config.effectiveModel, "stream": false, "messages": [["role": "system", "content": system], ["role": "user", "content": prompt]]])
+        var r = try request(base + "/api/chat", body: ["model": config.effectiveModel, "stream": false, "messages": [["role": "system", "content": system], ["role": "user", "content": prompt]]])
+        if let bearer { r.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization") }
         let j = try await json(r)
         let text = ((j["message"] as? [String: Any])?["content"] as? String) ?? ""
         guard !text.isEmpty else { throw AIError.unreadable }

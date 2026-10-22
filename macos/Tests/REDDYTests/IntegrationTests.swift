@@ -239,6 +239,22 @@ final class FakeWeb: @unchecked Sendable {
         }
     }
 
+    @Test func groqAndNvidiaUseTheirOwnAddressesWithBearerKeys() async throws {
+        for (p, host, model) in [(AIProvider.groq, "api.groq.com", "llama-3.3-70b-versatile"), (AIProvider.nvidia, "integrate.api.nvidia.com", "meta/llama-3.3-70b-instruct")] {
+            let web = FakeWeb(); web.routes = [("chat/completions", 200, #"{"choices":[{"message":{"content":"Fast"}}]}"#)]
+            #expect(try await client(p, web: web).ask(system: "S", prompt: "P") == "Fast")
+            let r = try #require(web.requests.first)
+            #expect(r.url?.host == host && r.value(forHTTPHeaderField: "Authorization") == "Bearer KEY" && body(r)["model"] as? String == model)
+        }
+    }
+
+    @Test func ollamaCloudSendsTheKeyToOllamaDotCom() async throws {
+        let web = FakeWeb(); web.routes = [("/api/chat", 200, #"{"message":{"role":"assistant","content":"Cloud"}}"#)]
+        #expect(try await client(.ollamaCloud, web: web).ask(system: "S", prompt: "P") == "Cloud")
+        let r = try #require(web.requests.first)
+        #expect(r.url?.absoluteString == "https://ollama.com/api/chat" && r.value(forHTTPHeaderField: "Authorization") == "Bearer KEY" && body(r)["model"] as? String == "gpt-oss:120b")
+    }
+
     @Test func ollamaNeedsNoKeyAndTakesTheAddressItIsGiven() async throws {
         let web = FakeWeb(); web.routes = [("/api/chat", 200, #"{"message":{"role":"assistant","content":"Local"}}"#)]
         #expect(try await client(.ollama, key: "", base: "192.168.1.20:11434/", web: web).ask(system: "S", prompt: "P") == "Local")

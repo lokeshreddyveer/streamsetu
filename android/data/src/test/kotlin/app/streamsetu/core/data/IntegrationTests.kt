@@ -196,6 +196,17 @@ class AITests {
         }
     }
 
+    @Test fun groqNvidiaAndOllamaCloudUseTheirOwnAddresses() = runBlocking {
+        for ((p, host, model) in listOf(Triple(AIProvider.GROQ, "api.groq.com", "llama-3.3-70b-versatile"), Triple(AIProvider.NVIDIA, "integrate.api.nvidia.com", "meta/llama-3.3-70b-instruct"))) {
+            val web = FakeWeb().apply { routes = listOf(Triple("chat/completions", 200, """{"choices":[{"message":{"content":"Fast"}}]}""")) }
+            assertEquals("Fast", client(p, web).ask("S", "P"))
+            val r = web.requests.first(); assertTrue(r.url.contains(host)); assertEquals("Bearer KEY", r.headers["Authorization"]); assertTrue(r.body!!.contains(model))
+        }
+        val web = FakeWeb().apply { routes = listOf(Triple("/api/chat", 200, """{"message":{"role":"assistant","content":"Cloud"}}""")) }
+        assertEquals("Cloud", client(AIProvider.OLLAMA_CLOUD, web).ask("S", "P"))
+        val r = web.requests.first(); assertEquals("https://ollama.com/api/chat", r.url); assertEquals("Bearer KEY", r.headers["Authorization"]); assertTrue(r.body!!.contains("gpt-oss:120b"))
+    }
+
     @Test fun ollamaNeedsNoKeyAndTakesTheAddressItIsGiven() = runBlocking {
         val web = FakeWeb().apply { routes = listOf(Triple("/api/chat", 200, """{"message":{"role":"assistant","content":"Local"}}""")) }
         assertEquals("Local", client(AIProvider.OLLAMA, web, key = "", base = "192.168.1.20:11434/").ask("S", "P"))
