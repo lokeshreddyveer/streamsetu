@@ -13,7 +13,7 @@ enum class SwitchResult { Switched, NeedsPin, WrongPin, Failed }
  * Profiles: people who share one device and one playlist, each with their own favorites, collections, history and resume points (see [Profiles]). Entering an adult profile that
  * has a PIN needs it, and leaving a kids profile needs that profile's PIN. Sync on this network carries the first profile only, so it pauses while another is in use.
  */
-class ProfileService(private val db: AppDatabase, private val onSwitched: (Profile) -> Unit) {
+class ProfileService(private val db: AppDatabase, private val pinPrefs: android.content.SharedPreferences? = null, private val onSwitched: (Profile) -> Unit) {
     private val raw get() = db.openHelper.writableDatabase
     private val _profiles = MutableStateFlow<List<Profile>>(emptyList())
     private val _active = MutableStateFlow(Profiles.MAIN)
@@ -40,7 +40,12 @@ class ProfileService(private val db: AppDatabase, private val onSwitched: (Profi
         val t = _profiles.value.firstOrNull { it.id == target } ?: return null
         return if (active.kids) active.id else if (!t.kids && t.hasPin) t.id else null
     }
-    fun checkPin(id: String, pin: String) = Profiles.checkPin(raw, id, pin)
+    private val memory = HashMap<String, String>()
+    private fun throttle(id: String) = app.streamsetu.core.model.PinThrottle("profile.$id",
+        { pinPrefs?.getString(it, null) ?: memory[it] },
+        { k, v -> if (pinPrefs != null) pinPrefs.edit().apply { if (v == null) remove(k) else putString(k, v) }.apply() else if (v == null) memory.remove(k) else memory[k] = v })
+    /** Wrong tries are counted per profile, and five in a row lock further tries for a minute. */
+    fun checkPin(id: String, pin: String) = throttle(id).attempt { Profiles.checkPin(raw, id, pin) } == app.streamsetu.core.model.PinThrottle.Outcome.Right
 
     fun switchTo(id: String, pin: String? = null): SwitchResult {
         if (id == _active.value) return SwitchResult.Switched
@@ -48,7 +53,7 @@ class ProfileService(private val db: AppDatabase, private val onSwitched: (Profi
         if (active.kids || (!target.kids && target.hasPin)) {
             val needed = if (active.kids) active.id else target.id
             if (pin == null) return SwitchResult.NeedsPin
-            if (!Profiles.checkPin(raw, needed, pin)) return SwitchResult.WrongPin
+            if (!checkPin(needed, pin)) return SwitchResult.WrongPin
         }
         val from = _active.value
         return try {

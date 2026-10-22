@@ -52,6 +52,7 @@ struct LibrarySettingsPage: View {
             ArtworkMatchingGroup()
 
             ProfilesGroup()
+            IntegrationsGroup()
 
             SubscriptionsGroup()
 

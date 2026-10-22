@@ -77,7 +77,7 @@ fun PhoneGuide(c: AppContainer, nav: Navigator, vm: GuideViewModel = hiltViewMod
     val favOnly by vm.favouritesOnly.collectAsState()
     val hasGuide by vm.hasGuide.collectAsState()
     var detail by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
-    val now = remember { System.currentTimeMillis() }
+    val now by produceState(System.currentTimeMillis()) { while (true) { kotlinx.coroutines.delay(30_000); value = System.currentTimeMillis() } }          // moves on while the guide is open
     val time = remember { DateFormat.getTimeInstance(DateFormat.SHORT) }
     Column(Modifier.fillMaxSize()) {
         PhoneTopBar("TV Guide", leading = { RoundTap(Icons.Filled.ArrowBack, "Back") { nav.tab = Tab.LIVE } })

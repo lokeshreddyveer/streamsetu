@@ -308,7 +308,7 @@ final class AppSettings {
     }
 
     private func copy(from o: AppSettings) {
-        theme = o.theme; customTheme = o.customTheme; accent = o.accent; density = o.density; reduceMotion = o.reduceMotion; sidebarLaunch = o.sidebarLaunch; clickBehavior = o.clickBehavior
+        theme = o.theme; customTheme = o.customTheme; accent = o.accent; density = o.density; reduceMotion = o.reduceMotion; highContrast = o.highContrast; sidebarLaunch = o.sidebarLaunch; clickBehavior = o.clickBehavior
         collapseDuplicates = o.collapseDuplicates; hideEmptyFolders = o.hideEmptyFolders; defaultLibrarySort = o.defaultLibrarySort
         defaultChannelSort = o.defaultChannelSort; rememberFolders = o.rememberFolders; remindersEnabled = o.remindersEnabled; refreshOnOpen = o.refreshOnOpen; language = o.language; resumeLastChannel = o.resumeLastChannel
         enginePreference = o.enginePreference; hardwareDecoding = o.hardwareDecoding; deinterlace = o.deinterlace; videoQuality = o.videoQuality
@@ -328,7 +328,7 @@ final class AppSettings {
     ].reduce(into: Set<String>()) { $0.insert("settings." + $1) }
 
     private static func typedValue(_ key: String, _ s: String) -> Any? {
-        let bools: Set<String> = ["reducemotion", "collapse", "hideemptyfolders", "rememberfolders", "reminders", "refreshonopen", "resumelast", "subsdefault", "autonext", "rememberpos", "autoresume", "diagoverlay", "downmix", "suboutline", "liverewind", "autobackup"].reduce(into: Set<String>()) { $0.insert("settings." + $1) }
+        let bools: Set<String> = ["reducemotion", "highcontrast", "collapse", "hideemptyfolders", "rememberfolders", "reminders", "refreshonopen", "resumelast", "subsdefault", "autonext", "rememberpos", "autoresume", "diagoverlay", "downmix", "suboutline", "liverewind", "autobackup"].reduce(into: Set<String>()) { $0.insert("settings." + $1) }
         if bools.contains(key) { return s == "true" || s == "1" ? true : (s == "false" || s == "0" ? false : nil) }
         switch key.dropFirst("settings.".count) {
         case "subsize": return Double(s).map { clamp($0, 60...200) }

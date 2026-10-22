@@ -2,8 +2,14 @@ import Foundation
 import Compression
 
 enum GzipError: Error, LocalizedError {
-    case notGzip, corrupt
-    var errorDescription: String? { self == .notGzip ? "Not a gzip file." : "The guide file is corrupt." }
+    case notGzip, corrupt, tooLarge
+    var errorDescription: String? {
+        switch self {
+        case .notGzip: "Not a gzip file."
+        case .corrupt: "The guide file is corrupt."
+        case .tooLarge: "The guide file is far larger than a guide should be, so it was not unpacked."
+        }
+    }
 }
 
 /// Streaming gzip decompression to a file (constant memory, even for multi-hundred-MB guides).
@@ -15,7 +21,10 @@ enum GzipInflater {
         return h.count == 2 && h[h.startIndex] == 0x1f && h[h.startIndex + 1] == 0x8b
     }
 
-    static func inflate(from src: URL, to dst: URL) throws {
+    /// The most a guide may grow to once unpacked. A real guide is tens of megabytes; a tiny file that unpacks to gigabytes is refused before it fills the disk.
+    static let maxOutput: Int64 = 1_500_000_000
+
+    static func inflate(from src: URL, to dst: URL, maxOutput: Int64 = GzipInflater.maxOutput) throws {
         let input = try FileHandle(forReadingFrom: src)
         defer { try? input.close() }
         let head = try input.read(upToCount: 4096) ?? Data()
@@ -50,6 +59,7 @@ enum GzipInflater {
 
         var inputEnded = false
         var finished = false
+        var written: Int64 = 0
         while !finished {
             if stream.src_size == 0, !inputEnded {
                 let chunk = try input.read(upToCount: bufSize) ?? Data()
@@ -64,7 +74,11 @@ enum GzipInflater {
             switch status {
             case COMPRESSION_STATUS_OK, COMPRESSION_STATUS_END:
                 let produced = bufSize - stream.dst_size
-                if produced > 0 { try output.write(contentsOf: Data(bytes: dstBuf, count: produced)) }
+                if produced > 0 {
+                    written += Int64(produced)
+                    if written > maxOutput { try? FileManager.default.removeItem(at: dst); throw GzipError.tooLarge }
+                    try output.write(contentsOf: Data(bytes: dstBuf, count: produced))
+                }
                 stream.dst_ptr = dstBuf
                 stream.dst_size = bufSize
                 if status == COMPRESSION_STATUS_END { finished = true }

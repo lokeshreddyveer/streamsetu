@@ -50,6 +50,7 @@ enum class Category(val title: String, val subtitle: String, val icon: ImageVect
     APPEARANCE("Appearance & Sounds", "Posters, banner, animation, interface sounds", Icons.Filled.Palette),
     PRIVACY("Privacy & Security", "Folder PIN, relock, clearing data", Icons.Filled.Lock),
     PODCASTS("Podcasts", "Follow shows and play episodes", Icons.Filled.Mic),
+    INTEGRATIONS("AI, Trakt and Debrid", "Ask for what to watch, watch tracking and link unlocking, with your own keys", Icons.Filled.Link),
     PROFILES("Profiles", "Who is watching, kids profiles and PINs", Icons.Filled.People),
     SYNC("Sync on this network", "Share favourites and progress over Wi-Fi", Icons.Filled.Sync),
     STORAGE("Storage & Backup", "Cache, backup and reset", Icons.Filled.Storage),
@@ -133,6 +134,7 @@ fun SettingsPanel(current: Category, c: AppContainer, nav: Navigator) {
         Category.APPEARANCE -> AppearanceSettings(c)
         Category.PRIVACY -> { PrivacySettings(c); PrivacyReportSettings(c) }
         Category.PODCASTS -> PodcastSettings(c, nav)
+        Category.INTEGRATIONS -> IntegrationsSettings(c, nav)
         Category.PROFILES -> ProfileSettings(c)
         Category.SYNC -> SyncSettings(c)
         Category.STORAGE -> StorageSettings(c)

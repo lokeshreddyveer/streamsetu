@@ -65,7 +65,9 @@ final class HistoryService: Sendable {
     /// Chronological playback log for the playlist (titles as they were when played).
     func watchLog(limit: Int = 200, sourceID: UUID? = nil) throws -> [LogItem] {
         let prefix = sourceID.map { $0.uuidString.lowercased() + "|" }
-        return try repo.watchLog(limit: limit * 3).filter { prefix == nil || $0.itemID.hasPrefix(prefix!) }.prefix(limit).map(LogItem.init)
+        let rows = try repo.watchLog(limit: limit * 3).filter { prefix == nil || $0.itemID.hasPrefix(prefix!) }
+        let hidden = try catalog.hiddenByLock(rows.map(\.itemID))          // a title from a locked folder stays out of the log while folders are locked
+        return rows.filter { !hidden.contains($0.itemID) }.prefix(limit).map(LogItem.init)
     }
 
     /// The episode to offer after `episode`: the next one in the same season, else the first of the next season.

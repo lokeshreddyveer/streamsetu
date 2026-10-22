@@ -44,8 +44,8 @@ enum ExternalPlayer {
     static func link(for app: ExternalPlayerApp, url: URL) -> URL? {
         let encoded = url.absoluteString.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? url.absoluteString
         switch app.id {
-        case "vlc": return URL(string: "vlc-x-callback://x-callback-url/stream?url=\\(encoded)")
-        case "infuse": return URL(string: "infuse://x-callback-url/play?url=\\(encoded)")
+        case "vlc": return URL(string: "vlc-x-callback://x-callback-url/stream?url=\(encoded)")
+        case "infuse": return URL(string: "infuse://x-callback-url/play?url=\(encoded)")
         case "nplayer": return URL(string: "nplayer-" + url.absoluteString)
         case "outplayer": return URL(string: "outplayer://" + url.absoluteString)
         default: return nil

@@ -62,7 +62,7 @@ object Http {
         return java.net.Proxy(if (kind == "SOCKS") java.net.Proxy.Type.SOCKS else java.net.Proxy.Type.HTTP, java.net.InetSocketAddress.createUnresolved(host.trim(), port))
     }
 
-    fun basic(user: String, pass: String): String = "Basic " + java.util.Base64.getEncoder().encodeToString("$user:$pass".toByteArray())
+    fun basic(user: String, pass: String): String = okhttp3.Credentials.basic(user, pass, Charsets.UTF_8)          // java.util.Base64 needs Android 8; this works from 5.1
 
     fun get(url: String, userAgent: String? = null, headers: Map<String, String> = emptyMap(), block: (okhttp3.Response) -> Unit) {
         client.newCall(Request.Builder().url(url).apply { headers.forEach { (k, v) -> header(k, v) }; if (!userAgent.isNullOrBlank()) header("User-Agent", userAgent) }.build()).execute().use { r ->

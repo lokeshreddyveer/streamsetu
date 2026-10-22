@@ -252,6 +252,12 @@ Data/Database/Schema/SchemaV16.swift
 Services/ProfileService.swift
 Services/ViewingLimits.swift
 Services/StartOver.swift
+Services/Debrid.swift
+Services/Trakt.swift
+Services/AI.swift
+Features/Shared/Views/AIViews.swift
+Features/Shared/Views/IntegrationViews.swift
+Security/PINThrottle.swift
 Services/ConnectionAdvice.swift
 Services/NowPlayingBoard.swift
 Services/Connectivity.swift

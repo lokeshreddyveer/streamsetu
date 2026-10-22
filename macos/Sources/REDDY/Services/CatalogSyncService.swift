@@ -65,6 +65,13 @@ actor CatalogSyncService {
     func isRunning(_ id: UUID) -> Bool { tasks[id] != nil }
     func progress(for id: UUID) -> SyncProgress? { latest[id] }
 
+    /// Refreshes only the guide of a source, when its own interval says it is due (the interval is checked inside `epg.sync`). Does nothing while a full sync of that source runs.
+    func refreshGuideIfDue(sourceID: UUID) async {
+        guard tasks[sourceID] == nil, let source = try? catalog.source(id: sourceID), source.enabled,
+              let provider = try? sources.makeProvider(for: source), let location = provider.epgLocation() else { return }
+        _ = try? await epg.sync(source: source, location: location, force: false, headers: sources.headers(for: sourceID, host: location.host))
+    }
+
     /// Starts a sync unless one is already running for this source.
     @discardableResult
     func start(sourceID: UUID, forceGuide: Bool = false) -> Task<Void, Never>? {

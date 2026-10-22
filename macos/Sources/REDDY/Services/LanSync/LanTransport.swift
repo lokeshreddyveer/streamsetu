@@ -6,6 +6,7 @@ final class LanOnce: @unchecked Sendable {
     private let lock = NSLock()
     private var done = false
     func take() -> Bool { lock.lock(); defer { lock.unlock() }; if done { return false }; done = true; return true }
+    var finished: Bool { lock.lock(); defer { lock.unlock() }; return done }
 }
 
 /// A TCP connection that sends and receives whole frames: 4 bytes (big endian) with the length, then the body, at most 8 MiB, as in docs/WIFI-SYNC.md.
@@ -17,8 +18,11 @@ final class NWLanLink: LanLink, @unchecked Sendable {
     init(_ connection: NWConnection) { self.connection = connection }
 
     /// Waits until the connection is up. `limit` ends the whole conversation after that many seconds, so a device that goes quiet never leaves it hanging.
-    func open(limit: TimeInterval = 300) async throws {
+    func open(limit: TimeInterval = 300, connectLimit: TimeInterval = 15) async throws {
         let once = LanOnce()
+        let c = connection
+        // A device that never answers is given up on after `connectLimit` seconds: the timer starts before the wait, not after it.
+        queue.asyncAfter(deadline: .now() + connectLimit) { if !once.finished { c.cancel() } }
         try await withCheckedThrowingContinuation { (k: CheckedContinuation<Void, Error>) in
             connection.stateUpdateHandler = { state in
                 switch state {
@@ -30,7 +34,6 @@ final class NWLanLink: LanLink, @unchecked Sendable {
             }
             connection.start(queue: queue)
         }
-        let c = connection
         queue.asyncAfter(deadline: .now() + limit) { c.cancel() }
     }
 

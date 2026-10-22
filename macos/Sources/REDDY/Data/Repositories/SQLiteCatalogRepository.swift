@@ -17,6 +17,24 @@ final class SQLiteCatalogRepository: CatalogRepository {
         restriction.isActive ? " AND (\(alias).category_id IS NULL OR \(alias).category_id NOT IN (SELECT category_id FROM locked_categories))" : ""
     }
 
+    func hiddenByLock(_ ids: [String]) throws -> Set<String> {
+        guard restriction.isActive, !ids.isEmpty else { return [] }
+        var out = Set<String>()
+        for chunk in stride(from: 0, to: ids.count, by: 300).map({ Array(ids[$0..<min($0 + 300, ids.count)]) }) {
+            let marks = chunk.map { _ in "?" }.joined(separator: ",")
+            let args = chunk.map { $0 as (any SQLConvertible)? }
+            let lockedIn = "category_id IN (SELECT category_id FROM locked_categories)"
+            let sql = """
+                SELECT id FROM channels WHERE id IN (\(marks)) AND \(lockedIn)
+                UNION SELECT id FROM movies WHERE id IN (\(marks)) AND \(lockedIn)
+                UNION SELECT id FROM series WHERE id IN (\(marks)) AND \(lockedIn)
+                UNION SELECT e.id FROM episodes e JOIN series s ON s.id = e.series_id WHERE e.id IN (\(marks)) AND s.\(lockedIn)
+                """
+            out.formUnion(try db.read { try $0.query(sql, args + args + args + args) { $0.string(0) } })
+        }
+        return out
+    }
+
     func lockedCategoryIDs() throws -> Set<String> { Set(try db.read { try $0.query("SELECT category_id FROM locked_categories") { $0.string(0) } }) }
 
     func setCategoryLocked(_ id: String, _ locked: Bool) throws {

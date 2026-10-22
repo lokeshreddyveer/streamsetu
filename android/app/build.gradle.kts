@@ -48,6 +48,8 @@ android {
         }
     }
     compileOptions {
+        // java.time (dates and times) is used across the app but only exists from Android 8; desugaring brings it to 5.1 and up.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -57,6 +59,7 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation(project(":data"))
     implementation(project(":core-ui"))
     implementation(libs.androidx.core.ktx)

@@ -32,6 +32,8 @@ final class ProfileService {
     private let db: DatabaseManager
     private let defaults: UserDefaults
     private let onSwitched: @MainActor (Profile) -> Void
+    /// Called just before the rows are swapped: whatever is playing is stopped, so its progress is saved to the profile that started it.
+    var willSwitch: @MainActor () -> Void = {}
     private(set) var profiles: [Profile] = []
     private(set) var activeID = ProfileService.mainID
 
@@ -98,7 +100,14 @@ final class ProfileService {
         return true
     }
 
+    /// Seconds until a PIN try is allowed again for this profile, or nil.
+    func pinLockedFor(_ id: String) -> TimeInterval? { PINThrottle(name: "profile." + id, defaults: defaults).lockedFor() }
+
     func checkPIN(_ id: String, _ pin: String) -> Bool {
+        PINThrottle(name: "profile." + id, defaults: defaults).attempt { rawCheckPIN(id, pin) } == .right
+    }
+
+    private func rawCheckPIN(_ id: String, _ pin: String) -> Bool {
         guard let row = try? db.read({ c in try c.queryOne("SELECT pin_salt, pin_hash FROM profiles WHERE id = ?", [id]) { ($0.string(0), $0.string(1)) } }) else { return false }
         return Self.hash(pin, salt: row.0) == row.1
     }
@@ -113,6 +122,7 @@ final class ProfileService {
             guard let pin else { return .needsPIN }
             guard checkPIN(needed, pin) else { return .wrongPIN }
         }
+        willSwitch()
         do { try swapData(from: activeID, to: id) } catch { return .failed }
         swapDefaults(from: activeID, to: id)
         reload()

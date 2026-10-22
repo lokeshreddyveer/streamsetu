@@ -162,7 +162,7 @@ class GlobalSearch(
         if (SearchKind.PROGRAMME in tab.kinds) {
             val progs = ArrayList<Triple<String, Long, String>>()        // guide id, start, title
             raw.query("SELECT channelEpgId, startMs, title FROM epg WHERE title LIKE ? ESCAPE '\\' AND endMs > ? ORDER BY startMs LIMIT ?", arrayOf(like(text), System.currentTimeMillis().toString(), ((limit + 1) * 3).toString())).use { c ->
-                while (c.moveToNext()) progs += Triple(c.getString(0), c.getLong(1), c.getString(2))
+                while (c.moveToNext()) progs += Triple(app.streamsetu.core.model.EpgIds.raw(c.getString(0)), c.getLong(1), c.getString(2))
             }
             if (progs.isNotEmpty()) {
                 val epgIds = progs.map { it.first }.distinct()

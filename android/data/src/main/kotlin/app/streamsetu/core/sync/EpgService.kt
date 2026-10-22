@@ -2,6 +2,7 @@ package app.streamsetu.core.sync
 
 import app.streamsetu.core.data.db.AppDatabase
 import app.streamsetu.core.data.db.EpgEntity
+import app.streamsetu.core.model.EpgIds
 import app.streamsetu.core.model.EpgProgram
 import app.streamsetu.core.model.Source
 import app.streamsetu.core.net.Http
@@ -16,45 +17,65 @@ class EpgService(private val db: AppDatabase) {
         val url = source.epgUrl ?: fallbackUrl ?: return@withContext 0
         val now = System.currentTimeMillis()
         var kept = 0
-        val batch = ArrayList<EpgEntity>()
+        val batch = ArrayList<EpgEntity>(CHUNK)
         val names = LinkedHashMap<String, String>()
+        // Old programmes go first and new ones are written as they are read, a chunk at a time, so a very large guide never has to fit in memory.
+        db.epg().prune(now - 3600_000)
+        fun flush() { if (batch.isNotEmpty()) { val part = batch.toList(); batch.clear(); kotlinx.coroutines.runBlocking { db.epg().put(part) } } }
         Http.get(url, source.userAgent, headers) { resp ->
             val raw = java.io.BufferedInputStream(resp.body!!.byteStream())
             // Gzip is recognised by its first two bytes, not by the file name: many providers serve it without a ".gz" suffix.
             raw.mark(2); val b0 = raw.read(); val b1 = raw.read(); raw.reset()
             val input = if (b0 == 0x1f && b1 == 0x8b) GZIPInputStream(raw) else raw
             XmltvParser.parse(input, now - 3600_000, now + 48 * 3600_000, onChannel = { id, name -> names.putIfAbsent(name, id) }) { p ->
-                batch += EpgEntity(p.channelEpgId, p.startMs, p.endMs, p.title, p.description); kept++
+                batch += EpgEntity(EpgIds.scope(source.id, p.channelEpgId), p.startMs, p.endMs, p.title, p.description); kept++
+                if (batch.size >= CHUNK) flush()
             }
         }
         // Retention: nothing older than an hour and nothing more than two days ahead is kept, so the guide cannot grow without limit.
-        db.epg().prune(now - 3600_000)
-        batch.chunked(1000).forEach { db.epg().put(it) }
-        if (names.isNotEmpty()) db.extras().putEpgChannels(names.map { (n, id) -> app.streamsetu.core.data.db.EpgChannelEntity(id, app.streamsetu.core.data.repo.SearchText.normalize(stripQuality(n))) })
+        flush()
+        if (names.isNotEmpty()) db.extras().putEpgChannels(names.map { (n, id) -> app.streamsetu.core.data.db.EpgChannelEntity(EpgIds.scope(source.id, id), app.streamsetu.core.data.repo.SearchText.normalize(stripQuality(n))) })
         cache = null
         kept
     }
 
-    @Volatile private var cache: Pair<Set<String>, Map<String, String>>? = null
+    private companion object { const val CHUNK = 1000 }
 
-    private suspend fun lookup(): Pair<Set<String>, Map<String, String>> = cache ?: run {
+    private class Lookup(val ids: Set<String>, val rawToStored: Map<String, String>, val byName: Map<String, String>, val byNameInSource: Map<String, String>)
+    @Volatile private var cache: Lookup? = null
+
+    private suspend fun lookup(): Lookup = cache ?: run {
         val ids = db.extras().epgIdsWithProgrammes().toSet()
-        val byName = HashMap<String, String>()
-        db.extras().epgChannels().forEach { if (it.epgId in ids) byName.putIfAbsent(it.nameNorm, it.epgId) }
-        (ids to byName).also { cache = it }
+        val rawToStored = HashMap<String, String>()
+        ids.forEach { rawToStored.putIfAbsent(EpgIds.raw(it), it) }
+        val byName = HashMap<String, String>(); val byNameInSource = HashMap<String, String>()
+        db.extras().epgChannels().forEach {
+            if (it.epgId !in ids) return@forEach
+            byName.putIfAbsent(it.nameNorm, it.epgId)
+            EpgIds.source(it.epgId)?.let { src -> byNameInSource.putIfAbsent(src + "\u0001" + it.nameNorm, it.epgId) }
+        }
+        Lookup(ids, rawToStored, byName, byNameInSource).also { cache = it }
     }
 
     /**
-     * The guide id to use for each channel. A channel's own guide id is used when the guide has programmes for it; otherwise its name (without HD / FHD / 4K tags)
-     * is matched to a guide channel's name. Channels with no match are left out, and nothing is guessed beyond an exact name.
+     * The guide id to use for each channel. A channel's own guide id is used when the guide has programmes for it, taken from its own playlist's guide first and from another
+     * playlist's guide after that; otherwise its name (without HD / FHD / 4K tags) is matched to a guide channel's name, again its own playlist first. Channels with no match are
+     * left out, and nothing is guessed beyond an exact name.
      */
     suspend fun resolve(channels: List<app.streamsetu.core.model.Channel>): Map<String, String> {
-        val (ids, byName) = lookup()
+        val l = lookup()
         val out = HashMap<String, String>()
         for (ch in channels) {
             val own = ch.epgId
-            if (own != null && own in ids) out[ch.id] = own
-            else byName[app.streamsetu.core.data.repo.SearchText.normalize(stripQuality(ch.name))]?.let { out[ch.id] = it }
+            val scoped = own?.let { EpgIds.scope(ch.sourceId, it) }
+            val name = app.streamsetu.core.data.repo.SearchText.normalize(stripQuality(ch.name))
+            val found = when {
+                scoped != null && scoped in l.ids -> scoped
+                own != null && own in l.ids -> own                       // a guide stored before ids were scoped
+                own != null && l.rawToStored[own] != null -> l.rawToStored[own]
+                else -> l.byNameInSource[ch.sourceId + "\u0001" + name] ?: l.byName[name]
+            }
+            if (found != null) out[ch.id] = found
         }
         return out
     }

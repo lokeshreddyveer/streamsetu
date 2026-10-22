@@ -4,7 +4,10 @@ import Foundation
 enum CredentialRedactor {
     private static let patterns: [(NSRegularExpression, String)] = {
         let defs: [(String, String)] = [
-            (#"(?i)\b(username|password|pass|pwd|token|key|auth|apikey)=([^&\s"']+)"#, "$1=***"),
+            // Any parameter whose name says it is a secret or a login: access_token, refresh_token, api_key, X-Plex-Token, client_secret, sig, signature, session, passwd, user, login...
+            (#"(?i)([a-z0-9_.\-]*(?:token|secret|passw(?:or)?d|pwd|pass|api[_-]?key|key|auth|sig|signature|session|sess|username|user|login|credential|ticket|bearer)[a-z0-9_.\-]*)=([^&\s"'#]+)"#, "$1=***"),
+            // A secret carried in the path: /token/abc, /key/abc, /auth/abc, /apikey/abc
+            (#"(?i)/(token|key|auth|apikey|api[_-]key|secret|session|bearer)/[^/\s?#]+"#, "/$1/***"),
             (#"://[^/\s@:]+:[^/\s@]*@"#, "://***@"),
             (#"/(live|movie|series|timeshift)/[^/\s]+/[^/\s]+/"#, "/$1/***/***/"),
         ]

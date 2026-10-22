@@ -81,6 +81,8 @@ struct SyncScopeState: Sendable, Hashable {
 }
 
 protocol CatalogRepository: Sendable {
+    /// Of these item ids (channels, movies, series or episodes), the ones that sit in a locked folder while locked folders are hidden. Empty when nothing is hidden.
+    func hiddenByLock(_ ids: [String]) throws -> Set<String>
     func sources() throws -> [PlaylistSource]
     func source(id: UUID) throws -> PlaylistSource?
     func save(source: PlaylistSource) throws

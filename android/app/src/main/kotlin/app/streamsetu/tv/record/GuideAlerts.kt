@@ -37,7 +37,7 @@ class GuideAlerts(private val context: Context) {
                 if (!KeywordAlerts.inWindow(h.startMs, now)) continue
                 val key = KeywordAlerts.key("${h.channelEpgId}@${h.startMs}", word)
                 if (key in done) continue
-                val channel = c.db.catalog().channelForGuideId(h.channelEpgId)?.let { c.catalog.channel(it.id) } ?: continue
+                val channel = c.db.catalog().channelForGuideId(app.streamsetu.core.model.EpgIds.raw(h.channelEpgId))?.let { c.catalog.channel(it.id) } ?: continue
                 if (Reminders.schedule(c, context, channel, EpgProgram(h.channelEpgId, h.startMs, h.endMs, h.title, h.description))) {
                     done += key; set++
                     found += "${h.title} · ${channel.name} · " + java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(h.startMs))

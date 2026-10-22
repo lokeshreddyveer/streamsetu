@@ -66,7 +66,7 @@ class AppContainer @Inject constructor(
 
     /** Who is using the app: each profile has its own favorites, collections, history and resume points. */
     val profiles: app.streamsetu.tv.sync.ProfileService by lazy {
-        app.streamsetu.tv.sync.ProfileService(db) { p ->
+        app.streamsetu.tv.sync.ProfileService(db, context.getSharedPreferences("pin_throttle", android.content.Context.MODE_PRIVATE)) { p ->
             parental.setKids(p.kids)
             lan.setEnabled(lan.wanted && profiles.isMainActive)
         }.also { it.reload(); parental.setKids(it.active.kids) }
@@ -89,7 +89,7 @@ class AppContainer @Inject constructor(
         val s = playback.state.value
         s == app.streamsetu.core.playback.PlaybackState.Playing || s == app.streamsetu.core.playback.PlaybackState.Buffering || s == app.streamsetu.core.playback.PlaybackState.Resolving
     }, appScope).also { d -> app.streamsetu.core.playback.LocalFiles.finder = { id ->
-        DeviceMedia.uriOf(id) ?: d.localUri(id) ?: app.streamsetu.core.data.repo.RecordingFiles.fileOf(id)?.let { java.io.File(recordingsFolder, it) }?.takeIf { it.exists() }?.let { android.net.Uri.fromFile(it).toString() }
+        DeviceMedia.uriOf(id) ?: app.streamsetu.core.data.repo.DirectLinks.urlOf(id) ?: d.localUri(id) ?: app.streamsetu.core.data.repo.RecordingFiles.fileOf(id)?.let { java.io.File(recordingsFolder, it) }?.takeIf { it.exists() }?.let { android.net.Uri.fromFile(it).toString() }
     } }
 
     /** Movies and series watched to the end, for the tick on posters. */
@@ -196,6 +196,56 @@ class AppContainer @Inject constructor(
         return viewingLimits.block(p.id, java.time.LocalDate.now().toEpochDay(), t.hour * 60 + t.minute)
     }
 
+    /** The AI the person chose (see [app.streamsetu.core.data.repo.AIStore]); they bring their own key. */
+    val ai by lazy { app.streamsetu.core.data.repo.AIStore(credentials) }
+
+    /** Asks the chosen AI what to watch, then looks for its suggestions in the library on this device. */
+    suspend fun askWhatToWatch(request: String): Pair<app.streamsetu.core.data.repo.WatchSuggestion, List<FoundTitle>> {
+        if (profiles.profiles.value.firstOrNull { it.id == profiles.activeId.value }?.kids == true) throw app.streamsetu.core.data.repo.AIException("The AI is not available in a kids profile.")
+        val answer = app.streamsetu.core.data.repo.AIClient(ai.load()).ask(app.streamsetu.core.data.repo.WatchAdvisor.SYSTEM, app.streamsetu.core.data.repo.WatchAdvisor.prompt(request))
+        val s = app.streamsetu.core.data.repo.WatchAdvisor.parse(answer) ?: throw app.streamsetu.core.data.repo.AIException("The AI's answer could not be read. Try asking again.")
+        val found = ArrayList<FoundTitle>(); val seen = HashSet<String>()
+        for (t in s.titles) {
+            val (name, year) = app.streamsetu.core.data.repo.WatchAdvisor.split(t)
+            if (name.length < 2) continue
+            val listed = app.streamsetu.core.data.repo.TraktListed(name, year, false)
+            search.movieVariants(name).firstOrNull { app.streamsetu.core.data.repo.TraktItem.matches(listed, it.title, it.year) }?.let { if (seen.add(it.id)) found += FoundTitle(it.title, it.year, false, movie = it) }
+            search.seriesVariants(name).firstOrNull { app.streamsetu.core.data.repo.TraktItem.matches(listed, it.title, it.year) }?.let { if (seen.add(it.id)) found += FoundTitle(it.title, it.year, true, series = it) }
+        }
+        return s to found
+    }
+
+    /** Trakt and debrid accounts (see [app.streamsetu.tv.sync.TraktService]); each person brings their own keys. */
+    val trakt by lazy { app.streamsetu.tv.sync.TraktService(app.streamsetu.core.data.repo.TraktStore(credentials), appScope) }
+    val debrid by lazy { app.streamsetu.core.data.repo.DebridStore(credentials) }
+
+    /** Resolves a pasted link or magnet through the debrid account and plays the result. */
+    suspend fun playDebrid(input: String) {
+        val a = debrid.load()
+        val r = app.streamsetu.core.data.repo.DebridClient(a.service, a.token).resolve(input)
+        val id = app.streamsetu.core.data.repo.DirectLinks.register(r.url)
+        val movie = Movie(id, "direct", null, r.name.substringBeforeLast('.').ifBlank { "Video" }, null, null, null, null, "", 0)
+        kotlinx.coroutines.withContext(Dispatchers.Main) { play(MoviePlayable(movie)) }
+    }
+
+    /** Adds the Trakt watchlist titles that are in the library to Watch Later. Returns how many were added, how many were found, and how many Trakt listed. */
+    suspend fun importTraktWatchlist(): Triple<Int, Int, Int> {
+        val listed = trakt.watchlist()
+        var found = 0; var added = 0
+        val seen = HashSet<String>()
+        for (l in listed) {
+            val word = app.streamsetu.core.data.repo.TraktItem.cleanTitle(l.title)
+            if (word.length < 2) continue
+            val id = if (l.isShow) search.seriesVariants(word).firstOrNull { app.streamsetu.core.data.repo.TraktItem.matches(l, it.title, it.year) }?.id
+                     else search.movieVariants(word).firstOrNull { app.streamsetu.core.data.repo.TraktItem.matches(l, it.title, it.year) }?.id
+            if (id == null || !seen.add(id)) continue
+            found++
+            val list = app.streamsetu.core.data.repo.UserRepository.WATCH_LATER
+            user.setFavourite(id, if (l.isShow) ContentKind.SERIES else ContentKind.MOVIE, true, list); added++
+        }
+        return Triple(added, found, listed.size)
+    }
+
     /** What the other paired devices are playing (see [app.streamsetu.tv.sync.NowPlayingBoard]); shown on Home with a button to carry on here. */
     val nowBoard = app.streamsetu.tv.sync.NowPlayingBoard()
 
@@ -217,10 +267,10 @@ class AppContainer @Inject constructor(
     init {
         runCatching {
             val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-            online.value = cm.activeNetwork?.let { cm.getNetworkCapabilities(it)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) } == true
-            cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
+            online.value = app.streamsetu.core.playback.NetworkCompat.isOnline(cm)
+            app.streamsetu.core.playback.NetworkCompat.register(cm, object : android.net.ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: android.net.Network) { online.value = true }
-                override fun onLost(network: android.net.Network) { online.value = false }
+                override fun onLost(network: android.net.Network) { online.value = app.streamsetu.core.playback.NetworkCompat.isOnline(cm) }
             })
         }
         appScope.launch {
@@ -245,6 +295,32 @@ class AppContainer @Inject constructor(
         appScope.launch { playback.state.collect { if (it == app.streamsetu.core.playback.PlaybackState.Playing) fetchSubtitleIfWanted() } }
         appScope.launch { playback.state.collect { if (it is app.streamsetu.core.playback.PlaybackState.Failed) tryNextCopy() } }
         appScope.launch { playback.current.collect { if (it == null) PrivateWatch.on = false } }
+        // Trakt: announce a movie or episode when it starts playing and when it stops, unless it is private or a kids profile is in use. Position is noted as it plays, because it is gone when the item changes.
+        appScope.launch {
+            var announced: app.streamsetu.core.data.repo.TraktItem? = null; var announcedId: String? = null
+            var lastPos = 0L; var lastDur = 0L
+            fun itemOf(p: Playable?): app.streamsetu.core.data.repo.TraktItem? = when (p) {
+                is MoviePlayable -> app.streamsetu.core.data.repo.TraktItem.Movie(app.streamsetu.core.data.repo.TraktItem.cleanTitle(p.movie.title), p.movie.year)
+                is EpisodePlayable -> app.streamsetu.core.data.repo.TraktItem.Episode(app.streamsetu.core.data.repo.TraktItem.cleanTitle(p.series.title), p.series.year, p.episode.season, p.episode.number)
+                else -> null
+            }
+            fun stop(ended: Boolean) {
+                val a = announced ?: return; announced = null; announcedId = null
+                val pct = if (ended) 100.0 else if (lastDur > 0) lastPos * 100.0 / lastDur else 0.0
+                trakt.scrobble(app.streamsetu.core.data.repo.TraktClient.Scrobble.STOP, a, pct)
+            }
+            while (true) {
+                delay(2000)
+                val cur = playback.current.value
+                val playing = playback.state.value == app.streamsetu.core.playback.PlaybackState.Playing
+                if (announced != null && (cur == null || cur.id != announcedId)) stop(false)
+                if (announced != null && playback.state.value == app.streamsetu.core.playback.PlaybackState.Ended) stop(true)
+                if (announced == null && playing && cur != null && !PrivateWatch.on && activeKidsProfile() == null && trakt.isSignedIn) {
+                    itemOf(cur)?.let { announced = it; announcedId = cur.id; trakt.scrobble(app.streamsetu.core.data.repo.TraktClient.Scrobble.START, it, 0.0) }
+                }
+                if (announced != null) { lastPos = playback.positionMs; lastDur = playback.durationMs }
+            }
+        }
         lan.nowProvider = {
             playback.current.value?.takeIf { !PrivateWatch.on && playback.state.value != app.streamsetu.core.playback.PlaybackState.Ended }
                 ?.let { app.streamsetu.core.sync.lan.LanDataAdapter.Now(if (it is EpisodePlayable) it.episode.id else it.id, it.title, playback.positionMs) }
@@ -365,7 +441,7 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
     private val images = okhttp3.Dispatcher().apply { maxRequests = 16; maxRequestsPerHost = 6 }
 
     override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
-        .okHttpClient(okhttp3.OkHttpClient.Builder().dispatcher(images).addInterceptor(ArtworkAuth(container.sources, container.credentials)).build())
+        .okHttpClient(okhttp3.OkHttpClient.Builder().dispatcher(images).addNetworkInterceptor(ArtworkAuth(container.sources, container.credentials)).build())          // per hop: a redirect to another host never carries the Plex token
         .diskCache { coil.disk.DiskCache.Builder().directory(java.io.File(cacheDir, "image_cache")).maxSizeBytes(160L * 1024 * 1024).build() }
         .crossfade(false)
         .memoryCache { coil.memory.MemoryCache.Builder(this).maxSizePercent(if (Perf.lowEnd(this)) 0.12 else 0.22).build() }
@@ -454,5 +530,13 @@ fun playSaved(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator, t: app.stre
             }
             else -> {}
         }
+    }
+}
+
+/** A title the AI suggested that is in the library: opens its page. */
+class FoundTitle(val title: String, val year: Int?, val isSeries: Boolean, val movie: Movie? = null, val series: Series? = null) {
+    fun open(nav: app.streamsetu.tv.nav.Navigator) {
+        movie?.let { nav.open(app.streamsetu.tv.nav.Overlay.MovieDetail(it)) }
+        series?.let { nav.open(app.streamsetu.tv.nav.Overlay.SeriesDetail(it)) }
     }
 }

@@ -142,7 +142,8 @@ final class ScheduledRecordingService {
 
     private struct CaptureError: LocalizedError { let errorDescription: String? }
 
-    /// Writes the stream to a file until the programme's end plus padding.
+    /// Writes the stream to a file until the programme's end plus padding. A playlist of segments (HLS) is followed segment by segment, so the file is video and not the playlist's text.
+    /// A stream that stops well before the end is reported as such, and what was recorded is kept.
     nonisolated private static func capture(_ job: ScheduledRecording, find: Find, resolve: Resolve, folder: URL, padding: TimeInterval) async -> Result<Void, Error> {
         let activity = ProcessInfo.processInfo.beginActivity(options: [.idleSystemSleepDisabled, .userInitiated], reason: "Recording \(job.title)")
         defer { ProcessInfo.processInfo.endActivity(activity) }
@@ -156,22 +157,80 @@ final class ScheduledRecordingService {
             let handle = try FileHandle(forWritingTo: file)
             defer { try? handle.close() }
             let stop = job.end.addingTimeInterval(padding)
+            let startedAt = Date()
             let writer = StreamWriter(handle: handle, until: stop)
             let session = URLSession(configuration: .ephemeral, delegate: writer, delegateQueue: nil)
             defer { session.invalidateAndCancel() }
             let task = session.dataTask(with: req)
             task.resume()
             let result = await withTaskCancellationHandler { await writer.finished() } onCancel: { task.cancel(); writer.cancel() }
-            if let status = result.status, !(200..<300).contains(status) { try? FileManager.default.removeItem(at: file); throw CaptureError(errorDescription: "The provider answered \(status). It may allow only one stream at a time.") }
-            if result.bytes == 0 { try? FileManager.default.removeItem(at: file); throw CaptureError(errorDescription: result.error ?? "Nothing was received.") }
+            var bytes = result.bytes
+            if result.playlist {
+                let hls = await recordHLS(req, handle: handle, until: stop)
+                if let failure = hls.failure { try? FileManager.default.removeItem(at: file); throw CaptureError(errorDescription: failure) }
+                bytes = hls.bytes
+            } else {
+                if let status = result.status, !(200..<300).contains(status) { try? FileManager.default.removeItem(at: file); throw CaptureError(errorDescription: "The provider answered \(status). It may allow only one stream at a time.") }
+                if bytes == 0 { try? FileManager.default.removeItem(at: file); throw CaptureError(errorDescription: result.error ?? "Nothing was received.") }
+            }
+            if bytes == 0 { try? FileManager.default.removeItem(at: file); throw CaptureError(errorDescription: "Nothing was received.") }
+            if Task.isCancelled { return .success(()) }
+            // The stream ended long before the programme did: say so, and keep the part that was recorded.
+            if let note = shortfall(wanted: stop.timeIntervalSince(startedAt), got: Date().timeIntervalSince(startedAt), error: result.error) { throw CaptureError(errorDescription: note) }
             return .success(())
         } catch { return .failure(error) }
+    }
+
+    /// A message when a recording stopped far short of its length, nil when it ran to (nearly) the end.
+    nonisolated static func shortfall(wanted: TimeInterval, got: TimeInterval, error: String? = nil, tolerance: TimeInterval = 90) -> String? {
+        guard wanted - got > tolerance else { return nil }
+        let min = { (s: TimeInterval) in Int((s / 60).rounded()) }
+        return "The stream stopped early: \(min(got)) of \(min(wanted)) minutes were recorded." + (error.map { " (\($0))" } ?? "")
+    }
+
+    /// Follows an HLS playlist, appending each new segment to the file until `until`, or until the playlist says it has ended.
+    nonisolated private static func recordHLS(_ request: URLRequest, handle: FileHandle, until: Date) async -> (bytes: Int, failure: String?) {
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.invalidateAndCancel() }
+        func fetch(_ url: URL) async throws -> Data {
+            var r = request; r.url = url
+            if url.host?.lowercased() != request.url?.host?.lowercased() { r.allHTTPHeaderFields = nil }          // never send the provider's sign-in to another host
+            let (data, response) = try await session.data(for: r)
+            if let status = (response as? HTTPURLResponse)?.statusCode, !(200..<300).contains(status) { throw CaptureError(errorDescription: "The provider answered \(status).") }
+            return data
+        }
+        var playlistURL = request.url!
+        var lastWritten = -1, bytes = 0, misses = 0
+        while Date() < until, !Task.isCancelled {
+            do {
+                let text = String(decoding: try await fetch(playlistURL), as: UTF8.self)
+                let list = HLSPlaylist.parse(text, base: playlistURL)
+                if list.isMaster { guard let best = list.bestVariant else { return (bytes, "The playlist lists no streams.") }; playlistURL = best.url; continue }
+                if list.encrypted { return (bytes, "This channel's video is encrypted, so it cannot be recorded.") }
+                if list.fragmentedMP4 { return (bytes, "This channel uses a stream format that cannot be recorded to a file.") }
+                for seg in list.segments where seg.sequence > lastWritten {
+                    if Date() >= until || Task.isCancelled { break }
+                    let data = try await fetch(seg.url)
+                    try handle.write(contentsOf: data)
+                    bytes += data.count; lastWritten = seg.sequence
+                }
+                misses = 0
+                if list.ended { break }
+                try await Task.sleep(nanoseconds: UInt64(max(1, min(list.targetDuration / 2, 5)) * 1_000_000_000))
+            } catch is CancellationError { break }
+            catch {
+                misses += 1
+                if misses >= 5 { return (bytes, bytes == 0 ? error.localizedDescription : nil) }          // five in a row: the stream is gone
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            }
+        }
+        return (bytes, nil)
     }
 }
 
 /// Writes what arrives to a file, and stops at a time.
 private final class StreamWriter: NSObject, URLSessionDataDelegate, @unchecked Sendable {
-    struct Result { var bytes: Int; var status: Int?; var error: String? }
+    struct Result { var bytes: Int; var status: Int?; var error: String?; var playlist = false }
     private let handle: FileHandle
     private let until: Date
     private let lock = NSLock()
@@ -199,6 +258,12 @@ private final class StreamWriter: NSObject, URLSessionDataDelegate, @unchecked S
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         lock.lock(); result.status = (response as? HTTPURLResponse)?.statusCode; lock.unlock()
+        // A playlist of segments (HLS) is not the video: it is followed segment by segment instead of written to the file.
+        let type = (response.mimeType ?? "").lowercased()
+        if type.contains("mpegurl") || (response.url?.pathExtension.lowercased() == "m3u8") {
+            lock.lock(); result.playlist = true; lock.unlock()
+            completionHandler(.cancel); finish(); return
+        }
         completionHandler(.allow)
     }
 

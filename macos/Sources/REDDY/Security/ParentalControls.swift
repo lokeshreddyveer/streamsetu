@@ -87,11 +87,24 @@ final class ParentalControls {
         return zip(Array(candidate.utf8), Array(stored.utf8)).reduce(0) { $0 | ($1.0 ^ $1.1) } == 0 && candidate.count == stored.count
     }
 
+    /// The same wrong-try count and lockout as unlocking, for the screens that change or remove the PIN: guessing there is no easier.
+    private func checkWithThrottle(_ pin: String) -> Bool {
+        if let until = defaults.object(forKey: Keys.lockedUntil) as? Date, until > now() { return false }
+        guard matches(pin) else {
+            let failures = defaults.integer(forKey: Keys.failures) + 1
+            if failures >= Self.maxAttempts { defaults.set(0, forKey: Keys.failures); defaults.set(now().addingTimeInterval(Self.lockoutSeconds), forKey: Keys.lockedUntil) }
+            else { defaults.set(failures, forKey: Keys.failures) }
+            return false
+        }
+        defaults.set(0, forKey: Keys.failures)
+        return true
+    }
+
     /// Sets the first PIN, or replaces it when `current` is right.
     @discardableResult
     func setPIN(_ new: String, current: String? = nil) -> Bool {
         guard Self.isValidPIN(new) else { return false }
-        if hasPIN { guard let current, matches(current) else { return false } }
+        if hasPIN { guard let current, checkWithThrottle(current) else { return false } }
         let salt = Data((0..<16).map { _ in UInt8.random(in: 0...255) })
         defaults.set(salt, forKey: Keys.salt)
         defaults.set(hash(new, salt: salt), forKey: Keys.hash)
@@ -103,7 +116,7 @@ final class ParentalControls {
     /// Removes the PIN. Folder locks are kept, but with no PIN nothing is hidden.
     @discardableResult
     func removePIN(current: String) -> Bool {
-        guard hasPIN, matches(current) else { return false }
+        guard hasPIN, checkWithThrottle(current) else { return false }
         defaults.removeObject(forKey: Keys.hash); defaults.removeObject(forKey: Keys.salt)
         isUnlocked = false; unlockedUntil = nil; relockTask?.cancel()
         applyRestriction()

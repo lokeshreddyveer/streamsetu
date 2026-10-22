@@ -249,7 +249,7 @@ class PlaybackController(
     private var networkCallbackRegistered = false
 
     init {
-        connectivity.registerDefaultNetworkCallback(networkCallback)
+        NetworkCompat.register(connectivity, networkCallback)
         networkCallbackRegistered = true
     }
 
@@ -569,10 +569,7 @@ class PlaybackController(
         scope.coroutineContext[Job]?.cancel()
     }
 
-    private fun isOnline(): Boolean {
-        val n = connectivity.activeNetwork ?: return false
-        return connectivity.getNetworkCapabilities(n)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-    }
+    private fun isOnline(): Boolean = NetworkCompat.isOnline(connectivity)
 }
 
 

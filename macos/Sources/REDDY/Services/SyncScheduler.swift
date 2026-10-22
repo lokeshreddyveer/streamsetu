@@ -68,14 +68,19 @@ final class SyncScheduler: @unchecked Sendable {
     /// With [wait], returns only when the refreshes it started have finished (a background task has to know when it is done).
     func checkNow(wait: Bool = false) async {
         let (isConstrained, isOnline) = lock.withLock { (constrained, online) }
-        guard let interval = catalogInterval else { return }     // manual refresh only
         guard isOnline, !isConstrained else { return }          // reduce activity on constrained / expensive networks
         if let busy = lock.withLock({ hold }), await busy() { return }     // never while a stream is playing
         guard let all = try? catalog.sources() else { return }
         var started: [Task<Void, Never>] = []
-        for s in Self.dueSources(all, now: Date(), interval: interval) {
-            if let t = await sync.start(sourceID: s.id) { started.append(t) }
+        var busyIDs = Set<UUID>()
+        if let interval = catalogInterval {          // nil is manual: the catalog is never refreshed on its own
+            for s in Self.dueSources(all, now: Date(), interval: interval) {
+                busyIDs.insert(s.id)
+                if let t = await sync.start(sourceID: s.id) { started.append(t) }
+            }
         }
+        // The guide keeps its own interval (Settings > Library): a source whose catalog is not being refreshed now still gets its guide when that is due.
+        for s in all where s.enabled && !busyIDs.contains(s.id) { await sync.refreshGuideIfDue(sourceID: s.id) }
         if wait { for t in started { await t.value } }
     }
 }

@@ -45,8 +45,21 @@ final class SourceManager: @unchecked Sendable {
 
     // MARK: providers
 
+    /// Guide addresses saved before logins were kept in the vault: the login moves there and the database keeps the redacted form.
+    func protectGuideAddresses() {
+        for s in ((try? catalog.sources()) ?? []) {
+            guard let epg = s.epgURL, !epg.hasPrefix(XMLTVClient.localScheme + "://") else { continue }
+            let shown = CredentialRedactor.redact(epg)
+            guard shown != epg, (try? secure.store.load(ref: Self.guideRef(s.id)))?.url == nil else { continue }
+            guard (try? secure.save(Credentials(url: epg), ref: Self.guideRef(s.id))) != nil else { continue }
+            var copy = s; copy.epgURL = shown
+            try? catalog.save(source: copy)
+        }
+    }
+
     func makeProvider(for source: PlaylistSource) throws -> SourceProvider {
         if let cached = lock.withLock({ providers[source.id] }) { return cached }
+        let source = withFullGuide(source)
         let provider: SourceProvider
         switch source.type {
         case .xtream:
@@ -270,10 +283,30 @@ final class SourceManager: @unchecked Sendable {
         invalidateProvider(id)
     }
 
+    /// Where a guide address that carries a login is kept: the database holds only a redacted form, so it never reaches a backup or a sync.
+    static func guideRef(_ id: UUID) -> String { "guide-" + id.uuidString.lowercased() }
+
+    /// The source with its guide address as typed (login included), for the providers that read it.
+    func withFullGuide(_ source: PlaylistSource) -> PlaylistSource {
+        guard let shown = source.epgURL, !shown.hasPrefix(XMLTVClient.localScheme + "://"),
+              let full = (try? secure.store.load(ref: Self.guideRef(source.id)))?.url, !full.isEmpty,
+              CredentialRedactor.redact(full) == shown else { return source }          // only while the saved address is still the redacted form of the one in the vault
+        var s = source; s.epgURL = full
+        return s
+    }
+
     func setGuideURL(_ id: UUID, url: String?) throws {
         guard var s = try catalog.source(id: id) else { return }
-        if let url = url.nilIfEmpty, !url.hasPrefix(XMLTVClient.localScheme + "://") { _ = try SourceURLValidator.validateRemote(url) }
-        s.epgURL = url.nilIfEmpty
+        let raw = url.nilIfEmpty
+        let local = raw?.hasPrefix(XMLTVClient.localScheme + "://") ?? false
+        if let raw, !local { _ = try SourceURLValidator.validateRemote(raw) }
+        if let raw, raw == s.epgURL { return }          // the screen shows the redacted form; saving it unchanged must not replace the real address
+        secure.remove(ref: Self.guideRef(id))
+        if let raw, !local {
+            let shown = CredentialRedactor.redact(raw)
+            if shown != raw { _ = try secure.save(Credentials(url: raw), ref: Self.guideRef(id)) }
+            s.epgURL = shown
+        } else { s.epgURL = raw }
         try catalog.save(source: s)
         invalidateProvider(id)
     }
@@ -341,6 +374,7 @@ final class SourceManager: @unchecked Sendable {
     func setEnabled(_ id: UUID, _ on: Bool) throws { try catalog.setEnabled(on, sourceID: id) }
 
     func remove(_ id: UUID) throws {
+        secure.remove(ref: Self.guideRef(id))
         if let s = try catalog.source(id: id) {
             secure.remove(ref: s.credentialRef)
             if s.type == .m3uLocal { try? FileManager.default.removeItem(at: StorageService.importedPlaylists.appendingPathComponent(s.baseURL)) }

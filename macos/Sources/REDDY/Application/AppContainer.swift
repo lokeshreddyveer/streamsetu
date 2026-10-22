@@ -56,6 +56,8 @@ final class AppContainer {
     private(set) var lanAdapter: LanDataAdapter!
     private(set) var viewingLimits: ViewingLimits!
     let connectivity = Connectivity()
+    private(set) var trakt: TraktService!
+    var debrid: DebridStore { DebridStore(store: credentials) }
     let nowBoard = NowPlayingBoard()
     let podcasts: PodcastService
     private(set) var accounts: AccountStatusService!
@@ -205,11 +207,21 @@ final class AppContainer {
                 return try epgRepo.searchPrograms(term: term, sourceID: nil, from: from, limit: 30).map { (program: $0.program, channelName: $0.channelName) }
             },
             schedule: { [reminders] program, channel in await reminders.schedule(program: program, channelName: channel) })
+        sources.protectGuideAddresses()
+        trakt = TraktService(store: credentials)
         viewingLimits = ViewingLimits(defaults: settings.defaultsStore)
         profiles = ProfileService(db: db, defaults: settings.defaultsStore) { [weak self] _ in self?.profileSwitched() }
+        profiles.willSwitch = { [weak self] in self?.playback.stop() }
         parental.kidsMode = profiles.active.kind == .kids
         applyViewingLimits()
         playback.onSessionChange = { [weak self] in self?.lan.nudge() }
+        trakt.allowed = { [weak self] in !(self?.parental.kidsMode ?? false) }
+        playback.onWatchEvent = { [weak self] event in
+            switch event {
+            case .started(let item): self?.trakt.scrobble(.start, item, progress: 0)
+            case .stopped(let item, let progress): self?.trakt.scrobble(.stop, item, progress: progress)
+            }
+        }
         playback.programOnNow = { [epgRepo] channel in ((try? epgRepo.nowNext(channelIDs: [channel.id], at: Date())) ?? [:])[channel.id]?.first { $0.isLive(at: Date()) } }
         applySettings()
     }
@@ -262,7 +274,8 @@ final class AppContainer {
 
     /// Makes iCloud sync and the login storage match the two switches in Settings.
     func updateCloudSync() async {
-        let refs = ((try? catalog.sources()) ?? []).compactMap(\.credentialRef) + [MetadataMatchService.keyRef]
+        let all = (try? catalog.sources()) ?? []
+        let refs = all.compactMap(\.credentialRef) + all.map { SourceManager.guideRef($0.id) } + [MetadataMatchService.keyRef]
         (credentials as? StandardCredentialStore)?.applySync(settings.iCloudSync && settings.syncLogins, refs: refs)
         await cloud.setEnabled(settings.iCloudSync && profiles.isMainActive)
     }

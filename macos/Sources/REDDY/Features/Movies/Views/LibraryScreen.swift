@@ -18,7 +18,7 @@ struct LibraryScreen: View {
     private var taskKey: String { "\(selection)-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(vm.sort.rawValue)-\(String(describing: vm.filter))" }
 
     private var showsSlideshow: Bool { kind == .movie && selection == .shortcut(.featured) }
-    private var slideshowKey: String { "\(showsSlideshow)-\(state.activeSourceID?.uuidString ?? "")-\(FeaturedPolicy.dayKey(Date()))" }
+    private var slideshowKey: String { "\(showsSlideshow)-\(state.activeSourceID?.uuidString ?? "")-\(FeaturedPolicy.dayKey(Date()))-\(container?.parental.isRestricting == true ? "locked" : "open")" }
 
     /// The page header and the toolbar stay put. The slideshow is the first thing in the scrolling region, so it scrolls up and out of the way with the posters;
     /// the region is clipped, so nothing draws over the header or the toolbar.
@@ -62,7 +62,7 @@ struct LibraryScreen: View {
         // The slideshow depends on the playlist and the day only, so a catalog refresh or a sort change never rebuilds it.
         .task(id: slideshowKey) {
             guard showsSlideshow, let c = container else { slides = []; return }
-            let built = await c.featured.movieSlides(sourceID: state.activeSourceID)
+            let built = await c.featured.movieSlides(sourceID: state.activeSourceID, restricted: c.parental.isRestricting)
             if !built.isEmpty || slides.isEmpty { slides = built }
         }
         .onChange(of: vm.search) { _, _ in if let c = container { vm.scheduleSearch(c, selection: selection, source: state.activeSourceID) } }

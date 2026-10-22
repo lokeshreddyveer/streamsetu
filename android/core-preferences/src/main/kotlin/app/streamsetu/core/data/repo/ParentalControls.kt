@@ -26,10 +26,15 @@ class ParentalControls(context: Context) {
         prefs.edit().putString("pin_salt", salt).putString("pin_hash", hash(salt, pin)).apply()
     }
     fun clearPin() { prefs.edit().remove("pin_salt").remove("pin_hash").apply() }
+    private val throttle = app.streamsetu.core.model.PinThrottle("folders", { prefs.getString(it, null) }, { k, v -> prefs.edit().apply { if (v == null) remove(k) else putString(k, v) }.apply() })
+    /** Seconds until a try is allowed again, or null. Every screen that asks for this PIN shares one count of wrong tries. */
+    fun lockedForSeconds(): Int? = throttle.lockedForMs()?.let { ((it + 999) / 1000).toInt() }
     fun checkPin(pin: String): Boolean {
         if (_kids.value) return false
-        val salt = prefs.getString("pin_salt", null) ?: return false
-        return hash(salt, pin) == prefs.getString("pin_hash", null)
+        return throttle.attempt {
+            val salt = prefs.getString("pin_salt", null)
+            salt != null && hash(salt, pin) == prefs.getString("pin_hash", null)
+        } == app.streamsetu.core.model.PinThrottle.Outcome.Right
     }
     private fun hash(salt: String, pin: String) = java.security.MessageDigest.getInstance("SHA-256").digest((salt + pin).toByteArray()).joinToString("") { "%02x".format(it) }
 

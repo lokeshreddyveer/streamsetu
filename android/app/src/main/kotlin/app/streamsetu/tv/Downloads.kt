@@ -99,8 +99,7 @@ class Downloads(private val context: Context, private val resolver: app.streamse
 
     private fun metered(): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return true
-        return !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        return app.streamsetu.core.playback.NetworkCompat.isMetered(cm)
     }
 
     /** Starts the downloads, and the notification that keeps them going when the app is left. Safe to call as often as is convenient. */

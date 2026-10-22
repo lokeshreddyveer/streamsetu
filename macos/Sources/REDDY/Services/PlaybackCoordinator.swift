@@ -245,6 +245,17 @@ final class PlaybackCoordinator {
         let remaining: () -> Double?
     }
     var viewingGuard: ViewingGuard?
+
+    /// A movie or episode started or stopped playing, for Trakt. Never sent for a private play. Set by the app; the player only announces and carries on.
+    enum WatchEvent { case started(TraktItem), stopped(TraktItem, progress: Double) }
+    var onWatchEvent: ((WatchEvent) -> Void)?
+    private var announced: TraktItem?
+
+    private func traktItem() -> TraktItem? {
+        if let m = currentMovie, current?.isLive == false { return .movie(title: TraktItem.cleanTitle(m.title), year: m.releaseYear ?? MetadataNormalizer.year(from: m.title)) }
+        if let (e, s) = currentEpisode { return .episode(show: TraktItem.cleanTitle(s.title), year: s.releaseYear, season: e.seasonNumber, number: e.episodeNumber) }
+        return nil
+    }
     /// Called when something starts or stops playing, so other devices on the network can be told promptly.
     var onSessionChange: (() -> Void)?
     /// Why playback was stopped or refused by the profile's limit. The screen shows it until a parent adds time or the time passes.
@@ -284,7 +295,9 @@ final class PlaybackCoordinator {
     /// Plays a past programme from the provider's archive. Falls back to doing nothing (with a message) when the channel has none.
     func playCatchup(channel: Channel, program: EPGProgram) {
         guard channel.archiveDays > 0 else { statusMessage = "This channel has no catch-up."; return }
+        let privately = isPrivate          // starting over from a private channel stays private
         reset(for: .channel)
+        isPrivate = privately
         currentChannel = channel
         queue = queue.isEmpty ? [channel] : queue
         let offset = settings.catchupOffsetMinutes(for: channel.sourceID)
@@ -295,7 +308,7 @@ final class PlaybackCoordinator {
     var isCatchup: Bool { current?.isCatchup ?? false }
 
     /// Leaves catch-up and returns to the channel's live stream.
-    func goLiveFromCatchup() { if isCatchup, let c = currentChannel { play(channel: c) } }
+    func goLiveFromCatchup() { if isCatchup, let c = currentChannel { play(channel: c, privately: isPrivate) } }
 
     /// Finds the copies of a film in the library (set by the container).
     var movieCopies: (@Sendable (Movie) -> [Movie])?
@@ -737,7 +750,7 @@ final class PlaybackCoordinator {
 
     private func start(_ request: PlaybackRequest, engineOverride: PlaybackEngineKind? = nil) {
         if request.url.scheme == PortalLink.scheme { startAfterResolvingLink(request, engineOverride: engineOverride); return }
-        if !network.isOnline { current = request; waitForNetwork(); return }
+        if !network.isOnline, !request.url.isFileURL { current = request; waitForNetwork(); return }          // a file on this device needs no connection
         generation += 1
         let gen = generation
         startTask?.cancel(); recoveryTask?.cancel()
@@ -830,6 +843,7 @@ final class PlaybackCoordinator {
             if !recordedPlay, let src = current?.sourceID, current?.isLive == true { pacer.recordSuccess(src) }
             if !recordedPlay {
                 recordedPlay = true; onFirstPlay(); fetchSubtitleIfWanted()
+                if !isPrivate, announced == nil, let item = traktItem() { announced = item; onWatchEvent?(.started(item)) }
                 if let r = current { StartStats.shared.recordStart(source: r.sourceID, engine: activeEngine, live: r.isLive, seconds: Date().timeIntervalSince(tapAt)) }
                 // Audio and subtitle tracks can arrive a little after the picture starts: look again a few times.
                 let gen = generation
@@ -1153,7 +1167,7 @@ final class PlaybackCoordinator {
     var remembersPerTitle: Bool { get { itemMemory.enabled } set { itemMemory.enabled = newValue } }
 
     private func remember() {
-        guard let id = current?.itemID else { return }
+        guard !isPrivate, let id = current?.itemID else { return }          // a private play leaves no remembered choices
         let e = ItemMemory.Entry(audioLanguage: audioTracks.first(where: \.isSelected)?.language, subtitleLanguage: subtitleTracks.first(where: \.isSelected).map { $0.language ?? "" } ?? "off",
                                  rate: rate, audioDelay: audioDelay, subtitleDelay: subtitleDelay)
         memoryEntry = e
@@ -1209,6 +1223,11 @@ final class PlaybackCoordinator {
 
     private func endSession(outcome: String, error: String?) {
         defer { onSessionChange?() }
+        if let item = announced {
+            announced = nil
+            let done = outcome == "ended" ? 100 : ((duration ?? 0) > 0 ? min(100, position / (duration ?? 1) * 100) : 0)
+            onWatchEvent?(.stopped(item, progress: done))
+        }
         if let id = sessionID { try? historyRepo.endSession(id: id, outcome: outcome, error: error); sessionID = nil }
     }
 

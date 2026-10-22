@@ -128,9 +128,10 @@ final class FeaturedService: Sendable {
 
     init(catalog: CatalogRepository, details: DetailService) { self.catalog = catalog; self.details = details }
 
-    func movieSlides(sourceID: UUID?, now: Date = Date()) async -> [FeaturedSlide] {
+    /// `restricted` says whether locked folders are hidden now; it is part of the cache key, so locking or unlocking never shows a slideshow made under the other state.
+    func movieSlides(sourceID: UUID?, restricted: Bool = false, now: Date = Date()) async -> [FeaturedSlide] {
         let day = FeaturedPolicy.dayKey(now), scope = sourceID?.uuidString ?? "all"
-        let key = "movies|\(scope)|\(day)"
+        let key = "movies|\(scope)|\(day)|\(restricted ? "locked" : "open")"
         if let hit = await cache.get(key) { return hit }
         let candidates = await Task.detached { [catalog] in (try? catalog.movies(VODQuery(sourceID: sourceID, sort: .rating, limit: 400))) ?? [] }.value
         let pool = FeaturedPolicy.moviePool(candidates, day: day, scope: scope)

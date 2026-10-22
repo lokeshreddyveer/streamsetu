@@ -73,4 +73,26 @@ import CoreVideo
         #expect(snap.title == "Private viewing" && snap.subtitle == nil && snap.artworkURL == nil)
         c.playback.stop()
     }
+
+    @Test func aPrivatePlayDoesNotRememberSpeedOrTrackChoices() async throws {
+        let c = try AppContainer(databasePath: FileManager.default.temporaryDirectory.appendingPathComponent("reddy-pw-\(UUID().uuidString).sqlite").path, credentials: InMemoryCredentialStore())
+        let video = try await makeVideo()
+        let before = UserDefaults.standard.data(forKey: "itemMemory.v1")
+        c.playback.play(file: video, title: "Private film", privately: true)
+        for _ in 0..<200 { if c.playback.state == .playing { break }; try await Task.sleep(nanoseconds: 50_000_000) }
+        c.playback.setRate(1.5)
+        c.playback.stop()
+        #expect(UserDefaults.standard.data(forKey: "itemMemory.v1") == before, "a private watch left a remembered choice behind")
+    }
+
+    @Test func aDownloadedFilePlaysWithNoConnection() async throws {
+        // The player's connection check must not hold back a file that is already on the device.
+        #expect(URL(fileURLWithPath: "/tmp/x.mp4").isFileURL)
+        let c = try AppContainer(databasePath: FileManager.default.temporaryDirectory.appendingPathComponent("reddy-pw-\(UUID().uuidString).sqlite").path, credentials: InMemoryCredentialStore())
+        let video = try await makeVideo()
+        c.playback.play(file: video, title: "Saved film")
+        for _ in 0..<200 { if c.playback.state == .playing { break }; try await Task.sleep(nanoseconds: 50_000_000) }
+        #expect(c.playback.state == .playing)
+        c.playback.stop()
+    }
 }
