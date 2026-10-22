@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.10.22",
+      "title": "22 October 2026",
+      "summary": "Mac 2.14.8, Android and Fire TV 0.18.0, iPhone and iPad 1.1 (TestFlight build 72): Setu, an assistant you can ask for something to watch or for help; Trakt, debrid links and your own AI; a search box that also takes commands.",
+      "date": "2026-10-22",
+      "mac": "2.14.8",
+      "android": "0.18.0",
+      "ios": "1.1"
+    },
+    {
       "tag": "2026.10.20.1",
       "title": "20 October 2026, second release",
       "summary": "Mac 2.10.0, Android and Fire TV 0.16.0, iPhone and iPad 1.1 (TestFlight build 65): Watch Privately, your week, a privacy report, kids viewing limits, start from the beginning, and more.",
