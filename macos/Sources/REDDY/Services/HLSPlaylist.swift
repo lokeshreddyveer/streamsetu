@@ -14,6 +14,8 @@ struct HLSPlaylist: Equatable {
     var encrypted = false
     /// Segments are fragmented MP4 pieces, which are not plain transport stream and cannot simply be joined.
     var fragmentedMP4 = false
+    /// Segments are parts of one file named by byte range; fetching each address whole would repeat or mix up the pieces.
+    var byteRanged = false
 
     static func looksLikePlaylist(_ text: String) -> Bool { text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXTM3U") }
 
@@ -33,6 +35,7 @@ struct HLSPlaylist: Equatable {
                 else if line.hasPrefix("#EXT-X-ENDLIST") { p.ended = true }
                 else if line.hasPrefix("#EXT-X-KEY:"), let method = attribute("METHOD", in: line), method != "NONE" { p.encrypted = true }
                 else if line.hasPrefix("#EXT-X-MAP:") { p.fragmentedMP4 = true }
+                else if line.hasPrefix("#EXT-X-BYTERANGE:") { p.byteRanged = true }
                 continue
             }
             guard let url = URL(string: line, relativeTo: base)?.absoluteURL else { continue }

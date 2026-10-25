@@ -183,12 +183,11 @@ final class DownloadService: NSObject, URLSessionDownloadDelegate {
         do {
             let resumeData = try? Data(contentsOf: resumeFile(r.itemID))
             let task: URLSessionDownloadTask
+            // The title is looked up again every time, also when carrying on from saved progress: if it has been removed, its folder locked or its playlist turned off since, nothing continues.
+            var request = try await urlRequest(for: r)
+            request.allowsExpensiveNetworkAccess = !wifiOnly
             if let resumeData, !resumeData.isEmpty { task = session.downloadTask(withResumeData: resumeData) }
-            else {
-                var request = try await urlRequest(for: r)
-                request.allowsExpensiveNetworkAccess = !wifiOnly
-                task = session.downloadTask(with: request)
-            }
+            else { task = session.downloadTask(with: request) }
             task.taskDescription = r.itemID
             tasks[r.itemID] = task
             setState(r.itemID, .downloading, error: nil)

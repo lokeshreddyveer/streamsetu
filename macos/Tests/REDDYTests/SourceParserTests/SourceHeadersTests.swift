@@ -7,7 +7,7 @@ import Foundation
         let r = SourceHeaders.parse("""
         Referer: https://example.com/
         # a comment
-        X-Token_1:  abc123
+        X-Trace_1:  abc123
         Authorization: Bearer secret
         Cookie: a=b
         no colon here
@@ -15,7 +15,7 @@ import Foundation
         User-Agent: ignored-here
         Empty:
         """)
-        #expect(r.headers == ["Referer": "https://example.com/", "X-Token_1": "abc123"])
+        #expect(r.headers == ["Referer": "https://example.com/", "X-Trace_1": "abc123"])
         #expect(r.problems.count == 5, "Authorization, Cookie, no colon, bad name, empty value: \(r.problems)")
         #expect(!r.problems.joined().contains("secret"), "a refused value is never echoed")
     }
@@ -50,5 +50,11 @@ import Foundation
         c.requestHeaders = ["User-Agent": "Kodi/21", "Referer": "http://r.example/", "X-A": "1,2"]
         #expect(opts()["user-agent"] == "Kodi/21")
         #expect(opts()["http-header-fields"] == "Referer: http://r.example/,X-A: 1%2C2", "a comma inside a value can't split the list")
+    }
+
+    @Test func aHeaderThatCarriesASecretIsRefusedLikeAuthorization() {
+        let r = SourceHeaders.parse("X-Api-Key: abc\nX-Plex-Token: t\nX-Auth-Session: s\nReferer: http://r.example/\nOrigin: http://o.example")
+        #expect(r.headers == ["Referer": "http://r.example/", "Origin": "http://o.example"])
+        #expect(r.problems.count == 3)
     }
 }

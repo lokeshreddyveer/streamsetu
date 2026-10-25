@@ -216,8 +216,8 @@ struct VPNSettingsGroup: View {
 
     var body: some View {
         @Bindable var s = settings
-        SettingsGroup(title: "VPN", footer: "StreamSetu does not run a VPN and never sees what your VPN does. It only notices that one is connected on this Mac. Turn on the option below to pause playback if the VPN drops, so a stream does not carry on outside it.") {
-            SettingsRow(title: "Status", detail: (container?.vpn.isOn ?? false) ? "A VPN connection is active." : "No VPN connection detected.") {
+        SettingsGroup(title: "VPN", footer: "StreamSetu does not run a VPN and never sees what your VPN does. It only looks for a VPN connection on this Mac; it cannot confirm that StreamSetu's traffic goes through it. The option below pauses playback when a detected VPN drops, which helps keep a stream from carrying on outside it but is not a guarantee.") {
+            SettingsRow(title: "Status", detail: (container?.vpn.isOn ?? false) ? "A VPN connection is detected." : "No VPN connection detected.") {
                 Button("Open Network Settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Network-Settings.extension")!) }
             }
             SettingsRow(title: "Pause if the VPN drops", detail: "Only while something is playing.") {

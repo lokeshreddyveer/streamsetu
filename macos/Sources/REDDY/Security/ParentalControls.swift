@@ -183,7 +183,11 @@ final class ParentalControls {
         return true
     }
 
+    /// Counts every change to what is hidden (a folder locked or unlocked, restriction switched on or off). Anything kept from an earlier look at the catalog is keyed by it.
+    private(set) var restrictionRevision = 0
+
     private func applyRestriction() {
+        restrictionRevision += 1
         catalog.restriction.isActive = kidsMode || (hasPIN && !isUnlocked)
         onChange()
     }

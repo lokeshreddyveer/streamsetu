@@ -8,6 +8,9 @@ struct PrivacyReport: Equatable, Sendable {
         var diagnosticsOn = true
         var hasTMDBKey = false
         var hasOpenSubtitles = false
+        /// An online AI (not the on-device one) is set up for the assistant.
+        var hasOnlineAI = false
+        var hasTrakt = false
         var iCloudSync = false
         var lanSync = false
         var profileCount = 1
@@ -48,6 +51,9 @@ struct PrivacyReport: Equatable, Sendable {
             Item(id: "diag", title: "StreamSetu playback log", detail: "After a stream fails for good: player used, timings, error codes and device model. Server names are masked. Never titles, logins or stream addresses. Deleted after 30 days.", status: s.diagnosticsOn ? .on : .off),
             Item(id: "tmdb", title: "The Movie Database (TMDB)", detail: "A title and year, to fetch artwork and details. Only with your own key.", status: s.hasTMDBKey ? .on : .off),
             Item(id: "subs", title: "OpenSubtitles", detail: "Title, year and language, and your own account to sign in. Only when you ask for subtitles.", status: s.hasOpenSubtitles ? .whenYouAsk : .off),
+            Item(id: "ai", title: "An online AI (assistant)", detail: "Your messages and the conversation so far; with \"let the assistant see the screen\" on, also the screen you are on, the open title, your search text, what is playing (never while watching privately) and a few library counts. Only when you use the assistant, with your own key.", status: s.hasOnlineAI ? .whenYouAsk : .off),
+            Item(id: "wiki", title: "Wikipedia (assistant lookups)", detail: "The film, series or person the assistant looks up. Only when an online AI is set up and you ask something that needs it.", status: s.hasOnlineAI ? .whenYouAsk : .off),
+            Item(id: "trakt", title: "Trakt", detail: "When you start and stop watching a title, and your watchlist when you import it. Never for private watching. Only with your own Trakt app.", status: s.hasTrakt ? .on : .off),
             Item(id: "trailer", title: "YouTube and Apple trailers", detail: "Only when you open a trailer.", status: .whenYouAsk),
             Item(id: "podcast", title: "Apple podcast directory", detail: "The words you type, when you search for a podcast.", status: .whenYouAsk),
             Item(id: "icloud", title: "iCloud sync", detail: "Favourites, collections and resume points, in your own iCloud. Not visible to the developer.", status: s.iCloudSync ? .on : .off),

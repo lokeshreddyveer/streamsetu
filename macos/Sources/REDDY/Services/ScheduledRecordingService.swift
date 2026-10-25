@@ -194,7 +194,9 @@ final class ScheduledRecordingService {
         defer { session.invalidateAndCancel() }
         func fetch(_ url: URL) async throws -> Data {
             var r = request; r.url = url
-            if url.host?.lowercased() != request.url?.host?.lowercased() { r.allHTTPHeaderFields = nil }          // never send the provider's sign-in to another host
+            // never send the provider's sign-in to another origin: the same host on another port or scheme is another server too
+            func origin(_ u: URL?) -> String { "\(u?.scheme?.lowercased() ?? "")://\(u?.host?.lowercased() ?? ""):\(u?.port ?? ((u?.scheme?.lowercased() == "https") ? 443 : 80))" }
+            if origin(url) != origin(request.url) { r.allHTTPHeaderFields = nil }
             let (data, response) = try await session.data(for: r)
             if let status = (response as? HTTPURLResponse)?.statusCode, !(200..<300).contains(status) { throw CaptureError(errorDescription: "The provider answered \(status).") }
             return data
@@ -207,6 +209,7 @@ final class ScheduledRecordingService {
                 let list = HLSPlaylist.parse(text, base: playlistURL)
                 if list.isMaster { guard let best = list.bestVariant else { return (bytes, "The playlist lists no streams.") }; playlistURL = best.url; continue }
                 if list.encrypted { return (bytes, "This channel's video is encrypted, so it cannot be recorded.") }
+                if list.byteRanged { return (bytes, "This channel splits its video by byte ranges, which cannot be recorded yet.") }
                 if list.fragmentedMP4 { return (bytes, "This channel uses a stream format that cannot be recorded to a file.") }
                 for seg in list.segments where seg.sequence > lastWritten {
                     if Date() >= until || Task.isCancelled { break }

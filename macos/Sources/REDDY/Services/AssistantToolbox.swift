@@ -44,6 +44,7 @@ import Foundation
             AITool(name: "sync_guide", help: "Offer a button to refresh the TV guide.", params: []),
             AITool(name: "problem_report", help: "Prepare a redacted problem report (no logins, addresses or tokens) and offer to copy it.", params: []),
             AITool(name: "web_lookup", help: "A short summary from Wikipedia about a film, series, actor or topic.", params: [s("topic", "Topic")]),
+            AITool(name: "web_titles", help: "The titles Wikipedia lists on the filmography page of a person (an actor, director) or franchise: plain names, to hand to check_library. Say that they came from Wikipedia, not from your memory.", params: [s("person", "The person or franchise")]),
         ]
         if !compact {
             t += [
@@ -57,7 +58,7 @@ import Foundation
         }
         // The most useful first: the on-device model has a small window, so it gets only the first few.
         let order = ["search_everything", "check_library", "diagnose_playback", "source_health", "guide_status", "find_setting", "find_help", "change_setting", "control_playback", "play_title", "tv_guide",
-                     "search_library", "open_screen", "title_details", "recommend_engine", "now_playing", "switch_engine", "select_track", "retry_playback", "sync_guide", "source_setup_help", "problem_report", "web_lookup"]
+                     "search_library", "open_screen", "title_details", "recommend_engine", "now_playing", "switch_engine", "select_track", "retry_playback", "sync_guide", "source_setup_help", "problem_report", "web_lookup", "web_titles"]
         t.sort { (order.firstIndex(of: $0.name) ?? 99) < (order.firstIndex(of: $1.name) ?? 99) }
         return compact ? Array(t.prefix(10)) : t
     }
@@ -76,7 +77,7 @@ import Foundation
         case "source_setup_help": text = "Looking that up…"
         case "find_setting": text = "Looking up the settings…"
         case "find_help": text = "Looking that up…"
-        case "web_lookup": text = "Reading Wikipedia…"
+        case "web_lookup", "web_titles": text = "Reading Wikipedia…"
         case "watch_stats": text = "Adding up your viewing…"
         default: text = "Working on it…"
         }
@@ -145,6 +146,7 @@ import Foundation
             let hits = AppGuide.search(str("topic"), limit: 2)
             return hits.isEmpty ? "No how-to article for that." : hits.map { "\($0.title): \($0.body)" }.joined(separator: "\n\n")
         case "web_lookup": return await WikipediaLookup.summary(of: str("topic")) ?? "Wikipedia had nothing on that."
+        case "web_titles": return await WikipediaLookup.titles(of: str("person")) ?? "Wikipedia had no filmography page for that."
         case "watch_stats": return stats(str("period"))
         case "change_setting":
             guard let e = AppSettingsCatalog.find(str("id")) else { return "Unknown setting id. Use find_setting to get one." }
@@ -492,8 +494,8 @@ import Foundation
         guard p.current != nil else { return "Nothing is playing." }
         let m = p.metrics
         func t(_ s: TimeInterval) -> String { let x = Int(s); return String(format: "%d:%02d:%02d", x / 3600, (x % 3600) / 60, x % 60) }
-        var o = ["Title: \(p.title)", p.isLive ? "Live TV" : "Video on demand", "State: \(p.state)"]
-        if let ch = p.currentChannel, p.isLive, let nn = (try? container.epgRepo.nowNext(channelIDs: [ch.id], at: Date()))?[ch.id], let now = nn.first {
+        var o = ["Title: \(p.isPrivate ? "Private viewing (hidden)" : p.title)", p.isLive ? "Live TV" : "Video on demand", "State: \(p.state)"]
+        if !p.isPrivate, let ch = p.currentChannel, p.isLive, let nn = (try? container.epgRepo.nowNext(channelIDs: [ch.id], at: Date()))?[ch.id], let now = nn.first {
             o.append("Programme now: \(now.title)" + (nn.count > 1 ? ", next: \(nn[1].title)" : ""))
         }
         if !p.isLive, let d = p.duration { o.append("Position \(t(p.position)) of \(t(d))") }

@@ -134,7 +134,7 @@ struct AssistantCoverageRow: Equatable {
     static let tools: [String: String] = [
         "search_everything": "read", "search_library": "read", "check_library": "read", "title_details": "read", "similar_titles": "read", "tv_guide": "read", "now_playing": "read",
         "diagnose_playback": "read", "source_health": "read (sends no login)", "guide_status": "read", "recommend_engine": "read", "source_setup_help": "read", "find_setting": "read", "find_help": "read",
-        "web_lookup": "read (sends only the topic to Wikipedia)", "watch_stats": "read",
+        "web_lookup": "read (sends only the topic to Wikipedia)", "web_titles": "read (sends only the person or franchise name to Wikipedia)", "watch_stats": "read",
         "change_setting": "offers; authorizer rechecks", "control_playback": "offers; authorizer rechecks", "open_screen": "offers; authorizer rechecks", "play_title": "offers; authorizer rechecks",
         "favourite": "offers; authorizer rechecks", "watch_later": "offers; authorizer rechecks", "resume_watching": "offers; authorizer rechecks", "refresh_playlists": "offers; authorizer rechecks",
         "retry_playback": "offers; authorizer rechecks", "switch_engine": "offers; authorizer rechecks", "select_track": "offers; authorizer rechecks", "sync_guide": "offers; authorizer rechecks",

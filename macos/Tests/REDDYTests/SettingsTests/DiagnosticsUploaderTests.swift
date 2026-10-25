@@ -71,4 +71,12 @@ import Foundation
         u.playbackFailed()
         #expect(d.object(forKey: "diagnostics.lastAuto") == nil)      // nothing was sent, so nothing was recorded as sent
     }
+
+    @Test func aTestRunNeverReachesTheRealServerOrTheRealLog() async {
+        let before = DiagnosticsUploader.blockedInTests.value
+        let sent = await DiagnosticsUploader().send(trigger: "auto")
+        #expect(!sent)
+        #expect(DiagnosticsUploader.blockedInTests.value == before + 1)
+        #expect(PlaybackLog.shared.url.path.hasPrefix(FileManager.default.temporaryDirectory.path))
+    }
 }

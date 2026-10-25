@@ -75,6 +75,8 @@ import Foundation
         #expect(HLSPlaylist.parse("#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"k\"\n#EXTINF:4,\na.ts\n", base: base).encrypted)
         #expect(!HLSPlaylist.parse("#EXTM3U\n#EXT-X-KEY:METHOD=NONE\n#EXTINF:4,\na.ts\n", base: base).encrypted)
         #expect(HLSPlaylist.parse("#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:4,\na.m4s\n", base: base).fragmentedMP4)
+        #expect(HLSPlaylist.parse("#EXTM3U\n#EXTINF:4,\n#EXT-X-BYTERANGE:1000@0\nall.ts\n", base: base).byteRanged)
+        #expect(!HLSPlaylist.parse("#EXTM3U\n#EXTINF:4,\na.ts\n", base: base).byteRanged)
     }
 
     @Test func playlistTextIsToldApartFromVideo() {

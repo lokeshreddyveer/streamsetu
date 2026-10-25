@@ -32,6 +32,18 @@ final class AssistantModel {
 
     private static let followUps = AssistantRefinement.allCases.map(\.rawValue)
 
+    /// Bumped when the person using the app changes; an answer that was asked for before that is dropped instead of shown to the next person.
+    private var generation = 0
+    private var request: Task<Void, Never>?
+
+    /// Another profile is now using the app: the conversation, the suggestions and any answer still on its way belong to the one that left.
+    func profileChanged() {
+        generation += 1
+        request?.cancel(); request = nil
+        busy = false; status = nil; confirming = [:]
+        reset()
+    }
+
     func reset() {
         states = [:]
         messages = [.init(role: .assistant, text: "Hi, I’m Setu. Ask me what to watch, how something in the app works, what’s on TV, or tell me to change something: “a tense thriller under 2 hours”, “why is this buffering?”, “turn on subtitles by default”.")]
@@ -59,15 +71,19 @@ final class AssistantModel {
         let context = container.assistantSeesScreen ? container.assistantContext(screen: here.screen, openItem: here.item, searchText: here.search) : nil
         var history = messages.filter { !$0.text.isEmpty }.map { (person: $0.role == .person, text: $0.text) }
         if viaAI, !history.isEmpty { history[history.count - 1].text = text }      // the AI sees the words, not the button's label
-        Task {
+        let asked = generation
+        request = Task {
             do {
                 let r = try await container.askAssistant(history: history, context: context, onStep: { [weak self] s in self?.status = s }, skipInstant: viaAI)
                 let more = !(r.answer?.results.isEmpty ?? true) && container.aiAvailable
+                guard asked == generation else { return }
                 messages.append(.init(role: .assistant, text: r.say, summary: (r.answer?.results.isEmpty ?? true) ? [] : Array((r.answer?.intent.summary ?? []).prefix(5)), results: Array((r.answer?.results ?? []).prefix(12)),
                                       elsewhere: r.answer?.elsewhere ?? [], proposals: r.proposals, followUps: more ? Self.followUps : [], steps: r.steps, note: r.fallbackNote, askAIText: r.instant ? text : nil))
             } catch {
+                guard asked == generation else { return }
                 messages.append(.init(role: .assistant, text: Self.friendly(error, container: container)))
             }
+            guard asked == generation else { return }
             busy = false; status = nil
         }
     }
@@ -143,11 +159,8 @@ struct AssistantChatView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: model.busy)
         .onChange(of: container.profiles.activeID) { _, _ in
-            // Whoever was using the app has changed: nothing offered to them may run for the next person.
-            let open = model.messages.flatMap(\.proposals).filter { model.states[$0.id] == nil || model.states[$0.id] != .done }
-            guard !open.isEmpty else { return }
-            open.forEach { if model.states[$0.id] != .running { model.states[$0.id] = .cancelled } }; model.confirming = [:]
-            model.messages.append(.init(role: .assistant, text: "The profile changed, so I cancelled my earlier suggestions."))
+            // Whoever was using the app has changed: what was said and everything offered to them stays with them, and nothing they asked for is answered to the next person.
+            model.profileChanged()
         }
         .onAppear { if model.messages.isEmpty { model.reset() }; focused = true; sees = container.assistantSeesScreen }
     }

@@ -153,6 +153,8 @@ enum AssistantText {
 /// device; actions are only offered, and the person taps to confirm.
 @MainActor enum AssistantAgent {
     static let maxSteps = 6
+    /// Tools run for one answer, in all, and in one round; and the longest result handed back to the model. A model that asks for more is answered with what it already has.
+    static let maxToolCalls = 12, maxCallsPerRound = 5, maxResultCharacters = 6000
 
     static func system(context: AssistantContext?, compact: Bool, evidence: String? = nil) -> String {
         let who = """
@@ -209,14 +211,20 @@ enum AssistantText {
             let runner: @Sendable (String, AIArgs) async -> String = { name, args in await toolbox.run(name, args) }
             final = try await client.converseOnDevice(system: sys, messages: messages, tools: tools, run: runner)
         } else {
-            var steps = 0
+            var steps = 0, toolCalls = 0
             while true {
+                try Task.checkCancellation()          // the person left (another profile, a closed panel): stop asking
                 steps += 1
                 let turn = try await client.converse(system: sys, messages: messages, tools: steps > maxSteps ? [] : tools)
                 messages.append(turn)
-                if turn.calls.isEmpty || steps > maxSteps { final = turn.text; break }
+                if turn.calls.isEmpty || steps > maxSteps || toolCalls >= Self.maxToolCalls { final = turn.text; break }
                 var results: [(id: String, name: String, text: String)] = []
-                for c in turn.calls { results.append((c.id, c.name, await toolbox.run(c.name, c.args))) }
+                for c in turn.calls.prefix(Self.maxCallsPerRound) {
+                    toolCalls += 1
+                    results.append((c.id, c.name, String(await toolbox.run(c.name, c.args).prefix(Self.maxResultCharacters))))
+                }
+                // a call past the limit still gets an answer (every call the model made needs one)
+                for c in turn.calls.dropFirst(Self.maxCallsPerRound) { results.append((c.id, c.name, "Not run: too many tools at once.")) }
                 messages.append(AIMessage(role: .tool, results: results))
             }
         }

@@ -139,6 +139,7 @@ final class AppContainer {
         watchQueue = WatchQueue(catalog: catalog, defaults: settings.defaultsStore)
         let subtitleCredentials = credentials
         playback.movieCopies = { [catalog] m in (try? catalog.movieCopies(of: m)) ?? [m] }
+        playback.movieAllowed = { [catalog] m in !catalog.restriction.isActive || ((try? catalog.movie(id: m.id)) ?? nil) != nil }
         playback.subtitleFetcher = { title, year, language, season, episode in
             let account = OnlineSubtitles.Account.load(from: subtitleCredentials)
             guard account.isComplete else { return nil }
@@ -213,7 +214,7 @@ final class AppContainer {
         trakt = TraktService(store: credentials)
         viewingLimits = ViewingLimits(defaults: settings.defaultsStore)
         profiles = ProfileService(db: db, defaults: settings.defaultsStore) { [weak self] _ in self?.profileSwitched() }
-        profiles.willSwitch = { [weak self] in self?.playback.stop() }
+        profiles.willSwitch = { [weak self] in self?.playback.stop(); self?.lan.setEnabled(false) }       // nothing in flight may touch the tables while they change hands
         parental.kidsMode = profiles.active.kind == .kids
         applyViewingLimits()
         playback.onSessionChange = { [weak self] in self?.lan.nudge() }

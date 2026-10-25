@@ -385,7 +385,8 @@ final class SQLiteCatalogRepository: CatalogRepository {
     /// The same film as it appears in the library under the same name, in any playlist or folder (for the best copy and the next best when one does not play).
     func movieCopies(of m: Movie) throws -> [Movie] {
         let found = try db.read { try $0.query(Self.movieSelect + " WHERE m.normalized_title=?" + restricted("m"), [m.normalizedTitle], Self.mapMovie) }
-        return found.contains { $0.id == m.id } ? found : [m] + found
+        // The film that was handed in is added only when nothing hides it: a title in a folder that has since been locked must not come back through here.
+        return found.contains { $0.id == m.id } ? found : (restriction.isActive ? found : [m] + found)
     }
 
     func movie(id: String) throws -> Movie? {

@@ -30,7 +30,11 @@ fi
 xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1 || { echo "✘ notary profile '$NOTARY_PROFILE' not set up. Run step 3 at the top of this script."; exit 1; }
 echo "▸ Signing as: $(security find-identity -v -p codesigning | grep "${SIGN_IDENTITY}" | head -1 | sed 's/.*"\(.*\)"/\1/') [${SIGN_IDENTITY}]"
 
-python3 ../Scripts/audit-dependencies.py | grep -v "^  - " || true     # known-vulnerability report; read it before shipping
+# Known-vulnerability check: a release stops if a dependency has a reported vulnerability or could not be checked. After reading the report, ALLOW_DEPENDENCY_ISSUES=1 goes ahead anyway.
+DEP_REPORT="$(mktemp)"; DEP_RC=0
+python3 ../Scripts/audit-dependencies.py --strict > "$DEP_REPORT" 2>&1 || DEP_RC=$?
+grep -v "^  - " "$DEP_REPORT" || true
+if [ "$DEP_RC" -ne 0 ] && [ "${ALLOW_DEPENDENCY_ISSUES:-}" != "1" ]; then echo "✘ dependency check did not come back clean (exit $DEP_RC). Read the report above; ALLOW_DEPENDENCY_ISSUES=1 releases anyway."; exit 1; fi
 REDDY_BUNDLE_MPV=1 Scripts/build-release.sh "$VERSION" "$BUILD"
 Scripts/sign-app.sh dist/StreamSetu.app
 

@@ -5,7 +5,15 @@ import Foundation
 /// login or a full stream address (every line goes through the credential redactor first). It leaves the device only if the person
 /// chooses Send Feedback and includes diagnostics.
 final class PlaybackLog: @unchecked Sendable {
-    static let shared = PlaybackLog(url: StorageService.ensure(StorageService.applicationSupport.appendingPathComponent("Logs", isDirectory: true)).appendingPathComponent("playback.log"))
+    /// A test run writes to its own folder, never to the person's real log.
+    static let shared: PlaybackLog = {
+        if DiagnosticsUploader.underTests {
+            let dir = FileManager.default.temporaryDirectory.appendingPathComponent("streamsetu-tests-\(ProcessInfo.processInfo.processIdentifier)", isDirectory: true)
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            return PlaybackLog(url: dir.appendingPathComponent("playback.log"))
+        }
+        return PlaybackLog(url: StorageService.ensure(StorageService.applicationSupport.appendingPathComponent("Logs", isDirectory: true)).appendingPathComponent("playback.log"))
+    }()
 
     let url: URL
     private let maxBytes: Int

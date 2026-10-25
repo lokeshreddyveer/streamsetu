@@ -83,8 +83,9 @@ extension AppContainer {
         c.searchText = searchText
         if let openItem { c.openItem = assistantDescribe(openItem) }
         if playback.current != nil {
-            var p = playback.title
-            if playback.isLive, let ch = playback.currentChannel,
+            // Private watching shows nothing outside the app: the assistant (and the model behind it) is told that something private is playing, never what.
+            var p = playback.isPrivate ? "Private viewing" : playback.title
+            if !playback.isPrivate, playback.isLive, let ch = playback.currentChannel,
                let nn = (try? epgRepo.nowNext(channelIDs: [ch.id], at: Date()))?[ch.id], let now = nn.first {
                 p += " (live; now: \(now.title)" + (nn.count > 1 ? ", next: \(nn[1].title)" : "") + ")"
             }
@@ -242,6 +243,31 @@ enum WikipediaLookup {
               let encoded = title.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))), let sURL = URL(string: "https://en.wikipedia.org/api/rest_v1/page/summary/" + encoded),
               let sData = try? await fetch(sURL), let extract = ((try? JSONSerialization.jsonObject(with: sData)) as? [String: Any])?["extract"] as? String, !extract.isEmpty else { return nil }
         return "Wikipedia, \(title): " + String(extract.prefix(700))
+    }
+
+    /// The titles linked from a person's (or franchise's) filmography page: names only, in page order. Links are not all films (a studio, a co-star), so the caller checks each against the library;
+    /// the point is to have real names from a source, not from the model's memory.
+    static func titles(of person: String, limit: Int = 150) async -> String? {
+        let q = person.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard q.count >= 2, var search = URLComponents(string: "https://en.wikipedia.org/w/api.php") else { return nil }
+        search.queryItems = [.init(name: "action", value: "query"), .init(name: "list", value: "search"), .init(name: "srsearch", value: q + " filmography"), .init(name: "srlimit", value: "1"), .init(name: "format", value: "json")]
+        guard let url = search.url, let data = try? await fetch(url),
+              let page = (((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["query"] as? [String: Any]).flatMap({ ($0["search"] as? [[String: Any]])?.first?["title"] as? String }),
+              var links = URLComponents(string: "https://en.wikipedia.org/w/api.php") else { return nil }
+        links.queryItems = [.init(name: "action", value: "query"), .init(name: "prop", value: "links"), .init(name: "titles", value: page), .init(name: "plnamespace", value: "0"), .init(name: "pllimit", value: "max"), .init(name: "format", value: "json")]
+        guard let lURL = links.url, let lData = try? await fetch(lURL),
+              let pages = (((try? JSONSerialization.jsonObject(with: lData)) as? [String: Any])?["query"] as? [String: Any])?["pages"] as? [String: Any],
+              let entries = pages.values.compactMap({ ($0 as? [String: Any])?["links"] as? [[String: Any]] }).first else { return nil }
+        var names: [String] = []
+        for e in entries {
+            guard var t = e["title"] as? String else { continue }
+            if let r = t.range(of: " (", options: .backwards), t.hasSuffix(")") { t = String(t[..<r.lowerBound]) }     // "Don (2006 film)" → "Don"
+            if t.count < 2 || t.hasPrefix("List of") || names.contains(t) { continue }
+            names.append(t)
+            if names.count >= limit { break }
+        }
+        guard !names.isEmpty else { return nil }
+        return "From Wikipedia's page \"\(page)\" (names linked there; not all are films): " + names.joined(separator: "; ")
     }
 
     private static func fetch(_ url: URL) async throws -> Data {

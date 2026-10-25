@@ -48,11 +48,22 @@ final class DiagnosticsUploader: @unchecked Sendable {
     /// At most one automatic report in this long, so a bad evening is one report and not fifty.
     static let autoInterval: TimeInterval = 3 * 3600
 
+    /// True when the code is running inside a test run. A test must never reach the real server, so without a session of its own the uploader refuses to send.
+    static let underTests: Bool = {
+        let env = ProcessInfo.processInfo.environment
+        return env["XCTestConfigurationFilePath"] != nil || env["XCTestBundlePath"] != nil || env["SWIFT_TESTING_ENABLED"] != nil
+            || env["STREAMSETU_TESTING"] != nil
+            || Bundle.allBundles.contains { $0.bundlePath.hasSuffix(".xctest") }
+            || ["test-runner", "xctest", "swiftpm-testing-helper"].contains { (CommandLine.arguments.first ?? "").contains($0) }
+    }()
+
     private let defaults: UserDefaults
     private let session: URLSession
+    private let usesRealServer: Bool
 
     init(defaults: UserDefaults = .standard, session: URLSession? = nil) {
         self.defaults = defaults
+        self.usesRealServer = session == nil
         let cfg = URLSessionConfiguration.ephemeral
         cfg.timeoutIntervalForRequest = 15; cfg.timeoutIntervalForResource = 30; cfg.waitsForConnectivity = false
         self.session = session ?? URLSession(configuration: cfg)
@@ -98,6 +109,7 @@ final class DiagnosticsUploader: @unchecked Sendable {
     /// Sends the log now. Returns whether the server accepted it.
     @discardableResult
     func send(trigger: String = "manual", note: String = "") async -> Bool {
+        if Self.underTests && usesRealServer { Self.blockedInTests.withLock { $0 += 1 }; return false }
         guard let body = try? JSONSerialization.data(withJSONObject: payload(trigger: trigger, note: note)) else { return false }
         var req = URLRequest(url: Self.endpoint)
         req.httpMethod = "POST"
@@ -116,6 +128,9 @@ final class DiagnosticsUploader: @unchecked Sendable {
         Task.detached(priority: .utility) { [self] in await self.send(trigger: "auto") }
     }
 
+    /// How many sends a test run tried to make to the real server (all refused). A test checks this.
+    static let blockedInTests = LockedCounter()
+
     static func mayAutoSend(last: Date?, now: Date) -> Bool { last.map { now.timeIntervalSince($0) >= autoInterval } ?? true }
 
     static var deviceModel: String {
@@ -130,4 +145,12 @@ final class DiagnosticsUploader: @unchecked Sendable {
         guard sysctlbyname(name, &buffer, &size, nil, 0) == 0 else { return "" }
         return String(cString: buffer)
     }
+}
+
+/// A small thread-safe counter.
+final class LockedCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    func withLock(_ body: (inout Int) -> Void) { lock.lock(); body(&count); lock.unlock() }
+    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
 }

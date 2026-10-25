@@ -11,6 +11,13 @@ struct SourceHeaders: Sendable, Hashable {
     /// Headers that could carry a login. They are not accepted here, because these settings are stored in preferences, not the vault.
     static let blocked: Set<String> = ["authorization", "cookie", "proxy-authorization", "host", "content-length", "connection", "transfer-encoding"]
 
+    /// A header whose name says it carries a secret (X-Api-Key, X-Plex-Token, X-Auth, …) is refused for the same reason as Authorization: the value would sit in preferences,
+    /// outside the vault, and travel with the playlist's settings.
+    static func looksSecret(_ name: String) -> Bool {
+        let n = name.lowercased()
+        return ["token", "key", "auth", "secret", "password", "passwd", "credential", "session", "bearer", "signature", "sid"].contains { n.contains($0) }
+    }
+
     static let presets: [(name: String, value: String)] = [
         ("VLC", "VLC/3.0.20 LibVLC/3.0.20"),
         ("Kodi", "Kodi/21.0 (Macintosh; Intel Mac OS X 14_0) App_Bitness/64 Version/21.0"),
@@ -31,7 +38,7 @@ struct SourceHeaders: Sendable, Hashable {
             let value = String(line[line.index(after: colon)...]).trimmingCharacters(in: .whitespaces)
             let validName = !name.isEmpty && name.unicodeScalars.allSatisfy { ($0.properties.isAlphabetic && $0.isASCII) || $0.properties.numericType != nil && $0.isASCII || "-_".unicodeScalars.contains($0) }
             guard validName else { problems.append("“\(name.prefix(30))” isn't a valid header name"); continue }
-            guard !blocked.contains(name.lowercased()) else { problems.append("“\(name)” can't be set here"); continue }
+            guard !blocked.contains(name.lowercased()), !looksSecret(name) else { problems.append("“\(name)” can't be set here (it looks like it carries a login or key)"); continue }
             guard !value.isEmpty, !value.contains("\r"), !value.contains("\n"), value.count <= 500 else { problems.append("“\(name)” has no usable value"); continue }
             if name.lowercased() == "user-agent" { continue }          // the User-Agent has its own field
             out[name] = value

@@ -104,7 +104,11 @@ final class LanSyncService {
         }
     }
 
+    /// The links open right now (to a device we dialled or one that dialled us). Turning the service off closes them, so no exchange outlives it and reads or writes the next profile's data.
+    private var openLinks: [UUID: () -> Void] = [:]
+
     private func stop() {
+        openLinks.values.forEach { $0() }; openLinks = [:]
         discovery?.stop(); discovery = nil
         timer?.cancel(); timer = nil
         found = []; status = "Off"; pairingOpen = false; pairingFlag.value = false
@@ -160,19 +164,25 @@ final class LanSyncService {
         busy.insert(f.id); defer { busy.remove(f.id) }
         status = "Syncing with \(f.name)…"
         let link = discovery.connect(f)
+        let key = UUID(); openLinks[key] = { link.close() }
+        defer { openLinks[key] = nil }
         do { try await link.open() } catch { status = "Could not reach \(f.name)"; return }
         let outcome = await proto.runInitiator(link)
         link.close()
+        guard enabled else { return }          // switched off meanwhile: whatever came back is not applied
         finish(outcome, name: f.name)
     }
 
     private func accept(_ c: NWConnection) {
         guard enabled, let proto = makeProtocol() else { c.cancel(); return }
         let link = NWLanLink(c)
+        let key = UUID(); openLinks[key] = { link.close() }
         Task {
+            defer { openLinks[key] = nil }
             do { try await link.open() } catch { return }
             let outcome = await proto.runResponder(link)
             link.close()
+            guard enabled else { return }
             finish(outcome, name: nil)
         }
     }

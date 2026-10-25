@@ -8,6 +8,8 @@ extension AppContainer {
         PrivacyReport.State(diagnosticsOn: DiagnosticsUploader.shared.isEnabled,
                             hasTMDBKey: metadata.hasKey,
                             hasOpenSubtitles: !OnlineSubtitles.Account.load(from: credentials).key.isEmpty,
+                            hasOnlineAI: { let c = ai.load(); return c.provider != .apple && c.isReady }(),
+                            hasTrakt: trakt.isSignedIn,
                             iCloudSync: settings.iCloudSync, lanSync: settings.lanSync,
                             profileCount: profiles.profiles.count,
                             historyCount: count("SELECT COUNT(*) FROM watch_history"),

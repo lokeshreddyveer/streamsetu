@@ -334,11 +334,14 @@ final class PlaybackCoordinator {
 
     /// Finds the copies of a film in the library (set by the container).
     var movieCopies: (@Sendable (Movie) -> [Movie])?
+    /// Whether a film may be played right now (set by the container). Checked again at the moment of playing, because the model in hand may be from before a folder was locked.
+    var movieAllowed: (@Sendable (Movie) -> Bool)?
     /// The other copies of the film that was just started, best first: if the one playing fails for good, the next is tried.
     private var fallbackCopies: [Movie] = []
 
     func play(movie opened: Movie, resume: Bool? = nil, bestCopy: Bool = true, remaining: [Movie] = [], privately: Bool = false) {
         var movie = opened, rest = remaining
+        if let allowed = movieAllowed, !allowed(opened) { return }
         if bestCopy, settings.bestVersionFirst, let find = movieCopies {
             let ordered = BestVersion.order(find(opened)) { [$0.title, $0.categoryName] }
             if let first = ordered.first { movie = first; rest = Array(ordered.dropFirst()) }

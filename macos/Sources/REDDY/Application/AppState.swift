@@ -37,7 +37,6 @@ final class AppState {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             watchedReloadPending = false
             reloadWatched()
-        container.historyRepo.onProgressChanged = { [weak self] in Task { @MainActor in self?.scheduleWatchedReload() } }
         }
     }
     func reloadWatched() {
@@ -78,6 +77,7 @@ final class AppState {
             Task { @MainActor in self?.apply(p) }
         }
         container.onNewEpisodesChanged = { [weak self] in self?.reloadNewEpisodes() }
+        container.historyRepo.onProgressChanged = { [weak self] in Task { @MainActor in self?.scheduleWatchedReload() } }
         reloadNewEpisodes()
         reloadWatched()
         container.scheduler.start()
