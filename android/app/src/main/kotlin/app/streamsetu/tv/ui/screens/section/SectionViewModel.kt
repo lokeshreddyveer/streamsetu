@@ -7,6 +7,7 @@ import app.streamsetu.core.model.*
 import app.streamsetu.core.sync.SyncService.MovieInfo
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.ui.components.BannerItem
+import app.streamsetu.tv.ui.components.Facts
 import app.streamsetu.tv.ui.components.FolderActions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -37,6 +38,9 @@ abstract class FolderViewModel(protected val c: AppContainer, val kind: ContentK
     override fun unlock(folderId: String) = c.folders.unlock(folderId)
 
 }
+
+/** One horizontal row of the browsing page (Continue Watching, Favorites...). A row with nothing in it is not shown. */
+data class Rail(val key: String, val title: String, val browse: Browse, val cards: List<Card>, val seeAll: Boolean = true)
 
 /** What a poster shows, whether it stands for a movie or a series. */
 data class Card(val id: String, val title: String, val posterUrl: String?, val year: Int?, val rating: String?, val sourceId: String, val movie: Movie? = null, val series: Series? = null)
@@ -154,6 +158,31 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
 
     init { viewModelScope.launch { availability.value = runCatching { c.browse.availability() }.getOrDefault(availability.value) } }
 
+    // Another library was opened from this page: the folder, filter and place in the list belonged to the old one.
+    init {
+        viewModelScope.launch {
+            c.library.sourceIds.drop(1).collect { browse.value = Browse.All; filter.value = ContentFilter(); limit.value = PAGE; scrollIndex = 0; focusedId = null; focusedIndex = 0; lastFolder = Browse.All }
+        }
+    }
+
+    /** The id of the title the remote was on, and where it was in the list: coming back to this screen puts the remote on it again. */
+    var focusedId: String? = null
+    var focusedIndex = 0
+
+    private val railDefs = listOf(
+        Triple("continue", "Continue Watching", Browse.Continue), Triple("favorites", "Favorites", Browse.Favorites), Triple("later", "Watch Later", Browse.WatchLater),
+        Triple("added", "Recently Added", Browse.RecentlyAdded), Triple("recent", "Recently Watched", Browse.Recent),
+    )
+    /** The rows above the full list, each a short sample (the first 24) of its list; empty ones are left out. */
+    /** Rows only one kind has (Series: the ones with new episodes). */
+    protected open fun extraRails(): Flow<List<Rail>> = flowOf(emptyList())
+    val rails: StateFlow<List<Rail>> by lazy {
+        combine(railDefs.map { (k, t, b) -> source(b, SortSpec.defaultFor(kind), 24).map { Rail(k, t, b, it) } }) { all -> all.filter { it.cards.isNotEmpty() } }
+            .combine(extraRails()) { base, extra -> if (extra.isEmpty()) base else base.take(1) + extra + base.drop(1) }
+            .combine(c.collections.overrides) { rows, ov -> if (ov.isEmpty()) rows else rows.map { r -> r.copy(cards = r.cards.map { card -> ov[card.id]?.let { o -> card.copy(title = o.title ?: card.title, posterUrl = o.posterUrl ?: card.posterUrl) } ?: card }) } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }
+
     /** The provider folder (or All) the person was last in, so leaving a shortcut returns there. */
     var lastFolder: Browse = Browse.All
     fun select(b: Browse) { if (browse.value != b) { limit.value = PAGE; if (b is Browse.Folder || b == Browse.All || b is Browse.Collection) lastFolder = b; browse.value = b; scrollIndex = 0 } }
@@ -200,8 +229,8 @@ class MoviesSectionViewModel @Inject constructor(c: AppContainer) : SectionViewM
         cards.mapNotNull { card ->
             val m = card.movie ?: return@mapNotNull null
             val i = infos[m.id]
-            BannerItem(m.id, m.title, listOfNotNull(i?.genre?.takeIf { it.isNotBlank() }, m.year?.toString(), i?.duration?.takeIf { it.isNotBlank() }, m.rating?.takeIf { it.isNotBlank() && it != "0" }?.let { "★ $it" }),
-                (i?.plot ?: m.plot)?.takeIf { it.isNotBlank() }, i?.backdrop?.takeIf { it.isNotBlank() } ?: m.posterUrl, "Play")
+            BannerItem(m.id, m.title, listOfNotNull(i?.genre?.takeIf { it.isNotBlank() }, m.year?.toString(), Facts.runtime(i?.duration), Facts.rating(m.rating)),
+                (i?.plot ?: m.plot)?.takeIf { it.isNotBlank() }, i?.backdrop?.takeIf { it.isNotBlank() } ?: m.posterUrl, "Play", imageIsBackdrop = !i?.backdrop.isNullOrBlank())
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 }
@@ -212,10 +241,15 @@ class SeriesSectionViewModel @Inject constructor(c: AppContainer) : SectionViewM
 
     override fun setWatched(card: Card, watched: Boolean) {}
 
+    override fun extraRails(): Flow<List<Rail>> = c.user.newEpisodes().map { list ->
+        val cards = list.map { it.seriesId }.distinct().take(24).mapNotNull { id -> c.catalog.series(id) }.map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, series = it) }
+        if (cards.isEmpty()) emptyList() else listOf(Rail("new", "New Episodes", Browse.All, cards, seeAll = false))
+    }
+
     override val banner: StateFlow<List<BannerItem>> = bannerSource().map { cards ->
         cards.mapNotNull { card ->
             val s = card.series ?: return@mapNotNull null
-            BannerItem(s.id, s.title, listOfNotNull(s.year?.toString(), s.rating?.takeIf { it.isNotBlank() && it != "0" }?.let { "★ $it" }), s.plot?.takeIf { it.isNotBlank() }, s.backdropUrl?.takeIf { it.isNotBlank() } ?: s.posterUrl, "Episodes")
+            BannerItem(s.id, s.title, listOfNotNull(s.year?.toString(), Facts.rating(s.rating)), s.plot?.takeIf { it.isNotBlank() }, s.backdropUrl?.takeIf { it.isNotBlank() } ?: s.posterUrl, "Episodes", imageIsBackdrop = !s.backdropUrl.isNullOrBlank())
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 }

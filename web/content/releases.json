@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.10.25",
+      "title": "25 October 2026",
+      "summary": "Fire TV and Android TV 0.19.0: a new look and a remote that behaves, with the Bigg Boss seasons and other shows that were missing now showing up.",
+      "date": "2026-10-25",
+      "mac": "2.14.8",
+      "android": "0.19.0",
+      "ios": "1.1"
+    },
+    {
       "tag": "2026.10.22",
       "title": "22 October 2026",
       "summary": "Mac 2.14.8, Android and Fire TV 0.18.0, iPhone and iPad 1.1 (TestFlight build 72): Setu, an assistant you can ask for something to watch or for help; Trakt, debrid links and your own AI; a search box that also takes commands.",

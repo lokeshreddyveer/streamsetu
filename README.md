@@ -95,8 +95,8 @@ The artwork in these screenshots comes from the provider's own playlist. StreamS
 | Platform | What to get | Notes |
 |---|---|---|
 | **Mac** | [`StreamSetu-2.14.8.dmg`](../../releases/download/2026.10.22/StreamSetu-2.14.8.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
-| **Fire TV and Android TV** | [`StreamSetu-FireTV-0.18.0.apk`](../../releases/download/2026.10.22/StreamSetu-FireTV-0.18.0.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
-| **Android phone and tablet** | [`StreamSetu-Android-0.18.0.apk`](../../releases/download/2026.10.22/StreamSetu-Android-0.18.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
+| **Fire TV and Android TV** | [`StreamSetu-FireTV-0.19.0.apk`](../../releases/download/2026.10.25/StreamSetu-FireTV-0.19.0.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
+| **Android phone and tablet** | [`StreamSetu-Android-0.19.0.apk`](../../releases/download/2026.10.25/StreamSetu-Android-0.19.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
 | **iPhone and iPad** | [Join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 1.1 | Open to the first 100 testers. After that, ask for an invitation at contact@lokeshreddy.dev. |
 | **Windows** | Coming soon | Not released yet. |
 
@@ -108,7 +108,7 @@ If you have a Mac copy older than 2.3.1, it cannot update itself (the old update
 
 ### Installing on Android phone or tablet
 
-1. Download `StreamSetu-Android-0.18.0.apk` on the phone.
+1. Download `StreamSetu-Android-0.19.0.apk` on the phone.
 2. Open it and, when asked, allow installs from your browser or files app.
 3. Open StreamSetu.
 
@@ -130,13 +130,14 @@ The Android app detects a phone or tablet and shows a touch layout, laid out lik
 
 | Press | What happens |
 |---|---|
-| **Back** on a page | Opens the sidebar, Home, Live TV, Movies, Series, TV Guide, Search, Libraries, Settings. On Home the sidebar is always there as a narrow icon strip. |
+| **Back** on a page, or **Left** at the page's edge | Slides the sidebar in: Home, Live TV, Movies, Series, TV Guide, Search, Libraries, Settings. It hides itself again as soon as the cursor is back on the page (**Right** returns to the page). |
 | **Up / Down** in the sidebar | Moves between sections. Nothing opens until you press OK. |
-| **OK** on a section | Opens it, hides the sidebar and puts the cursor on that page's folder list. |
-| **Right** from the folders | Moves into the channels, posters or episodes. **Left** goes back to the folders. |
+| **OK** on a section | Opens it, hides the sidebar and puts the cursor on that page's first button or row. |
+| **Right** from Live TV's folders | Moves into the channels. **Left** goes back to the folders. On Movies and Series, folders are the *Folders* button and the Categories row under the banner. |
 | **OK** on a poster or channel | Opens its detail page, or plays a channel. |
 | **Hold OK**, about half a second | The menu for what's under the cursor: favorite, Watch Later, mark watched, pin, hide, move, lock, rename, and the like. |
-| **Back** inside a page | One step up: close the menu, leave the detail page, return to the folders, then the sidebar, then Home. On Home, Back goes to the sidebar first, and one more Back returns to the library chooser. |
+| **Back** inside a page | One step up: close the menu, leave the detail page (the cursor returns to the poster you left), then the sidebar, then Home. From Home, Back returns to the library chooser; it never closes the app from inside a library. |
+| **Menu** key | Opens the same menu as holding OK, on remotes that have the key. |
 
 **Libraries.** The first screen lists your connections. Pick one and choose **Open Library**. **Manage Library** edits or removes it, and **Add another** or the Quick Add buttons set up Xtream Codes, M3U, a local file or a combined library. Choose **Libraries** in the sidebar to come back here.
 

@@ -18,10 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.streamsetu.core.model.LibraryEntry
+import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.testTag
 import app.streamsetu.core.model.*
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.nav.Navigator
@@ -71,13 +75,20 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     // Pause the slideshow while any menu is open.
     val menuOpen = menuTarget != null || catMenu != null || shortcutMenu != null
 
-    androidx.compose.runtime.CompositionLocalProvider(LocalFocusRing provides Tokens.gold) {
-        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            item(key = "header") { HomeHeader(libraryName, libraryOk) }
+    // The first thing on Home is the hero (about 60 % of the screen's height). Until the person presses a key, the remote belongs to its Play button: it is taken as soon as the
+    // hero exists, so nothing that loaded sooner (a shortcut, a row) can start the screen with the remote somewhere below.
+    var interacted by remember { mutableStateOf(false) }
+    val heroReady = bannerOn && banner.isNotEmpty()
+    LaunchedEffect(heroReady) { if (heroReady && !interacted && entry != null) { kotlinx.coroutines.delay(200); if (!interacted) { runCatching { entry.requestFocus() }; repeat(3) { kotlinx.coroutines.delay(350); if (!interacted) listState.scrollToItem(0) } } } }
+    androidx.compose.runtime.CompositionLocalProvider(LocalFocusRing provides Color.Unspecified) {
+      BoxWithConstraints(Modifier.fillMaxSize()) {
+        val heroHeight = maxHeight * 0.6f
+        LazyColumn(Modifier.fillMaxSize().onPreviewKeyEvent { interacted = true; false }, state = listState, contentPadding = PaddingValues(bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (!heroReady) item(key = "header") { HomeHeader(libraryName, libraryOk, c, nav) }
             item(key = "offline") { TvOfflineAndNow(c, nav) }
             if (bannerOn && banner.isNotEmpty()) item(key = "banner") {
                 FeaturedBanner(
-                    banner, 360.dp, primaryEntry = entry, startPadding = Tokens.safeHorizontal, intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuOpen,
+                    banner, heroHeight, primaryEntry = entry, startPadding = Tokens.safeHorizontal, topOverlay = { Box(Modifier.align(Alignment.TopStart)) { HomeHeader(libraryName, libraryOk, c, nav) } }, intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuOpen,
                     onPrimary = { b -> vm.playableFor(b.id)?.let { p -> if (p is SeriesFeature) nav.open(Overlay.SeriesDetail(p.series)) else play(c, nav, p) } },
                     onDetails = { b -> when (val p = vm.playableFor(b.id)) { is SeriesFeature -> nav.open(Overlay.SeriesDetail(p.series)); is MoviePlayable -> nav.open(Overlay.MovieDetail(p.movie)); else -> {} } },
                     isListed = { b -> b.id in laterIds }, onToggleListed = { b -> vm.toggleWatchLater(b.id, if (vm.playableFor(b.id) is SeriesFeature) ContentKind.SERIES else ContentKind.MOVIE) },
@@ -85,7 +96,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 )
             }
             item(key = "quick") {
-                Row(Modifier.padding(horizontal = Tokens.safeHorizontal, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.railOnLeft().padding(horizontal = Tokens.safeHorizontal, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     vm.shortcutOrder.forEach { id ->
                         val (label, icon, n) = when (id) {
                             "favorites" -> Triple("Favorites", Icons.Filled.Favorite, favs.size)
@@ -93,7 +104,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                             "recent" -> Triple("Recently Watched", Icons.Filled.History, recent.size)
                             else -> Triple("Continue Watching", Icons.Filled.PlayArrow, resume.size)
                         }
-                        QuickCard(label, icon, n, { nav.open(Overlay.Collection(id)) }, { shortcutMenu = id }, if (id == vm.shortcutOrder.first() && !(bannerOn && banner.isNotEmpty()) && entry != null) Modifier.focusRequester(entry) else Modifier)
+                        QuickCard(label, icon, n, { nav.open(Overlay.Collection(id)) }, { shortcutMenu = id }, if (id == vm.shortcutOrder.first() && !bannerOn && entry != null) Modifier.focusRequester(entry) else Modifier)
                     }
                 }
             }
@@ -109,7 +120,11 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     "live" -> if (live.isNotEmpty()) rail("Recently Watched Live TV", pad) { items(live, key = { "l" + it.channel.id }) { l ->
                         ChannelCard(l.channel, l.now, { play(c, nav, ChannelPlayable(l.channel), live.map { ChannelPlayable(it.channel) }) }, { longOn(HomeTarget.Live(l.channel), RowKind.RECENT_LIVE) })
                     } }
-                    "favorites" -> if (favs.isNotEmpty()) rail("Favorites", pad) { items(favs, key = { "f" + it.id }) { f -> FavCard(f, c, nav, RowKind.FAVORITES, ::longOn) } }
+                    "favorites" -> {
+                        val favChannels = favs.filterIsInstance<FavItem.Ch>(); val favTitles = favs.filter { it !is FavItem.Ch }
+                        if (favChannels.isNotEmpty()) rail("Favorite Channels", pad) { items(favChannels, key = { "fc" + it.id }) { f -> FavCard(f, c, nav, RowKind.FAVORITES, ::longOn) } }
+                        if (favTitles.isNotEmpty()) rail("Favorites", pad) { items(favTitles, key = { "f" + it.id }) { f -> FavCard(f, c, nav, RowKind.FAVORITES, ::longOn) } }
+                    }
                     "later" -> if (later.isNotEmpty()) rail("Watch Later", pad) { items(later, key = { "w" + it.id }) { f -> FavCard(f, c, nav, RowKind.WATCH_LATER, ::longOn) } }
                     "foryou" -> { forYou?.let { fy -> rail("For You  ·  Because you watched ${fy.because}", pad) { items(fy.items, key = { "y" + it.id }) { f -> FavCard(f, c, nav, RowKind.OTHER, ::longOn) } } }
                         moreWith?.let { mw -> rail("More with ${mw.name}  ·  You watched ${mw.titles} of their titles lately", pad) { items(mw.items, key = { "w" + it.id }) { f -> FavCard(f, c, nav, RowKind.OTHER, ::longOn) } } } }
@@ -133,6 +148,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 } }
             }
         }
+      }
 
         HomeMenuHost(menuTarget, menuRow, vm, c, nav) { menuTarget = null }
         catMenu?.let { t -> ContextMenu(t.title, t.subtitle.ifBlank { null }, buildList {
@@ -153,34 +169,46 @@ private fun collectionCategories(nav: Navigator, cols: List<UserCollection>): Li
 
 private fun LazyListScope.rail(title: String, pad: PaddingValues, content: LazyListScope.() -> Unit) {
     item(key = "rail:$title") {
-        Column {
+        Column(Modifier.animateItem()) {
             Row(Modifier.padding(start = Tokens.safeHorizontal, top = 10.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(Modifier.width(4.dp).height(18.dp).background(Tokens.accent, RoundedCornerShape(2.dp)))
-                Label(title, Tokens.title, Tokens.text, FontWeight.Bold)
+                Label(title, Tokens.title, Tokens.text, FontWeight.SemiBold)
             }
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = pad, content = content)
+            LazyRow(Modifier.railOnLeft(), horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = pad, content = content)
         }
     }
 }
 
+/**
+ * The top controls of Home: the library you are in (OK opens a compact switcher), Search, Settings and the clock. Switching library reloads Home in place; it does not go back
+ * to the start screen.
+ */
 @Composable
-private fun HomeHeader(library: String, ok: Boolean) {
+private fun HomeHeader(library: String, ok: Boolean, c: AppContainer, nav: Navigator) {
     val now by produceState(System.currentTimeMillis()) { while (true) { value = System.currentTimeMillis(); delay(15_000) } }
-    Row(Modifier.fillMaxWidth().padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Label(library, Tokens.row, Tokens.textSecondary, FontWeight.SemiBold)
-        if (!ok) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Box(Modifier.size(7.dp).background(Tokens.warning, CircleShape)); Label("Offline: showing what is saved", Tokens.caption, Tokens.warning) }
+    Row(Modifier.fillMaxWidth().railOnLeft().padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        LibrarySwitcher(library, c, nav)
+        if (!ok) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Box(Modifier.size(7.dp).background(Tokens.warning, CircleShape)); Label("Offline: showing what is saved", Tokens.small, Tokens.warning) }
         Spacer(Modifier.weight(1f))
-        Label(java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(now)), Tokens.row, Tokens.textSecondary)
+        TopIcon(Icons.Filled.Search, "Search") { nav.go(Tab.SEARCH) }
+        TopIcon(Icons.Filled.Settings, "Settings") { nav.go(Tab.SETTINGS) }
+        Label(java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(now)), Tokens.row, Tokens.textSecondary, FontWeight.Medium, modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+@Composable
+private fun TopIcon(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Focusable(onClick, Modifier.size(40.dp).testTag("top-$label"), shape = RoundedCornerShape(Tokens.radius), container = Tokens.elevated, scaleOnFocus = 1.06f) { f ->
+        Box(Modifier.fillMaxSize(), Alignment.Center) { Image(icon, label, Modifier.size(20.dp), colorFilter = ColorFilter.tint(if (f) Color.White else Tokens.textSecondary)) }
     }
 }
 
 @Composable
 private fun QuickCard(label: String, icon: ImageVector, count: Int, onClick: () -> Unit, onLong: () -> Unit, extra: Modifier = Modifier) {
-    Focusable(onClick, extra, shape = CircleShape, container = Color(0x1AFFFFFF), scaleOnFocus = 1.04f, hairline = true, onLongClick = onLong) { f ->
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f) Tokens.goldHighlight else Tokens.text))
-            Label(label, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 1)
-            if (count > 0) Label("%,d".format(count), Tokens.caption, Tokens.textSecondary)
+    Focusable(onClick, extra, shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, scaleOnFocus = 1.04f, onLongClick = onLong) { f ->
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f) Color.White else Tokens.textSecondary))
+            Label(label, Tokens.row, if (f) Color.White else Tokens.text, FontWeight.Medium, maxLines = 1)
+            if (count > 0) Label("%,d".format(count), Tokens.caption, Tokens.textTertiary)
         }
     }
 }

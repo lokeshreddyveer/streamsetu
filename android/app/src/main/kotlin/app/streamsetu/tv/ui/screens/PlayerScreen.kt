@@ -67,7 +67,7 @@ private val InkDim = Color(0xB3FFFFFF)
  * digits type a channel number; Back asks before leaving.
  */
 @Composable
-fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit = {}, onOpenSeries: (Series) -> Unit = {}, onMinimize: () -> Unit = onClose) {
+fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit = {}, onOpenSeries: (Series) -> Unit = {}, onMinimize: () -> Unit = onClose, onOpenGuide: () -> Unit = {}) {
     val playback = c.playback
     val state by playback.state.collectAsState()
     val current by playback.current.collectAsState()
@@ -289,7 +289,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
         }
 
         // Search the whole catalog without leaving the player: a channel, movie or episode starts at once; a series opens its page.
-        if (searching) androidx.compose.ui.window.Dialog(onDismissRequest = { searching = false; searchLiveOnly = false; toRoot() }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        if (searching) TvDialog(onDismissRequest = { searching = false; searchLiveOnly = false; toRoot() }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
             val first = remember { FocusRequester() }
             LaunchedEffect(Unit) { delay(150); runCatching { first.requestFocus() } }
             fun done() { searching = false; searchLiveOnly = false; toRoot() }
@@ -305,7 +305,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
             }
         }
 
-        if (gotoOpen) androidx.compose.ui.window.Dialog(onDismissRequest = { gotoOpen = false }) {
+        if (gotoOpen) TvDialog(onDismissRequest = { gotoOpen = false }) {
             var text by remember { mutableStateOf("") }
             Column(Modifier.width(420.dp).background(Color(0xFF111111), RoundedCornerShape(16.dp)).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Label("Go to time", Tokens.title, Ink, FontWeight.SemiBold)
@@ -360,6 +360,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                             items(eps, key = { "ep" + it.id }) { ep -> TextOption("${ep.episode.number}.  ${ep.episode.title}", ep.id == item?.id, if (ep.id == item?.id) Modifier.focusRequester(selectedReq) else Modifier) { c.play(ep, c.queue); closePanel() } }
                         }
                         PanelKind.MORE -> {
+                            if (live) item { TextOption("TV Guide", false, Modifier, "Opens the programme guide; the channel keeps playing") { onOpenGuide() } }
                             if (live) item { TextOption("Multi-View", false, Modifier) { onMultiView() } }
                             if (live && startOffer != null) item { TextOption("Start from the beginning", false, Modifier, "This programme began earlier. Plays it from its start through catch-up.") { (item as? ChannelPlayable)?.let { ch -> startOffer?.let { p -> c.startOver(ch.channel, p) } }; closePanel() } }
                             if (live && (recording != null || playback.canRecord())) item {

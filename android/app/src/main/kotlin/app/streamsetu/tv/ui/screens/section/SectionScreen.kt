@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items as rowItems
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,6 +17,10 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.streamsetu.core.ui.motion.Motion
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -38,9 +43,11 @@ import app.streamsetu.tv.ui.screens.home.HomeViewModel
 import app.streamsetu.tv.ui.screens.home.RowKind
 import app.streamsetu.tv.ui.screens.search.SectionSearch
 import app.streamsetu.tv.ui.theme.Tokens
+import app.streamsetu.tv.ui.theme.tv
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 private fun shortcutOf(name: String, kind: ContentKind): Shortcut = when (name) {
     "favorites" -> Shortcut(Browse.Favorites, "Favorites", Icons.Filled.Favorite)
@@ -76,6 +83,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val showMeta by c.ui.showPosterMeta.collectAsState()
     val bannerOn by c.ui.bannerEnabled.collectAsState()
     val showShortcuts by c.ui.showShortcuts.collectAsState()
+    val rails by vm.rails.collectAsState()
 
     val entry = app.streamsetu.tv.ui.components.LocalContentEntry.current ?: remember { FocusRequester() }
     // Taken whenever something asks for a folder or collection, also when this screen is already open (from the "In folder" button on a title's page).
@@ -86,15 +94,22 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val context = androidx.compose.ui.platform.LocalContext.current
     val density = androidx.compose.ui.platform.LocalDensity.current
     val requested = remember(browse) { HashSet<String>() }
+    // Only while the grid stands still, and only for what a poster will really show (same size, same rounded corners, so the picture is found again and not decoded twice).
+    // Scrolling again cancels what is still waiting: holding a direction would otherwise queue hundreds of pictures nobody will see.
+    val pending = remember { ArrayList<coil.request.Disposable>() }
+    DisposableEffect(Unit) { onDispose { pending.forEach { it.dispose() }; pending.clear() } }
     LaunchedEffect(gridState, cards, posterSize) {
         val list = cards ?: return@LaunchedEffect
-        val w = with(density) { posterSize.dp.dp.roundToPx() }; val h = w * 3 / 2
+        val w = with(density) { posterSize.tv.roundToPx() }; val h = w * 3 / 2
+        val radius = with(density) { Tokens.radius.toPx() }
         val loader = coil.Coil.imageLoader(context)
-        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }.collect { last ->
-            if (c.playback.state.value != app.streamsetu.core.playback.PlaybackState.Idle) return@collect
+        snapshotFlow { gridState.isScrollInProgress to (gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) }.collectLatest { (scrolling, last) ->
+            if (scrolling) { pending.forEach { it.dispose() }; pending.clear(); return@collectLatest }
+            delay(350)
+            if (c.playback.state.value != app.streamsetu.core.playback.PlaybackState.Idle) return@collectLatest
             val from = (last).coerceAtLeast(0); val to = minOf(list.size, from + app.streamsetu.tv.Perf.prefetchAhead(context))
             for (i in from until to) list.getOrNull(i)?.posterUrl?.takeIf { it.isNotBlank() && requested.add(it) }?.let { url ->
-                loader.enqueue(coil.request.ImageRequest.Builder(context).data(url).size(w, h).build())
+                pending += loader.enqueue(coil.request.ImageRequest.Builder(context).data(url).size(w, h).transformations(coil.transform.RoundedCornersTransformation(radius)).build())
             }
         }
     }
@@ -104,11 +119,26 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     // A different folder starts at its top, so the grid does not keep an offset from the previous one.
     var shownBrowse by remember { mutableStateOf(browse) }
     LaunchedEffect(browse, cards) { if (shownBrowse != browse && cards != null) { shownBrowse = browse; gridState.scrollToItem(0) } }
+    // The title the remote was on is remembered by id: coming back from the rail, a detail page or the player puts the remote on it again (or on the nearest title if it is gone).
+    val tab = if (kind == ContentKind.MOVIE) app.streamsetu.tv.nav.Tab.MOVIES else app.streamsetu.tv.nav.Tab.SERIES
+    val restore = remember { FocusRequester() }
+    val ids = remember(cards) { cards.orEmpty().map { it.id } }
+    val restoreIndex = remember(ids) { nav.memory.target(tab, ids) }
+    var restored by remember { mutableStateOf(false) }
+    LaunchedEffect(restoreIndex) {
+        if (restored || restoreIndex == null || ids.isEmpty()) return@LaunchedEffect
+        restored = true
+        val railCount = if (browse == Browse.All && !filter.active) rails.size else 0
+        gridState.scrollToItem(restoreIndex + railCount + 2)
+        delay(500); runCatching { restore.requestFocus() }
+    }
     var sortOpen by remember { mutableStateOf(false) }
     var filterOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
     val homeVm: HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     var menuFor by remember { mutableStateOf<Card?>(null) }
+    var menuRail by remember { mutableStateOf<String?>(null) }          // the row the long press was in, so its menu can offer "remove from this row"
+    val libraryName = c.library.active.collectAsState().value?.name.orEmpty()
     var colMenu by remember { mutableStateOf<UserCollection?>(null) }
     var newCollectionFor by remember { mutableStateOf<Card?>(null) }
     var addTo by remember { mutableStateOf<Card?>(null) }
@@ -130,49 +160,63 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     }
 
     // Back from the posters returns to the folders; back from the folders reveals the sidebar (handled by the shell).
-    BackHandler(enabled = inContent) { runCatching { panelEntry.requestFocus() } }
+    // The folders open in a drawer over the page (opened with the Folders button), so the page has only the rail beside it. Back closes the drawer first.
+    var foldersOpen by remember { mutableStateOf(false) }
+    val panelFocus = remember { FocusRequester() }
+    BackHandler(enabled = foldersOpen) { foldersOpen = false }
+    // A list opened with "See All" (Continue Watching, Favorites...) goes back to the page it was opened from.
+    BackHandler(enabled = browse is Browse.Continue || browse is Browse.Favorites || browse is Browse.WatchLater || browse is Browse.Recent || browse is Browse.RecentlyAdded) { vm.select(vm.lastFolder) }
 
     Row(Modifier.fillMaxSize()) {
-        FolderPanel(noun, shortcuts, folders, browse, vm::select, vm, Modifier.width(Tokens.folderPanelWidth), entry = panelEntry, selectOnDwell = c.settings.foldersOpenOnFocus.collectAsState().value, onShortcutMenu = { sc -> collections.firstOrNull { it.id == (sc.browse as? Browse.Collection)?.id }?.let { colMenu = it } })
-        Column(Modifier.weight(1f).fillMaxHeight().onFocusChanged { inContent = it.hasFocus }) {
-            // Header
-            Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Label(title, Tokens.pageTitle, Tokens.text, FontWeight.Bold)
-                    val n = cards?.size
-                    // The whole library or folder is counted, not only the first pages that are loaded so far.
-                    val total = when {
-                        n == null || filter.active -> n
-                        browse == Browse.All -> sources.filter { filter.sourceId == null || it.id == "src:${filter.sourceId}" }.sumOf { if (kind == ContentKind.MOVIE) it.movieCount else it.seriesCount }
-                        browse is Browse.Folder -> folders.firstOrNull { it.id == (browse as Browse.Folder).id }?.count
-                        else -> n
-                    }?.coerceAtLeast(n ?: 0)
-                    val noun = if (kind == ContentKind.MOVIE) "movies" else "series"
-                    Label((if (n == null) "Loading…" else if (total != null && total > n) "%,d of %,d $noun".format(n, total) else "%,d $noun".format(n)) + "  ·  " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources") + (if (sort != SortSpec.defaultFor(kind)) "  ·  Sort: ${sort.field.label}" else "  ·  Newest first".takeIf { sort.field == SortField.ADDED && sort.ascending }.orEmpty()), Tokens.small, Tokens.textSecondary)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ToolButton(if (filter.active) "Filter · ${filter.count}" else "Filter", Icons.Filled.FilterList) { filterOpen = true }
-                    ToolButton("Sort", Icons.Filled.SwapVert) { sortOpen = true }
-                    ToolButton("View", Icons.Filled.GridView) { c.ui.setPosterSize(PosterSize.entries[(posterSize.ordinal + 1) % PosterSize.entries.size]) }
+        BoxWithConstraints(Modifier.weight(1f).fillMaxHeight().onFocusChanged { inContent = it.hasFocus }) {
+            val heroHeight = maxHeight * 0.6f
+            val list = cards
+            val heroReady = bannerOn && banner.isNotEmpty()
+            // Until a key is pressed (and unless the remote is being put back on a title it was on), the hero's Play button holds the remote: taken as soon as the hero exists.
+            var interacted by remember { mutableStateOf(false) }
+            LaunchedEffect(heroReady) { if (heroReady && !interacted && nav.memory.recall(tab) == null) { delay(200); if (!interacted) { runCatching { entry.requestFocus() }; repeat(3) { delay(350); if (!interacted) gridState.scrollToItem(0) } } } }
+            val pageHeader: @Composable () -> Unit = {
+            Row(Modifier.fillMaxWidth().railOnLeft().padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Label(title, 26.sp, Tokens.text, FontWeight.Bold)
+                        val n = cards?.size
+                        // The whole library or folder is counted, not only the first pages that are loaded so far.
+                        val total = when {
+                            n == null || filter.active -> n
+                            browse == Browse.All -> sources.filter { filter.sourceId == null || it.id == "src:${filter.sourceId}" }.sumOf { if (kind == ContentKind.MOVIE) it.movieCount else it.seriesCount }
+                            browse is Browse.Folder -> folders.firstOrNull { it.id == (browse as Browse.Folder).id }?.count
+                            else -> n
+                        }?.coerceAtLeast(n ?: 0)
+                        val noun = if (kind == ContentKind.MOVIE) "movies" else "series"
+                        Label((if (n == null) "Loading…" else if (total != null && total > n) "%,d of %,d $noun".format(n, total) else "%,d $noun".format(n)) + "  ·  " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources") + (if (sort != SortSpec.defaultFor(kind)) "  ·  Sort: ${sort.field.label}" else "  ·  Newest first".takeIf { sort.field == SortField.ADDED && sort.ascending }.orEmpty()), Tokens.small, Tokens.textSecondary)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LibrarySwitcher(libraryName, c, nav, if (!heroReady) Modifier.focusRequester(entry) else Modifier)
+                        ToolButton("Search", Icons.Filled.Search, compact = true) { searchOpen = true }
+                        ToolButton("Folders", Icons.Filled.Folder) { foldersOpen = true }
+                        ToolButton(if (filter.active) "Filter · ${filter.count}" else "Filter", Icons.Filled.FilterList, compact = !filter.active) { filterOpen = true }
+                        ToolButton("Sort", Icons.Filled.SwapVert, compact = true) { sortOpen = true }
+                        ToolButton("View", Icons.Filled.GridView, compact = true) { c.ui.setPosterSize(PosterSize.entries[(posterSize.ordinal + 1) % PosterSize.entries.size]) }
+                    }
                 }
             }
-            val list = cards
             LazyVerticalGrid(
-                GridCells.Adaptive(posterSize.dp.dp), state = gridState, modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 18.dp, end = Tokens.safeHorizontal, top = 0.dp, bottom = 40.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
+                GridCells.Adaptive(posterSize.tv), state = gridState, modifier = Modifier.fillMaxSize().railOnLeft().onPreviewKeyEvent { interacted = true; false },
+                contentPadding = PaddingValues(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 0.dp, bottom = 40.dp),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), verticalArrangement = Arrangement.spacedBy(Tokens.gutter),
             ) {
-                if (bannerOn && banner.isNotEmpty()) item(span = { GridItemSpan(maxLineSpan) }, key = "banner") {
-                    FeaturedBanner(
-                        banner, 190.dp,
+                item(span = { GridItemSpan(maxLineSpan) }, key = "top") {
+                    if (heroReady) FeaturedBanner(
+                        banner, heroHeight, primaryEntry = entry, startPadding = Tokens.safeHorizontal,
+                        topOverlay = { Box(Modifier.align(Alignment.TopStart)) { pageHeader() } },
                         onPrimary = { b -> list?.firstOrNull { it.id == b.id }?.let { onOpen(it) } },
                         onDetails = { b -> list?.firstOrNull { it.id == b.id }?.let { onOpen(it) } },
                         isListed = { b -> b.id in later }, onToggleListed = { b -> vm.toggle(b.id, UserRepository.WATCH_LATER) },
-                        startPadding = 0.dp, intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuFor != null || sortOpen || filterOpen || searchOpen,
-                        modifier = Modifier.padding(bottom = 4.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).clip(RoundedCornerShape(Tokens.radiusLarge)),
-                    )
+                        intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuFor != null || sortOpen || filterOpen || searchOpen,
+                        modifier = Modifier.fullBleed(Tokens.safeHorizontal, Tokens.safeHorizontal),
+                    ) else pageHeader()
                 }
-                if (showShortcuts) item(span = { GridItemSpan(maxLineSpan) }, key = "shortcuts") {
+                if (showShortcuts && (browse != Browse.All || filter.active || rails.isEmpty())) item(span = { GridItemSpan(maxLineSpan) }, key = "shortcuts") {
                     Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         order.forEach { name ->
                             val s = shortcutOf(name, kind)
@@ -182,6 +226,49 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                         ShortcutChip("Search", Icons.Filled.Search, false, onLong = null, onMoveLeft = {}, onMoveRight = {}) { searchOpen = true }
                     }
                 }
+                if (browse == Browse.All && !filter.active) {
+                    rails.forEach { rail ->
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "rail-${rail.key}") {
+                            Column(Modifier.padding(bottom = 4.dp)) {
+                                Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                    Label(rail.title, Tokens.title, Tokens.text, FontWeight.SemiBold)
+                                    if (rail.seeAll) Focusable({ vm.select(rail.browse) }, Modifier, shape = RoundedCornerShape(Tokens.radiusSmall), container = Color.Transparent, scaleOnFocus = 1.04f) { f ->
+                                        Label("See All", Tokens.small, if (f) Color.White else Tokens.textSecondary, FontWeight.Medium, modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp))
+                                    }
+                                }
+                                androidx.compose.foundation.lazy.LazyRow(Modifier.railOnLeft(), horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = PaddingValues(end = 24.dp)) {
+                                    rowItems(rail.cards, key = { "${rail.key}:${it.id}" }) { card ->
+                                        val p = progress[card.id]
+                                        PosterCard(card.title, card.posterUrl, { onOpen(card) }, width = posterSize.tv, progress = if (p != null && !p.completed) p.fraction else 0f, itemId = card.id,
+                                            subtitle = if (rail.key == "continue" && p != null && !p.completed) "${((p.durationMs - p.positionMs) / 60_000).coerceAtLeast(1)} min left" else if (showMeta) card.year?.toString() else null, badge = listOfNotNull(if (card.id in favs) "♥" else null, if (card.id in newSeries) "NEW" else null).joinToString(" ").ifBlank { null },
+                                            onFocusChange = { if (it) { vm.focusedId = card.id; nav.memory.remember(tab, card.id, ids.indexOf(card.id)) } }, onLongClick = { menuRail = rail.key; menuFor = card })
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // The library's own folders, to enter one directly (the full list, with its actions, is the Folders button).
+                    val shownFolders = folders.filter { !it.pref.hidden }
+                    if (shownFolders.isNotEmpty()) item(span = { GridItemSpan(maxLineSpan) }, key = "folders-row") {
+                        Column(Modifier.padding(bottom = 4.dp)) {
+                            Label("Categories", Tokens.title, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
+                            androidx.compose.foundation.lazy.LazyRow(Modifier.railOnLeft(), horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = PaddingValues(end = 24.dp)) {
+                                rowItems(shownFolders.take(40), key = { "folder:${it.id}" }) { f ->
+                                    // One short line: the name, then its count after a divider. Wide enough for the name, never taller than a button.
+                                    Focusable({ if (f.pref.locked && !vm.isUnlocked(f.id)) foldersOpen = true else vm.select(Browse.Folder(f.id)) }, Modifier.heightIn(min = 44.dp), shape = RoundedCornerShape(Tokens.radius), container = Tokens.card, hairline = true, scaleOnFocus = 1.05f) { fo ->
+                                        Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Image(if (f.pref.locked) Icons.Filled.Lock else Icons.Filled.Folder, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(if (fo) Color.White else Tokens.textSecondary))
+                                            Label(f.title, Tokens.small, Tokens.text, FontWeight.SemiBold, maxLines = 1, modifier = Modifier.widthIn(max = 300.dp))
+                                            if (f.count > 0) { Box(Modifier.width(1.dp).height(14.dp).background(Tokens.lineStrong)); Label("%,d".format(f.count), Tokens.small, Tokens.textTertiary, maxLines = 1) }
+                                        }
+                                    }
+                                }
+                                if (shownFolders.size > 40) item(key = "all-folders") { Focusable({ foldersOpen = true }, Modifier.heightIn(min = 44.dp), shape = RoundedCornerShape(Tokens.radius), container = Tokens.card, hairline = true, scaleOnFocus = 1.05f) { _ -> Label("All ${shownFolders.size} folders", Tokens.small, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) } }
+                            }
+                        }
+                    }
+                    if (rails.isNotEmpty() && !list.isNullOrEmpty()) item(span = { GridItemSpan(maxLineSpan) }, key = "all-title") { Label("All $noun", Tokens.title, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)) }
+                }
                 when {
                     list == null -> items(18, key = { "sk$it" }) { SkeletonPoster() }
                     list.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }, key = "empty") {
@@ -190,12 +277,14 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                     else -> items(list, key = { it.id }) { card ->
                         val p = progress[card.id]
                         PosterCard(
-                            card.title, card.posterUrl, { onOpen(card) }, width = posterSize.dp.dp,
+                            card.title, card.posterUrl, { onOpen(card) }, width = posterSize.tv,
                             progress = if (p != null && !p.completed) p.fraction else 0f,
                             itemId = card.id,
                             subtitle = if (showMeta) card.year?.toString() else null,
                             badge = listOfNotNull(if (card.id in favs) "♥" else null, if (card.id in newSeries) "NEW" else ratingBadge(card.rating)).joinToString(" ").ifBlank { null },
-                            onLongClick = { menuFor = card },
+                            focusRequester = if (card.id == nav.memory.recall(tab)?.id) restore else null,
+                            onFocusChange = { if (it) { vm.focusedId = card.id; nav.memory.remember(tab, card.id, ids.indexOf(card.id)) } },
+                            onLongClick = { menuRail = null; menuFor = card },
                         )
                     }
                 }
@@ -203,18 +292,26 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
         }
     }
 
+    if (foldersOpen) TvDialog(onDismissRequest = { foldersOpen = false }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        LaunchedEffect(Unit) { delay(120); runCatching { panelFocus.requestFocus() } }
+        androidx.compose.runtime.CompositionLocalProvider(LocalInOverlay provides true) {
+            Box(Modifier.fillMaxSize().background(Color(0x99000000)), Alignment.CenterStart) {
+                FolderPanel(noun, shortcuts, folders, browse, { foldersOpen = false; vm.select(it) }, vm, Modifier.width(340.dp).clip(RoundedCornerShape(topEnd = Tokens.radiusPanel, bottomEnd = Tokens.radiusPanel)), entry = panelFocus, selectOnDwell = false, onShortcutMenu = { sc -> collections.firstOrNull { it.id == (sc.browse as? Browse.Collection)?.id }?.let { colMenu = it } })
+            }
+        }
+    }
     if (sortOpen) SortSheet(kind, sort, avail, onApply = vm::applySort, onClose = { sortOpen = false })
     if (filterOpen) FilterSheet(filter, sources, filterOptions, onApply = { vm.filter.value = it }, onClose = { filterOpen = false })
     // The search steps aside while a title is open and comes back, with the same words and results, when Back leaves it.
     if (searchOpen && nav.top == null) SectionSearch(c, kind, onOpen = onOpen, onClose = { searchOpen = false })
     menuFor?.let { card ->
         val target: HomeTarget? = card.movie?.let { HomeTarget.Film(it) } ?: card.series?.let { HomeTarget.Show(it) }
-        val rowKind = when (browse) { Browse.Continue -> RowKind.CONTINUE; Browse.Favorites -> RowKind.FAVORITES; Browse.WatchLater -> RowKind.WATCH_LATER; else -> RowKind.OTHER }
+        val rowKind = when (menuRail) { "continue" -> RowKind.CONTINUE; "favorites" -> RowKind.FAVORITES; "later" -> RowKind.WATCH_LATER; "recent" -> RowKind.OTHER; null -> when (browse) { Browse.Continue -> RowKind.CONTINUE; Browse.Favorites -> RowKind.FAVORITES; Browse.WatchLater -> RowKind.WATCH_LATER; else -> RowKind.OTHER }; else -> RowKind.OTHER }
         val extra = buildList {
             add(MenuAction("Add to a collection…", Icons.Filled.CollectionsBookmark) { addTo = card })
             (browse as? Browse.Collection)?.let { b -> add(MenuAction("Remove from this collection", Icons.Filled.RemoveCircleOutline) { vm.removeFromCollection(b.id, card.id) }) }
         }
-        HomeMenuHost(target, rowKind, homeVm, c, nav, extra) { menuFor = null }
+        HomeMenuHost(target, rowKind, homeVm, c, nav, extra) { menuFor = null; menuRail = null }
     }
     addTo?.let { card ->
         var inCols by remember(card.id) { mutableStateOf<Set<String>?>(null) }
@@ -248,19 +345,30 @@ private fun EmptyText(browse: Browse, noun: String, filtered: Boolean) {
 }
 
 @Composable
-private fun ToolButton(label: String, icon: ImageVector, onClick: () -> Unit) {
-    Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = Tokens.card, scaleOnFocus = 1.04f) { f ->
-        Row(Modifier.padding(horizontal = 11.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Image(icon, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(if (f) Tokens.accent else Tokens.textSecondary))
-            Label(label, Tokens.small, Tokens.text, FontWeight.Medium)
+private fun ToolButton(label: String, icon: ImageVector, modifier: Modifier = Modifier, compact: Boolean = false, onClick: () -> Unit) {
+    Focusable(onClick, modifier, shape = RoundedCornerShape(Tokens.radius), container = Tokens.card.copy(alpha = 0.85f), scaleOnFocus = 1.05f) { f ->
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+            Image(icon, label, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f) Color.White else Tokens.textSecondary))
+            // A compact button is just its icon; the name unfolds beside it while the remote is on it.
+            androidx.compose.animation.AnimatedVisibility(!compact || f, enter = androidx.compose.animation.expandHorizontally(androidx.compose.animation.core.tween(Motion.FOCUS)) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(Motion.FOCUS)),
+                exit = androidx.compose.animation.shrinkHorizontally(androidx.compose.animation.core.tween(Motion.FOCUS)) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(Motion.FOCUS))) {
+                Label(label, Tokens.small, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(start = 8.dp))
+            }
         }
     }
+}
+
+/** Lets a child use the whole width of its parent, past the parent's side padding (a full-bleed picture inside a padded list). */
+private fun Modifier.fullBleed(start: androidx.compose.ui.unit.Dp, end: androidx.compose.ui.unit.Dp): Modifier = layout { measurable, c ->
+    val s = start.roundToPx(); val e = end.roundToPx()
+    val p = measurable.measure(c.copy(minWidth = c.maxWidth + s + e, maxWidth = c.maxWidth + s + e))
+    layout(c.maxWidth, p.height) { p.place(-s, 0) }
 }
 
 @Composable
 private fun ShortcutChip(label: String, icon: ImageVector, active: Boolean, onLong: (() -> Unit)?, onMoveLeft: () -> Unit, onMoveRight: () -> Unit, onClick: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
-    Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = if (active) Tokens.elevated else Tokens.card, scaleOnFocus = 1.03f, onLongClick = { menu = true }) { f ->
+    Focusable(onClick, Modifier, shape = RoundedCornerShape(Tokens.radius), container = if (active) Tokens.elevated else Tokens.card, scaleOnFocus = 1.03f, onLongClick = { menu = true }) { f ->
         Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Image(icon, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(if (active || f) Tokens.accent else Tokens.textSecondary))
             Label(label, Tokens.small, if (active) Tokens.text else Tokens.textSecondary, if (active) FontWeight.SemiBold else FontWeight.Medium)
@@ -290,7 +398,7 @@ private fun FilterSheet(current: ContentFilter, sources: List<LibraryEntry>, opt
     val q = query.trim()
     fun shown(label: String) = q.isEmpty() || label.contains(q, ignoreCase = true)
     val connections = if (sources.size > 1) sources.map { it.name to it.id.removePrefix("src:") }.sortedBy { it.first.lowercase() } else emptyList()
-    androidx.compose.ui.window.Dialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+    TvDialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize(), Alignment.CenterEnd) {
             Column(Modifier.padding(end = 16.dp).width(340.dp).fillMaxHeight(0.94f).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Label(if (draft.count > 0) "Filter  ·  ${draft.count}" else "Filter", Tokens.title, Tokens.text, FontWeight.Bold)

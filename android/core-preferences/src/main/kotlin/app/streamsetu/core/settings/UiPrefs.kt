@@ -22,11 +22,15 @@ class UiPrefs(context: Context) {
     private val _redesigned = prefs.getBoolean("design2", false).also { done ->
         if (!done) prefs.edit().putString("theme", "CINEMATIC").putString("accent", "EMBER").putBoolean("design2", true).apply()
     }
-    private val _theme = flow(prefs.getString("theme", "CINEMATIC") ?: "CINEMATIC")
+    // The premium-TV redesign (neutral Cinema charcoal, restrained cyan, white focus): everyone starts on it once; after that their own choice is kept.
+    private val _redesigned3 = prefs.getBoolean("design3", false).also { done ->
+        if (!done) prefs.edit().putString("theme", "CINEMA").putString("accent", "CYAN").putBoolean("design3", true).apply()
+    }
+    private val _theme = flow(prefs.getString("theme", "CINEMA") ?: "CINEMA")
     /** CINEMATIC, OBSIDIAN, AMOLED, MIDNIGHT, SLATE or FOREST: the page and card colours. */
     val theme: StateFlow<String> = _theme
     fun setTheme(v: String) { prefs.edit().putString("theme", v).apply(); _theme.value = v }
-    private val _accent = flow(prefs.getString("accent", "EMBER") ?: "EMBER")
+    private val _accent = flow(prefs.getString("accent", "CYAN") ?: "CYAN")
     /** EMBER, CYAN, GOLD, VIOLET, GREEN, ROSE or BLUE: the colour of highlights and primary buttons. */
     val accent: StateFlow<String> = _accent
     fun setAccent(v: String) { prefs.edit().putString("accent", v).apply(); _accent.value = v }

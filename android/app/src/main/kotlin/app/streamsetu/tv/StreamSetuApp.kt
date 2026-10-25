@@ -66,7 +66,7 @@ class AppContainer @Inject constructor(
 
     /** Who is using the app: each profile has its own favorites, collections, history and resume points. */
     val profiles: app.streamsetu.tv.sync.ProfileService by lazy {
-        app.streamsetu.tv.sync.ProfileService(db, context.getSharedPreferences("pin_throttle", android.content.Context.MODE_PRIVATE)) { p ->
+        app.streamsetu.tv.sync.ProfileService(db, context.getSharedPreferences("pin_throttle", android.content.Context.MODE_PRIVATE), beforeSwitch = { playback.stop(); lan.setEnabled(false) }) { p ->
             parental.setKids(p.kids)
             lan.setEnabled(lan.wanted && profiles.isMainActive)
         }.also { it.reload(); parental.setKids(it.active.kids) }
@@ -453,7 +453,7 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
     override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
         .okHttpClient(okhttp3.OkHttpClient.Builder().dispatcher(images).addNetworkInterceptor(ArtworkAuth(container.sources, container.credentials)).build())          // per hop: a redirect to another host never carries the Plex token
         .diskCache { coil.disk.DiskCache.Builder().directory(java.io.File(cacheDir, "image_cache")).maxSizeBytes(160L * 1024 * 1024).build() }
-        .crossfade(false)
+        .crossfade(if (Perf.lowEnd(this)) 0 else 180)          // artwork fades into its card; on a low-end stick it just appears
         .memoryCache { coil.memory.MemoryCache.Builder(this).maxSizePercent(if (Perf.lowEnd(this)) 0.12 else 0.22).build() }
         .allowRgb565(true)                  // posters have no transparency: half the memory and decoding work
         .build()

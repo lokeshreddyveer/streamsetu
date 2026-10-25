@@ -2,6 +2,7 @@ package app.streamsetu.tv.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +12,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -27,6 +29,35 @@ import app.streamsetu.core.ui.motion.slideFade
 import app.streamsetu.tv.ui.theme.Tokens
 import kotlinx.coroutines.delay
 
+/** The dim behind a dialog or sheet fades in instead of appearing at once. */
+@Composable
+fun Modifier.dialogScrim(): Modifier {
+    val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val a = androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0f, if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(Motion.SHORT), label = "scrim")
+    return this.drawBehind { drawRect(Color.Black.copy(alpha = 0.55f * a.value)) }
+}
+
+/** A dialog's card rises a little and fades in. */
+@Composable
+fun Modifier.popIn(): Modifier {
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    return this.slideFade(shown, fromY = 14.dp, durationMs = Motion.SHORT)
+}
+
+/**
+ * Every dialog and sheet of the television app. It is its own window, so it must not inherit the page's rail shortcut (Left would show the rail behind it), and what it holds is not
+ * the page's remembered focus (so closing a menu gives the remote back to the card that opened it).
+ */
+@Composable
+fun TvDialog(onDismissRequest: () -> Unit, properties: DialogProperties = DialogProperties(), content: @Composable () -> Unit) {
+    Dialog(onDismissRequest = onDismissRequest, properties = properties) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalRailReveal provides null, LocalInOverlay provides true, content = content)
+    }
+}
+
 data class MenuAction(val label: String, val icon: ImageVector, val enabled: Boolean = true, val run: () -> Unit)
 
 /** The small menu opened by holding OK on a folder, poster or channel. */
@@ -38,9 +69,9 @@ fun ContextMenu(title: String, subtitle: String? = null, actions: List<MenuActio
     // This menu usually opens while OK is still held; see [SelectKeyGuard].
     val guard = remember { SelectKeyGuard() }
     LaunchedEffect(Unit) { while (!guard.armed) { delay(60); guard.tick() } }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().onPreviewKeyEvent { e -> SelectKeyGuard.isSelect(e) && guard.swallow(SelectKeyGuard.isDown(e), e.nativeKeyEvent.downTime) }, Alignment.Center) {
-            Column(Modifier.width(300.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().dialogScrim().onPreviewKeyEvent { e -> SelectKeyGuard.isSelect(e) && guard.swallow(SelectKeyGuard.isDown(e), e.nativeKeyEvent.downTime) }, Alignment.Center) {
+            Column(Modifier.popIn().width(340.dp).background(Tokens.card, RoundedCornerShape(Tokens.radiusLarge)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(Tokens.radiusLarge)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Label(title, Tokens.title, Tokens.text, FontWeight.Bold)
                 if (subtitle != null) Label(subtitle, Tokens.small, Tokens.textSecondary)
                 Spacer(Modifier.height(6.dp))
@@ -79,9 +110,9 @@ fun PinDialog(create: Boolean, check: (String) -> Boolean, onDone: (String) -> U
             }
         }
     }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) {
-            Column(Modifier.width(250.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().dialogScrim(), Alignment.Center) {
+            Column(Modifier.popIn().width(250.dp).background(Tokens.card, RoundedCornerShape(Tokens.radiusLarge)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label(if (create) (if (firstEntry == null) "Create a PIN" else "Confirm your PIN") else "Enter PIN", Tokens.title, Tokens.text, FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { repeat(4) { Box(Modifier.size(12.dp).background(if (it < entered.length) Tokens.accent else Tokens.elevated, RoundedCornerShape(50))) } }
                 Label(message ?: if (create) "Four digits. Locked folders ask for it." else " ", Tokens.small, if (message != null) Tokens.warning else Tokens.textSecondary, maxLines = 2)
@@ -115,10 +146,10 @@ fun SortSheet(kind: ContentKind, current: SortSpec, availability: SortAvailabili
         SortField.RATING -> "Highest first" to "Lowest first"
         else -> "As the provider lists" to "Reversed"
     }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize(), Alignment.CenterEnd) {
+    TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().dialogScrim(), Alignment.CenterEnd) {
             Column(
-                Modifier.slideFade(shown, fromX = 40.dp, durationMs = Motion.SCREEN).padding(end = 16.dp).width(290.dp).fillMaxHeight(0.92f).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp),
+                Modifier.slideFade(shown, fromX = 40.dp, durationMs = Motion.SCREEN).padding(end = 16.dp).width(290.dp).fillMaxHeight(0.92f).background(Tokens.card, RoundedCornerShape(Tokens.radiusLarge)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 Label("Sort", Tokens.title, Tokens.text, FontWeight.Bold)
@@ -171,9 +202,9 @@ fun ToggleRow(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
 fun OverrideDialog(title: String, poster: String, onSave: (String, String) -> Unit, onReset: () -> Unit, onClose: () -> Unit) {
     var t by remember { mutableStateOf(title) }
     var p by remember { mutableStateOf(poster) }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) {
-            Column(Modifier.width(380.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().dialogScrim(), Alignment.Center) {
+            Column(Modifier.popIn().width(380.dp).background(Tokens.card, RoundedCornerShape(Tokens.radiusLarge)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label("Edit details", Tokens.title, Tokens.text, FontWeight.Bold)
                 Label("Only changes how it looks on this device. The provider's data is not touched.", Tokens.small, Tokens.textSecondary, maxLines = 2)
                 TvTextField(t, { t = it }, "Title", Modifier.fillMaxWidth())
@@ -181,6 +212,35 @@ fun OverrideDialog(title: String, poster: String, onSave: (String, String) -> Un
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TvButton("Save", { onSave(t, p) }, primary = true)
                     TvButton("Use the provider's", onReset)
+                }
+            }
+        }
+    }
+}
+
+/** A side sheet with a long, scrolling list of single choices (a category, a source). The current one is ticked and starts under the remote; Back closes it and gives the remote back. */
+@Composable
+fun OptionSheet(title: String, options: List<Pair<String, String>>, selectedId: String?, onPick: (String) -> Unit, onClose: () -> Unit) {
+    val first = remember { FocusRequester() }
+    val start = options.indexOfFirst { it.first == selectedId }.coerceAtLeast(0)
+    val state = androidx.compose.foundation.lazy.rememberLazyListState(maxOf(0, start - 3))
+    LaunchedEffect(Unit) { delay(120); runCatching { first.requestFocus() } }
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().dialogScrim(), Alignment.CenterEnd) {
+            Column(Modifier.slideFade(shown, fromX = 40.dp, durationMs = Motion.SCREEN).padding(end = 16.dp).width(340.dp).fillMaxHeight(0.92f).background(Tokens.card, RoundedCornerShape(Tokens.radiusPanel)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Label(title, Tokens.title, Tokens.text, FontWeight.SemiBold)
+                LazyColumn(Modifier.weight(1f), state = state, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    items(options, key = { it.first }) { (id, label) ->
+                        val on = id == selectedId
+                        Focusable({ onPick(id); onClose() }, (if (id == (options.getOrNull(start)?.first)) Modifier.focusRequester(first) else Modifier).fillMaxWidth(), shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, scaleOnFocus = 1.0f) { _ ->
+                            Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Label(label, Tokens.row, if (on) Color.White else Tokens.textSecondary, if (on) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f), maxLines = 2)
+                                if (on) Image(Icons.Filled.Check, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(Color.White))
+                            }
+                        }
+                    }
                 }
             }
         }

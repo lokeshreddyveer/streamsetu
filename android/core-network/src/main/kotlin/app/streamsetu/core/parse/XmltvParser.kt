@@ -7,6 +7,10 @@ import java.io.InputStream
 
 /** Reads an XMLTV guide and reports programmes one by one. Only programmes that end after [notBeforeMs] and start before [notAfterMs] are kept. */
 object XmltvParser {
+    /** A title, description or channel name longer than this is cut: a feed with one enormous element cannot fill the memory. */
+    private const val MAX_TEXT = 4_000
+    private const val MAX_NAME = 200
+
     fun parse(input: InputStream, notBeforeMs: Long, notAfterMs: Long, onChannel: (id: String, name: String) -> Unit = { _, _ -> }, onProgram: (EpgProgram) -> Unit): Int {
         val p = XmlPullParserFactory.newInstance().newPullParser()
         p.setInput(input, null)
@@ -28,12 +32,12 @@ object XmltvParser {
                     "display-name" -> nameText = if (channelId != null && !inProgramme) "" else null
                     "title", "desc" -> text = if (inProgramme) "" else null
                 }
-                XmlPullParser.TEXT -> { if (text != null) text += p.text; if (nameText != null) nameText += p.text }
+                XmlPullParser.TEXT -> { if (text != null && text.length < MAX_TEXT) text += p.text; if (nameText != null && nameText.length < MAX_NAME) nameText += p.text }
                 XmlPullParser.END_TAG -> when (p.name) {
-                    "display-name" -> { val id = channelId; val n = nameText?.trim(); if (id != null && !n.isNullOrEmpty()) onChannel(id, n); nameText = null }
+                    "display-name" -> { val id = channelId; val n = nameText?.trim()?.take(MAX_NAME); if (id != null && !n.isNullOrEmpty()) onChannel(id, n); nameText = null }
                     "channel" -> channelId = null
-                    "title" -> { if (inProgramme && text != null && title.isEmpty()) title = text.trim(); text = null }
-                    "desc" -> { if (inProgramme && text != null) desc = text.trim().ifEmpty { null }; text = null }
+                    "title" -> { if (inProgramme && text != null && title.isEmpty()) title = text.trim().take(MAX_TEXT); text = null }
+                    "desc" -> { if (inProgramme && text != null) desc = text.trim().take(MAX_TEXT).ifEmpty { null }; text = null }
                     "programme" -> {
                         inProgramme = false
                         if (channel != null && stop > notBeforeMs && start < notAfterMs && stop > start) { onProgram(EpgProgram(channel, start, stop, title, desc)); count++ }

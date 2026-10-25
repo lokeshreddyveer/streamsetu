@@ -45,8 +45,8 @@ private fun Backdrop(url: String?, title: String, dim: Float = 0.9f) {
     Box(Modifier.fillMaxSize()) {
         PosterPlaceholder(title, Modifier.fillMaxSize())
         if (!url.isNullOrBlank()) AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Tokens.background.copy(alpha = 0.97f), 0.55f to Tokens.background.copy(alpha = 0.78f), 1f to Tokens.background.copy(alpha = 0.25f))))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Tokens.background.copy(alpha = dim))))
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Tokens.background.copy(alpha = 0.96f), 0.45f to Tokens.background.copy(alpha = 0.72f), 0.8f to Color.Transparent)))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Tokens.background.copy(alpha = dim))))
     }
 }
 
@@ -83,17 +83,17 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
 
     Box(Modifier.fillMaxSize().background(Tokens.background)) {
         Backdrop(info?.backdrop?.takeIf { it.isNotBlank() } ?: movie.posterUrl, movie.title)
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 40.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 72.dp, bottom = 48.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
               Row(horizontalArrangement = Arrangement.spacedBy(28.dp), verticalAlignment = Alignment.Top) {
                 // The poster, large, as the left half of the page: a title page, not a list of buttons.
-                movie.posterUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                movie.posterUrl?.takeIf { it.isNotBlank() && info?.backdrop.isNullOrBlank() }?.let { url ->
                     androidx.compose.foundation.layout.Box(Modifier.width(210.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(Tokens.radiusPanel)).background(Tokens.card)) {
                         coil.compose.AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
                     }
                 }
                 Column(Modifier.widthIn(max = 640.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Label(movie.title, 36.sp, Tokens.text, FontWeight.ExtraBold, maxLines = 2)
+                    Label(movie.title, Tokens.display, Tokens.text, FontWeight.Bold, maxLines = 2)
                     Label(listOfNotNull(movie.year?.toString(), info?.duration?.takeIf { it.isNotBlank() && it != "00:00:00" }, info?.genre?.takeIf { it.isNotBlank() }, ratingBadge(movie.rating)).joinToString("  ·  "), Tokens.small, Tokens.textSecondary)
                     app.streamsetu.core.data.repo.QualityBadges.from(listOf(movie.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Tokens.small, Tokens.accent, FontWeight.Bold) }
                     FolderPath(c, app.streamsetu.core.model.ContentKind.MOVIE, movie.categoryId, phone = false) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.MOVIE, id) }
@@ -149,7 +149,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
 
 @Composable
 private fun Chip(text: String, color: Color = Tokens.textSecondary) {
-    Box(Modifier.background(Tokens.card, RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp)) { Label(text, Tokens.caption, color, FontWeight.Medium) }
+    Box(Modifier.background(Tokens.elevated, RoundedCornerShape(Tokens.radiusSmall)).padding(horizontal = 10.dp, vertical = 4.dp)) { Label(text, Tokens.caption, color, FontWeight.Medium) }
 }
 
 /** A series, full screen: story, the right action for where you are (Continue, Catch Up, Start Series), a season selector, and wide episode cards. */
@@ -187,9 +187,9 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
 
     Box(Modifier.fillMaxSize().background(Tokens.background)) {
         Backdrop(s.backdropUrl?.takeIf { it.isNotBlank() } ?: s.posterUrl, s.title)
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 36.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 72.dp, bottom = 48.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
-                Column(Modifier.widthIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Column(Modifier.widthIn(max = 600.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Label(s.title, Tokens.display, Tokens.text, FontWeight.Bold, maxLines = 2)
                     Label(listOfNotNull(s.year?.toString(), if (seasons.isNotEmpty()) "${seasons.size} season${if (seasons.size == 1) "" else "s"}" else null, ratingBadge(s.rating)).joinToString("  ·  "), Tokens.small, Tokens.textSecondary)
                     app.streamsetu.core.data.repo.QualityBadges.from(listOf(s.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Tokens.small, Tokens.accent, FontWeight.Bold) }
@@ -203,13 +203,14 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                     Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         val ip = inProgress
                         when {
-                            ip != null -> TvButton("Continue S${ip.season} E${ip.number}", { playEp(ip) }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
+                            ip != null -> TvButton("Continue Watching — S%02d E%02d".format(ip.season, ip.number), { playEp(ip) }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
                             forward != null && watchedCount > 0 -> TvButton(if (catchUp != null) "Continue Forward S${forward.season} E${forward.number}" else "Continue S${forward.season} E${forward.number}", { playEp(forward) }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
                             episodes.isNotEmpty() && plan.allFinished -> TvButton("Watch Again", { playEp(episodes.minWith(compareBy({ it.season }, { it.number }))) }, Modifier.focusRequester(first), icon = Icons.Filled.Replay, primary = true)
                             episodes.isNotEmpty() -> TvButton("Start Series", { playEp(episodes.minWith(compareBy({ it.season }, { it.number }))) }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
                             else -> TvButton(if (loading) "Loading episodes…" else "View Episodes", {}, Modifier.focusRequester(first), icon = Icons.Filled.List, primary = true)
                         }
                         catchUp?.let { cu -> TvButton("Catch Up S${cu.season} E${cu.number}", { playEp(cu) }, icon = Icons.Filled.History) }
+                        if (episodes.isNotEmpty() && (ip != null || watchedCount > 0) && !plan.allFinished) TvButton("Start from Beginning", { playEp(episodes.minWith(compareBy({ it.season }, { it.number }))) }, icon = Icons.Filled.Replay)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TvButton(if (s.id in favs) "Favorited" else "Favorite", { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in favs) } }, icon = if (s.id in favs) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder)
@@ -225,17 +226,23 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
             if (seasons.isNotEmpty()) item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
                     items(seasons.keys.toList(), key = { it }) { n ->
-                        Focusable({ season = n }, Modifier, shape = RoundedCornerShape(50), container = if (n == season) Tokens.elevated else Tokens.card, scaleOnFocus = 1.04f) { f ->
-                            Label("Season $n", Tokens.small, if (n == season) Tokens.accent else Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp))
+                        Focusable({ season = n }, Modifier, shape = RoundedCornerShape(50), container = if (n == season) Color(0xFFE9ECF0) else Tokens.card, focusedContainer = if (n == season) Color.White else Tokens.focusedSurface, scaleOnFocus = 1.05f) { f ->
+                            Label("Season $n", Tokens.row, if (n == season) Tokens.onBright else Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp))
                         }
                     }
                 }
             }
-            items((season?.let { seasons[it] }).orEmpty().sortedBy { it.number }, key = { it.id }) { e ->
+            // Changing season fades the episodes over to the new list in place; the rest of the page does not move.
+            item(key = "episodes") {
+                androidx.compose.animation.Crossfade(season, animationSpec = androidx.compose.animation.core.tween(if (app.streamsetu.core.ui.motion.LocalReducedMotion.current) 0 else app.streamsetu.core.ui.motion.Motion.SHORT), label = "season") { sn ->
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        (sn?.let { seasons[it] }).orEmpty().sortedBy { it.number }.forEach { e ->
+                            key(e.id) {
+
                 val p = progress[e.id]
-                Focusable({ playEp(e) }, Modifier.fillMaxWidth().widthIn(max = 760.dp), scaleOnFocus = 1.01f, hairline = true, onLongClick = { episodeMenu = e }) { _ ->
+                Focusable({ playEp(e) }, Modifier.fillMaxWidth().widthIn(max = 820.dp), scaleOnFocus = 1.02f, hairline = true, onLongClick = { episodeMenu = e }) { _ ->
                     Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.width(132.dp).aspectRatio(16f / 9f).background(Tokens.elevated, RoundedCornerShape(6.dp))) {
+                        Box(Modifier.width(176.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(Tokens.radiusSmall)).background(Tokens.elevated)) {
                             if (!e.imageUrl.isNullOrBlank()) AsyncImage(e.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) else Label("E${e.number}", Tokens.title, Tokens.textTertiary, modifier = Modifier.align(Alignment.Center))
                             if (p != null && !p.completed && p.fraction > 0) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(p.fraction).fillMaxHeight().background(Tokens.accent)) }
                         }
@@ -245,6 +252,10 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                             e.plot?.takeIf { it.isNotBlank() }?.let { Label(it, Tokens.caption, Tokens.textSecondary, maxLines = 2) }
                         }
                         if (p?.completed == true) Image(Icons.Filled.CheckCircle, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(Tokens.success))
+                    }
+                }
+                                        }
+                        }
                     }
                 }
             }

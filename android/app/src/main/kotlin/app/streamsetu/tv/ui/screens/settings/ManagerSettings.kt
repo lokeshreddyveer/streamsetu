@@ -136,7 +136,7 @@ fun ChannelManagerSettings(c: AppContainer) {
         }, onClose = { menuFor = null })
     }
     guideFor?.let { src ->
-        Dialog(onDismissRequest = { guideFor = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        TvDialog(onDismissRequest = { guideFor = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(20.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Label("Guide for ${src.name}", Tokens.title, Tokens.text, FontWeight.Bold)
@@ -155,7 +155,7 @@ fun ChannelManagerSettings(c: AppContainer) {
     }
     prompt?.let { (ch, forGuide, start) ->
         var text by remember { mutableStateOf(start) }
-        Dialog(onDismissRequest = { prompt = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        TvDialog(onDismissRequest = { prompt = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(20.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Label(if (forGuide) "Guide channel for ${ch.name}" else "Rename ${ch.name}", Tokens.title, Tokens.text, FontWeight.Bold)

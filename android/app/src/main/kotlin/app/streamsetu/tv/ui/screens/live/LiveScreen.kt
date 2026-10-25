@@ -65,6 +65,9 @@ fun groupChannels(list: List<Channel>): List<ChannelGroup> {
 class LiveSectionViewModel @Inject constructor(c: AppContainer) : FolderViewModel(c, ContentKind.CHANNEL) {
     val browse = MutableStateFlow<Browse>(Browse.All)
     var scrollIndex = 0
+    /** The channel the remote was on, so coming back to Live TV puts it there again. */
+    var focusedChannelId: String? = null
+    var focusedChannelIndex = 0
     val sort: StateFlow<SortSpec> = browse.flatMapLatest { b -> c.browse.sort(ContentKind.CHANNEL, (b as? Browse.Folder)?.id) }.stateIn(viewModelScope, SharingStarted.Eagerly, SortSpec())
     val availability = MutableStateFlow(SortAvailability(false, false, false, false))
     val channels: StateFlow<List<Channel>?> = combine(browse, sort) { b, s -> b to s }
@@ -84,6 +87,7 @@ class LiveSectionViewModel @Inject constructor(c: AppContainer) : FolderViewMode
 
     init { viewModelScope.launch { availability.value = runCatching { c.browse.availability() }.getOrDefault(availability.value) } }
 
+    init { viewModelScope.launch { c.library.sourceIds.drop(1).collect { browse.value = Browse.All; scrollIndex = 0; focusedChannelId = null; focusedChannelIndex = 0 } } }
     fun select(b: Browse) { if (browse.value != b) { browse.value = b; scrollIndex = 0 } }
     fun applySort(spec: SortSpec) = c.browse.setSort(ContentKind.CHANNEL, (browse.value as? Browse.Folder)?.id, spec)
     fun toggleFavourite(ch: Channel) = viewModelScope.launch { c.user.setFavourite(ch.id, ContentKind.CHANNEL, ch.id !in favourites.value) }
@@ -121,6 +125,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     var inChannels by remember { mutableStateOf(false) }
     var inPreview by remember { mutableStateOf(false) }
     val channelEntry = remember { FocusRequester() }
+    val focusedRow = remember { FocusRequester() }
     val previewEntry = remember { FocusRequester() }
     val live = current?.takeIf { it.isLive } as? ChannelPlayable
     val fullscreen = nav.top == Overlay.Player
@@ -135,19 +140,32 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
         Shortcut(Browse.All, "All Channels", Icons.Filled.LiveTv), Shortcut(Browse.Favorites, "Favorites", Icons.Filled.Favorite), Shortcut(Browse.WatchLater, "Watch Later", Icons.Filled.Bookmark), Shortcut(Browse.Recent, "Recently Watched", Icons.Filled.History),
     ) + if (folders.any { it.pref.favorite }) listOf(Shortcut(Browse.FavoriteFolders, "Favorite Folders", Icons.Filled.Star)) else emptyList()
 
-    BackHandler(enabled = inChannels || inPreview) { runCatching { entry.requestFocus() } }
-
-    fun choose(ch: Channel) {
-        if (live?.channel?.id == ch.id) { nav.liveFullscreen = true; nav.open(Overlay.Player); return }
-        c.play(ChannelPlayable(ch), groups.orEmpty().map { ChannelPlayable(it.rep) })
+    // Back from the preview goes to the channel it came from; from the channels it goes to the categories; from the categories the shell opens the rail.
+    BackHandler(enabled = inChannels || inPreview) { if (inPreview) runCatching { focusedRow.requestFocus() } else runCatching { entry.requestFocus() } }
+    // Coming back to Live TV puts the remote on the channel it was on (or the nearest one if it has gone).
+    val channelIds = remember(groups) { groups.orEmpty().map { it.rep.id } }
+    var restored by remember { mutableStateOf(false) }
+    LaunchedEffect(channelIds) {
+        if (restored || channelIds.isEmpty()) return@LaunchedEffect
+        val at = nav.memory.target(app.streamsetu.tv.nav.Tab.LIVE, channelIds) ?: return@LaunchedEffect
+        restored = true
+        listState.scrollToItem((at - 2).coerceAtLeast(0)); delay(500); runCatching { focusedRow.requestFocus() }
     }
 
-    androidx.compose.runtime.CompositionLocalProvider(LocalFocusRing provides Tokens.gold) {
+    // OK on a channel opens it fullscreen at once (no stop in between). Browsing only reads about it; the picture on the right keeps showing what is playing.
+    var focusedChannel by remember { mutableStateOf<Channel?>(null) }
+    fun choose(ch: Channel) {
+        if (live?.channel?.id != ch.id) c.play(ChannelPlayable(ch), groups.orEmpty().map { ChannelPlayable(it.rep) })
+        nav.liveFullscreen = true; nav.open(Overlay.Player)
+    }
+    fun previewHere(ch: Channel) { if (live?.channel?.id != ch.id) c.play(ChannelPlayable(ch), groups.orEmpty().map { ChannelPlayable(it.rep) }) }
+
+    androidx.compose.runtime.CompositionLocalProvider(LocalFocusRing provides androidx.compose.ui.graphics.Color.Unspecified) {
     Row(Modifier.fillMaxSize()) {
-        FolderPanel("Live TV", shortcuts, folders, browse, vm::select, vm, Modifier.weight(0.2f), entry = entry, showSearch = true, selectOnDwell = c.settings.foldersOpenOnFocus.collectAsState().value, onRight = { runCatching { channelEntry.requestFocus() }.isSuccess })
+        FolderPanel("Live TV", shortcuts, folders, browse, vm::select, vm, Modifier.weight(0.2f).railOnLeft(), entry = entry, showSearch = true, selectOnDwell = c.settings.foldersOpenOnFocus.collectAsState().value, onRight = { runCatching { focusedRow.requestFocus() }.isSuccess })
 
         // Channels
-        Column(Modifier.weight(0.2f).fillMaxHeight().background(Tokens.surface).onFocusChanged { inChannels = it.hasFocus }.padding(top = Tokens.safeVertical)) {
+        Column(Modifier.weight(0.2f).fillMaxHeight().background(Tokens.surface).leftGoesTo(entry).onFocusChanged { inChannels = it.hasFocus }.padding(top = Tokens.safeVertical)) {
             Row(Modifier.padding(horizontal = 10.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Label(if (browse is Browse.Folder) folders.firstOrNull { it.id == (browse as Browse.Folder).id }?.title ?: "Channels" else shortcuts.firstOrNull { it.browse == browse }?.label ?: "Channels", Tokens.heading, Tokens.text, FontWeight.Bold)
@@ -164,7 +182,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
                     items(list.size, key = { list[it].rep.id }) { i ->
                         val grp = list[i]; val ch = grp.rep
                         val playing = live?.channel?.id == ch.id
-                        Focusable({ choose(ch) }, (if (i == 0) Modifier.focusRequester(channelEntry) else Modifier).fillMaxWidth(), scaleOnFocus = 1.0f, container = if (playing) Color(0x33F5AD42) else Tokens.card.copy(alpha = 0f), shape = RoundedCornerShape(10.dp), ring = Tokens.gold, ringWidth = 2.5.dp, onLongClick = { menuFor = ch; menuVariants = grp.variants }) { f ->
+                        Focusable({ choose(ch) }, (if (i == 0) Modifier.focusRequester(channelEntry) else Modifier).then(if (ch.id == (nav.memory.recall(app.streamsetu.tv.nav.Tab.LIVE)?.id ?: channelIds.firstOrNull())) Modifier.focusRequester(focusedRow) else Modifier).fillMaxWidth(), onFocus = { if (it) { focusedChannel = ch; vm.focusedChannelId = ch.id; nav.memory.remember(app.streamsetu.tv.nav.Tab.LIVE, ch.id, i) } }, scaleOnFocus = 1.0f, container = if (playing) Tokens.accent.copy(alpha = 0.2f) else Tokens.card.copy(alpha = 0f), shape = RoundedCornerShape(10.dp), ringWidth = 2.5.dp, onLongClick = { menuFor = ch; menuVariants = grp.variants }) { f ->
                             // [number] [logo] [name over what is on]: the number has its own narrow column so names line up, and a long name wraps to two lines instead of being cut.
                             Row(Modifier.padding(horizontal = 8.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (showNumbers) Label(ch.number?.toString().orEmpty(), Tokens.caption, if (f || playing) Tokens.goldHighlight else Tokens.textTertiary, FontWeight.SemiBold, modifier = Modifier.width(26.dp))
@@ -183,7 +201,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
         }
 
         // Preview
-        Column(Modifier.weight(0.6f).fillMaxHeight().padding(start = 14.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 20.dp).onFocusChanged { inPreview = it.hasFocus }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.weight(0.6f).fillMaxHeight().leftGoesTo(focusedRow).padding(start = 14.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 20.dp).onFocusChanged { inPreview = it.hasFocus }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Focusable({ if (live != null) { nav.liveFullscreen = true; nav.open(Overlay.Player) } }, Modifier.fillMaxWidth().aspectRatio(16f / 9f).focusRequester(previewEntry), scaleOnFocus = 1.0f, container = Tokens.surface, shape = RoundedCornerShape(Tokens.radiusLarge)) { _ ->
                 if (live != null) EngineSurface(c, Modifier.fillMaxSize(), active = !fullscreen)
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -196,13 +214,13 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
                 }
                 if (live != null) Box(Modifier.align(Alignment.TopStart).padding(8.dp).background(Tokens.danger, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp)) { Label("LIVE", Tokens.caption, androidx.compose.ui.graphics.Color.White, FontWeight.Bold) }
             }
-            if (live != null) NowNext(live.channel, vm, c, nav, Modifier.weight(1f))
+            (focusedChannel ?: live?.channel)?.let { shown -> NowNext(shown, live?.channel?.id == shown.id, vm, c, nav, Modifier.weight(1f), onWatch = { choose(shown) }, onOptions = { ch -> menuVariants = groups.orEmpty().firstOrNull { g -> g.rep.id == ch.id || g.variants.any { v -> v.id == ch.id } }?.variants.orEmpty(); menuFor = ch }) }
         }
     }
     }
 
     if (sortOpen) SortSheet(ContentKind.CHANNEL, sort, avail, onApply = vm::applySort, onClose = { sortOpen = false })
-    if (searchOpen) androidx.compose.ui.window.Dialog(onDismissRequest = { searchOpen = false }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    if (searchOpen) TvDialog(onDismissRequest = { searchOpen = false }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val first = remember { FocusRequester() }
         LaunchedEffect(Unit) { delay(120); runCatching { first.requestFocus() } }
         Box(Modifier.fillMaxSize().background(Tokens.background).padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical)) {
@@ -215,7 +233,8 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     menuFor?.let { ch ->
         val homeVm: app.streamsetu.tv.ui.screens.home.HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
         val extra = menuVariants.filter { it.id != ch.id }.map { v -> MenuAction("Version: ${qualityLabel(v.name)}  ·  ${v.name}", Icons.Filled.SwapHoriz) { c.play(ChannelPlayable(v), listOf(ChannelPlayable(v))) } } +
-            MenuAction("Watch fullscreen", Icons.Filled.Fullscreen) { c.play(ChannelPlayable(ch), groups.orEmpty().map { ChannelPlayable(it.rep) }); nav.liveFullscreen = true; nav.open(Overlay.Player) }
+            MenuAction("Watch fullscreen", Icons.Filled.Fullscreen) { choose(ch) } +
+            MenuAction("Preview here", Icons.Filled.PlayArrow) { previewHere(ch) }
         // Watch / favorites / guide / folder / information come from the shared menu; "Watch" here selects the channel in this screen's preview.
         app.streamsetu.tv.ui.screens.home.HomeMenuHost(app.streamsetu.tv.ui.screens.home.HomeTarget.Live(ch), if (browse == Browse.Recent) app.streamsetu.tv.ui.screens.home.RowKind.RECENT_LIVE else app.streamsetu.tv.ui.screens.home.RowKind.OTHER, homeVm, c, nav, extra) { menuFor = null }
     }
@@ -230,7 +249,7 @@ private fun SmallIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
 
 /** Under the picture: the channel, what is on and what is next, and the channel's guide for the coming hours, only from real guide data. */
 @Composable
-private fun NowNext(ch: Channel, vm: LiveSectionViewModel, c: AppContainer, nav: Navigator, modifier: Modifier = Modifier) {
+private fun NowNext(ch: Channel, playing: Boolean, vm: LiveSectionViewModel, c: AppContainer, nav: Navigator, modifier: Modifier = Modifier, onWatch: () -> Unit = {}, onOptions: (Channel) -> Unit = {}) {
     var programmes by remember(ch.id) { mutableStateOf<List<EpgProgram>>(emptyList()) }
     var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var details by remember { mutableStateOf<EpgProgram?>(null) }
@@ -252,10 +271,13 @@ private fun NowNext(ch: Channel, vm: LiveSectionViewModel, c: AppContainer, nav:
                     Box(Modifier.fillMaxWidth().height(3.dp).background(Tokens.elevated, RoundedCornerShape(2.dp))) { Box(Modifier.fillMaxWidth(f).fillMaxHeight().background(Tokens.accent, RoundedCornerShape(2.dp))) }
                 } else Label("Live now", Tokens.small, Tokens.gold)
             }
-            TvButton("Fullscreen", { nav.liveFullscreen = true; nav.open(Overlay.Player) }, icon = Icons.Filled.Fullscreen)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TvButton("Watch Fullscreen", { onWatch() }, icon = Icons.Filled.Fullscreen, primary = true)
+                TvButton("Options", { onOptions(ch) }, icon = Icons.Filled.MoreHoriz)
+            }
         }
         // Stream details chips
-        val chips = listOfNotNull(facts["Engine"], facts["Video"]?.takeIf { it != "none" }, facts["Audio"]?.takeIf { it != "none" }, facts["Buffered ahead"]?.let { "Buffer $it" })
+        val chips = if (!playing) emptyList() else listOfNotNull(facts["Engine"], facts["Video"]?.takeIf { it != "none" }, facts["Audio"]?.takeIf { it != "none" }, facts["Buffered ahead"]?.let { "Buffer $it" })
         if (chips.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { chips.forEach { t -> Label(t, Tokens.caption, Tokens.textSecondary, maxLines = 1, modifier = Modifier.background(Tokens.card, RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp)) } }
         if (programmes.isEmpty()) {
             // No guide for this channel: say why, and that the channel plays normally.

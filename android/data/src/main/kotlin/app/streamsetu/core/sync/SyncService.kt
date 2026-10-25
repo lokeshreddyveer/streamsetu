@@ -43,6 +43,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             sources.setCounts(sourceId, r.channels, r.movies, r.series)
             r
         } catch (e: Throwable) {
+            android.util.Log.w("Sync", "sync of ${source.name} failed: ${e.javaClass.simpleName}: ${e.message?.take(160)}")
             sources.setStatus(sourceId, SyncStatus.FAILED, source.lastSyncAt)
             sources.setError(sourceId, e.message?.take(200))
             throw e
@@ -248,20 +249,17 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         if (src.type == SourceType.JELLYFIN || src.type == SourceType.EMBY || src.type == SourceType.PLEX) return@withContext loadMediaEpisodes(src, series)
         if (src.type != SourceType.XTREAM) return@withContext 0
         val pass = credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()
-        val obj = Xtream.parseObject(Http.text(Xtream.api(src.address, src.username.orEmpty(), pass, "get_series_info", "&series_id=${series.providerId}"), xtreamAgent(src))) ?: return@withContext 0
-        val seasons = obj["episodes"] as? JsonObject ?: return@withContext 0
-        val out = ArrayList<EpisodeEntity>()
-        for ((seasonKey, list) in seasons) {
-            val arr = list as? kotlinx.serialization.json.JsonArray ?: continue
-            for (el in arr) {
-                val e = el as? JsonObject ?: continue
-                val id = e.str("id") ?: continue
-                val info = e["info"] as? JsonObject
-                out += EpisodeEntity("${series.sourceId}:ep:$id", series.id, e.int("season") ?: seasonKey.toIntOrNull() ?: 1, e.int("episode_num") ?: 0,
-                    e.str("title") ?: "Episode ${e.str("episode_num")}", info?.str("plot"), info?.str("movie_image"), info?.int("duration_secs"),
-                    "series:$id:${e.str("container_extension") ?: "mp4"}")
-            }
+        val started = System.currentTimeMillis()
+        val text = try { Http.text(Xtream.api(src.address, src.username.orEmpty(), pass, "get_series_info", "&series_id=${series.providerId}"), xtreamAgent(src)) }
+            catch (e: Throwable) { android.util.Log.w("Sync", "episodes of \"${series.title}\" (#${series.providerId}) not fetched after ${System.currentTimeMillis() - started} ms: ${e.javaClass.simpleName}: ${e.message?.take(120)}"); throw e }
+        val obj = Xtream.parseObject(text)
+        if (obj == null) { android.util.Log.w("Sync", "episodes of \"${series.title}\" (#${series.providerId}): ${text.length} characters that are not a JSON object"); return@withContext 0 }
+        val root = obj["episodes"]
+        val out = Xtream.episodes(obj).map { r ->
+            EpisodeEntity("${series.sourceId}:ep:${r.id}", series.id, r.season, r.number, r.title, r.plot, r.image, r.durationSecs, "series:${r.id}:${r.extension}")
         }
+        android.util.Log.i("Sync", "episodes of \"${series.title}\" (#${series.providerId}): ${text.length} characters in ${System.currentTimeMillis() - started} ms, layout ${root?.let { it::class.java.simpleName } ?: "missing"}, " +
+            "${out.size} episodes in seasons ${out.groupingBy { it.season }.eachCount().toSortedMap()}")
         val known = db.extras().episodeIds(series.id).toSet()
         db.catalog().putEpisodes(out)
         // An episode that shows up after the series was already read, in a series the person has watched, is flagged as new.

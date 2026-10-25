@@ -13,7 +13,7 @@ enum class SwitchResult { Switched, NeedsPin, WrongPin, Failed }
  * Profiles: people who share one device and one playlist, each with their own favorites, collections, history and resume points (see [Profiles]). Entering an adult profile that
  * has a PIN needs it, and leaving a kids profile needs that profile's PIN. Sync on this network carries the first profile only, so it pauses while another is in use.
  */
-class ProfileService(private val db: AppDatabase, private val pinPrefs: android.content.SharedPreferences? = null, private val onSwitched: (Profile) -> Unit) {
+class ProfileService(private val db: AppDatabase, private val pinPrefs: android.content.SharedPreferences? = null, private val beforeSwitch: () -> Unit = {}, private val onSwitched: (Profile) -> Unit) {
     private val raw get() = db.openHelper.writableDatabase
     private val _profiles = MutableStateFlow<List<Profile>>(emptyList())
     private val _active = MutableStateFlow(Profiles.MAIN)
@@ -56,6 +56,8 @@ class ProfileService(private val db: AppDatabase, private val pinPrefs: android.
             if (!checkPin(needed, pin)) return SwitchResult.WrongPin
         }
         val from = _active.value
+        // What was playing is stopped (its resume point is saved to the profile that was watching) before the tables change hands, so nothing keeps writing into the next profile.
+        runCatching { beforeSwitch() }
         return try {
             Profiles.swap(raw, from, id)
             db.invalidationTracker.refreshVersionsAsync()

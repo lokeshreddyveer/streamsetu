@@ -83,7 +83,11 @@ object ScheduledRecordings {
         true
     }
 
+    /** The download in progress for each recording, so Cancel can stop it and not only remove the entry. */
+    internal val active = java.util.concurrent.ConcurrentHashMap<String, okhttp3.Call>()
+
     fun cancel(context: Context, id: String) = synchronized(lock) {
+        active.remove(id)?.cancel()
         (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pending(context, id))
         state.value = state.value.filterNot { it.id == id }; save(context)
     }
@@ -155,24 +159,34 @@ class RecordService : Service() {
             val req = Request.Builder().url(url).apply { c.resolver.headers(rec.sourceId).forEach { (k, v) -> header(k, v) }; c.resolver.userAgent(rec.sourceId)?.let { header("User-Agent", it) } }.build()
             val client = Http.client.newBuilder().readTimeout(30, java.util.concurrent.TimeUnit.SECONDS).build()
             var wrote = 0L
-            client.newCall(req).execute().use { resp ->
+            val call = client.newCall(req)
+            ScheduledRecordings.active[rec.id] = call
+            val startedAt = System.currentTimeMillis()
+            var endedEarly = false
+            call.execute().use { resp ->
                 if (!resp.isSuccessful) error("The provider answered ${resp.code}. It may allow only one stream at a time.")
                 val src = resp.body?.byteStream() ?: error("Nothing was received.")
                 file.outputStream().buffered().use { out ->
                     val buf = ByteArray(64 * 1024)
                     while (System.currentTimeMillis() < stop) {
                         val n = src.read(buf)
-                        if (n < 0) break
+                        if (n < 0) { endedEarly = System.currentTimeMillis() < stop - EARLY_SLACK_MS; break }
+                        // A playlist (HLS) is a list of addresses, not video: copying it would save text under a video name.
+                        if (wrote == 0L && String(buf, 0, minOf(n, 7), Charsets.ISO_8859_1) == "#EXTM3U") error("This channel streams as HLS, which cannot be recorded yet.")
                         out.write(buf, 0, n); wrote += n
                     }
                 }
             }
             if (wrote == 0L) { file.delete(); error("Nothing was received.") }
-            ScheduledRecordings.update(this, rec.id, ScheduledRec.DONE)
+            // The stream closed well before the programme ended: what was saved is kept, but it is not called a finished recording.
+            if (endedEarly) ScheduledRecordings.update(this, rec.id, ScheduledRec.FAILED, "The stream stopped after ${(System.currentTimeMillis() - startedAt) / 60_000} min; the part received was saved.")
+            else ScheduledRecordings.update(this, rec.id, ScheduledRec.DONE)
         } catch (e: Exception) {
             if (file.exists() && file.length() == 0L) file.delete()
-            ScheduledRecordings.update(this, rec.id, ScheduledRec.FAILED, e.message ?: "It did not finish.")
-        }
+            // Cancelled from Settings: the entry is already gone; the partial file goes with it.
+            if (ScheduledRecordings.active[rec.id]?.isCanceled() == true) file.delete()
+            else ScheduledRecordings.update(this, rec.id, ScheduledRec.FAILED, e.message ?: "It did not finish.")
+        } finally { ScheduledRecordings.active.remove(rec.id) }
     }
 
     private fun note(title: String): Notification {
@@ -184,5 +198,5 @@ class RecordService : Service() {
 
     override fun onDestroy() { scope.coroutineContext[kotlinx.coroutines.Job]?.cancel(); super.onDestroy() }
 
-    companion object { private const val CHANNEL = "recording"; private const val NOTE_ID = 7041 }
+    companion object { private const val CHANNEL = "recording"; private const val NOTE_ID = 7041; private const val EARLY_SLACK_MS = 90_000L }
 }

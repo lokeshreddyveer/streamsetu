@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.ColorFilter
@@ -75,7 +76,7 @@ fun SearchContent(
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TvTextField(query, { query = it }, if (tab == SearchTab.ALL) "Search channels, movies, series" else "Search " + tab.label.lowercase(), Modifier.widthIn(max = 520.dp), onDone = { remember() }, leadingIcon = Icons.Filled.Search)
+        TvTextField(query, { query = it }, if (tab == SearchTab.ALL) "Search channels, movies, series" else "Search " + tab.label.lowercase(), Modifier.widthIn(max = 760.dp).then(if (entry != null) Modifier.focusRequester(entry) else Modifier), onDone = { remember() }, leadingIcon = Icons.Filled.Search)
         if (dropdown && kinds.size > 1) {
             var open by remember { mutableStateOf(false) }
             val label = when (typeFilter) { ContentKind.CHANNEL -> "Live TV"; ContentKind.MOVIE -> "Movies"; ContentKind.SERIES -> "Series"; else -> "All" }
@@ -91,7 +92,7 @@ fun SearchContent(
                 if (ContentKind.SERIES in kinds) add(MenuAction("Series" + if (typeFilter == ContentKind.SERIES) "   ✓" else "", Icons.Filled.VideoLibrary) { typeFilter = ContentKind.SERIES })
                 if (ContentKind.CHANNEL in kinds) add(MenuAction("Live TV" + if (typeFilter == ContentKind.CHANNEL) "   ✓" else "", Icons.Filled.LiveTv) { typeFilter = ContentKind.CHANNEL })
             }, onClose = { open = false })
-        } else if (kinds.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        } else if (kinds.size > 1) Row(Modifier.railOnLeft(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TypeChip("All", typeFilter == null) { typeFilter = null }
             if (ContentKind.CHANNEL in kinds) TypeChip("Live TV", typeFilter == ContentKind.CHANNEL) { typeFilter = ContentKind.CHANNEL }
             if (ContentKind.MOVIE in kinds) TypeChip("Movies", typeFilter == ContentKind.MOVIE) { typeFilter = ContentKind.MOVIE }
@@ -125,9 +126,9 @@ fun SearchContent(
                     if (rows.isEmpty()) return@forEach
                     item(key = "t-${kind.name}") { SectionTitle("${kind.title}  ·  ${rows.size}") }
                     when (kind) {
-                        SearchKind.CHANNEL -> item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(rows, key = { it.id }) { x -> ChannelCardSmall(x) { open(x) } } } }
+                        SearchKind.CHANNEL -> item { LazyRow(Modifier.railOnLeft(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(rows, key = { it.id }) { x -> ChannelCardSmall(x) { open(x) } } } }
                         SearchKind.MOVIE, SearchKind.SERIES -> item {
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            LazyRow(Modifier.railOnLeft(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 items(rows, key = { it.id }) { x ->
                                     val rating = (x.target as? SearchTarget.OpenMovie)?.movie?.rating ?: (x.target as? SearchTarget.OpenSeries)?.series?.rating
                                     PosterCard(x.title, x.artworkUrl, { open(x) }, itemId = (x.target as? SearchTarget.OpenMovie)?.movie?.id ?: (x.target as? SearchTarget.OpenSeries)?.series?.id, subtitle = x.subtitle.substringBefore(" · ").ifBlank { null }, badge = app.streamsetu.tv.ui.screens.section.ratingBadge(rating))
@@ -144,7 +145,7 @@ fun SearchContent(
 
 /** An episode, a programme, a folder or a collection found by search, as one line. */
 @Composable
-private fun ResultRow(r: SearchItem, onClick: () -> Unit) = Focusable(onClick, Modifier.widthIn(max = 620.dp).fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
+private fun ResultRow(r: SearchItem, onClick: () -> Unit) = Focusable(onClick, Modifier.widthIn(max = 760.dp).fillMaxWidth(), shape = RoundedCornerShape(Tokens.radius), scaleOnFocus = 1.02f) { _ ->
     Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         val icon = when (r.kind) { SearchKind.EPISODE -> Icons.Filled.PlayCircle; SearchKind.PROGRAMME -> Icons.Filled.CalendarMonth; SearchKind.FOLDER -> Icons.Filled.Folder; else -> Icons.Filled.Layers }
         Image(icon, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(Tokens.accent))
@@ -156,8 +157,8 @@ private fun ResultRow(r: SearchItem, onClick: () -> Unit) = Focusable(onClick, M
 }
 
 @Composable
-private fun TypeChip(label: String, on: Boolean, onClick: () -> Unit) = Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = if (on) Tokens.elevated else Tokens.card, scaleOnFocus = 1.03f) { _ ->
-    Label(label, Tokens.small, if (on) Tokens.accent else Tokens.text, if (on) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+private fun TypeChip(label: String, on: Boolean, onClick: () -> Unit) = Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = if (on) Color(0xFFE9ECF0) else Tokens.card, focusedContainer = if (on) Color.White else Tokens.focusedSurface, scaleOnFocus = 1.05f, ringWidth = 0.dp) { _ ->
+    Label(label, Tokens.row, if (on) Tokens.onBright else Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp))
 }
 
 @Composable
@@ -168,7 +169,7 @@ private fun SuggestionRow(text: String, icon: androidx.compose.ui.graphics.vecto
 }
 
 @Composable
-private fun ChannelCardSmall(x: SearchItem, onClick: () -> Unit) = Focusable(onClick, Modifier.width(150.dp), scaleOnFocus = 1.03f) { _ ->
+private fun ChannelCardSmall(x: SearchItem, onClick: () -> Unit) = Focusable(onClick, Modifier.width(168.dp), shape = RoundedCornerShape(Tokens.radius), scaleOnFocus = 1.05f) { _ ->
     Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         ChannelLogo(x.artworkUrl, x.title, 40.dp); Label(x.title, Tokens.small, Tokens.text, maxLines = 2)
     }
@@ -180,7 +181,7 @@ fun SectionSearch(c: AppContainer, kind: ContentKind, onOpen: (Card) -> Unit, on
     val scope = when (kind) { ContentKind.CHANNEL -> SearchTab.LIVE; ContentKind.MOVIE -> SearchTab.MOVIES; else -> SearchTab.SERIES }.name
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(120); runCatching { first.requestFocus() } }
-    Dialog(onDismissRequest = { c.search.setLastIn(scope, ""); onClose() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    TvDialog(onDismissRequest = { c.search.setLastIn(scope, ""); onClose() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Box(Modifier.fillMaxSize().background(Tokens.background).padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label(if (kind == ContentKind.MOVIE) "Search Movies" else "Search Series", Tokens.display, Tokens.text, FontWeight.Bold)
@@ -195,8 +196,8 @@ fun SectionSearch(c: AppContainer, kind: ContentKind, onOpen: (Card) -> Unit, on
 @Composable
 fun SearchScreen(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
     val entry = app.streamsetu.tv.ui.components.LocalContentEntry.current
-    Column(Modifier.fillMaxSize().padding(start = 16.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Label("Search", Tokens.pageTitle, Tokens.text, FontWeight.Bold)
+    Column(Modifier.fillMaxSize().padding(start = Tokens.safeHorizontal + 4.dp, end = Tokens.safeHorizontal, top = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Label("Search", Tokens.display, Tokens.text, FontWeight.ExtraBold)
         SearchContent(c, setOf(ContentKind.CHANNEL, ContentKind.MOVIE, ContentKind.SERIES), Modifier.fillMaxSize(), entry = entry,
             onChannel = { ch -> app.streamsetu.tv.play(c, nav, ChannelPlayable(ch)) },
             onMovie = { m -> nav.open(app.streamsetu.tv.nav.Overlay.MovieDetail(m)) },

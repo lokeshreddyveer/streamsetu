@@ -8,6 +8,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -18,9 +20,9 @@ import kotlinx.coroutines.delay
 /** A titled block of rows. */
 @Composable
 fun SettingGroup(title: String, footer: String? = null, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth()) {
-        Eyebrow(title, Modifier.padding(start = 4.dp, bottom = 8.dp))
-        Column(Modifier.fillMaxWidth().background(Tokens.card, RoundedCornerShape(18.dp)).padding(vertical = 6.dp, horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Label(title, Tokens.heading, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 6.dp, bottom = 10.dp))
+        Column(Modifier.fillMaxWidth().background(Tokens.card, RoundedCornerShape(Tokens.radiusPanel)).padding(vertical = 8.dp, horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp), content = content)
         if (footer != null) Label(footer, Tokens.caption, Tokens.textTertiary, maxLines = 3, modifier = Modifier.padding(start = 4.dp, top = 6.dp))
     }
 }
@@ -31,17 +33,26 @@ fun SettingGroup(title: String, footer: String? = null, content: @Composable Col
  */
 @Composable
 fun SettingRow(title: String, detail: String? = null, value: String? = null, enabled: Boolean = true, reason: String? = null, danger: Boolean = false, switch: Boolean? = null, onClick: () -> Unit = {}) {
-    Focusable(if (enabled) onClick else ({}), Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), container = Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.0f) { f ->
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    Focusable(if (enabled) onClick else ({}), Modifier.fillMaxWidth(), shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.015f) { f ->
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Label(title, Tokens.row, if (!enabled) Tokens.textTertiary else if (danger) Tokens.danger else Tokens.text, FontWeight.Medium)
                 if (detail != null) Label(detail, Tokens.caption, Tokens.textSecondary, maxLines = 3)
                 if (!enabled && reason != null) Label(reason, Tokens.caption, Tokens.warning, maxLines = 3)
             }
-            if (switch != null) Box(Modifier.width(48.dp).height(26.dp).background(if (!enabled) Color(0x14FFFFFF) else if (switch) Tokens.accent else Color(0x33FFFFFF), RoundedCornerShape(13.dp)).padding(3.dp)) {
-                Box(Modifier.align(if (switch) Alignment.CenterEnd else Alignment.CenterStart).size(20.dp).background(Color.White, androidx.compose.foundation.shape.CircleShape))
-            } else if (value != null) Label(value, Tokens.row, if (!enabled) Tokens.textTertiary else if (f) Tokens.accent else Tokens.textSecondary, FontWeight.Medium, maxLines = 2, modifier = Modifier.widthIn(max = 220.dp))
+            if (switch != null) SwitchControl(switch, enabled) else if (value != null) Label(value, Tokens.row, if (!enabled) Tokens.textTertiary else if (f) Tokens.accent else Tokens.textSecondary, FontWeight.Medium, maxLines = 2, modifier = Modifier.widthIn(max = 220.dp))
         }
+    }
+}
+
+/** The switch: the track changes colour and the knob slides across, instead of jumping. */
+@Composable
+private fun SwitchControl(on: Boolean, enabled: Boolean) {
+    val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
+    val t = androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.SHORT, easing = app.streamsetu.core.ui.motion.Motion.Standard), label = "switchKnob")
+    val track = androidx.compose.animation.animateColorAsState(if (!enabled) Color(0x14FFFFFF) else if (on) Tokens.accent else Color(0x33FFFFFF), if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.SHORT), label = "switchTrack")
+    Box(Modifier.width(54.dp).height(30.dp).drawBehind { drawRoundRect(track.value, cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2)) }.padding(3.dp)) {
+        Box(Modifier.graphicsLayer { translationX = t.value * 24.dp.toPx() }.size(24.dp).background(if (on) Tokens.onBright else Color.White, androidx.compose.foundation.shape.CircleShape))
     }
 }
 

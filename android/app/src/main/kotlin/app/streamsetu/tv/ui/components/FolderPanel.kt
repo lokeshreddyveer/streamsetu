@@ -237,9 +237,9 @@ private fun PanelRow(label: String, icon: ImageVector, count: Int?, selected: Bo
 @Composable
 fun RenameDialog(current: String, onSave: (String) -> Unit, onReset: () -> Unit, onClose: () -> Unit, title: String = "Display label", hint: String = "Only changes how it looks here. The provider's name is not touched.", resetLabel: String = "Use provider name") {
     var text by remember { mutableStateOf(current) }
-    androidx.compose.ui.window.Dialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+    TvDialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
-            Column(Modifier.width(340.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.popIn().width(340.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label(title, Tokens.title, Tokens.text, FontWeight.Bold)
                 Label(hint, Tokens.small, Tokens.textSecondary, maxLines = 2)
                 TvTextField(text, { text = it }, "Label", Modifier.fillMaxWidth())

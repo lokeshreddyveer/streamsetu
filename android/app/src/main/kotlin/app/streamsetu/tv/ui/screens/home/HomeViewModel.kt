@@ -7,6 +7,7 @@ import app.streamsetu.core.model.*
 import app.streamsetu.core.sync.upcoming
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.ui.components.BannerItem
+import app.streamsetu.tv.ui.components.Facts
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -51,10 +52,10 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         list.distinctBy { app.streamsetu.core.data.repo.SearchText.normalize(it.title) }.mapNotNull { p ->
             when (p) {
                 is MoviePlayable -> { val m = p.movie; val i = infos[m.id]
-                    BannerItem(m.id, m.title, listOfNotNull(i?.genre?.takeIf { it.isNotBlank() }, m.year?.toString(), i?.duration?.takeIf { it.isNotBlank() }), (i?.plot ?: m.plot)?.takeIf { it.isNotBlank() },
-                        i?.backdrop?.takeIf { it.isNotBlank() } ?: m.posterUrl, "Play") }
+                    BannerItem(m.id, m.title, listOfNotNull(i?.genre?.takeIf { it.isNotBlank() }, m.year?.toString(), Facts.runtime(i?.duration), Facts.rating(m.rating)), (i?.plot ?: m.plot)?.takeIf { it.isNotBlank() },
+                        i?.backdrop?.takeIf { it.isNotBlank() } ?: m.posterUrl, "Play", imageIsBackdrop = !i?.backdrop.isNullOrBlank()) }
                 is SeriesFeature -> { val s = p.series
-                    BannerItem(s.id, s.title, listOfNotNull(s.year?.toString(), s.rating?.takeIf { it.isNotBlank() && it != "0" }?.let { "★ $it" }), s.plot?.takeIf { it.isNotBlank() }, s.backdropUrl?.takeIf { it.isNotBlank() } ?: s.posterUrl, "Episodes") }
+                    BannerItem(s.id, s.title, listOfNotNull(s.year?.toString(), Facts.rating(s.rating)), s.plot?.takeIf { it.isNotBlank() }, s.backdropUrl?.takeIf { it.isNotBlank() } ?: s.posterUrl, "Episodes", imageIsBackdrop = !s.backdropUrl.isNullOrBlank()) }
                 else -> null
             }
         }

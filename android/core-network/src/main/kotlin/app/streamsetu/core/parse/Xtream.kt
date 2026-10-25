@@ -70,6 +70,38 @@ object Xtream {
         }
     }
 
+    /** One episode of a series, as the provider names it. */
+    data class EpisodeRow(val id: String, val season: Int, val number: Int, val title: String, val plot: String?, val image: String?, val durationSecs: Int?, val extension: String)
+
+    /**
+     * The episodes in a `get_series_info` answer. Providers lay them out in more than one way: an object keyed by season ("1": [...], "10": [...]), an array with one list per season
+     * (seasons counted from 1, as the Apple apps do), a season whose episodes are an object keyed by position, or a flat list of episodes. All of them are read. An episode's own
+     * `season` field wins over the key it sits under; one with no number gets its position in its season.
+     */
+    fun episodes(answer: JsonObject): List<EpisodeRow> {
+        val groups: List<Pair<String, JsonElement>> = when (val root = answer["episodes"]) {
+            is JsonObject -> root.entries.map { it.key to it.value }
+            is kotlinx.serialization.json.JsonArray -> root.mapIndexed { i, el -> (i + 1).toString() to el }
+            else -> return emptyList()
+        }
+        val out = ArrayList<EpisodeRow>()
+        for ((key, group) in groups) {
+            val items: List<JsonElement> = when (group) {
+                is kotlinx.serialization.json.JsonArray -> group
+                is JsonObject -> if (group.containsKey("id")) listOf(group) else group.values.toList()
+                else -> emptyList()
+            }
+            items.forEachIndexed { idx, el ->
+                val e = el as? JsonObject ?: return@forEachIndexed
+                val id = e.str("id") ?: return@forEachIndexed
+                val info = e["info"] as? JsonObject
+                val number = e.int("episode_num") ?: (idx + 1)
+                out += EpisodeRow(id, e.int("season") ?: key.toIntOrNull() ?: 1, number, e.str("title") ?: "Episode $number", info?.str("plot"), info?.str("movie_image"), info?.int("duration_secs"), e.str("container_extension") ?: "mp4")
+            }
+        }
+        return out
+    }
+
     fun parseObject(text: String): JsonObject? = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull()
 
     private fun enc(s: String) = java.net.URLEncoder.encode(s, "UTF-8")

@@ -26,10 +26,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import app.streamsetu.core.ui.motion.focusScale
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -38,6 +41,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -53,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.streamsetu.tv.ui.theme.Tokens
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -73,6 +78,37 @@ val LocalFocusEnabled = androidx.compose.runtime.compositionLocalOf { true }
 /** Where DOWN from the top bar lands on the current page (the hero's Play button, the open category pill, the first settings page...). */
 val LocalContentEntry = androidx.compose.runtime.compositionLocalOf<FocusRequester?> { null }
 
+/** Asks for the navigation rail (it auto-hides, so it is not there to be focused until it is shown). Null outside an open library. */
+val LocalRailReveal = androidx.compose.runtime.compositionLocalOf<(() -> Unit)?> { null }
+
+/**
+ * Makes this container a focus group in which Left, once nothing further left remains inside it, goes to [target]. Without this Compose picks the nearest item to the left and
+ * below (a poster in the first column, a category beside the row you are on), which is where "the focus jumps" comes from. A null target leaves the default search alone.
+ */
+@Composable
+fun Modifier.leftGoesTo(target: FocusRequester?): Modifier =
+    if (target == null) this
+    else this.focusProperties { exit = { d -> if (d == androidx.compose.ui.focus.FocusDirection.Left) target else FocusRequester.Default } }.focusGroup()
+
+/**
+ * Left at the left edge of this container shows the rail and puts the remote on it. Two parts: the group stops Compose carrying the remote to some card to the left and below
+ * (its exit rule), and the key handler shows the rail whenever the move to the left finds nowhere to go (the rail is hidden, so there is nothing there to find).
+ */
+@Composable
+fun Modifier.railOnLeft(): Modifier {
+    val reveal = LocalRailReveal.current ?: return this
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    return this
+        .focusProperties { exit = { d -> if (d == androidx.compose.ui.focus.FocusDirection.Left) FocusRequester.Cancel else FocusRequester.Default } }
+        .focusGroup()
+        .onKeyEvent { e ->
+            if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == androidx.compose.ui.input.key.Key.DirectionLeft) {
+                if (!focus.moveFocus(androidx.compose.ui.focus.FocusDirection.Left)) reveal()
+                true
+            } else false
+        }
+}
+
 /** The thing the remote is on that reacts to holding OK, if any. Set by [Focusable]; read by the activity. */
 object LongPress {
     class Handler(val owner: Any, val run: () -> Unit)
@@ -87,7 +123,9 @@ val LocalHighContrast = androidx.compose.runtime.compositionLocalOf { false }
 
 /** The last thing on the base page that held focus, so closing a page (a movie, an episode list, the player) returns you to it. */
 object FocusMemory {
-    var last: FocusRequester? = null; var lastHasFocus = false
+    var last: FocusRequester? = null
+    /** The one that holds the remote right now (null while nothing in a page does). */
+    var focused: FocusRequester? = null
     /** The last thing in the page itself (never a sidebar entry) that held focus: where the remote goes back to when the sidebar closes. */
     var content: FocusRequester? = null
 }
@@ -122,9 +160,11 @@ fun Focusable(
     scaleOnFocus: Float = app.streamsetu.core.ui.motion.Motion.CARD_FOCUS_SCALE,
     hairline: Boolean = false,
     ring: Color = Color.Unspecified,
-    ringWidth: androidx.compose.ui.unit.Dp = 1.5.dp,
+    ringWidth: androidx.compose.ui.unit.Dp = 2.dp,
     onFocus: (Boolean) -> Unit = {},
     onLongClick: (() -> Unit)? = null,
+    /** False when the content already has the shape's corners baked in (a poster whose picture was rounded when it was decoded): no live clip is made, which a small GPU pays for on every frame. */
+    clipContent: Boolean = true,
     /** The tone when the remote moves onto this, and when it is chosen. null = silent (a caller that plays its own sound). */
     focusSound: app.streamsetu.tv.UISoundEvent? = app.streamsetu.tv.UISoundEvent.FOCUS_MOVE,
     selectSound: app.streamsetu.tv.UISoundEvent? = app.streamsetu.tv.UISoundEvent.SELECT,
@@ -133,34 +173,46 @@ fun Focusable(
     var focused by remember { mutableStateOf(false) }
     val longClick by androidx.compose.runtime.rememberUpdatedState(onLongClick)
     val highContrast = LocalHighContrast.current
-    val ringColor = if (ring != Color.Unspecified) ring else LocalFocusRing.current.takeIf { it != Color.Unspecified } ?: Tokens.accent
+    val ringColor = if (ring != Color.Unspecified) ring else LocalFocusRing.current.takeIf { it != Color.Unspecified } ?: Tokens.focusRing
     val enabled = LocalFocusEnabled.current
     val own = remember { FocusRequester() }
     val inOverlay = LocalInOverlay.current
     val inSidebar = LocalInSidebar.current
+    // One number (0 = at rest, 1 = focused) drives the scale, the fill and the ring, so a card costs one animation instead of three. It is read only while drawing, so a focus change
+    // redraws this one card and recomposes nothing; a new target while it is moving continues from where it is (nothing queues up).
+    val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
+    val progress = androidx.compose.animation.core.animateFloatAsState(
+        if (focused) 1f else 0f,
+        if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.FOCUS, easing = app.streamsetu.core.ui.motion.Motion.Standard), label = "focus",
+    )
     Box(
         modifier
-            .focusScale(focused, scaleOnFocus)
-            .clip(shape)
-            .background(if (focused) focusedContainer else container)
+            .graphicsLayer { val sc = 1f + (scaleOnFocus - 1f) * progress.value; scaleX = sc; scaleY = sc }
+            .then(if (clipContent) Modifier.clip(shape) else Modifier)
+            // A card whose fill is transparent in both states (a poster: the picture is its fill) draws no fill at all, so it is not painted over twice.
+            .then(if (container.alpha == 0f && focusedContainer.alpha == 0f) Modifier else Modifier.drawBehind { drawRect(androidx.compose.ui.graphics.lerp(container, focusedContainer, progress.value)) })
             // The ring is drawn, not added as a layer, so taking and losing focus does not rebuild the modifier chain.
             .drawWithContent {
                 drawContent()
-                if (focused) strokeOutline(shape.createOutline(size, layoutDirection, this), if (highContrast) Color.White else ringColor, (if (highContrast) 3.dp else ringWidth).toPx() * 2)
-                else if (hairline) strokeOutline(shape.createOutline(size, layoutDirection, this), Tokens.line, 1.dp.toPx() * 2)
+                if (hairline) strokeOutline(shape.createOutline(size, layoutDirection, this), Tokens.line, 1.dp.toPx() * 2)
+                val a = progress.value
+                if (a > 0.01f) {
+                    val c = if (highContrast) Color.White else ringColor
+                    strokeOutline(shape.createOutline(size, layoutDirection, this), c.copy(alpha = c.alpha * a), (if (highContrast) 3.dp else ringWidth).toPx() * (if (clipContent) 2 else 1))
+                }
             }
             .focusRequester(own)
             .focusProperties { canFocus = enabled }
             .onFocusChanged {
                 if (it.isFocused && !focused && focusSound != null) app.streamsetu.tv.UISound.focusMoved(focusSound)
                 focused = it.isFocused
+                if (it.isFocused) FocusMemory.focused = own else if (FocusMemory.focused === own) FocusMemory.focused = null
                 onFocus(it.isFocused)
                 // Holding OK is detected by the activity (it sees every key before anything else) and handed to whatever the remote is on.
                 if (it.isFocused) { if (longClick != null) LongPress.handler = LongPress.Handler(own) { longClick?.invoke() } else LongPress.handler = null }
                 else if (LongPress.handler?.owner === own) LongPress.handler = null
                 if (it.isFocused && enabled && !inOverlay && !inSidebar) FocusMemory.content = own
-                if (it.isFocused && enabled && !inOverlay) { FocusMemory.last = own; FocusMemory.lastHasFocus = true }
-                else if (!it.isFocused && FocusMemory.last === own) FocusMemory.lastHasFocus = false
+                if (it.isFocused && enabled && !inOverlay) FocusMemory.last = own
             }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = { if (selectSound != null) app.streamsetu.tv.UISound.play(selectSound); onClick() }),
     ) { content(focused) }
@@ -168,11 +220,11 @@ fun Focusable(
 
 @Composable
 fun TvButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, primary: Boolean = false, onFocus: (Boolean) -> Unit = {}) {
-    Focusable(onClick, modifier, onFocus = onFocus, shape = RoundedCornerShape(50), container = if (primary) Tokens.accent.copy(alpha = 0.88f) else Tokens.elevated,
-        focusedContainer = if (primary) Tokens.accent else Tokens.focusedSurface, scaleOnFocus = 1.04f) { _ ->
-        val ink = if (primary) Color(0xFF04141A) else Tokens.text
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (icon != null) Image(icon, null, Modifier.size(15.dp), colorFilter = ColorFilter.tint(ink))
+    Focusable(onClick, modifier, onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = if (primary) Color(0xFFE9ECF0) else Tokens.elevated,
+        focusedContainer = if (primary) Color.White else Tokens.focusedSurface, scaleOnFocus = 1.04f) { _ ->
+        val ink = if (primary) Tokens.onBright else Tokens.text
+        Row(Modifier.padding(horizontal = 18.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (icon != null) Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(ink))
             Label(text, Tokens.row, ink, FontWeight.SemiBold)
         }
     }
@@ -227,22 +279,35 @@ fun BoxScope.WatchedTick(size: Dp = 20.dp) {
     }
 }
 
+/** A picture request with the card's corners baked into the decoded bitmap (cached, done once per picture), so no clip is needed while it scrolls. */
+@Composable
+private fun roundedPicture(url: String?, radius: Dp): Any? {
+    if (url.isNullOrBlank()) return null
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val px = with(androidx.compose.ui.platform.LocalDensity.current) { radius.toPx() }
+    return remember(url, px) { ImageRequest.Builder(context).data(url).transformations(coil.transform.RoundedCornersTransformation(px)).build() }
+}
+
 /** A poster, 150 x 218 on the Mac scaled up: artwork, title and a quiet subtitle under it. A thin bar shows how far you are. */
 @Composable
-fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null, itemId: String? = null, focusRequester: FocusRequester? = null, onLongClick: (() -> Unit)? = null) {
+fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null, itemId: String? = null, focusRequester: FocusRequester? = null, onFocusChange: (Boolean) -> Unit = {}, onLongClick: (() -> Unit)? = null) {
     var cardFocused by remember { mutableStateOf(false) }
     Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(2f / 3f), scaleOnFocus = app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE, ringWidth = 2.5.dp, onFocus = { cardFocused = it }, onLongClick = onLongClick) { _ ->
+        Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(2f / 3f), container = if (imageUrl.isNullOrBlank()) Tokens.card else Color.Transparent, focusedContainer = if (imageUrl.isNullOrBlank()) Tokens.focusedSurface else Color.Transparent,
+            clipContent = imageUrl.isNullOrBlank(), scaleOnFocus = app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE, ringWidth = 2.5.dp, onFocus = { cardFocused = it; onFocusChange(it) }, onLongClick = onLongClick) { _ ->
             // With a picture to come, a flat dark tile is enough underneath (a title gradient only when there is no picture): less to draw and lay out per card.
-            if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else { Box(Modifier.fillMaxSize().background(Tokens.card)); AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+            if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else AsyncImage(roundedPicture(imageUrl, Tokens.radius), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = ColorPainter(Tokens.card), error = ColorPainter(Tokens.card))
             val shown = if (progress > 0f) progress else itemId?.let { LocalPartialProgress.current[it] } ?: 0f
             if (shown > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Color(0xB3000000), RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Tokens.text, FontWeight.SemiBold) }
             if (itemId != null) LocalDownloadStatus.current[itemId]?.let { (st, f) -> DownloadBadge(st, f) }
             if (itemId != null && itemId in LocalWatched.current) WatchedTick()
             // The title appears over the picture only for the poster the remote is on, so a wall of posters stays clean (the picture already carries its own title).
-            androidx.compose.animation.AnimatedVisibility(cardFocused, Modifier.align(Alignment.BottomStart), enter = androidx.compose.animation.fadeIn(tween(160)), exit = androidx.compose.animation.fadeOut(tween(120))) {
-                Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6000000)))).padding(start = 10.dp, end = 10.dp, top = 36.dp, bottom = 10.dp)) {
+            // Composed only while the remote is on this poster (a wall of posters carries no transition objects); it fades in over about 160 ms.
+            if (cardFocused) {
+                val fade = remember { androidx.compose.animation.core.Animatable(0f) }
+                LaunchedEffect(Unit) { fade.animateTo(1f, tween(160)) }
+                Column(Modifier.align(Alignment.BottomStart).graphicsLayer { alpha = fade.value }.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6000000)))).padding(start = 10.dp, end = 10.dp, top = 36.dp, bottom = 10.dp)) {
                     Label(title, Tokens.small, Tokens.text, FontWeight.Bold, maxLines = 2)
                     if (subtitle != null) Label(subtitle, Tokens.caption, Tokens.textSecondary, maxLines = 1)
                 }
@@ -255,9 +320,9 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
 @Composable
 fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, progress: Float = 0f, width: Dp = Tokens.landscapeWidth, badge: String? = null, onLongClick: (() -> Unit)? = null) {
     Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f), onLongClick = onLongClick) { _ ->
-            PosterPlaceholder(title, Modifier.fillMaxSize())
-            if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f), container = if (imageUrl.isNullOrBlank()) Tokens.card else Color.Transparent, focusedContainer = if (imageUrl.isNullOrBlank()) Tokens.focusedSurface else Color.Transparent, clipContent = imageUrl.isNullOrBlank(), onLongClick = onLongClick) { _ ->
+            // The picture is the only layer drawn once it is there (its own placeholder is a flat tile); a card with no picture gets the title tile.
+            if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else AsyncImage(roundedPicture(imageUrl, Tokens.radius), title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = ColorPainter(Tokens.card), error = ColorPainter(Tokens.card))
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopStart).padding(6.dp).background(Tokens.accent, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Color(0xFF04141A), FontWeight.Bold) }
         }

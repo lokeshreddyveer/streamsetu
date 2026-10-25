@@ -75,7 +75,7 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
 
     Row(Modifier.fillMaxSize()) {
         // Left: the categories, each with an icon tile and a line saying what is inside.
-        Column(Modifier.weight(0.34f).fillMaxHeight().background(Tokens.panel).padding(horizontal = 12.dp, vertical = Tokens.safeVertical)) {
+        Column(Modifier.weight(0.34f).fillMaxHeight().railOnLeft().background(Tokens.panel).padding(horizontal = 12.dp, vertical = Tokens.safeVertical)) {
             Row(Modifier.padding(start = 8.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)))
                 Column { Label("Settings", Tokens.pageTitle, Tokens.text, FontWeight.Bold); Label("StreamSetu " + app.streamsetu.tv.BuildConfig.VERSION_NAME, Tokens.caption, Tokens.textTertiary) }
@@ -103,7 +103,7 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
             }
         }
         // Right: a header for the category, then its groups.
-        Column(Modifier.weight(0.66f).fillMaxHeight().onFocusChanged { inPanel = it.hasFocus }.verticalScroll(rememberScrollState()).padding(start = 26.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.weight(0.66f).fillMaxHeight().leftGoesTo(rows.getValue(current)).onFocusChanged { inPanel = it.hasFocus }.verticalScroll(rememberScrollState()).padding(start = 26.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Box(Modifier.size(52.dp).clip(RoundedCornerShape(15.dp)).background(Tokens.accent.copy(alpha = 0.20f)), Alignment.Center) {
                     androidx.compose.foundation.Image(current.icon, null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(Tokens.accent))

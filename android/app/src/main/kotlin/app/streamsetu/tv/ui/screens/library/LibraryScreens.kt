@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -68,72 +72,57 @@ private val Amber = Color(0xFFFFBE62)
 private val Night = Color(0xFF05080D)
 private val Slate = Color(0xFFA9B6C8)
 
-/** The opening screen of every launch: the person picks which library to open; nothing opens by itself. */
+/**
+ * The opening screen of every launch, as a split screen: the saved libraries as a list on the left (about 35 %), and on the right what the one under the remote is (type, state,
+ * counts, last read) with the action to enter it. Nothing opens by itself. Up and Down move through the list, Right goes to the details, Left comes back, OK enters, and holding OK
+ * (or the Actions button) opens that library's actions.
+ */
 @Composable
 fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
     val entries by vm.entries.collectAsState()
-    val favouriteCount by vm.favouriteCount.collectAsState()
     val list = entries
     var previewId by remember { mutableStateOf<String?>(null) }
     val preview = list?.firstOrNull { it.id == previewId } ?: list?.firstOrNull()
     val initial = remember(list) { list?.let { l -> l.firstOrNull { it.id == vm.lastUsedId && it.usable } ?: l.firstOrNull { it.usable } ?: l.firstOrNull() }?.id }
     val initialFocus = remember { FocusRequester() }
+    val enterButton = remember { FocusRequester() }
+    val listFocus = remember { FocusRequester() }       // the library row the remote last stood on: Left from the details goes back to it
     var focused by remember { mutableStateOf(false) }
     var addMenu by remember { mutableStateOf(false) }
-    var recentMenu by remember { mutableStateOf(false) }
     LaunchedEffect(initial) { if (initial != null && !focused) { delay(120); runCatching { initialFocus.requestFocus() } } }
     LaunchedEffect(initial) { if (previewId == null) previewId = initial }
+    val ordered = list.orEmpty().let { l -> l.filter { it.kind == LibraryEntry.Kind.COMBINED } + l.filter { it.kind == LibraryEntry.Kind.CONNECTION } + l.filter { it.kind == LibraryEntry.Kind.UNFINISHED } }
 
-    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0xFF16202C), Night), center = androidx.compose.ui.geometry.Offset(960f, 300f), radius = 1300f)))
-    Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), horizontalAlignment = Alignment.CenterHorizontally) {
-        // The mark, centred, with the time off to the side. Nothing else competes with the choice.
-        Box(Modifier.fillMaxWidth()) {
-            Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
-                Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(44.dp).clip(RoundedCornerShape(11.dp)))
-                Spacer(Modifier.width(12.dp))
-                Label("Stream", Tokens.pageTitle, Tokens.text, FontWeight.Bold); Label("Setu", Tokens.pageTitle, Gold, FontWeight.Bold)
+    Row(Modifier.fillMaxSize().background(Tokens.background)) {
+        // Left: the libraries.
+        Column(Modifier.weight(0.35f).fillMaxHeight().background(Tokens.panel).padding(start = Tokens.safeHorizontal, end = 20.dp, top = Tokens.safeVertical, bottom = Tokens.safeVertical)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)))
+                Label("Choose Library", Tokens.pageTitle, Tokens.text, FontWeight.Bold)
             }
-            Label(java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(System.currentTimeMillis())), Tokens.row, Tokens.textSecondary, modifier = Modifier.align(Alignment.CenterEnd))
-        }
-        Spacer(Modifier.weight(1f))
-        Label(if (list.isNullOrEmpty()) "Welcome" else "Who is watching?", Tokens.display, Tokens.text, FontWeight.Bold)
-        Label(if (list.isNullOrEmpty()) "Add a connection to get started." else "Choose a library to open.", Tokens.body, Tokens.textSecondary, modifier = Modifier.padding(top = 2.dp, bottom = 26.dp))
-        if (list == null) Loading(Modifier.height(120.dp)) else androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp)) {
-            val ordered = list.filter { it.kind == LibraryEntry.Kind.COMBINED } + list.filter { it.kind == LibraryEntry.Kind.CONNECTION } + list.filter { it.kind == LibraryEntry.Kind.UNFINISHED }
-            items(ordered, key = { it.id }) { LibraryTile(it, it.id == initial, initialFocus, nav, vm, { previewId = it.id }) { focused = true } }
-            item(key = "add") {
-                Focusable({ addMenu = true }, Modifier.width(200.dp).height(190.dp), scaleOnFocus = 1.06f, container = Color(0x0DFFFFFF), focusedContainer = Color(0xFF1A1F27), ring = Gold, shape = RoundedCornerShape(22.dp), hairline = true) { f ->
-                    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        Image(Icons.Filled.Add, null, Modifier.size(40.dp), colorFilter = ColorFilter.tint(if (f) Gold else Tokens.textSecondary))
-                        Label("Add a library", Tokens.row, if (f) Tokens.text else Tokens.textSecondary, FontWeight.Medium, modifier = Modifier.padding(top = 10.dp))
-                    }
+            Spacer(Modifier.height(18.dp))
+            if (list == null) Loading(Modifier.height(120.dp)) else androidx.compose.foundation.lazy.LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                items(ordered, key = { it.id }) { e ->
+                    LibraryRow(e, e.id == initial, initialFocus, enterButton, nav, vm, onPreview = { previewId = e.id; focused = true }, current = if (e.id == (preview?.id ?: initial)) listFocus else null)
                 }
+                item(key = "add") { ListAction("Add Connection", Icons.Filled.Add, enterButton) { addMenu = true } }
+                item(key = "manage") { ListAction("Manage Connections", Icons.Filled.Tune, enterButton, enabled = preview != null) { preview?.let { nav.open(Overlay.ManageLibrary(it)) } } }
+            }
+            Spacer(Modifier.height(6.dp))
+            ListAction("Settings", Icons.Filled.Settings, enterButton) { nav.openSettingsFromChooser() }
+        }
+        // Right: what the library under the remote is.
+        Box(Modifier.weight(0.65f).fillMaxHeight().padding(horizontal = 56.dp, vertical = Tokens.safeVertical)) {
+            Box(Modifier.align(Alignment.TopEnd)) { Clock() }
+            androidx.compose.animation.Crossfade(preview, Modifier.fillMaxSize(), animationSpec = androidx.compose.animation.core.tween(180), label = "libraryDetails") { e ->
+                if (e == null) Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+                    Label("Welcome", Tokens.hero, Tokens.text, FontWeight.Bold)
+                    Label("Add a connection to get started.", Tokens.body, Tokens.textSecondary, modifier = Modifier.padding(top = 6.dp))
+                } else LibraryDetails(e, enterButton, listFocus, nav, vm)
             }
         }
-        // What is in the library the remote is on.
-        Label(
-            when {
-                preview == null || list.isNullOrEmpty() -> ""
-                preview.kind == LibraryEntry.Kind.UNFINISHED -> "Setup was not finished. Continue where you left off."
-                preview.kind == LibraryEntry.Kind.COMBINED -> "%,d channels  ·  %,d movies  ·  %,d series".format(preview.channelCount, preview.movieCount, preview.seriesCount)
-                else -> "%,d channels  ·  %,d movies  ·  %,d series  ·  last read %s".format(preview.channelCount, preview.movieCount, preview.seriesCount, lastSync(preview.lastSyncAt))
-            }, Tokens.body, Tokens.textSecondary, maxLines = 1, modifier = Modifier.padding(top = 14.dp))
-        if (preview?.health == LibraryEntry.Health.LAST_READ_FAILED) Label("Offline or needs attention: opening uses what is saved on this device.", Tokens.small, Amber, modifier = Modifier.padding(top = 4.dp))
-        Spacer(Modifier.weight(1f))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            GhostPill("Settings", Icons.Filled.Settings) { nav.openSettingsFromChooser() }
-            if (preview != null) GhostPill("Manage", Icons.Filled.Tune) { nav.open(Overlay.ManageLibrary(preview)) }
-            if (preview != null && preview.kind != LibraryEntry.Kind.UNFINISHED) GhostPill("Details", Icons.Filled.Info) {
-                if (preview.kind == LibraryEntry.Kind.COMBINED) nav.base = Base.Combined(preview) else nav.base = Base.Setup(typeOf(preview), preview.sourceIds.first())
-            }
-        }
-        Label("OK to open  ·  hold OK to manage", Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(top = 10.dp))
     }
-    if (recentMenu) {
-        val recent = list.orEmpty().filter { it.usable && it.lastOpenedAt > 0 }.sortedByDescending { it.lastOpenedAt }.take(6)
-        ContextMenu("Recent libraries", "Opened most recently first", if (recent.isEmpty()) listOf(MenuAction("Nothing opened yet", Icons.Filled.History, enabled = false) {}) else recent.map { e -> MenuAction(e.name, Icons.Filled.PlayArrow) { vm.open(e) { nav.enterLibrary() } } }, onClose = { recentMenu = false })
-    }
-    if (addMenu) ContextMenu("Add a library", null, listOf(
+    if (addMenu) ContextMenu("Add a connection", null, listOf(
         MenuAction("Xtream Codes", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.XTREAM) },
         MenuAction("M3U URL", Icons.Filled.Link) { nav.base = Base.Setup(SourceType.M3U) },
         MenuAction("Stalker / Ministra portal", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.STALKER) },
@@ -147,6 +136,70 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
         MenuAction("WebDAV share", Icons.Filled.Folder) { nav.base = Base.Setup(SourceType.WEBDAV) },
         MenuAction("Combine libraries", Icons.Filled.Layers) { nav.base = Base.Combined() },
     ), onClose = { addMenu = false })
+}
+
+/** One saved library in the left list: a small icon, the name, its type and state, and a dot when it was the last one used. */
+@Composable
+private fun LibraryRow(e: LibraryEntry, isInitial: Boolean, initialFocus: FocusRequester, enter: FocusRequester, nav: Navigator, vm: LibraryViewModel, onPreview: () -> Unit, current: FocusRequester?) {
+    Focusable(
+        onClick = { if (e.kind == LibraryEntry.Kind.UNFINISHED) nav.base = Base.Setup(typeOf(e), e.sourceIds.first()) else vm.open(e) { nav.enterLibrary() } },
+        modifier = (if (isInitial) Modifier.focusRequester(initialFocus) else Modifier).then(if (current != null) Modifier.focusRequester(current) else Modifier).fillMaxWidth().focusProperties { right = enter }.testTag("library-${e.id}"),
+        shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.0f,
+        onFocus = { if (it) onPreview() }, onLongClick = { nav.open(Overlay.ManageLibrary(e)) },
+    ) { f ->
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(38.dp).clip(RoundedCornerShape(Tokens.radius)).background(Tokens.elevated), Alignment.Center) {
+                Image(typeIcon(e), null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(if (f) Tokens.text else Tokens.textSecondary))
+            }
+            Column(Modifier.weight(1f)) {
+                Label(e.name, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 1)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (e.kind != LibraryEntry.Kind.COMBINED) Box(Modifier.size(7.dp).background(healthColor(e), CircleShape))
+                    Label(if (e.kind == LibraryEntry.Kind.COMBINED) "Combined library" else if (e.kind == LibraryEntry.Kind.UNFINISHED) "Setup not finished" else e.typeLabel, Tokens.caption, Tokens.textSecondary, maxLines = 1)
+                }
+            }
+            if (e.lastOpenedAt > 0 && e.id == vm.lastUsedId) Label("Last used", Tokens.caption, Tokens.textTertiary)
+        }
+    }
+}
+
+@Composable
+private fun ListAction(text: String, icon: ImageVector, enter: FocusRequester, enabled: Boolean = true, onClick: () -> Unit) {
+    Focusable(if (enabled) onClick else ({}), Modifier.fillMaxWidth().focusProperties { right = enter }, shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.0f) { f ->
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(38.dp), Alignment.Center) { Image(icon, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(if (!enabled) Tokens.textTertiary else if (f) Tokens.text else Tokens.textSecondary)) }
+            Label(text, Tokens.row, if (!enabled) Tokens.textTertiary else Tokens.text, FontWeight.Medium)
+        }
+    }
+}
+
+/** The right side: the name large, what kind of connection it is and how it is doing, what it holds, and the actions. */
+@Composable
+private fun LibraryDetails(e: LibraryEntry, enter: FocusRequester, back: FocusRequester, nav: Navigator, vm: LibraryViewModel) {
+    Column(Modifier.fillMaxSize().leftGoesTo(back), verticalArrangement = Arrangement.Center) {
+        Label(if (e.kind == LibraryEntry.Kind.COMBINED) "COMBINED LIBRARY" else if (e.kind == LibraryEntry.Kind.UNFINISHED) "SETUP NOT FINISHED" else e.typeLabel.uppercase(), Tokens.caption, Tokens.textTertiary, FontWeight.Bold, letterSpacing = 1.2.sp)
+        Label(e.name, Tokens.hero, Tokens.text, FontWeight.Bold, maxLines = 2, modifier = Modifier.padding(top = 4.dp))
+        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.size(9.dp).background(healthColor(e), CircleShape))
+            Label(healthText(e), Tokens.body, Tokens.textSecondary, maxLines = 2)
+        }
+        if (e.kind != LibraryEntry.Kind.UNFINISHED) Row(Modifier.padding(top = 22.dp), horizontalArrangement = Arrangement.spacedBy(36.dp)) {
+            Stat("Channels", e.channelCount); Stat("Movies", e.movieCount); Stat("Series", e.seriesCount)
+        }
+        if (e.kind == LibraryEntry.Kind.CONNECTION) Label("Last read  ·  " + lastSync(e.lastSyncAt), Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(top = 16.dp))
+        if (e.health == LibraryEntry.Health.LAST_READ_FAILED) Label("Opening uses what is saved on this device.", Tokens.small, Tokens.warning, modifier = Modifier.padding(top = 4.dp))
+        Row(Modifier.padding(top = 28.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            val open = { if (e.kind == LibraryEntry.Kind.UNFINISHED) nav.base = Base.Setup(typeOf(e), e.sourceIds.first()) else vm.open(e) { nav.enterLibrary() } }
+            TvButton(if (e.kind == LibraryEntry.Kind.UNFINISHED) "Continue Setup" else "Enter Library", { open() }, Modifier.focusRequester(enter).testTag("enter-library"), icon = Icons.Filled.PlayArrow, primary = true)
+            TvButton("Actions", { nav.open(Overlay.ManageLibrary(e)) }, icon = Icons.Filled.Tune)
+            if (e.kind != LibraryEntry.Kind.UNFINISHED) TvButton("Details", { if (e.kind == LibraryEntry.Kind.COMBINED) nav.base = Base.Combined(e) else nav.base = Base.Setup(typeOf(e), e.sourceIds.first()) }, icon = Icons.Filled.Info)
+        }
+    }
+}
+
+@Composable
+private fun Stat(title: String, n: Int) {
+    Column { Label("%,d".format(n), Tokens.display, Tokens.text, FontWeight.Bold); Label(title, Tokens.small, Tokens.textSecondary) }
 }
 
 @Composable
@@ -295,6 +348,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
         }
     }
     var phoneOpen by remember { mutableStateOf(false) }
+    var reveal by remember { mutableStateOf(false) }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
@@ -329,30 +383,49 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
     }
 
     if (phoneOpen) PhoneSetupDialog(onFilled = { t, f -> form = f; vm.resetTest() }, onClose = { phoneOpen = false })
-    Column(Modifier.fillMaxSize().screenPadding(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Label(title, Tokens.display, Tokens.text, FontWeight.Bold)
+    val hasPassword = type in setOf(SourceType.XTREAM, SourceType.TVHEADEND, SourceType.ENIGMA2, SourceType.JELLYFIN, SourceType.EMBY, SourceType.PLEX, SourceType.WEBDAV)
+    Row(Modifier.fillMaxSize().screenPadding(), horizontalArrangement = Arrangement.spacedBy(48.dp)) {
+        // Left: what is being added, and where this step sits.
+        Column(Modifier.weight(0.34f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
+            Label(title, Tokens.display, Tokens.text, FontWeight.Bold)
+            Label(when (type) {
+                SourceType.XTREAM -> "Your provider's server address, user name and password."
+                SourceType.M3U -> "A playlist link from your provider."
+                SourceType.LOCAL_FILE, SourceType.LOCAL_FOLDER -> "Read from this device."
+                else -> "Read from ${type.label}."
+            }, Tokens.body, Tokens.textSecondary, maxLines = 3, modifier = Modifier.padding(top = 8.dp, bottom = 24.dp))
+            listOf("Details" to true, "Test the connection" to (test is LibraryViewModel.Test.Running), "Enter the library" to false).forEachIndexed { i, (step, now) ->
+                Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.size(26.dp).background(if (now || (i == 0 && test !is LibraryViewModel.Test.Running)) Color.White else Tokens.elevated, CircleShape), Alignment.Center) { Label("${i + 1}", Tokens.small, if (now || (i == 0 && test !is LibraryViewModel.Test.Running)) Tokens.onBright else Tokens.textSecondary, FontWeight.Bold) }
+                    Label(step, Tokens.row, if (now || (i == 0 && test !is LibraryViewModel.Test.Running)) Tokens.text else Tokens.textSecondary, FontWeight.Medium)
+                }
+            }
+            Label("Your login is kept in the Android Keystore and is never shown or logged.", Tokens.small, Tokens.textTertiary, maxLines = 3, modifier = Modifier.padding(top = 24.dp))
+        }
+        // Right: the fields and the actions.
+        Column(Modifier.weight(0.66f).fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)) {
         TvTextField(form.name, { form = form.copy(name = it) }, "Name (optional)", Modifier.widthIn(max = 640.dp).fillMaxWidth().focusRequester(first))
         when (type) {
             SourceType.HDHOMERUN -> {
                 TvTextField(form.address, { form = form.copy(address = it) }, "Tuner address (192.168.1.50 or hdhomerun.local)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
                 Label("Channels are read from the tuner on your network. Run a channel scan in the tuner's own setup first.", Tokens.small, Tokens.textTertiary)
             }
-            SourceType.TVHEADEND -> LoginFields(form, "Server (http://host:9981)", "User name", "Password") { form = it }
+            SourceType.TVHEADEND -> LoginFields(form, "Server (http://host:9981)", "User name", "Password", reveal) { form = it }
             SourceType.ENIGMA2 -> {
-                LoginFields(form, "Receiver address (http://192.168.1.60)", "User name (only if the receiver asks)", "Password") { form = it }
+                LoginFields(form, "Receiver address (http://192.168.1.60)", "User name (only if the receiver asks)", "Password", reveal) { form = it }
                 Label("Needs OpenWebif on the receiver. Streams play from its own stream port (8001).", Tokens.small, Tokens.textTertiary)
             }
             SourceType.JELLYFIN, SourceType.EMBY -> {
-                LoginFields(form, "Server (http://host:8096)", "User name", "Password") { form = it }
+                LoginFields(form, "Server (http://host:8096)", "User name", "Password", reveal) { form = it }
                 Label("Movies and series from the server's libraries. Live TV is not read.", Tokens.small, Tokens.textTertiary)
             }
             SourceType.PLEX -> {
                 TvTextField(form.address, { form = form.copy(address = it) }, "Server (http://host:32400)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
-                TvTextField(form.password, { form = form.copy(password = it) }, "Access token (X-Plex-Token)", Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = true)
+                TvTextField(form.password, { form = form.copy(password = it) }, "Access token (X-Plex-Token)", Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = !reveal)
                 Label("Movies and shows from the server's libraries. Find the token in Plex Web: Get Info, View XML, the address ends in X-Plex-Token=…", Tokens.small, Tokens.textTertiary, maxLines = 3)
             }
             SourceType.WEBDAV -> {
-                LoginFields(form, "Share address (https://host/remote.php/dav/files/me/)", "User name (optional)", "Password (optional)") { form = it }
+                LoginFields(form, "Share address (https://host/remote.php/dav/files/me/)", "User name (optional)", "Password (optional)", reveal) { form = it }
                 Label("Video files in the share and its folders (four levels deep) appear as movies.", Tokens.small, Tokens.textTertiary)
             }
             SourceType.LOCAL_FOLDER -> {
@@ -363,7 +436,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
             SourceType.XTREAM -> {
                 TvTextField(form.address, { form = form.copy(address = it) }, "Server address (http://host:port)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
                 TvTextField(form.user, { form = form.copy(user = it) }, "User name", Modifier.widthIn(max = 640.dp).fillMaxWidth())
-                TvTextField(form.password, { form = form.copy(password = it) }, "Password", Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = true)
+                TvTextField(form.password, { form = form.copy(password = it) }, "Password", Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = !reveal)
             }
             SourceType.STALKER -> {
                 TvTextField(form.address, { form = form.copy(address = it) }, "Portal address (http://host/c/)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
@@ -380,6 +453,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
             TvTextField(form.userAgent, { form = form.copy(userAgent = it) }, "User-Agent (optional, if your provider needs one)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
             TvTextField(form.headers, { form = form.copy(headers = it) }, "Extra headers (optional): Name: value || Name: value", Modifier.widthIn(max = 640.dp).fillMaxWidth())
         }
+        if (hasPassword) TvButton(if (reveal) "Hide password" else "Show password", { reveal = !reveal }, icon = if (reveal) Icons.Filled.VisibilityOff else Icons.Filled.Visibility)
         (test as? LibraryViewModel.Test.Failed)?.let { Label(it.message, Tokens.body, Tokens.danger, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp)) }
         message?.let { Label(it, Tokens.body, Tokens.textSecondary) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -390,6 +464,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
                 TvButton("Save as Draft", { vm.saveDraft(type, id, form) { saved -> id = saved; message = "Saved. Finish it any time from Choose Your Library." } })
                 TvButton("Cancel", { nav.base = Base.ChooseLibrary })
             }
+        }
         }
     }
 }
@@ -450,7 +525,7 @@ fun ManageLibraryDialog(entry: LibraryEntry, nav: Navigator, vm: LibraryViewMode
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(120); runCatching { first.requestFocus() } }
     Box(Modifier.fillMaxSize().background(Color(0xCC000000)), Alignment.Center) {
-        Column(Modifier.width(380.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.width(420.dp).background(Tokens.card, RoundedCornerShape(Tokens.radiusPanel)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Label(entry.name, Tokens.title, Tokens.text, FontWeight.Bold)
             Label(entry.typeLabel, Tokens.small, Tokens.textSecondary)
             Spacer(Modifier.height(6.dp))
@@ -464,10 +539,14 @@ fun ManageLibraryDialog(entry: LibraryEntry, nav: Navigator, vm: LibraryViewMode
                 if (entry.kind == LibraryEntry.Kind.CONNECTION) MenuRow("Edit Connection", Icons.Filled.Edit) { nav.close(); nav.base = Base.Setup(typeOf(entry), entry.sourceIds.first()) }
                 if (entry.kind == LibraryEntry.Kind.COMBINED) MenuRow("Edit Members", Icons.Filled.Layers) { nav.close(); nav.base = Base.Combined(entry) }
                 MenuRow("Rename", Icons.Filled.Edit) { renaming = true }
+                if (entry.kind != LibraryEntry.Kind.UNFINISHED) MenuRow("Connection Information", Icons.Filled.Info) {
+                    status = healthText(entry) + (if (entry.kind == LibraryEntry.Kind.CONNECTION) "  ·  last read " + lastSync(entry.lastSyncAt) else "") + "  ·  %,d channels, %,d movies, %,d series".format(entry.channelCount, entry.movieCount, entry.seriesCount)
+                }
                 MenuRow(if (confirmDelete) "Press again to delete" else "Delete", Icons.Filled.Delete) {
                     if (!confirmDelete) confirmDelete = true else vm.delete(entry) { nav.close() }
                 }
-                status?.let { Label(it, Tokens.small, Tokens.textSecondary, maxLines = 2) }
+                MenuRow("Cancel", Icons.Filled.Close) { nav.close() }
+                status?.let { Label(it, Tokens.small, Tokens.textSecondary, maxLines = 4) }
             }
         }
     }
@@ -495,7 +574,7 @@ fun PhoneSetupDialog(onFilled: (SourceType, LibraryViewModel.Form) -> Unit, onCl
     LaunchedEffect(Unit) { while (true) { left = server.secondsLeft; delay(1000); if (left == 0) onClose() } }
     val first = remember { FocusRequester() }
     LaunchedEffect(received) { delay(120); runCatching { first.requestFocus() } }
-    androidx.compose.ui.window.Dialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+    TvDialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
             Column(Modifier.width(420.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val r = received
@@ -566,19 +645,19 @@ private fun HeroArt(modifier: Modifier) {
 @Composable
 fun LogoReveal(reduced: Boolean, onDone: () -> Unit) {
     val a = remember { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0f) }
-    val drift = remember { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0.9f) }
+    val drift = remember { androidx.compose.animation.core.Animatable(1f) }
     val root = remember { FocusRequester() }
+    // A quiet start: the wordmark fades in, holds for a moment and fades out, under two seconds in all. Any key skips it.
     LaunchedEffect(Unit) {
         runCatching { root.requestFocus() }
-        if (!reduced) launch { drift.animateTo(1.04f, androidx.compose.animation.core.tween(6000, easing = androidx.compose.animation.core.LinearOutSlowInEasing)) }
-        if (!reduced) a.animateTo(1f, androidx.compose.animation.core.tween(1000, easing = app.streamsetu.core.ui.motion.Motion.Standard))
-        delay(if (reduced) 500 else 4900)
-        a.animateTo(0f, androidx.compose.animation.core.tween(if (reduced) 0 else 320))
+        if (!reduced) a.animateTo(1f, androidx.compose.animation.core.tween(400, easing = app.streamsetu.core.ui.motion.Motion.Standard))
+        delay(if (reduced) 400 else 800)
+        a.animateTo(0f, androidx.compose.animation.core.tween(if (reduced) 0 else 260))
         onDone()
     }
-    Box(Modifier.fillMaxSize().background(Night).focusRequester(root).focusable().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) { onDone(); true } else false }, Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(Color.Black).focusRequester(root).focusable().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) { onDone(); true } else false }, Alignment.Center) {
         Column(Modifier.graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 18.dp.toPx(); scaleX = drift.value; scaleY = drift.value }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_wordmark), null, Modifier.height(190.dp))
+            Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_wordmark), null, Modifier.height(96.dp))
         }
     }
 }
@@ -594,8 +673,8 @@ private fun Modifier.screenPadding(): Modifier =
 
 /** The three fields of a connection that signs in with a server address, a user name and a password. */
 @Composable
-private fun LoginFields(form: LibraryViewModel.Form, addressHint: String, userHint: String, passwordHint: String, onChange: (LibraryViewModel.Form) -> Unit) {
+private fun LoginFields(form: LibraryViewModel.Form, addressHint: String, userHint: String, passwordHint: String, reveal: Boolean = false, onChange: (LibraryViewModel.Form) -> Unit) {
     TvTextField(form.address, { onChange(form.copy(address = it)) }, addressHint, Modifier.widthIn(max = 640.dp).fillMaxWidth())
     TvTextField(form.user, { onChange(form.copy(user = it)) }, userHint, Modifier.widthIn(max = 640.dp).fillMaxWidth())
-    TvTextField(form.password, { onChange(form.copy(password = it)) }, passwordHint, Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = true)
+    TvTextField(form.password, { onChange(form.copy(password = it)) }, passwordHint, Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = !reveal)
 }

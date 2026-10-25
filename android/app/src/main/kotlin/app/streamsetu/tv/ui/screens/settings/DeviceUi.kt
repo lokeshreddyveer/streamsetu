@@ -84,7 +84,7 @@ private fun PictureViewer(pictures: List<DeviceItem>, start: Int, onClose: () ->
             }.getOrNull()
         }
     }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black), Alignment.Center) {
             bitmap?.let { Image(it.asImageBitmap(), item.name, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) } ?: Label("Loading…", Tokens.row, Tokens.textSecondary)
             Row(Modifier.align(Alignment.BottomCenter).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {

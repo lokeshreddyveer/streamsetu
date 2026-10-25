@@ -175,7 +175,11 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
         }
     }
 
+    /** Every socket of an exchange in progress (dialled or accepted). Turning the service off closes them, so no exchange outlives it and touches the next profile's data. */
+    private val openSockets: MutableSet<Socket> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
     private fun stop() {
+        openSockets.toList().forEach { runCatching { it.close() } }; openSockets.clear()
         loop?.cancel(); loop = null
         runCatching { discovery?.let { nsd.stopServiceDiscovery(it) } }; discovery = null
         runCatching { registration?.let { nsd.unregisterService(it) } }; registration = null
@@ -224,21 +228,24 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
             _status.value = "Syncing with ${f.name}…"
             val outcome = withContext(Dispatchers.IO) {
                 val socket = Socket()
+                openSockets += socket
                 try {
                     socket.connect(InetSocketAddress(f.host, f.port), 8000); socket.soTimeout = 300_000
                     protocol().runInitiator(SocketLink(socket))
-                } catch (e: Exception) { LanOutcome.Failed(e.message ?: "failed") } finally { runCatching { socket.close() } }
+                } catch (e: Exception) { LanOutcome.Failed(e.message ?: "failed") } finally { openSockets -= socket; runCatching { socket.close() } }
             }
-            finish(outcome, f.name)
+            if (_enabled.value) finish(outcome, f.name)
         } finally { busy.remove(f.id) }
     }
 
     private fun respond(socket: Socket) {
         val link = SocketLink(socket)
+        openSockets += socket
         try {
             socket.soTimeout = 300_000
-            finish(protocol().runResponder(link), null)
-        } catch (e: Exception) { /* the other device went away */ } finally { link.close() }
+            val outcome = protocol().runResponder(link)
+            if (_enabled.value) finish(outcome, null)
+        } catch (e: Exception) { /* the other device went away */ } finally { openSockets -= socket; link.close() }
     }
 
     private fun finish(outcome: LanOutcome, name: String?) {
