@@ -45,6 +45,8 @@ interface SportsDeps {
     suspend fun history(scope: SportsScope, fromMs: Long, toMs: Long): SportsLoad = SportsLoad(emptyList(), "")
     /** The longest archive the provider declares for these channels, in days (0: none). */
     suspend fun catchUpDays(channelIds: List<String>): Int = 0
+    /** Where the Guide should open for this event, after the channel was checked again right now; null when no feed may be reached. */
+    suspend fun guideTarget(event: app.streamsetu.core.sports.SportsEvent, order: List<String>): app.streamsetu.tv.sports.discovery.GuideTarget? = null
 }
 
 /** The real thing, built from the application's services. */
@@ -75,6 +77,9 @@ class RealSportsDeps(private val c: AppContainer) : SportsDeps {
         val revision = c.sportsInputs.revisions().toSortedMap().values.joinToString("|").let { app.streamsetu.core.sports.SportsEventService.hash(it) }
         return SportsLoad(events, revision, hit)
     }
+
+    override suspend fun guideTarget(event: app.streamsetu.core.sports.SportsEvent, order: List<String>) =
+        app.streamsetu.tv.sports.discovery.GuideLink.target(app.streamsetu.tv.sports.RealSportsAuthorization(c), event, c.ui.epgOffsetMinutes.value * 60_000L, order)
 
     override suspend fun history(scope: SportsScope, fromMs: Long, toMs: Long): SportsLoad = load(scope, fromMs, toMs)
 

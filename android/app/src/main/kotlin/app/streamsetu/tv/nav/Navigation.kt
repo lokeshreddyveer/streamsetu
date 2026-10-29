@@ -112,6 +112,10 @@ class Navigator {
     /** Back from Sports to the Search page, whose words and result position are still held by [search]. */
     fun returnToSearch() { go(Tab.SEARCH) }
 
+    /** A programme the Guide should open on (set by Sports after it re-checked the channel); the Guide takes it when it appears. */
+    var pendingGuideTarget: app.streamsetu.tv.sports.discovery.GuideTarget? by mutableStateOf(null)
+    fun openGuideAt(t: app.streamsetu.tv.sports.discovery.GuideTarget) { pendingGuideTarget = t; go(Tab.GUIDE) }
+
     /** Set when something elsewhere wants Settings opened on one category (by its name); Settings takes it when it appears. */
     var pendingSettings: String? by mutableStateOf(null)
 

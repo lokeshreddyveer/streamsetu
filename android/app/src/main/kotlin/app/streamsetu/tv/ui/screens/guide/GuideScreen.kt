@@ -52,6 +52,7 @@ import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
+import androidx.compose.ui.platform.testTag
 import javax.inject.Inject
 
 data class GuideRow(val channel: Channel, val programmes: List<EpgProgram>)
@@ -73,12 +74,19 @@ class GuideViewModel @Inject constructor(private val c: AppContainer) : ViewMode
     /** Which channels the Guide lists (up to 250 with guide data): worked out once for a category, a search or the favourites switch, not again when the time window moves. */
     private class Picked(val channels: List<Channel>, val guideIds: Map<String, String>)
 
-    private val picked: Flow<Picked> = combine(favouritesOnly, query, category) { f, q, cat -> Triple(f, q, cat) }.flatMapLatest { (fav, q, cat) ->
+    /** One-shot: show exactly this channel id (set by an Open Guide link whose channel is not among the rows). Cleared as soon as the link has landed or failed, or the person changes the view. */
+    private val onlyId = MutableStateFlow<String?>(null)
+    /** Said when an Open Guide link could not be followed. */
+    val notice = MutableStateFlow<String?>(null)
+
+    private val picked: Flow<Picked> = combine(combine(favouritesOnly, query, category) { f, q, cat -> Triple(f, q, cat) }, onlyId) { t, only -> t to only }.flatMapLatest { (t, only) ->
+        val (fav, q, cat) = t
         c.browse.channels(cat, SortSpec(SortField.PROVIDER), 40000).conflate().mapLatest { all ->          // a newer channel list replaces an unfinished one; the work runs off the main thread
             val resolved = c.epg.resolve(all)
             val nq = SearchText.normalize(q)
             val favSet = if (fav) favs.value else emptySet()
-            Picked(all.filter { it.id in resolved && (!fav || it.id in favSet) && (q.isBlank() || SearchText.normalize(it.name).contains(nq)) }.take(250), resolved)
+            if (only != null) Picked(app.streamsetu.tv.sports.discovery.GuideLink.onlyId(all, only) { it.id }.filter { it.id in resolved }, resolved)
+            else Picked(all.filter { it.id in resolved && (!fav || it.id in favSet) && (q.isBlank() || SearchText.normalize(it.name).contains(nq)) }.take(250), resolved)
         }
     }
 
@@ -92,8 +100,24 @@ class GuideViewModel @Inject constructor(private val c: AppContainer) : ViewMode
     }.map<List<GuideRow>, List<GuideRow>?> { it }.onStart { emit(null) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(120_000), null)
 
     init { viewModelScope.launch { c.library.sourceIds.drop(1).collect { category.value = Browse.All; favouritesOnly.value = false; query.value = "" } } }
-    fun shift(hours: Int) { windowStart.value += hours * 3_600_000L }
-    fun now() { windowStart.value = halfHour(System.currentTimeMillis()) - 30 * 60_000L }
+    /** Sports asked the Guide to open on a programme (see GuideLink). The filters that could hide the channel are cleared and the window moves to the programme; the screen then lands on it. */
+    val target = MutableStateFlow<app.streamsetu.tv.sports.discovery.GuideTarget?>(null)
+    private var asked = false
+    fun aim(t: app.streamsetu.tv.sports.discovery.GuideTarget) {
+        favouritesOnly.value = false; category.value = Browse.All; query.value = ""; onlyId.value = null; notice.value = null; asked = false
+        windowStart.value = halfHour(t.startMs) - 30 * 60_000L
+        target.value = t
+    }
+    /** The channel was not among the rows: ask once for exactly its id. If that finds nothing, say so; no other channel is ever substituted. */
+    fun narrowToTarget(rowsLoaded: Boolean) {
+        val t = target.value ?: return
+        if (!asked) { asked = true; onlyId.value = t.channelId; return }
+        if (!rowsLoaded) return
+        onlyId.value = null; target.value = null; asked = false; notice.value = "This channel is no longer available in the Guide."
+    }
+    fun landed() { target.value = null; asked = false; onlyId.value = null }
+    fun shift(hours: Int) { notice.value = null; windowStart.value += hours * 3_600_000L }
+    fun now() { notice.value = null; windowStart.value = halfHour(System.currentTimeMillis()) - 30 * 60_000L }
     fun toggleFavourite(ch: Channel) = viewModelScope.launch { c.user.setFavourite(ch.id, ContentKind.CHANNEL, ch.id !in favs.value) }
 
     companion object {
@@ -138,6 +162,7 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
     }
     val entry = LocalContentEntry.current ?: remember { FocusRequester() }
     val now by rememberMinute()
+    LaunchedEffect(nav.pendingGuideTarget) { nav.pendingGuideTarget?.let { vm.aim(it); nav.pendingGuideTarget = null } }
     val totalW = (GuideViewModel.WINDOW_MIN * dpPerMin).dp
     val rowHeight = rowH * maxOf(1f, androidx.compose.ui.platform.LocalDensity.current.fontScale)
 
@@ -176,6 +201,8 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
                 }
             }
         }
+        val notice by vm.notice.collectAsStateWithLifecycle()
+        notice?.let { Label(it, Tokens.small, Tokens.warning, modifier = Modifier.padding(top = 4.dp).testTag("guide-notice")) }
         Spacer(Modifier.height(6.dp))
         TvTextField(query, { vm.query.value = it }, "Search channels in the guide", Modifier.widthIn(max = 420.dp).railOnLeft())
         Spacer(Modifier.height(6.dp))
@@ -199,6 +226,17 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
         fun cellRequester(channelId: String, p: app.streamsetu.core.model.EpgProgram?): FocusRequester =
             if (p != null && channelId == (nav.memory.recall(app.streamsetu.tv.nav.Tab.GUIDE)?.id ?: rowIds.firstOrNull()) && p.isLive(now)) restore
             else cellRequesters.getOrPut("$channelId|${p?.startMs ?: -1}") { FocusRequester() }
+
+        val aim by vm.target.collectAsStateWithLifecycle()
+        LaunchedEffect(aim, list, start) {
+            val t = aim ?: return@LaunchedEffect
+            val rs = list ?: return@LaunchedEffect
+            when (val l = app.streamsetu.tv.sports.discovery.GuideLink.land(rs.map { it.channel.id to it.programmes }, t)) {
+                is app.streamsetu.tv.sports.discovery.GuideLanding.NotListed -> vm.narrowToTarget(rowsLoaded = rs.all { it.channel.id == t.channelId })       // these rows are the answer to the exact-id question, not an older list
+                is app.streamsetu.tv.sports.discovery.GuideLanding.Programme -> { land(rs, l.channelId, l.startMs, listState) { ch, st -> cellRequester(ch, rs.firstOrNull { it.channel.id == ch }?.programmes?.firstOrNull { it.startMs == st }) }; vm.landed() }
+                is app.streamsetu.tv.sports.discovery.GuideLanding.Channel -> { land(rs, l.channelId, l.startMs, listState) { ch, st -> cellRequester(ch, rs.firstOrNull { it.channel.id == ch }?.programmes?.firstOrNull { it.startMs == st }) }; vm.landed() }
+            }
+        }
         fun verticalMove(rowIndex: Int, from: app.streamsetu.core.model.EpgProgram?, down: Boolean): Boolean {
             val all = rows ?: return false
             val target = rowIndex + if (down) 1 else -1
@@ -285,6 +323,15 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
             else if (ch.catchupDays > 0 && p.startMs <= now - ch.catchupDays * 86_400_000L) add(MenuAction("Too old for catch-up (${ch.catchupDays} days)", Icons.Filled.History, enabled = false) {})
         }, onClose = { details = null })
     }
+}
+
+/** Scrolls to the channel's row and puts the remote on the programme's cell (or the row's only stop), by frames. */
+private suspend fun land(rows: List<GuideRow>, channelId: String, startMs: Long?, list: androidx.compose.foundation.lazy.LazyListState, requester: (String, Long?) -> FocusRequester) {
+    val at = rows.indexOfFirst { it.channel.id == channelId }.takeIf { it >= 0 } ?: return
+    list.scrollToItem((at - 1).coerceAtLeast(0))
+    repeat(8) { androidx.compose.runtime.withFrameNanos { } }
+    val r = requester(channelId, startMs)
+    app.streamsetu.tv.ui.components.requestFocusOnFrames(8, { r.requestFocus() }, { app.streamsetu.tv.ui.components.FocusMemory.focused === r })
 }
 
 @Composable

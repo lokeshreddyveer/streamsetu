@@ -68,6 +68,9 @@ class FakeSportsDeps(startScope: SportsScope = SportsScope(listOf("A"), "main", 
         try { historyGate?.await() } catch (e: CancellationException) { historyCancelled++; throw e }
         return SportsLoad(historyResult, "hist", false)
     }
+    @Volatile var guide: (SportsEvent) -> app.streamsetu.tv.sports.discovery.GuideTarget? = { null }
+    val guideChecks = AtomicInteger()
+    override suspend fun guideTarget(event: SportsEvent, order: List<String>): app.streamsetu.tv.sports.discovery.GuideTarget? { guideChecks.incrementAndGet(); return guide(event) }
     override suspend fun catchUpDays(channelIds: List<String>): Int { dayQueries.incrementAndGet(); return declaredDays }
 }
 

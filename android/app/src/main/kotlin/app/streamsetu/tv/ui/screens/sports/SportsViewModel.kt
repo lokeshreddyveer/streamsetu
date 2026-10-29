@@ -193,6 +193,16 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
     /** Back from a page. False when none was open. */
     fun closePage(): Boolean { if (pages.value.isEmpty()) return false; pages.update { it.dropLast(1) }; refreshHistory(); return true }
 
+    /** Open Guide on the open event's programme. The channel is checked again first; if no feed may be reached nothing opens and the person is told. */
+    fun openGuide(open: (app.streamsetu.tv.sports.discovery.GuideTarget) -> Unit) {
+        val e = openEvent() ?: return; val order = playback?.recommendedFor(e.id)?.first?.map { it.feed.channelId }.orEmpty(); val myEpoch = epoch.value
+        work.launch {
+            val t = deps.guideTarget(e, order)
+            if (myEpoch != epoch.value) return@launch
+            if (t == null) personalNote.value = "That channel is not available any more." else kotlinx.coroutines.withContext(Dispatchers.Main) { open(t) }
+        }
+    }
+
     fun clearOrigin() { fromSearch.value = false }
     fun hubFromSearch() = fromSearch.value
     fun pageCount() = pages.value.size

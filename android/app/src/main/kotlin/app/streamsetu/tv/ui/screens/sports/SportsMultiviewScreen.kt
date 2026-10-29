@@ -119,6 +119,7 @@ fun SportsMultiviewScreen(c: AppContainer, onClose: () -> Unit, onFullScreen: (C
     val now = System.currentTimeMillis()
     val live = remember(sel, mv.active) { ctl.selection.liveEvents(now) }
     val followSet by c.sportsFollows.follows.collectAsStateWithLifecycle(app.streamsetu.tv.sports.personal.FollowSet.NONE)
+    val followedIds = remember(followSet, live) { app.streamsetu.tv.sports.discovery.MultiviewHints.followedIds(followSet, ctl.selection.loadedEvents(), live) }
 
     // The list keeps only channels that still have a tile (a tile removed by hand, or because it is no longer allowed).
     LaunchedEffect(mv.tiles.map { it.channelId }) { if (mv.active) ctl.selection.keepOnly(mv.tiles.map { it.channelId }.toSet()) }
@@ -147,7 +148,7 @@ fun SportsMultiviewScreen(c: AppContainer, onClose: () -> Unit, onFullScreen: (C
         } else if (ctl.capability.usableLimit() < 2) {
             MultiviewUnsupported(onClose, null)
         } else {
-            val candidates = live.map { e -> MultiviewCandidate(e.id, e.title, e.sport.title, e.feeds.size, sel.entries.any { it.eventId == e.id }, followed = followSet.matches(e)) }
+            val candidates = live.map { e -> MultiviewCandidate(e.id, e.title, e.sport.title, e.feeds.size, sel.entries.any { it.eventId == e.id }, followed = e.id in followedIds) }
             MultiviewBuilder(sel, candidates, replacingEntry, BuilderActions(
                 add = { id -> scope.launch { val r = replacingEntry; if (r != null) { ctl.selection.replace(r, id); replacingEntry = null } else ctl.selection.add(id) } },
                 chooseFeed = { id -> scope.launch { openFeeds(id, null, replacingEntry) } },

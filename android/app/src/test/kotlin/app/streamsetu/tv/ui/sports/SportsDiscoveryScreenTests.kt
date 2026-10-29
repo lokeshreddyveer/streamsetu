@@ -399,4 +399,27 @@ class SportsDiscoveryScreenTests {
     @Test fun staleLoadDroppedSourceDisabledOrRemoved() = oldLoadNeverShown(base.copy(sourceIds = emptyList()))
     @Test fun staleCatchUpDroppedSourceDisabledOrRemoved() = catchUpDroppedAfterChange(base.copy(sourceIds = emptyList()))
     @Test fun detailAndMyClearSourceDisabledOrRemoved() = detailAndMyClear(base.copy(sourceIds = emptyList()))
+
+    // ---- Open Guide from the event
+
+    @Test fun openGuideChecksTheChannelThenOpensTheGuideOnItsProgramme() {
+        val ev = events; show(ev); deps.guide = { e -> GuideTarget(e.feeds.first().channelId, e.startMs) }
+        rule.runOnUiThread { vm.openDetail("a") }; until { has("sports-open-guide") && focusedTags() == listOf("sports-detail-close") }
+        rule.onNodeWithTag("sports-open-guide").requestFocus(); key(Key.Enter)
+        until { org.robolectric.shadows.ShadowLooper.idleMainLooper(); nav.tab == Tab.GUIDE }; assertEquals(GuideTarget("c-a", ev[0].startMs), nav.pendingGuideTarget); assertEquals(1, deps.guideChecks.get())
+    }
+
+    @Test fun openGuideRefusedByTheCheckOpensNothingAndSaysSo() {
+        val ev = events; show(ev); deps.guide = { null }
+        rule.runOnUiThread { vm.openDetail("a") }; until { has("sports-open-guide") && focusedTags() == listOf("sports-detail-close") }
+        rule.onNodeWithTag("sports-open-guide").requestFocus(); key(Key.Enter)
+        until { deps.guideChecks.get() == 1 }; rule.waitForIdle()
+        assertEquals(Tab.SPORTS, nav.tab); assertNull(nav.pendingGuideTarget)
+    }
+
+    @Test fun focusingOpenGuideChecksNothing() {
+        val ev = events; show(ev); rule.runOnUiThread { vm.openDetail("a") }; until { has("sports-open-guide") && focusedTags() == listOf("sports-detail-close") }
+        rule.onNodeWithTag("sports-open-guide").requestFocus(); rule.waitForIdle(); key(Key.DirectionDown); key(Key.DirectionUp)
+        assertEquals(0, deps.guideChecks.get()); assertEquals(Tab.SPORTS, nav.tab)
+    }
 }

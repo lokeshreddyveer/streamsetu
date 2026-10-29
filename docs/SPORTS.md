@@ -97,6 +97,6 @@ Nothing new is stored and no engine is added. Pages, My Sports and Search result
 - A name the classifier cannot read as sides or a competition is not a team or competition result; it is still found as an event or a TV Guide programme.
 - A recording is listed on a page when it belongs to a listed event, or when its old key fits exactly one identity. Otherwise it is only in My Sports and Settings → Recordings.
 - Catch-Up on a page needs a channel in the current guide window that declares an archive for that sport.
-- Open Guide opens the Guide; it does not yet jump to the channel.
-- The Multiview screen's "followed" hint uses follows without the scoping index.
+- Open Guide re-checks the channel (same authorization as playback), then opens the Guide on that channel id and the programme's time (guide offset applied). If the programme moved it lands on what is on air then; if it is gone, on the channel's row. If the channel is not among the Guide's rows, the Guide is asked once for exactly that channel id (never by name, so a same-named channel of another playlist is never taken) and otherwise says "This channel is no longer available in the Guide." The scroll and focus on the cell are only checked by hand on a TV.
+- The Multi-View builder's followed hint uses the same strict, playlist-aware identities as the pages; unresolved or unavailable old follows show no hint.
 - Needs a physical TV: remote feel on long names and large pages, cold-start time of the first Sports search, and memory on low-end Fire TV hardware.

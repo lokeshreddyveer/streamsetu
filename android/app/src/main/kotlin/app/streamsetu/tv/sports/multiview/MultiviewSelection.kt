@@ -59,6 +59,9 @@ class SportsMultiviewSelection(
     fun useEvents(all: () -> List<SportsEvent>) { allEvents = all; lookup = { id -> all().firstOrNull { it.id == id } } }
 
     /** The events a Multi-View can be built from right now: live, with at least one feed. */
+    /** Every event the Sports screens hold (not only the live ones): the names that decide which team a follow means. */
+    fun loadedEvents(): List<SportsEvent> = allEvents()
+
     fun liveEvents(nowMs: Long): List<SportsEvent> = allEvents().filter { it.state(nowMs) == SportsEventState.LIVE && it.feeds.isNotEmpty() }
 
     private suspend fun resolve(eventId: String, channelId: String?, others: List<MultiviewEntry>, allowSameEvent: Boolean): Pair<MultiviewEntry?, AddRefusal?> {

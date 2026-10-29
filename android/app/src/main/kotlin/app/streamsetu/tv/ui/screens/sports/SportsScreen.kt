@@ -203,7 +203,7 @@ fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, playRecording: (String
             watchCatchUp = { id -> vm.archive(id, false) { nav.liveFullscreen = false; nav.open(app.streamsetu.tv.nav.Overlay.Player) } },
             openMultiview = { vm.beforeMultiview(); nav.open(app.streamsetu.tv.nav.Overlay.SportsMultiview) },
             openPage = vm::openPage, followPage = vm::followPage, unfollowPage = vm::unfollowPage, chooseFollow = vm::chooseFollow,
-            openGuide = { nav.go(Tab.GUIDE) },
+            openGuide = { vm.openGuide { t -> nav.openGuideAt(t) } },
             closePageUi = { vm.closePage(); if (vm.hubFromSearch() && vm.pageCount() == 0) { vm.clearOrigin(); nav.returnToSearch() } },
         )
     }
