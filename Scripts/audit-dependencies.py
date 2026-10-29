@@ -10,7 +10,7 @@
 Three outcomes are kept apart: clean (0), vulnerable (1) and unknown (2: offline, a lookup failed, or something could not be identified).
 
 Bundled Mac libraries (macos/third_party/libmpv/*.dylib) have no package manifest, so they are identified from the files themselves (install name, version, SHA-256) and
-checked against macos/third_party/libmpv-components.json, which records for each library its upstream project, exact upstream revision, and the date its security advisories were
+checked against macos/release/libmpv-components.json, which records for each library its upstream project, exact upstream revision, and the date its security advisories were
 last reviewed. A library is "unknown" (blocks a strict run) when it is missing from that file, its file or version differs from what was reviewed, no exact upstream revision is
 recorded, or the review is older than 30 days. A recorded revision is also looked up in OSV by commit.
 
@@ -134,12 +134,12 @@ def mac_libraries():
 scope = arg("--scope") or "all"
 print("Mac bundled libraries")
 libs = mac_libraries() if scope in ("all", "mac") else []
-manifest_path = repo / "macos/third_party/libmpv-components.json"
+manifest_path = repo / "macos/release/libmpv-components.json"
 manifest = {c["file"]: c for c in json.loads(manifest_path.read_text()).get("components", [])} if manifest_path.exists() else {}
 today = datetime.date.today()
 for lib in libs:
     c, why = manifest.get(lib["file"]), None
-    if c is None: why = "not in macos/third_party/libmpv-components.json (no known upstream project)"
+    if c is None: why = "not in macos/release/libmpv-components.json (no known upstream project)"
     elif c.get("sha256") != lib["sha256"] or c.get("version") != lib["version"]: why = "the file is not the one that was reviewed (version or hash differs)"
     elif not c.get("upstream_revision"): why = "no exact upstream revision recorded, so it cannot be looked up"
     else:

@@ -12,7 +12,7 @@ Three outcomes are kept apart: clean (exit 0), vulnerable (1), unknown (2: offli
 
 ## The Mac's bundled libraries (about 45 dylibs)
 
-They have no package manifest, so each one is identified from the file itself (install name, version, SHA-256) and checked against `macos/third_party/libmpv-components.json`, which records its upstream project, the **exact upstream git revision** it was built from, and the date its security advisories were last read. A library stops a strict run when:
+They have no package manifest, so each one is identified from the file itself (install name, version, SHA-256) and checked against `macos/release/libmpv-components.json`, which records its upstream project, the **exact upstream git revision** it was built from, and the date its security advisories were last read. A library stops a strict run when:
 
 - it is not in that file, or the file or version differs from what was reviewed;
 - no exact upstream revision is recorded (it cannot be looked up);
