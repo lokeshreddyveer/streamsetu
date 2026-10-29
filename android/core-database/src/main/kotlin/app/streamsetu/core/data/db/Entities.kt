@@ -200,9 +200,9 @@ data class SportsReminderEntity(
     val endMs: Long,
     val leadMs: Long,
     val slot: Long,
-    /** Which of the same sides' fixtures in this neighbourhood the reminder was made for (0 = the earlier), and how many there were then. A doubleheader is told apart by this, not by who is nearer in time. */
-    val occurrence: Int,
+    /** How many fixtures of the same sides there were close to this one when it was matched (1 = it was alone), and the channels that carried this one and none of the others. A doubleheader is told apart by those channels, or by a start time that has not moved; never by order. */
     val siblings: Int,
+    val distinguishing: String,
     val matchedEventId: String?,
     val candidateChannelIds: String,
     val status: String,

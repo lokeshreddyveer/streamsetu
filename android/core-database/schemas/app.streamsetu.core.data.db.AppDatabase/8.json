@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 8,
-    "identityHash": "dc12799e6f6a2f4120d1b34de19703cc",
+    "identityHash": "78fbc8e2806ae3646bbfaa12bb9dd518",
     "entities": [
       {
         "tableName": "sources",
@@ -1415,7 +1415,7 @@
       },
       {
         "tableName": "sports_reminders",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `profileId` TEXT NOT NULL, `sport` TEXT NOT NULL, `identity` TEXT NOT NULL, `competitionKey` TEXT, `participantsKey` TEXT NOT NULL, `startMs` INTEGER NOT NULL, `endMs` INTEGER NOT NULL, `leadMs` INTEGER NOT NULL, `slot` INTEGER NOT NULL, `occurrence` INTEGER NOT NULL, `siblings` INTEGER NOT NULL, `matchedEventId` TEXT, `candidateChannelIds` TEXT NOT NULL, `status` TEXT NOT NULL, `notifiedAt` INTEGER NOT NULL, `bannerAt` INTEGER NOT NULL, `kept` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `profileId` TEXT NOT NULL, `sport` TEXT NOT NULL, `identity` TEXT NOT NULL, `competitionKey` TEXT, `participantsKey` TEXT NOT NULL, `startMs` INTEGER NOT NULL, `endMs` INTEGER NOT NULL, `leadMs` INTEGER NOT NULL, `slot` INTEGER NOT NULL, `siblings` INTEGER NOT NULL, `distinguishing` TEXT NOT NULL, `matchedEventId` TEXT, `candidateChannelIds` TEXT NOT NULL, `status` TEXT NOT NULL, `notifiedAt` INTEGER NOT NULL, `bannerAt` INTEGER NOT NULL, `kept` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -1478,15 +1478,15 @@
             "notNull": true
           },
           {
-            "fieldPath": "occurrence",
-            "columnName": "occurrence",
+            "fieldPath": "siblings",
+            "columnName": "siblings",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "siblings",
-            "columnName": "siblings",
-            "affinity": "INTEGER",
+            "fieldPath": "distinguishing",
+            "columnName": "distinguishing",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -1600,7 +1600,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dc12799e6f6a2f4120d1b34de19703cc')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '78fbc8e2806ae3646bbfaa12bb9dd518')"
     ]
   }
 }

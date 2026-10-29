@@ -22,7 +22,7 @@ class SportsMigrationTests {
     private fun SupportSQLiteDatabase.follow(profile: String, kind: String = "SPORT", key: String = "cricket", verb: String = "INSERT") =
         execSQL("$verb INTO sports_follows (profileId, kind, sport, normKey, displayName, createdAt) VALUES ('$profile', '$kind', 'CRICKET', '$key', 'Cricket', 1)")
     private fun SupportSQLiteDatabase.reminder(id: String, profile: String = "main", slot: Int = 1, verb: String = "INSERT") =
-        execSQL("$verb INTO sports_reminders (id, profileId, sport, identity, competitionKey, participantsKey, startMs, endMs, leadMs, slot, occurrence, siblings, matchedEventId, candidateChannelIds, status, notifiedAt, bannerAt, kept, createdAt, updatedAt) VALUES ('$id', '$profile', 'CRICKET', 'cricket|head_to_head|australia|india|', NULL, 'australia|india', 10, 20, 900000, $slot, 0, 1, NULL, '', 'SCHEDULED', 0, 0, 0, 1, 1)")
+        execSQL("$verb INTO sports_reminders (id, profileId, sport, identity, competitionKey, participantsKey, startMs, endMs, leadMs, slot, siblings, distinguishing, matchedEventId, candidateChannelIds, status, notifiedAt, bannerAt, kept, createdAt, updatedAt) VALUES ('$id', '$profile', 'CRICKET', 'cricket|head_to_head|australia|india|', NULL, 'australia|india', 10, 20, 900000, $slot, 1, '', NULL, '', 'SCHEDULED', 0, 0, 0, 1, 1)")
 
     @Test fun theCurrentProductionSchemaUpgradesAndTheSportsTablesStartEmpty() {
         helper.createDatabase("prod", 7).apply {

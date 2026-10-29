@@ -386,56 +386,76 @@ class SportsPersonalTests {
 
     // ---- the same sides twice
 
-    private fun twice(firstAt: Long = t0 + 2 * h, secondAt: Long = t0 + 5 * h) = event("first", firstAt) to event("second", secondAt)
-
+    private fun channel(id: String) { d.auth.channels[id] = Channel(id, "A", "cat", "Channel $id", null, null, "ref", null) }
+    private fun fixture(id: String, start: Long, vararg channels: String): SportsEvent { channels.forEach(::channel); return event(id, start, channels = channels.toList()) }
     private suspend fun made(e: SportsEvent, guide: List<SportsEvent>): String = (reminders.create(e, guide = guide) as CreateResult.Created).id
+    private suspend fun row(id: String) = db.sports().reminder(id)!!
+    private fun silent() = assertTrue("nothing was sent", d.notifier.posts.isEmpty())
 
-    @Test fun eachOfTwoFixturesKeepsItsOwnReminder() = run {
-        val (a, b) = twice(); val ida = made(a, listOf(a, b)); val idb = made(b, listOf(a, b))
-        assertEquals("two reminders, one per fixture", 2, db.sports().reminders("main").size)
-        assertEquals(listOf(0 to 2, 1 to 2), listOf(ida, idb).map { id -> db.sports().reminder(id)!!.let { it.occurrence to it.siblings } })
-        reminders.reassociate(listOf(a, b))
-        assertEquals("first", db.sports().reminder(ida)!!.matchedEventId); assertEquals("second", db.sports().reminder(idb)!!.matchedEventId)
+    @Test fun twoFixturesOnTheSameChannelsKeepTheirReminderOnlyWhileTheirStartsHoldStill() = run {
+        val a = fixture("first", t0 + 2 * h, "1"); val b = fixture("second", t0 + 5 * h, "1")
+        val ida = made(a, listOf(a, b)); val idb = made(b, listOf(a, b))
+        assertEquals(listOf(2, 2), listOf(ida, idb).map { row(it).siblings }); assertEquals("nothing tells them apart by channel", listOf("", ""), listOf(ida, idb).map { row(it).distinguishing })
+        reminders.reassociate(listOf(fixture("first-r", t0 + 2 * h + 2 * min, "1"), fixture("second-r", t0 + 5 * h, "1")))        // a new revision, the times unchanged
+        assertEquals("first-r", row(ida).matchedEventId); assertEquals("second-r", row(idb).matchedEventId)
     }
 
-    @Test fun aFixtureMovingCloserToTheOtherStillKeepsItsReminder() = run {
-        val (a, b) = twice(); val ida = made(a, listOf(a, b)); val idb = made(b, listOf(a, b))
-        val a2 = event("first2", t0 + 4 * h + 30 * min)                                   // delayed to 30 minutes before the second: now nearer to it than to its own old time
-        reminders.reassociate(listOf(a2, b))
-        assertEquals("first2", db.sports().reminder(ida)!!.matchedEventId); assertEquals("second", db.sports().reminder(idb)!!.matchedEventId)
-        assertEquals(a2.startMs, db.sports().reminder(ida)!!.startMs); assertEquals(b.startMs, db.sports().reminder(idb)!!.startMs)
+    @Test fun sameChannelsAfterARefreshThatMovedOneFixtureIsAmbiguousAndSendsNothing() = run {
+        val a = fixture("first", t0 + 2 * h, "1"); val b = fixture("second", t0 + 5 * h, "1"); val ida = made(a, listOf(a, b)); val idb = made(b, listOf(a, b))
+        val delayed = fixture("first2", t0 + 4 * h + 30 * min, "1")                       // the first was delayed to just before the second
+        reminders.reassociate(listOf(delayed, b))
+        for (id in listOf(ida, idb)) { assertEquals(ReminderStatus.AMBIGUOUS.name, row(id).status); assertNull(row(id).matchedEventId) }
+        d.live = listOf(delayed, b); d.time = t0 + 2 * h - 5 * min; reminders.fire(ida); d.time = t0 + 5 * h - 5 * min; reminders.fire(idb); silent()
     }
 
-    @Test fun theNearestEventChangingAfterACorrectionDoesNotMoveAReminder() = run {
-        val (a, b) = twice(secondAt = t0 + 3 * h + 30 * min); val ida = made(a, listOf(a, b))
-        val a2 = event("first2", t0 + 3 * h)                                              // corrected to a time that is nearer the second fixture than the reminder's own
-        reminders.reassociate(listOf(a2, b)); assertEquals("first2", db.sports().reminder(ida)!!.matchedEventId)
+    @Test fun aSwapWhoseChannelsAlsoChangedIsAmbiguousForBoth() = run {
+        val a = fixture("first", t0 + 4 * h, "1"); val b = fixture("second", t0 + 5 * h, "2"); val ida = made(a, listOf(a, b)); val idb = made(b, listOf(a, b))
+        reminders.reassociate(listOf(fixture("first", t0 + 5 * h + 30 * min, "3"), fixture("second", t0 + 4 * h + 30 * min, "4")))
+        for (id in listOf(ida, idb)) { assertEquals(ReminderStatus.AMBIGUOUS.name, row(id).status); assertNull(row(id).matchedEventId) }
     }
 
-    @Test fun aChangedNumberOfFixturesIsAmbiguousNotGuessed() = run {
-        val (a, b) = twice(); val ida = made(a, listOf(a, b)); val idb = made(b, listOf(a, b))
-        reminders.reassociate(listOf(b))                                                   // one of the two is gone: which one is left cannot be proven
-        assertEquals(ReminderStatus.AMBIGUOUS.name, db.sports().reminder(ida)!!.status); assertNull(db.sports().reminder(ida)!!.matchedEventId)
-        assertEquals(ReminderStatus.AMBIGUOUS.name, db.sports().reminder(idb)!!.status); assertNull(db.sports().reminder(idb)!!.matchedEventId)
-        reminders.reassociate(listOf(a, b)); assertEquals("and both are found again when both are", "first", db.sports().reminder(ida)!!.matchedEventId)
+    @Test fun aSwapWhereTheStoredChannelsIdentifyOneFixtureEachStillMatchesCorrectly() = run {
+        val a = fixture("first", t0 + 2 * h, "1"); val b = fixture("second", t0 + 3 * h, "2"); val ida = made(a, listOf(a, b)); val idb = made(b, listOf(a, b))
+        assertEquals(listOf("1", "2"), listOf(ida, idb).map { row(it).distinguishing })
+        reminders.reassociate(listOf(fixture("first", t0 + 4 * h, "1"), fixture("second", t0 + 3 * h, "2")))               // the first now plays after the second
+        assertEquals("the reminder for the first follows its channel to the later slot", t0 + 4 * h, row(ida).startMs); assertEquals("first", row(ida).matchedEventId)
+        assertEquals("second", row(idb).matchedEventId); assertEquals(t0 + 3 * h, row(idb).startMs)
+    }
+
+    @Test fun whenOnlyOneFixtureRemainsItMatchesOnlyWhenItIsProvablyTheSame() = run {
+        val a = fixture("first", t0 + 2 * h, "1"); val b = fixture("second", t0 + 5 * h, "1"); val ida = made(a, listOf(a, b))
+        reminders.reassociate(listOf(b)); assertEquals("the other fixture alone, far from the stored start and on the same channel: not guessed", ReminderStatus.AMBIGUOUS.name, row(ida).status)
+        reminders.reassociate(listOf(fixture("first2", t0 + 2 * h + 3 * min, "1"))); assertEquals("a start that has hardly moved is the same fixture", "first2", row(ida).matchedEventId)
+        val c = fixture("c-first", t0 + 7 * h, "5"); val e = fixture("c-second", t0 + 9 * h, "6"); val idc = made(c, listOf(c, e))
+        reminders.reassociate(listOf(fixture("c-first-moved", t0 + 8 * h, "5"))); assertEquals("its own channel, though the start moved", "c-first-moved", row(idc).matchedEventId)
+        reminders.reassociate(listOf(fixture("c-second-lone", t0 + 8 * h + 30 * min, "6"))); assertEquals("the other fixture's channel is no evidence", ReminderStatus.AMBIGUOUS.name, row(idc).status)
+    }
+
+    @Test fun anAmbiguousReminderThatBecomesIdentifiableIsAssociatedOnceAndAnnouncedOnce() = run {
+        val a = fixture("first", t0 + 2 * h, "1"); val b = fixture("second", t0 + 5 * h, "1"); val ida = made(a, listOf(a, b))
+        val delayed = fixture("first2", t0 + 4 * h + 30 * min, "1"); reminders.reassociate(listOf(delayed, b))
+        assertEquals(ReminderStatus.AMBIGUOUS.name, row(ida).status)
+        val back = fixture("first3", t0 + 2 * h + 4 * min, "1"); reminders.reassociate(listOf(back, b))                       // the guide puts it back where it was
+        assertEquals(ReminderStatus.SCHEDULED.name, row(ida).status); assertEquals("first3", row(ida).matchedEventId)
+        repeat(3) { reminders.reassociate(listOf(back, b)) }
+        assertEquals("one alarm", 1, d.scheduler.active.keys.count { it == ida }); assertTrue(d.notifier.posts.isEmpty())
+        d.live = listOf(back, b); d.time = t0 + 2 * h - 10 * min
+        assertTrue(reminders.fire(ida)); assertFalse(reminders.fire(ida)); reminders.reassociate(listOf(back, b))
+        assertEquals("one notification, however many refreshes and deliveries", 1, d.notifier.posts.size)
     }
 
     @Test fun aLoneFixtureThatGainsASecondStaysWithTheOneWhoseStartHasNotMoved() = run {
         val a = event("a", t0 + 2 * h); val id = made(a, listOf(a))
         val extra = event("rerun", t0 + 5 * h)
-        reminders.reassociate(listOf(a, extra)); assertEquals("a", db.sports().reminder(id)!!.matchedEventId)
+        reminders.reassociate(listOf(a, extra)); assertEquals("a", row(id).matchedEventId)
         val moved = event("moved", t0 + 2 * h + 40 * min)                                  // the original moved and another appeared: neither is provably the same
-        val id2 = made(event("b", t0 + 20 * h, sides = listOf("X", "Y")), listOf())
-        reminders.reassociate(listOf(moved, extra)); assertEquals(ReminderStatus.AMBIGUOUS.name, db.sports().reminder(id)!!.status); assertNotNull(id2)
+        reminders.reassociate(listOf(moved, extra)); assertEquals(ReminderStatus.AMBIGUOUS.name, row(id).status)
     }
 
-    @Test fun theMatcherNeverUsesOnlyTheNearestStart() {
+    @Test fun theMatcherNeverDecidesByOrderOrNearestStartAlone() {
         val a = event("a", t0 + 2 * h); val b = event("b", t0 + 5 * h)
-        val doubleheader = SportsEventReminder("r", SportsKeys.identity(a), SportsKeys.competition(a), a.startMs, occurrence = 0, siblings = 2)
-        val nearerToSecond = event("a2", t0 + 4 * h + 45 * min)
-        val m = ReminderMatcher.associate(listOf(doubleheader), listOf(nearerToSecond, b), t0 + 72 * h).single()
-        assertEquals("the reminder is for the first of two; the one nearest in time is the earlier of the two and is it", "a2", (m as Association.Matched).event.id)
-        val swapped = ReminderMatcher.associate(listOf(doubleheader.copy(occurrence = 1)), listOf(nearerToSecond, b), t0 + 72 * h).single()
-        assertEquals("the second of two is the later one, whatever it is nearer to", "b", (swapped as Association.Matched).event.id)
+        val doubleheader = SportsEventReminder("r", SportsKeys.identity(a), SportsKeys.competition(a), a.startMs, siblings = 2, distinguishing = emptySet())
+        val m = ReminderMatcher.associate(listOf(doubleheader), listOf(event("a2", t0 + 4 * h + 45 * min), b), t0 + 72 * h).single()
+        assertTrue("two fixtures, none at the stored start, no channel evidence: ambiguous however near one is", m is Association.Ambiguous)
     }
 }

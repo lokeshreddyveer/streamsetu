@@ -95,7 +95,7 @@ class SportsPersonalizationTests {
         var t = System.nanoTime(); val r = build(events, Personalization(big, mySports = true)); val myMs = (System.nanoTime() - t) / 1_000_000
         t = System.nanoTime(); build(events, Personalization(FollowSet(big.follows.drop(1)), mySports = true)); val followMs = (System.nanoTime() - t) / 1_000_000
         // 1,000 reminders against the 5,000-event guide: one batch.
-        val rows = (0 until 1_000).map { i -> val e = events[i * 5]; SportsReminderEntity("r$i", "main", e.sport.name, SportsKeys.identity(e), SportsKeys.competition(e), SportsKeys.participantsKey(e), e.startMs, e.endMs, 15 * min, SportsKeys.slot(e.startMs), 0, 1, null, "", "UNMATCHED", 0, 0, false, 1, 1) }
+        val rows = (0 until 1_000).map { i -> val e = events[i * 5]; SportsReminderEntity("r$i", "main", e.sport.name, SportsKeys.identity(e), SportsKeys.competition(e), SportsKeys.participantsKey(e), e.startMs, e.endMs, 15 * min, SportsKeys.slot(e.startMs), 1, "", null, "", "UNMATCHED", 0, 0, false, 1, 1) }
         t = System.nanoTime(); val assoc = ReminderMatcher.associate(rows.map { it.forMatching() }, events, now + 80 * h); val matchMs = (System.nanoTime() - t) / 1_000_000
         val matched = assoc.count { it is Association.Matched }; val ambiguous = assoc.count { it is Association.Ambiguous }
         println("SPORTS PERSONAL: My Sports over 5,000 events ${myMs} ms (${(r.today + r.soon + r.live + r.upcoming).size} shown), follow change rebuild $followMs ms, 1,000 reminders vs 5,000 events $matchMs ms ($matched matched, $ambiguous ambiguous)")
@@ -108,7 +108,7 @@ class SportsPersonalizationTests {
         val reports = java.util.Collections.synchronizedList(ArrayList<PersonalReport>())
         val svc = SportsReminderService(db.sports(), d, scope) { reports.add(it) }
         val events = bigGuide(2_000).filter { it.startMs > now + 3 * h }.take(1_000)
-        val rows = events.mapIndexed { i, e -> SportsReminderEntity("r$i", "main", e.sport.name, SportsKeys.identity(e), SportsKeys.competition(e), SportsKeys.participantsKey(e), e.startMs, e.endMs, 15 * min, SportsKeys.slot(e.startMs), 0, 1, null, "", "UNMATCHED", 0, 0, false, 1, 1) }
+        val rows = events.mapIndexed { i, e -> SportsReminderEntity("r$i", "main", e.sport.name, SportsKeys.identity(e), SportsKeys.competition(e), SportsKeys.participantsKey(e), e.startMs, e.endMs, 15 * min, SportsKeys.slot(e.startMs), 1, "", null, "", "UNMATCHED", 0, 0, false, 1, 1) }
         rows.forEach { db.sports().insertReminder(it) }
         var t = System.nanoTime(); svc.reassociate(events); val first = (System.nanoTime() - t) / 1_000_000
         val armsAfterFirst = d.scheduler.arms; val active = d.scheduler.active.size

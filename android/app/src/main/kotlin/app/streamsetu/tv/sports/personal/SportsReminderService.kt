@@ -97,13 +97,12 @@ class SportsReminderService(
         val identity = SportsKeys.identity(event); val slot = SportsKeys.slot(event.startMs)
         dao.reminders(owner).firstOrNull { it.identity == identity && it.slot == slot }?.let { return CreateResult.Exists(it.id) }
         val siblings = (guide.filter { it.id != event.id && SportsKeys.identity(it) == identity && kotlin.math.abs(it.startMs - event.startMs) <= ReminderMatcher.TOLERANCE_MS } + event).sortedWith(compareBy({ it.startMs }, { it.id }))
-        val occurrence = siblings.indexOfFirst { it.id == event.id }
         var permission = deps.notifier.permission()
         if (permission == NotificationState.NOT_ASKED) { deps.notifier.requestPermission(); permission = deps.notifier.permission() }          // asked once, at the first reminder
         val now = deps.nowMs()
         val r = SportsReminderEntity(
             id = java.util.UUID.randomUUID().toString(), profileId = owner, sport = event.sport.name, identity = identity, competitionKey = SportsKeys.competition(event), participantsKey = SportsKeys.participantsKey(event),
-            startMs = event.startMs, endMs = event.endMs, leadMs = leadMs, slot = slot, occurrence = occurrence, siblings = siblings.size, matchedEventId = event.id, candidateChannelIds = candidates(event), status = ReminderStatus.SCHEDULED.name,
+            startMs = event.startMs, endMs = event.endMs, leadMs = leadMs, slot = slot, siblings = siblings.size, distinguishing = distinguishing(event, siblings.filter { it.id != event.id }), matchedEventId = event.id, candidateChannelIds = candidates(event), status = ReminderStatus.SCHEDULED.name,
             notifiedAt = 0, bannerAt = 0, kept = false, createdAt = now, updatedAt = now,
         )
         if (dao.insertReminder(r) == -1L) return CreateResult.Exists(r.id)
@@ -155,7 +154,7 @@ class SportsReminderService(
                 is Association.Matched -> {
                     val e = a.event; matched++
                     newTitles[e.id] = e.title
-                    updates += r.copy(startMs = e.startMs, endMs = e.endMs, matchedEventId = e.id, candidateChannelIds = candidates(e), status = ReminderStatus.SCHEDULED.name, kept = false, updatedAt = now)
+                    updates += r.copy(startMs = e.startMs, endMs = e.endMs, matchedEventId = e.id, candidateChannelIds = candidates(e), distinguishing = distinguishing(e, events.filter { it.id != e.id && SportsKeys.identity(it) == SportsKeys.identity(e) && kotlin.math.abs(it.startMs - e.startMs) <= ReminderMatcher.TOLERANCE_MS }), status = ReminderStatus.SCHEDULED.name, kept = false, updatedAt = now)
                 }
                 is Association.Unmatched -> updates += r.copy(matchedEventId = null, candidateChannelIds = "", status = ReminderStatus.UNMATCHED.name, updatedAt = now)
                 is Association.Ambiguous -> updates += r.copy(matchedEventId = null, candidateChannelIds = "", status = ReminderStatus.AMBIGUOUS.name, updatedAt = now)
@@ -171,6 +170,10 @@ class SportsReminderService(
         diagnostics.record(PersonalReport(0, 0, 0, all.count { it.status == "SCHEDULED" }, all.count { it.status == "UNMATCHED" }, all.count { it.status == "AMBIGUOUS" }, all.count { it.status == "FIRED" || it.status == "ENDED" || it.status == "MISSED" }, matched, (System.nanoTime() - started) / 1_000_000, null, null))
         matched
     }
+
+    /** The channels that carry this fixture and none of the others close to it: what tells a doubleheader apart when the order cannot be trusted. */
+    private fun distinguishing(e: SportsEvent, others: List<SportsEvent>): String =
+        (e.feeds.map { it.channelId }.toSet() - others.flatMap { o -> o.feeds.map { it.channelId } }.toSet()).sorted().take(8).joinToString(",")
 
     private fun candidates(e: SportsEvent) = e.feeds.map { it.channelId }.distinct().take(8).joinToString(",")
 
