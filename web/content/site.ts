@@ -65,7 +65,7 @@ export const faq = [
   },
   {
     q: "How do I install it on a Fire TV?",
-    a: "Turn on Install unknown apps for the Downloader app in Settings, My Fire TV, Developer options. Open Downloader, enter the address of the Fire TV file from the Download page, and install.",
+    a: "Turn on Install unknown apps for the Downloader app in Settings, My Fire TV, Developer options. Open Downloader and enter the code 7315299 (or open aftv.news/7315299 in any browser), or enter the address of the Fire TV file from the Download page, and install.",
   },
   {
     q: "Does the Mac app update itself?",

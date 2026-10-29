@@ -115,7 +115,7 @@ If you have a Mac copy older than 2.3.1, it cannot update itself (the old update
 ### Installing on Fire TV
 
 1. On the Fire TV: **Settings → My Fire TV → Developer options**, then turn on **Install unknown apps** for the app you will use to download (for example Downloader).
-2. Open that app, enter the APK's address from the Releases page, and install.
+2. Open Downloader and enter the code **7315299** (or open **aftv.news/7315299** in any browser). Or enter the APK's address from the Releases page. Then install.
 3. Open StreamSetu from **Your Apps & Channels**.
 
 If you installed an earlier test build, uninstall it first: test builds before 0.5.0 were signed with a different key, and Android will not install an update signed with another key.
