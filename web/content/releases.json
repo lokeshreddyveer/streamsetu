@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.10.29",
+      "title": "29 October 2026",
+      "summary": "**App DNS** on every app: choose an encrypted DNS provider (Cloudflare, Google, Quad9, AdGuard, Control D or your own) so a router or ISP that blocks your provider's or CDN's name does not stop StreamSetu. It works inside StreamSetu only. It is not a VPN and changes nothing else on the device.",
+      "date": "2026-10-29",
+      "mac": "2.15.0",
+      "android": "0.20.0",
+      "ios": "1.1"
+    },
+    {
       "tag": "2026.10.25",
       "title": "25 October 2026",
       "summary": "Fire TV and Android TV 0.19.0: a new look and a remote that behaves, with the Bigg Boss seasons and other shows that were missing now showing up.",
