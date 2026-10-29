@@ -83,7 +83,7 @@ fun multiviewBack(menuOpen: Boolean, replacing: Boolean, watching: Boolean): Bac
 
 /** One event the builder offers: what the card says. */
 @androidx.compose.runtime.Immutable
-data class MultiviewCandidate(val eventId: String, val title: String, val sportLabel: String, val feedCount: Int, val chosen: Boolean)
+data class MultiviewCandidate(val eventId: String, val title: String, val sportLabel: String, val feedCount: Int, val chosen: Boolean, val followed: Boolean = false)
 
 /** What the builder can do. Each is the person pressing OK (or the menu key); nothing here runs from focus. */
 class BuilderActions(
@@ -118,6 +118,7 @@ fun SportsMultiviewScreen(c: AppContainer, onClose: () -> Unit, onFullScreen: (C
     var replacingEntry by remember { mutableStateOf<Int?>(null) }
     val now = System.currentTimeMillis()
     val live = remember(sel, mv.active) { ctl.selection.liveEvents(now) }
+    val followSet by c.sportsFollows.follows.collectAsStateWithLifecycle(app.streamsetu.tv.sports.personal.FollowSet.NONE)
 
     // The list keeps only channels that still have a tile (a tile removed by hand, or because it is no longer allowed).
     LaunchedEffect(mv.tiles.map { it.channelId }) { if (mv.active) ctl.selection.keepOnly(mv.tiles.map { it.channelId }.toSet()) }
@@ -146,7 +147,7 @@ fun SportsMultiviewScreen(c: AppContainer, onClose: () -> Unit, onFullScreen: (C
         } else if (ctl.capability.usableLimit() < 2) {
             MultiviewUnsupported(onClose, null)
         } else {
-            val candidates = live.map { e -> MultiviewCandidate(e.id, e.title, e.sport.title, e.feeds.size, sel.entries.any { it.eventId == e.id }) }
+            val candidates = live.map { e -> MultiviewCandidate(e.id, e.title, e.sport.title, e.feeds.size, sel.entries.any { it.eventId == e.id }, followed = followSet.matches(e)) }
             MultiviewBuilder(sel, candidates, replacingEntry, BuilderActions(
                 add = { id -> scope.launch { val r = replacingEntry; if (r != null) { ctl.selection.replace(r, id); replacingEntry = null } else ctl.selection.add(id) } },
                 chooseFeed = { id -> scope.launch { openFeeds(id, null, replacingEntry) } },
@@ -232,15 +233,13 @@ fun MultiviewBuilder(sel: SelectionState, candidates: List<MultiviewCandidate>, 
         Label("Available Live Events", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
         if (candidates.isEmpty()) Label("No live events right now.", Tokens.body, Tokens.textSecondary)
         else LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(candidates, key = { it.eventId }) { cd ->
-                Focusable({ actions.add(cd.eventId) }, Modifier.width(260.dp).testTag("mv-event-${cd.eventId}").then(if (cd === candidates.first()) Modifier.focusRequester(first) else Modifier), shape = RoundedCornerShape(Tokens.radiusSmall), onLongClick = { actions.chooseFeed(cd.eventId) }, scaleOnFocus = 1.0f) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Label(cd.title, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 2)
-                        Label(cd.sportLabel + "  ·  " + cd.feedCount + if (cd.feedCount == 1) " feed" else " feeds", Tokens.small, Tokens.textSecondary, maxLines = 1)
-                        if (cd.chosen) Label("Added", Tokens.small, Tokens.accent, FontWeight.SemiBold)
-                    }
-                }
-            }
+            items(candidates, key = { it.eventId }) { cd -> CandidateCard(cd, "mv-event-${cd.eventId}", if (cd === candidates.first()) Modifier.focusRequester(first) else Modifier, actions) }
+        }
+        // What the profile follows and is live now: shown, never added by itself.
+        val mine = candidates.filter { it.followed }
+        if (mine.isNotEmpty()) {
+            Label("My Sports · live now", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp).testTag("mv-mine-title"))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(mine, key = { "m-" + it.eventId }) { cd -> CandidateCard(cd, "mv-mine-${cd.eventId}", Modifier, actions) } }
         }
         sel.message?.let { Label(it, Tokens.small, Tokens.warning, modifier = Modifier.testTag("mv-message")) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 6.dp)) {
@@ -248,6 +247,17 @@ fun MultiviewBuilder(sel: SelectionState, candidates: List<MultiviewCandidate>, 
             if (sel.entries.isNotEmpty()) TvButton("Clear", actions.clear, Modifier.testTag("mv-clear"))
         }
         if (!sel.canStart) Label("Two feeds are the least a Multiview needs.", Tokens.small, Tokens.textSecondary)
+    }
+}
+
+@Composable
+private fun CandidateCard(cd: MultiviewCandidate, tag: String, modifier: Modifier, actions: BuilderActions) {
+    Focusable({ actions.add(cd.eventId) }, Modifier.width(260.dp).testTag(tag).then(modifier), shape = RoundedCornerShape(Tokens.radiusSmall), onLongClick = { actions.chooseFeed(cd.eventId) }, scaleOnFocus = 1.0f) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Label(cd.title, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 2)
+            Label(cd.sportLabel + "  ·  " + cd.feedCount + if (cd.feedCount == 1) " feed" else " feeds", Tokens.small, Tokens.textSecondary, maxLines = 1)
+            if (cd.chosen) Label("Added", Tokens.small, Tokens.accent, FontWeight.SemiBold)
+        }
     }
 }
 

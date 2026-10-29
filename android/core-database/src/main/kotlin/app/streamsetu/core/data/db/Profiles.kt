@@ -17,6 +17,8 @@ object Profiles {
     /** Everyone who shares a device: the first profile and up to three more. */
     const val MAX = 4
     /** The tables that hold one person's own data. Collections come before their items. */
+    /** Sports follows and reminders name their profile in a column (they are not swapped in and out), so removing a profile deletes their rows. */
+    val sportsTables = listOf("sports_follows", "sports_reminders")
     val personalTables = listOf("favorites", "collections", "collection_items", "progress", "watch_log", "watch_time", "new_episodes")
 
     fun create(db: SupportSQLiteDatabase) {
@@ -63,6 +65,7 @@ object Profiles {
         db.beginTransaction()
         try {
             for (t in personalTables) if (db.query("SELECT 1 FROM sqlite_master WHERE name = 'pf_$t'").use { it.moveToFirst() }) db.execSQL("DELETE FROM pf_$t WHERE profile_id = ?", arrayOf(id))
+            for (t in sportsTables) if (db.query("SELECT 1 FROM sqlite_master WHERE name = '$t'").use { it.moveToFirst() }) db.execSQL("DELETE FROM $t WHERE profileId = ?", arrayOf(id))          // Sports follows and reminders carry their profile
             db.execSQL("DELETE FROM profiles WHERE id = ?", arrayOf(id)); db.setTransactionSuccessful()
         } finally { db.endTransaction() }
         return true

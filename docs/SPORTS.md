@@ -47,3 +47,12 @@ Those features need a **durable record** of their own that re-associates an even
 - An existing set longer than the limit is never started or shortened: the person chooses which to keep, and the set is left as it was.
 - Changing a tile's feed uses the Phase 3 switch and restore rules for that tile alone. A change to who may see what checks each tile on its own. A guide change only detaches a tile from its event.
 - Full Screen on a tile stops the tiles (the player cannot adopt a tile's engine), plays the channel, and returns to the builder.
+
+## Phase 5 (Android TV and Fire TV): My Sports and reminders
+
+- **Identity.** Follows and reminders are durable records of normalized facts (sport, kind, sides or event name, stage, competition), never the inferred event id. The id is kept only as the event a reminder is matched with right now. No stream address, login or guide description is stored.
+- **Database.** Schema version 8 adds `sports_follows` and `sports_reminders` by an explicit migration (no destructive fallback). Both carry a profile id and are removed with the profile. Deleting a playlist or its guide does not touch them.
+- **Follows** are profile-scoped, matched by normalized key, shown by the name first chosen, and checked against what the profile may see before they are saved. Following starts nothing. My Sports is the first filter once something is followed; inside each section reminded events come first, then followed sides, competitions and sports, then time. An event never changes section.
+- **Reminders** are always explicit. After a guide refresh they are matched in one batch: same sport and identity, a compatible competition, a start within three hours, and a clearly nearest candidate. Low-confidence or ambiguous matches associate nothing and the reminder stays pending with its schedule; an event that returns is found again.
+- **Alarms** use the system alarm service the programme reminders use (`setAndAllowWhileIdle`, no exact-alarm permission), one per reminder, for the active profile only, and are set again after a restart, an app update or a time zone change. The system may delay an alarm to save power, so the in-app banner covers the time the app is open. A notification carries only the reminder id; the event is found and checked again inside the app, and no restricted title is ever shown.
+- **Notification permission** (Android 13 and later) is asked for only when the first reminder is made. Fire TV often shows system notifications poorly, which is another reason for the banner.

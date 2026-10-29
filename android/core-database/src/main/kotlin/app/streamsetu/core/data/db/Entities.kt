@@ -164,3 +164,53 @@ data class ChannelPrefEntity(@PrimaryKey val channelId: String, val hidden: Bool
 /** A reminder for a programme that has not started. */
 @Entity(tableName = "reminders")
 data class ReminderEntity(@PrimaryKey val id: String, val channelId: String, val channelName: String, val title: String, val startMs: Long)
+
+/**
+ * What a person follows in Sports: a sport, a competition or a team/participant, found in their own provider's guide. Matched by [normKey] (accents, case and club markers removed) and shown by [displayName],
+ * the name as it was when they chose it. One row per profile, kind, sport and key.
+ */
+@Entity(tableName = "sports_follows", indices = [Index(value = ["profileId", "kind", "sport", "normKey"], unique = true), Index(value = ["profileId"])])
+data class SportsFollowEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val profileId: String,
+    val kind: String,
+    val sport: String,
+    val normKey: String,
+    val displayName: String,
+    val createdAt: Long,
+)
+
+/**
+ * A reminder the person asked for. It is a durable record of normalized facts (sport, event identity, competition, sides, scheduled times), never of a stream, a login or a guide description. The
+ * inferred event id is kept only as [matchedEventId], the event it is matched with right now, and is replaced whenever the guide changes. [slot] is the half hour the reminder was made for and keeps two
+ * reminders for the same event from being made twice.
+ */
+@Entity(
+    tableName = "sports_reminders",
+    indices = [Index(value = ["profileId", "sport", "identity", "slot"], unique = true), Index(value = ["profileId"]), Index(value = ["identity"]), Index(value = ["startMs"]), Index(value = ["status"])],
+)
+data class SportsReminderEntity(
+    @PrimaryKey val id: String,
+    val profileId: String,
+    val sport: String,
+    val identity: String,
+    val competitionKey: String?,
+    val participantsKey: String,
+    val startMs: Long,
+    val endMs: Long,
+    val leadMs: Long,
+    val slot: Long,
+    /** Which of the same sides' fixtures in this neighbourhood the reminder was made for (0 = the earlier), and how many there were then. A doubleheader is told apart by this, not by who is nearer in time. */
+    val occurrence: Int,
+    val siblings: Int,
+    val matchedEventId: String?,
+    val candidateChannelIds: String,
+    val status: String,
+    /** When the system notification was posted (0 = not yet). The in-app banner is tracked apart, in [bannerAt]. */
+    val notifiedAt: Long,
+    val bannerAt: Long,
+    /** The person chose to keep a reminder whose event left the guide, so it is not asked about again. */
+    val kept: Boolean,
+    val createdAt: Long,
+    val updatedAt: Long,
+)

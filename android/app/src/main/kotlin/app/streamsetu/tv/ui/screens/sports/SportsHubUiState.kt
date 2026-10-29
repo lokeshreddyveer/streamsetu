@@ -30,11 +30,32 @@ data class SportsEventCard(
     val timeLabel: String,
     /** "LIVE", "Starts in 45 min" or "Upcoming". */
     val statusLabel: String,
+    /** In My Sports: "Because you follow India". Shown small; never logged. */
+    val reason: String? = null,
+    /** The person asked to be reminded of this event. */
+    val reminded: Boolean = false,
+)
+
+/** One thing the open event offers to follow, and whether it already is. */
+@Immutable
+data class FollowOptionUi(val kind: app.streamsetu.tv.sports.personal.FollowKind, val sport: Sport, val name: String, val label: String, val following: Boolean)
+
+/** A reminder as the screen shows it. */
+@Immutable
+data class ReminderUi(
+    val id: String, val leadMs: Long,
+    /** "Reminder set · 15 minutes before". */
+    val text: String,
+    /** The start the reminder now follows, in the person's own time zone. */
+    val startLabel: String,
+    val status: app.streamsetu.tv.sports.personal.ReminderStatus,
+    /** The event left the guide and the person has not yet chosen Keep or Remove. */
+    val unavailable: Boolean,
 )
 
 /** All Sports (null) or one sport that currently has events. */
 @Immutable
-data class SportsFilter(val sport: Sport?, val label: String, val count: Int)
+data class SportsFilter(val sport: Sport?, val label: String, val count: Int, val my: Boolean = false)
 
 /** A value shown to the person, and whether it was read out of a title or a channel name rather than supplied by the provider. */
 @Immutable
@@ -87,6 +108,8 @@ data class SportsEventDetail(
     val playback: SportsDetailPlayback? = null,
     /** The event is gone from the guide but this channel is still allowed and playing: its name. The panel then says so and offers Live TV or Stop. */
     val heldChannel: String? = null,
+    val followOptions: List<FollowOptionUi> = emptyList(),
+    val reminder: ReminderUi? = null,
     /** What the last "Add to Multiview" said, shown under the button. */
     val multiviewNote: String? = null,
 )
@@ -98,7 +121,13 @@ sealed interface SportsHubMessage {
     data object NoGuide : SportsHubMessage
     /** A guide exists, but nothing in it is a sports event. */
     data object NoSports : SportsHubMessage
+    /** My Sports is chosen but none of the followed things has an event in the guide window. */
+    data object NoFollowed : SportsHubMessage
 }
+
+/** What Manage My Sports lists. */
+@Immutable
+data class ManageUi(val sports: List<app.streamsetu.tv.sports.personal.Follow>, val competitions: List<app.streamsetu.tv.sports.personal.Follow>, val participants: List<app.streamsetu.tv.sports.personal.Follow>, val reminders: List<ReminderUi>, val note: String?)
 
 /** Everything the Sports Hub draws, as one immutable value. Built off the main thread; the composables never compute or query. */
 @Immutable
@@ -123,6 +152,11 @@ data class SportsHubUiState(
     val playbackHandoff: Boolean = false,
     /** How many feeds are chosen for a Multiview. */
     val multiviewCount: Int = 0,
+    /** My Sports is the chosen filter. */
+    val mySports: Boolean = false,
+    val hasFollows: Boolean = false,
+    /** The Manage My Sports panel: what is followed, and the reminders. Null when it is closed. */
+    val manage: ManageUi? = null,
 ) {
     val isEmpty: Boolean get() = live.isEmpty() && startingSoon.isEmpty() && today.isEmpty() && upcoming.isEmpty()
     fun section(s: SportsSection): List<SportsEventCard> = when (s) { SportsSection.LIVE_NOW -> live; SportsSection.STARTING_SOON -> startingSoon; SportsSection.TODAY -> today; SportsSection.UPCOMING -> upcoming }
@@ -135,7 +169,7 @@ object SportsSections {
     const val SOON_MS = 2 * 3_600_000L
     const val LOW_CONFIDENCE = 0.75
 
-    class Result(val live: List<SportsEventCard>, val soon: List<SportsEventCard>, val today: List<SportsEventCard>, val upcoming: List<SportsEventCard>, val filters: List<SportsFilter>, val selected: Sport?, val detail: SportsEventDetail?)
+    class Result(val live: List<SportsEventCard>, val soon: List<SportsEventCard>, val today: List<SportsEventCard>, val upcoming: List<SportsEventCard>, val filters: List<SportsFilter>, val selected: Sport?, val detail: SportsEventDetail?, val my: Boolean = false)
 
     /** Turns instants into the words on a card, in one time zone and locale. Made once per state, never inside a composable. */
     class Labels(private val zone: TimeZone, private val locale: java.util.Locale, private val nowMs: Long) {
@@ -165,17 +199,23 @@ object SportsSections {
         return c.timeInMillis
     }
 
-    fun build(events: List<SportsEvent>, nowMs: Long, zone: TimeZone, selected: Sport?, detailId: String?, sourceNames: Map<String, String>, locale: java.util.Locale = java.util.Locale.getDefault(), play: SportsDetailPlay = SportsDetailPlay()): Result {
+    fun build(events: List<SportsEvent>, nowMs: Long, zone: TimeZone, selected: Sport?, detailId: String?, sourceNames: Map<String, String>, locale: java.util.Locale = java.util.Locale.getDefault(), play: SportsDetailPlay = SportsDetailPlay(),
+        personal: app.streamsetu.tv.sports.personal.Personalization = app.streamsetu.tv.sports.personal.Personalization.NONE, followOptions: (SportsEvent) -> List<FollowOptionUi> = { emptyList() }, reminderFor: (SportsEvent) -> ReminderUi? = { null }): Result {
         val labels = Labels(zone, locale, nowMs)
         val upcomingOrLive = events.filter { it.endMs > nowMs }                                   // a finished event is not listed
         val present = Sport.values().filter { s -> upcomingOrLive.any { it.sport == s } }
-        val filters = if (present.isEmpty()) emptyList() else listOf(SportsFilter(null, "All Sports", upcomingOrLive.size)) + present.map { s -> SportsFilter(s, s.title, upcomingOrLive.count { it.sport == s }) }
-        val effective = selected?.takeIf { it in present }                                         // a sport that no longer has events falls back to All
-        val shown = if (effective == null) upcomingOrLive else upcomingOrLive.filter { it.sport == effective }
+        val follows = personal.follows
+        val my = personal.mySports && !follows.isEmpty
+        val mine = if (follows.isEmpty) 0 else upcomingOrLive.count { follows.matches(it) }
+        val head = if (follows.isEmpty) emptyList() else listOf(SportsFilter(null, "My Sports", mine, my = true))              // first, and only when something is followed
+        val filters = if (present.isEmpty() && head.isEmpty()) emptyList() else head + listOf(SportsFilter(null, "All Sports", upcomingOrLive.size)) + present.map { s -> SportsFilter(s, s.title, upcomingOrLive.count { it.sport == s }) }
+        val effective = if (my) null else selected?.takeIf { it in present }                       // a sport that no longer has events falls back to All
+        val shown = if (my) upcomingOrLive.filter { follows.matches(it) } else if (effective == null) upcomingOrLive else upcomingOrLive.filter { it.sport == effective }
         val dayEnd = endOfLocalDay(nowMs, zone)
         val live = ArrayList<SportsEventCard>(); val soon = ArrayList<SportsEventCard>(); val today = ArrayList<SportsEventCard>(); val later = ArrayList<SportsEventCard>()
-        for (e in shown.sortedWith(compareBy({ it.startMs }, { it.title }, { it.id }))) {
-            val c = card(e, nowMs, labels)
+        // Inside a section: reminded events, then followed sides, competitions and sports, then the usual order by time. An event never changes section.
+        for (e in shown.sortedWith(compareBy({ personal.rank(it) }, { it.startMs }, { it.title }, { it.id }))) {
+            val c = card(e, nowMs, labels).copy(reason = if (my) personal.reasonText(e) else null, reminded = e.id in personal.remindedEventIds)
             when {
                 e.state(nowMs) == SportsEventState.LIVE -> live.add(c)
                 e.startMs <= nowMs + SOON_MS -> soon.add(c)
@@ -183,8 +223,8 @@ object SportsSections {
                 else -> later.add(c)
             }
         }
-        val detail = detailId?.let { id -> events.firstOrNull { it.id == id } }?.let { detail(it, nowMs, sourceNames, labels, play) }
-        return Result(live, soon, today, later, filters, effective, detail)
+        val detail = detailId?.let { id -> events.firstOrNull { it.id == id } }?.let { detail(it, nowMs, sourceNames, labels, play).copy(followOptions = followOptions(it), reminder = reminderFor(it)) }
+        return Result(live, soon, today, later, filters, effective, detail, my)
     }
 
     /** What the panel shows for a channel that keeps playing after its event left the guide: no event content is carried over. */

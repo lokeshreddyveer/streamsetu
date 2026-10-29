@@ -10,8 +10,8 @@ import androidx.room.RoomDatabase
         EpisodeEntity::class, EpgEntity::class, FavoriteEntity::class, ProgressEntity::class, WatchLogEntity::class,
         LibraryEntity::class, LibraryMemberEntity::class, FolderPrefEntity::class,
         NewEpisodeEntity::class, CatalogFingerprintEntity::class, CollectionEntity::class, CollectionItemEntity::class, OverrideEntity::class, EpgChannelEntity::class,
-        WatchTimeEntity::class, ChannelPrefEntity::class, ReminderEntity::class],
-    version = 7,
+        WatchTimeEntity::class, ChannelPrefEntity::class, ReminderEntity::class, SportsFollowEntity::class, SportsReminderEntity::class],
+    version = 8,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -23,11 +23,27 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun folders(): FolderDao
     abstract fun browse(): BrowseDao
     abstract fun extras(): ExtrasDao
+    abstract fun sports(): SportsDao
 
     companion object {
         /** Adds drafts and cached counts to playlists, combined libraries, and folder arrangements. Nothing existing is touched. */
         /** Every step from the first version to the current one, in order. There is no destructive fallback: a database that cannot be upgraded is never emptied. */
-        val MIGRATIONS: Array<androidx.room.migration.Migration> get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        val MIGRATIONS: Array<androidx.room.migration.Migration> get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+
+        /** What a person follows in Sports, and the reminders they asked for. Two new, empty tables: nothing existing is touched. */
+        val MIGRATION_7_8 = object : androidx.room.migration.Migration(7, 8) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS sports_follows (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, profileId TEXT NOT NULL, kind TEXT NOT NULL, sport TEXT NOT NULL, normKey TEXT NOT NULL, displayName TEXT NOT NULL, createdAt INTEGER NOT NULL)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sports_follows_profileId_kind_sport_normKey ON sports_follows (profileId, kind, sport, normKey)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sports_follows_profileId ON sports_follows (profileId)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS sports_reminders (id TEXT NOT NULL, profileId TEXT NOT NULL, sport TEXT NOT NULL, identity TEXT NOT NULL, competitionKey TEXT, participantsKey TEXT NOT NULL, startMs INTEGER NOT NULL, endMs INTEGER NOT NULL, leadMs INTEGER NOT NULL, slot INTEGER NOT NULL, occurrence INTEGER NOT NULL, siblings INTEGER NOT NULL, matchedEventId TEXT, candidateChannelIds TEXT NOT NULL, status TEXT NOT NULL, notifiedAt INTEGER NOT NULL, bannerAt INTEGER NOT NULL, kept INTEGER NOT NULL, createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL, PRIMARY KEY(id))")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sports_reminders_profileId_sport_identity_slot ON sports_reminders (profileId, sport, identity, slot)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sports_reminders_profileId ON sports_reminders (profileId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sports_reminders_identity ON sports_reminders (identity)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sports_reminders_startMs ON sports_reminders (startMs)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sports_reminders_status ON sports_reminders (status)")
+            }
+        }
 
         /** Indexes for the paths the screens browse by: newest first per library, a list in the order it was filled, what is partly watched, and the viewing history of one title. */
         val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {

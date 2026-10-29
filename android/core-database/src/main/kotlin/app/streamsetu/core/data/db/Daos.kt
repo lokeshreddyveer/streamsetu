@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RawQuery
+import androidx.room.Update
 import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
@@ -309,4 +310,26 @@ interface ExtrasDao {
     @Query("SELECT * FROM epg_channels") suspend fun epgChannels(): List<EpgChannelEntity>
     @Query("DELETE FROM epg_channels") suspend fun clearEpgChannels()
     @Query("SELECT DISTINCT channelEpgId FROM epg") suspend fun epgIdsWithProgrammes(): List<String>
+}
+
+
+@Dao
+interface SportsDao {
+    // Follows
+    @Query("SELECT * FROM sports_follows WHERE profileId = :profile ORDER BY createdAt, id") suspend fun follows(profile: String): List<SportsFollowEntity>
+    @Query("SELECT * FROM sports_follows WHERE profileId = :profile ORDER BY createdAt, id") fun followsFlow(profile: String): Flow<List<SportsFollowEntity>>
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertFollow(f: SportsFollowEntity): Long
+    @Query("DELETE FROM sports_follows WHERE profileId = :profile AND kind = :kind AND sport = :sport AND normKey = :key") suspend fun deleteFollow(profile: String, kind: String, sport: String, key: String): Int
+    @Query("DELETE FROM sports_follows WHERE profileId = :profile") suspend fun clearFollows(profile: String): Int
+
+    // Reminders
+    @Query("SELECT * FROM sports_reminders WHERE profileId = :profile ORDER BY startMs, id") suspend fun reminders(profile: String): List<SportsReminderEntity>
+    @Query("SELECT * FROM sports_reminders WHERE profileId = :profile ORDER BY startMs, id") fun remindersFlow(profile: String): Flow<List<SportsReminderEntity>>
+    @Query("SELECT * FROM sports_reminders WHERE id = :id") suspend fun reminder(id: String): SportsReminderEntity?
+    @Query("SELECT * FROM sports_reminders WHERE status IN ('SCHEDULED', 'UNMATCHED', 'AMBIGUOUS') AND endMs > :now ORDER BY startMs, id") suspend fun activeReminders(now: Long): List<SportsReminderEntity>
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertReminder(r: SportsReminderEntity): Long
+    @Update suspend fun updateReminders(list: List<SportsReminderEntity>)
+    @Query("DELETE FROM sports_reminders WHERE id = :id") suspend fun deleteReminder(id: String): Int
+    @Query("DELETE FROM sports_reminders WHERE profileId = :profile") suspend fun clearReminders(profile: String): Int
+    @Query("SELECT COUNT(*) FROM sports_reminders") suspend fun reminderCount(): Int
 }

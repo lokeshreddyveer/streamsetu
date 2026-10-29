@@ -49,6 +49,9 @@ class MainActivity : ComponentActivity() {
         val phone = app.streamsetu.tv.ui.phone.isPhoneDevice(this)
         if (phone) androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         else requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        // The notification permission is asked for only when the first Sports reminder is made (Android 13 and later); nothing asks at launch.
+        val askNotifications = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+        container.askNotificationPermission = { if (android.os.Build.VERSION.SDK_INT >= 33) runCatching { askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS) } }
         setContent {
             val watched by container.watchedTitles.collectAsStateWithLifecycle()
             val partial by container.partialTitles.collectAsStateWithLifecycle()
@@ -72,13 +75,15 @@ class MainActivity : ComponentActivity() {
         }
         handle(intent)
         // A little after the first screens are up, start reading who is in the movies (see PeopleIndexer).
-        android.os.Handler(mainLooper).postDelayed({ container.people.start(); app.streamsetu.tv.ui.screens.settings.refreshInsightAlarms(container) }, 20_000)
+        android.os.Handler(mainLooper).postDelayed({ container.sportsReminders.start(); container.people.start(); app.streamsetu.tv.ui.screens.settings.refreshInsightAlarms(container) }, 20_000)
     }
 
     override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); handle(intent) }
 
     /** `streamsetu://play?kind=channel|movie|series&q=name[&engine=auto|exoplayer|mpv]`: starts something by name (used for testing and voice shortcuts). */
     private fun handle(intent: android.content.Intent?) {
+        // A Sports reminder notification carries only the reminder's id; the event is found and checked again inside the app.
+        app.streamsetu.tv.sports.personal.AndroidReminderNotifier.openIdFrom(intent)?.let { id -> nav.pendingSportsReminder = id; if (nav.base == Base.Shell) nav.go(Tab.SPORTS); return }
         val uri = intent?.data ?: return
         if (uri.scheme != "streamsetu" || (uri.host != "play" && uri.host != "watch")) return
         val c = container
@@ -309,6 +314,8 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
               }
             }
         }
+        // A Sports reminder while the app is open: above everything, one at a time, and passive while something is playing.
+        if (nav.base == Base.Shell) app.streamsetu.tv.ui.components.SportsReminderBanner(c, nav)
     }
     }
 }

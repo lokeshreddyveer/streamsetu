@@ -69,6 +69,12 @@ class SportsMultiviewScreenTests {
         assertEquals(listOf("mv-event-a"), focusedTags()); assertEquals(0, calls.started)
     }
 
+    @Test fun theBuilderShowsLiveFollowedEventsInTheirOwnSectionWithoutAddingThem() {
+        val calls = Calls(); builder(SelectionState(emptyList(), 4), listOf(cands[0].copy(followed = true), cands[1]), calls); rule.waitForIdle()
+        rule.onNodeWithTag("mv-mine-title").assertExists(); rule.onNodeWithTag("mv-mine-a").assertExists(); rule.onAllNodesWithTag("mv-mine-b").assertCountEquals(0)
+        assertEquals("shown, never added by itself", 0, calls.added.size)
+    }
+
     @Test fun anEntryOpensItsMenuOnOkOnly() {
         val calls = Calls(); builder(SelectionState(entries, 4), cands, calls)
         rule.onNodeWithTag("mv-entry-1").requestFocus(); assertTrue(calls.opened.isEmpty()); key(Key.Enter); assertEquals(listOf(1), calls.opened)

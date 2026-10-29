@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -34,8 +35,9 @@ import javax.inject.Inject
  */
 @OptIn(FlowPreview::class)
 @HiltViewModel
-class SportsViewModel internal constructor(private val deps: SportsDeps, scope: CoroutineScope?, private val debounceMs: Long, private val diagnostics: SportsDiagnostics = SportsDiagnostics.Log, private val playback: SportsPlaybackCoordinator? = null, private val multiview: app.streamsetu.tv.sports.multiview.SportsMultiviewController? = null) : ViewModel() {
-    @Inject constructor(c: AppContainer) : this(RealSportsDeps(c), null, 1_500L, SportsDiagnostics.Log, c.sportsPlayback, c.sportsMultiview)
+class SportsViewModel internal constructor(private val deps: SportsDeps, scope: CoroutineScope?, private val debounceMs: Long, private val diagnostics: SportsDiagnostics = SportsDiagnostics.Log, private val playback: SportsPlaybackCoordinator? = null, private val multiview: app.streamsetu.tv.sports.multiview.SportsMultiviewController? = null,
+    private val follows: app.streamsetu.tv.sports.personal.SportsFollowService? = null, private val reminders: app.streamsetu.tv.sports.personal.SportsReminderService? = null) : ViewModel() {
+    @Inject constructor(c: AppContainer) : this(RealSportsDeps(c), null, 1_500L, SportsDiagnostics.Log, c.sportsPlayback, c.sportsMultiview, c.sportsFollows, c.sportsReminders)
 
     private val work: CoroutineScope = scope ?: viewModelScope
 
@@ -57,14 +59,25 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
     @Volatile var loadCount = 0; private set
 
     private val mvNote = MutableStateFlow<String?>(null)
-    private class Extras(val playback: SportsPlaybackState, val multiviewCount: Int, val note: String?)
+    private val mySports = MutableStateFlow(false)
+    private val managing = MutableStateFlow(false)
+    private val personalNote = MutableStateFlow<String?>(null)
+    private class Personal(val follows: app.streamsetu.tv.sports.personal.FollowSet, val reminders: List<app.streamsetu.core.data.db.SportsReminderEntity>, val my: Boolean, val manage: Boolean, val note: String?)
+    private class Extras(val playback: SportsPlaybackState, val multiviewCount: Int, val note: String?, val personal: Personal)
     private val extras = combine(
-        playback?.state ?: kotlinx.coroutines.flow.flowOf(SportsPlaybackState()),
-        multiview?.selection?.state ?: kotlinx.coroutines.flow.flowOf(app.streamsetu.tv.sports.multiview.SelectionState()),
-        mvNote,
-    ) { pb, sel, note -> Extras(pb, sel.entries.size, note) }
+        combine(
+            playback?.state ?: kotlinx.coroutines.flow.flowOf(SportsPlaybackState()),
+            multiview?.selection?.state ?: kotlinx.coroutines.flow.flowOf(app.streamsetu.tv.sports.multiview.SelectionState()),
+            mvNote,
+        ) { pb, sel, note -> Triple(pb, sel.entries.size, note) },
+        combine(
+            follows?.follows ?: kotlinx.coroutines.flow.flowOf(app.streamsetu.tv.sports.personal.FollowSet.NONE),
+            reminders?.reminders ?: kotlinx.coroutines.flow.flowOf(emptyList()),
+            mySports, managing, personalNote,
+        ) { f, r, my, m, n -> Personal(f, r, my, m, n) },
+    ) { a, p -> Extras(a.first, a.second, a.third, p) }
 
-    val uiState: StateFlow<SportsHubUiState> = combine(loaded, selected, detailId, deps.minutes, extras) { l, sel, detail, now, x -> build(l, sel, detail, now, x.playback, x.multiviewCount, x.note) }
+    val uiState: StateFlow<SportsHubUiState> = combine(loaded, selected, detailId, deps.minutes, extras) { l, sel, detail, now, x -> build(l, sel, detail, now, x) }
         .flowOn(Dispatchers.Default)
         .stateIn(work, SharingStarted.WhileSubscribed(5_000), SportsHubUiState(loading = true, nowMs = deps.now()))
 
@@ -78,8 +91,10 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
     // ---- what the screen can ask for
 
     /** Applies a filter that is already loaded; nothing is queried. */
-    fun select(sport: Sport?) { selected.value = sport }
-    fun openDetail(id: String) { if (detailId.value != id) { playback?.end(); mvNote.value = null }; detailId.value = id }
+    fun select(sport: Sport?) { mySports.value = false; selected.value = sport }
+    /** My Sports: what the active profile follows, from the events already loaded. */
+    fun selectMy() { mySports.value = true }
+    fun openDetail(id: String) { if (detailId.value != id) { playback?.end(); mvNote.value = null; personalNote.value = null }; detailId.value = id }
     /** Closing the detail ends the Sports playback that belongs to it. */
     fun closeDetail() {
         // A channel that outlived its event is not stopped by leaving the panel: Sports gives it up to Live TV's embedded player.
@@ -90,6 +105,44 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
     fun stopHeld() { detailId.value = null; playback?.end() }
     /** The hand-over to Live TV was carried out. */
     fun completeHandoff() { detailId.value = null; playback?.consumeHandoff() }
+
+    // ---- follows and reminders (each is the person choosing; none starts anything)
+
+    private fun openEvent(): SportsEvent? = detailId.value?.let { id -> loaded.value.events.firstOrNull { it.id == id } }
+
+    fun follow(kind: app.streamsetu.tv.sports.personal.FollowKind, name: String) {
+        val e = openEvent() ?: return; val f = follows ?: return
+        work.launch { personalNote.value = if (f.follow(e, kind, name) == app.streamsetu.tv.sports.personal.FollowResult.Refused) "That is no longer available." else null }
+    }
+    fun unfollow(f: app.streamsetu.tv.sports.personal.Follow) { work.launch { follows?.unfollow(f) } }
+    fun clearFollows() { work.launch { follows?.clear() } }
+    fun openManage() { managing.value = true }
+    fun closeManage() { managing.value = false }
+
+    fun remind(leadMs: Long) {
+        val e = openEvent() ?: return; val r = reminders ?: return
+        work.launch {
+            personalNote.value = when (val res = r.create(e, leadMs, loaded.value.events)) {
+                is app.streamsetu.tv.sports.personal.CreateResult.Created -> if (res.permission == app.streamsetu.tv.sports.personal.NotificationState.DENIED) "System notifications are off. You will still see this reminder while StreamSetu is open." else null
+                is app.streamsetu.tv.sports.personal.CreateResult.Exists -> "A reminder is already set for this event."
+                app.streamsetu.tv.sports.personal.CreateResult.Refused -> "That is no longer available."
+            }
+        }
+    }
+    fun changeReminder(id: String, leadMs: Long) { work.launch { reminders?.change(id, leadMs) } }
+    fun removeReminder(id: String) { work.launch { reminders?.remove(id) } }
+    fun keepReminder(id: String) { work.launch { reminders?.keep(id) } }
+
+    /** A reminder was opened (from a notification or the banner): once the events are loaded and it is matched, its event detail opens; otherwise the schedule is shown as it is. */
+    fun openReminder(id: String) {
+        val r = reminders ?: return
+        work.launch {
+            loaded.first { !it.loading }
+            r.reassociate(loaded.value.events)                                          // the reminder is matched against exactly what was loaded, not against an earlier pass
+            val row = r.get(id) ?: return@launch                                        // another profile's reminder opens nothing
+            row.matchedEventId?.let { e -> if (loaded.value.events.any { it.id == e }) { mySports.value = false; detailId.value = e } }
+        }
+    }
 
     // ---- playback (nothing here is called by focus; each is the person pressing OK)
 
@@ -127,7 +180,7 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
         val changed = currentScope != s
         currentScope = s
         if (!changed) return
-        if (!first) playback?.invalidate()                 // a pending play request or open feed list from before the change is dropped
+        if (!first) { reminders?.securityChanged(); playback?.invalidate() }             // the banner goes at once; a pending play request or open feed list from before the change is dropped
         startLoad(clear = !first)                          // a change to who may see what: clear at once (the first value has nothing to clear)
     }
 
@@ -150,6 +203,7 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
                 loadedAt = deps.now()
                 loaded.value = Loaded(events = r.events, revision = r.revision, sourceNames = names, hasGuide = hasGuide, loading = false)
                 diagnostics.record(SportsLoadReport.of(r.events, now, deps.zone, scope.sourceIds.size, ms(), r.cacheHit))
+                reminders?.reassociate(r.events)                                                  // durable reminders find their events again, in one batch
                 playback?.refreshOptions()                                                        // a feed that is no longer allowed leaves the list; a playing one that is not is let go
             } catch (e: CancellationException) {
                 diagnostics.record(SportsLoadReport.failed(SportsLoadOutcome.CANCELLED, null, scope.sourceIds.size, ms()))
@@ -163,19 +217,45 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
 
     // ---- state (computed here, never in a composable)
 
-    private fun build(l: Loaded, sel: Sport?, detail: String?, now: Long, pb: SportsPlaybackState, mvCount: Int, note: String?): SportsHubUiState {
+    private fun build(l: Loaded, sel: Sport?, detail: String?, now: Long, x: Extras): SportsHubUiState {
+        val pb = x.playback; val ps = x.personal
         val play = if (detail != null && playback != null) {
             val (ranked, why) = playback.recommendedFor(detail)
             SportsDetailPlay(ranked.map { it.feed.channelId }, ranked.filter { it.deprioritized }.map { it.feed.channelId }.toSet(), why, pb)
         } else SportsDetailPlay()
-        val r = SportsSections.build(l.events, now, deps.zone, sel, detail, l.sourceNames, play = play)
+        val reminded = ps.reminders.filter { it.status == app.streamsetu.tv.sports.personal.ReminderStatus.SCHEDULED.name }.mapNotNull { it.matchedEventId }.toSet()
+        val personal = app.streamsetu.tv.sports.personal.Personalization(ps.follows, reminded, ps.my)
+        val clock = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).also { it.timeZone = deps.zone }
+        fun reminderUi(r: app.streamsetu.core.data.db.SportsReminderEntity) = ReminderUi(
+            r.id, r.leadMs, app.streamsetu.tv.sports.personal.ReminderLeads.setText(r.leadMs), clock.format(java.util.Date(r.startMs)),
+            app.streamsetu.tv.sports.personal.ReminderStatus.valueOf(r.status), r.status == app.streamsetu.tv.sports.personal.ReminderStatus.UNMATCHED.name && !r.kept,
+        )
+        val r = SportsSections.build(l.events, now, deps.zone, sel, detail, l.sourceNames, play = play, personal = personal,
+            followOptions = { e -> follows?.options(e)?.map { (kind, name) ->
+                val key = if (kind == app.streamsetu.tv.sports.personal.FollowKind.SPORT) app.streamsetu.tv.sports.personal.SportsKeys.sportKey(e.sport) else app.streamsetu.tv.sports.personal.SportsKeys.key(name)
+                val on = ps.follows.isFollowing(kind, e.sport, key)
+                FollowOptionUi(kind, e.sport, name, (if (on) "Following " else "Follow ") + name, on)
+            }.orEmpty() },
+            reminderFor = { e ->
+                val identity = app.streamsetu.tv.sports.personal.SportsKeys.identity(e); val slot = app.streamsetu.tv.sports.personal.SportsKeys.slot(e.startMs)
+                ps.reminders.firstOrNull { it.matchedEventId == e.id || (it.identity == identity && it.slot == slot) }?.let(::reminderUi)
+            })
         val message = when {
             l.loading -> null
+            r.my && r.live.isEmpty() && r.soon.isEmpty() && r.today.isEmpty() && r.upcoming.isEmpty() -> SportsHubMessage.NoFollowed
             r.live.isEmpty() && r.soon.isEmpty() && r.today.isEmpty() && r.upcoming.isEmpty() && l.error != null -> SportsHubMessage.Error(l.error)
             l.events.none { it.endMs > now } && !l.hasGuide -> SportsHubMessage.NoGuide
             l.events.none { it.endMs > now } -> SportsHubMessage.NoSports
             else -> null
         }
-        return SportsHubUiState(l.loading, l.refreshing, r.selected, r.filters, r.live, r.soon, r.today, r.upcoming, r.detail?.copy(multiviewNote = note) ?: pb.held?.takeIf { !pb.handoff }?.let { SportsSections.heldDetail(it.channelName) }, message, l.revision, now, pb.handoff, mvCount)
+        val manage = if (!ps.manage) null else ManageUi(
+            ps.follows.follows.filter { it.kind == app.streamsetu.tv.sports.personal.FollowKind.SPORT }.sortedBy { it.displayName },
+            ps.follows.follows.filter { it.kind == app.streamsetu.tv.sports.personal.FollowKind.COMPETITION }.sortedBy { it.displayName },
+            ps.follows.follows.filter { it.kind == app.streamsetu.tv.sports.personal.FollowKind.PARTICIPANT }.sortedBy { it.displayName },
+            ps.reminders.filter { it.status != app.streamsetu.tv.sports.personal.ReminderStatus.ENDED.name }.map(::reminderUi), ps.note,
+        )
+        return SportsHubUiState(l.loading, l.refreshing, r.selected, r.filters, r.live, r.soon, r.today, r.upcoming,
+            r.detail?.copy(multiviewNote = x.note) ?: pb.held?.takeIf { !pb.handoff }?.let { SportsSections.heldDetail(it.channelName) }, message, l.revision, now, pb.handoff, x.multiviewCount, r.my, !ps.follows.isEmpty, manage)
+            .let { if (it.detail != null && ps.note != null) it.copy(detail = it.detail.copy(multiviewNote = it.detail.multiviewNote ?: ps.note)) else it }
     }
 }

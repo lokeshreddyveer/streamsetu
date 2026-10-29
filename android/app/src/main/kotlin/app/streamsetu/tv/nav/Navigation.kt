@@ -103,6 +103,9 @@ class Navigator {
 
     fun openFolderTab(kind: app.streamsetu.core.model.ContentKind, folderId: String) { pendingFolder = kind to folderId; go(when (kind) { app.streamsetu.core.model.ContentKind.MOVIE -> Tab.MOVIES; app.streamsetu.core.model.ContentKind.SERIES -> Tab.SERIES; else -> Tab.LIVE }) }
 
+    /** A Sports reminder to open (from a notification or the in-app banner), by its id. Sports takes it when it appears; the event is found and checked again before anything opens. */
+    var pendingSportsReminder: String? by mutableStateOf(null)
+
     /** Set when something elsewhere wants Settings opened on one category (by its name); Settings takes it when it appears. */
     var pendingSettings: String? by mutableStateOf(null)
 

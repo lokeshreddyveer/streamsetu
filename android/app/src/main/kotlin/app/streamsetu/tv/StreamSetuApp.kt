@@ -74,6 +74,13 @@ class AppContainer @Inject constructor(
     /** Set when a Multiview tile was expanded to the full player: closing that player stops its stream and returns to the Multiview builder. */
     @Volatile var multiviewFullscreenReturn = false
 
+    /** Set by the main screen: asks the system for the notification permission. Called only by the first Sports reminder, never at launch. */
+    @Volatile var askNotificationPermission: (() -> Unit)? = null
+    /** What the active profile follows in Sports. */
+    val sportsFollows: app.streamsetu.tv.sports.personal.SportsFollowService by lazy { app.streamsetu.tv.sports.personal.SportsFollowService(db.sports(), app.streamsetu.tv.sports.RealSportsAuthorization(this), profiles.activeId) }
+    /** The reminders the active profile asked for, their alarms and the banner. */
+    val sportsReminders: app.streamsetu.tv.sports.personal.SportsReminderService by lazy { app.streamsetu.tv.sports.personal.SportsReminderService(db.sports(), app.streamsetu.tv.sports.personal.RealReminderDeps(context, this), appScope) }
+
     /** Plays Sports feeds through the same play action as Live TV (see [app.streamsetu.tv.sports.RealSportsPlaybackDeps]). */
     val sportsPlayback: app.streamsetu.tv.sports.SportsPlaybackCoordinator by lazy { app.streamsetu.tv.sports.SportsPlaybackCoordinator(app.streamsetu.tv.sports.RealSportsPlaybackDeps(this), appScope) }
     /** Sports Multi-View: the device's tile limit, the builder's list and the tile session (see [app.streamsetu.tv.sports.multiview.SportsMultiviewController]). */
@@ -95,6 +102,7 @@ class AppContainer @Inject constructor(
         }) { p ->
             parental.setKids(p.kids)
             lan.setEnabled(lan.wanted && profiles.isMainActive)
+            sportsReminders.securityChanged()          // the old profile's banner goes, its alarms are cancelled and the new profile's are set
         }.also { it.reload(); parental.setKids(it.active.kids) }
     }
 

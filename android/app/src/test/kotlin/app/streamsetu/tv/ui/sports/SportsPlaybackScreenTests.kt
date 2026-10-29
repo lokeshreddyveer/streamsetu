@@ -103,7 +103,9 @@ class SportsPlaybackScreenTests {
         assertEquals("sports-detail-close", focusedTag())
         key(Key.DirectionDown); assertEquals("sports-watch-best", focusedTag())
         key(Key.DirectionDown); assertEquals("sports-add-multiview", focusedTag())
-        key(Key.DirectionDown); assertEquals("sports-feed", focusedTag()); key(Key.DirectionDown); assertEquals("sports-feed", focusedTag())
+        key(Key.DirectionDown); assertEquals("sports-remind", focusedTag())
+        val seen = ArrayList<String>(); repeat(8) { key(Key.DirectionDown); seen += focusedTag() }
+        assertTrue("the feeds are reachable after the buttons: $seen", seen.contains("sports-feed"))
         rule.waitForIdle(); assertTrue("nothing played from opening the event or moving the remote", pdeps.played.isEmpty())
         rule.onAllNodesWithTag("sports-preview").assertCountEquals(0)
     }

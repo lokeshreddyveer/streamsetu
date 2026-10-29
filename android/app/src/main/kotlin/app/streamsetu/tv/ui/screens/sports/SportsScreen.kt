@@ -108,6 +108,17 @@ class SportsActions(
     val addFeedToMultiview: (channelId: String) -> Unit = {},
     /** Open the Multiview builder (the Sports stream is released first). */
     val openMultiview: () -> Unit = {},
+    /** My Sports, following and reminders. Each is the person choosing; none starts anything. */
+    val selectMy: () -> Unit = {},
+    val follow: (kind: app.streamsetu.tv.sports.personal.FollowKind, name: String) -> Unit = { _, _ -> },
+    val unfollow: (app.streamsetu.tv.sports.personal.Follow) -> Unit = {},
+    val clearFollows: () -> Unit = {},
+    val openManage: () -> Unit = {},
+    val closeManage: () -> Unit = {},
+    val remind: (leadMs: Long) -> Unit = {},
+    val changeReminder: (id: String, leadMs: Long) -> Unit = { _, _ -> },
+    val removeReminder: (id: String) -> Unit = {},
+    val keepReminder: (id: String) -> Unit = {},
 )
 
 /** The page as the shell shows it. Refresh Guide uses the application's own guide refresh. */
@@ -121,13 +132,14 @@ fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, refreshGuideNow: () ->
     val current by rememberUpdatedState(state)
     val entry = LocalContentEntry.current ?: remember { FocusRequester() }
     LaunchedEffect(Unit) { vm.onEntered() }
+    LaunchedEffect(nav.pendingSportsReminder) { nav.pendingSportsReminder?.let { vm.openReminder(it); nav.pendingSportsReminder = null } }
 
     // Back closes the detail first; with none open the page does not take Back, so the sidebar opens.
     var previewFocused by remember { mutableStateOf(false) }
     var returnTick by remember { mutableStateOf(0) }
     // Back: from the embedded picture the remote goes back to the feed list (playback goes on); from the detail it closes the event, which ends what played from it.
     DisposableEffect(vm) {
-        val hook: () -> Boolean = { if (current.detail != null) { if (previewFocused) returnTick++ else vm.closeDetail(); true } else false }
+        val hook: () -> Boolean = { if (current.manage != null) { vm.closeManage(); true } else if (current.detail != null) { if (previewFocused) returnTick++ else vm.closeDetail(); true } else false }
         nav.backHook = hook
         onDispose { if (nav.backHook === hook) nav.backHook = null }
     }
@@ -152,6 +164,8 @@ fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, refreshGuideNow: () ->
             openFullscreen = { nav.liveFullscreen = true; nav.open(app.streamsetu.tv.nav.Overlay.Player) },
             previewFocused = { previewFocused = it }, stopHeld = vm::stopHeld,
             addToMultiview = { vm.addToMultiview() }, addFeedToMultiview = { vm.addToMultiview(it) },
+            selectMy = vm::selectMy, follow = vm::follow, unfollow = vm::unfollow, clearFollows = vm::clearFollows, openManage = vm::openManage, closeManage = vm::closeManage,
+            remind = vm::remind, changeReminder = vm::changeReminder, removeReminder = vm::removeReminder, keepReminder = vm::keepReminder,
             openMultiview = { vm.beforeMultiview(); nav.open(app.streamsetu.tv.nav.Overlay.SportsMultiview) },
         )
     }
@@ -200,6 +214,7 @@ fun SportsHubContent(state: SportsHubUiState, actions: SportsActions, entry: Foc
             Hub(state, actions, entry, restore, restoreId, scroll)
         }
         state.detail?.let { SportsDetailPanel(it, actions, returnTick) }
+        state.manage?.let { SportsManagePanel(it, actions) }
     }
 }
 
@@ -207,9 +222,9 @@ fun SportsHubContent(state: SportsHubUiState, actions: SportsActions, entry: Foc
 private fun Hub(state: SportsHubUiState, actions: SportsActions, entry: FocusRequester, restore: FocusRequester, restoreId: String?, scroll: ScrollHolder) {
     val hasFilters = state.filters.isNotEmpty()
     Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical)) {
-        SportsHeader(state.refreshing, entry.takeIf { !hasFilters }, state.multiviewCount, actions.refresh, actions.openMultiview)
+        SportsHeader(state.refreshing, entry.takeIf { !hasFilters }, state.multiviewCount, state.hasFollows, actions.refresh, actions.openMultiview, actions.openManage)
         if (hasFilters) {
-            SportsFilters(state.filters, state.selectedSport, entry, restore.takeIf { restoreId != null }, actions.select)
+            SportsFilters(state.filters, state.selectedSport, state.mySports, entry, restore.takeIf { restoreId != null }, actions.select, actions.selectMy)
         }
         Spacer(Modifier.height(12.dp))
         val message = state.message
@@ -224,26 +239,27 @@ private fun Hub(state: SportsHubUiState, actions: SportsActions, entry: FocusReq
 // ---- header and filters
 
 @Composable
-private fun SportsHeader(refreshing: Boolean, entry: FocusRequester?, multiview: Int, onRefresh: () -> Unit, onMultiview: () -> Unit) {
+private fun SportsHeader(refreshing: Boolean, entry: FocusRequester?, multiview: Int, hasFollows: Boolean, onRefresh: () -> Unit, onMultiview: () -> Unit, onManage: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Label("Sports", Tokens.pageTitle, Tokens.text, FontWeight.Bold)
         if (refreshing) Label("Updating…", Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-refreshing"))
         Spacer(Modifier.weight(1f))
+        if (hasFollows) TvButton("Manage My Sports", onManage, Modifier.testTag("sports-manage"))
         TvButton("Multiview" + if (multiview > 0) " ($multiview)" else "", onMultiview, Modifier.testTag("sports-multiview"))
         TvButton("Refresh", onRefresh, (if (entry != null) Modifier.focusRequester(entry) else Modifier).testTag("sports-refresh"), icon = Icons.Filled.Refresh)
     }
 }
 
 @Composable
-private fun SportsFilters(filters: List<SportsFilter>, selected: Sport?, entry: FocusRequester, restore: FocusRequester?, onSelect: (Sport?) -> Unit) {
+private fun SportsFilters(filters: List<SportsFilter>, selected: Sport?, mySelected: Boolean, entry: FocusRequester, restore: FocusRequester?, onSelect: (Sport?) -> Unit, onSelectMy: () -> Unit) {
     Row(Modifier.fillMaxWidth().testTag("sports-filters").onPreviewKeyEvent { e ->
         // Down goes to the event the remote was last on, when it is on screen; otherwise the normal search below decides.
         if (restore != null && e.type == KeyEventType.KeyDown && e.key == Key.DirectionDown) runCatching { restore.requestFocus() }.isSuccess else false
     }) {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(filters, key = { it.sport?.name ?: "all" }) { f ->
-                val isSelected = f.sport == selected
-                SportsChip(f.label + (if (f.sport != null) "  ${f.count}" else ""), isSelected, if (isSelected) Modifier.focusRequester(entry) else Modifier, "sports-filter-${f.sport?.name ?: "ALL"}") { onSelect(f.sport) }
+            items(filters, key = { if (it.my) "my" else it.sport?.name ?: "all" }) { f ->
+                val isSelected = if (f.my) mySelected else !mySelected && f.sport == selected
+                SportsChip(f.label + (if (f.sport != null || f.my) "  ${f.count}" else ""), isSelected, if (isSelected) Modifier.focusRequester(entry) else Modifier, "sports-filter-${if (f.my) "MY" else f.sport?.name ?: "ALL"}") { if (f.my) onSelectMy() else onSelect(f.sport) }
             }
         }
     }
@@ -312,7 +328,9 @@ private fun SportsEventCardView(card: SportsEventCard, modifier: Modifier, onOpe
                 Label(card.timeLabel, Tokens.small, Tokens.textSecondary, maxLines = 1)
                 if (card.feedCount > 1) Label("${card.feedCount} channels", Tokens.small, Tokens.textSecondary, maxLines = 1)
                 if (card.catchUp) Label("Catch-up", Tokens.small, Tokens.textSecondary, maxLines = 1)
+                if (card.reminded) Label("Reminder set", Tokens.small, Tokens.accent, FontWeight.SemiBold, maxLines = 1, modifier = Modifier.testTag("sports-reminded"))
             }
+            card.reason?.let { Label(it, Tokens.caption, Tokens.textSecondary, maxLines = 1, modifier = Modifier.testTag("sports-reason")) }
         }
     }
 }
@@ -351,6 +369,14 @@ private fun SportsMessageView(message: SportsHubMessage, actions: SportsActions)
                 Label("No guide yet", Tokens.title, Tokens.text, FontWeight.SemiBold)
                 Label("Sports events come from your playlist's programme guide, and none has been read for this library.", Tokens.body, Tokens.textSecondary, modifier = Modifier.padding(top = 8.dp, bottom = 20.dp).fillMaxWidth(0.6f))
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) { MessageActions(actions) }
+            }
+            SportsHubMessage.NoFollowed -> {
+                Label("Nothing from My Sports right now", Tokens.title, Tokens.text, FontWeight.SemiBold)
+                Label("No events from your followed sports are in the current guide window.", Tokens.body, Tokens.textSecondary, modifier = Modifier.padding(top = 8.dp, bottom = 20.dp).fillMaxWidth(0.6f))
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    TvButton("View All Sports", { actions.select(null) }, Modifier.testTag("sports-view-all"), primary = true)
+                    TvButton("Manage My Sports", actions.openManage, Modifier.testTag("sports-manage-from-empty"))
+                }
             }
             SportsHubMessage.NoSports -> {
                 Label("No sports events", Tokens.title, Tokens.text, FontWeight.SemiBold)
@@ -407,16 +433,30 @@ private fun SportsDetailPanel(d: SportsEventDetail, actions: SportsActions, retu
             Label(d.timeRange, Tokens.body, Tokens.text)
             Label(d.stateLabel, Tokens.body, if (d.card.live) Tokens.accent else Tokens.textSecondary, FontWeight.SemiBold)
             if (d.lowConfidence) Label("This listing was matched with lower confidence, so the details may be wrong.", Tokens.small, Tokens.warning, modifier = Modifier.testTag("sports-low-confidence"))
-            if (d.feeds.isNotEmpty()) {
-                TvButton("Watch Best Feed", actions.watchBest, Modifier.focusRequester(best).testTag("sports-watch-best"), icon = Icons.Filled.PlayArrow, primary = true)
-                d.bestLabel?.let { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-best-label")) }
-                TvButton("Add to Multiview", actions.addToMultiview, Modifier.testTag("sports-add-multiview"), icon = Icons.Filled.Add)
-                d.multiviewNote?.let { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-multiview-note")) }
-            }
-            if (play != null) SportsPlaybackNote(play, d, actions, rows)
-            Label("Available feeds", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+            // Everything below the title scrolls as one list, so the buttons, the follow choices and the feeds all stay reachable on a short screen.
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(d.feeds.size, key = { d.feeds[it].channelId.ifEmpty { it.toString() } }) { i ->
+                if (d.feeds.isNotEmpty()) item(key = "watch") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TvButton("Watch Best Feed", actions.watchBest, Modifier.focusRequester(best).testTag("sports-watch-best"), icon = Icons.Filled.PlayArrow, primary = true)
+                        d.bestLabel?.let { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-best-label")) }
+                        TvButton("Add to Multiview", actions.addToMultiview, Modifier.testTag("sports-add-multiview"), icon = Icons.Filled.Add)
+                        d.multiviewNote?.let { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-multiview-note")) }
+                    }
+                }
+                item(key = "personal") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SportsReminderBlock(d.reminder, actions)
+                        d.followOptions.forEach { o ->
+                            TvButton(if (o.following) "Following ${o.name}  ·  Unfollow" else o.label, {
+                                if (o.following) actions.unfollow(app.streamsetu.tv.sports.personal.Follow(o.kind, o.sport, if (o.kind == app.streamsetu.tv.sports.personal.FollowKind.SPORT) app.streamsetu.tv.sports.personal.SportsKeys.sportKey(o.sport) else app.streamsetu.tv.sports.personal.SportsKeys.key(o.name), o.name))
+                                else actions.follow(o.kind, o.name)
+                            }, Modifier.testTag("sports-follow-${o.kind.name}-${app.streamsetu.tv.sports.personal.SportsKeys.key(o.name)}"))
+                        }
+                    }
+                }
+                if (play != null) item(key = "playnote") { SportsPlaybackNote(play, d, actions, rows) }
+                item(key = "feeds-title") { Label("Available feeds", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp)) }
+                items(d.feeds.size, key = { "f-" + d.feeds[it].channelId.ifEmpty { it.toString() } }) { i ->
                     val f = d.feeds[i]
                     SportsFeedRowView(f, if (f.channelId.isNotEmpty()) Modifier.focusRequester(rows.getOrPut(f.channelId) { FocusRequester() }) else Modifier, onMenu = { if (f.channelId.isNotEmpty()) feedMenu = f }) { if (f.channelId.isNotEmpty()) actions.watchFeed(f.channelId) }
                 }
@@ -490,6 +530,90 @@ private fun SportsFeedRowView(f: SportsFeedRow, modifier: Modifier, onMenu: () -
             if (f.suggested) tags.add("Next best: press OK to switch")
             if (f.unsupported) tags.add("This device may not show this quality")
             if (tags.isNotEmpty()) Label(tags.joinToString("  ·  "), Tokens.small, if (f.failed) Tokens.warning else Tokens.accent, FontWeight.SemiBold, modifier = Modifier.testTag("sports-feed-tags"))
+        }
+    }
+}
+
+
+// ---- reminders and My Sports management
+
+/** Remind Me, and what is set: the choice of lead time, Change and Remove, and what to do when the event left the guide. */
+@Composable
+private fun SportsReminderBlock(r: ReminderUi?, actions: SportsActions) {
+    var menu by remember(r?.id) { mutableStateOf(false) }
+    if (r == null) {
+        TvButton("Remind Me", { menu = true }, Modifier.testTag("sports-remind"), icon = Icons.Filled.Add)
+    } else if (r.unavailable) {
+        Column(Modifier.fillMaxWidth().testTag("sports-reminder-unavailable"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Label("Schedule unavailable", Tokens.body, Tokens.warning, FontWeight.SemiBold)
+            Label("The event is no longer in the current guide.", Tokens.small, Tokens.textSecondary)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TvButton("Keep Reminder", { actions.keepReminder(r.id) }, Modifier.testTag("sports-reminder-keep"))
+                TvButton("Remove", { actions.removeReminder(r.id) }, Modifier.testTag("sports-reminder-remove"))
+            }
+        }
+    } else {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Label(r.text + "  ·  " + r.startLabel, Tokens.small, Tokens.accent, FontWeight.SemiBold, modifier = Modifier.testTag("sports-reminder-set"))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TvButton("Change Reminder", { menu = true }, Modifier.testTag("sports-reminder-change"))
+                TvButton("Remove Reminder", { actions.removeReminder(r.id) }, Modifier.testTag("sports-reminder-remove"))
+            }
+        }
+    }
+    if (menu) app.streamsetu.tv.ui.components.ContextMenu("Remind me", null, app.streamsetu.tv.sports.personal.ReminderLeads.OPTIONS.map { lead ->
+        app.streamsetu.tv.ui.components.MenuAction(app.streamsetu.tv.sports.personal.ReminderLeads.label(lead) + if (lead == app.streamsetu.tv.sports.personal.ReminderLeads.DEFAULT_MS) "  (default)" else "", Icons.Filled.PlayArrow) { if (r == null) actions.remind(lead) else actions.changeReminder(r.id, lead) }
+    }, onClose = { menu = false })
+}
+
+/** Manage My Sports: what is followed (sports, competitions, teams and participants) and the reminders, with Unfollow and a confirmed Clear all. */
+@Composable
+private fun SportsManagePanel(m: ManageUi, actions: SportsActions) {
+    val first = remember { FocusRequester() }
+    var confirm by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { requestFocusOnFrames(8, { first.requestFocus() }, { false }) }
+    Row(Modifier.fillMaxSize().testTag("sports-manage-panel")) {
+        Spacer(Modifier.weight(1f).fillMaxHeight().background(androidx.compose.ui.graphics.Color(0x99000000)))
+        Column(Modifier.width(560.ui).fillMaxHeight().background(Tokens.panel).padding(horizontal = 28.dp, vertical = Tokens.safeVertical).focusGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Label("Manage My Sports", Tokens.title, Tokens.text, FontWeight.Bold, modifier = Modifier.weight(1f))
+                TvButton("Close", actions.closeManage, Modifier.focusRequester(first).testTag("sports-manage-close"), icon = Icons.Filled.Close)
+            }
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                manageSection("Sports", m.sports, actions)
+                manageSection("Competitions", m.competitions, actions)
+                manageSection("Teams and participants", m.participants, actions)
+                if (m.reminders.isNotEmpty()) {
+                    item(key = "h-rem") { Label("Reminders", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp)) }
+                    items(m.reminders.size, key = { "r-" + m.reminders[it].id }) { i ->
+                        val r = m.reminders[i]
+                        var ask by remember(r.id) { mutableStateOf(false) }
+                        Focusable({ if (r.unavailable) ask = true else actions.removeReminder(r.id) }, Modifier.fillMaxWidth().testTag("sports-manage-reminder-${r.id}"), shape = RoundedCornerShape(Tokens.radiusSmall), scaleOnFocus = 1.0f) {
+                            Label(r.startLabel + "  ·  " + (if (r.unavailable) "Schedule unavailable. The event is no longer in the current guide." else r.text + "  ·  OK to remove"), Tokens.small, Tokens.text, maxLines = 3, modifier = Modifier.padding(12.dp))
+                        }
+                        if (ask) app.streamsetu.tv.ui.components.ContextMenu("Schedule unavailable", "The event is no longer in the current guide.", listOf(
+                            app.streamsetu.tv.ui.components.MenuAction("Keep Reminder", Icons.Filled.PlayArrow) { actions.keepReminder(r.id) },
+                            app.streamsetu.tv.ui.components.MenuAction("Remove", Icons.Filled.Close, danger = true) { actions.removeReminder(r.id) },
+                        ), onClose = { ask = false })
+                    }
+                }
+            }
+            if (m.sports.isNotEmpty() || m.competitions.isNotEmpty() || m.participants.isNotEmpty()) TvButton("Clear all", { confirm = true }, Modifier.testTag("sports-manage-clear"))
+        }
+    }
+    if (confirm) app.streamsetu.tv.ui.components.ContextMenu("Stop following everything?", "Reminders stay as they are.", listOf(
+        app.streamsetu.tv.ui.components.MenuAction("Clear all", Icons.Filled.Close, danger = true) { actions.clearFollows() },
+        app.streamsetu.tv.ui.components.MenuAction("Cancel", Icons.Filled.Close) {},
+    ), onClose = { confirm = false })
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.manageSection(title: String, rows: List<app.streamsetu.tv.sports.personal.Follow>, actions: SportsActions) {
+    if (rows.isEmpty()) return
+    item(key = "h-$title") { Label(title, Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp)) }
+    items(rows.size, key = { "f-$title-" + rows[it].sport.name + rows[it].key }) { i ->
+        val f = rows[i]
+        Focusable({ actions.unfollow(f) }, Modifier.fillMaxWidth().testTag("sports-manage-follow-${f.kind.name}-${f.key}"), shape = RoundedCornerShape(Tokens.radiusSmall), scaleOnFocus = 1.0f) {
+            Label(f.displayName + "  ·  " + f.sport.title + "  ·  OK to unfollow", Tokens.small, Tokens.text, maxLines = 1, modifier = Modifier.padding(12.dp))
         }
     }
 }
