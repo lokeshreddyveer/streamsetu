@@ -51,6 +51,18 @@ import Foundation
         for k in ContentKind.allCases { if let tab = PhoneRoutes.folderTab(for: k) { #expect(PhoneRoutes.resolve(tab) == PhoneRoute(tab: tab, page: nil), "a folder's tab is a bar tab") } }
     }
 
+    @Test func everyKindOfSearchResultHasAnAction() {
+        let all: [SearchDestination] = [.playChannel(channelID: "c"), .movie(id: "m"), .series(id: "s"), .episode(id: "e", seriesID: "s"), .programme(channelID: "c"),
+                                        .folder(categoryID: "f", kind: .channel), .folder(categoryID: "f", kind: .movie), .folder(categoryID: "f", kind: .series), .collection(id: "x")]
+        let actions = all.map(\.phoneAction)
+        #expect(!actions.contains(.unavailable), "nothing the search can return does nothing")
+        #expect(SearchDestination.folder(categoryID: "f", kind: .movie).phoneAction == .showFolder(tab: .movies, kind: .movie, categoryID: "f"))
+        #expect(SearchDestination.folder(categoryID: "f", kind: .channel).phoneAction == .showFolder(tab: .live, kind: .channel, categoryID: "f"))
+        #expect(SearchDestination.folder(categoryID: "f", kind: .series).phoneAction == .showFolder(tab: .series, kind: .series, categoryID: "f"))
+        #expect(SearchDestination.collection(id: "x").phoneAction == .showCollection(id: "x"))
+        #expect(SearchDestination.folder(categoryID: "f", kind: .episode).phoneAction == .unavailable)
+    }
+
     @Test func theCallersOfSearchAndGuideAllGetThePages() {
         // streamsetu://search, "Find series" links, the search commands (Guide, Library, Settings) and the toolbar buttons.
         let callers: [(name: String, screen: PhoneTab, page: PhoneMoreRoute)] = [

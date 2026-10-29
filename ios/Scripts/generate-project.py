@@ -152,8 +152,22 @@ for code in ("en", "hi", "te"):
 plist_ref = file_ref(f"{APP_DIR}/Info.plist", kind="text.plist.xml", tree="SOURCE_ROOT")
 products_ref = oid("product")
 add(products_ref, f"{PROJECT}.app", f'isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{PROJECT}.app"; sourceTree = BUILT_PRODUCTS_DIR;')
-products_group = group("Products", [products_ref, widget_product])
-main_group = group("Root", [shared_group, app_group, widget_group, shared_group2] + res_refs + [plist_ref, products_group])
+# --- tests: unit tests that run inside the app (StreamSetuTests) and UI tests that drive it (StreamSetuUITests) -------------------------------------------
+TEST_SPECS = [("StreamSetuTests", "unit"), ("StreamSetuUITests", "ui")]
+tests = {}
+for tname, kind in TEST_SPECS:
+    tdir = os.path.join(ROOT, tname)
+    tfiles = sorted(f for f in os.listdir(tdir) if f.endswith(".swift")) if os.path.isdir(tdir) else []
+    trefs, tbuild = [], []
+    for f in tfiles:
+        r = file_ref(f"{tname}/{f}", tree="SOURCE_ROOT")
+        trefs.append(r)
+        tbuild.append(build_file(r, f, f"{tname}Sources"))
+    tprod = oid("product", tname)
+    add(tprod, f"{tname}.xctest", f'isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "{tname}.xctest"; sourceTree = BUILT_PRODUCTS_DIR;')
+    tests[tname] = dict(kind=kind, build=tbuild, product=tprod, group=group(tname, trefs, comment=tname))
+products_group = group("Products", [products_ref, widget_product] + [t["product"] for t in tests.values()])
+main_group = group("Root", [shared_group, app_group, widget_group, shared_group2] + [t["group"] for t in tests.values()] + res_refs + [plist_ref, products_group])
 
 sources_phase = oid("phase", "sources")
 add(sources_phase, "Sources", f'isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ({", ".join(sources_phase_files)}); runOnlyForDeploymentPostprocessing = 0;')
@@ -257,8 +271,39 @@ add(embed_file, f"{WIDGET_NAME}.appex in Embed Foundation Extensions", f'isa = P
 embed_phase = oid("phase", "embed")
 add(embed_phase, "Embed Foundation Extensions", f'isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = ({embed_file}); name = "Embed Foundation Extensions"; runOnlyForDeploymentPostprocessing = 0;')
 add(target, PROJECT, f'isa = PBXNativeTarget; buildConfigurationList = {tl}; buildPhases = ({sources_phase}, {fw_phase}, {res_phase}, {embed_phase}); buildRules = (); dependencies = ({dep});  packageProductDependencies = ({pkg_dep}); name = "{PROJECT}"; productName = "{PROJECT}"; productReference = {products_ref}; productType = "com.apple.product-type.application";')
+test_targets = []
+for tname, kind in TEST_SPECS:
+    t = tests[tname]
+    sp, fp = oid("phase", tname, "sources"), oid("phase", tname, "frameworks")
+    add(sp, "Sources", f'isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ({", ".join(t["build"])}); runOnlyForDeploymentPostprocessing = 0;')
+    add(fp, "Frameworks", 'isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;')
+    cfg = {
+        "CODE_SIGN_STYLE": "Automatic", "CURRENT_PROJECT_VERSION": BUILD, "GENERATE_INFOPLIST_FILE": "YES", "MARKETING_VERSION": VERSION,
+        "PRODUCT_BUNDLE_IDENTIFIER": f"{BUNDLE_ID}.{tname.lower()}", "PRODUCT_NAME": '"$(TARGET_NAME)"', "SWIFT_EMIT_LOC_STRINGS": "NO",
+        "LD_RUNPATH_SEARCH_PATHS": '"$(inherited) @executable_path/Frameworks @loader_path/Frameworks"',
+    }
+    if kind == "unit":
+        cfg.update({"BUNDLE_LOADER": '"$(TEST_HOST)"', "TEST_HOST": f'"$(BUILT_PRODUCTS_DIR)/{PROJECT}.app/{PROJECT}"'})
+    else:
+        cfg.update({"TEST_TARGET_NAME": PROJECT})
+    if TEAM:
+        cfg["DEVELOPMENT_TEAM"] = TEAM
+    cd_, cr_ = oid("cfg", tname, "Debug"), oid("cfg", tname, "Release")
+    add(cd_, "Debug", f'isa = XCBuildConfiguration; buildSettings = {settings(cfg)}; name = Debug;')
+    add(cr_, "Release", f'isa = XCBuildConfiguration; buildSettings = {settings(cfg)}; name = Release;')
+    cl_ = oid("cfglist", tname)
+    add(cl_, f'Build configuration list for PBXNativeTarget "{tname}"', f'isa = XCConfigurationList; buildConfigurations = ({cd_}, {cr_}); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')
+    tproxy = oid("proxy", tname)
+    add(tproxy, "PBXContainerItemProxy", f'isa = PBXContainerItemProxy; containerPortal = {oid("project")}; proxyType = 1; remoteGlobalIDString = {target}; remoteInfo = "{PROJECT}";')
+    tdep = oid("dependency", tname)
+    add(tdep, "PBXTargetDependency", f'isa = PBXTargetDependency; target = {target}; targetProxy = {tproxy};')
+    tt = oid("target", tname)
+    ptype = "com.apple.product-type.bundle.unit-test" if kind == "unit" else "com.apple.product-type.bundle.ui-testing"
+    add(tt, tname, f'isa = PBXNativeTarget; buildConfigurationList = {cl_}; buildPhases = ({sp}, {fp}); buildRules = (); dependencies = ({tdep}); name = "{tname}"; productName = "{tname}"; productReference = {t["product"]}; productType = "{ptype}";')
+    test_targets.append((tname, tt, kind))
+ui_target_id = next(tt for n, tt, k in test_targets if k == "ui")
 project = oid("project")
-add(project, "Project object", f'isa = PBXProject; attributes = {{BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 2700; LastUpgradeCheck = 2700;}}; buildConfigurationList = {pl}; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = {main_group}; packageReferences = ({pkg_ref}); productRefGroup = {products_group}; projectDirPath = ""; projectRoot = ""; targets = ({target}, {widget_target});')
+add(project, "Project object", f'isa = PBXProject; attributes = {{BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 2700; LastUpgradeCheck = 2700; TargetAttributes = {{{ui_target_id} = {{TestTargetID = {target};}};}};}}; buildConfigurationList = {pl}; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = {main_group}; packageReferences = ({pkg_ref}); productRefGroup = {products_group}; projectDirPath = ""; projectRoot = ""; targets = ({target}, {widget_target}, {", ".join(tt for _, tt, _ in test_targets)});')
 
 out = ["// !$*UTF8*$!", "{", "\tarchiveVersion = 1;", "\tclasses = {", "\t};", "\tobjectVersion = 56;", "\tobjects = {"]
 sections = ["XCRemoteSwiftPackageReference", "XCSwiftPackageProductDependency", "PBXBuildFile", "PBXContainerItemProxy", "PBXCopyFilesBuildPhase", "PBXFileReference", "PBXFrameworksBuildPhase", "PBXGroup", "PBXNativeTarget", "PBXProject", "PBXResourcesBuildPhase", "PBXSourcesBuildPhase", "PBXTargetDependency", "XCBuildConfiguration", "XCConfigurationList"]
@@ -275,4 +320,22 @@ out += ["\t};", f"\trootObject = {project} /* Project object */;", "}", ""]
 proj_dir = os.path.join(ROOT, f"{PROJECT}.xcodeproj")
 os.makedirs(proj_dir, exist_ok=True)
 open(os.path.join(proj_dir, "project.pbxproj"), "w").write("\n".join(out))
+scheme_dir = os.path.join(proj_dir, "xcshareddata", "xcschemes")
+os.makedirs(scheme_dir, exist_ok=True)
+def buildable(tid, name, prod, ext):
+    return (f'<BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "{tid}" BuildableName = "{prod}.{ext}" BlueprintName = "{name}" ReferencedContainer = "container:{PROJECT}.xcodeproj"></BuildableReference>')
+app_ref = buildable(target, PROJECT, PROJECT, "app")
+entries = f'<BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">{app_ref}</BuildActionEntry>'
+testables = "".join(f'<TestableReference skipped = "NO">{buildable(tt, n, n, "xctest")}</TestableReference>' for n, tt, k in test_targets)
+scheme = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion = "2700" version = "1.7">
+  <BuildAction parallelizeBuildables = "YES" buildImplicitDependencies = "YES"><BuildActionEntries>{entries}</BuildActionEntries></BuildAction>
+  <TestAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv = "YES"><Testables>{testables}</Testables></TestAction>
+  <LaunchAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle = "0" useCustomWorkingDirectory = "NO" ignoresPersistentStateOnLaunch = "NO" debugDocumentVersioning = "YES" debugServiceExtension = "internal" allowLocationSimulation = "YES"><BuildableProductRunnable runnableDebuggingMode = "0">{app_ref}</BuildableProductRunnable></LaunchAction>
+  <ProfileAction buildConfiguration = "Release" shouldUseLaunchSchemeArgsEnv = "YES" savedToolIdentifier = "" useCustomWorkingDirectory = "NO" debugDocumentVersioning = "YES"><BuildableProductRunnable runnableDebuggingMode = "0">{app_ref}</BuildableProductRunnable></ProfileAction>
+  <AnalyzeAction buildConfiguration = "Debug"></AnalyzeAction>
+  <ArchiveAction buildConfiguration = "Release" revealArchiveInOrganizer = "YES"></ArchiveAction>
+</Scheme>
+"""
+open(os.path.join(scheme_dir, f"{PROJECT}.xcscheme"), "w").write(scheme)
 print(f"wrote {proj_dir}  ({len(shared)} shared files, {len(app_swift)} iOS files)")

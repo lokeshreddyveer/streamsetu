@@ -17,6 +17,34 @@ struct PhoneRoute: Equatable, Sendable {
     let page: PhoneMoreRoute?
 }
 
+/// What choosing a search result does on iPhone and iPad. Every kind of result has an action; there is no "does nothing" for a result that is shown.
+enum SearchAction: Equatable, Sendable {
+    case playChannel(id: String)
+    case openMovie(id: String)
+    case openSeries(id: String)
+    case playEpisode(id: String, seriesID: String)
+    case playProgramme(channelID: String)
+    /// Select [tab] with this folder chosen (Live TV, Movies or Series).
+    case showFolder(tab: PhoneTab, kind: ContentKind, categoryID: String)
+    case showCollection(id: String)
+    /// A folder of a kind that has no folders (episodes). The search never returns one; it is here so the switch stays exhaustive and honest.
+    case unavailable
+}
+
+extension SearchDestination {
+    var phoneAction: SearchAction {
+        switch self {
+        case .playChannel(let id): .playChannel(id: id)
+        case .movie(let id): .openMovie(id: id)
+        case .series(let id): .openSeries(id: id)
+        case .episode(let id, let seriesID): .playEpisode(id: id, seriesID: seriesID)
+        case .programme(let channelID): .playProgramme(channelID: channelID)
+        case .folder(let categoryID, let kind): PhoneRoutes.folderTab(for: kind).map { .showFolder(tab: $0, kind: kind, categoryID: categoryID) } ?? .unavailable
+        case .collection(let id): .showCollection(id: id)
+        }
+    }
+}
+
 enum PhoneRoutes {
     /// The tab that shows a folder of this kind: Live TV for a channel folder, Movies for a movie folder, Series for a series folder. Episodes have no folders of their own.
     static func folderTab(for kind: ContentKind) -> PhoneTab? {

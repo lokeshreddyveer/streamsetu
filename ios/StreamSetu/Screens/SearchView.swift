@@ -167,24 +167,25 @@ struct SearchView: View {
 
     private func activate(_ r: SearchResult) {
         guard let c = container else { return }
-        switch r.destination {
+        switch r.destination.phoneAction {
         case .playChannel(let id):
             if let ch = try? c.catalog.channel(id: id) { Play.channel(ch, queue: [ch], c) }
-        case .movie(let id):
+        case .openMovie(let id):
             if let m = try? c.catalog.movie(id: id) { opened = .movie(m) }
-        case .series(let id):
+        case .openSeries(let id):
             if let s = try? c.catalog.seriesItem(id: id) { opened = .series(s) }
-        case .episode(let id, let seriesID):
+        case .playEpisode(let id, let seriesID):
             if let e = try? c.catalog.episode(id: id), let s = try? c.catalog.seriesItem(id: seriesID) { Play.episode(e, s, c) }
-        case .programme(let channelID):
+        case .playProgramme(let channelID):
             if let ch = try? c.catalog.channel(id: channelID) { Play.channel(ch, queue: [ch], c) }
-        case .folder(let categoryID, let kind):
+        case .showFolder(let tab, let kind, let categoryID):
             // The folder opens in the screen that shows its kind, with that folder chosen; this search is closed so the person lands there.
-            guard let tab = PhoneRoutes.folderTab(for: kind) else { return }
             router.pendingFolder = (kind, categoryID)
             if embedded { dismiss() }
             router.go(tab)
-        case .collection(let id):
+        case .unavailable:
+            break                                                        // never shown: the search returns no folder of a kind that has none
+        case .showCollection(let id):
             Task {
                 let found = await Task.detached { (try? c.favoritesRepo.collections())?.first { $0.id == id } }.value
                 if let found { openedCollection = found } else { state.toasts.show("That collection no longer exists", symbol: "square.stack") }

@@ -42,3 +42,32 @@ Play any MP4 movie. Check in portrait, then turn to landscape.
 ## Known limits
 - Save Frame, A–B repeat, frame step and volume boost only appear when the player is MPV.
 - On the player's controls, fonts are fixed sizes; Dynamic Type applies to the Options sheet.
+
+
+# Automated tests (iPhone and iPad)
+
+The project has two test targets, built by `Scripts/generate-project.py` and run by `Scripts/test.sh`:
+
+- **StreamSetuTests** (unit tests, run inside the app): the router (`RouterTests`), search-result actions (`SearchActivationTests`) and links (`DeepLinkRoutingTests`).
+- **StreamSetuUITests** (drives the installed app): launch, the tab bar, the More tab and the largest text size (`LaunchTests`). They skip themselves when no library is open.
+
+The rules the tests check live in shared code (`Domain/Navigation/PhoneRoutes.swift`), so the Mac test suite runs them too (`macos/Scripts/run-tests.sh PhoneRoutes`).
+
+Both bundles compile on this Mac. Running them needs an iOS Simulator or a device, which this Mac does not have.
+
+## Release gate: what is automated and what is not yet
+
+| # | Gate | State |
+|---|---|---|
+| 1 | Every router destination | Automated (unit + Mac) |
+| 2 | Every tab and More route | Automated (unit + Mac); the tab bar in a UI test |
+| 3 | Search result activation for every result kind | Automated: every kind maps to an action (unit + Mac); the tap itself is by hand |
+| 4 | Add, edit, delete a playlist | Not automated: by hand, section 1 above |
+| 5 | Profile and parental boundaries | Mac tests cover the rules; the screens are by hand |
+| 6 | Settings persistence and side effects | Mac tests cover the settings; the screens are by hand |
+| 7 | iCloud and LAN-sync states | Mac tests cover the sync core; the states on a phone are by hand |
+| 8 | Portrait, landscape, iPad compact and regular | Not automated: by hand |
+| 9 | Background, foreground, picture in picture, app lock | Not automated: by hand |
+| 10 | VoiceOver and the largest text size | Largest text size: one UI test. VoiceOver: by hand |
+
+A line marked "by hand" has to be ticked on a real device before a TestFlight build until a UI test replaces it.
