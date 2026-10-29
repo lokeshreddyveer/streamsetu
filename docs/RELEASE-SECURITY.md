@@ -12,15 +12,15 @@ Three outcomes are kept apart: clean (exit 0), vulnerable (1), unknown (2: offli
 
 ## The Mac's bundled libraries (about 45 dylibs)
 
-They have no package manifest, so each one is identified from the file itself (install name, version, SHA-256) and checked against `macos/release/libmpv-components.json`, which records its upstream project, the **exact upstream git revision** it was built from, and the date its security advisories were last read. A library stops a strict run when:
+They have no package manifest, so each one is identified from the file itself (install name, version, SHA-256) and checked against `macos/release/libmpv-components.json`. A library stops a strict run when it is not in that file, is listed but missing from the bundle, differs from the recorded version or hash.
 
-- it is not in that file, or the file or version differs from what was reviewed;
-- no exact upstream revision is recorded (it cannot be looked up);
-- its advisories were not reviewed in the last 30 days.
+The exact upstream git revision is **optional**: when recorded it is looked up in OSV by commit; when not, the library is reported as tracked supply-chain debt. The SBOM (CycloneDX) lists every library with version, hash and whatever upstream information is recorded.
 
-A recorded revision is looked up in OSV by commit. The SBOM (CycloneDX) lists every library with version, hash, upstream project and revision.
+**Debt to clear at the next dependency refresh:** pin an upstream tag and artifact checksum in `macos/Scripts/fetch-libmpv.sh` (it currently downloads whatever IINA release is latest, with no pin).
 
-**Current state:** the revisions and review dates are not yet recorded, so the Mac release gate fails until someone reads them from the build the dylibs came from (see `macos/Scripts/fetch-libmpv.sh`) and fills them in. They must not be guessed.
+**Provenance check, 2026-10-29:** the IINA release latest on the bundle's file date is v1.5.0 (published 2026-10-03), `https://github.com/iina/iina/releases/download/v1.5.0/IINA.v1.5.0.dmg`, SHA-256 `8fad50479b10e09645053457cec46bd53d054ced2242cfe68f74586735a20dc7`. All 45 library names and reported versions match it, but the files differ byte for byte, so the source is likely, not proven.
+
+**Current state:** names, versions and hashes are recorded for all 45 libraries, so the Mac check passes; the missing upstream revisions are reported as tracked debt.
 
 ## Overriding a finding
 

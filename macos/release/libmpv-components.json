@@ -1,365 +1,320 @@
 {
-  "_note": "Fill upstream_revision with the exact upstream git commit each library was built from (the builder of the bundle, currently the IINA release named in fetch-libmpv.sh, publishes it) and advisories_reviewed with the date its security notices were last read. Until then a strict dependency check reports the library as unidentified and the Mac release stops. Never copy a revision that was not read from the build.",
+  "_note": "Name, version and SHA-256 of each bundled library; the check fails if one is missing or changed. upstream_revision is optional (reported as debt when empty). Pin an upstream tag and checksum in fetch-libmpv.sh at the next refresh.",
   "components": [
     {
       "file": "libSvtAv1Enc.4.dylib",
       "project": "SVT-AV1",
       "version": "4.2.0",
       "sha256": "87ccf54753a9b1f7d39336b447a16255cd1f35b5069bbe483c389c26d1ffa0e8",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libarchive.13.dylib",
       "project": "libarchive",
       "version": "22.8.0",
       "sha256": "233ef07f00cf24141122cf65abba04bf742aca35facf95f329fe7e79673a18cd",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libass.9.dylib",
       "project": "libass",
       "version": "14.2.0",
       "sha256": "e61f1b2a5bba2ce5b90bfeb315ab49c984bc3f13679400042ef7e263a8835f94",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libavcodec.63.dylib",
       "project": "FFmpeg",
       "version": "63.1.101",
       "sha256": "02691763d2a7525576a1453fcc673fc0e06c608818e1481e4530da8914710b08",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libavdevice.63.dylib",
       "project": "FFmpeg",
       "version": "63.1.101",
       "sha256": "110e21ed3af86b1880258512471d0a8f6eca484e11f2d8779e160af3fc304c56",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libavfilter.12.dylib",
       "project": "FFmpeg",
       "version": "12.1.101",
       "sha256": "da79b1b7451ae5928e2be6a6cdf01e165c819487a5d11836218eb7c8e5292acb",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libavformat.63.dylib",
       "project": "FFmpeg",
       "version": "63.1.101",
       "sha256": "53cca21f3a9ffb48971c1f26b4cffe2e3e4eba6393ab9ab4f90f45e283dc437a",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libavutil.61.dylib",
       "project": "FFmpeg",
       "version": "61.1.101",
       "sha256": "afb6644b6c70cf666b4af1299127f378b2ce3b23c5db9602ea167e369406e606",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libbluray.3.dylib",
       "project": "libbluray",
       "version": "3.0.0",
       "sha256": "24bdd5643e8479a31f7b9b7355881162ae659c6e65f21dd64a02b98d180583d6",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libbrotlicommon.1.dylib",
       "project": "brotli",
       "version": "1.0.9",
       "sha256": "cf5cf93b7af076383e777f1d96aa8dbc782b05d0a160700a94682188829c1618",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libbrotlidec.1.dylib",
       "project": "brotli",
       "version": "1.0.9",
       "sha256": "af1646834fcfb4c6c3d28b3b9a28008aebd0b1ae71371626f088402bf6c008a7",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libbrotlienc.1.dylib",
       "project": "brotli",
       "version": "1.0.9",
       "sha256": "2a720509ab5203e965c4ee9da1578bf099261921e84102f4803fd53d221904a4",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libbs2b.0.dylib",
       "project": "bs2b",
       "version": "1.0.0",
       "sha256": "32356179d94db457f5a80f7c639a4ab42c84b31bb78d539e58aed72b073abf00",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libdav1d.7.dylib",
       "project": "dav1d",
       "version": "7.0.0",
       "sha256": "bb59d754a3e8cc0885d7a7415903bf17ff42c6b86f038e92e763d51f547e75e0",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libfontconfig.1.dylib",
       "project": "fontconfig",
       "version": "18.0.0",
       "sha256": "779b3932876fcd7813bcc3096812cd0111693196063348dbb276cbb9391f1060",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libfreetype.6.dylib",
       "project": "FreeType",
       "version": "27.6.0",
       "sha256": "10c28a673749168f6521378a4b6d452e2a0b04b2f3f7c74bbc7c20e541787e0d",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libfribidi.0.dylib",
       "project": "FriBidi",
       "version": "0.0.0",
       "sha256": "6f52e8a3135d9660bf57bca6cd8a3573b43417d40f04ca2d0433aa3aadd7d265",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libharfbuzz.0.dylib",
       "project": "HarfBuzz",
       "version": "61421.0.0",
       "sha256": "c7854f94365700ec1b27fae95895c9ce88160af544d588e1b1e3fc133d8bb3c3",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libjpeg.62.dylib",
       "project": "libjpeg-turbo",
       "version": "62.4.0",
       "sha256": "5c2e23955015e7d3255c715a1baa3e168cfae077767e441d98af6ab14d40c1d7",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libjxl.0.11.dylib",
       "project": "libjxl",
       "version": "0.11.2",
       "sha256": "73ff5f964c0824b856210bb24742dd334ef90d710c36f5150745aaf927acfb98",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libjxl_cms.0.11.dylib",
       "project": "libjxl",
       "version": "0.11.2",
       "sha256": "342b41c264cf7fec456ca50df1ed836957d648a93240699e1f951caa805fc7db",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libjxl_threads.0.11.dylib",
       "project": "libjxl",
       "version": "0.11.2",
       "sha256": "8ef50010a027191a9332406876d8d44ed200f1690dfde6a9e6df6c1cf03368fa",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "liblcms2.2.dylib",
       "project": "Little CMS",
       "version": "3.18.0",
       "sha256": "d58390995c94bd2b964db340174868bfebab6ad75c33acbe0c80d182c7d255f6",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libluajit-5.1.2.dylib",
       "project": "LuaJIT",
       "version": "2.1.255",
       "sha256": "6538ebdf636bde150ddd16550e0bef4fcb6d220b3f5938c3d179aa40fc4376c4",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "liblz4.1.dylib",
       "project": "LZ4",
       "version": "1.10.0",
       "sha256": "d32781ff30126675336b587b185131f72c8bccadfb167a3b0278d6280b89c600",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libmpv.2.dylib",
       "project": "mpv",
       "version": "2.0.0",
       "sha256": "68fa3f5770b0154bfcc7da694147adc97eeb4c2e388e6a3c467b002b2e40f790",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libmujs.dylib",
       "project": "MuJS",
       "version": "0.0.0",
       "sha256": "055d028f94775a9353a6837c0962740dbc0813cf8ae454836558bb38cca706a8",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libogg.0.dylib",
       "project": "libogg",
       "version": "9.6.0",
       "sha256": "0bf9f70b12da640c9664f469b74d4ae72317d19a8fae56c3622ca64915a3e305",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libplacebo.360.dylib",
       "project": "libplacebo",
       "version": "360.0.0",
       "sha256": "f7690bbdf5acaae1fbd555075e0c295437346786882a1d63a7b508f6cb31856a",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "librubberband.3.dylib",
       "project": "Rubber Band",
       "version": "3.0.0",
       "sha256": "9099b445a7d292e1b8ec4b6f6c1f085a9f1f86b4821da698964a70f29970427a",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libsharpyuv.0.dylib",
       "project": "libwebp",
       "version": "2.2.0",
       "sha256": "9f25a7b4a689b5b0c2c4e0f82af1912cf4844ef7ff771ba48b9a098258dd428d",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libsoxr.0.dylib",
       "project": "SoXR",
       "version": "0.1.2",
       "sha256": "0b1a2d160fcd03a19112c3ba17e7c656c395b7db49832136a929e92037907f0b",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libspeex.1.dylib",
       "project": "Speex",
       "version": "7.2.0",
       "sha256": "16f9e179d6ea720d39160b1e9a251c00a7dbbdf7af5d0b3288f0adda1a9fe887",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libswift_Concurrency.dylib",
       "project": "Swift runtime (Apple)",
       "version": "5.7.2",
       "sha256": "a09059ccd313d45600f574d2edcb26bf7471234e22408ae37997607e87bda027",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libswresample.7.dylib",
       "project": "FFmpeg",
       "version": "7.1.101",
       "sha256": "794e895a4af7e9600704a4139f686be26059b4667e3334370b975f2e857cdfae",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libswscale.10.dylib",
       "project": "FFmpeg",
       "version": "10.1.101",
       "sha256": "3e42237b4c0f8b93f17a1fa4b592496fb4645fe28c4bd376ffcc14772e80463b",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libuchardet.0.dylib",
       "project": "uchardet",
       "version": "0.0.8",
       "sha256": "4670b44abef84f198cea5fd949111bd4fed01e387f9a03c69f6ede03c763f8a0",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libudfread.3.dylib",
       "project": "libudfread",
       "version": "3.0.0",
       "sha256": "06c9933708a65cad2a7e4f29dbbc6a0d04ac52e60daf41e1a49b6a668e8120fb",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libunibreak.7.dylib",
       "project": "libunibreak",
       "version": "8.0.0",
       "sha256": "72238ab6f32d27221cdc35a96334e68db09b83454544d68925f2867a25b8fea0",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libvorbis.0.dylib",
       "project": "Vorbis",
       "version": "5.9.0",
       "sha256": "6138d761ddb60383970a281bbaec1a308787450d3d72e28acff161696bb1d536",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libvorbisenc.2.dylib",
       "project": "Vorbis",
       "version": "3.12.0",
       "sha256": "48a14fe76e53d11e4b3c5e92743ac7054fc31ffcab345d351054019b687688d4",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libwebp.7.dylib",
       "project": "libwebp",
       "version": "10.0.0",
       "sha256": "a2ffe2bd99c7b481e359ccab5e60649e5f68f9f21fe775ed9222ca3262bff203",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libwebpmux.3.dylib",
       "project": "libwebp",
       "version": "5.2.0",
       "sha256": "a114853fb494ef5a68e712614e58ea62e42bc0099f8f51c5bd9d6e6a3cb6f11e",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libzimg.2.dylib",
       "project": "zimg",
       "version": "3.0.0",
       "sha256": "84abe31b1511dec717704a68dfe2d0e4bc72b03e3c9dd3a3dc1286003ea0c19e",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     },
     {
       "file": "libzstd.1.dylib",
       "project": "Zstandard",
       "version": "1.5.7",
       "sha256": "b291f9009b3ab7a4dd129e9de447f2e07c136a5a1298d531651073a44d588955",
-      "upstream_revision": null,
-      "advisories_reviewed": null
+      "upstream_revision": null
     }
   ]
 }

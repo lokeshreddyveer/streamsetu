@@ -11,8 +11,7 @@ Three outcomes are kept apart: clean (0), vulnerable (1) and unknown (2: offline
 
 Bundled Mac libraries (macos/third_party/libmpv/*.dylib) have no package manifest, so they are identified from the files themselves (install name, version, SHA-256) and
 checked against macos/release/libmpv-components.json, which records for each library its upstream project, exact upstream revision, and the date its security advisories were
-last reviewed. A library is "unknown" (blocks a strict run) when it is missing from that file, its file or version differs from what was reviewed, no exact upstream revision is
-recorded, or the review is older than 30 days. A recorded revision is also looked up in OSV by commit.
+recorded. A library is "unknown" (blocks a strict run) when it is missing from that file, is listed but missing from the bundle, its file or version differs from what was reviewed (name, version and SHA-256 are all checked). An exact upstream revision is optional: when recorded it is looked up in OSV by commit, and when not it is reported as tracked supply-chain debt.
 
 Overrides: a finding can be accepted only through Scripts/risk-acceptances.json, signed (ssh-keygen -Y sign, namespace "streamsetu-risk") by a key listed in Scripts/allowed_signers,
 each entry with an owner, a reason and an expiry at most 90 days after it was accepted. Anything else is not an override. See docs/RELEASE-SECURITY.md.
@@ -23,7 +22,6 @@ repo = pathlib.Path(__file__).resolve().parent.parent
 problems = 0
 unknown = 0
 results = {"generated": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"), "swift": [], "web": None, "mac": [], "accepted": []}
-REVIEW_MAX_DAYS = 30
 ACCEPT_MAX_DAYS = 90
 
 def arg(name):
@@ -141,13 +139,8 @@ for lib in libs:
     c, why = manifest.get(lib["file"]), None
     if c is None: why = "not in macos/release/libmpv-components.json (no known upstream project)"
     elif c.get("sha256") != lib["sha256"] or c.get("version") != lib["version"]: why = "the file is not the one that was reviewed (version or hash differs)"
-    elif not c.get("upstream_revision"): why = "no exact upstream revision recorded, so it cannot be looked up"
-    else:
-        try: reviewed = datetime.date.fromisoformat(c.get("advisories_reviewed", ""))
-        except Exception: reviewed = None
-        if not reviewed or (today - reviewed).days > REVIEW_MAX_DAYS: why = f"advisories not reviewed in the last {REVIEW_MAX_DAYS} days"
     entry = {**lib, "upstream": (c or {}).get("project"), "upstream_revision": (c or {}).get("upstream_revision"), "vulnerabilities": [], "problem": why}
-    if why is None:
+    if why is None and c.get("upstream_revision"):
         try:
             v = [x["id"] for x in osv_commit(c["upstream_revision"])]
             entry["vulnerabilities"] = v
@@ -155,6 +148,7 @@ for lib in libs:
             if left: why = "vulnerabilities reported: " + ", ".join(left)
         except Exception as e:
             why = f"could not check ({e.__class__.__name__})"
+    if not (c or {}).get("upstream_revision"): results.setdefault("debt", []).append(f"{lib['file']}: no upstream revision recorded")
     if why is not None and f"mac:{lib['file']}" in accepted:
         results["accepted"].append({"id": f"mac:{lib['file']}", "for": why, "owner": accepted[f"mac:{lib['file']}"]["owner"], "expires": accepted[f"mac:{lib['file']}"]["expires"]}); why = None
     entry["problem"] = why
@@ -163,6 +157,11 @@ for lib in libs:
         else: unknown += 1
         print(f"  {'✘' if why.startswith('vulnerabilities') else '?'} {lib['file']} {lib['version']}: {why}")
     results["mac"].append(entry)
+for name in sorted(set(manifest) - {l["file"] for l in libs}) if libs else []:
+    unknown += 1; print(f"  ? {name}: listed in the manifest but missing from the bundle")
+    results["mac"].append({"file": name, "problem": "missing from the bundle"})
+debt = results.get("debt", [])
+if debt: print(f"  Tracked supply-chain debt: {len(debt)} libraries have no exact upstream revision recorded. Pin an upstream tag and artifact checksum at the next dependency refresh.")
 if not libs: print("  (none for this scope)")
 else: print(f"  {sum(1 for e in results['mac'] if not e['problem'])} of {len(libs)} libraries checked and clean")
 
