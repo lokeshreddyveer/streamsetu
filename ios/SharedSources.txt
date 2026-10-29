@@ -4,6 +4,9 @@ Application/AppRouter.swift
 Domain/Navigation/PhoneRoutes.swift
 Domain/Navigation/SearchPhase.swift
 Domain/Navigation/PageGate.swift
+Domain/Sports/SportsModels.swift
+Domain/Sports/SportsClassifier.swift
+Domain/Sports/SportsEventService.swift
 Application/AppSettings.swift
 Application/AppState.swift
 Application/DeepLink.swift

@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 
 data class PartialRow(val id: String, val fraction: Double)
 
+/** One playlist's share of the guide table (see EpgDao.guideStamps). */
+data class GuideStamp(val scope: String, val n: Int, val lastEnd: Long?)
+
 @Dao
 interface SourceDao {
     @Query("SELECT * FROM sources ORDER BY sortOrder, name") fun observe(): Flow<List<SourceEntity>>
@@ -46,6 +49,10 @@ interface CatalogDao {
     @Query("SELECT * FROM channels WHERE categoryId = :categoryId AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name") fun channelsIn(categoryId: String): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE sourceId IN (:sources) AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name LIMIT :limit") fun allChannels(limit: Int, sources: List<String>): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE id = :id") suspend fun channel(id: String): ChannelEntity?
+    /** Every channel of these playlists the person has not hidden, in one read (Sports builds its events from this). */
+    @Query("SELECT * FROM channels WHERE sourceId IN (:sources) AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1)") suspend fun visibleChannelsOf(sources: List<String>): List<ChannelEntity>
+    @Query("SELECT channelId FROM channel_prefs WHERE hidden = 1") suspend fun hiddenChannelIds(): List<String>
+    @Query("SELECT * FROM categories") suspend fun allCategories(): List<CategoryEntity>
     /** A visible channel that carries this guide id, for turning a guide entry into something that can be played. */
     @Query("SELECT c.* FROM channels c JOIN sources s ON s.id = c.sourceId WHERE s.enabled = 1 AND s.draft = 0 AND c.epgId = :epgId AND c.id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY c.sortOrder LIMIT 1") suspend fun channelForGuideId(epgId: String): ChannelEntity?
     /** The same channel (same name, or same guide id) in the person's other enabled connections: what to try when it stops working in its own. */
@@ -139,6 +146,8 @@ interface EpgDao {
     /** Programmes whose title has the word and that start between the two times, soonest first. */
     @Query("SELECT * FROM epg WHERE LOWER(title) LIKE '%' || LOWER(:term) || '%' AND startMs > :from AND startMs < :to ORDER BY startMs LIMIT 40") suspend fun matching(term: String, from: Long, to: Long): List<EpgEntity>
     @Query("SELECT MAX(endMs) FROM epg") suspend fun lastEnd(): Long?
+    /** What the guide holds for each playlist (the part of the stored id before the separator; "" for a guide stored before ids were scoped): how many programmes and when the last one ends. */
+    @Query("SELECT CASE WHEN instr(channelEpgId, char(1)) > 0 THEN substr(channelEpgId, 1, instr(channelEpgId, char(1)) - 1) ELSE '' END AS scope, COUNT(*) AS n, MAX(endMs) AS lastEnd FROM epg GROUP BY scope") suspend fun guideStamps(): List<GuideStamp>
 }
 
 @Dao

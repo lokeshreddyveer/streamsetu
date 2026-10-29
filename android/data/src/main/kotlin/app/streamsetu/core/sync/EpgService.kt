@@ -45,8 +45,7 @@ class EpgService(private val db: AppDatabase) {
         // Retention: nothing older than an hour and nothing more than two days ahead is kept, so the guide cannot grow without limit.
         flush()
         if (names.isNotEmpty()) db.extras().putEpgChannels(names.map { (n, id) -> app.streamsetu.core.data.db.EpgChannelEntity(EpgIds.scope(source.id, id), app.streamsetu.core.data.repo.SearchText.normalize(stripQuality(n))) })
-        cache = null
-        generation++
+        guideChanged()
         kept
     }
 
@@ -85,6 +84,9 @@ class EpgService(private val db: AppDatabase) {
             override fun close() = inner.close()
         }
     }
+
+    /** Call after the guide table has changed (a refresh does): the next lookup reads it afresh and every earlier match is dropped. */
+    fun guideChanged() { cache = null; generation++ }
 
     private class Lookup(val ids: Set<String>, val rawToStored: Map<String, String>, val byName: Map<String, String>, val byNameInSource: Map<String, String>)
     @Volatile private var cache: Lookup? = null
