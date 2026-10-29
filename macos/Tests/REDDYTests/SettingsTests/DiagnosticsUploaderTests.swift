@@ -19,21 +19,35 @@ import Foundation
         #expect(!out.joined().contains("provider") && !out.joined().contains("user-one") && !out.joined().contains("user-two"))
     }
 
+    @Test func aLoginInFrontOfTheServerNameDoesNotHideTheServerName() {
+        let out = LogMasker.mask(["relay from http://user:pw@secret.example/path failed", "open http://***@secret.example:8080/x", "plain https://other.example/y"])
+        #expect(out[0] == "relay from http://server-1/path failed")
+        #expect(out[1] == "open http://server-1:8080/x", "the same server keeps the same label")
+        #expect(out[2] == "plain https://server-2/y")
+        #expect(!out.joined().contains("secret") && !out.joined().contains("pw@"))
+    }
+
     @Test func lineWithoutAServerIsLeftAlone() {
         let line = "10-12 13:49:06.117  AVPlayer ready presentationSize=1920x1080 video=avc1 audio=aac"
         #expect(LogMasker.mask([line]) == [line])
         #expect(LogMasker.mask(["failingHost=-"]) == ["failingHost=-"])
     }
 
-    @Test func sharingIsOnUnlessTheyTurnItOff() {
+    @Test func sharingIsOffUntilTheyTurnItOn() {
         let d = UserDefaults(suiteName: "diag-test-\(UUID().uuidString)")!
         let u = DiagnosticsUploader(defaults: d)
-        #expect(u.isEnabled)
-        u.isEnabled = false
-        #expect(!u.isEnabled)
-        #expect(!DiagnosticsUploader(defaults: d).isEnabled)         // the choice is remembered
+        #expect(!u.isEnabled, "nobody has been asked yet, so nothing is shared")
         u.isEnabled = true
         #expect(u.isEnabled)
+        #expect(DiagnosticsUploader(defaults: d).isEnabled)          // the choice is remembered
+        u.isEnabled = false
+        #expect(!u.isEnabled)
+    }
+
+    @Test func aFailedStreamSendsNothingUntilTheyHaveSaidYes() {
+        let d = UserDefaults(suiteName: "diag-test-\(UUID().uuidString)")!
+        DiagnosticsUploader(defaults: d).playbackFailed()
+        #expect(d.object(forKey: "diagnostics.lastAuto") == nil, "never asked: nothing is sent and nothing is recorded as sent")
     }
 
     @Test func theInstallNumberIsRandomAndStaysTheSame() {

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shown once, on first launch: automatic problem reports are on, what they contain, and where to turn them off.
+/// Asked once, on first launch: may StreamSetu send a playback log when a stream fails for good? The answer is no until the person says yes, and it can be changed in Settings → Send Feedback.
 struct LoggingNotice: ViewModifier {
     @State private var show = false
 
@@ -11,11 +11,11 @@ struct LoggingNotice: ViewModifier {
                 try? await Task.sleep(nanoseconds: 1_500_000_000)           // after the first screen has appeared
                 if !Task.isCancelled { show = true }
             }
-            .alert("Automatic problem reports", isPresented: $show) {
-                Button("OK") { DiagnosticsUploader.shared.noticeShown = true }
-                Button("Turn Off") { DiagnosticsUploader.shared.isEnabled = false; DiagnosticsUploader.shared.noticeShown = true }
+            .alert("Help fix playback problems?", isPresented: $show) {
+                Button("Share Logs") { DiagnosticsUploader.shared.isEnabled = true; DiagnosticsUploader.shared.noticeShown = true }
+                Button("Not Now", role: .cancel) { DiagnosticsUploader.shared.isEnabled = false; DiagnosticsUploader.shared.noticeShown = true }
             } message: {
-                Text("To help fix playback problems, StreamSetu sends a playback log to the developer when a stream fails. Server names are hidden, and logins, playlist names, titles and stream addresses are never sent. To turn this off, go to Settings → Send Feedback → Share playback logs automatically.")
+                Text("When a stream fails for good, StreamSetu can send the recent playback log to the developer: which player was used, timings and error codes, your app and system version, your device model and a random report number made on this device. Server names are hidden, and logins, playlist names, titles and stream addresses are never sent. Nothing is sent unless you choose Share Logs. You can change this in Settings → Send Feedback.")
             }
     }
 }

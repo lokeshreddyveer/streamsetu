@@ -11,6 +11,10 @@ enum LogMasker {
         try! NSRegularExpression(pattern: #"(?<=failingHost=)[^\s]+"#),
     ]
 
+    /// A login in front of the server name ("user:password@" or what the redactor left of it, "***@"). It is dropped first: otherwise it was taken for the server name and the real
+    /// name after the "@" was left in the log.
+    private static let userinfo = try! NSRegularExpression(pattern: #"(?<=://)[^/\s@]*@"#)
+
     static func mask(_ lines: [String]) -> [String] {
         var names: [String: String] = [:]
         func label(_ host: String) -> String {
@@ -22,7 +26,7 @@ enum LogMasker {
             return new
         }
         return lines.map { line in
-            var out = line
+            var out = userinfo.stringByReplacingMatches(in: line, range: NSRange(line.startIndex..., in: line), withTemplate: "")
             for re in patterns {
                 let ns = out as NSString
                 for m in re.matches(in: out, range: NSRange(location: 0, length: ns.length)).reversed() {
@@ -34,8 +38,8 @@ enum LogMasker {
     }
 }
 
-/// Shares a playback log with the developer: after a stream fails for good (on unless the person switches it off, and the first launch tells
-/// them so), or when they press Send My Log Now. What is sent is the playback log with server names masked, the app and system version and the device model.
+/// Shares a playback log with the developer: after a stream fails for good (only if the person has said yes: it is off until they turn it on, and the first launch asks),
+/// or when they press Send My Log Now. What is sent is the playback log with server names masked, the app and system version and the device model.
 /// Never a login, a playlist name, a title or a stream address. Sending runs at low priority and only after a failure, never during playback.
 final class DiagnosticsUploader: @unchecked Sendable {
     static let shared = DiagnosticsUploader()
@@ -69,10 +73,10 @@ final class DiagnosticsUploader: @unchecked Sendable {
         self.session = session ?? URLSession(configuration: cfg)
     }
 
-    /// Automatic sharing of the playback log after a failed stream. On unless the person turns it off (Settings > Send Feedback); the first
-    /// launch tells them so. This device only, never synced.
+    /// Automatic sharing of the playback log after a failed stream. Off until the person turns it on: the first launch asks, and Settings > Send Feedback has the switch.
+    /// A copy that has never been asked counts as "no". This device only, never synced.
     var isEnabled: Bool {
-        get { defaults.object(forKey: Self.consentKey) as? Bool ?? true }
+        get { defaults.object(forKey: Self.consentKey) as? Bool ?? false }
         set { defaults.set(newValue, forKey: Self.consentKey) }
     }
 

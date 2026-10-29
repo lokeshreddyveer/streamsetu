@@ -19,6 +19,7 @@ struct RootView: View {
             ForEach(compactOrder, id: \.self) { tab in
                 if visited.contains(tab) || router.tab == tab {
                     compactScreen(tab)
+                        .environment(\.tabActive, router.tab == tab)          // a hidden tab keeps its state but stops its timers, slideshows and polling
                         .opacity(router.tab == tab ? 1 : 0)
                         .allowsHitTesting(router.tab == tab)
                         .accessibilityHidden(router.tab != tab)

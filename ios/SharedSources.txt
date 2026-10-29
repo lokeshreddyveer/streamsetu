@@ -156,6 +156,7 @@ Playback/VideoLayout.swift
 Security/CredentialRedactor.swift
 Security/KeychainManager.swift
 Security/LocalCredentialStore.swift
+Security/PINHash.swift
 Security/AppLock.swift
 Security/ParentalControls.swift
 Security/SecureStorage.swift

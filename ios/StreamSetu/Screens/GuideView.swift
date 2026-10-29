@@ -12,6 +12,8 @@ struct GuideView: View {
     @State private var lastDrag: CGFloat = 0
     @State private var categories: [CatalogCategory] = []
     @State private var tick = Date()
+    @Environment(\.tabActive) private var tabActive
+    @Environment(\.scenePhase) private var scenePhase
 
     private let nameWidth: CGFloat = 92
     private let rowHeight: CGFloat = 58
@@ -76,7 +78,12 @@ struct GuideView: View {
             categories = await Task.detached { (try? c.catalog.categories(sourceID: sid, kind: .channel, includeHidden: false)) ?? [] }.value
         }
         // The minute hand: a task, so it stops when this screen is not showing and starts again when it is.
-        .task { while !Task.isCancelled { try? await Task.sleep(nanoseconds: 60_000_000_000); if !Task.isCancelled { tick = Date() } } }
+        // Only while this screen is the one on show and the app is in front; the marker is brought up to date the moment it comes back.
+        .task(id: "\(tabActive)-\(scenePhase == .active)") {
+            guard tabActive, scenePhase == .active else { return }
+            tick = Date()
+            while !Task.isCancelled { try? await Task.sleep(nanoseconds: 60_000_000_000); if !Task.isCancelled { tick = Date() } }
+        }
     }
 
     private func setScope(_ s: GuideScope) {

@@ -40,7 +40,7 @@ struct FeedbackView: View {
                     Text(sharedPreview).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
                 }
             } header: { Text("Help fix playback problems") } footer: {
-                Text("On by default. When a stream fails for good, StreamSetu sends the recent playback log to the developer: what was tried, which player, error codes, your app and iOS version and device model. Server names are replaced with server-1, server-2… Never logins, passwords, playlist names, titles or stream addresses. Kept for 30 days. Turn it off here any time; you can also send one log by hand.")
+                Text("Off until you turn it on. When it is on and a stream fails for good, StreamSetu sends the recent playback log to the developer: what was tried, which player, error codes, your app and iOS version and device model. Server names are replaced with server-1, server-2… Never logins, passwords, playlist names, titles or stream addresses. Kept for 30 days. You can turn it off here any time; you can also send one log by hand.")
             }.listRowBackground(ColorTokens.surface)
             Section {
                 Button { send() } label: { Label("Send by Email", systemImage: "envelope") }

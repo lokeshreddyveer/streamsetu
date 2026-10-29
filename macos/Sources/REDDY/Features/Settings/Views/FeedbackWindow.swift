@@ -34,7 +34,7 @@ struct FeedbackWindow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Toggle("Share playback logs automatically", isOn: $shareAutomatically)
                     .onChange(of: shareAutomatically) { _, on in DiagnosticsUploader.shared.isEnabled = on }
-                Text("On by default. When a stream fails for good, StreamSetu sends the recent playback log to the developer: what was tried, which player, error codes, your app and macOS version and Mac model. Server names are replaced with server-1, server-2… Never logins, passwords, playlist names, titles or stream addresses. Kept for 30 days.")
+                Text("Off until you turn it on. When it is on and a stream fails for good, StreamSetu sends the recent playback log to the developer: what was tried, which player, error codes, your app and macOS version and Mac model. Server names are replaced with server-1, server-2… Never logins, passwords, playlist names, titles or stream addresses. Kept for 30 days.")
                     .font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
                 SecondaryButton(title: sharingNow ? "Sending…" : "Send My Log Now", symbol: "paperplane") { sendLogNow() }.disabled(sharingNow)
             }

@@ -76,15 +76,16 @@ final class ParentalControls {
 
     static func isValidPIN(_ pin: String) -> Bool { (4...8).contains(pin.count) && pin.allSatisfy(\.isASCII) && pin.allSatisfy(\.isNumber) }
 
-    private func hash(_ pin: String, salt: Data) -> String {
-        SHA256.hash(data: salt + Data(pin.utf8)).map { String(format: "%02x", $0) }.joined()
-    }
+    /// What is stored for a PIN: see PINHash.
+    private func hash(_ pin: String, salt: Data) -> String { PINHash.make(pin, salt: salt) }
 
     private func matches(_ pin: String) -> Bool {
         guard let stored = defaults.string(forKey: Keys.hash), let salt = defaults.data(forKey: Keys.salt) else { return false }
-        let candidate = hash(pin, salt: salt)
-        // compared in full whatever the first difference, so timing says nothing about the PIN
-        return zip(Array(candidate.utf8), Array(stored.utf8)).reduce(0) { $0 | ($1.0 ^ $1.1) } == 0 && candidate.count == stored.count
+        switch PINHash.verify(pin, salt: salt, stored: stored) {
+        case .right: return true
+        case .rightButOld: defaults.set(hash(pin, salt: salt), forKey: Keys.hash); return true          // stored the old, fast way: now stored properly
+        case .wrong: return false
+        }
     }
 
     /// The same wrong-try count and lockout as unlocking, for the screens that change or remove the PIN: guessing there is no easier.

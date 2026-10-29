@@ -59,7 +59,8 @@ final class ProfileService {
         if !profiles.contains(where: { $0.id == activeID }) { activeID = Self.mainID }
     }
 
-    static func hash(_ pin: String, salt: String) -> String { SHA256.hash(data: Data((salt + pin).utf8)).map { String(format: "%02x", $0) }.joined() }
+    /// What is stored for a PIN: see PINHash.
+    static func hash(_ pin: String, salt: String) -> String { PINHash.make(pin, salt: Data(salt.utf8)) }
     static func isValidPIN(_ pin: String) -> Bool { (4...8).contains(pin.count) && pin.allSatisfy { $0.isASCII && $0.isNumber } }
 
     // MARK: managing
@@ -109,7 +110,14 @@ final class ProfileService {
 
     private func rawCheckPIN(_ id: String, _ pin: String) -> Bool {
         guard let row = try? db.read({ c in try c.queryOne("SELECT pin_salt, pin_hash FROM profiles WHERE id = ?", [id]) { ($0.string(0), $0.string(1)) } }) else { return false }
-        return Self.hash(pin, salt: row.0) == row.1
+        switch PINHash.verify(pin, salt: Data(row.0.utf8), stored: row.1) {
+        case .right: return true
+        case .rightButOld:
+            // The PIN was stored the old, fast way: now that the right PIN is in hand it is stored properly.
+            try? db.write { try $0.execute("UPDATE profiles SET pin_hash = ? WHERE id = ?", [Self.hash(pin, salt: row.0), id]) }
+            return true
+        case .wrong: return false
+        }
     }
 
     // MARK: switching
