@@ -22,10 +22,16 @@ export function notesFor(tag: string) {
 
 const base = (r: Release) => `${site.repo}/releases/download/${r.tag}`;
 
+/** The television file is streamsetu-tv-<version>.apk from 0.20.0; earlier releases keep the name they were published with. */
+function tvFile(r: Release) {
+  const [major, minor] = r.android.split(".").map((n) => parseInt(n, 10) || 0);
+  return major > 0 || minor >= 20 ? `streamsetu-tv-${r.android}.apk` : `StreamSetu-FireTV-${r.android}.apk`;
+}
+
 export function downloads(r: Release) {
   return {
     mac: `${base(r)}/StreamSetu-${r.mac}.dmg`,
-    tv: `${base(r)}/StreamSetu-FireTV-${r.android}.apk`,
+    tv: `${base(r)}/${tvFile(r)}`,
     android: `${base(r)}/StreamSetu-Android-${r.android}.apk`,
     page: `${site.repo}/releases/tag/${r.tag}`,
   };

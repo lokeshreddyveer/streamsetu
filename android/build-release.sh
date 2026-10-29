@@ -11,7 +11,7 @@ VERSION="${1:?usage: build-release.sh <version> <version code>}"; CODE="${2:?ver
 export JAVA_HOME=${JAVA_HOME:-/opt/homebrew/opt/openjdk@17} ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk}
 ./release.sh "$VERSION" "$CODE"
 OUT="dist/$VERSION"; mkdir -p "$OUT"
-cp app/build/outputs/apk/release/app-release.apk "$OUT/StreamSetu-FireTV-$VERSION.apk"
+cp app/build/outputs/apk/release/app-release.apk "$OUT/streamsetu-tv-$VERSION.apk"
 cp app/build/outputs/apk/release/app-release.apk "$OUT/StreamSetu-Android-$VERSION.apk"
-( cd "$OUT" && shasum -a 256 StreamSetu-FireTV-$VERSION.apk StreamSetu-Android-$VERSION.apk > SHA256SUMS-$VERSION.txt )
+( cd "$OUT" && shasum -a 256 streamsetu-tv-$VERSION.apk StreamSetu-Android-$VERSION.apk > SHA256SUMS-$VERSION.txt )
 echo "✔ built: $OUT (publish with Scripts/release.sh from the top of the repository)"

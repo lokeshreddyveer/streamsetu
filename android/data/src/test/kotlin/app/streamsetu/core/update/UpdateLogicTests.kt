@@ -60,6 +60,13 @@ class UpdateLogicTests {
         assertEquals("StreamSetu-Android-0.6.10.apk", UpdateLogic.pickAsset(r, television = false)?.name)
     }
 
+    @Test fun theTelevisionFileMayBeCalledStreamsetuTv() {
+        val r = ReleaseInfo("2026.11.01", "0.20.0", "", listOf(
+            ReleaseAsset("StreamSetu-Android-0.20.0.apk", "https://example.test/a", 1), ReleaseAsset("streamsetu-tv-0.20.0.apk", "https://example.test/t", 1)))
+        assertEquals("streamsetu-tv-0.20.0.apk", UpdateLogic.pickAsset(r, television = true)?.name)
+        assertEquals("StreamSetu-Android-0.20.0.apk", UpdateLogic.pickAsset(r, television = false)?.name)
+    }
+
     @Test fun anOlderSingleFileReleaseServesBoth() {
         val old = UpdateLogic.parse(json).last()
         assertEquals("StreamSetu-FireTV-Android-0.6.9.apk", UpdateLogic.pickAsset(old, true)?.name)

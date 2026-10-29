@@ -66,13 +66,13 @@ object UpdateLogic {
     fun latest(releases: List<ReleaseInfo>): ReleaseInfo? = releases.fold(null as ReleaseInfo?) { best, r -> if (best == null || isNewer(r.version, best.version)) r else best }
 
     /**
-     * The file for this device: a television takes the Fire TV file, a phone or tablet the Android file. A release with only one APK (the older
-     * single-file releases) offers that one to both. Null when the release has no APK.
+     * The file for this device: a television takes the television file ("streamsetu-tv-0.20.0.apk", or "StreamSetu-FireTV-0.19.0.apk" in earlier releases), a phone or
+     * tablet the Android file. A release with only one APK (the older single-file releases) offers that one to both. Null when the release has no APK.
      */
     fun pickAsset(release: ReleaseInfo, television: Boolean): ReleaseAsset? {
         val apks = release.assets.filter { it.name.endsWith(".apk", true) }
-        val wanted = if (television) "-firetv-" else "-android-"
-        return apks.firstOrNull { it.name.lowercase().contains(wanted) } ?: apks.firstOrNull()
+        val wanted = if (television) listOf("-tv-", "-firetv-") else listOf("-android-")
+        return apks.firstOrNull { a -> wanted.any { a.name.lowercase().contains(it) } } ?: apks.firstOrNull()
     }
 
     private val hash = Regex("(?<![0-9a-fA-F])[0-9a-fA-F]{64}(?![0-9a-fA-F])")

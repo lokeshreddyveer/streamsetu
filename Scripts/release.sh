@@ -12,7 +12,7 @@ cd "$(dirname "$0")/.."
 TAG="${1:?usage: Scripts/release.sh <tag> <notes file>}"; NOTES="${2:?notes file}"
 : "${MAC:?set MAC to the Mac version}" "${MAC_BUILD:?set MAC_BUILD}" "${ANDROID:?set ANDROID to the Android version}"
 REPO="${RELEASES_REPO:-lokeshreddyveer/streamsetu}"
-DMG="macos/dist/StreamSetu-$MAC.dmg"; TV="android/dist/$ANDROID/StreamSetu-FireTV-$ANDROID.apk"; PHONE="android/dist/$ANDROID/StreamSetu-Android-$ANDROID.apk"
+DMG="macos/dist/StreamSetu-$MAC.dmg"; TV="android/dist/$ANDROID/streamsetu-tv-$ANDROID.apk"; PHONE="android/dist/$ANDROID/StreamSetu-Android-$ANDROID.apk"
 for f in "$DMG" "$TV" "$PHONE" "$NOTES"; do [ -f "$f" ] || { echo "✘ $f not found"; exit 1; }; done
 xcrun stapler validate "$DMG" >/dev/null 2>&1 || { echo "✘ $DMG is not stapled/notarized. Not publishing."; exit 1; }
 BODY="$(mktemp)"; trap 'rm -f "$BODY"' EXIT
@@ -33,9 +33,10 @@ tag, mac, android, ios = sys.argv[1:5]
 text = open("README.md").read()
 text = re.sub(r"releases/download/[^/]+/StreamSetu-\d[\d.]*\.dmg", f"releases/download/{tag}/StreamSetu-{mac}.dmg", text)
 text = text.replace(re.search(r"`StreamSetu-\d[\d.]*\.dmg`", text).group(0), f"`StreamSetu-{mac}.dmg`")
-for kind in ("FireTV", "Android"):
-    text = re.sub(rf"releases/download/[^/]+/StreamSetu-{kind}-\d[\d.]*\.apk", f"releases/download/{tag}/StreamSetu-{kind}-{android}.apk", text)
-    text = re.sub(rf"`StreamSetu-{kind}-\d[\d.]*\.apk`", f"`StreamSetu-{kind}-{android}.apk`", text)
+# The television file is streamsetu-tv-<version>.apk (it was StreamSetu-FireTV-<version>.apk before 0.20.0); the phone file is StreamSetu-Android-<version>.apk.
+for old, new in ((r"(?:StreamSetu-FireTV|streamsetu-tv)", "streamsetu-tv"), (r"StreamSetu-Android", "StreamSetu-Android")):
+    text = re.sub(rf"releases/download/[^/]+/{old}-\d[\d.]*\.apk", f"releases/download/{tag}/{new}-{android}.apk", text)
+    text = re.sub(rf"`{old}-\d[\d.]*\.apk`", f"`{new}-{android}.apk`", text)
 text = re.sub(r"(testflight\.apple\.com/join/\w+\), version )[\d.]+", rf"\g<1>{ios}", text)
 open("README.md", "w").write(text)
 PY
