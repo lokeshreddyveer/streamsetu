@@ -198,7 +198,7 @@ class SportsRecordingService(private val dao: SportsDao, private val deps: Recor
             distinguishing = (event.feeds.map { it.channelId }.toSet() - others.flatMap { o -> o.feeds.map { it.channelId } }.toSet()).sorted().take(8).joinToString(","), programmeId = null, scheduleId = scheduleId, matchedEventId = event.id,
             status = SportsRecordingStatus.SCHEDULED.name, failure = null, authStamp = "p=$owner;l=${deps.libraryKey()};t=$now", createdAt = now, updatedAt = now,
         )
-        if (dao.insertRecording(row) == -1L) { report("exists", preview, started); return RecordOutcome.Exists(dao.recordings(owner).first { it.identity == row.identity && it.slot == row.slot }.id) }
+        if (dao.replaceClosedRecording(row) == -1L) { report("exists", preview, started); return RecordOutcome.Exists(dao.recordings(owner).first { it.identity == row.identity && it.slot == row.slot }.id) }
         val ok = deps.executor.schedule(ScheduledRec(scheduleId, feedChannel.id, feedChannel.name, feedChannel.sourceId, "", event.title, event.startMs, event.endMs, preMs = preMs, postMs = postMs, profileId = owner, origin = ORIGIN))
         if (!ok) { dao.deleteRecording(id); report("blocked", preview, started); return RecordOutcome.Blocked(listOf(PlanIssue.EVENT_OVER)) }
         report("scheduled", preview, started)

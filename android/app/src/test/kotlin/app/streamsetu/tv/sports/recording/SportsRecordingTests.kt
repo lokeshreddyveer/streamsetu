@@ -16,6 +16,7 @@ import app.streamsetu.tv.record.*
 import app.streamsetu.tv.sports.FakePlaybackDeps
 import app.streamsetu.tv.sports.RankInput
 import app.streamsetu.tv.sports.SportsAuthorization
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
@@ -258,6 +259,29 @@ class SportsRecordingTests {
         val files = roots.flatMap { java.io.File(it).walkTopDown().filter { f -> f.extension == "kt" }.toList() }
         assertTrue(files.size >= 5)
         for (f in files) { val t = f.readText(); for (w in listOf("OkHttp", "Http.client", "timeshift", "Request.Builder", "startRecording(", "ExoEngine(", "MediaRecorder", "FileOutputStream", "newCall(")) assertFalse("${f.name} must not contain $w", t.contains(w)) }
+    }
+
+    @Test fun anEventCancelledOrEndedCanBeAskedForAgain() = run {
+        val e = event("e", t0 + 3 * h, "1"); val first = svc.record(e, null, 0, 0) as RecordOutcome.Scheduled
+        assertTrue(svc.cancel(first.id)); val second = svc.record(e, null, 0, 0); assertTrue("not the cancelled request", second is RecordOutcome.Scheduled && second.id != first.id)
+        assertEquals(1, items.size); assertEquals(1, alarms.size); assertEquals(SportsRecordingStatus.SCHEDULED.name, row((second as RecordOutcome.Scheduled).id).status)
+        db.sports().transition(second.id, listOf("SCHEDULED"), "FAILED", "NETWORK", t0); ScheduledRecordings.cancel(context, row(second.id).scheduleId)
+        val third = svc.record(e, null, 0, 0); assertTrue("a failed request does not block a new one", third is RecordOutcome.Scheduled); assertEquals(1, db.sports().recordings("main").size)
+    }
+
+    @Test fun concurrentRequestsForTheSameClosedEventMakeOneScheduleAndOneAlarm() = run {
+        repeat(25) { round ->
+            val e = event("r$round", t0 + (round + 3) * h, "r$round", sides = listOf("Home $round", "Away $round"))
+            val first = svc.record(e, null, 0, 0) as RecordOutcome.Scheduled; assertTrue(svc.cancel(first.id))
+            // separate services share only the database, so nothing but the database can keep them apart
+            val racers = (1..4).map { SportsRecordingService(db.sports(), d) { } }
+            val outcomes = kotlinx.coroutines.coroutineScope { racers.map { r -> async(kotlinx.coroutines.Dispatchers.Default) { r.record(e, null, 0, 0) } }.map { it.await() } }
+            assertEquals("exactly one request wins: $outcomes", 1, outcomes.count { it is RecordOutcome.Scheduled })
+            val rows = db.sports().recordings("main").filter { it.identity == app.streamsetu.tv.sports.personal.SportsKeys.identity(e) }
+            assertEquals(1, rows.size); assertEquals(SportsRecordingStatus.SCHEDULED.name, rows.single().status)
+            assertEquals("one schedule", 1, items.count { it.id == rows.single().scheduleId }); assertEquals(1, items.size); assertEquals(1, alarms.size)
+            assertTrue(svc.cancel(rows.single().id)); assertEquals(0, items.size)
+        }
     }
 
     // ---- start over and catch-up

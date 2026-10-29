@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RawQuery
+import androidx.room.Transaction
 import androidx.room.Update
 import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
@@ -314,37 +315,42 @@ interface ExtrasDao {
 
 
 @Dao
-interface SportsDao {
+abstract class SportsDao {
     // Follows
-    @Query("SELECT * FROM sports_follows WHERE profileId = :profile ORDER BY createdAt, id") suspend fun follows(profile: String): List<SportsFollowEntity>
-    @Query("SELECT * FROM sports_follows WHERE profileId = :profile ORDER BY createdAt, id") fun followsFlow(profile: String): Flow<List<SportsFollowEntity>>
-    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertFollow(f: SportsFollowEntity): Long
-    @Query("DELETE FROM sports_follows WHERE profileId = :profile AND kind = :kind AND sport = :sport AND normKey = :key") suspend fun deleteFollow(profile: String, kind: String, sport: String, key: String): Int
-    @Query("DELETE FROM sports_follows WHERE profileId = :profile") suspend fun clearFollows(profile: String): Int
+    @Query("SELECT * FROM sports_follows WHERE profileId = :profile ORDER BY createdAt, id") abstract suspend fun follows(profile: String): List<SportsFollowEntity>
+    @Query("SELECT * FROM sports_follows WHERE profileId = :profile ORDER BY createdAt, id") abstract fun followsFlow(profile: String): Flow<List<SportsFollowEntity>>
+    @Insert(onConflict = OnConflictStrategy.IGNORE) abstract suspend fun insertFollow(f: SportsFollowEntity): Long
+    @Query("DELETE FROM sports_follows WHERE profileId = :profile AND kind = :kind AND sport = :sport AND normKey = :key") abstract suspend fun deleteFollow(profile: String, kind: String, sport: String, key: String): Int
+    @Query("DELETE FROM sports_follows WHERE profileId = :profile") abstract suspend fun clearFollows(profile: String): Int
 
     // Reminders
-    @Query("SELECT * FROM sports_reminders WHERE profileId = :profile ORDER BY startMs, id") suspend fun reminders(profile: String): List<SportsReminderEntity>
-    @Query("SELECT * FROM sports_reminders WHERE profileId = :profile ORDER BY startMs, id") fun remindersFlow(profile: String): Flow<List<SportsReminderEntity>>
-    @Query("SELECT * FROM sports_reminders WHERE id = :id") suspend fun reminder(id: String): SportsReminderEntity?
-    @Query("SELECT * FROM sports_reminders WHERE status IN ('SCHEDULED', 'UNMATCHED', 'AMBIGUOUS') AND endMs > :now ORDER BY startMs, id") suspend fun activeReminders(now: Long): List<SportsReminderEntity>
-    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertReminder(r: SportsReminderEntity): Long
-    @Update suspend fun updateReminders(list: List<SportsReminderEntity>)
-    @Query("DELETE FROM sports_reminders WHERE id = :id") suspend fun deleteReminder(id: String): Int
-    @Query("DELETE FROM sports_reminders WHERE profileId = :profile") suspend fun clearReminders(profile: String): Int
-    @Query("SELECT COUNT(*) FROM sports_reminders") suspend fun reminderCount(): Int
+    @Query("SELECT * FROM sports_reminders WHERE profileId = :profile ORDER BY startMs, id") abstract suspend fun reminders(profile: String): List<SportsReminderEntity>
+    @Query("SELECT * FROM sports_reminders WHERE profileId = :profile ORDER BY startMs, id") abstract fun remindersFlow(profile: String): Flow<List<SportsReminderEntity>>
+    @Query("SELECT * FROM sports_reminders WHERE id = :id") abstract suspend fun reminder(id: String): SportsReminderEntity?
+    @Query("SELECT * FROM sports_reminders WHERE status IN ('SCHEDULED', 'UNMATCHED', 'AMBIGUOUS') AND endMs > :now ORDER BY startMs, id") abstract suspend fun activeReminders(now: Long): List<SportsReminderEntity>
+    @Insert(onConflict = OnConflictStrategy.IGNORE) abstract suspend fun insertReminder(r: SportsReminderEntity): Long
+    @Update abstract suspend fun updateReminders(list: List<SportsReminderEntity>)
+    @Query("DELETE FROM sports_reminders WHERE id = :id") abstract suspend fun deleteReminder(id: String): Int
+    @Query("DELETE FROM sports_reminders WHERE profileId = :profile") abstract suspend fun clearReminders(profile: String): Int
+    @Query("SELECT COUNT(*) FROM sports_reminders") abstract suspend fun reminderCount(): Int
 
     // Recordings (the Sports side: identity, matching, state; the executor is the scheduled-recording service)
-    @Query("SELECT * FROM sports_recordings WHERE profileId = :profile ORDER BY startMs, id") suspend fun recordings(profile: String): List<SportsRecordingEntity>
-    @Query("SELECT * FROM sports_recordings WHERE profileId = :profile ORDER BY startMs, id") fun recordingsFlow(profile: String): Flow<List<SportsRecordingEntity>>
-    @Query("SELECT * FROM sports_recordings WHERE id = :id") suspend fun recording(id: String): SportsRecordingEntity?
-    @Query("SELECT * FROM sports_recordings WHERE scheduleId = :scheduleId") suspend fun recordingBySchedule(scheduleId: String): SportsRecordingEntity?
-    @Query("SELECT * FROM sports_recordings WHERE status IN ('SCHEDULED', 'RECORDING', 'REVIEW_REQUIRED') ORDER BY startMs, id") suspend fun openRecordings(): List<SportsRecordingEntity>
-    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertRecording(r: SportsRecordingEntity): Long
-    @Update suspend fun updateRecordings(list: List<SportsRecordingEntity>)
-    @Query("DELETE FROM sports_recordings WHERE id = :id") suspend fun deleteRecording(id: String): Int
-    @Query("DELETE FROM sports_recordings WHERE profileId = :profile") suspend fun clearRecordings(profile: String): Int
+    @Query("SELECT * FROM sports_recordings WHERE profileId = :profile ORDER BY startMs, id") abstract suspend fun recordings(profile: String): List<SportsRecordingEntity>
+    @Query("SELECT * FROM sports_recordings WHERE profileId = :profile ORDER BY startMs, id") abstract fun recordingsFlow(profile: String): Flow<List<SportsRecordingEntity>>
+    @Query("SELECT * FROM sports_recordings WHERE id = :id") abstract suspend fun recording(id: String): SportsRecordingEntity?
+    @Query("SELECT * FROM sports_recordings WHERE scheduleId = :scheduleId") abstract suspend fun recordingBySchedule(scheduleId: String): SportsRecordingEntity?
+    @Query("SELECT * FROM sports_recordings WHERE status IN ('SCHEDULED', 'RECORDING', 'REVIEW_REQUIRED') ORDER BY startMs, id") abstract suspend fun openRecordings(): List<SportsRecordingEntity>
+    /** A request that ended (cancelled, finished, failed) frees its place, so the same event can be asked for again; the unique index covers every row, open or not. */
+    @Query("DELETE FROM sports_recordings WHERE profileId = :profileId AND sport = :sport AND identity = :identity AND slot = :slot AND status NOT IN ('SCHEDULED', 'RECORDING', 'REVIEW_REQUIRED')")
+    abstract suspend fun deleteClosedRecordings(profileId: String, sport: String, identity: String, slot: Long): Int
+    @Insert(onConflict = OnConflictStrategy.IGNORE) abstract suspend fun insertRecording(r: SportsRecordingEntity): Long
+    /** Frees the place of an ended request and inserts the new one as one transaction: two callers cannot both delete and both insert, and an open request is never replaced. -1 if an open one holds the place. */
+    @Transaction open suspend fun replaceClosedRecording(r: SportsRecordingEntity): Long { deleteClosedRecordings(r.profileId, r.sport, r.identity, r.slot); return insertRecording(r) }
+    @Update abstract suspend fun updateRecordings(list: List<SportsRecordingEntity>)
+    @Query("DELETE FROM sports_recordings WHERE id = :id") abstract suspend fun deleteRecording(id: String): Int
+    @Query("DELETE FROM sports_recordings WHERE profileId = :profile") abstract suspend fun clearRecordings(profile: String): Int
 
     /** Moves a recording from one of [from] to [to] in one statement: it applies only if it is still in one of those states, so a repeated or late call changes nothing. Returns how many rows changed. */
     @Query("UPDATE sports_recordings SET status = :to, failure = :failure, updatedAt = :now WHERE id = :id AND status IN (:from)")
-    suspend fun transition(id: String, from: List<String>, to: String, failure: String?, now: Long): Int
+    abstract suspend fun transition(id: String, from: List<String>, to: String, failure: String?, now: Long): Int
 }

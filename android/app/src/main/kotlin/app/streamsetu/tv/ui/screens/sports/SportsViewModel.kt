@@ -158,8 +158,8 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
         val svc = recordings ?: return; val gen = ++abilitiesGen
         work.launch {
             val e = loaded.value.events.firstOrNull { it.id == eventId } ?: run { if (gen == abilitiesGen) abilities.value = null; return@launch }
-            val p = svc.plan(e, null, PRE_DEFAULT_MS, POST_DEFAULT_MS, loaded.value.events)
-            val (startOver, catchUp) = svc.archiveOptions(e, deps.now())
+            val (p, archive) = kotlinx.coroutines.withContext(Dispatchers.Default) { svc.plan(e, null, PRE_DEFAULT_MS, POST_DEFAULT_MS, loaded.value.events) to svc.archiveOptions(e, deps.now()) }   // not on the main thread
+            val (startOver, catchUp) = archive
             if (gen != abilitiesGen || detailId.value != eventId) return@launch
             val any = p.feeds.any { it.recordable }
             abilities.value = EventAbilities(eventId, canRecord = any && app.streamsetu.tv.sports.recording.PlanIssue.EVENT_OVER !in p.issues,
@@ -176,7 +176,7 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
         val svc = recordings ?: return
         work.launch {
             val e = loaded.value.events.firstOrNull { it.id == eventId } ?: return@launch
-            val p = svc.plan(e, chosen, preMin * 60_000L, postMin * 60_000L, loaded.value.events)
+            val p = kotlinx.coroutines.withContext(Dispatchers.Default) { svc.plan(e, chosen, preMin * 60_000L, postMin * 60_000L, loaded.value.events) }
             if (detailId.value != eventId) return@launch
             val names = loaded.value.sourceNames
             val clock = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).also { it.timeZone = deps.zone }
@@ -297,7 +297,7 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
                 loaded.value = Loaded(events = r.events, revision = r.revision, sourceNames = names, hasGuide = hasGuide, loading = false)
                 diagnostics.record(SportsLoadReport.of(r.events, now, deps.zone, scope.sourceIds.size, ms(), r.cacheHit))
                 reminders?.reassociate(r.events)                                                  // durable reminders find their events again, in one batch
-                recordings?.reassociate(r.events)                                                 // so do recordings that have not started, on the same evidence
+                recordings?.let { kotlinx.coroutines.withContext(Dispatchers.Default) { it.reassociate(r.events) } }                                                 // so do recordings that have not started, on the same evidence
                 detailId.value?.let(::refreshAbilities)
                 playback?.refreshOptions()                                                        // a feed that is no longer allowed leaves the list; a playing one that is not is let go
             } catch (e: CancellationException) {
