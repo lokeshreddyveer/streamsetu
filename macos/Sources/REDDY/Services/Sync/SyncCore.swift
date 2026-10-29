@@ -158,6 +158,15 @@ final class SyncCore: @unchecked Sendable {
         }
         let keyParams = t.keyColumns.indices.map { "json_extract(?1, '$[\($0)]')" }
         let valueParams = t.values.map { "json_extract(?2, '$.\($0)')" }
+        if t.name == "playback_sessions" {      // a session from another device: added once, and its end filled in when it arrives later
+            try c.execute("""
+                INSERT INTO playback_sessions(item_id, started_at, ended_at, engine, outcome)
+                SELECT json_extract(?1, '$[0]'), json_extract(?1, '$[1]') / 1000.0, json_extract(?2, '$.ended_at'), 'other device', NULL
+                WHERE NOT EXISTS (SELECT 1 FROM playback_sessions WHERE \(t.whereClause))
+                """, [r.key, values])
+            try c.execute("UPDATE playback_sessions SET ended_at = json_extract(?2, '$.ended_at') WHERE \(t.whereClause) AND ended_at IS NULL AND json_extract(?2, '$.ended_at') IS NOT NULL", [r.key, values])
+            return
+        }
         if t.naturalKey {            // the watch log: add it unless this play is already there
             try c.execute("""
                 INSERT INTO watch_history(item_id, played_at, kind, title)

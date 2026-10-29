@@ -26,14 +26,14 @@ struct StatisticsPage: View {
             if let container { WeeklyDigestCard(container: container) }
             if let s = stats {
                 if s.isEmpty {
-                    EmptyStateView(symbol: "chart.bar", title: "Nothing to show yet", message: "Watch something and your viewing time appears here. It stays on this Mac.").frame(height: 260)
+                    EmptyStateView(symbol: "chart.bar", title: "Nothing to show yet", message: "Watch something and your viewing time appears here. It covers everyone who uses this Mac, and your other devices when iCloud sync is on.").frame(height: 260)
                 } else { content(s) }
             } else { ProgressView().controlSize(.small) }
         }
         .task(id: "\(range.rawValue)-\(state.catalogVersion)") { await load() }
         .confirmationDialog("Reset viewing statistics?", isPresented: $confirmReset, titleVisibility: .visible) {
             Button("Reset Statistics", role: .destructive) { reset() }
-        } message: { Text("Deletes the playback log these figures are built from. Watch history, favourites and resume points are not changed.") }
+        } message: { Text("Deletes the viewing log these figures are built from, on this Mac and, with iCloud sync on, on your other devices. Watch history, favourites and resume points are not changed.") }
     }
 
     private var controls: some View {

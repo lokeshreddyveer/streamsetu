@@ -14,22 +14,48 @@ final class LiveTVModel {
     /// Set when a search found nothing as typed and a corrected spelling did.
     var correctedTo: String?
     var loading = false
+    /// The first page could not be read. The channels already shown stay on screen.
+    var failed = false
+    var loadingMore = false
+    /// The next page could not be read.
+    var pageFailed = false
     private var generation = 0
-    nonisolated static let pageLimit = 600
+    private var more = false
+    private var searchUsed = ""
+    private var container: AppContainer?
+    private var source: UUID?
+    /// Channels are read a page at a time and appended; the rows already on screen are never rebuilt.
+    nonisolated static let pageSize = 300
+    /// A page is asked for when the person is this close to the end of what is loaded.
+    private static let prefetchDistance = 40
+
+    // Guide: only the rows on screen are asked about, in small batches, and a row scrolled past before its turn is dropped.
+    private var visible = Set<String>()
+    private var requestedAt: [String: Date] = [:]
+    /// A programme read this recently is still what is on (a channel's "now" is asked again after a few minutes).
+    private func isFresh(_ id: String) -> Bool { requestedAt[id].map { Date().timeIntervalSince($0) < 300 } ?? false }
+    private var pending = Set<String>()
+    private var guideTask: Task<Void, Never>?
+
+    private func pageQuery(offset: Int) -> ChannelQuery {
+        var q = ChannelQuery(sourceID: source, categoryID: categoryID, favoritesOnly: favouritesOnly, search: searchUsed)
+        q.limit = Self.pageSize; q.offset = offset
+        return q
+    }
 
     func load(_ c: AppContainer, source: UUID?) async {
+        container = c; self.source = source
         generation += 1
         let gen = generation
-        loading = true
-        let (cats, list, now, fixed) = await Task.detached { [categoryID, query, favouritesOnly, listID] () -> ([CatalogCategory], [Channel], [String: EPGProgram], String?) in
+        loading = true; failed = false; pageFailed = false
+        let q0 = pageQuery(offset: 0).with(search: query)
+        let result = await Task.detached { [query, listID] () -> ([CatalogCategory], [Channel], String?)? in
             let cats = (try? c.catalog.categories(sourceID: source, kind: .channel, includeHidden: false)) ?? []
-            var q = ChannelQuery(sourceID: source, categoryID: categoryID, favoritesOnly: favouritesOnly, search: query)
-            q.limit = LiveTVModel.pageLimit
-            var list = (try? c.catalog.channels(q)) ?? []
+            var list: [Channel]
+            do { list = try c.catalog.channels(q0) } catch { return nil }
             var fixed: String?
             if list.isEmpty, listID == nil, !query.trimmingCharacters(in: .whitespaces).isEmpty, let alt = c.spelling.correct(query) {
-                var q2 = q; q2.search = alt
-                let again = (try? c.catalog.channels(q2)) ?? []
+                let again = (try? c.catalog.channels(q0.with(search: alt))) ?? []
                 if !again.isEmpty { list = again; fixed = alt }
             }
             if let listID {                                   // a named list: its channels, in the order they were added
@@ -38,14 +64,64 @@ final class LiveTVModel {
                 let byID = Dictionary(((ids.isEmpty ? [] : (try? c.catalog.channels(lq))) ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
                 list = ids.compactMap { byID[$0] }
             }
-            let at = Date()
-            let all = (try? c.epgRepo.nowNext(channelIDs: list.prefix(200).map(\.id), at: at)) ?? [:]
-            return (cats, list, all.compactMapValues { $0.first { $0.isLive(at: at) } }, fixed)
+            return (cats, list, fixed)
         }.value
-        guard gen == generation else { return }
-        categories = cats; channels = list; guide = now; correctedTo = fixed; loading = false
+        guard gen == generation else { return }                    // a newer load replaced this one
+        loading = false
+        guard let (cats, list, fixed) = result else { failed = true; return }          // the old channels stay; the screen offers a retry
+        categories = cats; channels = list; correctedTo = fixed
+        searchUsed = fixed ?? query
+        more = listID == nil && list.count >= Self.pageSize
+        flushGuide(soon: false)
         lists = await Task.detached { ((try? c.favoritesRepo.collections()) ?? []).filter { col in let items = (try? c.favoritesRepo.collectionItems(id: col.id)) ?? []; return items.isEmpty || items.contains { $0.kind == .channel } } }.value
     }
+
+    /// Called as a row appears: asks for its guide, and for the next page when the end is near.
+    func appeared(_ id: String) {
+        visible.insert(id)
+        if !isFresh(id) { pending.insert(id); flushGuide(soon: true) }
+        if more, !loadingMore, !pageFailed, let i = channels.lastIndex(where: { $0.id == id }), i >= channels.count - Self.prefetchDistance { Task { await loadMore() } }
+    }
+
+    func disappeared(_ id: String) { visible.remove(id); pending.remove(id) }
+
+    func loadMore() async {
+        guard more, !loadingMore, let c = container, listID == nil else { return }
+        loadingMore = true; pageFailed = false
+        let gen = generation
+        let q = pageQuery(offset: channels.count)
+        let page = await Task.detached { try? c.catalog.channels(q) }.value
+        guard gen == generation else { return }                    // the list was reloaded while this page was being read
+        loadingMore = false
+        guard let page else { pageFailed = true; return }
+        let seen = Set(channels.map(\.id))
+        let fresh = page.filter { !seen.contains($0.id) }
+        channels += fresh
+        more = page.count >= Self.pageSize && !fresh.isEmpty
+    }
+
+    func retryPage() { pageFailed = false; Task { await loadMore() } }
+
+    private func flushGuide(soon: Bool) {
+        guideTask?.cancel()                                        // a newer request replaces one that has not run yet
+        guideTask = Task { [weak self] in
+            if soon { try? await Task.sleep(nanoseconds: 120_000_000) }
+            guard !Task.isCancelled, let self, let c = self.container else { return }
+            if !soon { self.pending.formUnion(self.visible.filter { !self.isFresh($0) }) }
+            let ids = Array(self.pending.prefix(80)); self.pending.subtract(ids)
+            guard !ids.isEmpty else { return }
+            let at = Date()
+            let found = await Task.detached { (try? c.epgRepo.lookup(channelIDs: ids, at: at)) ?? [:] }.value
+            guard !Task.isCancelled else { self.pending.formUnion(ids); return }
+            for id in ids { self.requestedAt[id] = at }
+            for (id, g) in found { if let now = g.now { self.guide[id] = now } }
+            if !self.pending.isEmpty { self.flushGuide(soon: true) }
+        }
+    }
+}
+
+private extension ChannelQuery {
+    func with(search: String) -> ChannelQuery { var q = self; q.search = search; return q }
 }
 
 struct LiveTVView: View {
@@ -67,7 +143,14 @@ struct LiveTVView: View {
 
     private func open(_ c: Channel) { if let container { Play.channel(c, queue: model.channels, container) } }
 
-    private var empty: some View {
+    @ViewBuilder private var empty: some View {
+        if model.failed {
+            EmptyState(symbol: "exclamationmark.triangle", title: "Channels could not be loaded", message: "Pull down to try again, or tap Retry.")
+            Button("Retry") { if let c = container { Task { await model.load(c, source: state.activeSourceID) } } }.buttonStyle(.borderedProminent)
+        } else { noChannels }
+    }
+
+    private var noChannels: some View {
         EmptyState(symbol: "dot.radiowaves.left.and.right", title: model.query.isEmpty ? "No channels" : "No matches",
                    message: model.query.isEmpty ? (state.isSyncing ? "Channels appear when the playlist has been read." : "This playlist has no live channels, or the folder is empty.") : nil)
     }
@@ -100,10 +183,9 @@ struct LiveTVView: View {
                     .buttonStyle(.press)
                     .swipeActions(edge: .leading) { Button { state.toggleFavorite(c.id, kind: .channel) } label: { Label(state.isFavorite(c.id) ? "Unfavourite" : "Favourite", systemImage: "heart") }.tint(.pink) }
                     .contextMenu { menu(c) }
+                    .onAppear { model.appeared(c.id) }.onDisappear { model.disappeared(c.id) }
             }
-            if model.channels.count >= LiveTVModel.pageLimit {
-                Text("Showing the first \(LiveTVModel.pageLimit). Pick a folder or search to narrow it down.").font(.caption).foregroundStyle(.secondary).listRowBackground(Color.clear)
-            }
+            PageFooter(model: model).listRowBackground(Color.clear).listRowSeparator(.hidden)
         }
         .listStyle(.plain)
     }
@@ -121,11 +203,10 @@ struct LiveTVView: View {
                             .background(ColorTokens.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .buttonStyle(.press).contextMenu { menu(c) }
+                    .onAppear { model.appeared(c.id) }.onDisappear { model.disappeared(c.id) }
                 }
             }.padding(16)
-            if model.channels.count >= LiveTVModel.pageLimit {
-                Text("Showing the first \(LiveTVModel.pageLimit). Pick a folder or search to narrow it down.").font(.caption).foregroundStyle(.secondary).padding(.bottom, 16)
-            }
+            PageFooter(model: model).padding(.bottom, 16)
         }
     }
 
@@ -140,11 +221,10 @@ struct LiveTVView: View {
                         ChannelTile(channel: c, programme: model.guide[c.id], isPlaying: container?.playback.currentChannel?.id == c.id, isFavorite: state.isFavorite(c.id))
                     }
                     .buttonStyle(.press).contextMenu { menu(c) }
+                    .onAppear { model.appeared(c.id) }.onDisappear { model.disappeared(c.id) }
                 }
             }.padding(12)
-            if model.channels.count >= LiveTVModel.pageLimit {
-                Text("Showing the first \(LiveTVModel.pageLimit). Pick a folder or search to narrow it down.").font(.caption).foregroundStyle(.secondary).padding(.bottom, 16)
-            }
+            PageFooter(model: model).padding(.bottom, 16)
         }
     }
 
@@ -216,6 +296,21 @@ struct LiveTVView: View {
     }
 }
 
+
+/// The end of the channel list: a spinner while the next page is read, and a retry when it could not be.
+struct PageFooter: View {
+    let model: LiveTVModel
+    var body: some View {
+        if model.loadingMore {
+            ProgressView().frame(maxWidth: .infinity).padding(.vertical, 12)
+        } else if model.pageFailed {
+            VStack(spacing: 6) {
+                Text("More channels could not be loaded.").font(.caption).foregroundStyle(.secondary)
+                Button("Retry") { model.retryPage() }.buttonStyle(.bordered)
+            }.frame(maxWidth: .infinity).padding(.vertical, 12)
+        }
+    }
+}
 
 /// The channel groups as a row of chips: everything, favourites, and the person's own groups (Cricket, News…), plus a way to make one.
 struct GroupChips: View {

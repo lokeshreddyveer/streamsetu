@@ -35,10 +35,12 @@ enum MetadataNormalizer {
         switch label { case "4K": 4; case "FHD": 3; case "HD": 2; case nil: 1; default: 0 }
     }
 
+    /// Compiled once: this runs for every title of a catalog being imported.
+    private static let yearPattern = try! NSRegularExpression(pattern: #"[\(\[]((?:19|20)\d{2})[\)\]]"#)
+
     /// "Movie Title (2019)" -> 2019
     static func year(from title: String) -> Int? {
-        guard let r = try? NSRegularExpression(pattern: #"[\(\[]((?:19|20)\d{2})[\)\]]"#),
-              let m = r.firstMatch(in: title, range: NSRange(title.startIndex..., in: title)),
+        guard let m = yearPattern.firstMatch(in: title, range: NSRange(title.startIndex..., in: title)),
               let range = Range(m.range(at: 1), in: title) else { return nil }
         return Int(title[range])
     }
@@ -62,10 +64,11 @@ enum CategoryNormalizer {
         return c.isEmpty ? "Uncategorized" : c
     }
 
+    private static let countryPattern = try! NSRegularExpression(pattern: #"^\s*([A-Z]{2})\s*[:|\-]"#)
+
     /// Two-letter uppercase prefix such as "BG:", "DK |", "UK -" -> country code. Nothing else is guessed.
     static func countryPrefix(_ name: String) -> String? {
-        guard let r = try? NSRegularExpression(pattern: #"^\s*([A-Z]{2})\s*[:|\-]"#),
-              let m = r.firstMatch(in: name, range: NSRange(name.startIndex..., in: name)),
+        guard let m = countryPattern.firstMatch(in: name, range: NSRange(name.startIndex..., in: name)),
               let range = Range(m.range(at: 1), in: name) else { return nil }
         return String(name[range])
     }

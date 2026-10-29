@@ -75,7 +75,8 @@ struct GuideView: View {
             let sid = state.activeSourceID
             categories = await Task.detached { (try? c.catalog.categories(sourceID: sid, kind: .channel, includeHidden: false)) ?? [] }.value
         }
-        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { tick = $0 }
+        // The minute hand: a task, so it stops when this screen is not showing and starts again when it is.
+        .task { while !Task.isCancelled { try? await Task.sleep(nanoseconds: 60_000_000_000); if !Task.isCancelled { tick = Date() } } }
     }
 
     private func setScope(_ s: GuideScope) {

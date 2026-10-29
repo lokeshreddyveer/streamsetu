@@ -57,7 +57,7 @@ struct MultiViewScreen: View {
             }
         }
         .preferredColorScheme(.dark)
-        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in model.refreshGuide() }
+        .task { while !Task.isCancelled { try? await Task.sleep(nanoseconds: 60_000_000_000); if !Task.isCancelled { model.refreshGuide() } } }
         .alert("Your provider's limit", isPresented: Binding(get: { model.pendingAdd != nil }, set: { if !$0 { model.cancelPendingAdd() } })) {
             Button("Open Anyway") { model.confirmPendingAdd() }
             Button("Cancel", role: .cancel) { model.cancelPendingAdd() }

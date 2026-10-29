@@ -8,6 +8,7 @@ struct FeaturedBanner: View {
     var scrollY: CGFloat = 0
     @State private var index = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         TabView(selection: $index) {
@@ -30,8 +31,8 @@ struct FeaturedBanner: View {
             }
         }
         // Moves on every six seconds; a swipe starts the count again. Off when Reduce Motion is on.
-        .task(id: index) {
-            guard items.count > 1, !reduceMotion else { return }
+        .task(id: "\(index)-\(scenePhase == .active)") {          // stops while the app is not in front, and while the banner is not on screen
+            guard items.count > 1, !reduceMotion, scenePhase == .active else { return }
             try? await Task.sleep(nanoseconds: 6_000_000_000)
             if !Task.isCancelled { withAnimation(.easeInOut(duration: 0.5)) { index = (index + 1) % items.count } }
         }

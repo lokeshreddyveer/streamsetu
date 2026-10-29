@@ -21,6 +21,8 @@ enum DatabaseMigrator {
         Migration(version: 14, sql: SchemaV14.sql),
         Migration(version: 15, sql: SchemaV15.sql),
         Migration(version: 16, sql: SchemaV16.sql),
+        Migration(version: 17, sql: SchemaV17.sql),
+        Migration(version: 18, sql: SchemaV18.sql),
     ]
 
     static var latestVersion: Int { migrations.last?.version ?? 0 }

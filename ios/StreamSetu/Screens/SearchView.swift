@@ -10,6 +10,9 @@ struct SearchView: View {
     @Environment(\.container) private var container
     @State private var results = GlobalSearchResults()
     @State private var searching = false
+    /// The last search could not be completed (not the same as finding nothing). The results already shown stay.
+    @State private var failed = false
+    @State private var retryTick = 0
     @State private var opened: LibraryItem?
     @FocusState private var focused: Bool
     /// Whether the search field is open. Closing it with the cross takes you back to the screen you came from.
@@ -44,7 +47,7 @@ struct SearchView: View {
             .navigationDestination(item: $opened) { DetailView(item: $0) }
             .miniPlayerInset()
         }
-        .task(id: router.query) { await run() }
+        .task(id: "\(router.query)|\(retryTick)") { await run() }
     }
 
     private var isBlank: Bool { router.query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -68,6 +71,7 @@ struct SearchView: View {
                 EmptyState(symbol: "questionmark.circle", title: "No results", message: "Try fewer letters or another spelling.")
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
+            if failed, !searching, !isBlank { failureNote.listRowBackground(Color.clear).listRowSeparator(.hidden) }
             if let fixed = correctedTo, !isBlank {
                 CorrectedNote(original: router.query, corrected: fixed).listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
@@ -95,6 +99,7 @@ struct SearchView: View {
                 } else if found.isEmpty, !searching {
                     EmptyState(symbol: "questionmark.circle", title: "No results", message: "Try fewer letters or another spelling.")
                 }
+                if failed, !searching, !isBlank { failureNote }
                 if let fixed = correctedTo, !isBlank { CorrectedNote(original: router.query, corrected: fixed) }
                 LazyVGrid(columns: isChannel ? [GridItem(.adaptive(minimum: 92, maximum: 128), spacing: 10)]
                                              : [GridItem(.adaptive(minimum: posterWidth, maximum: posterWidth + 40), spacing: 14, alignment: .top)], spacing: isChannel ? 10 : 16) {
@@ -122,27 +127,40 @@ struct SearchView: View {
         }.contentShape(Rectangle())
     }
 
+    private var failureNote: some View {
+        VStack(spacing: 8) {
+            Label("The search could not be completed.", systemImage: "exclamationmark.triangle").appFont(14, .medium).foregroundStyle(.secondary)
+            Button("Retry") { retryTick += 1 }.buttonStyle(.bordered)
+        }.frame(maxWidth: .infinity).padding(.vertical, 8)
+    }
+
     private func run() async {
         let q = router.query.trimmingCharacters(in: .whitespaces)
         guard let c = container, !q.isEmpty else { results = GlobalSearchResults(); correctedTo = nil; return }
-        searching = true
+        searching = true; failed = false
         try? await Task.sleep(nanoseconds: 200_000_000)                 // type-ahead: wait for a pause
         guard !Task.isCancelled else { return }
         let tab = tab, limit = tab == .all ? 12 : 60
         // "hindi movies 2024": the year narrows the results, and "movies" is not part of the title.
-        func search(_ text: String) async -> GlobalSearchResults {
+        func search(_ text: String) async throws -> GlobalSearchResults {
             let parsed = SmartQueryParser.parse(text)
-            var found = (try? await c.globalSearch.search(parsed.text.isEmpty ? text : parsed.text, tab: tab, limit: limit * (parsed.year == nil ? 1 : 3))) ?? GlobalSearchResults()
+            var found = try await c.globalSearch.search(parsed.text.isEmpty ? text : parsed.text, tab: tab, limit: limit * (parsed.year == nil ? 1 : 3))
             if let y = parsed.year { found = found.keeping { $0.title.contains(String(y)) || $0.subtitle.contains(String(y)) } }
             return found
         }
-        var found = await search(q)
-        var fixed: String?
-        if found.isEmpty, let alt = await Task.detached(operation: { c.spelling.correct(q) }).value {
-            let again = await search(alt)
-            if !again.isEmpty { found = again; fixed = alt }
+        do {
+            var found = try await search(q)
+            var fixed: String?
+            if found.isEmpty, let alt = await Task.detached(operation: { c.spelling.correct(q) }).value {
+                let again = try await search(alt)
+                if !again.isEmpty { found = again; fixed = alt }
+            }
+            if !Task.isCancelled { results = found; correctedTo = fixed; searching = false }
+        } catch is CancellationError {
+            return                                                       // a newer search replaced this one
+        } catch {
+            if !Task.isCancelled { failed = true; searching = false }    // the results already shown stay on screen
         }
-        if !Task.isCancelled { results = found; correctedTo = fixed; searching = false }
     }
 
     private func activate(_ r: SearchResult) {

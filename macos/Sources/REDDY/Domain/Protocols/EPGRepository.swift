@@ -13,3 +13,18 @@ protocol EPGRepository: Sendable {
     func searchPrograms(term: String, sourceID: UUID?, from: Date, limit: Int) throws -> [(program: EPGProgram, channelID: String, channelName: String)]
     func mappedChannelIDs() throws -> Set<String>
 }
+
+/// What the guide holds for one channel around a moment: the current and next programmes, and which of them is on air.
+struct ChannelNowNext: Sendable {
+    let programmes: [EPGProgram]
+    let now: EPGProgram?
+}
+
+extension EPGRepository {
+    /// The one way "what is on now" is read for channels. Live TV, Home and the player all go through this, so they can never disagree about what is on.
+    /// A channel the guide has nothing for is simply absent from the result.
+    func lookup(channelIDs: [String], at date: Date = Date()) throws -> [String: ChannelNowNext] {
+        guard !channelIDs.isEmpty else { return [:] }
+        return try nowNext(channelIDs: channelIDs, at: date).mapValues { list in ChannelNowNext(programmes: list, now: list.first { $0.isLive(at: date) }) }
+    }
+}

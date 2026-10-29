@@ -98,6 +98,40 @@ import Foundation
         #expect(count == 1)
     }
 
+    @Test func viewingSessionsReachTheOtherDeviceOnceAndItsStatisticsCountThem() throws {
+        let a = try Device(), b = try Device()
+        let start = Date(timeIntervalSince1970: 1_800_000_000.123)
+        let id = try a.history.beginSession(itemID: "m-1", engine: "mpv")
+        try a.db.write { try $0.execute("UPDATE playback_sessions SET started_at = ? WHERE id = ?", [start, id]) }
+        try a.history.endSession(id: id, outcome: "ok", error: "http://user:pass@host/secret")
+        try a.db.write { try $0.execute("UPDATE playback_sessions SET ended_at = ? WHERE id = ?", [start.addingTimeInterval(1800), id]) }
+        try ship(a, to: b)
+        try ship(a, to: b)                                                                                   // delivered again: still one
+        let rows = try b.db.read { try $0.query("SELECT item_id, started_at, ended_at, engine, error FROM playback_sessions", []) { ($0.string(0), $0.double(1), $0.double(2), $0.string(3), $0.optString(4)) } }
+        #expect(rows.count == 1 && rows[0].0 == "m-1")
+        #expect(abs(rows[0].1 - start.timeIntervalSince1970) < 0.001 && abs(rows[0].2 - (start.timeIntervalSince1970 + 1800)) < 0.001)
+        #expect(rows[0].4 == nil, "an error text never leaves the device that had it")
+        let stats = try StatisticsService(db: b.db, catalog: b.catalog).compute(since: nil, now: start.addingTimeInterval(3600))
+        #expect(stats.sessions == 1 && abs(stats.totalSeconds - 1800) < 1)
+        // clearing the statistics on one device clears them on the other
+        try a.db.write { try $0.execute("DELETE FROM playback_sessions") }
+        try ship(a, to: b)
+        let left = try b.db.read { try $0.scalarInt("SELECT COUNT(*) FROM playback_sessions") }
+        #expect(left == 0)
+    }
+
+    @Test func aSessionThatEndsAfterItWasSentFillsInItsEnd() throws {
+        let a = try Device(), b = try Device()
+        let id = try a.history.beginSession(itemID: "m-2", engine: "mpv")
+        try ship(a, to: b)                                                                                   // still running when it was sent
+        try a.history.endSession(id: id, outcome: "ok", error: nil)
+        try a.db.write { try $0.execute("UPDATE playback_sessions SET ended_at = started_at + 600 WHERE id = ?", [id]) }
+        try ship(a, to: b)
+        let ended = try b.db.read { try $0.scalarInt("SELECT COUNT(*) FROM playback_sessions WHERE ended_at IS NOT NULL") }
+        let total = try b.db.read { try $0.scalarInt("SELECT COUNT(*) FROM playback_sessions") }
+        #expect(ended == 1 && total == 1)
+    }
+
     @Test func aPlaylistArrivesWithoutItsDeviceOnlyStatus() throws {
         let a = try Device(), b = try Device()
         let src = try TestSupport.makeSource(a.db, name: "Home")

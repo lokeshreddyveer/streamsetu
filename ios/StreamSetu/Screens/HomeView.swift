@@ -121,9 +121,9 @@ struct HomeView: View {
         let (built, items, channels, now) = await Task.detached { () -> (DiscoverContent?, [ContinueItem], [Channel], [String: String]) in
             let chans = (try? c.history.recentChannels(limit: 12, sourceID: source)) ?? []
             let at = Date()
-            let guide = (try? c.epgRepo.nowNext(channelIDs: chans.map(\.id), at: at)) ?? [:]
+            let guide = (try? c.epgRepo.lookup(channelIDs: chans.map(\.id), at: at)) ?? [:]
             return (try? c.discover.build(sourceID: source), (try? c.history.continueWatching(limit: 12, sourceID: source)) ?? [], chans,
-                    guide.compactMapValues { $0.first { $0.isLive(at: at) }?.title })
+                    guide.compactMapValues { $0.now?.title })
         }.value
         let (next, top) = await Task.detached { ((try? c.history.upNext(sourceID: source)) ?? [], (try? c.history.mostWatchedChannels(sourceID: source)) ?? []) }.value
         content = built; resume = items; recentChannels = channels; nowPlaying = now; upNext = next; topChannels = top; loaded = true

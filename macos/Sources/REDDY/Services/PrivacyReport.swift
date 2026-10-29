@@ -42,7 +42,7 @@ struct PrivacyReport: Equatable, Sendable {
             Item(id: "history", title: "Watch history and resume points", detail: n(s.historyCount, "title", "titles") + ". Titles played with Watch Privately are never saved.", status: .on),
             Item(id: "fav", title: "Favourites and collections", detail: n(s.favoriteCount, "favourite", "favourites") + ".", status: .on),
             Item(id: "search", title: "Recent searches", detail: n(s.searchCount, "search", "searches") + ", the latest 30 at most.", status: .on),
-            Item(id: "stats", title: "Viewing statistics", detail: n(s.sessionCount, "playback session", "playback sessions") + " behind the Statistics page.", status: .on),
+            Item(id: "stats", title: "Viewing statistics", detail: n(s.sessionCount, "playback session", "playback sessions") + " behind the Statistics page. They count everyone who uses this Mac, and are shared with your other devices when iCloud sync is on.", status: .on),
             Item(id: "profiles", title: "Profiles", detail: n(s.profileCount, "profile", "profiles") + ". Each keeps its own history and favourites.", status: .on),
             Item(id: "logins", title: "Playlist logins", detail: "\(n(s.playlistCount, "playlist", "playlists")). Passwords stay in the system's secure storage.", status: .on)
         ]
@@ -56,7 +56,7 @@ struct PrivacyReport: Equatable, Sendable {
             Item(id: "trakt", title: "Trakt", detail: "When you start and stop watching a title, and your watchlist when you import it. Never for private watching. Only with your own Trakt app.", status: s.hasTrakt ? .on : .off),
             Item(id: "trailer", title: "YouTube and Apple trailers", detail: "Only when you open a trailer.", status: .whenYouAsk),
             Item(id: "podcast", title: "Apple podcast directory", detail: "The words you type, when you search for a podcast.", status: .whenYouAsk),
-            Item(id: "icloud", title: "iCloud sync", detail: "Favourites, collections and resume points, in your own iCloud. Not visible to the developer.", status: s.iCloudSync ? .on : .off),
+            Item(id: "icloud", title: "iCloud sync", detail: "Favourites, collections, resume points and when you watched what (for Statistics), in your own iCloud. Not visible to the developer.", status: s.iCloudSync ? .on : .off),
             Item(id: "lan", title: "Wi-Fi sync", detail: "Between your own devices on this network, encrypted and paired with a code. Nothing goes through the internet.", status: s.lanSync ? .on : .off)
         ]
         return r

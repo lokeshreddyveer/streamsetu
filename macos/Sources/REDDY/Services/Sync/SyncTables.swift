@@ -32,6 +32,9 @@ struct SyncTable: Sendable {
                   values: ["kind", "series_id", "position_seconds", "duration_seconds", "updated_at", "completed"]),
         SyncTable(name: "watch_history", keyExprs: ["{r}.item_id", "CAST({r}.played_at * 1000 AS INTEGER)"], keyColumns: ["item_id", "played_at"],
                   values: ["kind", "title"], naturalKey: true),
+        // Viewing sessions behind the Statistics page. Device-wide (not part of a profile); only when and what, never the player used or an error text.
+        SyncTable(name: "playback_sessions", keyExprs: ["{r}.item_id", "CAST(ROUND({r}.started_at * 1000) AS INTEGER)"], keyColumns: ["item_id", "started_at"],
+                  values: ["ended_at"], watched: ["ended_at"], naturalKey: true),
         SyncTable(name: "recently_watched", keyExprs: ["{r}.item_id"], keyColumns: ["item_id"], values: ["kind", "last_played", "play_count"]),
         SyncTable(name: "hidden_items", keyExprs: ["{r}.item_id"], keyColumns: ["item_id"], values: ["kind", "hidden_at"]),
         SyncTable(name: "metadata_overrides", keyExprs: ["{r}.item_id"], keyColumns: ["item_id"], values: ["display_name", "category_name", "epg_id"]),

@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 enum IndexError: LocalizedError, Sendable {
     case emptyRefresh(String)
@@ -25,6 +26,32 @@ struct IndexResult: Sendable {
 final class CatalogIndexer: Sendable {
     let db: DatabaseManager
     init(db: DatabaseManager) { self.db = db }
+
+    /// Raise when the importer starts reading other fields: every saved fingerprint then stops matching and the catalogs are written once more.
+    static let fingerprintVersion = 1
+
+    /// A fingerprint of everything about to be written for one playlist and kind: the categories, and every item with all of its fields, in order.
+    private func fingerprint<T>(categories: [CatalogCategory], items: [T]) -> String {
+        var h = SHA256()
+        h.update(data: Data(String(describing: categories).utf8))
+        for chunk in stride(from: 0, to: items.count, by: 2000) {
+            h.update(data: Data(String(describing: items[chunk..<min(chunk + 2000, items.count)]).utf8))
+        }
+        return h.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// True when the saved fingerprint is this one, for this many rows, and the table still holds that many rows (so a fingerprint never vouches for a table that was changed behind its back).
+    private func isUnchanged(kind: String, table: String, source: PlaylistSource, fingerprint fp: String, rows: Int) throws -> Bool {
+        try db.read { c in
+            guard let s = try c.queryOne("SELECT fingerprint, version, rows FROM catalog_fingerprints WHERE source_id=? AND kind=?", [source.id, kind], { ($0.string(0), $0.int(1), $0.int(2)) }),
+                  s.0 == fp, s.1 == Self.fingerprintVersion, s.2 == rows else { return false }
+            return try c.scalarInt("SELECT COUNT(*) FROM \(table) WHERE source_id=?", [source.id]) == rows
+        }
+    }
+
+    private func saveFingerprint(kind: String, source: PlaylistSource, fingerprint fp: String, rows: Int, in c: Connection) throws {
+        try c.execute("INSERT OR REPLACE INTO catalog_fingerprints(source_id, kind, fingerprint, version, rows) VALUES(?,?,?,?,?)", [source.id, kind, fp, Self.fingerprintVersion, rows])
+    }
 
     private func integrityCheck(previous: Int, new: Int, what: String) throws {
         if new == 0 && previous > 0 { throw IndexError.emptyRefresh(what) }
@@ -84,6 +111,10 @@ final class CatalogIndexer: Sendable {
         let previous = try db.read { try $0.scalarInt("SELECT COUNT(*) FROM channels WHERE source_id=?", [source.id]) }
         try integrityCheck(previous: previous, new: channels.count, what: "channels")
         let grouped = ChannelDeduplicator.group(channels.uniqued(by: \.id))
+        let fp = fingerprint(categories: categories, items: grouped.channels)
+        if try isUnchanged(kind: "channel", table: "channels", source: source, fingerprint: fp, rows: grouped.channels.count) {
+            return IndexResult(total: grouped.channels.count, previous: previous, removed: 0)          // the provider sent exactly what is saved: nothing is written
+        }
 
         return try db.write { c in
             let rec = try upsertCategories(categories, referenced: Self.referencedCategories(channels, id: \.categoryID, name: \.categoryName), kind: .channel, source: source, stamp: stamp, in: c)
@@ -117,6 +148,7 @@ final class CatalogIndexer: Sendable {
             }, in: c)
             try SearchIndexer.removeStale(kind: .channel, table: "channels", sourceID: source.id, in: c)
             try reapplyOverrides(in: c)
+            try saveFingerprint(kind: "channel", source: source, fingerprint: fp, rows: grouped.channels.count, in: c)
             return IndexResult(total: grouped.channels.count, previous: previous, removed: removed, categories: rec)
         }
     }
@@ -128,6 +160,10 @@ final class CatalogIndexer: Sendable {
         let previous = try db.read { try $0.scalarInt("SELECT COUNT(*) FROM movies WHERE source_id=?", [source.id]) }
         try integrityCheck(previous: previous, new: movies.count, what: "movies")
         let unique = movies.uniqued(by: \.id)
+        let fp = fingerprint(categories: categories, items: unique)
+        if try isUnchanged(kind: "movie", table: "movies", source: source, fingerprint: fp, rows: unique.count) {
+            return IndexResult(total: unique.count, previous: previous, removed: 0)
+        }
         return try db.write { c in
             let rec = try upsertCategories(categories, referenced: Self.referencedCategories(movies, id: \.categoryID, name: \.categoryName), kind: .movie, source: source, stamp: stamp, in: c)
             let st = try c.prepare("""
@@ -153,6 +189,7 @@ final class CatalogIndexer: Sendable {
                           category: $0.categoryName, genre: $0.genre, language: nil, sourceName: source.name)
             }, in: c)
             try SearchIndexer.removeStale(kind: .movie, table: "movies", sourceID: source.id, in: c)
+            try saveFingerprint(kind: "movie", source: source, fingerprint: fp, rows: unique.count, in: c)
             return IndexResult(total: unique.count, previous: previous, removed: removed, categories: rec)
         }
     }
@@ -176,6 +213,10 @@ final class CatalogIndexer: Sendable {
         let previous = try db.read { try $0.scalarInt("SELECT COUNT(*) FROM series WHERE source_id=?", [source.id]) }
         try integrityCheck(previous: previous, new: series.count, what: "series")
         let unique = series.uniqued(by: \.id)
+        let fp = fingerprint(categories: categories, items: unique)
+        if try isUnchanged(kind: "series", table: "series", source: source, fingerprint: fp, rows: unique.count) {
+            return IndexResult(total: unique.count, previous: previous, removed: 0)
+        }
         return try db.write { c in
             let rec = try upsertCategories(categories, referenced: Self.referencedCategories(series, id: \.categoryID, name: \.categoryName), kind: .series, source: source, stamp: stamp, in: c)
             let st = try c.prepare("""
@@ -200,6 +241,7 @@ final class CatalogIndexer: Sendable {
                           category: $0.categoryName, genre: $0.genre, language: nil, sourceName: source.name)
             }, in: c)
             try SearchIndexer.removeStale(kind: .series, table: "series", sourceID: source.id, in: c)
+            try saveFingerprint(kind: "series", source: source, fingerprint: fp, rows: unique.count, in: c)
             return IndexResult(total: unique.count, previous: previous, removed: removed, categories: rec)
         }
     }

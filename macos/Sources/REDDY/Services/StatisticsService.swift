@@ -1,6 +1,7 @@
 import Foundation
 
-/// What the person has watched, worked out from the playback sessions stored on this Mac. Nothing here leaves the computer.
+/// What the person has watched, worked out from the playback sessions on this Mac. They belong to the device, not to a profile: everyone who uses it is counted together.
+/// With iCloud sync on, the sessions of the person's other devices arrive too, so the figures cover all of them.
 struct ViewingStatistics: Equatable, Sendable {
     struct Day: Equatable, Sendable { let date: Date; let seconds: TimeInterval }
     struct Top: Equatable, Sendable, Identifiable { let id: String; let title: String; let seconds: TimeInterval; let plays: Int }

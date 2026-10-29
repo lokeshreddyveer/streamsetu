@@ -265,8 +265,9 @@ struct PlayerScreen: View {
         .onDisappear { ScreenBrightness.restore(); longWatchTask?.cancel(); if let r = heldRate { playback.setRate(r); heldRate = nil } }
         .task(id: playback.currentChannel?.id) {
             guard let c = container, let id = playback.currentChannel?.id else { programme = nil; upcoming = []; return }
-            let list = await Task.detached { (try? c.epgRepo.nowNext(channelIDs: [id], at: Date()))?[id] ?? [] }.value
-            upcoming = list; programme = list.first { $0.isLive() }
+            let found = await Task.detached { try? c.epgRepo.lookup(channelIDs: [id])[id] }.value
+            guard !Task.isCancelled else { return }                  // the channel changed while this was being read
+            upcoming = found?.programmes ?? []; programme = found?.now
         }
         .onChange(of: playback.currentChannel?.id) { _, _ in logNote = nil; showBanner() }
         .onChange(of: playback.current?.itemID) { _, id in
