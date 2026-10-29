@@ -5,6 +5,18 @@ extension View {
     func appFont(_ size: CGFloat, _ weight: Font.Weight = .regular) -> some View { modifier(ScaledFont(size: size, weight: weight)) }
 }
 
+/// Side by side at ordinary text sizes; stacked at the accessibility sizes, so large text gets the full width instead of being squeezed or cut off.
+struct ReflowStack<Content: View>: View {
+    var alignment: VerticalAlignment = .center
+    var spacing: CGFloat = 12
+    @ViewBuilder var content: Content
+    @Environment(\.dynamicTypeSize) private var size
+    var body: some View {
+        if size.isAccessibilitySize { VStack(alignment: .leading, spacing: spacing / 2) { content } }
+        else { HStack(alignment: alignment, spacing: spacing) { content } }
+    }
+}
+
 private struct ScaledFont: ViewModifier {
     @ScaledMetric private var scaled: CGFloat
     let weight: Font.Weight
@@ -150,20 +162,22 @@ struct ChannelRow: View {
     /// Position in the list, shown so a channel can be reached by typing its number.
     var number: Int?
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+    private var lines: Int { typeSize.isAccessibilitySize ? 3 : 1 }
     var body: some View {
-        HStack(spacing: 12) {
+        ReflowStack {
             if let number { Text("\(number)").appFont(12, .medium).monospacedDigit().foregroundStyle(.tertiary).frame(minWidth: 26, alignment: .trailing) }
             ChannelLogo(url: channel.logoURL, name: channel.name, size: 48)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(channel.name).appFont(15, .medium).lineLimit(1)
+                    Text(channel.name).appFont(15, .medium).lineLimit(lines)
                     if isFavorite { Image(systemName: "heart.fill").appFont(10).foregroundStyle(.pink) }
                 }
                 if let p = programme {
-                    Text(p.title).appFont(12).foregroundStyle(.secondary).lineLimit(1)
+                    Text(p.title).appFont(12).foregroundStyle(.secondary).lineLimit(lines)
                     ProgressView(value: min(1, max(0, Date().timeIntervalSince(p.start) / max(1, p.end.timeIntervalSince(p.start))))).tint(ColorTokens.accentDefault).frame(maxWidth: 140)
                 } else if let c = channel.categoryName {
-                    Text(c).appFont(12).foregroundStyle(.tertiary).lineLimit(1)
+                    Text(c).appFont(12).foregroundStyle(.tertiary).lineLimit(lines)
                 }
             }
             Spacer(minLength: 0)

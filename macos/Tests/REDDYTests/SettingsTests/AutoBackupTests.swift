@@ -53,4 +53,53 @@ import Foundation
         c.settings.autoBackup = false
         clock = clock.addingTimeInterval(30 * 86400); #expect(svc.runIfDue() == nil, "switched off means none")
     }
+
+    /// A source library with playlists, favourites, history and hidden items, exported, for restoring into an empty one.
+    private func backupData() throws -> (Data, PlaylistSource) {
+        let a = try container()
+        let src = try TestSupport.makeSource(a.db, name: "Restored List")
+        try a.db.write { c in
+            try c.execute("INSERT INTO favorites(item_id,kind,created_at) VALUES('\(src.id.uuidString.lowercased())|c1','channel',1)")
+            try c.execute("INSERT INTO watch_history(item_id,kind,title,played_at) VALUES('\(src.id.uuidString.lowercased())|m1','movie','Heat',1000)")
+            try c.execute("INSERT INTO hidden_items(item_id,kind,hidden_at) VALUES('\(src.id.uuidString.lowercased())|c2','channel',1)")
+        }
+        return (try a.backup.export([.sources, .favorites, .collections, .history, .organisation], settings: a.settings, channelPrefs: a.playback.channelPrefs), src)
+    }
+
+    @Test func aRestoreThatFailsHalfwayChangesNothing() throws {
+        let (data, _) = try backupData()
+        let b = try container()
+        // A failure in the last step (organisation) must undo the playlists, favourites and history written before it.
+        try b.db.write { try $0.exec("CREATE TRIGGER fail_hidden BEFORE INSERT ON hidden_items BEGIN SELECT RAISE(ABORT, 'disk full'); END") }
+        let plan = try b.backup.plan(from: data)
+        #expect(throws: (any Error).self) { _ = try b.backup.apply(plan, settings: b.settings, channelPrefs: b.playback.channelPrefs) }
+        let counts = try b.db.read { c in (try c.scalarInt("SELECT COUNT(*) FROM sources"), try c.scalarInt("SELECT COUNT(*) FROM favorites"), try c.scalarInt("SELECT COUNT(*) FROM watch_history")) }
+        #expect(counts.0 == 0 && counts.1 == 0 && counts.2 == 0, "nothing from the failed restore is left behind")
+    }
+
+    @Test func preferencesAreOnlyAppliedAfterTheDatabaseSucceeds() throws {
+        let a = try container()
+        a.settings.guideHoursVisible = 7
+        let data = try a.backup.export([.sources, .preferences, .organisation], settings: a.settings, channelPrefs: a.playback.channelPrefs)
+        let b = try container()
+        let before = b.settings.guideHoursVisible
+        _ = try b.backup.plan(from: data)
+        try b.db.write { try $0.exec("CREATE TRIGGER fail_src BEFORE INSERT ON sources BEGIN SELECT RAISE(ABORT, 'no'); END") }
+        let other = try backupData().0
+        let plan = try b.backup.plan(from: other)
+        #expect(throws: (any Error).self) { _ = try b.backup.apply(plan, settings: b.settings) }
+        #expect(b.settings.guideHoursVisible == before, "a failed restore leaves the settings alone")
+    }
+
+    @Test func restoringTheSameBackupTwiceAddsNothingTheSecondTime() throws {
+        let (data, _) = try backupData()
+        let b = try container()
+        _ = try b.backup.apply(try b.backup.plan(from: data), settings: b.settings, channelPrefs: b.playback.channelPrefs)
+        func counts() throws -> [Int] { try b.db.read { c in try ["sources", "favorites", "watch_history", "hidden_items"].map { try c.scalarInt("SELECT COUNT(*) FROM \($0)") } } }
+        let once = try counts()
+        #expect(once == [1, 1, 1, 1])
+        let again = try b.backup.apply(try b.backup.plan(from: data), settings: b.settings, channelPrefs: b.playback.channelPrefs)
+        #expect(try counts() == once, "no duplicates")
+        #expect(again.history == 0 && again.sourcesAdded == 0)
+    }
 }

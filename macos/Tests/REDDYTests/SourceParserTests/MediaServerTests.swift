@@ -129,6 +129,17 @@ private func list(_ s: String) -> [[String: Any]] { (try? JSONSerialization.json
         #expect(!ProxyConfig(kind: .http, host: "", port: 80).isActive && !ProxyConfig(kind: .http, host: "h", port: 0).isActive)
     }
 
+    @Test func theProxySettingReachesTheLiveNetworkSession() {
+        let http = HTTPClient()
+        #expect(http.activeProxyDictionary == nil, "no proxy until one is set")
+        http.setProxy(ProxyConfig(kind: .http, host: "10.0.0.2", port: 8080))
+        #expect(http.activeProxyDictionary?["HTTPProxy"] as? String == "10.0.0.2" && http.activeProxyDictionary?["HTTPSPort"] as? Int == 8080)
+        http.setProxy(nil)
+        #expect(http.activeProxyDictionary == nil, "turning the proxy off takes it out of the session")
+        http.setProxy(ProxyConfig(kind: .http, host: "", port: 8080).isActive ? ProxyConfig(kind: .http, host: "", port: 8080) : nil)
+        #expect(http.activeProxyDictionary == nil, "an incomplete proxy is never applied")
+    }
+
     @Test func httpAuthHeaders() {
         #expect(SourceManager.authorization(for: Credentials(username: "u", password: "p")) == "Basic dTpw")
         #expect(SourceManager.authorization(for: Credentials(username: nil, password: "tok")) == "Bearer tok")

@@ -17,7 +17,10 @@ struct ArtworkSettingsView: View {
             Section {
                 SecureField(hasKey ? "Replace key" : "Paste your TMDB API key", text: $key).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Button("Save Key") { save() }.disabled(key.trimmingCharacters(in: .whitespaces).isEmpty)
-                if hasKey { Button("Remove Key", role: .destructive) { try? container?.metadata.removeKey(); hasKey = false; say("Key removed.") } }
+                if hasKey { Button("Remove Key", role: .destructive) {
+                    do { try container?.metadata.removeKey(); hasKey = false; say("Key removed.") }
+                    catch { say("Could not remove the key: \(error.localizedDescription)", failure: true) }
+                } }
             } header: { Text("API key") } footer: {
                 Text(hasKey ? "A key is saved in the Keychain on this device." : "Create a free account at themoviedb.org, then copy your API key (or read access token) from Settings → API.")
             }.listRowBackground(ColorTokens.surface)

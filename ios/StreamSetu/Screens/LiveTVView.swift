@@ -16,10 +16,12 @@ final class LiveTVModel {
     var loading = false
     /// The first page could not be read. The channels already shown stay on screen.
     var failed = false
-    var loadingMore = false
+    /// A page is being read. Owned by the gate, which clears it whenever the query changes.
+    var loadingMore: Bool { gate.loading }
     /// The next page could not be read.
     var pageFailed = false
-    private var generation = 0
+    private var gate = PageGate()
+    private var generation: Int { gate.generation }
     private var more = false
     private var searchUsed = ""
     private var container: AppContainer?
@@ -37,6 +39,9 @@ final class LiveTVModel {
     private var pending = Set<String>()
     private var guideTask: Task<Void, Never>?
 
+    /// How many channels match the current filters in all, not just those loaded so far (nil until counted).
+    private(set) var total: Int?
+
     private func pageQuery(offset: Int) -> ChannelQuery {
         var q = ChannelQuery(sourceID: source, categoryID: categoryID, favoritesOnly: favouritesOnly, search: searchUsed)
         q.limit = Self.pageSize; q.offset = offset
@@ -45,7 +50,7 @@ final class LiveTVModel {
 
     func load(_ c: AppContainer, source: UUID?) async {
         container = c; self.source = source
-        generation += 1
+        gate.reset()                                               // a page still being read for the old query is dropped, and the flag cleared
         let gen = generation
         loading = true; failed = false; pageFailed = false
         let q0 = pageQuery(offset: 0).with(search: query)
@@ -72,6 +77,10 @@ final class LiveTVModel {
         categories = cats; channels = list; correctedTo = fixed
         searchUsed = fixed ?? query
         more = listID == nil && list.count >= Self.pageSize
+        if listID == nil {
+            var cq = pageQuery(offset: 0); cq.limit = nil
+            total = await Task.detached { try? c.catalog.countChannels(cq) }.value
+        } else { total = list.count }
         flushGuide(soon: false)
         lists = await Task.detached { ((try? c.favoritesRepo.collections()) ?? []).filter { col in let items = (try? c.favoritesRepo.collectionItems(id: col.id)) ?? []; return items.isEmpty || items.contains { $0.kind == .channel } } }.value
     }
@@ -86,13 +95,11 @@ final class LiveTVModel {
     func disappeared(_ id: String) { visible.remove(id); pending.remove(id) }
 
     func loadMore() async {
-        guard more, !loadingMore, let c = container, listID == nil else { return }
-        loadingMore = true; pageFailed = false
-        let gen = generation
+        guard more, let c = container, listID == nil, let gen = gate.begin() else { return }
+        pageFailed = false
         let q = pageQuery(offset: channels.count)
         let page = await Task.detached { try? c.catalog.channels(q) }.value
-        guard gen == generation else { return }                    // the list was reloaded while this page was being read
-        loadingMore = false
+        guard gate.end(gen) else { return }                        // the list was reloaded while this page was being read
         guard let page else { pageFailed = true; return }
         let seen = Set(channels.map(\.id))
         let fresh = page.filter { !seen.contains($0.id) }
@@ -131,6 +138,8 @@ struct LiveTVView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(IOSRouter.self) private var router
     @State private var lockedPick: String?
+    /// The search text the last load used (see the load task).
+    @State private var loadedQuery = ""
     @State private var askNumber = false
     @State private var renaming: Channel?
     @State private var newName = ""
@@ -287,17 +296,19 @@ struct LiveTVView: View {
             } message: { Text("Channels are numbered by their place in the list on screen (1–\(model.channels.count)).") }
             .sheet(isPresented: Binding(get: { lockedPick != nil }, set: { if !$0 { lockedPick = nil } })) { UnlockSheet { model.categoryID = lockedPick } }
         }
-        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(model.favouritesOnly)-\(model.listID ?? "")") { if let c = container { await model.load(c, source: state.activeSourceID) } }
+        .task(id: "\(model.query)|\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(model.favouritesOnly)-\(model.listID ?? "")") {
+            // One load for every input, including the search text. Only a change of the text waits for a pause in typing; any other change loads at once.
+            guard let c = container else { return }
+            if model.query != loadedQuery { try? await Task.sleep(nanoseconds: 250_000_000) }
+            guard !Task.isCancelled else { return }
+            loadedQuery = model.query
+            await model.load(c, source: state.activeSourceID)
+        }
         // A folder chosen in Search: Live TV shows it (a locked folder still asks for the PIN first).
         .onChange(of: router.pendingFolder?.id, initial: true) { _, _ in
             guard let pending = router.pendingFolder, pending.kind == .channel else { return }
             router.pendingFolder = nil
             if let p = container?.parental, p.isLocked(pending.id), p.isRestricting { lockedPick = pending.id } else { model.categoryID = pending.id }
-        }
-        .task(id: model.query) {
-            guard let c = container else { return }
-            try? await Task.sleep(nanoseconds: 250_000_000)
-            if !Task.isCancelled { await model.load(c, source: state.activeSourceID) }
         }
     }
 }
@@ -307,6 +318,11 @@ struct LiveTVView: View {
 struct PageFooter: View {
     let model: LiveTVModel
     var body: some View {
+        if !model.loadingMore, !model.pageFailed, let total = model.total, total > 0 {
+            Text(total > model.channels.count ? "\(model.channels.count) of \(total) channels" : "\(total) channel\(total == 1 ? "" : "s")")
+                .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 12)
+                .accessibilityLabel("\(total) channels in all")
+        }
         if model.loadingMore {
             ProgressView().frame(maxWidth: .infinity).padding(.vertical, 12)
         } else if model.pageFailed {

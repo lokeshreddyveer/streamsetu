@@ -2,7 +2,7 @@
 
 Last updated: {{UPDATED}}
 
-StreamSetu is a player. It does not collect, sell or share your personal information, and the people who make it receive nothing from your use of it except an automatic playback report when a stream fails, which you can switch off (described below). There are no analytics, no advertising identifiers, no automatic crash reporting and no account.
+StreamSetu is a player. It does not collect, sell or share your personal information, and the people who make it receive nothing from your use of it except a playback report when a stream fails, and only if you choose to share it: nothing is sent automatically unless you turn that on, and you can also send one by hand (described below). There are no analytics, no advertising identifiers, no automatic crash reporting and no account.
 
 ## What stays on your device
 

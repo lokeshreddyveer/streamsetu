@@ -133,7 +133,10 @@ struct HistoryView: View {
                         Spacer(minLength: 0)
                     }
                 }.buttonStyle(.press)
-                .swipeActions { Button(role: .destructive) { try? container?.historyRepo.clearProgress(itemID: r.id); items.removeAll { $0.id == r.id }; state.catalogVersion += 1 } label: { Label("Remove", systemImage: "trash") } }
+                .swipeActions { Button(role: .destructive) {
+                    do { try container?.historyRepo.clearProgress(itemID: r.id); items.removeAll { $0.id == r.id }; state.catalogVersion += 1 }
+                    catch { state.toasts.show("Could not remove it: \(error.localizedDescription)", symbol: "exclamationmark.triangle") }
+                } label: { Label("Remove", systemImage: "trash") } }
             }
         }
         .navigationTitle("Watch History").themed("Watch History")
@@ -145,8 +148,9 @@ struct HistoryView: View {
         }
         .confirmationDialog("Clear watch history?", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("Clear Watch History", role: .destructive) {
-                try? container?.historyRepo.clearHistory(); try? container?.historyRepo.clearResumePoints(sourcePrefix: nil)
-                items = []; state.catalogVersion += 1
+                do { try container?.historyRepo.clearHistory(); try container?.historyRepo.clearResumePoints(sourcePrefix: nil); items = [] }
+                catch { state.toasts.show("Could not clear the history: \(error.localizedDescription)", symbol: "exclamationmark.triangle") }
+                state.catalogVersion += 1
             }
             Button("Cancel", role: .cancel) {}
         } message: { Text("This removes everything you have watched and the places saved in each title. Favourites and lists are not touched.") }
@@ -360,6 +364,8 @@ struct PlaylistsView: View {
 
     private func delete(_ s: PlaylistSource) {
         guard let c = container else { return }
-        try? c.sources.remove(s.id); state.reload()
+        do { try c.sources.remove(s.id) }
+        catch { state.toasts.show("Could not remove \(s.name): \(error.localizedDescription)", symbol: "exclamationmark.triangle") }
+        state.reload()
     }
 }

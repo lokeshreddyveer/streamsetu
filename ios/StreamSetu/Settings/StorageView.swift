@@ -70,7 +70,7 @@ struct StorageView: View {
         guard let c = container else { return }
         let text = c.diagnostics.report(playback: c.playback.current?.title, engines: ["Apple AVPlayer"])
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("StreamSetu-diagnostics.txt")
-        try? text.write(to: url, atomically: true, encoding: .utf8)
-        report = url
+        do { try text.write(to: url, atomically: true, encoding: .utf8); report = url }
+        catch { state.toasts.show("Could not write the report: \(error.localizedDescription)", symbol: "exclamationmark.triangle") }
     }
 }

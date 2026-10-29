@@ -90,7 +90,6 @@ struct RootView: View {
         .overlay { if let container, !picked, container.profiles.isShared { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { picked = true } } } }
         .overlay { if opening { OpeningAnimation { BrandMark() } onDone: { opening = false } } }
         .onChange(of: contrast, initial: true) { _, c in ThemeStore.state.systemContrast = c == .increased }
-        .dynamicTypeSize(...DynamicTypeSize.accessibility2)      // the layouts hold up to here; larger sizes would break them
         .sheet(isPresented: $router.presentAdd) { AddPlaylistSheet() }
         .sheet(item: $router.pendingAssistantItem) { item in NavigationStack { DetailView(item: item) }.presentationDetents([.large]) }
         .fullScreenCover(isPresented: $router.showMultiView) { if let container { MultiViewScreen(model: container.multiView) } }

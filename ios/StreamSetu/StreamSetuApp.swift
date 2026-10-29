@@ -18,7 +18,7 @@ struct StreamSetuApp: App {
                 case .starting:
                     ZStack { ColorTokens.background.ignoresSafeArea(); ProgressView() }
                 case .failed(let message):
-                    FailureView(message: message) { Task { await coordinator.resetDatabaseAndRetry() } }
+                    FailureView(message: message, inventory: { coordinator.inventoryOfDamagedLibrary() }, recover: { keep in Task { await coordinator.recoverLibrary(keepPersonalData: keep) } })
                 case .ready:
                     if let c = coordinator.container, let s = coordinator.state {
                         RootView()
@@ -81,6 +81,7 @@ final class IOSCoordinator {
             mark("ready")
             UserDefaults.standard.set(marks, forKey: "startup.timings")
             phase = .ready                                  // the app opens now; iCloud starts in the background, it is never waited for
+            if let note = recoveryNote { s.toasts.show(note, symbol: "lifepreserver", kind: .warning); recoveryNote = nil }
             Task { await c.startCloudIfEnabled() }
             Task { try? await Task.sleep(nanoseconds: 20_000_000_000); c.startPeopleIndex() }
             c.autoBackup.runIfDue()
@@ -103,9 +104,22 @@ final class IOSCoordinator {
         }
     }
 
-    func resetDatabaseAndRetry() async {
-        try? FileManager.default.removeItem(at: StorageService.databaseDirectory)
+    /// Said once the library is open again after a recovery.
+    private var recoveryNote: String?
+
+    /// What a damaged library holds, for the confirmation that comes before starting fresh.
+    func inventoryOfDamagedLibrary() -> DatabaseRecovery.Inventory { DatabaseRecovery.inspect(StorageService.databaseDirectory) }
+
+    /// Moves the damaged library aside (never deletes it) and opens a new one; with `keepPersonalData` the playlists, favourites, lists, profiles, locks and history are copied into it.
+    func recoverLibrary(keepPersonalData: Bool) async {
         phase = .starting
+        do {
+            let out = try DatabaseRecovery.recover(keepPersonalData: keepPersonalData)
+            recoveryNote = keepPersonalData ? out.message : "A fresh library was started. The old one is kept in the Recovery folder."
+        } catch {
+            phase = .failed("The damaged library could not be moved aside (\(error.localizedDescription)). Nothing was changed.")
+            return
+        }
         booting = false
         await boot()
     }
@@ -215,16 +229,26 @@ final class IOSRouter {
 
 private struct FailureView: View {
     let message: String
-    let retry: () -> Void
+    let inventory: () -> DatabaseRecovery.Inventory
+    let recover: (_ keepPersonalData: Bool) -> Void
+    @State private var confirmFresh = false
+    @State private var held = DatabaseRecovery.Inventory()
     var body: some View {
         VStack(spacing: 14) {
             Image(systemName: "exclamationmark.triangle").appFont(34).foregroundStyle(.orange)
             Text("StreamSetu could not open its library").font(.headline)
             Text(message.loc).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Button("Rebuild Library and Retry", action: retry).buttonStyle(.borderedProminent)
-            Text("Your playlists are re-added from their sources; nothing on the server changes.").font(.caption).foregroundStyle(.tertiary)
+            Button("Repair Library") { recover(true) }.buttonStyle(.borderedProminent)
+            Button("Start Fresh…", role: .destructive) { held = inventory(); confirmFresh = true }.buttonStyle(.bordered)
+            Text("Repair keeps your playlists, favourites, lists, profiles, locks and watch history, and reads the channels again from your playlists. The damaged library is never deleted: it is kept in the Recovery folder.").font(.caption).foregroundStyle(.tertiary).multilineTextAlignment(.center)
         }
         .padding(32).frame(maxWidth: .infinity, maxHeight: .infinity).background(ColorTokens.background)
+        .confirmationDialog("Start with an empty library?", isPresented: $confirmFresh, titleVisibility: .visible) {
+            Button("Start Fresh", role: .destructive) { recover(false) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your playlists, favourites, lists, profiles, folder locks, watch history and resume points will no longer be in the app. Passwords stay in the Keychain, but you will need to add the playlists again.\n\nIn the damaged library: " + held.lines.joined(separator: ", ") + ".\n\nThe old library is kept in the Recovery folder, so it can still be recovered.")
+        }
     }
 }
 

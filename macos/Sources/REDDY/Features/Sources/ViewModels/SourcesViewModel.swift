@@ -31,6 +31,28 @@ final class AddSourceViewModel {
     /// Short note about what the pasted address was taken for.
     var detectionNote: String?
 
+    /// The address and login the form would save, in one place for the warning below.
+    private var addressToSave: String {
+        switch kind { case .m3uURL, .stream: url; case .m3uFile: ""; default: server }
+    }
+    private var savesALogin: Bool {
+        switch kind {
+        case .xtream, .jellyfin, .emby, .tvheadend, .enigma2: !username.isEmpty || !password.isEmpty
+        case .plex: !password.isEmpty
+        default: false
+        }
+    }
+    /// The address and kind the person has already agreed to save over plain HTTP; changing either asks again.
+    private var acceptedPlainHTTPFor: String?
+    private var acceptanceKey: String { "\(kind.rawValue)|\(addressToSave)" }
+
+    /// Set when a login is about to be saved for a server that does not use HTTPS (and is not on this network): the screens ask first.
+    var plainHTTPWarning: String? {
+        guard acceptedPlainHTTPFor != acceptanceKey else { return nil }
+        return ProviderSecurity.plainHTTPWarning(address: addressToSave, hasLogin: savesALogin)
+    }
+    func acceptPlainHTTP() { acceptedPlainHTTPFor = acceptanceKey }
+
     /// Fills the form from one pasted address. The person still reviews it and presses Add.
     func paste(_ text: String) {
         guard let d = SourceDetector.detect(text) else { detectionNote = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : "That doesn't look like an address."; return }

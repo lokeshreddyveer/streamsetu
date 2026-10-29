@@ -125,6 +125,7 @@ protocol CatalogRepository: Sendable {
     func counts(sourceID: UUID?) throws -> CatalogCounts
     /// Number of titles a query would return (ignores limit/offset), for "1,234 titles" labels.
     func countMovies(_ q: VODQuery) throws -> Int
+    func countChannels(_ q: ChannelQuery) throws -> Int
     func countSeries(_ q: VODQuery) throws -> Int
     func genres(kind: ContentKind) throws -> [String]
     func years(kind: ContentKind) throws -> [Int]

@@ -28,7 +28,7 @@ struct AboutDialog: View {
                     .font(Typography.row).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true)
                 Divider().overlay(ColorTokens.line)
                 Label("Your library, history and favorites are stored only on this Mac.", systemImage: "internaldrive")
-                Label("Logins are kept in your Keychain. Nothing is sent to us — there is no telemetry.", systemImage: "lock.shield")
+                Label("Logins are kept in your Keychain. Nothing is sent to us unless you choose to share a playback log when a stream fails (Settings → Send Feedback).", systemImage: "lock.shield")
                 Label("Formats AVPlayer can't play (such as MKV) use the bundled libmpv engine (GPL).", systemImage: "play.rectangle")
             }
             .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)

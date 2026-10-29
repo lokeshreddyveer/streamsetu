@@ -184,22 +184,34 @@ final class BackupService: @unchecked Sendable {
         return to + itemID[bar...]
     }
 
+    /// Restores a backup all at once: every change to the database (playlists, favourites, lists, history, progress, organisation) is made in one transaction, so a failure part-way leaves the
+    /// library exactly as it was. Preferences, which cannot fail, are applied only after that transaction has committed. Running the same restore again changes nothing it already added
+    /// (history entries are matched, collections by name, the rest by their keys), so a restore interrupted before the preferences were applied can simply be run again.
     @MainActor
     func apply(_ plan: RestorePlan, settings: AppSettings, channelPrefs: ChannelPlaybackPrefs? = nil) throws -> RestoreResult {
         var result = RestoreResult()
         let b = plan.backup
         var idMap: [String: String] = [:]
-        for (s, existing) in plan.duplicateSources { idMap[s.id.lowercased()] = existing.uuidString.lowercased(); result.sourcesSkipped += 1 }
+        for (s, existing) in plan.duplicateSources { idMap[s.id.lowercased()] = existing.uuidString.lowercased() }
+        result.sourcesSkipped = plan.duplicateSources.count
 
-        for s in plan.newSources {
-            guard let id = UUID(uuidString: s.id), let type = SourceType(rawValue: s.type) else { continue }
-            // Without a login the playlist can't connect, so it is added switched off until the user supplies one.
-            let source = PlaylistSource(id: id, name: s.name, type: type, baseURL: s.address, credentialRef: nil, epgURL: s.guide, enabled: false, syncStatus: "needs-login")
-            try catalog.save(source: source)
-            result.sourcesAdded += 1
+        // Validated before anything is written: the ids and types of the playlists to add.
+        let newSources: [(UUID, SourceType, ReddyBackup.Source)] = plan.newSources.compactMap { s in
+            guard let id = UUID(uuidString: s.id), let type = SourceType(rawValue: s.type) else { return nil }
+            return (id, type, s)
         }
 
         try db.write { c in
+            for (id, type, s) in newSources {
+                // Without a login the playlist can't connect, so it is added switched off until the user supplies one.
+                try c.execute("""
+                    INSERT INTO sources(id, name, type, base_url, credential_ref, epg_url, enabled, last_sync, sync_status, created_at)
+                    VALUES(?,?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(id) DO NOTHING
+                    """, [id, s.name, type.rawValue, s.address, nil as String?, s.guide, false, nil as Date?, "needs-login", Date()])
+                try c.execute("INSERT OR IGNORE INTO source_capabilities(source_id) VALUES(?)", [id])
+                result.sourcesAdded += 1
+            }
             for fav in b.favorites ?? [] {
                 guard ContentKind(rawValue: fav.kind) != nil else { continue }
                 try c.execute("INSERT OR IGNORE INTO favorites(item_id, kind, created_at, sort_order) VALUES(?,?,?,0)", [Self.remap(fav.itemID, idMap), fav.kind, Date()])
@@ -215,8 +227,12 @@ final class BackupService: @unchecked Sendable {
                 }
             }
             for h in b.history ?? [] where ContentKind(rawValue: h.kind) != nil {
-                try c.execute("INSERT INTO watch_history(item_id, kind, title, played_at) VALUES(?,?,?,?)", [Self.remap(h.itemID, idMap), h.kind, h.title, h.playedAt])
-                result.history += 1
+                let item = Self.remap(h.itemID, idMap)
+                try c.execute("""
+                    INSERT INTO watch_history(item_id, kind, title, played_at)
+                    SELECT ?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM watch_history WHERE item_id=? AND played_at=?)
+                    """, [item, h.kind, h.title, h.playedAt, item, h.playedAt])
+                result.history += c.changes
             }
             for p in b.progress ?? [] where ContentKind(rawValue: p.kind) != nil && p.duration > 0 && p.position >= 0 {
                 try c.execute("""
@@ -225,14 +241,9 @@ final class BackupService: @unchecked Sendable {
                         updated_at=excluded.updated_at, completed=excluded.completed WHERE excluded.updated_at > watch_progress.updated_at
                     """, [Self.remap(p.itemID, idMap), p.kind, p.seriesID.map { Self.remap($0, idMap) }, p.position, p.duration, p.updatedAt, p.completed])
             }
-        }
-        if let prefs = b.preferences { result.preferences = settings.apply(snapshot: prefs) }
-        if let o = b.organisation {
-            channelPrefs?.merge(Dictionary(uniqueKeysWithValues: o.channelSettings.map { (Self.remap($0.key, idMap), $0.value) }))
-            try db.write { c in
+            if let o = b.organisation {
                 for (i, id) in o.folderOrder.enumerated() {
-                    let mapped = Self.remap(id, idMap)
-                    try c.execute("INSERT INTO folder_order(category_id, position) VALUES(?, ?) ON CONFLICT(category_id) DO NOTHING", [mapped, i])
+                    try c.execute("INSERT INTO folder_order(category_id, position) VALUES(?, ?) ON CONFLICT(category_id) DO NOTHING", [Self.remap(id, idMap), i])
                     result.organised += 1
                 }
                 for h in o.hidden where ["channel", "movie", "series", "category"].contains(h.kind) {
@@ -246,6 +257,9 @@ final class BackupService: @unchecked Sendable {
                 for id in o.lockedFolders { try c.execute("INSERT OR IGNORE INTO locked_categories(category_id) VALUES(?)", [Self.remap(id, idMap)]) }
             }
         }
+        // The database is committed; now the parts that cannot fail.
+        if let prefs = b.preferences { result.preferences = settings.apply(snapshot: prefs) }
+        if let o = b.organisation { channelPrefs?.merge(Dictionary(uniqueKeysWithValues: o.channelSettings.map { (Self.remap($0.key, idMap), $0.value) })) }
         return result
     }
 }

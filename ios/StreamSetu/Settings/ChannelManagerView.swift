@@ -55,7 +55,9 @@ struct ChannelManagerView: View {
     }
 
     private func setHidden(_ c: Channel, _ on: Bool) {
-        if on { try? container?.favoritesRepo.hide(c.id, kind: "channel"); hidden.insert(c.id) } else { try? container?.favoritesRepo.unhide(c.id); hidden.remove(c.id) }
+        do {
+            if on { try container?.favoritesRepo.hide(c.id, kind: "channel"); hidden.insert(c.id) } else { try container?.favoritesRepo.unhide(c.id); hidden.remove(c.id) }
+        } catch { state.toasts.show("Could not change that channel: \(error.localizedDescription)", symbol: "exclamationmark.triangle") }
         state.catalogVersion += 1
     }
 
@@ -98,7 +100,10 @@ private struct ChannelEditSheet: View {
                     }
                     if !epgID.isEmpty { Button("Use Automatic Matching") { epgID = "" } }
                 } header: { Text("Programme guide") } footer: { Text("Pick the guide entry that belongs to this channel when automatic matching got it wrong. Applies after the next guide refresh.") }.listRowBackground(ColorTokens.surface)
-                Section { Button("Reset Changes", role: .destructive) { try? container?.favoritesRepo.clearOverride(itemID: channel.id); changed(); state.catalogVersion += 1; dismiss() } }.listRowBackground(ColorTokens.surface)
+                Section { Button("Reset Changes", role: .destructive) {
+                    do { try container?.favoritesRepo.clearOverride(itemID: channel.id); changed(); state.catalogVersion += 1; dismiss() }
+                    catch { state.toasts.show("Could not reset the channel: \(error.localizedDescription)", symbol: "exclamationmark.triangle") }
+                } }.listRowBackground(ColorTokens.surface)
             }
             .navigationTitle(channel.name).themed(channel.name).navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -117,7 +122,9 @@ private struct ChannelEditSheet: View {
 
     private func save() {
         let n = name.trimmingCharacters(in: .whitespaces)
-        try? container?.favoritesRepo.setOverride(itemID: channel.id, displayName: n.isEmpty || n == channel.name ? nil : n, categoryName: nil, epgID: epgID.isEmpty ? nil : epgID)
-        changed(); state.catalogVersion += 1; dismiss()
+        do {
+            try container?.favoritesRepo.setOverride(itemID: channel.id, displayName: n.isEmpty || n == channel.name ? nil : n, categoryName: nil, epgID: epgID.isEmpty ? nil : epgID)
+            changed(); state.catalogVersion += 1; dismiss()
+        } catch { state.toasts.show("Could not save the changes: \(error.localizedDescription)", symbol: "exclamationmark.triangle") }          // stay on the screen so the edit is not lost
     }
 }

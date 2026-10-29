@@ -15,13 +15,17 @@ struct GuideView: View {
     @Environment(\.tabActive) private var tabActive
     @Environment(\.scenePhase) private var scenePhase
 
-    private let nameWidth: CGFloat = 92
-    private let rowHeight: CGFloat = 58
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// The channel column and row height grow with the text size.
+    @ScaledMetric(relativeTo: .body) private var nameWidth: CGFloat = 92
+    @ScaledMetric(relativeTo: .body) private var rowHeight: CGFloat = 58
 
     struct Selection: Identifiable { let channel: Channel; let program: EPGProgram; var id: Int64 { program.id } }
 
     var body: some View {
         OptionalStack(embedded: embedded) {
+            Group {
+            if typeSize.isAccessibilitySize { accessibleGuide } else {
             GeometryReader { geo in
                 let track = max(120, geo.size.width - nameWidth)
                 VStack(spacing: 0) {
@@ -47,6 +51,8 @@ struct GuideView: View {
                     guard abs(v.translation.width) > abs(v.translation.height) else { return }
                     vm.scroll(points: v.translation.width - lastDrag); lastDrag = v.translation.width
                 }.onEnded { _ in lastDrag = 0 })
+            }
+            }
             }
             .navigationTitle("Guide").themed("Guide · \(vm.dayLabel)").navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -78,6 +84,7 @@ struct GuideView: View {
             categories = await Task.detached { (try? c.catalog.categories(sourceID: sid, kind: .channel, includeHidden: false)) ?? [] }.value
         }
         // The minute hand: a task, so it stops when this screen is not showing and starts again when it is.
+        .onChange(of: vm.bucket) { _, _ in vm.windowMoved() }          // the window moved two hours: what is on screen is read again, in one batch
         // Only while this screen is the one on show and the app is in front; the marker is brought up to date the moment it comes back.
         .task(id: "\(tabActive)-\(scenePhase == .active)") {
             guard tabActive, scenePhase == .active else { return }
@@ -118,12 +125,40 @@ struct GuideView: View {
         }
     }
 
+    /// At the accessibility text sizes the grid is not squeezed: each channel is a section and its programmes in the window are a plain list, one per line, with their times.
+    private var accessibleGuide: some View {
+        List {
+            if vm.channels.isEmpty, !vm.loading {
+                EmptyState(symbol: "calendar", title: "No guide data", message: "This playlist has no programme guide.").listRowBackground(Color.clear)
+            }
+            ForEach(vm.channels) { c in
+                let shown = (vm.programs[c.id] ?? []).filter { $0.end > vm.windowStart && $0.start < vm.windowEnd }
+                Section {
+                    Button { if let container { Play.channel(c, queue: vm.channels, container) } } label: { Label("Watch \(c.name)", systemImage: "play.fill") }
+                    ForEach(shown) { p in
+                        Button { selected = Selection(channel: c, program: p) } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(p.title).appFont(15, .medium).foregroundStyle(.primary)
+                                Text((p.isLive() ? "On now · " : "") + p.start.formatted(date: .omitted, time: .shortened) + " – " + p.end.formatted(date: .omitted, time: .shortened))
+                                    .appFont(12).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                } header: { Text(c.name) }
+                .listRowBackground(ColorTokens.surface)
+                .onAppear { vm.rowAppeared(c.id) }.onDisappear { vm.rowDisappeared(c.id) }
+            }
+        }
+        .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+        .onAppear { vm.hours = 3 }
+    }
+
     private func row(_ c: Channel, track: CGFloat) -> some View {
         HStack(spacing: 0) {
             Button { if let container { Play.channel(c, queue: vm.channels, container) } } label: {
                 VStack(spacing: 3) {
                     ChannelLogo(url: c.logoURL, name: c.name, size: 30)
-                    Text(c.name).appFont(10).lineLimit(1).foregroundStyle(.secondary)
+                    Text(c.name).appFont(10).lineLimit(2).minimumScaleFactor(0.8).foregroundStyle(.secondary)
                 }.frame(width: nameWidth, height: rowHeight)
             }.buttonStyle(.press)
             ZStack(alignment: .topLeading) {
@@ -145,7 +180,8 @@ struct GuideView: View {
             }
             .frame(width: track, height: rowHeight, alignment: .topLeading).clipped()
         }
-        .task(id: "\(c.id)-\(vm.bucket)") { if let container { await vm.loadRow(c, container) } }
+        .onAppear { vm.rowAppeared(c.id) }
+        .onDisappear { vm.rowDisappeared(c.id) }
     }
 }
 

@@ -5,6 +5,8 @@ struct RootView: View {
     let coordinator: AppCoordinator
     @State private var opening = !OpeningPlayed.done
     @State private var picked = ProfilePicked.done
+    @State private var confirmFresh = false
+    @State private var inventory = DatabaseRecovery.Inventory()
 
     var body: some View {
         // The opening sits beside the content, not on it, so the content changing from "starting" to "ready" never rebuilds it (that cut it short).
@@ -28,9 +30,16 @@ struct RootView: View {
                 Text(message).font(Typography.body).foregroundStyle(ColorTokens.textSecondary).frame(maxWidth: 480).multilineTextAlignment(.center)
                 HStack {
                     SecondaryButton(title: "Show Data Folder", symbol: "folder") { WindowManager.revealInFinder(StorageService.applicationSupport) }
-                    PrimaryButton(title: "Reset Library and Retry", symbol: "arrow.counterclockwise") { Task { await coordinator.resetDatabaseAndRetry() } }
+                    SecondaryButton(title: "Start Fresh…", symbol: "trash") { inventory = coordinator.inventoryOfDamagedLibrary(); confirmFresh = true }
+                    PrimaryButton(title: "Repair Library", symbol: "wrench.and.screwdriver") { Task { await coordinator.recoverLibrary(keepPersonalData: true) } }
                 }
-                Text("Resetting removes the cached library only. Logins stay in your Keychain and sources can be added again.").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
+                Text("Repair keeps your playlists, favourites, lists, profiles, locks and watch history and reads the channels again from your playlists. The damaged library is never deleted: it is kept in the Recovery folder.").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary).frame(maxWidth: 480).multilineTextAlignment(.center)
+                    .confirmationDialog("Start with an empty library?", isPresented: $confirmFresh, titleVisibility: .visible) {
+                        Button("Start Fresh", role: .destructive) { Task { await coordinator.recoverLibrary(keepPersonalData: false) } }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("Your playlists, favourites, lists, profiles, folder locks, watch history and resume points will no longer be in the app. Passwords stay in your Keychain, but you will need to add the playlists again.\n\nIn the damaged library: " + inventory.lines.joined(separator: ", ") + ".\n\nThe old library is kept in the Recovery folder, so it can still be recovered by hand.")
+                    }
             }.frame(maxWidth: .infinity, maxHeight: .infinity).background(ColorTokens.background).preferredColorScheme(.dark)
         case .ready:
             if let container = coordinator.container, let state = coordinator.state {

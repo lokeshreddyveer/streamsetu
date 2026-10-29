@@ -54,6 +54,18 @@ import Foundation
         #expect(again.activeSourceID == other || again.activeSourceID != nil, "choice is persisted per defaults suite")
     }
 
+    @Test func channelCountIgnoresPagingAndMatchesTheFilters() throws {
+        let c = try container()
+        let a = try TestSupport.makeSource(c.db, name: "A")
+        let chans = (1...5).map { TestSupport.channel(a, "c\($0)", "Channel \($0)", order: $0) }
+        try c.indexer.commitChannels(source: a, categories: [], channels: chans)
+        var q = ChannelQuery(sourceID: a.id); q.limit = 2; q.offset = 0
+        #expect(try c.catalog.channels(q).count == 2)
+        #expect(try c.catalog.countChannels(q) == 5, "the total ignores the page size")
+        q.ids = []
+        #expect(try c.catalog.countChannels(q) == 0, "a query that can match nothing counts zero")
+    }
+
     @Test func movieCountsAreScopedPerPlaylist() throws {
         let c = try container()
         let a = try TestSupport.makeSource(c.db, name: "A"), b = try TestSupport.makeSource(c.db, name: "B")

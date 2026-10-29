@@ -8,6 +8,7 @@ struct AddSourceForm: View {
     @State private var vm = AddSourceViewModel()
     @State private var pasted = ""
     @State private var finder = HDHomeRunDiscovery()
+    @State private var askAboutHTTP = false
     var onAdded: (PlaylistSource) -> Void = { _ in }
 
     var body: some View {
@@ -74,9 +75,12 @@ struct AddSourceForm: View {
                 Spacer()
                 if vm.isWorking { ProgressView().controlSize(.small) }
                 PrimaryButton(title: vm.isWorking ? "Connecting…" : "Add Source", symbol: "plus") {
-                    guard let container else { return }
-                    Task { if let s = await vm.submit(container: container) { state.reload(); onAdded(s) } }
+                    if vm.plainHTTPWarning != nil { askAboutHTTP = true } else { submitNow() }
                 }.disabled(!vm.canSubmit || vm.isWorking)
+                .alert("This server is not encrypted", isPresented: $askAboutHTTP) {
+                    Button("Save Anyway") { vm.acceptPlainHTTP(); submitNow() }
+                    Button("Cancel", role: .cancel) {}
+                } message: { Text(vm.plainHTTPWarning ?? "") }
             }
         }
         .onAppear { applyPending() }
@@ -84,6 +88,11 @@ struct AddSourceForm: View {
     }
 
     /// Fills the form from something dropped on the window or opened from a link. The person still presses Add.
+    private func submitNow() {
+        guard let container else { return }
+        Task { if let s = await vm.submit(container: container) { state.reload(); onAdded(s) } }
+    }
+
     private func applyPending() {
         guard let p = router.pendingAdd else { return }
         switch p {

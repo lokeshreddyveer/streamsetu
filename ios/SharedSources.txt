@@ -2,6 +2,8 @@ Application/AppConfiguration.swift
 Application/AppContainer.swift
 Application/AppRouter.swift
 Domain/Navigation/PhoneRoutes.swift
+Domain/Navigation/SearchPhase.swift
+Domain/Navigation/PageGate.swift
 Application/AppSettings.swift
 Application/AppState.swift
 Application/DeepLink.swift
@@ -31,6 +33,7 @@ Data/Indexing/MetadataNormalizer.swift
 Data/Indexing/SearchIndexer.swift
 Data/Network/ProxyConfig.swift
 Data/Network/HTTPClient.swift
+Data/Network/RedirectPolicy.swift
 Data/Network/NetworkConfiguration.swift
 Data/Network/NetworkError.swift
 Data/Network/RequestBuilder.swift
@@ -157,6 +160,7 @@ Security/CredentialRedactor.swift
 Security/KeychainManager.swift
 Security/LocalCredentialStore.swift
 Security/PINHash.swift
+Security/ProviderSecurity.swift
 Security/AppLock.swift
 Security/ParentalControls.swift
 Security/SecureStorage.swift
@@ -191,6 +195,7 @@ Services/SmartSearch.swift
 Services/SourceManager.swift
 Services/StatisticsService.swift
 Services/StorageService.swift
+Services/DatabaseRecovery.swift
 Services/TitleDetails.swift
 Services/ConnectionPacer.swift
 Services/FeedbackMessage.swift

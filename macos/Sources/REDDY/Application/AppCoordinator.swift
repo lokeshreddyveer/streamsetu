@@ -38,6 +38,7 @@ final class AppCoordinator {
             if migrated.isEmpty == false { s.syncAll() }
             Task.detached { [artwork = c.artwork] in await artwork.trim() }
             phase = .ready                                  // the app opens now; iCloud starts in the background, it is never waited for
+            if let note = recoveryNote { s.toasts.show(note, symbol: "lifepreserver", kind: .warning); recoveryNote = nil }
             Task { await c.startCloudIfEnabled() }
             Task { try? await Task.sleep(nanoseconds: 12_000_000_000); await c.accounts.refresh()
                 if let w = c.accounts.warnings().first { s.toasts.show("\(w.sourceName): \(w.text)", symbol: "exclamationmark.triangle.fill", kind: .warning) } }
@@ -55,10 +56,22 @@ final class AppCoordinator {
         for n in ["reddy.db", "reddy.db-wal", "reddy.db-shm"] { try? FileManager.default.removeItem(at: root.appendingPathComponent(n)) }
     }
 
-    func resetDatabaseAndRetry() async {
-        let dir = StorageService.databaseDirectory
-        try? FileManager.default.removeItem(at: dir)
+    /// Said once the library is open again after a recovery.
+    private var recoveryNote: String?
+
+    /// What a damaged library holds, for the confirmation that comes before starting fresh.
+    func inventoryOfDamagedLibrary() -> DatabaseRecovery.Inventory { DatabaseRecovery.inspect(StorageService.databaseDirectory) }
+
+    /// Moves the damaged library aside (never deletes it) and opens a new one; with `keepPersonalData` the playlists, favourites, lists, profiles, locks and history are copied into it.
+    func recoverLibrary(keepPersonalData: Bool) async {
         phase = .starting
+        do {
+            let out = try DatabaseRecovery.recover(keepPersonalData: keepPersonalData)
+            recoveryNote = keepPersonalData ? out.message : "A fresh library was started. The old one is kept in the Recovery folder."
+        } catch {
+            phase = .failed("The damaged library could not be moved aside (\(error.localizedDescription)). Nothing was changed.")
+            return
+        }
         await boot()
     }
 

@@ -118,6 +118,8 @@ struct LibraryView: View {
     @Environment(\.container) private var container
     @State private var model: LibraryModel
     @State private var lockedPick: String?
+    /// The search text the last load used, so a new load knows whether the text changed (and should wait for a pause) or something else did.
+    @State private var loadedQuery = ""
     @State private var featured: [LibraryItem] = []
 
     init(kind: ContentKind) { self.kind = kind; _model = State(initialValue: LibraryModel(kind: kind)) }
@@ -183,7 +185,14 @@ struct LibraryView: View {
             .miniPlayerInset()
             .sheet(isPresented: Binding(get: { lockedPick != nil }, set: { if !$0 { lockedPick = nil } })) { UnlockSheet { model.categoryID = lockedPick } }
         }
-        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(String(describing: model.filter))-\(model.sort.rawValue)-\(model.shelf.rawValue)-\(state.watchLaterIDs.count)-\(state.favoriteIDs.count)") { if let c = container { await model.reload(c, source: state.activeSourceID) } }
+        .task(id: "\(model.query)|\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(String(describing: model.filter))-\(model.sort.rawValue)-\(model.shelf.rawValue)-\(state.watchLaterIDs.count)-\(state.favoriteIDs.count)") {
+            // One load for every input, including the search text. Only a change of the text waits for a pause in typing; any other change loads at once.
+            guard let c = container else { return }
+            if model.query != loadedQuery { try? await Task.sleep(nanoseconds: 250_000_000) }
+            guard !Task.isCancelled else { return }
+            loadedQuery = model.query
+            await model.reload(c, source: state.activeSourceID)
+        }
         .onAppear { state.reloadWatched() }
         .onChange(of: router.pendingLibraryQuery, initial: true) { _, _ in
             guard router.tab == (kind == .movie ? .movies : .series), router.pendingLibraryQuery != nil || router.pendingShelf != nil else { return }
@@ -198,11 +207,6 @@ struct LibraryView: View {
             guard let c = container else { return }
             let source = state.activeSourceID, kind = kind
             featured = await Task.detached { (try? c.discover.featured(sourceID: source, kinds: [kind], count: 6, seed: FeaturedPicker.launchSeed ^ (kind == .movie ? 0x51 : 0xA3))) ?? [] }.value
-        }
-        .task(id: model.query) {
-            guard let c = container else { return }
-            try? await Task.sleep(nanoseconds: 250_000_000)
-            if !Task.isCancelled { await model.reload(c, source: state.activeSourceID) }
         }
     }
 }

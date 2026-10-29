@@ -11,6 +11,7 @@ struct AddPlaylistSheet: View {
     @State private var importing = false
     @State private var pasted = ""
     @State private var finder = HDHomeRunDiscovery()
+    @State private var askAboutHTTP = false
 
     var body: some View {
         NavigationStack {
@@ -61,13 +62,17 @@ struct AddPlaylistSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    if vm.isWorking { ProgressView() } else { Button("Add") { add() }.disabled(!vm.canSubmit) }
+                    if vm.isWorking { ProgressView() } else { Button("Add") { if vm.plainHTTPWarning != nil { askAboutHTTP = true } else { add() } }.disabled(!vm.canSubmit) }
                 }
             }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.plainText, .data, UTType(filenameExtension: "m3u") ?? .data, UTType(filenameExtension: "m3u8") ?? .data, .json]) { result in
                 guard case .success(let url) = result else { return }
                 pick(url)
             }
+            .alert("This server is not encrypted", isPresented: $askAboutHTTP) {
+                Button("Save Anyway") { vm.acceptPlainHTTP(); add() }
+                Button("Cancel", role: .cancel) {}
+            } message: { Text(vm.plainHTTPWarning ?? "") }
             .onAppear(perform: applyPending)
             .interactiveDismissDisabled(vm.isWorking)
         }

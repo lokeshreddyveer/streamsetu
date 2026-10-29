@@ -16,7 +16,7 @@ struct ProxyView: View {
                         .onChange(of: port) { _, v in s.proxyPort = Int(v.filter(\.isNumber)) ?? 0 }
                 }
             } footer: {
-                Text("Sends playlist, guide, artwork and detail requests, and streams played by the MPV engine, through the proxy. MPV supports HTTP proxies only. Apple's player uses the system network settings and ignores this.")
+                Text("Sends playlist, guide, artwork and detail requests, and streams played by the MPV engine, through the proxy. MPV supports HTTP proxies only. Apple's player uses the system network settings and ignores this. This is a proxy for StreamSetu's own requests only, not a VPN: StreamSetu does not create a tunnel for the app or hide your address from the proxy.")
             }.listRowBackground(ColorTokens.surface)
         }
         .navigationTitle("Proxy").themed("Proxy")

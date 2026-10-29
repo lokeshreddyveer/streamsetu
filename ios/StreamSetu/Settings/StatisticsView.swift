@@ -4,6 +4,7 @@ import Charts
 /// What has been watched, worked out on this device from the playback log. Nothing is sent anywhere.
 struct StatisticsView: View {
     @Environment(\.container) private var container
+    @Environment(AppState.self) private var state
     @State private var range = Range.month
     @State private var stats: ViewingStatistics?
     @State private var confirmReset = false
@@ -46,7 +47,10 @@ struct StatisticsView: View {
         .navigationTitle("Statistics").themed("Statistics")
         .task(id: range) { await load() }
         .confirmationDialog("Reset viewing statistics?", isPresented: $confirmReset, titleVisibility: .visible) {
-            Button("Reset Statistics", role: .destructive) { try? container?.statistics.clear(); stats = ViewingStatistics() }
+            Button("Reset Statistics", role: .destructive) {
+                do { try container?.statistics.clear(); stats = ViewingStatistics() }
+                catch { state.toasts.show("Could not reset the statistics: \(error.localizedDescription)", symbol: "exclamationmark.triangle") }
+            }
         } message: { Text("Deletes the playback log these figures come from. Favourites, history and resume points stay.") }
     }
 

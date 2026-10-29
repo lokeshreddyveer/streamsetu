@@ -193,10 +193,25 @@ final class SQLiteCatalogRepository: CatalogRepository {
     }
 
     func channels(_ q: ChannelQuery) throws -> [Channel] {
+        guard var (sql, args) = channelFilter(q) else { return [] }
+        sql += q.recentlyAdded ? " ORDER BY c.first_seen_at DESC, c.sort_order, c.rowid"
+            : q.sortAlphabetically ? " ORDER BY COALESCE(o.display_name, c.name) COLLATE NOCASE, c.rowid" : " ORDER BY c.source_id, c.sort_order, c.rowid"
+        if let l = q.limit { sql += " LIMIT \(l) OFFSET \(q.offset)" }
+        return try db.read { try $0.query(sql, args, Self.mapChannel) }
+    }
+
+    /// How many channels the query matches, ignoring its limit and offset, so a screen that reads them a page at a time can still show the total.
+    func countChannels(_ q: ChannelQuery) throws -> Int {
+        guard let (sql, args) = channelFilter(q) else { return 0 }
+        return try db.read { try $0.scalarInt("SELECT COUNT(*) FROM (" + sql + ")", args) }
+    }
+
+    /// The query's select and filters, without ordering or paging; nil when it can match nothing.
+    private func channelFilter(_ q: ChannelQuery) -> (String, [(any SQLConvertible)?])? {
         var sql = Self.channelSelect + " WHERE 1=1"
         var args: [(any SQLConvertible)?] = []
         if let ids = q.ids {
-            guard !ids.isEmpty else { return [] }
+            guard !ids.isEmpty else { return nil }
             sql += " AND c.id IN (\(ids.map { _ in "?" }.joined(separator: ",")))"
             args += ids.map { $0 as (any SQLConvertible)? }
         }
@@ -215,14 +230,11 @@ final class SQLiteCatalogRepository: CatalogRepository {
             if let m = SearchIndexer.ftsQuery(term) {
                 sql += " AND c.id IN (SELECT d.item_id FROM catalog_fts f JOIN search_docs d ON d.id=f.rowid WHERE catalog_fts MATCH ? AND d.kind='channel')"
                 args.append(m)
-            } else { return [] }
+            } else { return nil }
         } else if q.collapseVariants {
             sql += " AND c.is_primary=1"
         }
-        sql += q.recentlyAdded ? " ORDER BY c.first_seen_at DESC, c.sort_order, c.rowid"
-            : q.sortAlphabetically ? " ORDER BY COALESCE(o.display_name, c.name) COLLATE NOCASE, c.rowid" : " ORDER BY c.source_id, c.sort_order, c.rowid"
-        if let l = q.limit { sql += " LIMIT \(l) OFFSET \(q.offset)" }
-        return try db.read { try $0.query(sql, args, Self.mapChannel) }
+        return (sql, args)
     }
 
     func channel(id: String) throws -> Channel? {

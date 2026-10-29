@@ -32,6 +32,9 @@ final class HTTPClient: @unchecked Sendable {
         return URLSession(configuration: c)
     }
 
+    /// The proxy the live session sends requests through, for checking that a Settings change really reached the network layer.
+    var activeProxyDictionary: [AnyHashable: Any]? { session.configuration.connectionProxyDictionary }
+
     /// Routes later requests through a proxy (or stops doing so). Requests already running finish as they were.
     func setProxy(_ proxy: ProxyConfig?) {
         let fresh = Self.makeSession(config, proxy: proxy)
@@ -78,6 +81,11 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unc
     private var moved: URL?
     private var failure: Error?
     private let lock = NSLock()
+
+    /// A redirect to another host, port or scheme repeats the request without the logins we sent (see RedirectPolicy).
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(RedirectPolicy.sanitized(request, after: task.originalRequest ?? request))
+    }
 
     init(maxBytes: Int64, progress: (@Sendable (Int64, Int64?) -> Void)?) {
         self.maxBytes = maxBytes

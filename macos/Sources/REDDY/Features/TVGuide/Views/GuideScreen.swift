@@ -9,7 +9,6 @@ struct GuideScreen: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.reddyAccent) private var accent
     @State private var vm = GuideViewModel()
-    @State private var scrollMonitor: Any?
     @State private var clock = Date()
 
     private var scope: GuideScope {
@@ -47,8 +46,6 @@ struct GuideScreen: View {
         }
         .task { while !Task.isCancelled { try? await Task.sleep(nanoseconds: 30_000_000_000); clock = Date() } }
         .onChange(of: settings.guideHoursVisible) { _, v in vm.hours = v }
-        .onAppear { installScrollMonitor() }
-        .onDisappear { if let m = scrollMonitor { NSEvent.removeMonitor(m); scrollMonitor = nil } }
     }
 
     // MARK: toolbar
@@ -86,7 +83,8 @@ struct GuideScreen: View {
                         LazyVStack(spacing: 1) {
                             ForEach(vm.channels) { ch in
                                 GuideRow(channel: ch, programs: vm.programs[ch.id], vm: vm, isPlaying: container?.playback.currentChannel?.id == ch.id, onPlay: play)
-                                    .task(id: vm.bucket) { if let c = container { await vm.loadRow(ch, c) } }
+                                    .onAppear { vm.rowAppeared(ch.id) }
+                                    .onDisappear { vm.rowDisappeared(ch.id) }
                             }
                         }
                     }
@@ -96,6 +94,10 @@ struct GuideScreen: View {
             }
             .onAppear { vm.trackWidth = track }
             .onChange(of: track) { _, t in vm.trackWidth = t }
+            .onChange(of: vm.bucket) { _, _ in vm.windowMoved() }
+            // Horizontal scrolling moves the time window only over the timeline itself: the monitor checks that the pointer is inside this area, so the toolbar and every other control
+            // in the window keep their own scroll events.
+            .background(TimelineScrollArea { dx in vm.scroll(points: dx) })
         }
     }
 
@@ -139,13 +141,32 @@ struct GuideScreen: View {
 
     private func play(_ ch: Channel) { container?.playback.play(channel: ch, queue: vm.channels) }
 
-    /// Trackpad / wheel horizontal scrolling moves the time window.
-    private func installScrollMonitor() {
-        guard scrollMonitor == nil else { return }
-        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-            guard abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) * 1.2 else { return event }
-            MainActor.assumeIsolated { vm.scroll(points: event.scrollingDeltaX) }
-            return nil
+}
+
+
+/// Reports horizontal trackpad and wheel scrolling that happens over this area, and only over this area. A local event monitor sees every scroll in the window, so it checks the pointer
+/// is inside before it consumes anything; a horizontal swipe over the toolbar or a menu is left alone, and vertical scrolling is never touched.
+private struct TimelineScrollArea: NSViewRepresentable {
+    let onScroll: (CGFloat) -> Void
+
+    func makeNSView(context: Context) -> Tracker { let v = Tracker(); v.onScroll = onScroll; return v }
+    func updateNSView(_ v: Tracker, context: Context) { v.onScroll = onScroll }
+
+    final class Tracker: NSView {
+        var onScroll: (CGFloat) -> Void = { _ in }
+        private var monitor: Any?
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }          // never takes clicks
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let m = monitor { NSEvent.removeMonitor(m); monitor = nil }
+            guard window != nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+                guard let self, event.window === self.window, abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) * 1.2 else { return event }
+                let inside = self.convert(event.locationInWindow, from: nil)
+                guard self.bounds.contains(inside) else { return event }
+                MainActor.assumeIsolated { self.onScroll(event.scrollingDeltaX) }
+                return nil
+            }
         }
     }
 }

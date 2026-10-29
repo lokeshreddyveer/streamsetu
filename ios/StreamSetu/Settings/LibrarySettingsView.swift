@@ -33,8 +33,6 @@ struct LibrarySettingsView: View {
             }.listRowBackground(ColorTokens.surface)
             Section("Organise") {
                 NavigationLink("Folders") { FoldersView() }
-                NavigationLink("Backup and Restore") { BackupView() }
-                NavigationLink("Storage and Maintenance") { StorageView() }
             }.listRowBackground(ColorTokens.surface)
         }
         .task { while !Task.isCancelled { if let c = container { people = c.people.progress }; try? await Task.sleep(nanoseconds: 5_000_000_000) } }

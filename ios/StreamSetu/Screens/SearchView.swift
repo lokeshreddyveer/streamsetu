@@ -9,9 +9,8 @@ struct SearchView: View {
     @Environment(IOSRouter.self) private var router
     @Environment(\.container) private var container
     @State private var results = GlobalSearchResults()
-    @State private var searching = false
-    /// The last search could not be completed (not the same as finding nothing). The results already shown stay.
-    @State private var failed = false
+    /// Idle, loading, results, empty or failed: the screen says which. A failed search keeps the results already shown.
+    @State private var phase = SearchPhase.idle
     @State private var retryTick = 0
     @State private var opened: LibraryItem?
     @State private var openedCollection: CatalogCollection?
@@ -25,13 +24,12 @@ struct SearchView: View {
     private var prompt: String { tab == .all ? "Channels, movies, series" : "Search \(tab.rawValue.lowercased())" }
 
     @Environment(\.verticalSizeClass) private var vertical
-    @Environment(\.horizontalSizeClass) private var sizeClass
-    private var posterWidth: CGFloat { sizeClass == .regular ? 150 : 108 }
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         @Bindable var router = router
         OptionalStack(embedded: embedded) {
-            Group { if tab == .all { list } else { grid } }
+            list
             .navigationTitle("Search").navigationBarTitleDisplayMode(vertical == .compact ? .inline : .automatic).themed("Search")
             .searchable(text: $router.query, isPresented: $presented, placement: .navigationBarDrawer(displayMode: .always), prompt: prompt)
             .searchSuggestions {
@@ -69,15 +67,20 @@ struct SearchView: View {
                 EmptyState(symbol: "magnifyingglass", title: "Search your library", message: "Channels, movies, series and episodes from every playlist.")
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 SearchIdeasPanel(pick: { router.query = $0 }).listRowBackground(Color.clear).listRowSeparator(.hidden)
-            } else if results.isEmpty, !searching {
+            } else if phase == .empty {
                 EmptyState(symbol: "questionmark.circle", title: "No results", message: "Try fewer letters or another spelling.")
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
+            } else if phase == .loading, results.isEmpty {
+                ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
-            if failed, !searching, !isBlank { failureNote.listRowBackground(Color.clear).listRowSeparator(.hidden) }
+            if phase == .failed { failureNote.listRowBackground(Color.clear).listRowSeparator(.hidden) }
             if let fixed = correctedTo, !isBlank {
                 CorrectedNote(original: router.query, corrected: fixed).listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
-            ForEach(SearchResultKind.allCases.filter { !(results.byKind[$0] ?? []).isEmpty }, id: \.self) { kind in
+            if !isBlank, let top = results.exactMatch(for: router.query) {
+                Section("Top Match") { Button { activate(top) } label: { row(top, showKind: true) }.buttonStyle(.press) }.listRowBackground(ColorTokens.surface)
+            }
+            ForEach(SearchResultKind.allCases.filter { tab.kinds.contains($0) && !(results.byKind[$0] ?? []).isEmpty }, id: \.self) { kind in
                 Section(kind.groupTitle) {
                     ForEach(results.byKind[kind] ?? []) { r in
                         Button { activate(r) } label: { row(r) }.buttonStyle(.press)
@@ -90,40 +93,13 @@ struct SearchView: View {
         .scrollDismissesKeyboard(.immediately)      // scrolling the results pulls the keyboard away so they can be seen, also in landscape
     }
 
-    /// Movies, Series and Live TV search: the results as tiles in a grid, like those screens themselves.
-    private var grid: some View {
-        let found = tab.kinds.flatMap { results.byKind[$0] ?? [] }
-        let isChannel = tab == .liveTV
-        return ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                if isBlank {
-                    EmptyState(symbol: "magnifyingglass", title: "Search \(tab.rawValue.lowercased())", message: "Try a title, or something like “hindi movies 2024”.")
-                } else if found.isEmpty, !searching {
-                    EmptyState(symbol: "questionmark.circle", title: "No results", message: "Try fewer letters or another spelling.")
-                }
-                if failed, !searching, !isBlank { failureNote }
-                if let fixed = correctedTo, !isBlank { CorrectedNote(original: router.query, corrected: fixed) }
-                LazyVGrid(columns: isChannel ? [GridItem(.adaptive(minimum: 92, maximum: 128), spacing: 10)]
-                                             : [GridItem(.adaptive(minimum: posterWidth, maximum: posterWidth + 40), spacing: 14, alignment: .top)], spacing: isChannel ? 10 : 16) {
-                    ForEach(found) { r in
-                        Button { activate(r) } label: { isChannel ? AnyView(SearchChannelTile(result: r)) : AnyView(SearchPosterTile(result: r, width: posterWidth)) }
-                            .buttonStyle(.press)
-                    }
-                }
-                .padding(.horizontal, isChannel ? 12 : 16)
-            }
-            .padding(.vertical, 12)
-        }
-        .scrollDismissesKeyboard(.immediately)
-    }
-
-    private func row(_ r: SearchResult) -> some View {
-        HStack(spacing: 12) {
+    private func row(_ r: SearchResult, showKind: Bool = false) -> some View {
+        ReflowStack {
             if r.kind == .channel { ChannelLogo(url: r.artworkURL, name: r.title, size: 44) }
             else { ArtworkImage(url: r.artworkURL, kind: .poster, contentMode: .fill, symbol: r.kind.symbol).frame(width: 44, height: 62).clipShape(RoundedRectangle(cornerRadius: 6)) }
             VStack(alignment: .leading, spacing: 2) {
-                Text(r.title).appFont(15, .medium).lineLimit(2)
-                Text(r.subtitle).appFont(12).foregroundStyle(.secondary).lineLimit(1)
+                Text(r.title).appFont(15, .medium).lineLimit(typeSize.isAccessibilitySize ? 4 : 2)
+                Text(showKind && !r.subtitle.isEmpty ? "\(r.kind.typeLabel) · \(r.subtitle)" : (showKind ? r.kind.typeLabel : r.subtitle)).appFont(12).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 0)
         }.contentShape(Rectangle())
@@ -138,8 +114,8 @@ struct SearchView: View {
 
     private func run() async {
         let q = router.query.trimmingCharacters(in: .whitespaces)
-        guard let c = container, !q.isEmpty else { results = GlobalSearchResults(); correctedTo = nil; return }
-        searching = true; failed = false
+        guard let c = container, !q.isEmpty else { results = GlobalSearchResults(); correctedTo = nil; phase = .idle; return }
+        phase = .loading
         try? await Task.sleep(nanoseconds: 200_000_000)                 // type-ahead: wait for a pause
         guard !Task.isCancelled else { return }
         let tab = tab, limit = tab == .all ? 12 : 60
@@ -157,11 +133,11 @@ struct SearchView: View {
                 let again = try await search(alt)
                 if !again.isEmpty { found = again; fixed = alt }
             }
-            if !Task.isCancelled { results = found; correctedTo = fixed; searching = false }
+            if !Task.isCancelled { results = found; correctedTo = fixed; phase = SearchPhase.finish(found) }
         } catch is CancellationError {
             return                                                       // a newer search replaced this one
         } catch {
-            if !Task.isCancelled { failed = true; searching = false }    // the results already shown stay on screen
+            if !Task.isCancelled { phase = .failed }    // the results already shown stay on screen
         }
     }
 
@@ -194,37 +170,3 @@ struct SearchView: View {
     }
 }
 
-
-/// A movie or series found by search, as a poster tile.
-struct SearchPosterTile: View {
-    let result: SearchResult
-    var width: CGFloat = 108
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ArtworkImage(url: result.artworkURL, kind: .poster, contentMode: .fill, symbol: result.kind.symbol)
-                .frame(width: width, height: width * 1.5)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.white.opacity(0.08)))
-            Text(result.title).appFont(12, .semibold).lineLimit(2).multilineTextAlignment(.leading).frame(width: width, alignment: .leading)
-            if !result.subtitle.isEmpty { Text(result.subtitle).appFont(11).foregroundStyle(.secondary).lineLimit(1).frame(width: width, alignment: .leading) }
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// A channel found by search, as a small tile with its logo.
-struct SearchChannelTile: View {
-    let result: SearchResult
-    var body: some View {
-        VStack(spacing: 6) {
-            ChannelLogo(url: result.artworkURL, name: result.title, size: 56)
-            Text(result.title).appFont(11, .medium).lineLimit(2).multilineTextAlignment(.center).frame(maxWidth: .infinity)
-        }
-        .padding(.vertical, 10).padding(.horizontal, 6)
-        .frame(maxWidth: .infinity, minHeight: 104)
-        .background(ColorTokens.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(0.06)))
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
-}
