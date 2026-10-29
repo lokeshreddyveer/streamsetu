@@ -44,12 +44,16 @@ struct AppDNSView: View {
                     Label(r.headline, systemImage: r.reachable ? "checkmark.seal" : "exclamationmark.triangle").foregroundStyle(r.reachable ? .green : .orange)
                     if r.reachable { LabeledContent("Resolver", value: "\(r.milliseconds) ms") }
                     ForEach(r.rows) { row in LabeledContent(row.label) { Text(row.detail).foregroundStyle(row.resolved ? Color.secondary : Color.orange).multilineTextAlignment(.trailing) } }
+                    if let n = r.deviceNote { Text(n).font(.footnote).foregroundStyle(.orange) }
                     if let c = r.comparison { Text(c).font(.footnote) }
                     if !r.advice.isEmpty { Text(r.advice).font(.footnote) }
                 }.listRowBackground(ColorTokens.surface)
             }
 
-            Section { Text(AppDNSStatus.privacyNotice).font(.footnote).foregroundStyle(.secondary) }.listRowBackground(Color.clear)
+            Section {
+                Text(AppDNSStatus.overrideNotice).font(.footnote).foregroundStyle(.orange)
+                Text(AppDNSStatus.privacyNotice).font(.footnote).foregroundStyle(.secondary)
+            }.listRowBackground(Color.clear)
         }
         .navigationTitle("App DNS").themed("App DNS")
         .onAppear { bootstrapText = s.appDNS.customBootstrap.joined(separator: ", ") }

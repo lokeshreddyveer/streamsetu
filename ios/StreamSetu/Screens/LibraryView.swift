@@ -122,7 +122,9 @@ struct LibraryView: View {
     @State private var loadedQuery = ""
     @State private var featured: [LibraryItem] = []
 
-    init(kind: ContentKind) { self.kind = kind; _model = State(initialValue: LibraryModel(kind: kind)) }
+    @Environment(\.folderColumn) private var folderColumn
+    /// On iPad the folder column beside the screen owns the model too, so a folder chosen there changes this list.
+    init(kind: ContentKind, model: LibraryModel? = nil) { self.kind = kind; _model = State(initialValue: model ?? LibraryModel(kind: kind)) }
 
 
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -170,7 +172,7 @@ struct LibraryView: View {
                         LibraryFilterMenus(kind: kind, filter: $model.filter, options: model.filterOptions)
                     } label: { Image(systemName: model.filter.isActive ? "arrow.up.arrow.down.circle.fill" : "arrow.up.arrow.down.circle").pillIcon() }
                     .accessibilityLabel(model.filter.isActive ? "Sort and filter, \(model.filter.count) filters on" : "Sort and filter")
-                    Menu {
+                    if let folderColumn { FolderColumnButton(shown: folderColumn) } else { Menu {
                         Button { model.categoryID = nil } label: { Label("All", systemImage: model.categoryID == nil ? "checkmark" : "") }
                         Divider()
                         ForEach(model.categories) { cat in
@@ -178,7 +180,7 @@ struct LibraryView: View {
                                 if let p = container?.parental, p.isLocked(cat.id), p.isRestricting { lockedPick = cat.id } else { model.categoryID = cat.id }
                             } label: { Label(cat.name, systemImage: model.categoryID == cat.id ? "checkmark" : (container?.parental.isLocked(cat.id) == true ? "lock" : "")) }
                         }
-                    } label: { Image(systemName: "line.3.horizontal.decrease.circle").pillIcon() }.accessibilityLabel("Folders")
+                    } label: { Image(systemName: "line.3.horizontal.decrease.circle").pillIcon() }.accessibilityLabel("Folders") }
                 }
             }
             .refreshable { state.syncAll() }

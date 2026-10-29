@@ -58,6 +58,10 @@ struct RootView: View {
         }
     }
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    /// An iPad window wide enough for a sidebar. A narrow Split View, Slide Over or Stage Manager window (compact width) uses the iPhone navigation; an iPhone always does.
+    private var usesSidebar: Bool { UIDevice.current.userInterfaceIdiom == .pad && sizeClass == .regular }
+
     @State private var opening = !OpeningPlayed.done
     @State private var picked = ProfilePicked.done
 
@@ -67,9 +71,10 @@ struct RootView: View {
             if state.needsOnboarding {
                 OnboardingView()
             } else {
-                compactTabs        // iPad gets the same screens and floating bar as iPhone
+                if usesSidebar { IPadShell(barHeight: $barHeight) } else { compactTabs }
             }
         }
+        .onChange(of: usesSidebar, initial: true) { _, v in router.sidebar = v }
         .loggingNotice()
         .background(ColorTokens.background)
         .overlay {

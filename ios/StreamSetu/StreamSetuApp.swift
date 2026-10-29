@@ -214,9 +214,12 @@ final class IOSRouter {
     typealias MoreRoute = PhoneMoreRoute
     var morePath: [MoreRoute] = []
     var compact = true
+    /// True while the iPad sidebar is on screen (set by the root view); then every destination is a screen of its own.
+    var sidebar = false
 
     /// Opens a screen. A page of More (Search, the TV Guide, Library, Playlists, Settings) is pushed onto the More tab's own stack; it is never replaced by the tab that holds a button for it.
     func go(_ t: Tab) {
+        if sidebar { tab = t == .more ? .library : t; return }          // the iPad's sidebar lists every destination, so there is no More page to push onto
         let route = PhoneRoutes.resolve(t)
         tab = route.tab
         if let page = route.page { morePath = [page] }

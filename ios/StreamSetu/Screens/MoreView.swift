@@ -264,36 +264,82 @@ struct AboutView: View {
 }
 
 /// Settings: how the app behaves and looks, and its maintenance.
+/// Every page of Settings, once: the iPhone lists them as rows that push, and the iPad shows the same list beside the chosen page.
+enum SettingsPage: String, CaseIterable, Identifiable {
+    case playback, health, appearance, parental, privacyReport
+    case library, artwork, channels, alerts, profiles, icloud, lan, proxy, appDNS, vpn, backup, storage
+    case about
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .playback: "Playback"; case .health: "Playback Health"; case .appearance: "Appearance"; case .parental: "Parental Controls"; case .privacyReport: "Privacy Report"
+        case .library: "Library and Guide"; case .artwork: "Artwork and Details"; case .channels: "Channel Manager"; case .alerts: "Subscriptions and Alerts"; case .profiles: "Profiles"
+        case .icloud: "iCloud Sync"; case .lan: "Sync on this network"; case .proxy: "Proxy"; case .appDNS: "App DNS"; case .vpn: "VPN"; case .backup: "Backup and Restore"; case .storage: "Storage and Maintenance"
+        case .about: "About"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .playback: "play.rectangle"; case .health: "waveform.path.ecg"; case .appearance: "paintpalette"; case .parental: "lock.shield"; case .privacyReport: "hand.raised"
+        case .library: "books.vertical"; case .artwork: "photo.on.rectangle.angled"; case .channels: "slider.horizontal.3"; case .alerts: "bell.badge"; case .profiles: "person.2"
+        case .icloud: "icloud"; case .lan: "wifi"; case .proxy: "network"; case .appDNS: "lock.rectangle.stack"; case .vpn: "lock.shield"; case .backup: "externaldrive"; case .storage: "internaldrive"
+        case .about: "info.circle"
+        }
+    }
+    static let groups: [(title: String?, pages: [SettingsPage])] = [
+        ("Viewing", [.playback, .health, .appearance, .parental, .privacyReport]),
+        ("Library", [.library, .artwork, .channels, .alerts, .profiles, .icloud, .lan, .proxy, .appDNS, .vpn, .backup, .storage]),
+        (nil, [.about]),
+    ]
+    @ViewBuilder var destination: some View {
+        switch self {
+        case .playback: PlaybackSettingsView(); case .health: PlaybackHealthView(); case .appearance: AppearanceView(); case .parental: ParentalView(); case .privacyReport: PrivacyReportScreen()
+        case .library: LibrarySettingsView(); case .artwork: ArtworkSettingsView(); case .channels: ChannelManagerView(); case .alerts: GuideToolsView(); case .profiles: ProfilesView()
+        case .icloud: CloudSyncView(); case .lan: LanSyncView(); case .proxy: ProxyView(); case .appDNS: AppDNSView(); case .vpn: VPNView(); case .backup: BackupView(); case .storage: StorageView()
+        case .about: AboutView()
+        }
+    }
+}
+
 struct SettingsView: View {
     var embedded = false
     var body: some View {
         OptionalStack(embedded: embedded) {
             List {
-                Section("Viewing") {
-                    NavigationLink { PlaybackSettingsView() } label: { Label("Playback", systemImage: "play.rectangle") }
-                    NavigationLink { PlaybackHealthView() } label: { Label("Playback Health", systemImage: "waveform.path.ecg") }
-                    NavigationLink { AppearanceView() } label: { Label("Appearance", systemImage: "paintpalette") }
-                    NavigationLink { ParentalView() } label: { Label("Parental Controls", systemImage: "lock.shield") }
-                    NavigationLink { PrivacyReportScreen() } label: { Label("Privacy Report", systemImage: "hand.raised") }
-                }.listRowBackground(ColorTokens.surface)
-                Section("Library") {
-                    NavigationLink { LibrarySettingsView() } label: { Label("Library and Guide", systemImage: "books.vertical") }
-                    NavigationLink { ArtworkSettingsView() } label: { Label("Artwork and Details", systemImage: "photo.on.rectangle.angled") }
-                    NavigationLink { ChannelManagerView() } label: { Label("Channel Manager", systemImage: "slider.horizontal.3") }
-                    NavigationLink { GuideToolsView() } label: { Label("Subscriptions and Alerts", systemImage: "bell.badge") }
-                    NavigationLink { ProfilesView() } label: { Label("Profiles", systemImage: "person.2") }
-                    NavigationLink { CloudSyncView() } label: { Label("iCloud Sync", systemImage: "icloud") }
-                    NavigationLink { LanSyncView() } label: { Label("Sync on this network", systemImage: "wifi") }
-                    NavigationLink { ProxyView() } label: { Label("Proxy", systemImage: "network") }
-                    NavigationLink { AppDNSView() } label: { Label("App DNS", systemImage: "lock.rectangle.stack") }
-                    NavigationLink { VPNView() } label: { Label("VPN", systemImage: "lock.shield") }
-                    NavigationLink { BackupView() } label: { Label("Backup and Restore", systemImage: "externaldrive") }
-                    NavigationLink { StorageView() } label: { Label("Storage and Maintenance", systemImage: "internaldrive") }
-                }.listRowBackground(ColorTokens.surface)
-                Section { NavigationLink { AboutView() } label: { Label("About", systemImage: "info.circle") } }.listRowBackground(ColorTokens.surface)
+                ForEach(Array(SettingsPage.groups.enumerated()), id: \.offset) { _, group in
+                    Section(group.title ?? "") {
+                        ForEach(group.pages) { page in NavigationLink { page.destination } label: { Label(page.title, systemImage: page.symbol) } }
+                    }.listRowBackground(ColorTokens.surface)
+                }
             }
             .navigationTitle("Settings").themed("Settings")
             .miniPlayerInset()
+        }
+    }
+}
+
+/// iPad: the list of Settings pages beside the chosen page, instead of pushing each page over the last.
+struct IPadSettings: View {
+    @SceneStorage("ipad.settings.page") private var saved = SettingsPage.playback.rawValue
+    var body: some View {
+        let page = SettingsPage(rawValue: saved) ?? .playback
+        HStack(spacing: 0) {
+            List {
+                ForEach(Array(SettingsPage.groups.enumerated()), id: \.offset) { _, group in
+                    Section(group.title ?? "") {
+                        ForEach(group.pages) { p in
+                            Button { saved = p.rawValue } label: { Label(p.title, systemImage: p.symbol).foregroundStyle(.primary) }
+                                .listRowBackground(p == page ? ColorTokens.accentDefault.opacity(0.16) : Color.clear)
+                                .accessibilityAddTraits(p == page ? .isSelected : [])
+                        }
+                    }
+                }
+            }
+            .listStyle(.sidebar).scrollContentBackground(.hidden).background(ColorTokens.surface)
+            .safeAreaInset(edge: .top, spacing: 0) { Text("Settings").font(.headline).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20).padding(.vertical, 12).background(ColorTokens.surface) }
+            .frame(width: 300)
+            Divider()
+            NavigationStack { page.destination }.id(page)
         }
     }
 }

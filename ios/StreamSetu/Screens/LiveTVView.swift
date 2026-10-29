@@ -134,7 +134,10 @@ private extension ChannelQuery {
 struct LiveTVView: View {
     @Environment(AppState.self) private var state
     @Environment(\.container) private var container
-    @State private var model = LiveTVModel()
+    @State private var model: LiveTVModel
+    @Environment(\.folderColumn) private var folderColumn
+    /// On iPad the folder column beside the screen owns the model too, so a folder chosen there changes this list.
+    init(model: LiveTVModel = LiveTVModel()) { _model = State(initialValue: model) }
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(IOSRouter.self) private var router
     @State private var lockedPick: String?
@@ -259,13 +262,13 @@ struct LiveTVView: View {
                             ForEach(model.lists) { l in Button { model.listID = l.id } label: { Label(l.name, systemImage: model.listID == l.id ? "checkmark" : "") } }
                         } label: { Image(systemName: "list.star").pillIcon() }.accessibilityLabel("Lists")
                     }
-                    Menu {
+                    if let folderColumn { FolderColumnButton(shown: folderColumn) } else { Menu {
                         Button { pick(nil) } label: { Label("All Channels", systemImage: model.categoryID == nil ? "checkmark" : "") }
                         Divider()
                         ForEach(model.categories) { cat in
                             Button { pick(cat) } label: { Label(cat.name, systemImage: model.categoryID == cat.id ? "checkmark" : (container?.parental.isLocked(cat.id) == true ? "lock" : "")) }
                         }
-                    } label: { Image(systemName: "line.3.horizontal.decrease.circle").pillIcon() }.accessibilityLabel("Folders")
+                    } label: { Image(systemName: "line.3.horizontal.decrease.circle").pillIcon() }.accessibilityLabel("Folders") }
                 }
             }
             .refreshable { state.syncAll() }

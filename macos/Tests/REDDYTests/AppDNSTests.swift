@@ -78,6 +78,7 @@ import Foundation
         c.provider = .custom; c.customURL = "nonsense"
         #expect(AppDNSStatus.line(c, mpvInUse: false) == "Custom resolver is not valid")
         #expect(AppDNSStatus.privacyNotice.contains("can see the domain names"))
+        #expect(AppDNSStatus.overrideNotice.contains("Private Relay") && AppDNSStatus.overrideNotice.contains("take precedence"))
     }
 
     @Test func applyingTurnsOnAndOffWithoutCrashing() {
@@ -114,7 +115,7 @@ import Foundation
 
     private func probe() -> AppDNSProbe {
         let c = URLSessionConfiguration.ephemeral; c.protocolClasses = [FakeDoH.self]
-        return AppDNSProbe(session: URLSession(configuration: c))
+        var p = AppDNSProbe(session: URLSession(configuration: c)); p.connectByAddress = false; return p
     }
 
     @Test func reportsWhatTheResolverAnswersAndComparesWithTheDevice() async {
@@ -126,13 +127,17 @@ import Foundation
         #expect(r.rows.map(\.host) == ["example.com", "provider.tv", "guide.tv"], "the local name is not sent to a public resolver")
         #expect(r.rows[1].resolved && r.rows[2].resolved == false && r.rows[2].detail.contains("private address"), "DNS rebinding is refused")
         #expect(r.comparison?.contains("Playlist") == true, "the device could not resolve the playlist host but App DNS could")
+        #expect(r.deviceNote == nil, "the device could resolve the resolver's own name")
         let sent = FakeDoH.seenQueries.joined()
         #expect(!sent.contains("password") && !sent.contains("username") && !sent.contains("get.php"), "only host names reach the resolver")
+        // The resolver answers, but the device cannot find it by name (a DNS profile or filter is in the way): the test says so.
+        let blocked = await AppDNSTest.run(AppDNSConfiguration(), hosts: [], probe: probe(), systemResolves: { $0 != "cloudflare-dns.com" })
+        #expect(blocked.reachable && blocked.deviceNote?.contains("DNS profile") == true)
     }
 
     @Test func anUnreachableResolverIsSaidSo() async {
         let c = URLSessionConfiguration.ephemeral; c.protocolClasses = [FailingDoH.self]
-        let r = await AppDNSTest.run(AppDNSConfiguration(), hosts: [], probe: AppDNSProbe(session: URLSession(configuration: c)), systemResolves: { _ in true })
+        let r = await AppDNSTest.run(AppDNSConfiguration(), hosts: [], probe: { var p = AppDNSProbe(session: URLSession(configuration: c)); p.connectByAddress = false; return p }(), systemResolves: { _ in true })
         #expect(!r.reachable && r.headline == "Cloudflare is unavailable" && !r.advice.isEmpty)
     }
 

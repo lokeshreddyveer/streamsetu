@@ -10,6 +10,8 @@ struct AppDNSTestResult: Equatable, Sendable {
     var rows: [Row]
     /// Said only when it can be said truthfully (see `run`).
     var comparison: String?
+    /// Set when the resolver answered but the device's own DNS could not find the resolver by name: something on the device (a DNS profile or a filter) is probably in the way.
+    var deviceNote: String?
 
     var headline: String { reachable ? "\(resolverName) is working" : "\(resolverName) is unavailable" }
     var advice: String { reachable ? "" : "The DNS server could not be reached. Try another provider or turn off App DNS." }
@@ -31,7 +33,7 @@ enum AppDNSTest {
         // The test asks the chosen resolver even while App DNS is still off, so the person can try before switching on.
         var tried = config; tried.enabled = true
         guard let resolver = tried.resolver else {
-            return AppDNSTestResult(resolverName: "Custom DNS", reachable: false, milliseconds: 0, rows: [], comparison: nil)
+            return AppDNSTestResult(resolverName: "Custom DNS", reachable: false, milliseconds: 0, rows: [], comparison: nil, deviceNote: nil)
         }
         var names: [(String, String)] = [("Public host name", "example.com")]
         var seen: Set<String> = ["example.com"]
@@ -58,6 +60,10 @@ enum AppDNSTest {
         if config.enabled { comparison = "The comparison with the device's own DNS is shown while App DNS is off." }
         else if !differs.isEmpty { comparison = "The device's DNS could not resolve: \(differs.joined(separator: ", ")). App DNS may fix this playback problem." }
         else if rows.contains(where: { $0.resolved }) && sameFailure.isEmpty { comparison = "Both App DNS and the device's DNS returned an answer. A playback problem is probably not caused by DNS." }
-        return AppDNSTestResult(resolverName: resolver.name, reachable: answered > 0, milliseconds: names.isEmpty ? 0 : total / names.count, rows: rows, comparison: comparison)
+        var deviceNote: String?
+        if answered > 0, let name = resolver.url.host, !(await systemResolves(name)) {
+            deviceNote = "\(resolver.name) answered, but this device's own DNS could not look up its name (\(name)). A DNS profile, filter or Private Relay on the device may be blocking DNS-over-HTTPS hosts, and then App DNS may not take effect."
+        }
+        return AppDNSTestResult(resolverName: resolver.name, reachable: answered > 0, milliseconds: names.isEmpty ? 0 : total / names.count, rows: rows, comparison: comparison, deviceNote: deviceNote)
     }
 }

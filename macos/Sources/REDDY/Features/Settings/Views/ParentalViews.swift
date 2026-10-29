@@ -220,7 +220,7 @@ struct AppDNSSettingsGroup: View {
 
     var body: some View {
         @Bindable var s = settings
-        SettingsGroup(title: "App DNS", footer: AppDNSStatus.privacyNotice + " It can fix DNS blocking; it cannot get past IP blocking, routing problems or geographic limits.") {
+        SettingsGroup(title: "App DNS", footer: AppDNSStatus.overrideNotice + " " + AppDNSStatus.privacyNotice + " It can fix DNS blocking; it cannot get past IP blocking, routing problems or geographic limits.") {
             SettingsRow(title: "Use App DNS", detail: AppDNSStatus.line(s.appDNS, mpvInUse: true)) { Toggle("", isOn: $s.appDNS.enabled).labelsHidden() }
             SettingsRow(title: "DNS provider", detail: s.appDNS.provider.summary) {
                 Picker("", selection: $s.appDNS.provider) { ForEach(AppDNSProvider.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.labelsHidden().fixedSize()
@@ -244,6 +244,7 @@ struct AppDNSSettingsGroup: View {
             }
             if let r = result {
                 ForEach(r.rows) { row in SettingsRow(title: row.label, detail: row.host) { Text(row.detail).foregroundStyle(row.resolved ? ColorTokens.textSecondary : ColorTokens.warning) } }
+                if let n = r.deviceNote { SettingsRow(title: "Device DNS", detail: n) { EmptyView() } }
                 if let c = r.comparison { SettingsRow(title: "Compared with device DNS", detail: c) { EmptyView() } }
             }
         }

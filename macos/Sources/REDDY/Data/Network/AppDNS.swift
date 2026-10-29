@@ -190,6 +190,9 @@ enum AppDNSStatus {
         return mpvInUse ? "Requested through \(r.name) for library, guide and Apple playback. MPV playback still uses system DNS" : "Requested through \(r.name) for library, guide and playback"
     }
 
+    /// Shown with App DNS on Apple devices: the system can prefer a resolver of its own.
+    static let overrideNotice = "A system-wide DNS profile (an app such as Control D or AdGuard) or iCloud Private Relay can take precedence over this setting on iPhone, iPad and Mac. If a CDN is still blocked, check that profile too."
+
     static let privacyNotice = "When App DNS is on, the DNS provider you choose can see the domain names StreamSetu looks up. It does not receive playlist passwords, stream paths or viewing history in those requests. The provider may still be able to tell which IPTV or CDN service you use from the host name."
 }
 
@@ -209,6 +212,25 @@ struct AppDNSProbe {
         return bare.range(of: #"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"#, options: .regularExpression) != nil ? bare : nil
     }
 
+    /// Reach the resolver at its own IP address (checking its certificate against its name) so the test does not depend on the device's DNS being able to find the resolver. Off in tests, which use `session`.
+    var connectByAddress = true
+
+    /// One DoH request and its raw answer: by IP address when the resolver has any, else through the session.
+    func fetch(_ url: URL, via resolver: AppDNSConfiguration.Resolver) async throws -> (data: Data, host: String?) {
+        if connectByAddress, !resolver.bootstrap.isEmpty, let host = resolver.url.host {
+            var path = url.path; if let q = url.query { path += "?" + q }
+            var lastError: Error = URLError(.cannotConnectToHost)
+            for address in resolver.bootstrap {
+                do { return (try await DoHOverAddress.get(host: host, path: path, address: address), host) } catch { lastError = error }
+            }
+            throw lastError
+        }
+        var req = URLRequest(url: url); req.setValue("application/dns-message", forHTTPHeaderField: "Accept")
+        let (data, resp) = try await session.data(for: req)
+        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { throw URLError(.badServerResponse) }
+        return (data, http.url?.host)
+    }
+
     func lookup(_ host: String, via resolver: AppDNSConfiguration.Resolver) async -> Line {
         let started = Date()
         func ms() -> Int { Int(Date().timeIntervalSince(started) * 1000) }
@@ -219,10 +241,9 @@ struct AppDNSProbe {
             var items = c.queryItems ?? []
             items.append(URLQueryItem(name: "dns", value: q.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")))
             c.queryItems = items
-            var req = URLRequest(url: c.url!); req.setValue("application/dns-message", forHTTPHeaderField: "Accept")
             do {
-                let (data, resp) = try await session.data(for: req)
-                guard let http = resp as? HTTPURLResponse, http.statusCode == 200, http.url?.host == resolver.url.host else { line.error = "The resolver did not answer correctly"; continue }
+                let (data, answeredBy) = try await fetch(c.url!, via: resolver)
+                guard answeredBy == resolver.url.host else { line.error = "The resolver did not answer correctly"; continue }
                 guard let a = DNSWire.parse(data) else { line.error = "The answer could not be read"; continue }
                 line.rcode = a.rcode
                 if type == .a { line.v4 = a.addresses } else { line.v6 = a.addresses }
@@ -230,5 +251,86 @@ struct AppDNSProbe {
         }
         line.milliseconds = ms()
         return line
+    }
+}
+
+
+/// A plain HTTPS GET to an IP address, with the TLS name set to the resolver's own host name so its certificate is checked as normal. Used by the App DNS test only.
+enum DoHOverAddress {
+    struct Failure: Error { let reason: String }
+
+    static func get(host: String, path: String, address: String, timeout: TimeInterval = 6) async throws -> Data {
+        let request = "GET \(path) HTTP/1.1\r\nHost: \(host)\r\nAccept: application/dns-message\r\nConnection: close\r\nUser-Agent: StreamSetu\r\n\r\n"
+        return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Data, Error>) in
+            Exchange(host: host, address: address, request: request, timeout: timeout, cont: cont).start()
+        }
+    }
+
+    /// One request and its answer; all its state is touched only on its own queue.
+    private final class Exchange: @unchecked Sendable {
+        let conn: NWConnection, queue = DispatchQueue(label: "app.streamsetu.dns-probe"), request: String, timeout: TimeInterval
+        var cont: CheckedContinuation<Data, Error>?, buffer = Data()
+        init(host: String, address: String, request: String, timeout: TimeInterval, cont: CheckedContinuation<Data, Error>) {
+            let tls = NWProtocolTLS.Options()
+            sec_protocol_options_set_tls_server_name(tls.securityProtocolOptions, host)
+            conn = NWConnection(host: NWEndpoint.Host(address), port: 443, using: NWParameters(tls: tls))
+            self.request = request; self.timeout = timeout; self.cont = cont
+        }
+        func start() {
+            conn.stateUpdateHandler = { [self] state in
+                switch state {
+                case .ready: conn.send(content: Data(request.utf8), completion: .contentProcessed { [self] e in if let e { finish(.failure(e)) } else { read() } })
+                case .failed(let e): finish(.failure(e))
+                case .waiting(let e): finish(.failure(e))               // no route or a refused connection: do not wait for it
+                default: break
+                }
+            }
+            conn.start(queue: queue)
+            queue.asyncAfter(deadline: .now() + timeout) { [self] in finish(.failure(Failure(reason: "timed out"))) }
+        }
+        func read() {
+            conn.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [self] data, _, isComplete, error in
+                if let data { buffer.append(data) }
+                if let error { finish(.failure(error)); return }
+                if isComplete || DoHOverAddress.complete(buffer) { finish(DoHOverAddress.parse(buffer)); return }
+                read()
+            }
+        }
+        func finish(_ r: Result<Data, Error>) {
+            queue.async { [self] in
+                guard let c = cont else { return }
+                cont = nil; conn.cancel(); c.resume(with: r)
+            }
+        }
+    }
+
+    /// Whether the whole response has arrived (headers plus a body of the stated length, or a closing chunk).
+    static func complete(_ data: Data) -> Bool {
+        guard let split = data.range(of: Data("\r\n\r\n".utf8)) else { return false }
+        let head = String(decoding: data[..<split.lowerBound], as: UTF8.self).lowercased()
+        let body = data[split.upperBound...]
+        if let r = head.range(of: "content-length:"), let n = Int(head[r.upperBound...].prefix(while: { $0 != "\r" }).trimmingCharacters(in: .whitespaces)) { return body.count >= n }
+        if head.contains("transfer-encoding: chunked") { return body.suffix(5) == Data("0\r\n\r\n".utf8) }
+        return false
+    }
+
+    /// The body of a 200 response (de-chunked), or a failure.
+    static func parse(_ data: Data) -> Result<Data, Error> {
+        guard let split = data.range(of: Data("\r\n\r\n".utf8)) else { return .failure(Failure(reason: "no answer")) }
+        let head = String(decoding: data[..<split.lowerBound], as: UTF8.self)
+        guard head.hasPrefix("HTTP/1.1 200") || head.hasPrefix("HTTP/1.0 200") else { return .failure(Failure(reason: "status \(head.prefix(12))")) }
+        var body = Data(data[split.upperBound...])
+        if head.lowercased().contains("transfer-encoding: chunked") {
+            var out = Data(), rest = body[...]
+            while let eol = rest.range(of: Data("\r\n".utf8)) {
+                let size = Int(String(decoding: rest[..<eol.lowerBound], as: UTF8.self).split(separator: ";").first.map(String.init) ?? "", radix: 16) ?? 0
+                if size == 0 { break }
+                let start = eol.upperBound
+                guard rest.count >= start - rest.startIndex + size else { return .failure(Failure(reason: "short answer")) }
+                out.append(rest[start..<(start + size)]); rest = rest[(start + size + 2)...]
+            }
+            body = out
+        }
+        return .success(body)
     }
 }
