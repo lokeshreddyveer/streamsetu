@@ -18,6 +18,16 @@ struct PhoneRoute: Equatable, Sendable {
 }
 
 enum PhoneRoutes {
+    /// The tab that shows a folder of this kind: Live TV for a channel folder, Movies for a movie folder, Series for a series folder. Episodes have no folders of their own.
+    static func folderTab(for kind: ContentKind) -> PhoneTab? {
+        switch kind {
+        case .channel: .live
+        case .movie: .movies
+        case .series: .series
+        case .episode: nil
+        }
+    }
+
     /// Home, Live TV, Movies, Series and More are tabs. Search, the TV Guide, Library, Playlists and Settings are pages of More, so opening one selects More and pushes that page:
     /// a request for Search must never end on Home, and one for the Guide must never end on Live TV (they only hold a button that opens them). Deep links, the assistant, search
     /// commands and the toolbar all go through this one rule, on iPhone and iPad alike.

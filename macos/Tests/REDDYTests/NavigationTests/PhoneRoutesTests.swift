@@ -43,6 +43,14 @@ import Foundation
         }
     }
 
+    @Test func aFolderResultOpensTheTabThatShowsItsKind() {
+        #expect(PhoneRoutes.folderTab(for: .channel) == .live)
+        #expect(PhoneRoutes.folderTab(for: .movie) == .movies)
+        #expect(PhoneRoutes.folderTab(for: .series) == .series)
+        #expect(PhoneRoutes.folderTab(for: .episode) == nil, "episodes have no folders")
+        for k in ContentKind.allCases { if let tab = PhoneRoutes.folderTab(for: k) { #expect(PhoneRoutes.resolve(tab) == PhoneRoute(tab: tab, page: nil), "a folder's tab is a bar tab") } }
+    }
+
     @Test func theCallersOfSearchAndGuideAllGetThePages() {
         // streamsetu://search, "Find series" links, the search commands (Guide, Library, Settings) and the toolbar buttons.
         let callers: [(name: String, screen: PhoneTab, page: PhoneMoreRoute)] = [

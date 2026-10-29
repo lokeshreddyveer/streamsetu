@@ -288,6 +288,12 @@ struct LiveTVView: View {
             .sheet(isPresented: Binding(get: { lockedPick != nil }, set: { if !$0 { lockedPick = nil } })) { UnlockSheet { model.categoryID = lockedPick } }
         }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(model.favouritesOnly)-\(model.listID ?? "")") { if let c = container { await model.load(c, source: state.activeSourceID) } }
+        // A folder chosen in Search: Live TV shows it (a locked folder still asks for the PIN first).
+        .onChange(of: router.pendingFolder?.id, initial: true) { _, _ in
+            guard let pending = router.pendingFolder, pending.kind == .channel else { return }
+            router.pendingFolder = nil
+            if let p = container?.parental, p.isLocked(pending.id), p.isRestricting { lockedPick = pending.id } else { model.categoryID = pending.id }
+        }
         .task(id: model.query) {
             guard let c = container else { return }
             try? await Task.sleep(nanoseconds: 250_000_000)

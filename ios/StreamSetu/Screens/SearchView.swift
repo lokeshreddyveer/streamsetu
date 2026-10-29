@@ -14,6 +14,7 @@ struct SearchView: View {
     @State private var failed = false
     @State private var retryTick = 0
     @State private var opened: LibraryItem?
+    @State private var openedCollection: CatalogCollection?
     @FocusState private var focused: Bool
     /// Whether the search field is open. Closing it with the cross takes you back to the screen you came from.
     @State private var presented = false
@@ -45,6 +46,7 @@ struct SearchView: View {
             .onChange(of: presented) { _, open in if !open, embedded { dismiss() } }
             .onDisappear { if tab != .all { recentStore.add(router.query); router.query = "" } }
             .navigationDestination(item: $opened) { DetailView(item: $0) }
+            .navigationDestination(item: $openedCollection) { CollectionDetailView(collection: $0) }
             .miniPlayerInset()
         }
         .task(id: "\(router.query)|\(retryTick)") { await run() }
@@ -176,7 +178,17 @@ struct SearchView: View {
             if let e = try? c.catalog.episode(id: id), let s = try? c.catalog.seriesItem(id: seriesID) { Play.episode(e, s, c) }
         case .programme(let channelID):
             if let ch = try? c.catalog.channel(id: channelID) { Play.channel(ch, queue: [ch], c) }
-        default: break
+        case .folder(let categoryID, let kind):
+            // The folder opens in the screen that shows its kind, with that folder chosen; this search is closed so the person lands there.
+            guard let tab = PhoneRoutes.folderTab(for: kind) else { return }
+            router.pendingFolder = (kind, categoryID)
+            if embedded { dismiss() }
+            router.go(tab)
+        case .collection(let id):
+            Task {
+                let found = await Task.detached { (try? c.favoritesRepo.collections())?.first { $0.id == id } }.value
+                if let found { openedCollection = found } else { state.toasts.show("That collection no longer exists", symbol: "square.stack") }
+            }
         }
     }
 }
