@@ -87,6 +87,8 @@ data class SportsEventDetail(
     val playback: SportsDetailPlayback? = null,
     /** The event is gone from the guide but this channel is still allowed and playing: its name. The panel then says so and offers Live TV or Stop. */
     val heldChannel: String? = null,
+    /** What the last "Add to Multiview" said, shown under the button. */
+    val multiviewNote: String? = null,
 )
 
 /** What the screen says when it has no events to show. */
@@ -119,6 +121,8 @@ data class SportsHubUiState(
     val nowMs: Long = 0,
     /** The stream Sports started can no longer be kept in Sports: the screen hands it to Live TV's embedded player, without restarting it. */
     val playbackHandoff: Boolean = false,
+    /** How many feeds are chosen for a Multiview. */
+    val multiviewCount: Int = 0,
 ) {
     val isEmpty: Boolean get() = live.isEmpty() && startingSoon.isEmpty() && today.isEmpty() && upcoming.isEmpty()
     fun section(s: SportsSection): List<SportsEventCard> = when (s) { SportsSection.LIVE_NOW -> live; SportsSection.STARTING_SOON -> startingSoon; SportsSection.TODAY -> today; SportsSection.UPCOMING -> upcoming }

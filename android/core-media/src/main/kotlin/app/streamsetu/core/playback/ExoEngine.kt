@@ -125,6 +125,7 @@ class ExoEngine(context: Context) : PlayerEngine {
         currentHeaders = request.headers.filterKeys { !it.equals("User-Agent", true) }
         val p = ensurePlayer(request.buffering)
         applySubtitleStyle()
+        if (options.maxVideoWidth > 0 && options.maxVideoHeight > 0) p.trackSelectionParameters = p.trackSelectionParameters.buildUpon().setMaxVideoSize(options.maxVideoWidth, options.maxVideoHeight).build()
         p.setMediaItem(MediaItem.fromUri(request.url), if (request.startMs > 5_000) request.startMs else C.TIME_UNSET)
         p.prepare()
         p.playWhenReady = true

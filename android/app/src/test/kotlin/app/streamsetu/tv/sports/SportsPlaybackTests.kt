@@ -266,7 +266,7 @@ class SportsPlaybackTests {
         val sports = files.filter { it.name.startsWith("Sports") && it.name != "SportsAdapter.kt" || it.name == "RealSportsPlaybackDeps.kt" }
         assertTrue(sports.size >= 8)
         // The guide-reading adapter and the event service read the database only; the playback and screens may not touch the network or build a stream request at all.
-        val forbidden = listOf("OkHttp", "StreamResolver", "HttpURLConnection", "java.net.URL", "Request.Builder", "streamRef", "http://", "https://", "Dns", "Proxy", "Authorization")
+        val forbidden = listOf("OkHttp", "StreamResolver", "HttpURLConnection", "java.net.URL", "Request.Builder", "streamRef", "http://", "https://", "Dns", "Proxy", "\"Authorization\"", "Authenticator")          // the header name as a string, not the name of the permission-check interface
         for (f in sports) { val t = f.readText(); for (w in forbidden) assertFalse("${f.name} must not contain $w", t.contains(w)) }
         val real = java.io.File("src/main/kotlin/app/streamsetu/tv/sports/RealSportsPlaybackDeps.kt").readText()
         assertTrue("Sports starts a stream with the application's play action, the one Live TV uses", real.contains("c.play(item, listOf(item), onResult = onResult)"))

@@ -34,8 +34,8 @@ import javax.inject.Inject
  */
 @OptIn(FlowPreview::class)
 @HiltViewModel
-class SportsViewModel internal constructor(private val deps: SportsDeps, scope: CoroutineScope?, private val debounceMs: Long, private val diagnostics: SportsDiagnostics = SportsDiagnostics.Log, private val playback: SportsPlaybackCoordinator? = null) : ViewModel() {
-    @Inject constructor(c: AppContainer) : this(RealSportsDeps(c), null, 1_500L, SportsDiagnostics.Log, c.sportsPlayback)
+class SportsViewModel internal constructor(private val deps: SportsDeps, scope: CoroutineScope?, private val debounceMs: Long, private val diagnostics: SportsDiagnostics = SportsDiagnostics.Log, private val playback: SportsPlaybackCoordinator? = null, private val multiview: app.streamsetu.tv.sports.multiview.SportsMultiviewController? = null) : ViewModel() {
+    @Inject constructor(c: AppContainer) : this(RealSportsDeps(c), null, 1_500L, SportsDiagnostics.Log, c.sportsPlayback, c.sportsMultiview)
 
     private val work: CoroutineScope = scope ?: viewModelScope
 
@@ -56,12 +56,21 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
     private var loadJob: Job? = null
     @Volatile var loadCount = 0; private set
 
-    val uiState: StateFlow<SportsHubUiState> = combine(loaded, selected, detailId, deps.minutes, playback?.state ?: kotlinx.coroutines.flow.flowOf(SportsPlaybackState())) { l, sel, detail, now, pb -> build(l, sel, detail, now, pb) }
+    private val mvNote = MutableStateFlow<String?>(null)
+    private class Extras(val playback: SportsPlaybackState, val multiviewCount: Int, val note: String?)
+    private val extras = combine(
+        playback?.state ?: kotlinx.coroutines.flow.flowOf(SportsPlaybackState()),
+        multiview?.selection?.state ?: kotlinx.coroutines.flow.flowOf(app.streamsetu.tv.sports.multiview.SelectionState()),
+        mvNote,
+    ) { pb, sel, note -> Extras(pb, sel.entries.size, note) }
+
+    val uiState: StateFlow<SportsHubUiState> = combine(loaded, selected, detailId, deps.minutes, extras) { l, sel, detail, now, x -> build(l, sel, detail, now, x.playback, x.multiviewCount, x.note) }
         .flowOn(Dispatchers.Default)
         .stateIn(work, SharingStarted.WhileSubscribed(5_000), SportsHubUiState(loading = true, nowMs = deps.now()))
 
     init {
         playback?.useEvents { id -> loaded.value.events.firstOrNull { it.id == id } }
+        multiview?.selection?.useEvents { loaded.value.events }
         work.launch { deps.scope.collect { s -> onScope(s) } }
         work.launch { deps.dataSignals.debounce(debounceMs).collect { if (currentScope != null) startLoad(clear = false) } }
     }
@@ -70,7 +79,7 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
 
     /** Applies a filter that is already loaded; nothing is queried. */
     fun select(sport: Sport?) { selected.value = sport }
-    fun openDetail(id: String) { if (detailId.value != id) playback?.end(); detailId.value = id }
+    fun openDetail(id: String) { if (detailId.value != id) { playback?.end(); mvNote.value = null }; detailId.value = id }
     /** Closing the detail ends the Sports playback that belongs to it. */
     fun closeDetail() {
         // A channel that outlived its event is not stopped by leaving the panel: Sports gives it up to Live TV's embedded player.
@@ -89,6 +98,20 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
     fun retryPlayback() { playback?.retry() }
     /** Back to Event, leaving the detail open; and leaving Sports. Both release the stream that Sports started. */
     fun stopPlayback() { playback?.end() }
+
+    // ---- Multiview (each is the person choosing; nothing starts a stream)
+
+    /** Adds the open event's recommended feed (or [channelId]) to the Multiview list. */
+    fun addToMultiview(channelId: String? = null) {
+        val id = detailId.value ?: return
+        val m = multiview ?: return
+        work.launch {
+            val r = m.selection.add(id, channelId)
+            mvNote.value = if (r is app.streamsetu.tv.sports.multiview.SelectionResult.Done) "Added to Multiview (${m.selection.state.value.entries.size} of ${m.selection.state.value.limit}). Open Multiview to start." else m.selection.state.value.message
+        }
+    }
+    /** Playing a Sports stream and a Multiview cannot share the decoders: the stream is released before the Multiview opens. */
+    fun beforeMultiview() { playback?.end() }
     fun dismissPlaybackMessage() { playback?.dismissMessage() }
     /** The person chose Refresh (or Retry): the old content stays until the new is ready. */
     fun refresh() { if (currentScope != null) startLoad(clear = false) }
@@ -140,7 +163,7 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
 
     // ---- state (computed here, never in a composable)
 
-    private fun build(l: Loaded, sel: Sport?, detail: String?, now: Long, pb: SportsPlaybackState): SportsHubUiState {
+    private fun build(l: Loaded, sel: Sport?, detail: String?, now: Long, pb: SportsPlaybackState, mvCount: Int, note: String?): SportsHubUiState {
         val play = if (detail != null && playback != null) {
             val (ranked, why) = playback.recommendedFor(detail)
             SportsDetailPlay(ranked.map { it.feed.channelId }, ranked.filter { it.deprioritized }.map { it.feed.channelId }.toSet(), why, pb)
@@ -153,6 +176,6 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
             l.events.none { it.endMs > now } -> SportsHubMessage.NoSports
             else -> null
         }
-        return SportsHubUiState(l.loading, l.refreshing, r.selected, r.filters, r.live, r.soon, r.today, r.upcoming, r.detail ?: pb.held?.takeIf { !pb.handoff }?.let { SportsSections.heldDetail(it.channelName) }, message, l.revision, now, pb.handoff)
+        return SportsHubUiState(l.loading, l.refreshing, r.selected, r.filters, r.live, r.soon, r.today, r.upcoming, r.detail?.copy(multiviewNote = note) ?: pb.held?.takeIf { !pb.handoff }?.let { SportsSections.heldDetail(it.channelName) }, message, l.revision, now, pb.handoff, mvCount)
     }
 }

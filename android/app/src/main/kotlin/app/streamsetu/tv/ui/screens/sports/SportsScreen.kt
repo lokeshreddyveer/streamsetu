@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.SportsTennis
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -102,6 +103,11 @@ class SportsActions(
     val previewFocused: (Boolean) -> Unit = {},
     /** Stop on the panel of a channel that outlived its event. */
     val stopHeld: () -> Unit = {},
+    /** Add to Multiview: the open event's recommended feed, or one chosen feed. The list only grows; nothing plays. */
+    val addToMultiview: () -> Unit = {},
+    val addFeedToMultiview: (channelId: String) -> Unit = {},
+    /** Open the Multiview builder (the Sports stream is released first). */
+    val openMultiview: () -> Unit = {},
 )
 
 /** The page as the shell shows it. Refresh Guide uses the application's own guide refresh. */
@@ -145,6 +151,8 @@ fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, refreshGuideNow: () ->
             previewBounds = { nav.videoBounds = it },
             openFullscreen = { nav.liveFullscreen = true; nav.open(app.streamsetu.tv.nav.Overlay.Player) },
             previewFocused = { previewFocused = it }, stopHeld = vm::stopHeld,
+            addToMultiview = { vm.addToMultiview() }, addFeedToMultiview = { vm.addToMultiview(it) },
+            openMultiview = { vm.beforeMultiview(); nav.open(app.streamsetu.tv.nav.Overlay.SportsMultiview) },
         )
     }
     // Sports can no longer keep the embedded player for a stream that is still allowed: it goes to Live TV's embedded channel player, selected there as the channel now playing. Nothing is
@@ -199,7 +207,7 @@ fun SportsHubContent(state: SportsHubUiState, actions: SportsActions, entry: Foc
 private fun Hub(state: SportsHubUiState, actions: SportsActions, entry: FocusRequester, restore: FocusRequester, restoreId: String?, scroll: ScrollHolder) {
     val hasFilters = state.filters.isNotEmpty()
     Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical)) {
-        SportsHeader(state.refreshing, entry.takeIf { !hasFilters }, actions.refresh)
+        SportsHeader(state.refreshing, entry.takeIf { !hasFilters }, state.multiviewCount, actions.refresh, actions.openMultiview)
         if (hasFilters) {
             SportsFilters(state.filters, state.selectedSport, entry, restore.takeIf { restoreId != null }, actions.select)
         }
@@ -216,11 +224,12 @@ private fun Hub(state: SportsHubUiState, actions: SportsActions, entry: FocusReq
 // ---- header and filters
 
 @Composable
-private fun SportsHeader(refreshing: Boolean, entry: FocusRequester?, onRefresh: () -> Unit) {
+private fun SportsHeader(refreshing: Boolean, entry: FocusRequester?, multiview: Int, onRefresh: () -> Unit, onMultiview: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Label("Sports", Tokens.pageTitle, Tokens.text, FontWeight.Bold)
         if (refreshing) Label("Updating…", Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-refreshing"))
         Spacer(Modifier.weight(1f))
+        TvButton("Multiview" + if (multiview > 0) " ($multiview)" else "", onMultiview, Modifier.testTag("sports-multiview"))
         TvButton("Refresh", onRefresh, (if (entry != null) Modifier.focusRequester(entry) else Modifier).testTag("sports-refresh"), icon = Icons.Filled.Refresh)
     }
 }
@@ -370,6 +379,13 @@ private fun SportsDetailPanel(d: SportsEventDetail, actions: SportsActions, retu
     val rows = remember(d.card.id) { HashMap<String, FocusRequester>() }
     val play = d.playback
     val showPreview = play != null && play.status != app.streamsetu.tv.sports.SportsPlayStatus.IDLE
+    var feedMenu by remember(d.card.id) { mutableStateOf<SportsFeedRow?>(null) }
+    feedMenu?.let { f ->
+        app.streamsetu.tv.ui.components.ContextMenu(f.channelName, f.sourceName, listOf(
+            app.streamsetu.tv.ui.components.MenuAction("Watch this feed", Icons.Filled.PlayArrow) { actions.watchFeed(f.channelId) },
+            app.streamsetu.tv.ui.components.MenuAction("Add to Multiview", Icons.Filled.Add) { actions.addFeedToMultiview(f.channelId) },
+        ), onClose = { feedMenu = null })
+    }
     LaunchedEffect(d.card.id) { requestFocusOnFrames(8, { close.requestFocus() }, { closeFocused }) }
     // Back from the embedded picture: the remote returns to the feed that is playing, or to Watch Best Feed.
     LaunchedEffect(returnTick) {
@@ -394,13 +410,15 @@ private fun SportsDetailPanel(d: SportsEventDetail, actions: SportsActions, retu
             if (d.feeds.isNotEmpty()) {
                 TvButton("Watch Best Feed", actions.watchBest, Modifier.focusRequester(best).testTag("sports-watch-best"), icon = Icons.Filled.PlayArrow, primary = true)
                 d.bestLabel?.let { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-best-label")) }
+                TvButton("Add to Multiview", actions.addToMultiview, Modifier.testTag("sports-add-multiview"), icon = Icons.Filled.Add)
+                d.multiviewNote?.let { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-multiview-note")) }
             }
             if (play != null) SportsPlaybackNote(play, d, actions, rows)
             Label("Available feeds", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(d.feeds.size, key = { d.feeds[it].channelId.ifEmpty { it.toString() } }) { i ->
                     val f = d.feeds[i]
-                    SportsFeedRowView(f, if (f.channelId.isNotEmpty()) Modifier.focusRequester(rows.getOrPut(f.channelId) { FocusRequester() }) else Modifier) { if (f.channelId.isNotEmpty()) actions.watchFeed(f.channelId) }
+                    SportsFeedRowView(f, if (f.channelId.isNotEmpty()) Modifier.focusRequester(rows.getOrPut(f.channelId) { FocusRequester() }) else Modifier, onMenu = { if (f.channelId.isNotEmpty()) feedMenu = f }) { if (f.channelId.isNotEmpty()) actions.watchFeed(f.channelId) }
                 }
             }
         }
@@ -455,9 +473,9 @@ private fun SportsPlaybackNote(play: SportsDetailPlayback, d: SportsEventDetail,
 }
 
 @Composable
-private fun SportsFeedRowView(f: SportsFeedRow, modifier: Modifier, onPlay: () -> Unit) {
+private fun SportsFeedRowView(f: SportsFeedRow, modifier: Modifier, onMenu: () -> Unit, onPlay: () -> Unit) {
     // OK plays this exact feed. Focus alone does nothing.
-    Focusable(onPlay, modifier.fillMaxWidth().testTag("sports-feed"), shape = RoundedCornerShape(Tokens.radiusSmall), container = Tokens.card, scaleOnFocus = 1.0f, focusSound = null, selectSound = null) { _ ->
+    Focusable(onPlay, modifier.fillMaxWidth().testTag("sports-feed"), shape = RoundedCornerShape(Tokens.radiusSmall), container = Tokens.card, scaleOnFocus = 1.0f, focusSound = null, selectSound = null, onLongClick = onMenu) { _ ->
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Label(f.channelName + "  ·  " + f.sourceName, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 1)
             val parts = ArrayList<String>()

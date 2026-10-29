@@ -24,15 +24,7 @@ class PlaybackPhase(val channelId: String?, val kind: PhaseKind, val failure: Pl
  * [play] is the Live TV play action itself: Sports has no other way to start a stream, so addresses, headers, App DNS, the proxy, redirect checks, the engine and recovery are all the
  * ones Live TV uses. It reports once how the request ended ([PlayStart]).
  */
-interface SportsPlaybackDeps {
-    val profileId: String
-    val activeSourceIds: Set<String>
-    suspend fun channel(id: String): Channel?
-    suspend fun sourceEnabled(sourceId: String): Boolean
-    suspend fun folderLocked(categoryId: String?): Boolean
-    suspend fun adultBlocked(categoryId: String?): Boolean
-    suspend fun hidden(channelId: String): Boolean
-    suspend fun sourceNames(): Map<String, String>
+interface SportsPlaybackDeps : SportsAuthorization {
     fun play(channel: Channel, onResult: (PlayStart) -> Unit)
     fun stop()
     val phase: Flow<PlaybackPhase>
@@ -246,31 +238,11 @@ class SportsPlaybackCoordinator(
     }
 
     /** Every feed of the event that passes the checks right now, with the channel read afresh. */
-    private suspend fun authorizedFeeds(event: SportsEvent, profile: String, gen: Int): List<Pair<SportsFeed, Channel>> {
-        val out = ArrayList<Pair<SportsFeed, Channel>>()
-        for (f in event.feeds) {
-            if (gen != generation) break
-            val ch = deps.channel(f.channelId)
-            if (ch != null && ch.sourceId == f.sourceId && refusalFor(ch, profile) == null) out += f to ch
-        }
-        return out
-    }
+    private suspend fun authorizedFeeds(event: SportsEvent, profile: String, gen: Int): List<Pair<SportsFeed, Channel>> = SportsAuthorizer.authorizedFeeds(deps, event, profile) { gen == generation }
 
-    private suspend fun refusal(f: SportsFeed, profile: String): PlayRejection? {
-        val ch = deps.channel(f.channelId) ?: return PlayRejection.CHANNEL_MISSING
-        if (ch.sourceId != f.sourceId) return PlayRejection.FEED_NOT_IN_EVENT
-        return refusalFor(ch, profile)
-    }
+    private suspend fun refusal(f: SportsFeed, profile: String): PlayRejection? = SportsAuthorizer.refusal(deps, f, profile)
 
-    private suspend fun refusalFor(ch: Channel, profile: String): PlayRejection? = when {
-        deps.profileId != profile -> PlayRejection.PROFILE_CHANGED
-        !deps.sourceEnabled(ch.sourceId) -> PlayRejection.SOURCE_OFF
-        ch.sourceId !in deps.activeSourceIds -> PlayRejection.NOT_IN_LIBRARY
-        deps.folderLocked(ch.categoryId) -> PlayRejection.FOLDER_LOCKED
-        deps.adultBlocked(ch.categoryId) -> PlayRejection.RESTRICTED
-        deps.hidden(ch.id) -> PlayRejection.HIDDEN
-        else -> null
-    }
+    private suspend fun refusalFor(ch: Channel, profile: String): PlayRejection? = SportsAuthorizer.refusal(deps, ch, profile)
 
     private fun options(ranked: List<RankedFeed>, names: Map<String, String>, selected: String, rankedBest: String?) = ranked.map { r ->
         val f = r.feed

@@ -11,11 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 
-/**
- * The Sports side of Live TV playback, made from the application's own services. [play] is `AppContainer.play`, the action every Live TV channel choice runs, so a Sports stream is resolved,
- * authenticated, routed (App DNS, proxy, headers, redirect checks), decoded and recovered exactly as a Live TV one is. Nothing here builds or sees a stream address.
- */
-class RealSportsPlaybackDeps(private val c: AppContainer) : SportsPlaybackDeps {
+open class RealSportsAuthorization(protected val c: AppContainer) : SportsAuthorization {
     override val profileId: String get() = c.profiles.activeId.value
     override val activeSourceIds: Set<String> get() = c.library.sourceIds.value.toSet()
     override suspend fun channel(id: String): Channel? = c.catalog.channel(id)
@@ -25,6 +21,13 @@ class RealSportsPlaybackDeps(private val c: AppContainer) : SportsPlaybackDeps {
         categoryId != null && c.parental.hideAdult.value && c.db.catalog().categoryName(categoryId)?.let(ParentalControls::isAdultName) == true
     override suspend fun hidden(channelId: String): Boolean = c.db.extras().channelPrefsNow().any { it.channelId == channelId && it.hidden }
     override suspend fun sourceNames(): Map<String, String> = c.db.sources().all().associate { it.id to it.name }
+}
+
+/**
+ * The Sports side of Live TV playback, made from the application's own services. [play] is `AppContainer.play`, the action every Live TV channel choice runs, so a Sports stream is resolved,
+ * authenticated, routed (App DNS, proxy, headers, redirect checks), decoded and recovered exactly as a Live TV one is. Nothing here builds or sees a stream address.
+ */
+class RealSportsPlaybackDeps(c: AppContainer) : RealSportsAuthorization(c), SportsPlaybackDeps {
     override fun play(channel: Channel, onResult: (PlayStart) -> Unit) { val item = ChannelPlayable(channel); c.play(item, listOf(item), onResult = onResult) }
     override fun stop() { c.playback.stop() }
     override fun nowMs(): Long = System.currentTimeMillis()

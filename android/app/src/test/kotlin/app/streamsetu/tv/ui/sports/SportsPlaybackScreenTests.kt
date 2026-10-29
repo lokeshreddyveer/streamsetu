@@ -28,6 +28,7 @@ import app.streamsetu.tv.nav.Base
 import app.streamsetu.tv.nav.Navigator
 import app.streamsetu.tv.nav.Tab
 import app.streamsetu.tv.sports.*
+import app.streamsetu.tv.sports.RankInput
 import app.streamsetu.tv.ui.components.LocalContentEntry
 import app.streamsetu.tv.ui.screens.sports.*
 import kotlinx.coroutines.CoroutineScope
@@ -59,6 +60,8 @@ class SportsPlaybackScreenTests {
     private lateinit var pdeps: FakePlaybackDeps
     private lateinit var coordinator: SportsPlaybackCoordinator
     private lateinit var vm: SportsViewModel
+    private lateinit var mvDeps: app.streamsetu.tv.sports.multiview.FakeMultiviewDeps
+    private lateinit var mv: app.streamsetu.tv.sports.multiview.SportsMultiviewController
     private lateinit var nav: Navigator
     @After fun stop() { scope.cancel() }
     @Before fun setUp() { deps = FakeSportsDeps(); pdeps = FakePlaybackDeps(); nav = Navigator(); nav.base = Base.Shell; nav.tab = Tab.SPORTS }
@@ -71,7 +74,10 @@ class SportsPlaybackScreenTests {
         events.flatMap { it.feeds }.forEach { f -> pdeps.channels[f.channelId] = Channel(f.channelId, "A", "cat", f.channelName, null, null, "ref", null) }
         deps.result = { events }; deps.nowMs = now0; deps.tick()
         coordinator = SportsPlaybackCoordinator(pdeps, scope, SportsPlaybackDiagnostics {})
-        vm = SportsViewModel(deps, scope, 40L, SportsDiagnostics.Log, coordinator)
+        mvDeps = app.streamsetu.tv.sports.multiview.FakeMultiviewDeps(pdeps)
+        val cap = app.streamsetu.tv.sports.multiview.MultiviewCapability { app.streamsetu.tv.sports.multiview.DeviceFacts(false, 384, 8, listOf(app.streamsetu.tv.sports.multiview.HardwareDecoder("video/avc", false, 16))) }
+        mv = app.streamsetu.tv.sports.multiview.SportsMultiviewController(cap, app.streamsetu.tv.sports.multiview.SportsMultiviewSelection(mvDeps, cap) { RankInput() }, app.streamsetu.tv.sports.multiview.MultiviewSession(mvDeps, cap, scope, Dispatchers.IO))
+        vm = SportsViewModel(deps, scope, 40L, SportsDiagnostics.Log, coordinator, mv)
         val entry = FocusRequester()
         rule.setContent { CompositionLocalProvider(LocalContentEntry provides entry) { SportsScreenHost(vm, nav) { } } }
         rule.waitUntil(5_000) { rule.onAllNodesWithTag("sports-list").fetchSemanticsNodes().isNotEmpty() }; rule.waitForIdle()
@@ -96,6 +102,7 @@ class SportsPlaybackScreenTests {
         val entry = show(twoFeeds); openDetail(entry)
         assertEquals("sports-detail-close", focusedTag())
         key(Key.DirectionDown); assertEquals("sports-watch-best", focusedTag())
+        key(Key.DirectionDown); assertEquals("sports-add-multiview", focusedTag())
         key(Key.DirectionDown); assertEquals("sports-feed", focusedTag()); key(Key.DirectionDown); assertEquals("sports-feed", focusedTag())
         rule.waitForIdle(); assertTrue("nothing played from opening the event or moving the remote", pdeps.played.isEmpty())
         rule.onAllNodesWithTag("sports-preview").assertCountEquals(0)
@@ -130,6 +137,7 @@ class SportsPlaybackScreenTests {
         rule.onNodeWithTag("sports-choose-another").requestFocus(); key(Key.Enter)
         assertEquals("the suggested feed takes the remote, to be confirmed with OK", "sports-feed", focusedTag())
         rule.onNodeWithTag("sports-try-again").requestFocus(); key(Key.Enter); until { pdeps.played.size == 2 }; assertEquals("2", pdeps.played[1].id)
+        until { rule.onAllNodesWithTag("sports-try-again").fetchSemanticsNodes().isEmpty() }                // the first failure is gone while the retry starts
         phase("2", PhaseKind.LOADING); phase("2", PhaseKind.FAILED)
         until { rule.onAllNodesWithTag("sports-back-to-event").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("sports-back-to-event").requestFocus(); key(Key.Enter)
@@ -214,6 +222,42 @@ class SportsPlaybackScreenTests {
         show(listOf(event("a1", -30, listOf(feed("1"))), event("b1", 30, listOf(feed("3")))))
         until { focusedTags().size == 1 && focusedTags().single().startsWith("sports-card-") || focusedTags().singleOrNull() == "sports-filter-ALL" }
         assertFalse("the request is answered once", nav.sportsReturnToCard)
+    }
+
+    // ---- Multiview entry points
+
+    @Test fun addToMultiviewIsOnTheDetailAndOnlyOkAddsTheRecommendedFeed() {
+        val entry = show(twoFeeds); openDetail(entry)
+        rule.onNodeWithTag("sports-add-multiview").assertExists()
+        rule.onNodeWithTag("sports-add-multiview").requestFocus(); rule.waitForIdle()
+        assertTrue("focus alone adds nothing", mv.selection.state.value.entries.isEmpty())
+        key(Key.Enter); until { mv.selection.state.value.entries.size == 1 }
+        assertEquals("the recommended feed of the open event", "2", mv.selection.state.value.entries.single().channelId)
+        until { rule.onAllNodesWithTag("sports-multiview-note").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("nothing played and nothing was queried to play", pdeps.played.isEmpty() && mvDeps.createdCount.get() == 0 && mvDeps.resolveCalls.get() == 0)
+    }
+
+    @Test fun theSameEventCannotBeAddedTwiceByAccident() {
+        val entry = show(twoFeeds); openDetail(entry)
+        rule.onNodeWithTag("sports-add-multiview").requestFocus(); key(Key.Enter); until { mv.selection.state.value.entries.size == 1 }
+        key(Key.Enter); until { mv.selection.state.value.message != null }
+        assertEquals(1, mv.selection.state.value.entries.size)
+    }
+
+    @Test fun theHeaderOpensTheBuilderAfterReleasingTheSportsStream() {
+        val entry = show(twoFeeds); openDetail(entry)
+        rule.onNodeWithTag("sports-watch-best").requestFocus(); key(Key.Enter); until { pdeps.played.size == 1 }
+        phase("2", PhaseKind.LOADING); phase("2", PhaseKind.PLAYING)
+        rule.runOnUiThread { vm.closeDetail() }; rule.waitForIdle()
+        until { rule.onAllNodesWithTag("sports-detail").fetchSemanticsNodes().isEmpty() }
+        rule.onNodeWithTag("sports-multiview").requestFocus(); key(Key.Enter)
+        until { nav.top == app.streamsetu.tv.nav.Overlay.SportsMultiview }
+        assertEquals("the stream was released for the decoders", 1, pdeps.stops.get())
+    }
+
+    @Test fun openingTheBuilderOnTheListOnlyEverNeedsTwoDecodersNotThree() {
+        // The list is limited by the device: a three-tile selection on a two-tile device is refused before anything starts.
+        val entry = show(twoFeeds); openDetail(entry); assertEquals(4, mv.capability.usableLimit())
     }
 
     @Test fun openingAndClosingTheEventFiftyTimesStaysQuick() {

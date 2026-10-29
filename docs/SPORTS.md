@@ -38,3 +38,12 @@ Those features need a **durable record** of their own that re-associates an even
 - A failed switch starts the feed that was playing again through the same action ("Could not switch. Returned to the previous feed."). It never moves to an alternate feed by itself.
 - A guide change never stops an allowed channel. If its event leaves the guide, the embedded picture stays with a notice; leaving that panel hands the stream to Live TV's embedded player without restarting it. Fullscreen is always the person's own action.
 - Diagnostics are counts, durations and fixed words only.
+
+## Phase 4 (Android TV and Fire TV): Multiview
+
+- One Multiview implementation serves both the Sports builder and the ordinary Multi-View: `MultiviewSession` (one player per tile, the same `ExoEngine`, the Live TV resolver and the shared HTTP client), `MultiviewCapability` and `TileLimitPolicy` (the device's tile limit), and the shared authorization checks. Neither screen makes a player itself.
+- The tile limit comes from what the device reports (hardware H.264 decoder, its instance count where Android says, memory class, cores). No hardware decoder means one picture, never several in software. A decoder-allocation failure lowers the limit for the rest of the session. A device that can show one picture has no Multiview and says so.
+- Tiles start one at a time. A failed tile keeps its place and offers Try Again, Replace and Remove; the others keep playing. One tile has the sound; moving it never reloads a picture. Tile pictures are capped at 720p (540p with four tiles).
+- An existing set longer than the limit is never started or shortened: the person chooses which to keep, and the set is left as it was.
+- Changing a tile's feed uses the Phase 3 switch and restore rules for that tile alone. A change to who may see what checks each tile on its own. A guide change only detaches a tile from its event.
+- Full Screen on a tile stops the tiles (the player cannot adopt a tile's engine), plays the channel, and returns to the builder.

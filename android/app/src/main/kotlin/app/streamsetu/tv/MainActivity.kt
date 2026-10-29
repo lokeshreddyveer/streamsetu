@@ -301,7 +301,8 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                     is Overlay.MovieDetail -> app.streamsetu.tv.ui.screens.detail.MovieDetailScreen(o.movie, c, nav)
                     is Overlay.SeriesDetail -> app.streamsetu.tv.ui.screens.detail.SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
                     is Overlay.Player -> PlayerScreen(c, onClose = { closePlayer(c, nav, embeddedLive = true) }, onMultiView = { openMultiView(c, nav) }, onOpenSeries = { sr -> closePlayer(c, nav); nav.open(Overlay.SeriesDetail(sr)) }, onMinimize = { nav.liveFullscreen = false; nav.close() }, onOpenGuide = { nav.liveFullscreen = false; nav.close(); nav.go(Tab.GUIDE) })
-                    is Overlay.MultiView -> app.streamsetu.tv.ui.screens.MultiViewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> nav.close(); play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch), c.queue.ifEmpty { listOf(app.streamsetu.core.model.ChannelPlayable(ch)) }) })
+                    is Overlay.MultiView -> app.streamsetu.tv.ui.screens.MultiViewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> nav.close(); play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch), c.queue.ifEmpty { listOf(app.streamsetu.core.model.ChannelPlayable(ch)) }) }, onSports = { nav.close(); nav.open(Overlay.SportsMultiview) })
+                    is Overlay.SportsMultiview -> app.streamsetu.tv.ui.screens.sports.SportsMultiviewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> c.multiviewFullscreenReturn = true; play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch)) })
                     is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                     is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav)
                 }
@@ -404,7 +405,9 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
  */
 fun closePlayer(c: AppContainer, nav: Navigator, embeddedLive: Boolean = false) {
     val item = c.playback.current.value
-    val keepLive = embeddedLive && item?.isLive == true && item !is app.streamsetu.core.model.CatchUpPlayable
+    // A tile expanded from a Multiview: the tiles were stopped to make room, so the stream stops with the player and the Multiview builder is what is shown again.
+    val fromMultiview = c.multiviewFullscreenReturn.also { c.multiviewFullscreenReturn = false }
+    val keepLive = embeddedLive && item?.isLive == true && item !is app.streamsetu.core.model.CatchUpPlayable && !fromMultiview
     if (!keepLive) c.playback.stop()
     nav.liveFullscreen = false
     nav.close()

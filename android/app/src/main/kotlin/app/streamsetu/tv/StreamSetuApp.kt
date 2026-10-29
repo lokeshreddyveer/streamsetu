@@ -71,8 +71,19 @@ class AppContainer @Inject constructor(
     /** Sports events built from the open library's guide (see tv/sports/SportsAdapter.kt). One service for the app, so its cache outlives any screen. */
     val sportsInputs: app.streamsetu.tv.sports.SportsGuideInputs by lazy { app.streamsetu.tv.sports.SportsGuideInputs(db, epg, { ui.epgOffsetMinutes.value * 60_000L }, { library.sourceIds.value }) }
     val sportsService: app.streamsetu.core.sports.SportsEventService by lazy { app.streamsetu.core.sports.SportsEventService(sportsInputs) }
+    /** Set when a Multiview tile was expanded to the full player: closing that player stops its stream and returns to the Multiview builder. */
+    @Volatile var multiviewFullscreenReturn = false
+
     /** Plays Sports feeds through the same play action as Live TV (see [app.streamsetu.tv.sports.RealSportsPlaybackDeps]). */
     val sportsPlayback: app.streamsetu.tv.sports.SportsPlaybackCoordinator by lazy { app.streamsetu.tv.sports.SportsPlaybackCoordinator(app.streamsetu.tv.sports.RealSportsPlaybackDeps(this), appScope) }
+    /** Sports Multi-View: the device's tile limit, the builder's list and the tile session (see [app.streamsetu.tv.sports.multiview.SportsMultiviewController]). */
+    val sportsMultiview: app.streamsetu.tv.sports.multiview.SportsMultiviewController by lazy {
+        val deps = app.streamsetu.tv.sports.multiview.RealMultiviewDeps(context, this)
+        val capability = app.streamsetu.tv.sports.multiview.MultiviewCapability { app.streamsetu.tv.sports.multiview.MultiviewCapability.read(context) }
+        val selection = app.streamsetu.tv.sports.multiview.SportsMultiviewSelection(deps, capability) { eventId -> sportsPlayback.rankInput(eventId) }
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate)
+        app.streamsetu.tv.sports.multiview.SportsMultiviewController(capability, selection, app.streamsetu.tv.sports.multiview.MultiviewSession(deps, capability, scope, kotlinx.coroutines.Dispatchers.IO))
+    }
 
     /** Who is using the app: each profile has its own favorites, collections, history and resume points. */
     val profiles: app.streamsetu.tv.sync.ProfileService by lazy {

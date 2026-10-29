@@ -481,6 +481,10 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                             item { TextOption("Player: ${playback.engineKind?.label ?: "-"}", false, Modifier, "ExoPlayer or MPV") { panel = PanelKind.ENGINE } }
                             if (live) item { TextOption("TV Guide", false, Modifier, "Opens the programme guide; the channel keeps playing") { onOpenGuide() } }
                             if (live) item { TextOption("Multi-View", false, Modifier) { onMultiView() } }
+                            if (live && sports.origin != null) item { TextOption("Add to Multiview", false, Modifier, "This Sports feed, with the other views you have chosen") {
+                                val o = sports.origin; closePanel()
+                                if (o != null) scope.launch { val r = c.sportsMultiview.selection.add(o.eventId, o.channelId); android.widget.Toast.makeText(context, if (r is app.streamsetu.tv.sports.multiview.SelectionResult.Done) "Added to Multiview" else (c.sportsMultiview.selection.state.value.message ?: "Could not add"), android.widget.Toast.LENGTH_SHORT).show() }
+                            } }
                             if (live && startOffer != null) item { TextOption("Start from the beginning", false, Modifier, "This programme began earlier. Plays it from its start through catch-up.") { (item as? ChannelPlayable)?.let { ch -> startOffer?.let { p -> c.startOver(ch.channel, p) } }; closePanel() } }
                             if (live && (recording != null || playback.canRecord())) item {
                                 TextOption(if (recording != null) "Stop recording" else "Record this channel", false, Modifier) {

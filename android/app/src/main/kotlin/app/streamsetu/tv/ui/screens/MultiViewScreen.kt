@@ -3,6 +3,8 @@ package app.streamsetu.tv.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -10,102 +12,90 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.streamsetu.core.data.repo.toModel
 import app.streamsetu.core.model.Channel
 import app.streamsetu.core.model.ChannelPlayable
-import app.streamsetu.core.playback.BufferingMode
-import app.streamsetu.core.playback.EngineEvent
-import app.streamsetu.core.playback.EngineRequest
-import app.streamsetu.core.playback.ExoEngine
 import app.streamsetu.tv.AppContainer
+import app.streamsetu.tv.sports.multiview.MultiviewEntry
+import app.streamsetu.tv.sports.multiview.PresetFit
+import app.streamsetu.tv.sports.multiview.PresetPlan
+import app.streamsetu.tv.sports.multiview.TileStatus
+import app.streamsetu.tv.sports.multiview.TileUi
 import app.streamsetu.tv.ui.components.*
 import app.streamsetu.tv.ui.phone.Sheet
 import app.streamsetu.tv.ui.phone.SheetItem
+import app.streamsetu.tv.ui.screens.sports.MultiviewTiles
+import app.streamsetu.tv.ui.screens.sports.TileActions
 import app.streamsetu.tv.ui.theme.Tokens
 import kotlinx.coroutines.launch
 
-/** One picture in Multi-View: the channel and the player that shows it. */
-private class Tile(val channel: Channel, val engine: ExoEngine) {
-    var status by mutableStateOf("Loading…")
-}
+private fun entryFor(ch: Channel) = MultiviewEntry(eventId = "", channelId = ch.id, sourceId = ch.sourceId, eventTitle = "", feedLabel = ch.name)
 
 /**
- * Several live channels on one screen, up to four. One has sound; tap (or press OK on) another to move the sound. The first channel is the one that was playing. A provider that allows
- * only one stream at a time will play only one of them, which the screen says. Leaving closes every stream.
+ * Several live channels on one screen. It is the one Multi-View behind both entry points (this one and the Sports builder): the same session starts the pictures one after another, holds the
+ * device's limit and picture-size cap, gives the sound to one of them, keeps a failed picture from stopping the others, and releases every player when the screen is left.
+ *
+ * The channel that was playing starts it; more are added up to what this device can show. A set of channels longer than that is never started or shortened behind the person's back: they choose
+ * which to keep, and the set itself is left as it was.
  */
 @Composable
-fun MultiViewScreen(c: AppContainer, onClose: () -> Unit, onFullScreen: (Channel) -> Unit) {
-    val context = LocalContext.current
+fun MultiViewScreen(c: AppContainer, onClose: () -> Unit, onFullScreen: (Channel) -> Unit, onSports: (() -> Unit)? = null) {
+    val ctl = c.sportsMultiview
+    val session = ctl.session
+    val mv by session.state.collectAsStateWithLifecycle()
+    val owner = remember { Any() }
     val scope = rememberCoroutineScope()
-    val tiles = remember { mutableStateListOf<Tile>() }
-    var audio by remember { mutableIntStateOf(0) }
+    val limit = ctl.capability.usableLimit()
     var picking by remember { mutableStateOf(false) }
-    var menuFor by remember { mutableStateOf<Int?>(null) }
+    var replacing by remember { mutableStateOf<TileUi?>(null) }
+    var menu by remember { mutableStateOf<TileUi?>(null) }
+    val sourceOf = remember { HashMap<String, String>() }
+    val preset = remember { c.multiViewStart.map { sourceOf[it.id] = it.sourceId; entryFor(it) } }          // read, never changed
+    val plan = remember(limit) { PresetFit.plan(preset, limit) }
+    var chooserDone by remember { mutableStateOf(false) }
 
-    fun addTile(ch: Channel) {
-        if (tiles.size >= 4 || tiles.any { it.channel.id == ch.id }) return
-        val engine = ExoEngine(context)
-        val tile = Tile(ch, engine)
-        engine.onEvent = { ev -> tile.status = when (ev) { is EngineEvent.Ready -> ""; EngineEvent.Buffering -> "Loading…"; is EngineEvent.Error -> "Did not play"; else -> tile.status } }
-        tiles += tile
-        scope.launch {
-            val url = c.resolver.resolve(ch.sourceId, ch.streamRef)
-            if (url == null) { tile.status = "No address"; return@launch }
-            val ua = c.resolver.userAgent(ch.sourceId)
-            engine.load(EngineRequest(url, (if (ua != null) mapOf("User-Agent" to ua) else emptyMap()) + c.resolver.headers(ch.sourceId), 0, true, BufferingMode.AUTOMATIC))
-        }
-    }
+    LaunchedEffect(Unit) { if (limit >= 2 && !mv.active) (plan as? PresetPlan.Ready)?.let { session.start(it.entries, minimum = 1, owner = owner) } }
+    DisposableEffect(Unit) { onDispose { session.stopAll(owner) } }
+    BackHandler(enabled = true) { if (picking) { picking = false; replacing = null } else if (menu != null) menu = null else onClose() }
+
     // A channel that would go over the provider's limit waits for an answer first.
     var pendingWarn by remember { mutableStateOf<Pair<Channel, String>?>(null) }
+    fun addNow(ch: Channel) { sourceOf[ch.id] = ch.sourceId; val r = replacing; if (r != null) { session.replace(r.id, entryFor(ch)); replacing = null } else session.add(entryFor(ch), owner) }
     fun requestAdd(ch: Channel) {
-        val limit = c.resolver.accountStatus(ch.sourceId)?.maxConnections
-        val warn = if (tiles.size < 4 && tiles.none { it.channel.id == ch.id }) app.streamsetu.core.data.repo.ConnectionAdvice.message(tiles.count { it.channel.sourceId == ch.sourceId }, limit) else null
-        if (warn != null) pendingWarn = ch to warn else addTile(ch)
+        val maxStreams = c.resolver.accountStatus(ch.sourceId)?.maxConnections
+        val same = mv.tiles.count { sourceOf[it.channelId] == ch.sourceId }
+        val warn = if (mv.tiles.none { it.channelId == ch.id }) app.streamsetu.core.data.repo.ConnectionAdvice.message(same, maxStreams) else null
+        if (warn != null) pendingWarn = ch to warn else addNow(ch)
     }
     pendingWarn?.let { (ch, msg) ->
-        ContextMenu("Your provider's limit", msg, listOf(MenuAction("Open anyway", Icons.Filled.PlayArrow) { addTile(ch) }, MenuAction("Cancel", Icons.Filled.Close) {}), onClose = { pendingWarn = null })
+        ContextMenu("Your provider's limit", msg, listOf(MenuAction("Open anyway", Icons.Filled.PlayArrow) { addNow(ch) }, MenuAction("Cancel", Icons.Filled.Close) {}), onClose = { pendingWarn = null })
     }
-    LaunchedEffect(Unit) { if (tiles.isEmpty()) c.multiViewStart.forEach { addTile(it) } }
-    LaunchedEffect(audio, tiles.size) { tiles.forEachIndexed { i, t -> t.engine.setVolume(if (i == audio) 1f else 0f) } }
-    DisposableEffect(Unit) { onDispose { tiles.forEach { runCatching { it.engine.stop(); it.engine.release() } }; tiles.clear() } }
-    BackHandler(enabled = true) { if (picking) picking = false else if (menuFor != null) menuFor = null else onClose() }
 
-    val oneConnection = tiles.map { it.channel.sourceId }.distinct().any { id -> c.resolver.allowsOnlyOneStream(id) && tiles.count { it.channel.sourceId == id } > 1 }
     Column(Modifier.fillMaxSize().background(Color.Black).windowInsetsPadding(WindowInsets.systemBars)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Label("Multi-View", Tokens.title, Tokens.text, FontWeight.Bold, modifier = Modifier.weight(1f))
-            if (tiles.size < 4) TvButton("Add a channel", { picking = true }, icon = Icons.Filled.Add)
-            TvButton("Close", onClose, icon = Icons.Filled.Close)
-        }
-        if (oneConnection) Label("This provider allows one stream at a time, so only one of these will play.", Tokens.small, Tokens.warning, modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp), maxLines = 2)
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(6.dp)) {
-            val wide = maxWidth > maxHeight
-            val cells = tiles.toList()
-            if (cells.isEmpty()) Box(Modifier.fillMaxSize(), Alignment.Center) { Label("Add a channel to begin", Tokens.body, Tokens.textSecondary) }
-            else {
-                val columns = if (cells.size == 1) 1 else if (cells.size == 2) (if (wide) 2 else 1) else 2
-                val rows = (cells.size + columns - 1) / columns
-                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    for (r in 0 until rows) Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        for (col in 0 until columns) {
-                            val i = r * columns + col
-                            val t = cells.getOrNull(i)
-                            if (t == null) Spacer(Modifier.weight(1f)) else key(t.channel.id) {
-                                Focusable({ if (audio == i) menuFor = i else audio = i }, Modifier.weight(1f).fillMaxHeight(), shape = RoundedCornerShape(8.dp), container = Color.Black, scaleOnFocus = 1.0f, onLongClick = { menuFor = i }) { _ ->
-                                    AndroidView(factory = { ctx -> android.widget.FrameLayout(ctx).also { f -> val v = t.engine.view(ctx); (v.parent as? android.view.ViewGroup)?.removeView(v); f.addView(v) } }, modifier = Modifier.fillMaxSize())
-                                    Row(Modifier.align(Alignment.TopStart).padding(6.dp).background(Color(0x99000000), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                        androidx.compose.foundation.Image(if (audio == i) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff, null, Modifier.size(14.dp), colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(if (audio == i) Tokens.accent else Tokens.textTertiary))
-                                        Label(t.channel.name, Tokens.small, Tokens.text, FontWeight.Medium, maxLines = 1)
-                                    }
-                                    if (t.status.isNotEmpty()) Label(t.status, Tokens.small, Tokens.textSecondary, modifier = Modifier.align(Alignment.Center))
-                                }
-                            }
-                        }
-                    }
+        when {
+            limit < 2 -> MultiviewUnsupported(onClose, c.multiViewStart.firstOrNull()?.let { ch -> { onFullScreen(ch) } })
+            plan is PresetPlan.NeedsChoice && !mv.active && !chooserDone -> PresetChooser(plan.limit, plan.entries, onStart = { picked -> chooserDone = true; session.start(picked, minimum = 1, owner = owner) }, onCancel = onClose)
+            else -> {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Label("Multi-View", Tokens.title, Tokens.text, FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Label("Up to $limit views on this device", Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("mvo-limit"))
+                    if (onSports != null) TvButton("Sports events", onSports, icon = Icons.Filled.SportsScore)
+                    if (mv.tiles.size < limit) TvButton("Add a channel", { picking = true }, icon = Icons.Filled.Add)
+                    TvButton("Close", onClose, icon = Icons.Filled.Close)
+                }
+                val oneConnection = mv.tiles.mapNotNull { sourceOf[it.channelId] }.distinct().any { id -> c.resolver.allowsOnlyOneStream(id) && mv.tiles.count { sourceOf[it.channelId] == id } > 1 }
+                if (oneConnection) Label("This provider allows one stream at a time, so only one of these will play.", Tokens.small, Tokens.warning, modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp), maxLines = 2)
+                mv.message?.let { Label(it, Tokens.small, Tokens.warning, modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp).testTag("mvo-message"), maxLines = 2) }
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                    if (mv.tiles.isEmpty()) Box(Modifier.fillMaxSize(), Alignment.Center) { Label("Add a channel to begin", Tokens.body, Tokens.textSecondary) }
+                    else MultiviewTiles(mv, { id, ctx -> session.viewFor(id, ctx) }, TileActions(
+                        open = { menu = it }, retry = { session.retry(it.id) }, replace = { replacing = it; picking = true }, remove = { session.remove(it.id) },
+                        useTwo = { session.useAtMost(2) }, keepOne = { session.useAtMost(1) }, toBuilder = onClose,
+                    ), portrait = maxHeight > maxWidth)
                 }
             }
         }
@@ -116,19 +106,58 @@ fun MultiViewScreen(c: AppContainer, onClose: () -> Unit, onFullScreen: (Channel
         var pool by remember { mutableStateOf(c.queue.filterIsInstance<ChannelPlayable>().map { it.channel }) }
         LaunchedEffect(Unit) {
             if (pool.size <= 1) {
-                val source = tiles.firstOrNull()?.channel?.sourceId ?: c.sources.all().firstOrNull { !it.draft && it.channelCount > 0 }?.id
+                val source = mv.tiles.firstNotNullOfOrNull { sourceOf[it.channelId] } ?: c.sources.all().firstOrNull { !it.draft && it.channelCount > 0 }?.id
                 if (source != null) { val hidden = c.db.extras().hiddenChannelIds().toSet(); pool = c.db.catalog().managerChannels(source, "", 300).filter { it.id !in hidden }.map { it.toModel() } }
             }
         }
-        val choices = pool.filter { ch -> tiles.none { it.channel.id == ch.id } }.take(200)
-        Sheet("Add a channel", if (choices.isEmpty()) listOf(SheetItem("No other channels in this list", null, false) {}) else choices.map { ch -> SheetItem(ch.name, null, false) { requestAdd(ch) } }, onClose = { picking = false }, subtitle = "From the list you were watching")
+        val choices = pool.filter { ch -> mv.tiles.none { it.channelId == ch.id } }.take(200)
+        Sheet(if (replacing != null) "Replace with" else "Add a channel", if (choices.isEmpty()) listOf(SheetItem("No other channels in this list", null, false) {}) else choices.map { ch -> SheetItem(ch.name, null, false) { requestAdd(ch) } }, onClose = { picking = false; replacing = null }, subtitle = "From the list you were watching")
     }
-    menuFor?.let { i ->
-        val t = tiles.getOrNull(i)
-        if (t != null) Sheet(t.channel.name, listOf(
-            SheetItem("Sound from this one", Icons.Filled.VolumeUp) { audio = i },
-            SheetItem("Watch full screen", Icons.Filled.Fullscreen) { onFullScreen(t.channel) },
-            SheetItem("Remove", Icons.Filled.Close) { runCatching { t.engine.stop(); t.engine.release() }; tiles.removeAt(i); audio = audio.coerceAtMost((tiles.size - 1).coerceAtLeast(0)) },
-        ), onClose = { menuFor = null })
+    menu?.let { t ->
+        val slot = mv.tiles.indexOfFirst { it.id == t.id }
+        if (slot >= 0) {
+            val acts = ArrayList<MenuAction>()
+            if (t.status == TileStatus.PLAYING && !t.audio) acts += MenuAction("Sound from this one", Icons.Filled.VolumeUp) { session.listenHere(t.id) }
+            if (slot > 0) acts += MenuAction("Make primary", Icons.Filled.Fullscreen) { session.makePrimary(t.id) }
+            if (t.status == TileStatus.PLAYING) acts += MenuAction("Watch full screen", Icons.Filled.Fullscreen) { scope.launch { c.catalog.channel(t.channelId)?.let { ch -> session.stopAll(owner); onFullScreen(ch) } } }
+            if (t.status == TileStatus.FAILED) acts += MenuAction("Try again", Icons.Filled.Refresh) { session.retry(t.id) }
+            acts += MenuAction("Remove", Icons.Filled.Close, danger = true) { session.remove(t.id) }
+            ContextMenu(t.feedLabel, null, acts, onClose = { menu = null })
+        }
+    }
+}
+
+/** The whole set is longer than this device can show: the person picks which to keep. Nothing starts until they do, and the set itself is not changed. */
+@Composable
+fun PresetChooser(limit: Int, entries: List<MultiviewEntry>, onStart: (List<MultiviewEntry>) -> Unit, onCancel: () -> Unit) {
+    var picked by remember { mutableStateOf(entries.take(limit).map { it.channelId }.toSet()) }
+    Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical).testTag("mvo-chooser"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Label("This device can show $limit views at once.", Tokens.title, Tokens.text, FontWeight.Bold, modifier = Modifier.testTag("mvo-chooser-title"))
+        Label("You have ${entries.size}. Choose up to $limit to keep; the rest stay in your list and are not started.", Tokens.body, Tokens.textSecondary)
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(entries, key = { it.channelId }) { e ->
+                val on = e.channelId in picked
+                Focusable({ picked = if (on) picked - e.channelId else if (picked.size < limit) picked + e.channelId else picked }, Modifier.fillMaxWidth().testTag("mvo-pick-${e.channelId}"), shape = RoundedCornerShape(Tokens.radiusSmall), scaleOnFocus = 1.0f) {
+                    Label((if (on) "✓  " else "     ") + e.feedLabel, Tokens.row, if (on) Tokens.text else Tokens.textSecondary, maxLines = 1, modifier = Modifier.padding(12.dp))
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            TvButton("Start with ${picked.size}", { if (picked.isNotEmpty()) onStart(entries.filter { it.channelId in picked }) }, Modifier.testTag("mvo-chooser-start"), primary = picked.isNotEmpty())
+            TvButton("Cancel", onCancel, Modifier.testTag("mvo-chooser-cancel"))
+        }
+    }
+}
+
+/** A device that cannot play two videos at once has no Multi-View; it says why and offers the one channel full screen. */
+@Composable
+fun MultiviewUnsupported(onClose: () -> Unit, watchOne: (() -> Unit)?) {
+    Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical).testTag("mvo-unsupported"), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
+        Label("Multi-View is not available on this device.", Tokens.title, Tokens.text, FontWeight.Bold)
+        Label("It cannot play more than one video at the same time.", Tokens.body, Tokens.textSecondary)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (watchOne != null) TvButton("Watch full screen", watchOne, Modifier.testTag("mvo-watch-one"), primary = true)
+            TvButton("Close", onClose, Modifier.testTag("mvo-close"))
+        }
     }
 }

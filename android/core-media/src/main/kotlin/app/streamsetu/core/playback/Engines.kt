@@ -62,7 +62,9 @@ data class PlayerTuning(
 data class Chapter(val title: String, val startMs: Long)
 
 /** Choices that need the player to be built a certain way. */
-data class EngineOptions(val decoderFallback: Boolean = true, val passthrough: Boolean = true, val subtitles: SubtitleStyle = SubtitleStyle(), val httpProxy: String? = null, val softwareDecoding: Boolean = false, val allowSelfSigned: Boolean = false)
+data class EngineOptions(val decoderFallback: Boolean = true, val passthrough: Boolean = true, val subtitles: SubtitleStyle = SubtitleStyle(), val httpProxy: String? = null, val softwareDecoding: Boolean = false, val allowSelfSigned: Boolean = false,
+    /** A cap on the picture the player may choose (0 = none): a quarter-screen Multi-View tile has no use for a 4K stream. */
+    val maxVideoWidth: Int = 0, val maxVideoHeight: Int = 0)
 
 data class EngineRequest(val url: String, val headers: Map<String, String>, val startMs: Long, val live: Boolean, val buffering: BufferingMode, val options: EngineOptions = EngineOptions())
 
