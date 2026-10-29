@@ -14,6 +14,22 @@ enum class SearchKind(val title: String) {
     CHANNEL("Live TV"), MOVIE("Movies"), SERIES("Series"), EPISODE("Episodes"), PROGRAMME("TV Guide"), FOLDER("Folders"), COLLECTION("Collections")
 }
 
+/** The order the groups of results are shown in, on every device: films and series first, then channels, then the rest. */
+val SearchResultOrder = listOf(SearchKind.MOVIE, SearchKind.SERIES, SearchKind.CHANNEL, SearchKind.EPISODE, SearchKind.PROGRAMME, SearchKind.FOLDER, SearchKind.COLLECTION)
+
+/** The short label that says what kind of thing a result is. */
+fun SearchKind.badge(): String = when (this) {
+    SearchKind.CHANNEL -> "LIVE"; SearchKind.MOVIE -> "MOVIE"; SearchKind.SERIES -> "SERIES"; SearchKind.EPISODE -> "EPISODE"
+    SearchKind.PROGRAMME -> "GUIDE"; SearchKind.FOLDER -> "FOLDER"; SearchKind.COLLECTION -> "COLLECTION"
+}
+
+/** The result whose title is exactly what was typed, if there is one. It is shown first, ahead of everything else. */
+fun GlobalResults.exactMatch(query: String): SearchItem? {
+    val want = SearchText.normalize(query.trim())
+    if (want.isEmpty()) return null
+    return SearchResultOrder.flatMap { byKind[it].orEmpty() }.firstOrNull { SearchText.normalize(it.title) == want }
+}
+
 /** Where a search was started: from Home (everything), or from Live TV, Movies or Series (only that kind, shown as tiles). */
 enum class SearchTab(val label: String, val kinds: Set<SearchKind>) {
     ALL("All", SearchKind.entries.toSet()),

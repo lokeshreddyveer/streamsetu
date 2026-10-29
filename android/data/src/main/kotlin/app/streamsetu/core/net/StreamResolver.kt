@@ -32,6 +32,9 @@ class StreamResolver(private val sources: SourceRepository, private val credenti
 
     /** Extra request headers the person set for a connection, one "Name: value" per line. */
     fun customHeadersText(sourceId: String): String = headerPrefs.getString("h.$sourceId", "").orEmpty()
+    /** Trusting this connection's own certificate (a provider on a self-signed address). Off unless the person turns it on for that connection. */
+    override fun allowsSelfSignedTls(sourceId: String): Boolean = headerPrefs.getBoolean("tls.$sourceId", false)
+    fun setAllowsSelfSignedTls(sourceId: String, on: Boolean) { headerPrefs.edit().apply { if (on) putBoolean("tls.$sourceId", true) else remove("tls.$sourceId") }.apply() }
     fun setCustomHeaders(sourceId: String, text: String) { headerPrefs.edit().apply { if (text.isBlank()) remove("h.$sourceId") else putString("h.$sourceId", text.trim()) }.apply() }
 
     override suspend fun headers(sourceId: String): Map<String, String> {

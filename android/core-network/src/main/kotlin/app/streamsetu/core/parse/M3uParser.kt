@@ -31,7 +31,7 @@ object M3uParser {
         var info: String? = null
         var groupOverride: String? = null
         for (raw in lines) {
-            val line = raw.trim().removePrefix("﻿")
+            val line = raw.trim().removePrefix("\uFEFF")
             when {
                 line.isEmpty() -> {}
                 line.startsWith("#EXTM3U", ignoreCase = true) -> guideAttr.find(line)?.groupValues?.get(1)?.split(',', ' ')?.firstOrNull { it.isNotBlank() }?.let(onHeader)

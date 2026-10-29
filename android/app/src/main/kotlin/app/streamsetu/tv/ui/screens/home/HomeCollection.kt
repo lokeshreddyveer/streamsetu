@@ -61,7 +61,7 @@ fun HomeCollectionScreen(id: String, c: AppContainer, nav: Navigator, vm: HomeVi
             }
             val empty = if (id == "continue") resume.isEmpty() else items.isEmpty()
             if (empty) Box(Modifier.fillMaxSize(), Alignment.Center) { Label(when (id) { "favorites" -> "No favorites yet. Hold OK on any title or channel to add one."; "later" -> "Nothing saved for later."; "recent" -> "Nothing watched yet."; else -> "Nothing to continue." }, Tokens.body, Tokens.textSecondary) }
-            else LazyVerticalGrid(GridCells.Adaptive(if (id == "continue") 220.dp else 130.dp), Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 40.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            else LazyVerticalGrid(GridCells.Adaptive(if (id == "continue") 220.dp else 130.dp), Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 40.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (id == "continue") items(resume, key = { "c" + it.playable.id }) { r ->
                     val t: HomeTarget? = when (val p = r.playable) { is app.streamsetu.core.model.MoviePlayable -> HomeTarget.Film(p.movie); is EpisodePlayable -> HomeTarget.Episode(p.series, p); else -> null }
                     LandscapeCard(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, progress = if (r.isNew) 0f else r.progress.fraction, badge = if (r.isNew) "NEW" else null, width = 220.dp, onLongClick = t?.let { { longOn(it, RowKind.CONTINUE) } })

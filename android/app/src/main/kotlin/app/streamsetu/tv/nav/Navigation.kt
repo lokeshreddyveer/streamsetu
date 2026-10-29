@@ -59,6 +59,22 @@ class TabFocusMemory {
     }
 }
 
+/**
+ * What the Search page held when the person left it (to open a title, or to visit another screen): the words, the type chosen, where the list was scrolled, which result had the
+ * remote and what the AI had suggested. Kept for as long as the person stays in the same library, as the same profile and in the same search scope; anything else starts empty.
+ */
+class SearchSession {
+    private var key: String? = null
+    var query = ""; var type: app.streamsetu.core.model.ContentKind? = null; var typeSet = false
+    var scrollIndex = 0; var scrollOffset = 0
+    var focusedId: String? = null
+    var aiFor: String? = null; var aiFound: List<app.streamsetu.tv.FoundTitle> = emptyList(); var aiNote: String? = null; var aiAsked = false
+
+    /** The session for [k]; a different key (another library, profile or scope) throws away what was held. */
+    fun open(k: String): SearchSession { if (key != k) { clear(); key = k }; return this }
+    fun clear() { key = null; query = ""; type = null; typeSet = false; scrollIndex = 0; scrollOffset = 0; focusedId = null; aiFor = null; aiFound = emptyList(); aiNote = null; aiAsked = false }
+}
+
 /** How the app-wide sidebar is shown. HIDDEN takes no width and cannot take focus. */
 enum class SidebarMode { HIDDEN, EXPANDED }
 
@@ -75,7 +91,9 @@ class Navigator {
     /** What the open search covers, and the screen it was opened from (Back returns there). */
     var searchScope by mutableStateOf(app.streamsetu.core.data.repo.SearchTab.ALL)
     var searchFrom by mutableStateOf(Tab.HOME)
-    fun openSearch(scope: app.streamsetu.core.data.repo.SearchTab = app.streamsetu.core.data.repo.SearchTab.ALL) { searchScope = scope; searchFrom = if (tab == Tab.SEARCH) searchFrom else tab; tab = Tab.SEARCH }
+    /** True when Search was opened from another page (its own Search button): Back then returns there. Search chosen in the sidebar is a page of its own and Back opens the sidebar. */
+    var searchTemporary by mutableStateOf(false)
+    fun openSearch(scope: app.streamsetu.core.data.repo.SearchTab = app.streamsetu.core.data.repo.SearchTab.ALL) { searchScope = scope; searchFrom = if (tab == Tab.SEARCH) searchFrom else tab; if (tab != Tab.SEARCH) searchTemporary = true; tab = Tab.SEARCH }
     val overlays = mutableStateListOf<Overlay>()
     /** Set when something elsewhere (a Home tile) wants a section opened on one folder; the section takes it when it appears. */
     var pendingFolder: Pair<app.streamsetu.core.model.ContentKind, String>? by mutableStateOf(null)
@@ -86,6 +104,27 @@ class Navigator {
     /** Set by Home so Movies or Series opens on one of the person's collections. */
     var pendingCollection: Triple<app.streamsetu.core.model.ContentKind, String, Boolean>? by mutableStateOf(null)
     fun openCollection(kind: app.streamsetu.core.model.ContentKind, id: String) { pendingCollection = Triple(kind, id, true); go(if (kind == app.streamsetu.core.model.ContentKind.SERIES) Tab.SERIES else Tab.MOVIES) }
+
+    /** Set when Movies or Series was chosen in the sidebar: the page opens its folder panel at once and hides the sidebar; choosing a folder hides the panel and shows the content. */
+    var foldersRequested by mutableStateOf(false)
+    /** True while a page's folder column is open or about to open: the remote belongs to it, so the shell does not hand it to the page's first item. */
+    var foldersHoldFocus by mutableStateOf(false)
+    private var foldersOwner: Any? = null
+    /** A page keeps (or gives up) the remote for its folder column. Only the page that holds the claim can give it up, so a page that is leaving cannot cancel the claim of the one that is arriving. */
+    fun holdFolders(owner: Any, hold: Boolean) { if (hold) { foldersOwner = owner; foldersHoldFocus = true } else if (foldersOwner === owner) { foldersOwner = null; foldersHoldFocus = false } }
+
+    /** False while the remote belongs to a folder column (asked for or showing): nothing may hand it back to the page's content. */
+    val contentRestoreAllowed get() = !(foldersHoldFocus || foldersRequested)
+
+    /**
+     * A destination was chosen in the main sidebar. For Movies, Series and Live TV the folder column is claimed before the page changes (both flags are set first), so the page opens
+     * with the folders showing and the remote on the selected folder, and no first item of the content ever takes the remote, even for a moment.
+     */
+    fun choose(t: Tab) {
+        val hasFolders = t == Tab.MOVIES || t == Tab.SERIES || t == Tab.LIVE
+        foldersOwner = null; foldersRequested = hasFolders; foldersHoldFocus = hasFolders
+        go(t)
+    }
 
     /** True while a page other than Home has asked for the sidebar (Back from its root). */
     var sidebarRevealed by mutableStateOf(false)
@@ -109,9 +148,16 @@ class Navigator {
 
     /** What the remote was on in each screen, so coming back to it (from the rail, a detail page or the player) finds the same item. */
     val memory = TabFocusMemory()
+    /** The Search page's words, results position and focus, kept while moving between screens (see [SearchSession]). */
+    val search = SearchSession()
+    /** The season and episode the remote was on, for each series page, so coming back from playing an episode finds them again (the page itself is gone while the player is open). */
+    val seriesView = HashMap<String, Pair<Int?, String?>>()
 
     /** True while the fullscreen player was opened from the Live TV browser: Back then leaves the stream playing in the preview. */
     var liveFullscreen = false
+
+    /** Where the Live TV preview sits on screen (in the window), published by that screen while it is showing. The one video surface (see PersistentVideo) is placed here. Null when there is no preview. */
+    var videoBounds by mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
 
     val top: Overlay? get() = overlays.lastOrNull()
     var lastClosedAt = 0L
@@ -121,7 +167,8 @@ class Navigator {
     fun open(o: Overlay) { if (overlays.isEmpty()) returnFocus = app.streamsetu.tv.ui.components.FocusMemory.last; overlays += o }
     fun close() { if (overlays.isNotEmpty()) { overlays.removeAt(overlays.lastIndex); lastClosedAt = System.currentTimeMillis() } }
 
-    fun go(t: Tab) { tab = t; sidebarRevealed = false; sidebarFocused = false; contentFocusTick++ }
+    /** A section chosen from the rail. Search opened this way searches everything; the Search entry points of Movies, Series and Live TV use [openSearch] with their own scope. */
+    fun go(t: Tab) { if (t == Tab.SEARCH) searchScope = app.streamsetu.core.data.repo.SearchTab.ALL; searchTemporary = false; tab = t; sidebarRevealed = false; sidebarFocused = false; contentFocusTick++ }
 
     /**
      * The remote moved onto or off the sidebar. Losing focus does not hide the sidebar by itself (focus is lost for an instant while it moves between two entries,
@@ -143,23 +190,27 @@ class Navigator {
     fun openSettingsFromChooser() { settingsFromChooser = true; base = Base.Shell; tab = Tab.SETTINGS; sidebarRevealed = false }
 
     /** Another library was opened while a page is showing: stay on the page, drop what pointed into the old library (open titles, remembered items). */
-    fun switchLibrary() { overlays.clear(); memory.clear(); sidebarRevealed = false; sidebarFocused = false; contentFocusTick++ }
+    fun switchLibrary() { overlays.clear(); memory.clear(); search.clear(); seriesView.clear(); sidebarRevealed = false; sidebarFocused = false; contentFocusTick++ }
 
     fun enterLibrary() { overlays.clear(); base = Base.Shell; tab = Tab.HOME; sidebarRevealed = false; sidebarFocused = false }
-    fun toChooser() { settingsFromChooser = false; overlays.clear(); base = Base.ChooseLibrary; sidebarRevealed = false; sidebarFocused = false; memory.clear() }
+    fun toChooser() { settingsFromChooser = false; overlays.clear(); base = Base.ChooseLibrary; sidebarRevealed = false; sidebarFocused = false; memory.clear(); search.clear(); seriesView.clear() }
 
     /** Reveals the sidebar and sends the remote to it (Back from a page's root). */
     fun revealSidebar() { sidebarRevealed = true; sidebarFocusTick++ }
+
+    /** Set by a page that has a level of its own to go back to before the sidebar (returns true when it used the press up). */
+    var backHook: (() -> Boolean)? = null
 
     /** True when back was used up inside the app; false when the app should close. One press, one transition. */
     fun back(): Boolean = when {
         overlays.isNotEmpty() -> { close(); true }
         base is Base.Setup || base is Base.Combined -> { base = Base.ChooseLibrary; true }
         base == Base.Shell && settingsFromChooser && tab == Tab.SETTINGS && !sidebarFocused -> { settingsFromChooser = false; toChooser(); true }
-        base == Base.Shell && !sidebarFocused && tab == Tab.SEARCH -> { go(searchFrom.takeIf { it != Tab.SEARCH } ?: Tab.HOME); true }   // Search goes back to the page it was opened from
+        base == Base.Shell && !sidebarFocused && tab == Tab.SEARCH && searchTemporary -> { go(searchFrom.takeIf { it != Tab.SEARCH } ?: Tab.HOME); true }   // Search opened from another page goes back to it
+        base == Base.Shell && !sidebarFocused && tab == Tab.SEARCH -> { revealSidebar(); true }                                       // Search chosen in the sidebar is a page of its own: Back opens the sidebar
+        base == Base.Shell && !sidebarFocused && backHook?.invoke() == true -> true                                                   // the page's own level first (Movies and Series: the folders)
         base == Base.Shell && !sidebarFocused -> { revealSidebar(); true }                                                            // a page: the rail first
-        base == Base.Shell && tab != Tab.HOME -> { go(Tab.HOME); true }                                                              // the rail: on to Home (Right gives the page back instead)
-        base == Base.Shell -> { toChooser(); true }                                                                                  // Home: to the library chooser, never out of the app
+        base == Base.Shell -> { closeSidebar(); true }                                                                                // the rail: Back closes it and the remote returns to the page (choosing Home is how to go Home)
         else -> false
     }
 }

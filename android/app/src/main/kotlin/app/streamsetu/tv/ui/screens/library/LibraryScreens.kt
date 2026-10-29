@@ -86,6 +86,8 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
     val initial = remember(list) { list?.let { l -> l.firstOrNull { it.id == vm.lastUsedId && it.usable } ?: l.firstOrNull { it.usable } ?: l.firstOrNull() }?.id }
     val initialFocus = remember { FocusRequester() }
     val enterButton = remember { FocusRequester() }
+    val emptyAdd = remember { FocusRequester() }          // the one button of the empty screen
+    LaunchedEffect(list?.isEmpty()) { if (list != null && list.isEmpty()) { delay(150); runCatching { emptyAdd.requestFocus() } } }
     val listFocus = remember { FocusRequester() }       // the library row the remote last stood on: Left from the details goes back to it
     var focused by remember { mutableStateOf(false) }
     var addMenu by remember { mutableStateOf(false) }
@@ -95,7 +97,7 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
 
     Row(Modifier.fillMaxSize().background(Tokens.background)) {
         // Left: the libraries.
-        Column(Modifier.weight(0.35f).fillMaxHeight().background(Tokens.panel).padding(start = Tokens.safeHorizontal, end = 20.dp, top = Tokens.safeVertical, bottom = Tokens.safeVertical)) {
+        Column(Modifier.weight(0.38f).fillMaxHeight().background(Tokens.panel).padding(start = Tokens.safeHorizontal, end = 20.dp, top = Tokens.safeVertical, bottom = Tokens.safeVertical)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)))
                 Label("Choose Library", Tokens.pageTitle, Tokens.text, FontWeight.Bold)
@@ -105,19 +107,22 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
                 items(ordered, key = { it.id }) { e ->
                     LibraryRow(e, e.id == initial, initialFocus, enterButton, nav, vm, onPreview = { previewId = e.id; focused = true }, current = if (e.id == (preview?.id ?: initial)) listFocus else null)
                 }
+                // Add Connection is always the last item of the list. Managing a library is on its own details (the Actions button) and on a long press, not a second list entry.
                 item(key = "add") { ListAction("Add Connection", Icons.Filled.Add, enterButton) { addMenu = true } }
-                item(key = "manage") { ListAction("Manage Connections", Icons.Filled.Tune, enterButton, enabled = preview != null) { preview?.let { nav.open(Overlay.ManageLibrary(it)) } } }
             }
-            Spacer(Modifier.height(6.dp))
+            // Settings stays at the lower left, apart from the list by a line.
+            Box(Modifier.padding(vertical = 8.dp).fillMaxWidth().height(1.dp).background(Tokens.line))
             ListAction("Settings", Icons.Filled.Settings, enterButton) { nav.openSettingsFromChooser() }
         }
         // Right: what the library under the remote is.
-        Box(Modifier.weight(0.65f).fillMaxHeight().padding(horizontal = 56.dp, vertical = Tokens.safeVertical)) {
+        Box(Modifier.weight(0.62f).fillMaxHeight().padding(horizontal = 56.dp, vertical = Tokens.safeVertical)) {
             Box(Modifier.align(Alignment.TopEnd)) { Clock() }
             androidx.compose.animation.Crossfade(preview, Modifier.fillMaxSize(), animationSpec = androidx.compose.animation.core.tween(180), label = "libraryDetails") { e ->
                 if (e == null) Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
-                    Label("Welcome", Tokens.hero, Tokens.text, FontWeight.Bold)
+                    Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(72.dp).clip(RoundedCornerShape(18.dp)))
+                    Label("Welcome", Tokens.hero, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
                     Label("Add a connection to get started.", Tokens.body, Tokens.textSecondary, modifier = Modifier.padding(top = 6.dp))
+                    TvButton("Add Connection", { addMenu = true }, Modifier.padding(top = 24.dp).focusRequester(emptyAdd), icon = Icons.Filled.Add, primary = true)
                 } else LibraryDetails(e, enterButton, listFocus, nav, vm)
             }
         }
@@ -183,14 +188,15 @@ private fun LibraryDetails(e: LibraryEntry, enter: FocusRequester, back: FocusRe
             Box(Modifier.size(9.dp).background(healthColor(e), CircleShape))
             Label(healthText(e), Tokens.body, Tokens.textSecondary, maxLines = 2)
         }
-        if (e.kind != LibraryEntry.Kind.UNFINISHED) Row(Modifier.padding(top = 22.dp), horizontalArrangement = Arrangement.spacedBy(36.dp)) {
+        if (e.kind != LibraryEntry.Kind.UNFINISHED) Row(Modifier.padding(top = 22.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Stat("Channels", e.channelCount); Stat("Movies", e.movieCount); Stat("Series", e.seriesCount)
         }
         if (e.kind == LibraryEntry.Kind.CONNECTION) Label("Last read  ·  " + lastSync(e.lastSyncAt), Tokens.small, Tokens.textTertiary, modifier = Modifier.padding(top = 16.dp))
         if (e.health == LibraryEntry.Health.LAST_READ_FAILED) Label("Opening uses what is saved on this device.", Tokens.small, Tokens.warning, modifier = Modifier.padding(top = 4.dp))
-        Row(Modifier.padding(top = 28.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            val open = { if (e.kind == LibraryEntry.Kind.UNFINISHED) nav.base = Base.Setup(typeOf(e), e.sourceIds.first()) else vm.open(e) { nav.enterLibrary() } }
-            TvButton(if (e.kind == LibraryEntry.Kind.UNFINISHED) "Continue Setup" else "Enter Library", { open() }, Modifier.focusRequester(enter).testTag("enter-library"), icon = Icons.Filled.PlayArrow, primary = true)
+        // One dominant action, then the management actions in a quieter row of their own.
+        val open = { if (e.kind == LibraryEntry.Kind.UNFINISHED) nav.base = Base.Setup(typeOf(e), e.sourceIds.first()) else vm.open(e) { nav.enterLibrary() } }
+        TvButton(if (e.kind == LibraryEntry.Kind.UNFINISHED) "Continue Setup" else "Enter Library", { open() }, Modifier.padding(top = 28.dp).widthIn(min = 260.dp).focusRequester(enter).testTag("enter-library"), icon = Icons.Filled.PlayArrow, primary = true)
+        Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             TvButton("Actions", { nav.open(Overlay.ManageLibrary(e)) }, icon = Icons.Filled.Tune)
             if (e.kind != LibraryEntry.Kind.UNFINISHED) TvButton("Details", { if (e.kind == LibraryEntry.Kind.COMBINED) nav.base = Base.Combined(e) else nav.base = Base.Setup(typeOf(e), e.sourceIds.first()) }, icon = Icons.Filled.Info)
         }
@@ -199,7 +205,7 @@ private fun LibraryDetails(e: LibraryEntry, enter: FocusRequester, back: FocusRe
 
 @Composable
 private fun Stat(title: String, n: Int) {
-    Column { Label("%,d".format(n), Tokens.display, Tokens.text, FontWeight.Bold); Label(title, Tokens.small, Tokens.textSecondary) }
+    Column(Modifier.background(Tokens.card, RoundedCornerShape(Tokens.radius)).padding(horizontal = 18.dp, vertical = 12.dp)) { Label("%,d".format(n), Tokens.heading, Tokens.text, FontWeight.Bold); Label(title, Tokens.caption, Tokens.textSecondary) }
 }
 
 @Composable
@@ -291,7 +297,7 @@ fun WelcomeScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(150); runCatching { first.requestFocus() } }
     Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_wordmark), null, Modifier.height(120.dp))
+        Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_wordmark), null, Modifier.height(220.dp))
         Spacer(Modifier.height(6.dp))
         Label("Welcome to StreamSetu", Tokens.display, Tokens.text, FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
@@ -338,7 +344,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
     val context = LocalContext.current
     LaunchedEffect(draftId) {
         vm.resetTest()
-        if (draftId != null) vm.draft(draftId)?.let { (s, pw) -> form = LibraryViewModel.Form(s.name, s.address, s.username.orEmpty(), pw.orEmpty(), s.userAgent.orEmpty(), vm.headersFor(draftId)) }
+        if (draftId != null) vm.draft(draftId)?.let { (s, pw) -> form = LibraryViewModel.Form(s.name, s.address, s.username.orEmpty(), pw.orEmpty(), s.userAgent.orEmpty(), vm.headersFor(draftId), vm.trustsCertificate(draftId)) }
         delay(150); runCatching { first.requestFocus() }
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -449,18 +455,29 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
                 TvButton("Choose File…", { picker.launch(arrayOf("*/*")) }, icon = Icons.Filled.Folder)
             }
         }
+        // User-Agent, headers and the certificate choice are for the few providers that need them, so they are folded away; the basic form is just the address and the login.
         if (type != SourceType.LOCAL_FILE && type != SourceType.LOCAL_FOLDER) {
-            TvTextField(form.userAgent, { form = form.copy(userAgent = it) }, "User-Agent (optional, if your provider needs one)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
-            TvTextField(form.headers, { form = form.copy(headers = it) }, "Extra headers (optional): Name: value || Name: value", Modifier.widthIn(max = 640.dp).fillMaxWidth())
+            var advanced by remember { mutableStateOf(form.userAgent.isNotBlank() || form.headers.isNotBlank() || form.trustCertificate) }
+            TvButton(if (advanced) "Hide advanced options" else "Advanced options", { advanced = !advanced }, icon = if (advanced) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore)
+            if (advanced) {
+                TvTextField(form.userAgent, { form = form.copy(userAgent = it) }, "User-Agent (optional)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
+                TvTextField(form.headers, { form = form.copy(headers = it) }, "Extra headers (optional): Name: value || Name: value", Modifier.widthIn(max = 640.dp).fillMaxWidth())
+                TvButton(if (form.trustCertificate) "Trust this provider's own certificate: on" else "Trust this provider's own certificate: off", { form = form.copy(trustCertificate = !form.trustCertificate) }, icon = if (form.trustCertificate) Icons.Filled.LockOpen else Icons.Filled.Lock)
+                Label(if (form.trustCertificate) "Its certificate is not checked, so anyone on the network could pose as it." else "Only if streams stop with a certificate error (MPV only).", Tokens.small, if (form.trustCertificate) Tokens.danger else Tokens.textTertiary, maxLines = 2, modifier = Modifier.widthIn(max = 640.dp))
+            }
         }
         if (hasPassword) TvButton(if (reveal) "Hide password" else "Show password", { reveal = !reveal }, icon = if (reveal) Icons.Filled.VisibilityOff else Icons.Filled.Visibility)
-        (test as? LibraryViewModel.Test.Failed)?.let { Label(it.message, Tokens.body, Tokens.danger, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp)) }
+        (test as? LibraryViewModel.Test.Failed)?.let { TvStatusState("The connection did not work", Modifier.widthIn(max = 640.dp), detail = it.message, icon = Icons.Filled.ErrorOutline) }
         message?.let { Label(it, Tokens.body, Tokens.textSecondary) }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (test is LibraryViewModel.Test.Running) { Spinner(); Label("Testing the connection and reading the catalog. This can take a minute for big lists…", Tokens.body, Tokens.textSecondary) }
-            else {
-                if (type == SourceType.XTREAM || type == SourceType.M3U) TvButton("Use my phone", { phoneOpen = true }, icon = Icons.Filled.PhoneAndroid)
+        if (test is LibraryViewModel.Test.Running) Row(Modifier.fillMaxWidth().widthIn(max = 640.dp).background(Tokens.card, RoundedCornerShape(Tokens.radius)).padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Spinner(); Label("Testing the connection and reading the catalog. This can take a minute for big lists…", Tokens.body, Tokens.textSecondary, maxLines = 3)
+        } else {
+            // The main action first, and on a row with the phone, which is the easier way to type a login; saving a draft and cancelling are a quieter row below it.
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 TvButton("Test Connection", { if (canTest) { message = null; vm.test(type, id, form) } else message = "Fill in the details first." }, icon = Icons.Filled.PlayArrow, primary = true)
+                if (type == SourceType.XTREAM || type == SourceType.M3U) TvButton("Use my phone", { phoneOpen = true }, icon = Icons.Filled.PhoneAndroid)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 TvButton("Save as Draft", { vm.saveDraft(type, id, form) { saved -> id = saved; message = "Saved. Finish it any time from Choose Your Library." } })
                 TvButton("Cancel", { nav.base = Base.ChooseLibrary })
             }
@@ -657,7 +674,7 @@ fun LogoReveal(reduced: Boolean, onDone: () -> Unit) {
     }
     Box(Modifier.fillMaxSize().background(Color.Black).focusRequester(root).focusable().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) { onDone(); true } else false }, Alignment.Center) {
         Column(Modifier.graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 18.dp.toPx(); scaleX = drift.value; scaleY = drift.value }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_wordmark), null, Modifier.height(96.dp))
+            Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_wordmark), null, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.1f; scaleY = 1.1f }, contentScale = androidx.compose.ui.layout.ContentScale.Crop)
         }
     }
 }

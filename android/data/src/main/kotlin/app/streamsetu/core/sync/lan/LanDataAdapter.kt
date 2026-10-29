@@ -181,7 +181,9 @@ class LanDataAdapter(
                 if (r.deleted) { db.execSQL("DELETE FROM collections WHERE id = ?", arrayOf(id)); db.execSQL("DELETE FROM collection_items WHERE collectionId = ?", arrayOf(id)) }
                 else {
                     val name = v?.get("name")?.jsonPrimitive?.contentOrNull ?: "Collection"; val scope = (v?.get("scope")?.jsonPrimitive?.contentOrNull ?: "movie").uppercase()
-                    db.execSQL("INSERT INTO collections(id, name, scope, createdAt) VALUES(?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name, scope = excluded.scope", arrayOf(id, name, scope, r.ts))
+                    // update, then insert when it was not there (no upsert: that needs SQLite 3.24, newer than the oldest supported Android and Fire OS have)
+                    db.execSQL("UPDATE collections SET name = ?, scope = ? WHERE id = ?", arrayOf(name, scope, id))
+                    db.execSQL("INSERT OR IGNORE INTO collections(id, name, scope, createdAt) VALUES(?, ?, ?, ?)", arrayOf(id, name, scope, r.ts))
                 }
                 log(db, "col", id, r.ts, r.deleted); return true
             }

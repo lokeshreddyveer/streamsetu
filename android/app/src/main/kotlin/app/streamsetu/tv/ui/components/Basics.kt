@@ -1,5 +1,11 @@
 package app.streamsetu.tv.ui.components
 
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.layout
+import kotlinx.coroutines.flow.stateIn
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -103,7 +109,7 @@ fun Modifier.railOnLeft(): Modifier {
         .focusGroup()
         .onKeyEvent { e ->
             if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == androidx.compose.ui.input.key.Key.DirectionLeft) {
-                if (!focus.moveFocus(androidx.compose.ui.focus.FocusDirection.Left)) reveal()
+                if (!runCatching { focus.moveFocus(androidx.compose.ui.focus.FocusDirection.Left) }.getOrDefault(false)) reveal()          // a focus target still being attached must never crash the app
                 true
             } else false
         }
@@ -161,6 +167,10 @@ fun Focusable(
     hairline: Boolean = false,
     ring: Color = Color.Unspecified,
     ringWidth: androidx.compose.ui.unit.Dp = 2.dp,
+    /** The dark band beside the ring that keeps it visible on bright artwork; a button on the plain page does not need it. */
+    ringBand: Boolean = true,
+    /** False when focus is shown by the fill alone (the hero buttons turn white): no ring is drawn. */
+    showRing: Boolean = true,
     onFocus: (Boolean) -> Unit = {},
     onLongClick: (() -> Unit)? = null,
     /** False when the content already has the shape's corners baked in (a poster whose picture was rounded when it was decoded): no live clip is made, which a small GPU pays for on every frame. */
@@ -176,18 +186,20 @@ fun Focusable(
     val ringColor = if (ring != Color.Unspecified) ring else LocalFocusRing.current.takeIf { it != Color.Unspecified } ?: Tokens.focusRing
     val enabled = LocalFocusEnabled.current
     val own = remember { FocusRequester() }
+    val traceBounds = remember { arrayOfNulls<androidx.compose.ui.geometry.Rect>(1) }
+    // A card that is switched off (the page behind the folders, the page behind a sidebar) never shows focus: the ring and the focused look are drawn only while it is enabled (no effect per card, which was slow on long lists).
     val inOverlay = LocalInOverlay.current
     val inSidebar = LocalInSidebar.current
     // One number (0 = at rest, 1 = focused) drives the scale, the fill and the ring, so a card costs one animation instead of three. It is read only while drawing, so a focus change
     // redraws this one card and recomposes nothing; a new target while it is moving continues from where it is (nothing queues up).
     val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
     val progress = androidx.compose.animation.core.animateFloatAsState(
-        if (focused) 1f else 0f,
+        if (focused && enabled) 1f else 0f,
         if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.FOCUS, easing = app.streamsetu.core.ui.motion.Motion.Standard), label = "focus",
     )
     Box(
         modifier
-            .graphicsLayer { val sc = 1f + (scaleOnFocus - 1f) * progress.value; scaleX = sc; scaleY = sc }
+            .graphicsLayer { val sc = 1f + ((if (scaleOnFocus in 1.001f..1.2f) 1f + (scaleOnFocus - 1f) * 1.5f else scaleOnFocus) - 1f) * progress.value; scaleX = sc; scaleY = sc }
             .then(if (clipContent) Modifier.clip(shape) else Modifier)
             // A card whose fill is transparent in both states (a poster: the picture is its fill) draws no fill at all, so it is not painted over twice.
             .then(if (container.alpha == 0f && focusedContainer.alpha == 0f) Modifier else Modifier.drawBehind { drawRect(androidx.compose.ui.graphics.lerp(container, focusedContainer, progress.value)) })
@@ -196,14 +208,24 @@ fun Focusable(
                 drawContent()
                 if (hairline) strokeOutline(shape.createOutline(size, layoutDirection, this), Tokens.line, 1.dp.toPx() * 2)
                 val a = progress.value
-                if (a > 0.01f) {
+                if (a > 0.01f && showRing) {
+                    // Focus is never only a change of size: a ring of at least 3 dp, with a dark band beside it so it stands out on bright artwork and on a poor screen.
                     val c = if (highContrast) Color.White else ringColor
-                    strokeOutline(shape.createOutline(size, layoutDirection, this), c.copy(alpha = c.alpha * a), (if (highContrast) 3.dp else ringWidth).toPx() * (if (clipContent) 2 else 1))
+                    val outline = shape.createOutline(size, layoutDirection, this)
+                    val ring = maxOf(ringWidth, 3.dp)
+                    val k = if (clipContent) 2 else 1
+                    if (ringBand) strokeOutline(outline, Color.Black.copy(alpha = 0.55f * a), (ring + 3.dp).toPx() * k)
+                    strokeOutline(outline, c.copy(alpha = c.alpha * a), ring.toPx() * k)
                 }
             }
+            .then(if (app.streamsetu.tv.trace.SSTrace.on) Modifier.onGloballyPositioned { traceBounds[0] = it.boundsInWindow() } else Modifier)
             .focusRequester(own)
-            .focusProperties { canFocus = enabled }
+            // A switched-off card can no longer take focus, but a card that HOLDS focus is left able to keep it until the remote has moved on: it is then told that focus left in the normal way (disabling it while it
+            // held focus left it marked as focused for good, beside the real owner). Only the one card that holds focus is affected.
+            .focusProperties { canFocus = enabled || focused }
             .onFocusChanged {
+                if (!it.isFocused && focused) app.streamsetu.tv.trace.SSTrace.v { traceBounds[0]?.let { b -> "blur l=${b.left.toInt()} t=${b.top.toInt()} r=${b.right.toInt()} b=${b.bottom.toInt()} now=${android.os.SystemClock.uptimeMillis()}" } ?: "blur unknown now=${android.os.SystemClock.uptimeMillis()}" }
+                if (it.isFocused) app.streamsetu.tv.trace.SSTrace.v { traceBounds[0]?.let { b -> "focus l=${b.left.toInt()} t=${b.top.toInt()} r=${b.right.toInt()} b=${b.bottom.toInt()} now=${android.os.SystemClock.uptimeMillis()}" } ?: "focus unknown now=${android.os.SystemClock.uptimeMillis()}" }
                 if (it.isFocused && !focused && focusSound != null) app.streamsetu.tv.UISound.focusMoved(focusSound)
                 focused = it.isFocused
                 if (it.isFocused) FocusMemory.focused = own else if (FocusMemory.focused === own) FocusMemory.focused = null
@@ -215,13 +237,14 @@ fun Focusable(
                 if (it.isFocused && enabled && !inOverlay) FocusMemory.last = own
             }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = { if (selectSound != null) app.streamsetu.tv.UISound.play(selectSound); onClick() }),
-    ) { content(focused) }
+    ) { content(focused && enabled) }
 }
 
 @Composable
 fun TvButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, primary: Boolean = false, onFocus: (Boolean) -> Unit = {}) {
+    // One clean ring around the button: white on the dark ones, the accent colour on the white one (a white ring would vanish on it). No second band beside it.
     Focusable(onClick, modifier, onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = if (primary) Color(0xFFE9ECF0) else Tokens.elevated,
-        focusedContainer = if (primary) Color.White else Tokens.focusedSurface, scaleOnFocus = 1.04f) { _ ->
+        focusedContainer = if (primary) Color.White else Tokens.focusedSurface, scaleOnFocus = 1.04f, ring = if (primary) Tokens.accent else Color.White, ringBand = false) { _ ->
         val ink = if (primary) Tokens.onBright else Tokens.text
         Row(Modifier.padding(horizontal = 18.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (icon != null) Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(ink))
@@ -279,6 +302,27 @@ fun BoxScope.WatchedTick(size: Dp = 20.dp) {
     }
 }
 
+/** One clock for everything that shows the time or "what is on now": it ticks once a minute, on the minute, and only while something on screen is reading it and the app is started. */
+object AppClock {
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
+    val minute: kotlinx.coroutines.flow.StateFlow<Long> = kotlinx.coroutines.flow.flow {
+        while (true) { val t = System.currentTimeMillis(); emit(t); kotlinx.coroutines.delay(60_000 - t % 60_000) }
+    }.stateIn(scope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(0), System.currentTimeMillis())
+}
+
+@Composable
+fun rememberMinute(): androidx.compose.runtime.State<Long> = AppClock.minute.collectAsStateWithLifecycle()
+
+/** Runs [block] now and then every [everyMs] while this part of the screen is shown and the app is started; it stops when either ends. */
+@Composable
+fun PollWhileShown(everyMs: Long, key: Any? = Unit, block: suspend () -> Unit) {
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val latest by androidx.compose.runtime.rememberUpdatedState(block)
+    LaunchedEffect(key, everyMs) {
+        owner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) { while (true) { latest(); kotlinx.coroutines.delay(everyMs) } }
+    }
+}
+
 /** A picture request with the card's corners baked into the decoded bitmap (cached, done once per picture), so no clip is needed while it scrolls. */
 @Composable
 private fun roundedPicture(url: String?, radius: Dp): Any? {
@@ -309,7 +353,7 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
                 LaunchedEffect(Unit) { fade.animateTo(1f, tween(160)) }
                 Column(Modifier.align(Alignment.BottomStart).graphicsLayer { alpha = fade.value }.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6000000)))).padding(start = 10.dp, end = 10.dp, top = 36.dp, bottom = 10.dp)) {
                     Label(title, Tokens.small, Tokens.text, FontWeight.Bold, maxLines = 2)
-                    if (subtitle != null) Label(subtitle, Tokens.caption, Tokens.textSecondary, maxLines = 1)
+                    if (subtitle != null) Label(subtitle, Tokens.caption, Tokens.textSecondary, maxLines = 2)          // the reason ("Same genre") is shown whole
                 }
             }
         }
@@ -405,4 +449,28 @@ fun FadeIn(key: Any, modifier: Modifier = Modifier, content: @Composable () -> U
     val a = remember(key) { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0f) }
     LaunchedEffect(key) { if (!reduced) a.animateTo(1f, androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.SCREEN, easing = app.streamsetu.core.ui.motion.Motion.Standard)) }
     Box(modifier.graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 12.dp.toPx() }) { content() }
+}
+
+/**
+ * Lets a horizontal row start [by] to the left of where it is placed, so a card that grows on focus (and its frame and glow) is not cut off at the row's left edge. The row is wider by [by]
+ * and shifted left by it; give its content the same amount of start padding so the first card still sits where it did.
+ */
+fun Modifier.bleedStart(by: androidx.compose.ui.unit.Dp): Modifier = this.layout { measurable, constraints ->
+    val d = by.roundToPx()
+    val p = measurable.measure(if (constraints.hasBoundedWidth) constraints.copy(minWidth = 0, maxWidth = constraints.maxWidth + d) else constraints)
+    layout((p.width - d).coerceAtLeast(0), p.height) { p.place(-d, 0) }
+}
+
+/**
+ * Asks for focus on the next frames, with no timers: the first ask comes once the new target has been laid out, and each ask is checked one frame later. It stops the moment [done] says the
+ * remote is where it should be (or no longer should be taken there), and it ends at once when the LaunchedEffect it runs in is replaced by a newer request, so a stale request from an earlier
+ * mode can never fire.
+ */
+suspend fun requestFocusOnFrames(frames: Int = 4, request: () -> Unit, done: () -> Boolean) {
+    repeat(frames) {
+        androidx.compose.runtime.withFrameNanos { }
+        runCatching { request() }
+        androidx.compose.runtime.withFrameNanos { }
+        if (done()) return
+    }
 }

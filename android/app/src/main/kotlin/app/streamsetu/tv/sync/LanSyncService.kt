@@ -176,7 +176,7 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
     }
 
     /** Every socket of an exchange in progress (dialled or accepted). Turning the service off closes them, so no exchange outlives it and touches the next profile's data. */
-    private val openSockets: MutableSet<Socket> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+    private val openSockets: MutableSet<Socket> = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<Socket, Boolean>())
 
     private fun stop() {
         openSockets.toList().forEach { runCatching { it.close() } }; openSockets.clear()

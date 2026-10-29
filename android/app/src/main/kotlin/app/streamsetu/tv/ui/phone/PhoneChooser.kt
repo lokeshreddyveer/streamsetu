@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.phone
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,7 +36,7 @@ private fun typeOf(e: LibraryEntry) = SourceType.fromLabel(e.typeLabel)
 /** The first screen of every launch: pick the library to open. A tap opens it; the three dots manage it. */
 @Composable
 fun PhoneChooser(c: AppContainer, nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
-    val entries by vm.entries.collectAsState()
+    val entries by vm.entries.collectAsStateWithLifecycle()
     var addMenu by remember { mutableStateOf(false) }
     var menuFor by remember { mutableStateOf<LibraryEntry?>(null) }
 

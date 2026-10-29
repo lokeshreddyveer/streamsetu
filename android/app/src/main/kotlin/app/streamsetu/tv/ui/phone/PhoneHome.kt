@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.phone
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -42,19 +43,19 @@ import kotlinx.coroutines.launch
 /** Home: a featured title, shortcuts, then rows. Everything scrolls with a finger; a tap opens, touch and hold gives the menu. */
 @Composable
 fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
-    val banner by vm.banner.collectAsState()
-    val resume by vm.continueWatching.collectAsState()
-    val live by vm.recentLive.collectAsState()
-    val tonight by vm.tonight.collectAsState()
-    val favs by vm.favourites.collectAsState()
-    val later by vm.watchLater.collectAsState()
-    val recent by vm.recentWatched.collectAsState()
-    val forYou by vm.forYou.collectAsState()
-    val moreWith by vm.moreWith.collectAsState()
-    val movies by vm.recentMovies.collectAsState()
-    val series by vm.recentSeries.collectAsState()
-    val favIds by vm.favouriteIds.collectAsState()
-    val name by vm.libraryName.collectAsState()
+    val banner by vm.banner.collectAsStateWithLifecycle()
+    val resume by vm.continueWatching.collectAsStateWithLifecycle()
+    val live by vm.recentLive.collectAsStateWithLifecycle()
+    val tonight by vm.tonight.collectAsStateWithLifecycle()
+    val favs by vm.favourites.collectAsStateWithLifecycle()
+    val later by vm.watchLater.collectAsStateWithLifecycle()
+    val recent by vm.recentWatched.collectAsStateWithLifecycle()
+    val forYou by vm.forYou.collectAsStateWithLifecycle()
+    val moreWith by vm.moreWith.collectAsStateWithLifecycle()
+    val movies by vm.recentMovies.collectAsStateWithLifecycle()
+    val series by vm.recentSeries.collectAsStateWithLifecycle()
+    val favIds by vm.favouriteIds.collectAsStateWithLifecycle()
+    val name by vm.libraryName.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<Pair<String, List<SheetItem>>?>(null) }
 
     fun movieMenu(m: Movie) { sheet = m.title to listOf(
@@ -85,7 +86,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
             }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(vm.shortcutOrder) { id ->
+                    items(vm.shortcutOrder.distinct(), key = { it }) { id ->
                         val (label, icon) = when (id) {
                             "favorites" -> "Favorites" to Icons.Filled.Favorite
                             "later" -> "Watch Later" to Icons.Filled.Bookmark
@@ -222,8 +223,8 @@ internal fun favoriteOrderItems(isFavorite: Boolean, move: (front: Boolean) -> U
 /** At the top of Home when there is no connection: says so and offers what plays without one, the saved downloads. */
 @Composable
 private fun OfflineCard(c: AppContainer, nav: Navigator) {
-    val online by c.online.collectAsState()
-    val saved by c.downloads.items.collectAsState()
+    val online by c.online.collectAsStateWithLifecycle()
+    val saved by c.downloads.items.collectAsStateWithLifecycle()
     androidx.compose.animation.AnimatedVisibility(!online) {
         val done = saved.filter { it.state == app.streamsetu.core.data.repo.SaveState.DONE }
         Column(Modifier.fillMaxWidth().padding(horizontal = Ph.gutter).background(Tokens.surface, RoundedCornerShape(14.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -240,9 +241,9 @@ private fun OfflineCard(c: AppContainer, nav: Navigator) {
 /** On Home: what your other devices are playing right now, with a button to carry on here. */
 @Composable
 private fun NowPlayingStrip(c: AppContainer, nav: Navigator) {
-    val all by c.nowBoard.entries.collectAsState()
+    val all by c.nowBoard.entries.collectAsStateWithLifecycle()
     var tick by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(30_000); tick = System.currentTimeMillis() } }
+    app.streamsetu.tv.ui.components.PollWhileShown(30_000) { tick = System.currentTimeMillis() }          // only while the app is on screen
     val entries = remember(all, tick) { c.nowBoard.current(tick) }
     Column(Modifier.fillMaxWidth().padding(horizontal = Ph.gutter), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         entries.forEach { e ->

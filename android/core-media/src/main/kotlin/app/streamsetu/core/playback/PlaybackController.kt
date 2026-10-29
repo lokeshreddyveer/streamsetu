@@ -50,6 +50,9 @@ class PlaybackController(
 
     private val _state = MutableStateFlow<PlaybackState>(PlaybackState.Idle)
     val state: StateFlow<PlaybackState> = _state.asStateFlow()
+    private val _providerWaitMs = MutableStateFlow(0L)
+    /** How much longer a new stream is held back so a one-connection provider can close the last one (0 when it is not waiting). The state stays "resolving"; this only says why it is slow. */
+    val providerWaitMs: StateFlow<Long> = _providerWaitMs.asStateFlow()
     private val _current = MutableStateFlow<Playable?>(null)
     val current: StateFlow<Playable?> = _current.asStateFlow()
     private val _audio = MutableStateFlow<List<TrackOption>>(emptyList())
@@ -149,10 +152,13 @@ class PlaybackController(
     /** Jumps to a time in a movie or episode. */
     fun goTo(ms: Long) { val e = _engine.value ?: return; if (_current.value?.isLive == true) return; userSeeked = true; e.seekTo(ms.coerceIn(0, e.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE)) }
 
+    /** Whether what is playing is a private watch (set by the app): such a session leaves nothing behind, not even this title's audio, subtitle, speed or picture choices. */
+    var isPrivate: () -> Boolean = { false }
+
     /** Keeps this title's choices (or this channel's) for next time. */
     fun remember() {
         val item = _current.value ?: return
-        if (!rememberPerTitle) return
+        if (!rememberPerTitle || isPrivate()) return
         val a = _audio.value.firstOrNull { it.selected }; val s = _subtitles.value.firstOrNull { it.selected }
         val t = _tuning.value
         memory.edit().putString(memoryKey(item), listOf(
@@ -207,6 +213,7 @@ class PlaybackController(
     fun noteCreditsSkip() {
         val item = _current.value as? app.streamsetu.core.model.EpisodePlayable ?: return
         val d = durationMs
+        if (isPrivate()) return
         if (EpisodeMarks.isCreditsSkip(positionMs, d, d)) introPrefs.edit().putLong("credits." + introKey(item), d - positionMs).apply()
     }
 
@@ -216,13 +223,14 @@ class PlaybackController(
     /** A forward jump early in an episode is taken as skipping the opening: where it landed is remembered for the rest of the series. */
     private fun maybeLearnIntro(fromMs: Long, toMs: Long) {
         val item = _current.value as? app.streamsetu.core.model.EpisodePlayable ?: return
+        if (isPrivate()) return
         if (IntroSkip.isOpeningSkip(fromMs, toMs)) introPrefs.edit().putLong(introKey(item), toMs).apply()
     }
 
     /** A picture of the frame on screen, or null when the player cannot give one. */
     fun snapshot(done: (android.graphics.Bitmap?) -> Unit) { val v = _engine.value?.view(appContext); if (v == null) done(null) else FrameGrab.grab(v, done) }
     /** Providers that allow one connection (from the account's own answer, or learned from a refusal): a new stream waits until the old one is closed. */
-    private val strict = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val strict = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())          // not newKeySet(), which needs Android 7
     private fun isStrict(sourceId: String) = sourceId in strict || appContext.getSharedPreferences("account-formats", Context.MODE_PRIVATE).getInt("max.$sourceId", 0) == 1
     private var switchedEngine = false
     private var startPositionMs = 0L
@@ -283,7 +291,13 @@ class PlaybackController(
         // A provider that allows one connection keeps the last one open for a few seconds; opening another at once is refused or very slow.
         if (isStrict(item.sourceId)) { _engine.value?.takeIf { _state.value != PlaybackState.Idle }?.stop(); if (_engine.value != null) closedAt[item.sourceId] = System.currentTimeMillis() }
         val wait = 3500 - (System.currentTimeMillis() - (closedAt[item.sourceId] ?: 0L))
-        if (wait in 1..3500) { android.util.Log.i("Playback", "pacing: waiting ${wait} ms for the provider"); delay(wait) }
+        if (wait in 1..3500) {
+            android.util.Log.i("Playback", "pacing: waiting ${wait} ms for the provider")
+            try {
+                var left = wait
+                while (left > 0) { _providerWaitMs.value = left; val step = minOf(250L, left); delay(step); left -= step }
+            } finally { _providerWaitMs.value = 0 }          // also when a newer choice cancels the wait
+        }
         val url = LocalFiles.find(item.id) ?: resolver.resolve(item.sourceId, item.streamRef)          // a saved copy plays from the device
         if (url == null) { _state.value = PlaybackState.Failed(PlaybackError(ErrorKind.NOT_FOUND, "The playlist for this item is gone or has no login.")); return }
         val container = StreamContainer.of(url, item.isLive)
@@ -303,7 +317,7 @@ class PlaybackController(
         val ua = resolver.userAgent(item.sourceId)
         val extra = resolver.headers(item.sourceId)
         next.load(EngineRequest(url, (if (ua != null) mapOf("User-Agent" to ua) else emptyMap()) + extra, startPositionMs, item.isLive, buffering,
-            EngineOptions(settings.decoderFallback.value, settings.surroundPassthrough.value, _subtitleStyle.value ?: SubtitleStyle(scale, settings.subtitleBackground.value == "DARK", settings.subtitleOutline.value), settings.mpvProxy.takeIf { !app.streamsetu.core.net.Http.isLocal(runCatching { java.net.URI(url).host }.getOrNull().orEmpty()) }, _tuning.value.softwareDecoding)))
+            EngineOptions(settings.decoderFallback.value, settings.surroundPassthrough.value, _subtitleStyle.value ?: SubtitleStyle(scale, settings.subtitleBackground.value == "DARK", settings.subtitleOutline.value), settings.mpvProxy.takeIf { !app.streamsetu.core.net.Http.isLocal(runCatching { java.net.URI(url).host }.getOrNull().orEmpty()) }, _tuning.value.softwareDecoding, resolver.allowsSelfSignedTls(item.sourceId))))
         applyTuningLater()
         if (!loggedStart) { loggedStart = true; onStarted(item) }
     }
@@ -464,7 +478,7 @@ class PlaybackController(
     /** The frame rate of the video playing now, or 0 while it is not known. */
     fun frameRate(): Float = _engine.value?.frameRate() ?: 0f
     val engineKind: EngineKind? get() = _engine.value?.kind
-    fun streamInfo(): String = _engine.value?.streamInfo().orEmpty()
+    fun facts(): StreamFacts = _engine.value?.facts() ?: StreamFacts()
 
     fun selectAudio(id: String?) {
         if (settings.rememberAudioChoice.value) _audio.value.firstOrNull { it.id == id }?.language?.takeIf { it.isNotBlank() }?.let { settings.setAudioLanguage(it) }
@@ -515,8 +529,15 @@ class PlaybackController(
         if (!sessionVerified || dur <= 0 || pos < 0 || pos > dur + 5_000) return
         if (!userSeeked && startPositionMs > 30_000 && pos < startPositionMs - 15_000) return
         val session = sessionId
-        scope.launch { if (session == sessionId) onProgress(item, pos, dur) }
+        val write = scope.launch { if (session == sessionId) onProgress(item, pos, dur) }
+        saves += write; write.invokeOnCompletion { saves -= write }
     }
+
+    /** Progress writes that were started and have not finished (see [drainProgress]). */
+    private val saves: MutableSet<Job> = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<Job, Boolean>())
+
+    /** Waits until every progress write already started has finished. Called when the person using the app changes, so a write cannot land in the next profile's tables. */
+    suspend fun drainProgress() { saves.toList().forEach { it.join() } }
 
     fun stop() {
         stopRecording()

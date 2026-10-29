@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.7.3" type="baseline" client="gradle" dependencies="false" name="AGP (8.7.3)" variant="all" version="8.7.3">
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()"
+        errorLine2="                                                                                    ~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/MaintenanceService.kt"
+            line="172"
+            column="85"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.HashMap#putIfAbsent`"
+        errorLine1="            XmltvParser.parse(input, now - 3600_000, now + 48 * 3600_000, onChannel = { id, name -> if (names.size &lt; GuideLimits.MAX_CHANNELS) names.putIfAbsent(name, id) }) { p ->"
+        errorLine2="                                                                                                                                                     ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/sync/EpgService.kt"
+            line="34"
+            column="150"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.HashMap#putIfAbsent`"
+        errorLine1="        ids.forEach { rawToStored.putIfAbsent(EpgIds.raw(it), it) }"
+        errorLine2="                                  ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/sync/EpgService.kt"
+            line="89"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.HashMap#putIfAbsent`"
+        errorLine1="            byName.putIfAbsent(it.nameNorm, it.epgId)"
+        errorLine2="                   ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/sync/EpgService.kt"
+            line="93"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.HashMap#putIfAbsent`"
+        errorLine1="            EpgIds.source(it.epgId)?.let { src -> byNameInSource.putIfAbsent(src + &quot;\u0001&quot; + it.nameNorm, it.epgId) }"
+        errorLine2="                                                                 ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/sync/EpgService.kt"
+            line="94"
+            column="66"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24, or core library desugaring (current min is 22): `java.util.Collection#removeIf`"
+        errorLine1="    private fun expire() { val limit = relockAfterMs(); if (limit == Long.MAX_VALUE) return; val now = System.currentTimeMillis(); if (unlockedAt.entries.removeIf { now - it.value > limit }) unlocked.value = unlockedAt.keys.toSet() }"
+        errorLine2="                                                                                                                                                          ~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/FolderRepository.kt"
+            line="24"
+            column="155"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.HashMap#putIfAbsent`"
+        errorLine1="                    raw.query(&quot;SELECT epgId, id FROM channels WHERE epgId IN (${chunk.joinToString(&quot;,&quot;) { &quot;?&quot; }}) AND sourceId IN ($ph)&quot;, (chunk + sources).toTypedArray()).use { c -> while (c.moveToNext()) byEpg.putIfAbsent(c.getString(0), c.getString(1)) }"
+        errorLine2="                                                                                                                                                                                                                    ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/GlobalSearch.kt"
+            line="172"
+            column="213"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.HashMap#merge`"
+        errorLine1="            else if (start >= 0) { if (i - start >= 3) counts.merge(t.substring(start, i).lowercase(), 1, Int::plus); start = -1 }"
+        errorLine2="                                                              ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/GlobalSearch.kt"
+            line="218"
+            column="63"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.LocalDate#toEpochDay`"
+        errorLine1="        val from = today.toEpochDay() - LOOK_BACK_DAYS + 1"
+        errorLine2="                         ~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Insights.kt"
+            line="85"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.LocalDate#toEpochDay`"
+        errorLine1="        val recent = rows.filter { it.day in from..today.toEpochDay() &amp;&amp; it.ms >= 60_000 }"
+        errorLine2="                                                         ~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Insights.kt"
+            line="86"
+            column="58"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.HashMap#putIfAbsent`"
+        errorLine1="            while (c.moveToNext()) { val key = SourceKey.of(c.getString(1)); keyOf[c.getString(0)] = key; idOf.putIfAbsent(key, c.getString(0)) }"
+        errorLine2="                                                                                                               ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/sync/lan/LanDataAdapter.kt"
+            line="47"
+            column="112"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.Instant#parse`"
+        errorLine1="    private fun isoMillis(s: String?): Long = s?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() ?: runCatching { java.time.OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull() } ?: 0L"
+        errorLine2="                                                                                       ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/net/MediaSources.kt"
+            line="138"
+            column="88"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.Instant#toEpochMilli`"
+        errorLine1="    private fun isoMillis(s: String?): Long = s?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() ?: runCatching { java.time.OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull() } ?: 0L"
+        errorLine2="                                                                                                 ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/net/MediaSources.kt"
+            line="138"
+            column="98"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.Instant#toEpochMilli`"
+        errorLine1="    private fun isoMillis(s: String?): Long = s?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() ?: runCatching { java.time.OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull() } ?: 0L"
+        errorLine2="                                                                                                                                                                                              ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/net/MediaSources.kt"
+            line="138"
+            column="191"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.OffsetDateTime#parse`"
+        errorLine1="    private fun isoMillis(s: String?): Long = s?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() ?: runCatching { java.time.OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull() } ?: 0L"
+        errorLine2="                                                                                                                                                                        ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/net/MediaSources.kt"
+            line="138"
+            column="169"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.OffsetDateTime#toInstant`"
+        errorLine1="    private fun isoMillis(s: String?): Long = s?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() ?: runCatching { java.time.OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull() } ?: 0L"
+        errorLine2="                                                                                                                                                                                  ~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/net/MediaSources.kt"
+            line="138"
+            column="179"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.HashMap#putIfAbsent`"
+        errorLine1="                    &quot;title&quot;, &quot;itunes:summary&quot;, &quot;pubDate&quot;, &quot;itunes:duration&quot;, &quot;guid&quot; -> item.putIfAbsent(name, value)"
+        errorLine2="                                                                                            ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/podcast/Podcasts.kt"
+            line="52"
+            column="93"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.HashMap#putIfAbsent`"
+        errorLine1="                    &quot;description&quot; -> item.putIfAbsent(name, value)"
+        errorLine2="                                          ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/podcast/Podcasts.kt"
+            line="53"
+            column="43"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.ZoneId#systemDefault`"
+        errorLine1="    suspend fun record(itemId: String, kind: String, title: String, ms: Long, zone: ZoneId = ZoneId.systemDefault(), now: Long = System.currentTimeMillis()) {"
+        errorLine2="                                                                                                    ~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="27"
+            column="101"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.Instant#atZone`"
+        errorLine1="        val t = Instant.ofEpochMilli(now).atZone(zone)"
+        errorLine2="                                          ~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="29"
+            column="43"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.Instant#ofEpochMilli`"
+        errorLine1="        val t = Instant.ofEpochMilli(now).atZone(zone)"
+        errorLine2="                        ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="29"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.LocalDate#toEpochDay`"
+        errorLine1="        db.extras().addWatchTime(t.toLocalDate().toEpochDay(), t.hour, itemId, kind, title.take(120), ms.coerceAtMost(30_000))"
+        errorLine2="                                                 ~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="30"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.ZonedDateTime#getHour`"
+        errorLine1="        db.extras().addWatchTime(t.toLocalDate().toEpochDay(), t.hour, itemId, kind, title.take(120), ms.coerceAtMost(30_000))"
+        errorLine2="                                                                 ~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="30"
+            column="66"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.ZonedDateTime#toLocalDate`"
+        errorLine1="        db.extras().addWatchTime(t.toLocalDate().toEpochDay(), t.hour, itemId, kind, title.take(120), ms.coerceAtMost(30_000))"
+        errorLine2="                                   ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="30"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.ZoneId#systemDefault`"
+        errorLine1="    suspend fun compute(sinceDays: Int, zone: ZoneId = ZoneId.systemDefault(), now: Long = System.currentTimeMillis()): ViewingStatistics {"
+        errorLine2="                                                              ~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="34"
+            column="63"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.Instant#atZone`"
+        errorLine1="        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()"
+        errorLine2="                                              ~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="35"
+            column="47"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.Instant#ofEpochMilli`"
+        errorLine1="        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()"
+        errorLine2="                            ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="35"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.ZonedDateTime#toLocalDate`"
+        errorLine1="        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()"
+        errorLine2="                                                           ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="35"
+            column="60"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.LocalDate#toEpochDay`"
+        errorLine1="        val rows = db.extras().watchTimeSince(if (sinceDays &lt;= 0) 0 else today.toEpochDay() - sinceDays + 1)"
+        errorLine2="                                                                               ~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="36"
+            column="80"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.LocalDate#minusDays`"
+        errorLine1="            val days = (ViewingStatistics.DAYS - 1 downTo 0).map { back -> today.minusDays(back.toLong()).let { it to (perDay[it.toEpochDay()] ?: 0L) } }"
+        errorLine2="                                                                                 ~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="45"
+            column="82"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 22): `java.time.LocalDate#toEpochDay`"
+        errorLine1="            val days = (ViewingStatistics.DAYS - 1 downTo 0).map { back -> today.minusDays(back.toLong()).let { it to (perDay[it.toEpochDay()] ?: 0L) } }"
+        errorLine2="                                                                                                                                 ~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/data/repo/Statistics.kt"
+            line="45"
+            column="130"/>
+    </issue>
+
+</issues>

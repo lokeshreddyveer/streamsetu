@@ -49,14 +49,17 @@ fun PhonePlayerSearch(c: AppContainer, initialTab: SearchTab = SearchTab.ALL, on
     var menu by remember { mutableStateOf(false) }
     var results by remember { mutableStateOf(GlobalResults()) }
     var busy by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
+    var retry by remember { mutableIntStateOf(0) }
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) { delay(150); runCatching { focus.requestFocus() } }
     LaunchedEffect(Unit) { c.globalSearch.warmUp() }
-    LaunchedEffect(q, tab) {
-        if (q.trim().isEmpty()) { results = GlobalResults(); busy = false; return@LaunchedEffect }
-        busy = true; delay(200)
-        results = runCatching { c.globalSearch.search(q, tab, if (tab == SearchTab.ALL) 12 else 60) }.getOrDefault(GlobalResults()); busy = false
+    LaunchedEffect(q, tab, retry) {
+        if (q.trim().isEmpty()) { results = GlobalResults(); busy = false; failed = false; return@LaunchedEffect }
+        busy = true; failed = false; delay(200)
+        try { results = c.globalSearch.search(q, tab, if (tab == SearchTab.ALL) 12 else 60) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { failed = true }
+        busy = false
     }
     fun open(r: SearchItem) {
         c.search.rememberIn(tab.name, q); keyboard?.hide()
@@ -97,6 +100,7 @@ fun PhonePlayerSearch(c: AppContainer, initialTab: SearchTab = SearchTab.ALL, on
             val found = results.flat(tab)
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
                 if (q.isBlank()) item { Label("Type a title, a channel or something like “hindi movies 2024”.", Ph.body, Tokens.textSecondary, modifier = Modifier.padding(Ph.gutter)) }
+                else if (failed) item { Label("Search could not be completed. Tap to try again.", Ph.body, Tokens.accent, modifier = Modifier.fillMaxWidth().clickable { retry++ }.padding(Ph.gutter)) }
                 else if (found.isEmpty()) item { Label(if (busy) "Searching…" else "No results. Try fewer letters or another spelling.", Ph.body, Tokens.textSecondary, modifier = Modifier.padding(Ph.gutter)) }
                 items(found, key = { it.id }) { r ->
                     Row(Modifier.fillMaxWidth().clickable { open(r) }.padding(horizontal = Ph.gutter, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

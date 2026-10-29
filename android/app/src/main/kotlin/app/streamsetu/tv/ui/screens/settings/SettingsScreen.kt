@@ -1,8 +1,13 @@
 package app.streamsetu.tv.ui.screens.settings
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -33,6 +38,7 @@ import app.streamsetu.tv.nav.Navigator
 import app.streamsetu.tv.ui.components.*
 import app.streamsetu.tv.ui.theme.Tokens
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** The categories, most used first; the technical ones are at the bottom. */
 enum class Category(val title: String, val subtitle: String, val icon: ImageVector) {
@@ -68,27 +74,59 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
     val current = Category.valueOf(selected)
     val listEntry = LocalContentEntry.current ?: remember { FocusRequester() }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    // The panel is a focus group: asking it for focus goes to its first control, so Right and OK never pick whichever control is nearest.
+    val panelEntry = remember { FocusRequester() }
     var inPanel by remember { mutableStateOf(false) }
     val rows = remember { Category.entries.associateWith { FocusRequester() } }
+    // A short status beside a category where there is one to give: who is watching, whether sync is on, how many libraries.
+    val profileList by c.profiles.profiles.collectAsStateWithLifecycle(); val activeProfile by c.profiles.activeId.collectAsStateWithLifecycle()
+    val lanOn by c.lan.enabled.collectAsStateWithLifecycle(); val libraryEntries by c.library.entries.collectAsState(initial = emptyList())
+    fun statusOf(cat: Category): String? = when (cat) {
+        Category.PROFILES -> profileList.firstOrNull { it.id == activeProfile }?.name
+        Category.SYNC -> if (lanOn) "On" else "Off"
+        Category.LIBRARIES -> libraryEntries.count { it.usable }.takeIf { it > 0 }?.toString()
+        else -> null
+    }
 
-    BackHandler(enabled = inPanel) { runCatching { rows[current]?.requestFocus() } }
+    // The categories are a lazy list, so one that is scrolled out of view is not on screen to take the remote. Anything that sends the remote to a category scrolls it into view first.
+    val categoryState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    suspend fun reveal(index: Int) {
+        val info = categoryState.layoutInfo
+        val v = info.visibleItemsInfo.firstOrNull { it.index == index }
+        when {
+            v == null -> categoryState.scrollToItem(index)
+            v.offset < info.viewportStartOffset -> categoryState.animateScrollBy((v.offset - info.viewportStartOffset).toFloat())
+            v.offset + v.size > info.viewportEndOffset -> categoryState.animateScrollBy((v.offset + v.size - info.viewportEndOffset).toFloat())
+        }
+    }
+    // The chosen category is always on screen, so Left from the controls (and Back) can find it.
+    LaunchedEffect(selected) { reveal(Category.entries.indexOf(current)) }
+
+    BackHandler(enabled = inPanel) {
+        scope.launch {
+            reveal(Category.entries.indexOf(current))          // into view first,
+            androidx.compose.runtime.withFrameNanos { }        // then wait for the layout it caused,
+            runCatching { rows[current]?.requestFocus() }      // then the remote goes there
+        }
+    }
 
     Row(Modifier.fillMaxSize()) {
         // Left: the categories, each with an icon tile and a line saying what is inside.
-        Column(Modifier.weight(0.34f).fillMaxHeight().railOnLeft().background(Tokens.panel).padding(horizontal = 12.dp, vertical = Tokens.safeVertical)) {
+        Column(Modifier.weight(0.25f).fillMaxHeight().railOnLeft().background(Tokens.panel).padding(horizontal = 12.dp, vertical = Tokens.safeVertical)) {
             Row(Modifier.padding(start = 8.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)))
                 Column { Label("Settings", Tokens.pageTitle, Tokens.text, FontWeight.Bold); Label("StreamSetu " + app.streamsetu.tv.BuildConfig.VERSION_NAME, Tokens.caption, Tokens.textTertiary) }
             }
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Category.entries.forEach { cat ->
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = categoryState, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                itemsIndexed(Category.entries, key = { _, cat -> cat.name }) { index, cat ->
                     val isSel = cat == current
                     var dwell by remember { mutableStateOf(false) }
-                    LaunchedEffect(dwell) { if (dwell) { delay(220); selected = cat.name } }
-                    Focusable({ selected = cat.name; focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right) },
+                    LaunchedEffect(dwell) { if (dwell) { delay(60); selected = cat.name } }          // the panel follows the remote at once (60 ms only folds a held key into one change)
+                    Focusable({ selected = cat.name; runCatching { panelEntry.requestFocus() }.isSuccess },
                         (if (isSel) Modifier.focusRequester(listEntry) else Modifier).then(Modifier.focusRequester(rows.getValue(cat))).fillMaxWidth()
-                            .onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { selected = cat.name; focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right) } else false },
-                        shape = RoundedCornerShape(14.dp), container = if (isSel) Tokens.elevated else Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.0f, onFocus = { dwell = it }) { f ->
+                            .onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { selected = cat.name; runCatching { panelEntry.requestFocus() }.isSuccess } else false },
+                        shape = RoundedCornerShape(14.dp), container = if (isSel) Tokens.elevated else Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.0f, onFocus = { dwell = it; if (it) scope.launch { reveal(index) } }) { f ->
                         Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(if (isSel || f) Tokens.accent.copy(alpha = 0.22f) else Color(0x14FFFFFF)), Alignment.Center) {
                                 androidx.compose.foundation.Image(cat.icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (isSel || f) Tokens.accent else Tokens.textSecondary))
@@ -97,13 +135,14 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
                                 Label(cat.title, Tokens.row, if (isSel || f) Tokens.text else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium)
                                 Label(cat.subtitle, Tokens.caption, Tokens.textTertiary)
                             }
+                            statusOf(cat)?.let { st -> Label(st, Tokens.caption, Tokens.accent, FontWeight.SemiBold, modifier = Modifier.widthIn(max = 90.dp)) }
                         }
                     }
                 }
             }
         }
         // Right: a header for the category, then its groups.
-        Column(Modifier.weight(0.66f).fillMaxHeight().leftGoesTo(rows.getValue(current)).onFocusChanged { inPanel = it.hasFocus }.verticalScroll(rememberScrollState()).padding(start = 26.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.weight(0.75f).fillMaxHeight().focusRequester(panelEntry).leftGoesTo(rows.getValue(current)).onFocusChanged { inPanel = it.hasFocus }.verticalScroll(rememberScrollState()).padding(start = 26.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Box(Modifier.size(52.dp).clip(RoundedCornerShape(15.dp)).background(Tokens.accent.copy(alpha = 0.20f)), Alignment.Center) {
                     androidx.compose.foundation.Image(current.icon, null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(Tokens.accent))
@@ -162,39 +201,39 @@ private fun AdvancedToggle(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 fun PlaybackSettings(c: AppContainer) {
     val s = c.settings
-    val engine by s.enginePreference.collectAsState()
-    val liveBuf by s.liveBuffering.collectAsState(); val vodBuf by s.vodBuffering.collectAsState()
-    val resume by s.resumeAutomatically.collectAsState(); val seek by s.seekSeconds.collectAsState(); val next by s.playNextAutomatically.collectAsState(); val remember by s.rememberPosition.collectAsState()
-    val retry by s.automaticRetry.collectAsState(); val patience by s.stallPatience.collectAsState()
+    val engine by s.enginePreference.collectAsStateWithLifecycle()
+    val liveBuf by s.liveBuffering.collectAsStateWithLifecycle(); val vodBuf by s.vodBuffering.collectAsStateWithLifecycle()
+    val resume by s.resumeAutomatically.collectAsStateWithLifecycle(); val seek by s.seekSeconds.collectAsStateWithLifecycle(); val next by s.playNextAutomatically.collectAsStateWithLifecycle(); val remember by s.rememberPosition.collectAsStateWithLifecycle()
+    val retry by s.automaticRetry.collectAsStateWithLifecycle(); val patience by s.stallPatience.collectAsStateWithLifecycle()
     val mpv = EngineKind.MPV in c.playback.available
     val conns = connections(c)
     var tick by remember { mutableIntStateOf(0) }; tick.let { }
 
-    SettingGroup("Player engine", "Automatic uses ExoPlayer (Media3) for HLS, MP4, DASH and MPEG-TS, and MPV for MKV, AVI and RTSP. If a format is not supported, the other engine is tried once; the same stream is retried, never a different one.") {
+    SettingGroup("Player engine", "Automatic chooses the best player for each stream.") {
         ChoiceRow("Default engine", options = listOf(EnginePreference.AUTOMATIC to "Automatic", EnginePreference.EXOPLAYER to "Media3 ExoPlayer", EnginePreference.MPV to if (mpv) "MPV" else "MPV (not available)"), value = engine) { if (it != EnginePreference.MPV || mpv) s.setEngine(it) }
         if (!mpv) InfoRow("MPV", "Not available", "MPV needs Android 8 or later.")
         listOf("LIVE" to "Live TV", "MOVIES" to "Movies and series", "CATCHUP" to "Past programmes").forEach { (kind, label) ->
             val chosen = s.engineForKind(kind)
-            ChoiceRow("Engine for $label", if (kind == "LIVE") "A connection's own choice below still comes first." else null, listOf<Pair<EnginePreference?, String>>(null to "Use the default", EnginePreference.AUTOMATIC to "Automatic", EnginePreference.EXOPLAYER to "Media3 ExoPlayer", EnginePreference.MPV to if (mpv) "MPV" else "MPV (not available)"), chosen) { s.setEngineForKind(kind, it); tick++ }
+            ChoiceRow("Engine for $label", if (kind == "LIVE") "Overrides the default for this content type." else null, listOf<Pair<EnginePreference?, String>>(null to "Use the default", EnginePreference.AUTOMATIC to "Automatic", EnginePreference.EXOPLAYER to "Media3 ExoPlayer", EnginePreference.MPV to if (mpv) "MPV" else "MPV (not available)"), chosen) { s.setEngineForKind(kind, it); tick++ }
         }
         if (conns.size > 1 || (conns.isNotEmpty() && s.engineFor(conns.first().id) != null)) conns.forEach { src ->
             val over = s.engineFor(src.id)
-            ChoiceRow("Engine for ${src.name}", "Overrides the default for this connection only.", listOf<Pair<EnginePreference?, String>>(null to "Use global default", EnginePreference.AUTOMATIC to "Automatic", EnginePreference.EXOPLAYER to "Media3 ExoPlayer") + (if (mpv) listOf(EnginePreference.MPV to "MPV") else emptyList()), over) { s.setEngineFor(src.id, it); tick++ }
+            ChoiceRow("Engine for ${src.name}", "Uses this player for this connection.", listOf<Pair<EnginePreference?, String>>(null to "Use global default", EnginePreference.AUTOMATIC to "Automatic", EnginePreference.EXOPLAYER to "Media3 ExoPlayer") + (if (mpv) listOf(EnginePreference.MPV to "MPV") else emptyList()), over) { s.setEngineFor(src.id, it); tick++ }
         }
     }
     SettingGroup("Picture") {
-        val matchFps by s.matchFrameRate.collectAsState()
-        ToggleRow("Match the TV's frame rate", "Switches the TV to 24, 25, 30, 50 or 60 Hz to suit the video, so motion is smooth. The screen goes dark for a moment when it switches, and only TVs that offer those modes can do it.", matchFps) { s.setMatchFrameRate(it) }
+        val matchFps by s.matchFrameRate.collectAsStateWithLifecycle()
+        ToggleRow("Match the TV's frame rate", "Matches the TV to the video for smoother motion. The screen may briefly go dark.", matchFps) { s.setMatchFrameRate(it) }
     }
-    SettingGroup("Buffering", "A bigger buffer rides out a slow provider but delays a channel change a little. Takes effect on the next stream.") {
+    SettingGroup("Buffering", "A larger buffer handles unstable streams but changes channels more slowly.") {
         ChoiceRow("Live TV buffer", options = listOf(BufferingMode.LOW_LATENCY to "Low latency", BufferingMode.AUTOMATIC to "Balanced", BufferingMode.LARGE to "Stable"), value = liveBuf) { s.setLiveBuffering(it) }
         ChoiceRow("Movies and series buffer", options = listOf(BufferingMode.AUTOMATIC to "Balanced", BufferingMode.LARGE to "Stable"), value = vodBuf) { s.setVodBuffering(it) }
         conns.forEach { src ->
             if (conns.size > 1) ChoiceRow("Live buffer for ${src.name}", "Overrides the global Live TV buffer for this connection.", listOf<Pair<BufferingMode?, String>>(null to "Use global default", BufferingMode.LOW_LATENCY to "Low latency", BufferingMode.AUTOMATIC to "Balanced", BufferingMode.LARGE to "Stable"), s.liveBufferFor(src.id)) { s.setLiveBufferFor(src.id, it); tick++ }
         }
     }
-    SettingGroup("Network proxy", "Streams and playlists go through the proxy; devices on your own network (a tuner, a NAS, a media server) never do. MPV can use an HTTP proxy only; with a SOCKS proxy it connects directly.") {
-        val pk by s.proxyKind.collectAsState(); val ph by s.proxyHost.collectAsState(); val pp by s.proxyPort.collectAsState()
+    SettingGroup("Network proxy", "Sends internet streams and playlists through your proxy. Local devices connect directly.") {
+        val pk by s.proxyKind.collectAsStateWithLifecycle(); val ph by s.proxyHost.collectAsStateWithLifecycle(); val pp by s.proxyPort.collectAsStateWithLifecycle()
         ChoiceRow("Proxy", options = listOf("NONE" to "None", "HTTP" to "HTTP", "SOCKS" to "SOCKS"), value = pk) { s.setProxyKind(it) }
         if (pk != "NONE") {
             app.streamsetu.tv.ui.components.TvTextField(ph, { s.setProxyHost(it) }, "Proxy host (name or address)", Modifier.fillMaxWidth())
@@ -204,22 +243,22 @@ fun PlaybackSettings(c: AppContainer) {
     SettingGroup("Movies and series") {
         ToggleRow("Remember playback position", "Saves where you stop so Continue Watching works.", remember) { s.setRememberPosition(it) }
         ToggleRow("Resume automatically", "Continue a partly watched title where it stopped.", resume && remember, enabled = remember, reason = "Turn on Remember playback position first.") { s.setResumeAutomatically(it) }
-        val bestFirst by s.bestVersionFirst.collectAsState()
-        ToggleRow("Play the best version first", "When a film is in your library in several qualities or folders, start with the best one (4K, then 1080p, and never a cinema recording first). If it does not play, the next best is tried.", bestFirst) { s.setBestVersionFirst(it) }
+        val bestFirst by s.bestVersionFirst.collectAsStateWithLifecycle()
+        ToggleRow("Play the best version first", "Starts the highest-quality copy. If it fails, tries the next best.", bestFirst) { s.setBestVersionFirst(it) }
         ChoiceRow("Skip interval", "How far Left and Right jump while watching.", listOf(5 to "5 seconds", 10 to "10 seconds", 15 to "15 seconds", 30 to "30 seconds"), seek) { s.setSeekSeconds(it) }
-        val confirmLeave by s.confirmLeavingPlayer.collectAsState()
+        val confirmLeave by s.confirmLeavingPlayer.collectAsStateWithLifecycle()
         ToggleRow("Ask before leaving the player", "Back shows Continue watching or Exit instead of leaving at once.", confirmLeave) { s.setConfirmLeavingPlayer(it) }
-        val bgAudio by s.backgroundAudio.collectAsState()
-        ToggleRow("Keep playing when I leave the app", "The sound carries on with the screen off or in another app, with controls on the lock screen and in the notification shade.", bgAudio) { s.setBackgroundAudio(it) }
+        val bgAudio by s.backgroundAudio.collectAsStateWithLifecycle()
+        ToggleRow("Keep playing when I leave the app", "Keeps audio playing in the background with system controls.", bgAudio) { s.setBackgroundAudio(it) }
         ToggleRow("Play the next episode automatically", "Only continues to the very next episode; it never plays across a missing one.", next) { s.setPlayNext(it) }
     }
-    SettingGroup("Recovery", "Switching to a different provider stream is always a choice you make (Choose Stream). It never happens by itself.") {
-        ToggleRow("Retry a failing stream automatically", "Off: the stream stops at once and waits for you to press Try Again.", retry) { s.setAutomaticRetry(it) }
+    SettingGroup("Recovery", "Retries the same stream. Another provider stream is never selected automatically.") {
+        ToggleRow("Retry a failing stream automatically", "Retries automatically after playback fails.", retry) { s.setAutomaticRetry(it) }
         ChoiceRow("How long to wait for a stream to load", "Past this, loading counts as a failure.", listOf("SHORT" to "Short (10 s live)", "NORMAL" to "Normal (18 s live)", "LONG" to "Long (30 s live)"), patience) { s.setStallPatience(it) }
     }
-    val dec by s.decoderFallback.collectAsState()
+    val dec by s.decoderFallback.collectAsStateWithLifecycle()
     AdvancedToggle {
-        ToggleRow("Decoder fallback", "If a hardware decoder fails on a stream, another decoder is tried instead of failing. Applies to the next stream.", dec) { s.setDecoderFallback(it) }
+        ToggleRow("Decoder fallback", "Tries another decoder when the first cannot play the stream.", dec) { s.setDecoderFallback(it) }
         ActionRow("Reset player settings", "Puts every setting on the Playback, Audio and Subtitles pages back to its default.", "Reset", danger = true) { s.resetPlayerPreferences() }
     }
 }
@@ -227,14 +266,14 @@ fun PlaybackSettings(c: AppContainer) {
 @Composable
 fun VideoSettings(c: AppContainer) {
     val s = c.settings
-    val aspect by s.defaultAspect.collectAsState(); val info by s.showStreamInfo.collectAsState()
+    val aspect by s.defaultAspect.collectAsStateWithLifecycle(); val info by s.showStreamInfo.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
     val display = remember { runCatching { (context.getSystemService(android.content.Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager).getDisplay(0) }.getOrNull() }
     val mode = display?.mode
     val hdr = remember { runCatching { display?.hdrCapabilities?.supportedHdrTypes?.map { when (it) { 1 -> "Dolby Vision"; 2 -> "HDR10"; 3 -> "HLG"; 4 -> "HDR10+"; else -> "HDR" } } }.getOrNull().orEmpty() }
     SettingGroup("Picture") {
-        ChoiceRow("Default picture size", "Fit keeps the whole picture. Fill and Zoom crop the edges to remove black bars. You can still change it while watching.", listOf("FIT" to "Fit", "FILL" to "Fill", "ZOOM" to "Zoom"), aspect) { s.setDefaultAspect(it) }
-        ToggleRow("Show stream information while playing", "A small overlay with the engine, resolution and codecs.", info) { s.setShowStreamInfo(it) }
+        ChoiceRow("Default picture size", "Fit shows the full picture. Fill and Zoom crop the edges.", listOf("FIT" to "Fit", "FILL" to "Fill", "ZOOM" to "Zoom"), aspect) { s.setDefaultAspect(it) }
+        ToggleRow("Show stream information while playing", "Shows the player, resolution and codecs during playback.", info) { s.setShowStreamInfo(it) }
         SettingRow("Quality", "Streams from IPTV providers have one quality each; adaptive streams (HLS with several levels) are chosen automatically.", "Automatic")
     }
     SettingGroup("This screen") {
@@ -250,7 +289,7 @@ fun VideoSettings(c: AppContainer) {
 @Composable
 fun AudioSettings(c: AppContainer) {
     val s = c.settings
-    val lang by s.audioLanguage.collectAsState(); val remember by s.rememberAudioChoice.collectAsState(); val pass by s.surroundPassthrough.collectAsState()
+    val lang by s.audioLanguage.collectAsStateWithLifecycle(); val remember by s.rememberAudioChoice.collectAsStateWithLifecycle(); val pass by s.surroundPassthrough.collectAsStateWithLifecycle()
     SettingGroup("Language") {
         ChoiceRow("Preferred audio language", "Chosen automatically when a stream has several audio tracks. You can still switch while watching.", languages, lang) { s.setAudioLanguage(it) }
         ToggleRow("Remember the track I choose", "The language you pick while watching becomes the preferred language.", remember) { s.setRememberAudioChoice(it) }
@@ -264,8 +303,8 @@ fun AudioSettings(c: AppContainer) {
 @Composable
 fun SubtitleSettings(c: AppContainer) {
     val s = c.settings; val ui = c.ui
-    val mode by s.subtitleMode.collectAsState(); val lang by s.subtitleLanguage.collectAsState(); val size by s.subtitleSize.collectAsState(); val bg by s.subtitleBackground.collectAsState(); val outline by s.subtitleOutline.collectAsState()
-    val anim by ui.animation.collectAsState(); val contrast by ui.highContrastFocus.collectAsState()
+    val mode by s.subtitleMode.collectAsStateWithLifecycle(); val lang by s.subtitleLanguage.collectAsStateWithLifecycle(); val size by s.subtitleSize.collectAsStateWithLifecycle(); val bg by s.subtitleBackground.collectAsStateWithLifecycle(); val outline by s.subtitleOutline.collectAsStateWithLifecycle()
+    val anim by ui.animation.collectAsStateWithLifecycle(); val contrast by ui.highContrastFocus.collectAsStateWithLifecycle()
     SettingGroup("Subtitles", "Style applies to the next stream.") {
         ChoiceRow("Subtitles", "Auto turns them on when the sound is not in your preferred audio language.", listOf("OFF" to "Off", "AUTO" to "Auto", "ON" to "On when available"), mode) { s.setSubtitleMode(it) }
         ChoiceRow("Subtitle language", options = languages, value = lang) { s.setSubtitleLanguage(it) }
@@ -275,7 +314,7 @@ fun SubtitleSettings(c: AppContainer) {
         SettingRow("Subtitle delay", "Shifts subtitles earlier or later. Open More, then Sync audio & subtitles while watching (MPV player).", "In the player")
     }
     SettingGroup("Find subtitles online", "From OpenSubtitles, using your own free account and API key (opensubtitles.com, Consumers). They stay on this device and are sent only to OpenSubtitles when you ask for subtitles in the player.") {
-        val auto by s.autoSubtitles.collectAsState()
+        val auto by s.autoSubtitles.collectAsStateWithLifecycle()
         ToggleRow("Fetch automatically", "When a film or episode has no subtitles in your language, loads the most downloaded one a few seconds in. Needs the account below.", auto) { s.setAutoSubtitles(it) }
         var key by remember { mutableStateOf(c.credentials.load("os.key").orEmpty()) }
         var user by remember { mutableStateOf(c.credentials.load("os.user").orEmpty()) }
@@ -287,8 +326,8 @@ fun SubtitleSettings(c: AppContainer) {
     }
     SettingGroup("Accessibility") {
         ChoiceRow("Animation", "Reduced and Off remove sliding and fading. Android's own \"remove animations\" setting is also respected.", listOf(app.streamsetu.core.settings.AnimationLevel.FULL to "Full", app.streamsetu.core.settings.AnimationLevel.REDUCED to "Reduced", app.streamsetu.core.settings.AnimationLevel.OFF to "Off"), anim) { ui.setAnimation(it) }
-        ToggleRow("High-contrast focus", "A thicker white frame around whatever the remote is on.", contrast) { ui.setHighContrastFocus(it) }
-        val scale by s.textScalePercent.collectAsState()
+        ToggleRow("High-contrast focus", "Uses a thicker white frame around the focused item.", contrast) { ui.setHighContrastFocus(it) }
+        val scale by s.textScalePercent.collectAsStateWithLifecycle()
         ChoiceRow("Text size", "Scales every label in the app.", listOf(100 to "Standard", 115 to "Large", 130 to "Extra large"), scale) { s.setTextScalePercent(it) }
     }
 }
@@ -296,17 +335,17 @@ fun SubtitleSettings(c: AppContainer) {
 @Composable
 fun LiveSettings(c: AppContainer) {
     val s = c.settings; val ui = c.ui
-    val inv by s.invertChannelKeys.collectAsState(); val nums by s.showChannelNumbers.collectAsState(); val resumeLast by s.resumeLastChannel.collectAsState(); val off by ui.epgOffsetMinutes.collectAsState()
+    val inv by s.invertChannelKeys.collectAsStateWithLifecycle(); val nums by s.showChannelNumbers.collectAsStateWithLifecycle(); val resumeLast by s.resumeLastChannel.collectAsStateWithLifecycle(); val off by ui.epgOffsetMinutes.collectAsStateWithLifecycle()
     SettingGroup("Watching live TV") {
         ToggleRow("Swap the channel keys", "Off: Up is the next channel and Down the previous one. On: the other way round.", inv) { s.setInvertChannelKeys(it) }
         ToggleRow("Show channel numbers", "The number the provider gives each channel, in lists and when typing a number.", nums) { s.setShowChannelNumbers(it) }
-        val group by ui.groupDuplicates.collectAsState()
+        val group by ui.groupDuplicates.collectAsStateWithLifecycle()
         ToggleRow("Fold the same channel into one row", "A channel that comes in HD, FHD and SD, or from two connections, is one row. Hold OK on it to pick a version.", group) { ui.setGroupDuplicates(it) }
         ToggleRow("Open Live TV on the last channel", "Starts the last channel you watched when Live TV opens. Off: nothing plays until you choose a channel.", resumeLast) { s.setResumeLastChannel(it) }
     }
     SettingGroup("Guide") {
         ChoiceRow("Guide time shift", "For a provider whose guide is early or late: every programme time moves by this much.", listOf(-120, -90, -60, -30, 0, 30, 60, 90, 120).map { it to if (it == 0) "None" else (if (it > 0) "+" else "−") + "${kotlin.math.abs(it)} min" }, off) { ui.setEpgOffsetMinutes(it) }
-        val zone by s.catchupZone.collectAsState()
+        val zone by s.catchupZone.collectAsStateWithLifecycle()
         ChoiceRow("Catch-up start time", "Providers read the start of a catch-up programme in their own time zone. If a catch-up plays the wrong programme, switch this.", listOf("UTC" to "UTC", "DEVICE" to "This device's time zone"), zone) { s.setCatchupZone(it) }
         InfoRow("Time zone", java.util.TimeZone.getDefault().id, "Guide times are shown in this device's time zone.")
     }

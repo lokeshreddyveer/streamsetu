@@ -1,0 +1,2161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.7.3" type="baseline" client="gradle" dependencies="false" name="AGP (8.7.3)" variant="all" version="8.7.3">
+
+    <issue
+        id="InlinedApi"
+        message="Field requires API level 24 (current min is 22): `android.app.Service#STOP_FOREGROUND_REMOVE`"
+        errorLine1="        if (active.isEmpty()) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return }"
+        errorLine2="                                               ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/Downloads.kt"
+            line="202"
+            column="48"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `android.app.Service#stopForeground`"
+        errorLine1="        if (active.isEmpty()) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return }"
+        errorLine2="                                ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/Downloads.kt"
+            line="202"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
+        errorLine1="        _prompt.value?.answer?.complete(false); _prompt.value = null"
+        errorLine2="                               ~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
+            line="189"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture()`"
+        errorLine1="        val done = CompletableFuture&lt;NsdServiceInfo?>()"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
+            line="196"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
+        errorLine1="                override fun onResolveFailed(s: NsdServiceInfo, code: Int) { done.complete(null) }"
+        errorLine2="                                                                                  ~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
+            line="199"
+            column="83"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
+        errorLine1="                override fun onServiceResolved(s: NsdServiceInfo) { done.complete(s) }"
+        errorLine2="                                                                         ~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
+            line="200"
+            column="74"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#get`"
+        errorLine1="            val r = withContext(Dispatchers.IO) { runCatching { done.get(6, TimeUnit.SECONDS) }.getOrNull() } ?: return"
+        errorLine2="                                                                     ~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
+            line="202"
+            column="70"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
+        errorLine1="        _prompt.value?.answer?.complete(false); _prompt.value = null"
+        errorLine2="                               ~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
+            line="265"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture()`"
+        errorLine1="        val answer = CompletableFuture&lt;Boolean>()"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
+            line="270"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
+        errorLine1="        _prompt.value?.answer?.complete(false)"
+        errorLine2="                               ~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
+            line="271"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#get`"
+        errorLine1="        return runCatching { answer.get(5, TimeUnit.MINUTES) }.getOrDefault(false)"
+        errorLine2="                                    ~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
+            line="273"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
+        errorLine1="    fun answer(matches: Boolean) { _prompt.value?.answer?.complete(matches); _prompt.value = null }"
+        errorLine2="                                                          ~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
+            line="276"
+            column="59"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Field requires API level 23 (current min is 22): `android.view.WindowManager.LayoutParams#preferredDisplayModeId`"
+        errorLine1="    if (fps == null) { if (attrs.preferredDisplayModeId != 0) { attrs.preferredDisplayModeId = 0; activity.window.attributes = attrs }; return }"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
+            line="597"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Field requires API level 23 (current min is 22): `android.view.WindowManager.LayoutParams#preferredDisplayModeId`"
+        errorLine1="    if (fps == null) { if (attrs.preferredDisplayModeId != 0) { attrs.preferredDisplayModeId = 0; activity.window.attributes = attrs }; return }"
+        errorLine2="                                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
+            line="597"
+            column="65"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getModeId`"
+        errorLine1="    fun mode(m: android.view.Display.Mode) = app.streamsetu.core.playback.DisplayMode(m.modeId, m.physicalWidth, m.physicalHeight, m.refreshRate)"
+        errorLine2="                                                                                        ~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
+            line="598"
+            column="89"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getPhysicalHeight`"
+        errorLine1="    fun mode(m: android.view.Display.Mode) = app.streamsetu.core.playback.DisplayMode(m.modeId, m.physicalWidth, m.physicalHeight, m.refreshRate)"
+        errorLine2="                                                                                                                   ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
+            line="598"
+            column="116"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getPhysicalWidth`"
+        errorLine1="    fun mode(m: android.view.Display.Mode) = app.streamsetu.core.playback.DisplayMode(m.modeId, m.physicalWidth, m.physicalHeight, m.refreshRate)"
+        errorLine2="                                                                                                  ~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
+            line="598"
+            column="99"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getRefreshRate`"
+        errorLine1="    fun mode(m: android.view.Display.Mode) = app.streamsetu.core.playback.DisplayMode(m.modeId, m.physicalWidth, m.physicalHeight, m.refreshRate)"
+        errorLine2="                                                                                                                                     ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
+            line="598"
+            column="134"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 22): `android.view.Display#getMode`"
+        errorLine1="    val current = display.mode?.let(::mode) ?: return"
+        errorLine2="                          ~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
+            line="599"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 22): `android.view.Display#getSupportedModes`"
+        errorLine1="    val pick = app.streamsetu.core.playback.DisplayModes.best(display.supportedModes.map(::mode), current, fps) ?: return"
+        errorLine2="                                                                      ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
+            line="600"
+            column="71"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Field requires API level 23 (current min is 22): `android.view.WindowManager.LayoutParams#preferredDisplayModeId`"
+        errorLine1="    attrs.preferredDisplayModeId = pick.id"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
+            line="601"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 22): `android.view.Display#getMode`"
+        errorLine1="    val mode = display?.mode"
+        errorLine2="                        ~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
+            line="269"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `android.view.Display#getHdrCapabilities`"
+        errorLine1="    val hdr = remember { runCatching { display?.hdrCapabilities?.supportedHdrTypes?.map { when (it) { 1 -> &quot;Dolby Vision&quot;; 2 -> &quot;HDR10&quot;; 3 -> &quot;HLG&quot;; 4 -> &quot;HDR10+&quot;; else -> &quot;HDR&quot; } } }.getOrNull().orEmpty() }"
+        errorLine2="                                                ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
+            line="270"
+            column="49"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `android.view.Display.HdrCapabilities#getSupportedHdrTypes`"
+        errorLine1="    val hdr = remember { runCatching { display?.hdrCapabilities?.supportedHdrTypes?.map { when (it) { 1 -> &quot;Dolby Vision&quot;; 2 -> &quot;HDR10&quot;; 3 -> &quot;HLG&quot;; 4 -> &quot;HDR10+&quot;; else -> &quot;HDR&quot; } } }.getOrNull().orEmpty() }"
+        errorLine2="                                                                 ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
+            line="270"
+            column="66"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getPhysicalHeight`"
+        errorLine1="        InfoRow(&quot;Resolution&quot;, mode?.let { &quot;${it.physicalWidth}×${it.physicalHeight} at ${&quot;%.0f&quot;.format(it.refreshRate)} Hz&quot; } ?: &quot;unknown&quot;)"
+        errorLine2="                                                                    ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
+            line="277"
+            column="69"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getPhysicalWidth`"
+        errorLine1="        InfoRow(&quot;Resolution&quot;, mode?.let { &quot;${it.physicalWidth}×${it.physicalHeight} at ${&quot;%.0f&quot;.format(it.refreshRate)} Hz&quot; } ?: &quot;unknown&quot;)"
+        errorLine2="                                                ~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
+            line="277"
+            column="49"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getRefreshRate`"
+        errorLine1="        InfoRow(&quot;Resolution&quot;, mode?.let { &quot;${it.physicalWidth}×${it.physicalHeight} at ${&quot;%.0f&quot;.format(it.refreshRate)} Hz&quot; } ?: &quot;unknown&quot;)"
+        errorLine2="                                                                                                          ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
+            line="277"
+            column="107"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 22): `java.net.URLConnection#getContentLengthLong`"
+        errorLine1="            val total = c.contentLengthLong.takeIf { it > 0 } ?: offer.asset.size"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/update/UpdateManager.kt"
+            line="142"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `usesCleartextTraffic` is only used in API level 23 and higher (current min is 22)"
+        errorLine1="        android:usesCleartextTraffic=&quot;true&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="38"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `supportsPictureInPicture` is only used in API level 24 and higher (current min is 22)"
+        errorLine1="            android:supportsPictureInPicture=&quot;true&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="48"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `targetCellWidth` is only used in API level 31 and higher (current min is 22)"
+        errorLine1="    android:targetCellWidth=&quot;4&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/continue_widget_info.xml"
+            line="5"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `targetCellHeight` is only used in API level 31 and higher (current min is 22)"
+        errorLine1="    android:targetCellHeight=&quot;2&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/continue_widget_info.xml"
+            line="6"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `previewLayout` is only used in API level 31 and higher (current min is 22)"
+        errorLine1="    android:previewLayout=&quot;@layout/widget_continue&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/continue_widget_info.xml"
+            line="9"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="LeanbackUsesWifi"
+        message="Requiring Wifi permissions limits app availability on TVs that support only Ethernet"
+        errorLine1="    &lt;uses-permission android:name=&quot;android.permission.CHANGE_WIFI_MULTICAST_STATE&quot; />"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="13"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="PictureInPictureIssue"
+        message="An activity in this app supports picture-in-picture and the targetSdkVersion is 31 or above; it is therefore strongly recommended to call both `setAutoEnterEnabled(true)` and `setSourceRectHint(...)`"
+        errorLine1="    &lt;application"
+        errorLine2="     ~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="31"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="RedundantLabel"
+        message="Redundant label can be removed"
+        errorLine1="            android:label=&quot;@string/app_name&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="46"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="SelectedPhotoAccess"
+        message="Your app is currently not handling Selected Photos Access introduced in Android 14+"
+        errorLine1="    &lt;uses-permission android:name=&quot;android.permission.READ_MEDIA_VIDEO&quot; />"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="8"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="SelectedPhotoAccess"
+        message="Your app is currently not handling Selected Photos Access introduced in Android 14+"
+        errorLine1="    &lt;uses-permission android:name=&quot;android.permission.READ_MEDIA_IMAGES&quot; />"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="9"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of com.android.application than 8.7.3 is available: 9.5.0"
+        errorLine1="agp = &quot;8.7.3&quot;"
+        errorLine2="      ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="2"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of com.android.application than 8.7.3 is available: 9.5.0"
+        errorLine1="agp = &quot;8.7.3&quot;"
+        errorLine2="      ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="2"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of com.android.application than 8.7.3 is available: 9.5.0"
+        errorLine1="agp = &quot;8.7.3&quot;"
+        errorLine2="      ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="2"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of com.android.library than 8.7.3 is available: 9.5.0"
+        errorLine1="agp = &quot;8.7.3&quot;"
+        errorLine2="      ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="2"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of com.android.library than 8.7.3 is available: 9.5.0"
+        errorLine1="agp = &quot;8.7.3&quot;"
+        errorLine2="      ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="2"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of com.android.library than 8.7.3 is available: 9.5.0"
+        errorLine1="agp = &quot;8.7.3&quot;"
+        errorLine2="      ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="2"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of com.android.tools:desugar_jdk_libs than 2.1.4 is available: 2.1.5"
+        errorLine1="    coreLibraryDesugaring(&quot;com.android.tools:desugar_jdk_libs:2.1.4&quot;)"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="62"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.compose:compose-bom than 2024.12.01 is available: 2026.09.00"
+        errorLine1="composeBom = &quot;2024.12.01&quot;"
+        errorLine2="             ~~~~~~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="5"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.compose:compose-bom than 2024.12.01 is available: 2026.09.00"
+        errorLine1="composeBom = &quot;2024.12.01&quot;"
+        errorLine2="             ~~~~~~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="5"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.compose:compose-bom than 2024.12.01 is available: 2026.09.00"
+        errorLine1="composeBom = &quot;2024.12.01&quot;"
+        errorLine2="             ~~~~~~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="5"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.tv:tv-material than 1.0.0 is available: 1.1.0"
+        errorLine1="tvMaterial = &quot;1.0.0&quot;"
+        errorLine2="             ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="6"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.tv:tv-material than 1.0.0 is available: 1.1.0"
+        errorLine1="tvMaterial = &quot;1.0.0&quot;"
+        errorLine2="             ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="6"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.tv:tv-material than 1.0.0 is available: 1.1.0"
+        errorLine1="tvMaterial = &quot;1.0.0&quot;"
+        errorLine2="             ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="6"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-datasource-okhttp than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-datasource-okhttp than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-datasource-okhttp than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-exoplayer than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-exoplayer than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-exoplayer than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-exoplayer-dash than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-exoplayer-dash than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-exoplayer-dash than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-exoplayer-hls than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-exoplayer-hls than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-exoplayer-hls than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-ui than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-ui than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-ui than 1.5.1 is available: 1.11.1"
+        errorLine1="media3 = &quot;1.5.1&quot;"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="7"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-compiler than 2.6.1 is available: 2.8.5"
+        errorLine1="room = &quot;2.6.1&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="8"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-compiler than 2.6.1 is available: 2.8.5"
+        errorLine1="room = &quot;2.6.1&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="8"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-compiler than 2.6.1 is available: 2.8.5"
+        errorLine1="room = &quot;2.6.1&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="8"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-ktx than 2.6.1 is available: 2.8.5"
+        errorLine1="room = &quot;2.6.1&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="8"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-ktx than 2.6.1 is available: 2.8.5"
+        errorLine1="room = &quot;2.6.1&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="8"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-ktx than 2.6.1 is available: 2.8.5"
+        errorLine1="room = &quot;2.6.1&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="8"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-runtime than 2.6.1 is available: 2.8.5"
+        errorLine1="room = &quot;2.6.1&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="8"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-runtime than 2.6.1 is available: 2.8.5"
+        errorLine1="room = &quot;2.6.1&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="8"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-runtime than 2.6.1 is available: 2.8.5"
+        errorLine1="room = &quot;2.6.1&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="8"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.navigation:navigation-compose than 2.8.5 is available: 2.10.2"
+        errorLine1="navigation = &quot;2.8.5&quot;"
+        errorLine2="             ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="12"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.navigation:navigation-compose than 2.8.5 is available: 2.10.2"
+        errorLine1="navigation = &quot;2.8.5&quot;"
+        errorLine2="             ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="12"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-runtime-compose than 2.8.7 is available: 2.11.0"
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="13"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-runtime-compose than 2.8.7 is available: 2.11.0"
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="13"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.8.7 is available: 2.11.0"
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="13"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.8.7 is available: 2.11.0"
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="13"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.8.7 is available: 2.11.0"
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="13"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.8.7 is available: 2.11.0"
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="13"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.activity:activity-compose than 1.9.3 is available: 1.13.0"
+        errorLine1="activityCompose = &quot;1.9.3&quot;"
+        errorLine2="                  ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="14"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.activity:activity-compose than 1.9.3 is available: 1.13.0"
+        errorLine1="activityCompose = &quot;1.9.3&quot;"
+        errorLine2="                  ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="14"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of com.google.android.gms:play-services-cast-framework than 21.5.0 is available: 23.0.0"
+        errorLine1="cast = &quot;21.5.0&quot;"
+        errorLine2="       ~~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="16"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of com.google.android.gms:play-services-cast-framework than 21.5.0 is available: 23.0.0"
+        errorLine1="cast = &quot;21.5.0&quot;"
+        errorLine2="       ~~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="16"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of com.google.android.gms:play-services-cast-framework than 21.5.0 is available: 23.0.0"
+        errorLine1="cast = &quot;21.5.0&quot;"
+        errorLine2="       ~~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="16"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.core:core-ktx than 1.15.0 is available: 1.19.1"
+        errorLine1="coreKtx = &quot;1.15.0&quot;"
+        errorLine2="          ~~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="17"
+            column="11"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.core:core-ktx than 1.15.0 is available: 1.19.1"
+        errorLine1="coreKtx = &quot;1.15.0&quot;"
+        errorLine2="          ~~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="17"
+            column="11"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.datastore:datastore-preferences than 1.1.1 is available: 1.3.0"
+        errorLine1="datastore = &quot;1.1.1&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="18"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.datastore:datastore-preferences than 1.1.1 is available: 1.3.0"
+        errorLine1="datastore = &quot;1.1.1&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="18"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.datastore:datastore-preferences than 1.1.1 is available: 1.3.0"
+        errorLine1="datastore = &quot;1.1.1&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="18"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.hilt:hilt-navigation-compose than 1.2.0 is available: 1.4.0"
+        errorLine1="hiltNavigation = &quot;1.2.0&quot;"
+        errorLine2="                 ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="20"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.hilt:hilt-navigation-compose than 1.2.0 is available: 1.4.0"
+        errorLine1="hiltNavigation = &quot;1.2.0&quot;"
+        errorLine2="                 ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="20"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.hilt:hilt-navigation-compose than 1.2.0 is available: 1.4.0"
+        errorLine1="hiltNavigation = &quot;1.2.0&quot;"
+        errorLine2="                 ~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="20"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.work:work-runtime-ktx than 2.10.0 is available: 2.12.0"
+        errorLine1="workmanager = &quot;2.10.0&quot;"
+        errorLine2="              ~~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="22"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.work:work-runtime-ktx than 2.10.0 is available: 2.12.0"
+        errorLine1="workmanager = &quot;2.10.0&quot;"
+        errorLine2="              ~~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="22"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.work:work-runtime-ktx than 2.10.0 is available: 2.12.0"
+        errorLine1="workmanager = &quot;2.10.0&quot;"
+        errorLine2="              ~~~~~~~~">
+        <location
+            file="$HOME/Documents/iptv/android/gradle/libs.versions.toml"
+            line="22"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="RouteInfo.isDefaultOrBluetooth can only be called from within the same library (androidx.mediarouter:mediarouter)"
+        errorLine1="        return MediaRouter.getInstance(context).routes.filter { it.matchesSelector(selector()) &amp;&amp; !it.isDefaultOrBluetooth }"
+        errorLine2="                                                                                                      ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/CastSupport.kt"
+            line="82"
+            column="103"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="RouteInfo.isDefaultOrBluetooth can only be called from within the same library (androidx.mediarouter:mediarouter)"
+        errorLine1="        return MediaRouter.getInstance(context).routes.filter { it.matchesSelector(selector()) &amp;&amp; !it.isDefaultOrBluetooth }"
+        errorLine2="                                                                                                      ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/CastSupport.kt"
+            line="82"
+            column="103"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="ComponentActivity.dispatchKeyEvent can only be called from within the same library group prefix (referenced groupId=`androidx.core` with prefix androidx from groupId=`StreamSetuTV`)"
+        errorLine1="    override fun dispatchKeyEvent(e: android.view.KeyEvent): Boolean {"
+        errorLine2="                 ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/MainActivity.kt"
+            line="132"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="ComponentActivity.dispatchKeyEvent can only be called from within the same library group prefix (referenced groupId=`androidx.core` with prefix androidx from groupId=`StreamSetuTV`)"
+        errorLine1="        if (!select || nav.top == Overlay.Player) return super.dispatchKeyEvent(e)"
+        errorLine2="                                                               ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/MainActivity.kt"
+            line="149"
+            column="64"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="ComponentActivity.dispatchKeyEvent can only be called from within the same library group prefix (referenced groupId=`androidx.core` with prefix androidx from groupId=`StreamSetuTV`)"
+        errorLine1="        if (!select || nav.top == Overlay.Player) return super.dispatchKeyEvent(e)"
+        errorLine2="                                                                                ~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/MainActivity.kt"
+            line="149"
+            column="81"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="ComponentActivity.dispatchKeyEvent can only be called from within the same library group prefix (referenced groupId=`androidx.core` with prefix androidx from groupId=`StreamSetuTV`)"
+        errorLine1="        return super.dispatchKeyEvent(e)"
+        errorLine2="                     ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/MainActivity.kt"
+            line="151"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="ComponentActivity.dispatchKeyEvent can only be called from within the same library group prefix (referenced groupId=`androidx.core` with prefix androidx from groupId=`StreamSetuTV`)"
+        errorLine1="        return super.dispatchKeyEvent(e)"
+        errorLine2="                                      ~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/MainActivity.kt"
+            line="151"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be named modifier"
+        errorLine1="private fun PanelRow(label: String, icon: ImageVector, count: Int?, selected: Boolean, dimmed: Boolean, extra: Modifier, onFocusDwell: () -> Unit = {}, onRowFocus: () -> Unit = {}, onLongClick: (() -> Unit)? = null, reordering: Boolean = false, onClick: () -> Unit) {"
+        errorLine2="                                                                                                        ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/components/FolderPanel.kt"
+            line="221"
+            column="105"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be named modifier"
+        errorLine1="private fun QuickCard(label: String, icon: ImageVector, count: Int, onClick: () -> Unit, onLong: () -> Unit, extra: Modifier = Modifier) {"
+        errorLine2="                                                                                                             ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/home/HomeScreen.kt"
+            line="211"
+            column="110"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be named modifier"
+        errorLine1="private fun ResultRow(r: SearchItem, extra: Modifier, onFocus: (Boolean) -> Unit, onClick: () -> Unit) = Focusable(onClick, extra.widthIn(max = 760.dp).fillMaxWidth(), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), scaleOnFocus = 1.02f) { _ ->"
+        errorLine2="                                     ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/search/SearchContent.kt"
+            line="234"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be named modifier"
+        errorLine1="private fun ChannelCardSmall(x: SearchItem, extra: Modifier, onFocus: (Boolean) -> Unit, onClick: () -> Unit) = Focusable(onClick, extra.width(168.dp), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), scaleOnFocus = 1.05f) { _ ->"
+        errorLine2="                                            ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/search/SearchContent.kt"
+            line="258"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="ProduceStateDoesNotAssignValue"
+        message="produceState calls should assign `value` inside the producer lambda"
+        errorLine1="    val bitmap by produceState&lt;android.graphics.Bitmap?>(null, item.uri) {"
+        errorLine2="                  ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/DeviceUi.kt"
+            line="78"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="ProduceStateDoesNotAssignValue"
+        message="produceState calls should assign `value` inside the producer lambda"
+        errorLine1="            if (!s.draft) { val cap by produceState&lt;SourceCapabilities?>(null, s.id, s.lastSyncAt) { value = c.maintenance.capabilities(s) }; cap?.let { k ->"
+        errorLine2="                                       ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen2.kt"
+            line="43"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="StateFlowValueCalledInComposition"
+        message="StateFlow.value should not be called within composition"
+        errorLine1="            session = nav.search, sessionKey = &quot;${c.library.activeId.value}|${c.profiles.activeId.value}|${nav.searchScope.name}&quot;,"
+        errorLine2="                                                                     ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/search/SearchContent.kt"
+            line="294"
+            column="70"/>
+    </issue>
+
+    <issue
+        id="StateFlowValueCalledInComposition"
+        message="StateFlow.value should not be called within composition"
+        errorLine1="            session = nav.search, sessionKey = &quot;${c.library.activeId.value}|${c.profiles.activeId.value}|${nav.searchScope.name}&quot;,"
+        errorLine2="                                                                                                  ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/search/SearchContent.kt"
+            line="294"
+            column="99"/>
+    </issue>
+
+    <issue
+        id="StateFlowValueCalledInComposition"
+        message="StateFlow.value should not be called within composition"
+        errorLine1="        if (c.playback.current.value == null) InfoRow(&quot;Nothing is playing&quot;, &quot;&quot;, &quot;Start a channel or movie, then come back to see its details.&quot;)"
+        errorLine2="                               ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen2.kt"
+            line="329"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="UnusedBoxWithConstraintsScope"
+        message="BoxWithConstraints scope is not used"
+        errorLine1="                BoxWithConstraints(Modifier.fillMaxWidth()) {"
+        errorLine2="                                                            ^">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
+            line="294"
+            column="61"/>
+    </issue>
+
+    <issue
+        id="UnusedBoxWithConstraintsScope"
+        message="BoxWithConstraints scope is not used"
+        errorLine1="            BoxWithConstraints(Modifier.fillMaxWidth()) {"
+        errorLine2="                                                        ^">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/section/SectionScreen.kt"
+            line="186"
+            column="57"/>
+    </issue>
+
+    <issue
+        id="DiscouragedApi"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`)."
+        errorLine1="                val res = context.resources.getIdentifier(e.raw + suffix, &quot;raw&quot;, context.packageName)"
+        errorLine2="                                            ~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/UISound.kt"
+            line="84"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="ChromeOsAbiSupport"
+        message="Missing x86_64 ABI support for ChromeOS"
+        errorLine1="        ndk { abiFilters += listOf(&quot;arm64-v8a&quot;, &quot;armeabi-v7a&quot;) }       // Fire TV and Android TV boxes are ARM"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="26"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="DataExtractionRules"
+        message="The attribute `android:allowBackup` is deprecated from Android 12 and higher and may be removed in future versions. Consider adding the attribute `android:dataExtractionRules` specifying an `@xml` resource which configures cloud backups and device transfers on Android 12 and higher."
+        errorLine1="        android:allowBackup=&quot;false&quot;"
+        errorLine2="                             ~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="34"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableLongStateOf` instead of `mutableStateOf`"
+        errorLine1="    var tick by remember { mutableStateOf(System.currentTimeMillis()) }"
+        errorLine2="                           ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/home/HomeScreen.kt"
+            line="262"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var restoreFocusTick by mutableStateOf(0)"
+        errorLine2="                            ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/nav/Navigation.kt"
+            line="113"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var sidebarFocusTick by mutableStateOf(0)"
+        errorLine2="                            ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/nav/Navigation.kt"
+            line="115"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var contentFocusTick by mutableStateOf(0)"
+        errorLine2="                            ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/nav/Navigation.kt"
+            line="117"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableLongStateOf` instead of `mutableStateOf`"
+        errorLine1="    var tick by remember { mutableStateOf(System.currentTimeMillis()) }"
+        errorLine2="                           ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/phone/PhoneHome.kt"
+            line="244"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var shown by remember { mutableStateOf(30) }"
+        errorLine2="                            ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/PodcastSettings.kt"
+            line="30"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var indexRows by remember { mutableStateOf(0) }; var catalogRows by remember { mutableStateOf(0) }"
+        errorLine2="                                ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen2.kt"
+            line="324"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var indexRows by remember { mutableStateOf(0) }; var catalogRows by remember { mutableStateOf(0) }"
+        errorLine2="                                                                                   ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen2.kt"
+            line="324"
+            column="84"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `#E6101218` with a theme that also paints a background (inferred theme is `@style/Theme.StreamSetu`)"
+        errorLine1="    android:background=&quot;#E6101218&quot;>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/widget_continue.xml"
+            line="8"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.accent` appears to be unused"
+        errorLine1="    &lt;color name=&quot;accent&quot;>#22D3EE&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="3"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_back` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_back.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_back_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_back_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_back_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_back_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_back_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_back_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_back_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_back_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_error` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_error.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_error_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_error_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_error_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_error_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_error_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_error_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_error_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_error_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_fav_add` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_fav_add.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_fav_add_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_fav_add_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_fav_add_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_fav_add_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_fav_add_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_fav_add_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_fav_add_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_fav_add_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_fav_remove` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_fav_remove.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_fav_remove_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_fav_remove_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_fav_remove_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_fav_remove_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_fav_remove_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_fav_remove_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_fav_remove_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_fav_remove_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_focus` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_focus.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_focus_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_focus_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_focus_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_focus_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_focus_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_focus_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_focus_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_focus_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_forward` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_forward.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_forward_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_forward_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_forward_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_forward_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_forward_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_forward_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_forward_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_forward_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_later_add` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_later_add.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_later_add_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_later_add_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_later_add_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_later_add_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_later_add_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_later_add_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_later_add_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_later_add_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_later_remove` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_later_remove.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_later_remove_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_later_remove_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_later_remove_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_later_remove_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_later_remove_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_later_remove_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_later_remove_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_later_remove_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_lock` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_lock.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_lock_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_lock_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_lock_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_lock_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_lock_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_lock_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_lock_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_lock_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_menu_close` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_menu_close.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_menu_close_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_menu_close_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_menu_close_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_menu_close_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_menu_close_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_menu_close_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_menu_close_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_menu_close_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_menu_open` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_menu_open.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_menu_open_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_menu_open_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_menu_open_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_menu_open_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_menu_open_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_menu_open_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_menu_open_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_menu_open_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_move_first` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_move_first.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_move_first_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_move_first_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_move_first_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_move_first_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_move_first_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_move_first_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_move_first_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_move_first_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_play` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_play.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_play_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_play_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_play_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_play_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_play_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_play_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_play_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_play_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_reorder` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_reorder.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_reorder_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_reorder_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_reorder_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_reorder_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_reorder_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_reorder_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_reorder_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_reorder_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_select` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_select.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_select_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_select_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_select_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_select_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_select_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_select_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_select_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_select_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_sidebar` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_sidebar.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_sidebar_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_sidebar_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_sidebar_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_sidebar_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_sidebar_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_sidebar_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_sidebar_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_sidebar_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_success` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_success.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_success_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_success_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_success_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_success_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_success_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_success_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_success_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_success_wood.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_unlock` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_unlock.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_unlock_arcade` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_unlock_arcade.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_unlock_crystal` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_unlock_crystal.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_unlock_soft` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_unlock_soft.wav"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.raw.ui_unlock_wood` appears to be unused">
+        <location
+            file="src/main/res/raw/ui_unlock_wood.wav"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icons should not fill every pixel of their square region; see the design guide for details">
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icons should not fill every pixel of their square region; see the design guide for details">
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icons should not fill every pixel of their square region; see the design guide for details">
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icons should not fill every pixel of their square region; see the design guide for details">
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icons should not fill every pixel of their square region; see the design guide for details">
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconMissingDensityFolder"
+        message="Missing density variation folders in `src/main/res`: drawable-hdpi, drawable-mdpi, drawable-xxhdpi">
+        <location
+            file="src/main/res"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    coreLibraryDesugaring(&quot;com.android.tools:desugar_jdk_libs:2.1.4&quot;)"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="62"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    testImplementation(&quot;org.json:json:20240303&quot;)"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="87"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    testImplementation(&quot;androidx.compose.ui:ui-test-junit4&quot;)"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="89"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    testImplementation(&quot;org.robolectric:robolectric:4.14.1&quot;)"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="90"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    debugImplementation(&quot;androidx.compose.ui:ui-test-manifest&quot;)"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="91"
+            column="25"/>
+    </issue>
+
+</issues>

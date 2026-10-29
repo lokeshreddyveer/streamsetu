@@ -55,9 +55,9 @@ class ScreenNavigationTest {
     // ---- the rail ----
     @Test fun rightOnTheRailReturnsTheRemoteToThePage() {
         var returned = 0
-        rule.setContent { Row { Sidebar(Tab.MOVIES, onSelect = {}, entry = FocusRequester(), expanded = true, onReturn = { returned++ }); Focusable({}, Modifier.testTag("page")) { Label("Page") } } }
-        rule.onNodeWithTag("sidebar-MOVIES").requestFocus()
-        press("sidebar-MOVIES", Key.DirectionRight)
+        rule.setContent { Row { Sidebar(Tab.GUIDE, onSelect = {}, entry = FocusRequester(), expanded = true, onReturn = { returned++ }); Focusable({}, Modifier.testTag("page")) { Label("Page") } } }
+        rule.onNodeWithTag("sidebar-GUIDE").requestFocus()
+        press("sidebar-GUIDE", Key.DirectionRight)
         assertEquals(1, returned)
     }
     @Test fun upAndDownOnTheRailNeverReturnWhileMovingBetweenEntries() {

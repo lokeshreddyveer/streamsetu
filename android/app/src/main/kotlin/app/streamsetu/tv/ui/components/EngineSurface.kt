@@ -27,6 +27,7 @@ fun EngineSurface(c: AppContainer, modifier: Modifier = Modifier, active: Boolea
                     frame.removeAllViews()
                     frame.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
                     e.setAspect(aspect)
+                    app.streamsetu.tv.trace.SSTrace.v { "surface attached now=${android.os.SystemClock.uptimeMillis()}" }
                 }
             } else if (!active) frame.removeAllViews()
         },

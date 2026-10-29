@@ -59,6 +59,14 @@ class UiPrefs(context: Context) {
     val highContrastFocus: StateFlow<Boolean> = _contrast
     fun setHighContrastFocus(v: Boolean) { prefs.edit().putBoolean("contrast", v).apply(); _contrast.value = v }
 
+    /** Where the app opens: CHOOSER (the library chooser, as it always did), HOME, LAST_SCREEN, LAST_CHANNEL (straight into the channel last watched), LIVE or GUIDE. */
+    private val _startup = flow(prefs.getString("startup", "CHOOSER") ?: "CHOOSER")
+    val startup: StateFlow<String> = _startup
+    fun setStartup(v: String) { prefs.edit().putString("startup", v).apply(); _startup.value = v }
+    /** The page the person was on last (a Tab name), for the "last screen" start. */
+    fun lastTab(): String? = prefs.getString("lastTab", null)
+    fun setLastTab(name: String) { prefs.edit().putString("lastTab", name).apply() }
+
     private val _shortcuts = flow(prefs.getBoolean("shortcuts", true))
     val showShortcuts: StateFlow<Boolean> = _shortcuts
     fun setShowShortcuts(v: Boolean) { prefs.edit().putBoolean("shortcuts", v).apply(); _shortcuts.value = v }

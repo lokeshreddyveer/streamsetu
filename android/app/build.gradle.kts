@@ -55,6 +55,7 @@ android {
     }
     kotlinOptions { jvmTarget = "17"; freeCompilerArgs += "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi" }
     buildFeatures { compose = true; buildConfig = true }
+    sourceSets.getByName("debug").assets.srcDir("$rootDir/core-database/schemas")          // the saved database layouts of every version, for the upgrade tests
     testOptions { unitTests { isIncludeAndroidResources = true; isReturnDefaultValues = true } }       // the Compose UI tests run on the JVM with Robolectric
 }
 
@@ -88,6 +89,8 @@ dependencies {
     testImplementation(platform(libs.compose.bom))
     testImplementation("androidx.compose.ui:ui-test-junit4")
     testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.room:room-testing:2.6.1")
+    testImplementation("androidx.test:core:1.6.1")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation(libs.profileinstaller)       // installs the precompiled start-up profile (ours and Compose's) so the first scroll is not the slow one
 }

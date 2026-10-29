@@ -1,6 +1,8 @@
 package app.streamsetu.tv
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.streamsetu.tv.ui.components.railOnLeft
+import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import android.os.Bundle
@@ -48,9 +50,9 @@ class MainActivity : ComponentActivity() {
         if (phone) androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         else requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         setContent {
-            val watched by container.watchedTitles.collectAsState()
-            val partial by container.partialTitles.collectAsState()
-            val saved by container.downloads.items.collectAsState()
+            val watched by container.watchedTitles.collectAsStateWithLifecycle()
+            val partial by container.partialTitles.collectAsStateWithLifecycle()
+            val saved by container.downloads.items.collectAsStateWithLifecycle()
             val downloadStatus = androidx.compose.runtime.remember(saved) {
                 val order = listOf(app.streamsetu.core.data.repo.SaveState.DOWNLOADING, app.streamsetu.core.data.repo.SaveState.QUEUED, app.streamsetu.core.data.repo.SaveState.PAUSED, app.streamsetu.core.data.repo.SaveState.FAILED, app.streamsetu.core.data.repo.SaveState.DONE)
                 saved.groupBy { it.seriesId ?: it.itemId }.mapValues { (_, list) -> list.minBy { order.indexOf(it.state) }.let { it.state to it.fraction } }
@@ -60,7 +62,7 @@ class MainActivity : ComponentActivity() {
                     app.streamsetu.tv.ui.phone.PhoneApp(container, nav, onExit = { finish() })
                     app.streamsetu.tv.ui.screens.settings.ViewingBlockOverlay(container)
                     var picked by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(profileChosen) }
-                    val many by container.profiles.profiles.collectAsState()
+                    val many by container.profiles.profiles.collectAsStateWithLifecycle()
                     if (!picked && many.size > 1) app.streamsetu.tv.ui.screens.settings.ProfilePickerOverlay(container) { picked = true; profileChosen = true }
                 } else androidx.compose.foundation.layout.Box {
                     StreamSetuTV(container, nav, onExit = { finish() })
@@ -129,6 +131,7 @@ class MainActivity : ComponentActivity() {
     private val directions = app.streamsetu.tv.nav.DirectionThrottle()
 
     override fun dispatchKeyEvent(e: android.view.KeyEvent): Boolean {
+        if (e.action == android.view.KeyEvent.ACTION_DOWN) app.streamsetu.tv.trace.SSTrace.v { "key ${e.keyCode} ev=${e.eventTime} now=${android.os.SystemClock.uptimeMillis()}" }
         // A held direction is thinned to what the screen can draw, and presses that waited in the queue behind a slow frame are dropped, so the cursor stops when the button is released.
         if (e.action == android.view.KeyEvent.ACTION_DOWN && e.keyCode in android.view.KeyEvent.KEYCODE_DPAD_UP..android.view.KeyEvent.KEYCODE_DPAD_RIGHT && nav.top != Overlay.Player &&
             !directions.accept(e.keyCode, e.eventTime, android.os.SystemClock.uptimeMillis())) return true
@@ -152,7 +155,7 @@ class MainActivity : ComponentActivity() {
 
     private val frames by lazy { app.streamsetu.core.ui.motion.FrameMonitor(this) }
 
-    override fun onResume() { super.onResume(); container.updates.resumeAfterPermission() }
+    override fun onResume() { super.onResume(); app.streamsetu.tv.trace.SSTrace.refresh(); container.updates.resumeAfterPermission() }
 
     override fun onStart() {
         super.onStart()
@@ -172,6 +175,8 @@ inline fun <reified T : ViewModel> vm(key: String? = null, crossinline create: (
 
 /** The opening animation plays once per launch of the app, not every time the person returns to the chooser. */
 private var splashDone = false
+/** The start-up choice (Settings, Libraries) is applied once per process, when the splash and the profile picker are done. */
+private var startupApplied = false
 /** Who is watching is asked once per launch of the app. */
 private var profileChosen = false
 
@@ -179,16 +184,16 @@ private var profileChosen = false
 fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     var showSplash by remember { mutableStateOf(!splashDone) }
     var profilePicked by remember { mutableStateOf(profileChosen) }
-    val sharedDevice by c.profiles.profiles.collectAsState()
+    val sharedDevice by c.profiles.profiles.collectAsStateWithLifecycle()
     val systemReduced = app.streamsetu.core.ui.motion.rememberReducedMotion()
-    val animation by c.ui.animation.collectAsState()
+    val animation by c.ui.animation.collectAsStateWithLifecycle()
     val reduced = systemReduced || animation != app.streamsetu.core.settings.AnimationLevel.FULL
-    val contrast by c.ui.highContrastFocus.collectAsState()
-    val textScale by c.settings.textScalePercent.collectAsState()
+    val contrast by c.ui.highContrastFocus.collectAsStateWithLifecycle()
+    val textScale by c.settings.textScalePercent.collectAsStateWithLifecycle()
     val entries by c.library.entries.collectAsState(initial = emptyList())
-    val relock by c.settings.relockPolicy.collectAsState()
+    val relock by c.settings.relockPolicy.collectAsStateWithLifecycle()
     LaunchedEffect(nav.base, relock) { if (nav.base != Base.Shell && relock == "LEAVE") c.folders.lockAgain() }
-    val playbackState by c.playback.state.collectAsState()
+    val playbackState by c.playback.state.collectAsStateWithLifecycle()
     val sidebarEntry = remember { androidx.compose.ui.focus.FocusRequester() }
     val contentEntry = remember { androidx.compose.ui.focus.FocusRequester() }
     val baseFocus = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -200,11 +205,33 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     BackHandler(enabled = true) {
         app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.NAVIGATE_BACK)
         when {
-            nav.top == Overlay.Player -> closePlayer(c, nav)
+            nav.top == Overlay.Player -> closePlayer(c, nav, embeddedLive = true)
             nav.overlays.isNotEmpty() -> nav.close()
             effectiveBase is Base.Setup || effectiveBase is Base.Combined -> nav.base = Base.ChooseLibrary
             effectiveBase == Base.ChooseLibrary || effectiveBase == Base.Welcome -> onExit()
             !nav.back() -> onExit()
+        }
+    }
+
+    // The page the person is on is remembered for the "last screen" start.
+    LaunchedEffect(nav.tab, nav.base) { if (nav.base == Base.Shell && nav.tab != Tab.LIBRARIES) c.ui.setLastTab(nav.tab.name) }
+    // Start-up: straight into the last library, and from there to Home, the last page, Live TV, the Guide, or playing the last channel. Not done when the app was opened by a link, which has its own destination.
+    val activity = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
+    LaunchedEffect(showSplash, profilePicked) {
+        if (showSplash || !profilePicked || startupApplied) return@LaunchedEffect
+        startupApplied = true
+        val mode = c.ui.startup.value
+        if (mode == "CHOOSER" || nav.base != Base.ChooseLibrary || activity?.intent?.data != null) return@LaunchedEffect
+        val entry = kotlinx.coroutines.withTimeoutOrNull(4_000) { c.library.entries.first { l -> l.any { it.usable } } }?.let { l -> l.firstOrNull { it.id == c.library.lastUsedId && it.usable } ?: l.firstOrNull { it.usable } } ?: return@LaunchedEffect
+        c.library.open(entry); nav.enterLibrary()
+        when (mode) {
+            "LAST_SCREEN" -> c.ui.lastTab()?.let { n -> runCatching { Tab.valueOf(n) }.getOrNull() }?.takeIf { it != Tab.LIBRARIES && it != Tab.SEARCH }?.let { nav.go(it) }
+            "LIVE" -> nav.go(Tab.LIVE)
+            "GUIDE" -> nav.go(Tab.GUIDE)
+            "LAST_CHANNEL" -> {
+                nav.go(Tab.LIVE)
+                c.settings.lastChannelId?.let { id -> c.catalog.channel(id) }?.let { ch -> play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch)) }
+            }
         }
     }
 
@@ -223,6 +250,8 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
             kotlinx.coroutines.delay(250)
         }
     }
+    // The real size of the screen, published before anything below reads a size (the layout is scaled by it; nothing is drawn through a scaled canvas).
+    androidx.compose.ui.platform.LocalConfiguration.current.let { cfg -> remember(cfg.screenWidthDp, cfg.screenHeightDp) { app.streamsetu.tv.ui.theme.UiScale.apply(cfg.screenWidthDp.toFloat(), cfg.screenHeightDp.toFloat()); true } }
     androidx.compose.runtime.CompositionLocalProvider(
         app.streamsetu.core.ui.motion.LocalReducedMotion provides reduced,
         app.streamsetu.tv.ui.components.LocalHighContrast provides contrast,
@@ -251,12 +280,17 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
         if (showSplash) app.streamsetu.tv.ui.screens.library.LogoReveal(reduced) { showSplash = false; splashDone = true }
         app.streamsetu.tv.ui.components.TvUpdatePrompt(c, suppress = nav.top != null || nav.base != Base.Shell)
         if (nav.top != Overlay.Player) app.streamsetu.tv.ui.components.TvMiniPlayer(c)
+        // The one video surface: above the screens, below the player's controls.
+        app.streamsetu.tv.ui.components.PersistentVideo(c, nav)
         androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalInOverlay provides true) {
             // A page opens with a quick fade and a slight settle, and closes with a fade. The one that is leaving cannot take the remote while it fades.
             androidx.compose.animation.AnimatedContent(
                 nav.top, Modifier.fillMaxSize(),
                 transitionSpec = {
-                    (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SCREEN, easing = app.streamsetu.core.ui.motion.Motion.Standard)) +
+                    // The video view moves between the Live TV preview and the fullscreen player. Fading or scaling a hierarchy that holds a video surface makes the Fire TV redraw it
+                    // every frame, so opening and closing the player is a cut: nothing around the picture animates.
+                    if (initialState == Overlay.Player || targetState == Overlay.Player) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
+                    else (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SCREEN, easing = app.streamsetu.core.ui.motion.Motion.Standard)) +
                         androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SCREEN, easing = app.streamsetu.core.ui.motion.Motion.Standard), 0.98f)) togetherWith
                         androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduced) 0 else 160, easing = app.streamsetu.core.ui.motion.Motion.Exit))
                 },
@@ -266,7 +300,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                 when (val o: Overlay = top) {
                     is Overlay.MovieDetail -> app.streamsetu.tv.ui.screens.detail.MovieDetailScreen(o.movie, c, nav)
                     is Overlay.SeriesDetail -> app.streamsetu.tv.ui.screens.detail.SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
-                    is Overlay.Player -> PlayerScreen(c, onClose = { closePlayer(c, nav) }, onMultiView = { openMultiView(c, nav) }, onOpenSeries = { sr -> closePlayer(c, nav); nav.open(Overlay.SeriesDetail(sr)) }, onMinimize = { nav.liveFullscreen = false; nav.close() }, onOpenGuide = { nav.liveFullscreen = false; nav.close(); nav.go(Tab.GUIDE) })
+                    is Overlay.Player -> PlayerScreen(c, onClose = { closePlayer(c, nav, embeddedLive = true) }, onMultiView = { openMultiView(c, nav) }, onOpenSeries = { sr -> closePlayer(c, nav); nav.open(Overlay.SeriesDetail(sr)) }, onMinimize = { nav.liveFullscreen = false; nav.close() }, onOpenGuide = { nav.liveFullscreen = false; nav.close(); nav.go(Tab.GUIDE) })
                     is Overlay.MultiView -> app.streamsetu.tv.ui.screens.MultiViewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> nav.close(); play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch), c.queue.ifEmpty { listOf(app.streamsetu.core.model.ChannelPlayable(ch)) }) })
                     is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                     is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav)
@@ -283,10 +317,17 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
 private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compose.ui.focus.FocusRequester, contentEntry: androidx.compose.ui.focus.FocusRequester) {
     val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
     val mode = nav.sidebarMode
+    // For the automated tests: the navigation flags are written to the log whenever one of them changes (nothing runs unless the test switch is on).
+    LaunchedEffect(Unit) {
+        if (!app.streamsetu.tv.trace.SSTrace.on) return@LaunchedEffect
+        androidx.compose.runtime.snapshotFlow { listOf(nav.tab.name, nav.sidebarFocused, nav.sidebarRevealed, nav.foldersRequested, nav.foldersHoldFocus, nav.top?.let { it::class.simpleName } ?: "none") }.collect { st ->
+            app.streamsetu.tv.trace.SSTrace.v { "state tab=${st[0]} sidebarFocused=${st[1]} revealed=${st[2]} foldersRequested=${st[3]} foldersHold=${st[4]} overlay=${st[5]} now=${android.os.SystemClock.uptimeMillis()}" }
+        }
+    }
     // A chosen section gives the remote to the page's entry point, once per choice (not on every recomposition).
     LaunchedEffect(nav.tab, nav.contentFocusTick) {
-        kotlinx.coroutines.delay(280)
-        repeat(8) { if (runCatching { contentEntry.requestFocus() }.isSuccess) return@LaunchedEffect; kotlinx.coroutines.delay(120) }
+        if (nav.foldersHoldFocus) return@LaunchedEffect          // the page's folder column has the remote (Movies, Series, Live TV opened from the sidebar)
+        app.streamsetu.tv.ui.components.requestFocusOnFrames(5, { contentEntry.requestFocus() }, { nav.contentFocused || nav.foldersHoldFocus })
     }
     // When a detail page, the player or a menu closes, the card that was under the remote gets it back.
     val overlayOpen = nav.top != null
@@ -294,27 +335,23 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
         if (overlayOpen || nav.lastClosedAt == 0L) return@LaunchedEffect
         val back = nav.returnFocus ?: app.streamsetu.tv.ui.components.FocusMemory.last ?: return@LaunchedEffect
         // Asking is not getting: the page only accepts focus once the page above it has gone, and the system may hand the remote to some other card meanwhile. Ask again until it is on this one.
-        repeat(20) { kotlinx.coroutines.delay(100); runCatching { back.requestFocus() }; if (app.streamsetu.tv.ui.components.FocusMemory.focused === back) return@LaunchedEffect }
+        app.streamsetu.tv.ui.components.requestFocusOnFrames(8, { back.requestFocus() }, { !nav.contentRestoreAllowed || app.streamsetu.tv.ui.components.FocusMemory.focused === back })
     }
     // Back from a page's root (or Back on Home) sends the remote to the sidebar, once per request.
     LaunchedEffect(nav.sidebarFocusTick) {
         if (nav.sidebarFocusTick == 0) return@LaunchedEffect
-        kotlinx.coroutines.delay(60)
-        repeat(8) { if (runCatching { sidebarEntry.requestFocus() }.isSuccess) return@LaunchedEffect; kotlinx.coroutines.delay(80) }
+        app.streamsetu.tv.ui.components.requestFocusOnFrames(5, { sidebarEntry.requestFocus() }, { nav.sidebarFocused })
     }
     // Closing the sidebar with Back sends the remote back to where it was in the page.
     LaunchedEffect(nav.restoreFocusTick) {
         if (nav.restoreFocusTick == 0) return@LaunchedEffect
-        kotlinx.coroutines.delay(80)
-        repeat(8) { i ->
-            val target = (if (i < 3) app.streamsetu.tv.ui.components.FocusMemory.content else null) ?: contentEntry
-            if (runCatching { target.requestFocus() }.isSuccess) return@LaunchedEffect
-            kotlinx.coroutines.delay(100)
-        }
+        if (!nav.contentRestoreAllowed) return@LaunchedEffect          // the folders were chosen meanwhile: the remote stays with them
+        var tries = 0
+        app.streamsetu.tv.ui.components.requestFocusOnFrames(5, { ((if (tries++ < 3) app.streamsetu.tv.ui.components.FocusMemory.content else null) ?: contentEntry).requestFocus() }, { nav.contentFocused || !nav.contentRestoreAllowed })
     }
     // One instance of the sidebar. The page is laid out once: on Home it keeps a strip as wide as the collapsed sidebar, elsewhere it uses the whole width. The sidebar is drawn over the
     // page and widens over it, so opening and closing it never makes the page measure itself again (which cost most of a frame on a Fire TV Stick). When it is HIDDEN it is not composed.
-    androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalFocusRing provides androidx.compose.ui.graphics.Color.Unspecified, app.streamsetu.tv.ui.components.LocalRailReveal provides remember(nav) { { nav.revealSidebar() } }) {
+    androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalFocusRing provides androidx.compose.ui.graphics.Color.Unspecified, app.streamsetu.tv.ui.components.LocalRailReveal provides remember(nav) { { if (nav.tab == Tab.MOVIES || nav.tab == Tab.SERIES || nav.tab == Tab.LIVE) nav.foldersRequested = true else nav.revealSidebar() } }) {
     Box(Modifier.fillMaxSize()) {
     Row(Modifier.fillMaxSize()) {
                 // Left, with nothing further left inside the page, goes to the rail (see leftGoesTo): the page never has the remote jump to some card to the left.
@@ -343,25 +380,34 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
         enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduced) 0 else 220)),
         exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduced) 0 else 200, delayMillis = if (reduced) 0 else 40)),
     ) {
-        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.horizontalGradient(0f to androidx.compose.ui.graphics.Color(0xB3000000), 0.45f to androidx.compose.ui.graphics.Color(0x59000000), 1f to androidx.compose.ui.graphics.Color.Transparent)))
+        // The main sidebar floats over the page: a 45 % scrim behind it, and the page never moves.
+        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0x73000000)))
     }
     androidx.compose.animation.AnimatedVisibility(
         mode != app.streamsetu.tv.nav.SidebarMode.HIDDEN, Modifier.align(androidx.compose.ui.Alignment.TopStart),
-        enter = androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else app.streamsetu.core.ui.motion.Motion.SIDEBAR, easing = app.streamsetu.core.ui.motion.Motion.Standard)) { -it } + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduced) 0 else 180)),
-        exit = androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else 220, easing = app.streamsetu.core.ui.motion.Motion.Exit)) { -it } + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduced) 0 else 180)),
+        enter = androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else 180, easing = app.streamsetu.core.ui.motion.Motion.Standard)) { -it } + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduced) 0 else 180)),
+        exit = androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(if (reduced) 0 else 140, easing = app.streamsetu.core.ui.motion.Motion.Exit)) { -it } + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduced) 0 else 180)),
     ) {
         app.streamsetu.tv.ui.components.Sidebar(nav.tab, onSelect = { t ->
-            if (t == Tab.LIBRARIES) { c.library.close(); nav.toChooser() } else nav.go(t)
-        }, entry = sidebarEntry, expanded = true, onFocusChange = nav::sidebarFocusChanged, onReturn = nav::closeSidebar)
+            if (t == Tab.LIBRARIES) { c.library.close(); nav.toChooser() } else nav.choose(t)
+        }, entry = sidebarEntry, expanded = true, onFocusChange = nav::sidebarFocusChanged, onReturn = nav::closeSidebar, livePlaying = c.playback.current.collectAsStateWithLifecycle().value?.isLive == true)
     }
     }
     }
 }
 
-/** Closes the fullscreen player. From the Live TV browser the channel keeps playing in the preview; anywhere else the stream stops. */
-fun closePlayer(c: AppContainer, nav: Navigator) {
-    if (nav.liveFullscreen && nav.tab == Tab.LIVE) nav.liveFullscreen = false else { c.playback.stop(); nav.liveFullscreen = false }
+/**
+ * Closes the fullscreen player. On a TV ([embeddedLive]) a live channel keeps playing and Back lands on Live TV with that channel in the picture beside the list, wherever it was opened
+ * from (Home, Search, the Guide...), so opening the same channel again is instant. Anything else (a movie or episode, a catch-up programme, a phone) stops. Stopping on purpose
+ * ("Close player") calls `playback.stop()` itself first.
+ */
+fun closePlayer(c: AppContainer, nav: Navigator, embeddedLive: Boolean = false) {
+    val item = c.playback.current.value
+    val keepLive = embeddedLive && item?.isLive == true && item !is app.streamsetu.core.model.CatchUpPlayable
+    if (!keepLive) c.playback.stop()
+    nav.liveFullscreen = false
     nav.close()
+    if (keepLive && nav.tab != Tab.LIVE) nav.go(Tab.LIVE)
 }
 
 /** Hands the channel playing now over to Multi-View: the player closes and its stream stops (so a one-connection provider is free for the tiles). */

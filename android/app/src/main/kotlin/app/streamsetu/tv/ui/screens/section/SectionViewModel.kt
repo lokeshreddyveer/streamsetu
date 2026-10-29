@@ -106,7 +106,7 @@ data class FilterOptions(val languages: List<String> = emptyList(), val qualitie
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderViewModel(c, kind) {
-    companion object { const val PAGE = 600; const val FILTERED_LIMIT = 100_000 }
+    companion object { const val PAGE = 90; const val FILTERED_LIMIT = 100_000 }
     val browse = MutableStateFlow<Browse>(Browse.All)
     val filter = MutableStateFlow(ContentFilter())
     var scrollIndex = 0
@@ -115,17 +115,61 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
     val availability = MutableStateFlow(SortAvailability(false, false, false, false))
     val sources: StateFlow<List<LibraryEntry>> = c.library.entries.map { all -> all.filter { it.kind == LibraryEntry.Kind.CONNECTION && it.id.removePrefix("src:") in c.library.sourceIds.value } }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    /** How many titles are asked for: a page at first, and another page each time the person scrolls near the end, so a library of tens of thousands is all reachable. */
-    val limit = MutableStateFlow(PAGE)
-    init { viewModelScope.launch { filter.collect { f -> limit.value = if (f.active) FILTERED_LIMIT else PAGE } } }
-    fun loadMore() { val shown = unfiltered.value?.size ?: return; if (shown >= limit.value) limit.value = limit.value + PAGE }
+    protected abstract fun source(b: Browse, s: SortSpec, limit: Int, offset: Int = 0): Flow<List<Card>>
 
-    protected abstract fun source(b: Browse, s: SortSpec, limit: Int): Flow<List<Card>>
+    /**
+     * The titles shown, null while loading (a skeleton is shown). The first page is watched in the database (a change shows at once); the next pages are read once and added to the end
+     * as the remote nears it, one request at a time, so a library of tens of thousands is all reachable and rows already shown are never rebuilt. With a filter on, the filter has to see
+     * every title, so the whole list is read instead.
+     */
+    private val list = MutableStateFlow<List<Card>?>(null)
+    private val unfiltered: StateFlow<List<Card>?> = list
+    private var shownFor: Triple<Browse, SortSpec, Boolean>? = null
+    private var more = true
+    private var busy = false
+    /** Counts every restart or re-read of the list, so a page still being read at that moment is thrown away. */
+    private var generation = 0
 
-    /** null while loading (a skeleton is shown), then the list. */
-    private val unfiltered: StateFlow<List<Card>?> = combine(browse, sort, limit) { b, s, n -> Triple(b, s, n) }
-        .flatMapLatest { (b, s, n) -> source(b, s, n).map<List<Card>, List<Card>?> { it } }      // the previous list stays until the new one is ready: no blank or skeleton flash between folders
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    init {
+        viewModelScope.launch {
+            combine(browse, sort, filter.map { it.active }.distinctUntilChanged()) { b, s, active -> Triple(b, s, active) }
+                .flatMapLatest { k -> source(k.first, k.second, if (k.third) FILTERED_LIMIT else PAGE).map { head -> k to head } }
+                .collect { (k, head) ->
+                    generation++; busy = false
+                    val cur = list.value
+                    val same = shownFor == k
+                    if (!same || cur == null || k.third || app.streamsetu.core.data.repo.orderMoves(k.first, k.second) || cur.size <= PAGE) {
+                        shownFor = k; more = !k.third && head.size >= PAGE
+                        list.value = if (cur != null && same) reuse(cur, head) else head     // another folder or sort starts again; a change in the same list keeps unchanged cards
+                    } else {
+                        // Something changed in a stable order: the titles already loaded are read again once, keeping the cards that did not change.
+                        val again = runCatching { source(k.first, k.second, cur.size, 0).first() }.getOrNull()
+                        if (again != null) { list.value = reuse(cur, again); more = again.size >= cur.size }
+                    }
+                }
+        }
+    }
+
+    private fun reuse(old: List<Card>, new: List<Card>): List<Card> { val byId = old.associateBy { it.id }; return new.map { n -> byId[n.id]?.takeIf { it == n } ?: n } }
+
+    /** Reads the next page after the loaded titles and appends only titles not already shown. Ignored while a page is being read. */
+    fun loadMore() {
+        val k = shownFor ?: return
+        if (busy || !more || k.third) return
+        busy = true
+        val g = generation
+        viewModelScope.launch {
+            try {
+                val cur = list.value.orEmpty()
+                val rows = runCatching { source(k.first, k.second, PAGE, cur.size).first() }.getOrNull() ?: return@launch
+                if (g != generation) return@launch                    // the folder, sort or list changed while this page was being read
+                val seen = cur.mapTo(HashSet()) { it.id }
+                val fresh = rows.filter { it.id !in seen }
+                list.value = cur + fresh; more = rows.size >= PAGE && fresh.isNotEmpty()
+            } finally { busy = false }
+        }
+    }
+
     /** The person's own lists, which the Status filter reads. Filled in once those lists exist, below. */
     private val filterContext = MutableStateFlow(FilterContext())
     val filterOptions: StateFlow<FilterOptions> = combine(unfiltered, filterContext) { list, ctx -> FilterOptions.of(list.orEmpty(), ctx) }
@@ -148,6 +192,15 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
     fun removeFromCollection(col: String, itemId: String) = viewModelScope.launch { c.collections.remove(col, itemId) }
     val progress: StateFlow<Map<String, WatchProgress>> = c.user.allProgress().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
+    /** For a series with an episode begun and not finished: "S2 E4 · 23 min left", shown on its poster in place of the year. */
+    val seriesNote: StateFlow<Map<String, String>> = progress.mapLatest { all ->
+        all.values.filter { it.seriesId != null && !it.completed && it.fraction > 0f }.groupBy { it.seriesId!! }.mapNotNull { (sid, list) ->
+            val p = list.maxByOrNull { it.updatedAt } ?: return@mapNotNull null
+            val ep = runCatching { c.catalog.episode(p.itemId) }.getOrNull() ?: return@mapNotNull null
+            sid to "S${ep.season} E${ep.number}  ·  ${((p.durationMs - p.positionMs) / 60_000).coerceAtLeast(1)} min left"
+        }.toMap()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
     init {
         viewModelScope.launch {
             combine(c.watchedTitles, c.partialTitles, favourites, newSeries, folders) { watched, partial, favs, news, folders ->
@@ -161,7 +214,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
     // Another library was opened from this page: the folder, filter and place in the list belonged to the old one.
     init {
         viewModelScope.launch {
-            c.library.sourceIds.drop(1).collect { browse.value = Browse.All; filter.value = ContentFilter(); limit.value = PAGE; scrollIndex = 0; focusedId = null; focusedIndex = 0; lastFolder = Browse.All }
+            c.library.sourceIds.drop(1).collect { browse.value = Browse.All; filter.value = ContentFilter(); scrollIndex = 0; focusedId = null; focusedIndex = 0; lastFolder = Browse.All }
         }
     }
 
@@ -185,7 +238,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
 
     /** The provider folder (or All) the person was last in, so leaving a shortcut returns there. */
     var lastFolder: Browse = Browse.All
-    fun select(b: Browse) { if (browse.value != b) { limit.value = PAGE; if (b is Browse.Folder || b == Browse.All || b is Browse.Collection) lastFolder = b; browse.value = b; scrollIndex = 0 } }
+    fun select(b: Browse) { if (browse.value != b) { if (b is Browse.Folder || b == Browse.All || b is Browse.Collection) lastFolder = b; browse.value = b; scrollIndex = 0 } }
     fun applySort(spec: SortSpec) = c.browse.setSort(kind, (browse.value as? Browse.Folder)?.id, spec)
     fun toggle(id: String, list: String) = viewModelScope.launch {
         val on = (if (list == UserRepository.FAVOURITES) favourites else watchLater).value.contains(id)
@@ -218,7 +271,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
 
 @HiltViewModel
 class MoviesSectionViewModel @Inject constructor(c: AppContainer) : SectionViewModel(c, ContentKind.MOVIE) {
-    override fun source(b: Browse, s: SortSpec, limit: Int) = c.browse.movies(b, s, limit).map { l -> l.map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, movie = it) } }
+    override fun source(b: Browse, s: SortSpec, limit: Int, offset: Int) = c.browse.movies(b, s, limit, offset).map { l -> l.map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, movie = it) } }
 
     override fun setWatched(card: Card, watched: Boolean) { viewModelScope.launch { c.user.setWatched(card.id, ContentKind.MOVIE, null, watched) } }
 
@@ -237,7 +290,7 @@ class MoviesSectionViewModel @Inject constructor(c: AppContainer) : SectionViewM
 
 @HiltViewModel
 class SeriesSectionViewModel @Inject constructor(c: AppContainer) : SectionViewModel(c, ContentKind.SERIES) {
-    override fun source(b: Browse, s: SortSpec, limit: Int) = c.browse.series(b, s, limit).map { l -> l.map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, series = it) } }
+    override fun source(b: Browse, s: SortSpec, limit: Int, offset: Int) = c.browse.series(b, s, limit, offset).map { l -> l.map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, series = it) } }
 
     override fun setWatched(card: Card, watched: Boolean) {}
 

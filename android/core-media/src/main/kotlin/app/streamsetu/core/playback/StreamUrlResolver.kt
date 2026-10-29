@@ -7,4 +7,6 @@ interface StreamUrlResolver {
     suspend fun userAgent(sourceId: String): String? = null
     /** Request headers the connection needs for its streams (a login for a receiver or share, and any the person added). */
     suspend fun headers(sourceId: String): Map<String, String> = emptyMap()
+    /** The person chose to trust this connection's own (self-signed) certificate. Off unless they said so; only then is MPV told not to check it. */
+    fun allowsSelfSignedTls(sourceId: String): Boolean = false
 }

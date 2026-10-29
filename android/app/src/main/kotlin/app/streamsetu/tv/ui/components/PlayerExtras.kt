@@ -1,5 +1,9 @@
 package app.streamsetu.tv.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import app.streamsetu.core.playback.*
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.ui.theme.Tokens
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 
 /** One line of a player panel. The Fire TV panels and the phone sheets both draw these, so the options are the same everywhere. */
@@ -76,32 +81,54 @@ object PlayerMenus {
     }
 }
 
-/** A box in the corner with the numbers a person who wants them looks for: the engine, the picture, the sound, the decoder, how much is buffered, and dropped frames. */
+/** The words shown while a stream is not on screen yet. A provider that allows one connection is given a moment to close the last one, and that wait is named so it does not look like a fault. */
+fun loadingLabel(state: PlaybackState, providerWaitMs: Long): String = when {
+    providerWaitMs > 0 -> "Waiting for the previous stream to close…"
+    state is PlaybackState.Retrying -> "Trying again…"
+    else -> "Loading…"
+}
+
+/** What the player knows about the stream, refreshed every second while [active]: the picture size and codecs, which are not known until the first frames arrive. */
 @Composable
-fun StatsOverlay(c: AppContainer, modifier: Modifier = Modifier) {
-    val show by c.settings.showStreamInfo.collectAsState()
-    if (!show) return
-    var lines by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            val pb = c.playback
-            lines = listOf("Player" to (pb.engineKind?.label ?: "none"), "State" to pb.state.value.toString().substringBefore('(').lowercase(), "Position" to PlayerMenus.clock(pb.positionMs) + (pb.durationMs.takeIf { it > 0 }?.let { " / " + PlayerMenus.clock(it) } ?: "")) +
-                pb.engine.value?.diagnostics().orEmpty().toList()
-            delay(1000)
-        }
-    }
-    Column(modifier.background(Color(0xCC000000), RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-        Label("Stats", Tokens.caption, Tokens.accent, FontWeight.Bold)
-        lines.forEach { (k, v) -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Label(k, Tokens.caption, Tokens.textTertiary, modifier = Modifier.width(110.dp)); Label(v, Tokens.caption, Color.White, maxLines = 1) } }
+fun rememberStreamFacts(c: AppContainer, active: Boolean = true): StreamFacts {
+    var facts by remember { mutableStateOf(StreamFacts()) }
+    val item by c.playback.current.collectAsStateWithLifecycle()
+    LaunchedEffect(active, item?.id) { while (active) { facts = c.playback.facts(); delay(1000) } }
+    return facts
+}
+
+/** The words on the player's chips: the picture, the sound and the subtitles now playing. A null part is not on this stream. */
+class StreamChips(val quality: String?, val audio: String?, val subtitles: String?, val line: String)
+
+@Composable
+fun rememberStreamChips(c: AppContainer, active: Boolean = true): StreamChips {
+    val facts = rememberStreamFacts(c, active)
+    val audio by c.playback.audioTracks.collectAsStateWithLifecycle()
+    val subs by c.playback.subtitleTracks.collectAsStateWithLifecycle()
+    return StreamChips(StreamLine.quality(facts.width, facts.height), StreamLine.audio(facts, audio), StreamLine.subtitles(subs), StreamLine.text(facts, audio, subs))
+}
+
+/** One line over the picture while the controls are away ("1080p · H.264 · English · Subs off"), when Stream information is on. It shows for 5 seconds once the picture is playing, then goes; a new stream or turning the setting on shows it again. */
+@Composable
+fun StreamInfoPill(c: AppContainer, controlsShown: Boolean, modifier: Modifier = Modifier) {
+    val enabled by c.settings.showStreamInfo.collectAsStateWithLifecycle()
+    val item by c.playback.current.collectAsStateWithLifecycle()
+    val state by c.playback.state.collectAsStateWithLifecycle()
+    var expired by remember { mutableStateOf(false) }
+    LaunchedEffect(enabled, item?.id) { expired = false }
+    LaunchedEffect(enabled, item?.id, state == PlaybackState.Playing) { if (enabled && state == PlaybackState.Playing) { delay(5000); expired = true } }
+    val line = rememberStreamChips(c, enabled && !expired && !controlsShown).line
+    AnimatedVisibility(enabled && !expired && !controlsShown && line.isNotBlank() && state == PlaybackState.Playing, modifier, enter = fadeIn(tween(200)), exit = fadeOut(tween(300))) {
+        Label(line, Tokens.caption, Color.White.copy(alpha = 0.8f), FontWeight.Medium, maxLines = 1, modifier = Modifier.background(Color(0x59000000), RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 5.dp))
     }
 }
 
 /** Shown over the screens while the player is minimized (the picture is closed and the sound keeps playing): what is playing and which keys to use. */
 @Composable
 fun TvMiniPlayer(c: AppContainer) {
-    val item by c.playback.current.collectAsState()
-    val audioOnly by c.playback.audioOnly.collectAsState()
-    val state by c.playback.state.collectAsState()
+    val item by c.playback.current.collectAsStateWithLifecycle()
+    val audioOnly by c.playback.audioOnly.collectAsStateWithLifecycle()
+    val state by c.playback.state.collectAsStateWithLifecycle()
     val shown = item ?: return
     if (!audioOnly) return
     val paused = state == PlaybackState.Paused

@@ -1,9 +1,11 @@
 package app.streamsetu.tv.ui.components
 
+import app.streamsetu.tv.ui.theme.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +19,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,29 +61,62 @@ fun TvDialog(onDismissRequest: () -> Unit, properties: DialogProperties = Dialog
     }
 }
 
-data class MenuAction(val label: String, val icon: ImageVector, val enabled: Boolean = true, val run: () -> Unit)
+/** One entry of a [ContextMenu]. A [danger] entry (remove, delete, erase) is shown last, apart from the rest and in red; the cursor never starts on it. */
+data class MenuAction(val label: String, val icon: ImageVector, val enabled: Boolean = true, val danger: Boolean = false, val run: () -> Unit)
 
-/** The small menu opened by holding OK on a folder, poster or channel. */
+/**
+ * The menu opened by holding OK on a folder, poster or channel. It is part of the screen, not a card floating over it: a sheet on the right edge over a soft fade (the page stays
+ * visible on the left), plain rows, and a white pill on the row the remote is on, the same as the player's controls. The remote starts on the first row that is not destructive;
+ * destructive rows (remove, delete, erase) come last, apart and in red.
+ */
 @Composable
 fun ContextMenu(title: String, subtitle: String? = null, actions: List<MenuAction>, onClose: () -> Unit) {
     val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) { app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.MENU_OPEN); delay(80); runCatching { first.requestFocus() } }
+    // The first frame after it is laid out, not a fixed wait.
+    LaunchedEffect(Unit) {
+        app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.MENU_OPEN)
+        repeat(8) { androidx.compose.runtime.withFrameNanos { }; if (runCatching { first.requestFocus() }.isSuccess) return@LaunchedEffect }
+    }
     DisposableEffect(Unit) { onDispose { app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.MENU_CLOSE) } }
     // This menu usually opens while OK is still held; see [SelectKeyGuard].
     val guard = remember { SelectKeyGuard() }
     LaunchedEffect(Unit) { while (!guard.armed) { delay(60); guard.tick() } }
+    val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val enter by androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0f, if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(110), label = "menuIn")
     TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().dialogScrim().onPreviewKeyEvent { e -> SelectKeyGuard.isSelect(e) && guard.swallow(SelectKeyGuard.isDown(e), e.nativeKeyEvent.downTime) }, Alignment.Center) {
-            Column(Modifier.popIn().width(340.dp).background(Tokens.card, RoundedCornerShape(Tokens.radiusLarge)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(Tokens.radiusLarge)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Label(title, Tokens.title, Tokens.text, FontWeight.Bold)
-                if (subtitle != null) Label(subtitle, Tokens.small, Tokens.textSecondary)
-                Spacer(Modifier.height(6.dp))
-                val firstEnabled = actions.indexOfFirst { it.enabled }
-                actions.forEachIndexed { idx, a ->
-                    Focusable({ if (a.enabled) { onClose(); a.run() } else app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.ERROR) }, (if (idx == firstEnabled) Modifier.focusRequester(first) else Modifier).fillMaxWidth(), scaleOnFocus = 1.0f, selectSound = null) { _ ->
-                        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Image(a.icon, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(if (a.enabled) Tokens.accent else Tokens.textTertiary))
-                            Label(a.label, Tokens.row, if (a.enabled) Tokens.text else Tokens.textTertiary)
+        Box(
+            Modifier.fillMaxSize()
+                .drawBehind { drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(0.30f to Color.Transparent, 0.62f to Color(0x8C000000), 1f to Color(0xF2070B10)), alpha = enter) }
+                .onPreviewKeyEvent { e -> SelectKeyGuard.isSelect(e) && guard.swallow(SelectKeyGuard.isDown(e), e.nativeKeyEvent.downTime) },
+            Alignment.CenterEnd,
+        ) {
+            // 460 dp, and wider with larger text (up to 540), so labels are not squeezed.
+            val menuWidth = (460f + (maxOf(1f, androidx.compose.ui.platform.LocalDensity.current.fontScale) - 1f) * 120f).coerceAtMost(540f).ui
+            Column(
+                Modifier.fillMaxHeight().width(menuWidth).padding(end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = Tokens.safeVertical)
+                    .graphicsLayer { alpha = enter; translationX = (1f - enter) * 28.dp.toPx() },
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Label(title, Tokens.title, Tokens.text, FontWeight.Bold, maxLines = 2)
+                if (subtitle != null) Label(subtitle, Tokens.small, Tokens.textSecondary, maxLines = 2, modifier = Modifier.padding(top = 2.dp))
+                Spacer(Modifier.height(18.dp))
+                val ordered = actions.filter { !it.danger } + actions.filter { it.danger }
+                val firstEnabled = ordered.indexOfFirst { it.enabled && !it.danger }.takeIf { it >= 0 } ?: ordered.indexOfFirst { it.enabled }
+                Column(Modifier.heightIn(max = 520.ui).verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ordered.forEachIndexed { idx, a ->
+                        if (a.danger && (idx == 0 || !ordered[idx - 1].danger)) Spacer(Modifier.height(14.dp))
+                        Focusable(
+                            { if (a.enabled) { onClose(); a.run() } else app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.ERROR) },
+                            (if (idx == firstEnabled) Modifier.focusRequester(first) else Modifier).fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp), container = Color.Transparent, focusedContainer = Color(0x2EFFFFFF), scaleOnFocus = 1.0f, ringBand = false, showRing = false, selectSound = null,
+                        ) { f ->
+                            Row(Modifier.heightIn(min = 54.ui).padding(horizontal = 16.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                val tint = when { !a.enabled -> Tokens.textTertiary; a.danger -> Tokens.danger; f -> Tokens.accent; else -> Tokens.textSecondary }
+                                Image(a.icon, null, Modifier.size(22.ui), colorFilter = ColorFilter.tint(tint))
+                                Label(a.label, Tokens.row, if (!a.enabled) Tokens.textTertiary else if (a.danger) Tokens.danger else Color.White, maxLines = 2)
+                            }
                         }
                     }
                 }
@@ -112,7 +148,7 @@ fun PinDialog(create: Boolean, check: (String) -> Boolean, onDone: (String) -> U
     }
     TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().dialogScrim(), Alignment.Center) {
-            Column(Modifier.popIn().width(250.dp).background(Tokens.card, RoundedCornerShape(Tokens.radiusLarge)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.popIn().width(360.ui).background(Tokens.card, RoundedCornerShape(Tokens.radiusLarge)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label(if (create) (if (firstEntry == null) "Create a PIN" else "Confirm your PIN") else "Enter PIN", Tokens.title, Tokens.text, FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { repeat(4) { Box(Modifier.size(12.dp).background(if (it < entered.length) Tokens.accent else Tokens.elevated, RoundedCornerShape(50))) } }
                 Label(message ?: if (create) "Four digits. Locked folders ask for it." else " ", Tokens.small, if (message != null) Tokens.warning else Tokens.textSecondary, maxLines = 2)
@@ -149,7 +185,7 @@ fun SortSheet(kind: ContentKind, current: SortSpec, availability: SortAvailabili
     TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().dialogScrim(), Alignment.CenterEnd) {
             Column(
-                Modifier.slideFade(shown, fromX = 40.dp, durationMs = Motion.SCREEN).padding(end = 16.dp).width(290.dp).fillMaxHeight(0.92f).background(Tokens.card, RoundedCornerShape(Tokens.radiusLarge)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp),
+                Modifier.slideFade(shown, fromX = 40.dp, durationMs = Motion.SCREEN).padding(end = 16.dp).width(400.ui).fillMaxHeight(0.92f).background(Tokens.card, RoundedCornerShape(Tokens.radiusLarge)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 Label("Sort", Tokens.title, Tokens.text, FontWeight.Bold)
@@ -204,7 +240,7 @@ fun OverrideDialog(title: String, poster: String, onSave: (String, String) -> Un
     var p by remember { mutableStateOf(poster) }
     TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().dialogScrim(), Alignment.Center) {
-            Column(Modifier.popIn().width(380.dp).background(Tokens.card, RoundedCornerShape(Tokens.radiusLarge)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.popIn().width(560.ui).background(Tokens.card, RoundedCornerShape(Tokens.radiusLarge)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label("Edit details", Tokens.title, Tokens.text, FontWeight.Bold)
                 Label("Only changes how it looks on this device. The provider's data is not touched.", Tokens.small, Tokens.textSecondary, maxLines = 2)
                 TvTextField(t, { t = it }, "Title", Modifier.fillMaxWidth())
@@ -229,7 +265,7 @@ fun OptionSheet(title: String, options: List<Pair<String, String>>, selectedId: 
     LaunchedEffect(Unit) { shown = true }
     TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().dialogScrim(), Alignment.CenterEnd) {
-            Column(Modifier.slideFade(shown, fromX = 40.dp, durationMs = Motion.SCREEN).padding(end = 16.dp).width(340.dp).fillMaxHeight(0.92f).background(Tokens.card, RoundedCornerShape(Tokens.radiusPanel)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.slideFade(shown, fromX = 40.dp, durationMs = Motion.SCREEN).padding(end = 16.dp).width(440.ui).fillMaxHeight(0.92f).background(Tokens.card, RoundedCornerShape(Tokens.radiusPanel)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label(title, Tokens.title, Tokens.text, FontWeight.SemiBold)
                 LazyColumn(Modifier.weight(1f), state = state, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     items(options, key = { it.first }) { (id, label) ->

@@ -27,10 +27,14 @@ data class SourceEntity(
     val userAgent: String? = null,
 )
 
+/** What the last good catalog write for a source looked like (a fingerprint of everything shown or played, in order), so an unchanged provider writes nothing after a restart too. */
+@Entity(tableName = "catalog_fingerprints")
+data class CatalogFingerprintEntity(@PrimaryKey val sourceId: String, val fingerprint: Long, val rows: Int, val version: Int)
+
 @Entity(tableName = "categories", primaryKeys = ["id"], indices = [Index("sourceId", "kind")])
 data class CategoryEntity(val id: String, val sourceId: String, val kind: String, val name: String, val sortOrder: Int)
 
-@Entity(tableName = "channels", indices = [Index("sourceId", "categoryId"), Index("name"), Index("epgId")])
+@Entity(tableName = "channels", indices = [Index("sourceId", "categoryId"), Index("name"), Index("epgId"), Index("sourceId", "addedAt")])
 data class ChannelEntity(
     @PrimaryKey val id: String,
     val sourceId: String,
@@ -46,7 +50,7 @@ data class ChannelEntity(
     val isRadio: Boolean = false,
 )
 
-@Entity(tableName = "movies", indices = [Index("sourceId", "categoryId"), Index("title")])
+@Entity(tableName = "movies", indices = [Index("sourceId", "categoryId"), Index("title"), Index("sourceId", "addedAt")])
 data class MovieEntity(
     @PrimaryKey val id: String,
     val sourceId: String,
@@ -60,7 +64,7 @@ data class MovieEntity(
     val addedAt: Long,
 )
 
-@Entity(tableName = "series", indices = [Index("sourceId", "categoryId"), Index("title")])
+@Entity(tableName = "series", indices = [Index("sourceId", "categoryId"), Index("title"), Index("sourceId", "addedAt")])
 data class SeriesEntity(
     @PrimaryKey val id: String,
     val sourceId: String,
@@ -91,10 +95,10 @@ data class EpisodeEntity(
 @Entity(tableName = "epg", primaryKeys = ["channelEpgId", "startMs"], indices = [Index("channelEpgId", "endMs")])
 data class EpgEntity(val channelEpgId: String, val startMs: Long, val endMs: Long, val title: String, val description: String?)
 
-@Entity(tableName = "favorites", primaryKeys = ["itemId", "listId"])
+@Entity(tableName = "favorites", primaryKeys = ["itemId", "listId"], indices = [Index("listId", "addedAt")])
 data class FavoriteEntity(val itemId: String, val kind: String, val listId: String, val addedAt: Long)
 
-@Entity(tableName = "progress")
+@Entity(tableName = "progress", indices = [Index("seriesId"), Index("updatedAt")])
 data class ProgressEntity(
     @PrimaryKey val itemId: String,
     val kind: String,
@@ -105,7 +109,7 @@ data class ProgressEntity(
     val completed: Boolean,
 )
 
-@Entity(tableName = "watch_log", indices = [Index("playedAt")])
+@Entity(tableName = "watch_log", indices = [Index("playedAt"), Index("itemId")])
 data class WatchLogEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val itemId: String, val kind: String, val title: String, val playedAt: Long)
 
 /** A group of connections shown as one library. It holds no copy of their catalogs; screens read the members' records together. */

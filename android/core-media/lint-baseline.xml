@@ -1,0 +1,880 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.7.3" type="baseline" client="gradle" dependencies="false" name="AGP (8.7.3)" variant="all" version="8.7.3">
+
+    <issue
+        id="MissingPermission"
+        message="Missing permissions required by ConnectivityManager.getActiveNetwork: android.permission.ACCESS_NETWORK_STATE"
+        errorLine1="            val n = cm.activeNetwork ?: return false"
+        errorLine2="                    ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/NetworkCompat.kt"
+            line="14"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="MissingPermission"
+        message="Missing permissions required by ConnectivityManager.getNetworkCapabilities: android.permission.ACCESS_NETWORK_STATE"
+        errorLine1="            cm.getNetworkCapabilities(n)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/NetworkCompat.kt"
+            line="15"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingPermission"
+        message="Missing permissions required by ConnectivityManager.getActiveNetworkInfo: android.permission.ACCESS_NETWORK_STATE"
+        errorLine1="        } else cm.activeNetworkInfo?.isConnected == true"
+        errorLine2="               ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/NetworkCompat.kt"
+            line="16"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="MissingPermission"
+        message="Missing permissions required by ConnectivityManager.isActiveNetworkMetered: android.permission.ACCESS_NETWORK_STATE"
+        errorLine1="    fun isMetered(cm: ConnectivityManager): Boolean = runCatching { cm.isActiveNetworkMetered }.getOrDefault(true)"
+        errorLine2="                                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/NetworkCompat.kt"
+            line="20"
+            column="69"/>
+    </issue>
+
+    <issue
+        id="MissingPermission"
+        message="Missing permissions required by ConnectivityManager.registerDefaultNetworkCallback: android.permission.ACCESS_NETWORK_STATE"
+        errorLine1="            if (Build.VERSION.SDK_INT >= 24) cm.registerDefaultNetworkCallback(callback)"
+        errorLine2="                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/NetworkCompat.kt"
+            line="25"
+            column="46"/>
+    </issue>
+
+    <issue
+        id="MissingPermission"
+        message="Missing permissions required by ConnectivityManager.registerNetworkCallback: android.permission.ACCESS_NETWORK_STATE"
+        errorLine1="            else cm.registerNetworkCallback(NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(), callback)"
+        errorLine2="                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/NetworkCompat.kt"
+            line="26"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val factory = OkHttpDataSource.Factory(Http.client).setUserAgent(userAgent ?: Http.USER_AGENT).setDefaultRequestProperties(currentHeaders.filterKeys { !it.equals(&quot;User-Agent&quot;, true) })"
+        errorLine2="                                                            ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="42"
+            column="61"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val factory = OkHttpDataSource.Factory(Http.client).setUserAgent(userAgent ?: Http.USER_AGENT).setDefaultRequestProperties(currentHeaders.filterKeys { !it.equals(&quot;User-Agent&quot;, true) })"
+        errorLine2="                                                                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="42"
+            column="104"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val extractors = DefaultExtractorsFactory()"
+        errorLine2="            ~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="44"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val extractors = DefaultExtractorsFactory()"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="44"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS)"
+        errorLine2="             ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="45"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS)"
+        errorLine2="                                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="45"
+            column="64"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS)"
+        errorLine2="                                                                                                                             ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="45"
+            column="126"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setConstantBitrateSeekingEnabled(true)"
+        errorLine2="             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="46"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val renderers = object : DefaultRenderersFactory(appContext) {"
+        errorLine2="            ~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="49"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val renderers = object : DefaultRenderersFactory(appContext) {"
+        errorLine2="                        ^">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="49"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val renderers = object : DefaultRenderersFactory(appContext) {"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="49"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val renderers = object : DefaultRenderersFactory(appContext) {"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="49"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink? ="
+        errorLine2="                         ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="51"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink? ="
+        errorLine2="                                                                                                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="51"
+            column="129"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                if (passthrough) super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)"
+        errorLine2="                                       ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="52"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                else androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).setEnableFloatOutput(enableFloatOutput).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams).build()"
+        errorLine2="                                                                      ~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="53"
+            column="71"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                else androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).setEnableFloatOutput(enableFloatOutput).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams).build()"
+        errorLine2="                                                                                       ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="53"
+            column="88"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                else androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).setEnableFloatOutput(enableFloatOutput).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams).build()"
+        errorLine2="                                                                                                                                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="53"
+            column="159"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                else androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).setEnableFloatOutput(enableFloatOutput).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams).build()"
+        errorLine2="                                                                                                                                                                                          ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="53"
+            column="187"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                else androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).setEnableFloatOutput(enableFloatOutput).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams).build()"
+        errorLine2="                                                                                                                                                                                                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="53"
+            column="227"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                else androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).setEnableFloatOutput(enableFloatOutput).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams).build()"
+        errorLine2="                                                                                                                                                                                                                                                                                                    ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="53"
+            column="293"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            override fun buildVideoRenderers(context: Context, extensionRendererMode: Int, mediaCodecSelector: androidx.media3.exoplayer.mediacodec.MediaCodecSelector, enableDecoderFallback: Boolean, eventHandler: android.os.Handler, eventListener: androidx.media3.exoplayer.video.VideoRendererEventListener, allowedVideoJoiningTimeMs: Long, out: java.util.ArrayList&lt;androidx.media3.exoplayer.Renderer>) {"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="55"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            override fun buildVideoRenderers(context: Context, extensionRendererMode: Int, mediaCodecSelector: androidx.media3.exoplayer.mediacodec.MediaCodecSelector, enableDecoderFallback: Boolean, eventHandler: android.os.Handler, eventListener: androidx.media3.exoplayer.video.VideoRendererEventListener, allowedVideoJoiningTimeMs: Long, out: java.util.ArrayList&lt;androidx.media3.exoplayer.Renderer>) {"
+        errorLine2="                                                                                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="55"
+            column="112"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            override fun buildVideoRenderers(context: Context, extensionRendererMode: Int, mediaCodecSelector: androidx.media3.exoplayer.mediacodec.MediaCodecSelector, enableDecoderFallback: Boolean, eventHandler: android.os.Handler, eventListener: androidx.media3.exoplayer.video.VideoRendererEventListener, allowedVideoJoiningTimeMs: Long, out: java.util.ArrayList&lt;androidx.media3.exoplayer.Renderer>) {"
+        errorLine2="                                                                                                                                                                                                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="55"
+            column="250"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            override fun buildVideoRenderers(context: Context, extensionRendererMode: Int, mediaCodecSelector: androidx.media3.exoplayer.mediacodec.MediaCodecSelector, enableDecoderFallback: Boolean, eventHandler: android.os.Handler, eventListener: androidx.media3.exoplayer.video.VideoRendererEventListener, allowedVideoJoiningTimeMs: Long, out: java.util.ArrayList&lt;androidx.media3.exoplayer.Renderer>) {"
+        errorLine2="                                                                                                                                                                                                                                                                                                                                                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="55"
+            column="368"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                val selector = if (!options.softwareDecoding) mediaCodecSelector else androidx.media3.exoplayer.mediacodec.MediaCodecSelector { mime, secure, tunneling ->"
+        errorLine2="                    ~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="56"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                val selector = if (!options.softwareDecoding) mediaCodecSelector else androidx.media3.exoplayer.mediacodec.MediaCodecSelector { mime, secure, tunneling ->"
+        errorLine2="                                                                                                                           ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="56"
+            column="124"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                val selector = if (!options.softwareDecoding) mediaCodecSelector else androidx.media3.exoplayer.mediacodec.MediaCodecSelector { mime, secure, tunneling ->"
+        errorLine2="                                                                                                                                              ^">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="56"
+            column="143"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                    androidx.media3.exoplayer.mediacodec.MediaCodecUtil.getDecoderInfos(mime, secure, tunneling).sortedBy { it.hardwareAccelerated }"
+        errorLine2="                                                                        ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="57"
+            column="73"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                    androidx.media3.exoplayer.mediacodec.MediaCodecUtil.getDecoderInfos(mime, secure, tunneling).sortedBy { it.hardwareAccelerated }"
+        errorLine2="                                                                                                                               ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="57"
+            column="128"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                super.buildVideoRenderers(context, extensionRendererMode, selector, enableDecoderFallback, eventHandler, eventListener, allowedVideoJoiningTimeMs, out)"
+        errorLine2="                      ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="59"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        }.setEnableDecoderFallback(options.decoderFallback).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)"
+        errorLine2="          ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="61"
+            column="11"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        }.setEnableDecoderFallback(options.decoderFallback).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)"
+        errorLine2="                                                            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="61"
+            column="61"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        }.setEnableDecoderFallback(options.decoderFallback).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)"
+        errorLine2="                                                                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="61"
+            column="110"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val p = ExoPlayer.Builder(appContext, renderers)"
+        errorLine2="                          ~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="62"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setMediaSourceFactory(DefaultMediaSourceFactory(androidx.media3.datasource.DefaultDataSource.Factory(appContext, factory), extractors).setLiveTargetOffsetMs(mode.liveOffsetMs))"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="63"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setMediaSourceFactory(DefaultMediaSourceFactory(androidx.media3.datasource.DefaultDataSource.Factory(appContext, factory), extractors).setLiveTargetOffsetMs(mode.liveOffsetMs))"
+        errorLine2="                                                                                                                                                    ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="63"
+            column="149"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(mode.minMs, mode.maxMs, mode.startMs, mode.rebufferMs).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(30_000, true).build())"
+        errorLine2="             ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="64"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(mode.minMs, mode.maxMs, mode.startMs, mode.rebufferMs).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(30_000, true).build())"
+        errorLine2="                                               ~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="64"
+            column="48"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(mode.minMs, mode.maxMs, mode.startMs, mode.rebufferMs).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(30_000, true).build())"
+        errorLine2="                                                         ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="64"
+            column="58"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(mode.minMs, mode.maxMs, mode.startMs, mode.rebufferMs).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(30_000, true).build())"
+        errorLine2="                                                                                                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="64"
+            column="134"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(mode.minMs, mode.maxMs, mode.startMs, mode.rebufferMs).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(30_000, true).build())"
+        errorLine2="                                                                                                                                                                               ~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="64"
+            column="176"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(mode.minMs, mode.maxMs, mode.startMs, mode.rebufferMs).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(30_000, true).build())"
+        errorLine2="                                                                                                                                                                                                           ~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="64"
+            column="204"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            override fun onDroppedVideoFrames(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) { dropped += droppedFrames }"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="69"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            override fun onDroppedVideoFrames(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) { dropped += droppedFrames }"
+        errorLine2="                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="69"
+            column="58"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            override fun onVideoDecoderInitialized(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long) { this@ExoEngine.decoderName = decoderName }"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="70"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            override fun onVideoDecoderInitialized(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long) { this@ExoEngine.decoderName = decoderName }"
+        errorLine2="                                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="70"
+            column="63"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val v = PlayerView(context).apply { useController = false; resizeMode = resizeFor(aspect); keepScreenOn = true; player = this@ExoEngine.player }"
+        errorLine2="                                                                   ~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="95"
+            column="68"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        viewRef?.subtitleView?.apply {"
+        errorLine2="                 ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="105"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            setFractionalTextSize(androidx.media3.ui.SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * st.scale)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="106"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            setFractionalTextSize(androidx.media3.ui.SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * st.scale)"
+        errorLine2="                                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="106"
+            column="67"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            setBottomPaddingFraction(androidx.media3.ui.SubtitleView.DEFAULT_BOTTOM_PADDING_FRACTION + st.raise * 0.04f)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="107"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            setBottomPaddingFraction(androidx.media3.ui.SubtitleView.DEFAULT_BOTTOM_PADDING_FRACTION + st.raise * 0.04f)"
+        errorLine2="                                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="107"
+            column="70"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            setStyle(androidx.media3.ui.CaptionStyleCompat(st.color, if (st.darkBackground) 0xB3000000.toInt() else android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT,"
+        errorLine2="            ~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="108"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            setStyle(androidx.media3.ui.CaptionStyleCompat(st.color, if (st.darkBackground) 0xB3000000.toInt() else android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT,"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="108"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                if (st.outline) androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE else androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_NONE, android.graphics.Color.BLACK, null))"
+        errorLine2="                                                                      ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="109"
+            column="71"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="                if (st.outline) androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE else androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_NONE, android.graphics.Color.BLACK, null))"
+        errorLine2="                                                                                                                                   ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="109"
+            column="132"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    private fun resizeFor(m: AspectMode) = when (m) { AspectMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT; AspectMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL; AspectMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM }"
+        errorLine2="                                                                                               ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="125"
+            column="96"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    private fun resizeFor(m: AspectMode) = when (m) { AspectMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT; AspectMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL; AspectMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM }"
+        errorLine2="                                                                                                                                                          ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="125"
+            column="155"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    private fun resizeFor(m: AspectMode) = when (m) { AspectMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT; AspectMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL; AspectMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM }"
+        errorLine2="                                                                                                                                                                                                                      ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="125"
+            column="215"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    override fun setAspect(mode: AspectMode) { aspect = mode; viewRef?.resizeMode = resizeFor(mode) }"
+        errorLine2="                                                                       ~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="126"
+            column="72"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val session = p.audioSessionId"
+        errorLine2="                        ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="196"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .sortedWith(compareByDescending&lt;Pair&lt;Int, androidx.media3.common.Format>> { it.second.height }.thenByDescending { it.second.bitrate })"
+        errorLine2="                                                                                                                                        ~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="210"
+            column="137"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            .map { (i, f) -> TrackOption(i.toString(), &quot;${f.height}p&quot; + (f.bitrate.takeIf { it > 0 }?.let { &quot;  ·  %.1f Mbps&quot;.format(it / 1_000_000.0) } ?: &quot;&quot;), null, selected &amp;&amp; group.isTrackSelected(i)) }"
+        errorLine2="                                                                           ~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="212"
+            column="76"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    override fun frameRate(): Float = player?.videoFormat?.frameRate?.takeIf { it > 0 } ?: 0f"
+        errorLine2="                                              ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="224"
+            column="47"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val v = p.videoFormat; val a = p.audioFormat"
+        errorLine2="                  ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="228"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val v = p.videoFormat; val a = p.audioFormat"
+        errorLine2="                                         ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="228"
+            column="42"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            &quot;Video bitrate&quot; to (v?.bitrate?.takeIf { it > 0 }?.let { &quot;${it / 1000} kbps&quot; } ?: &quot;unknown&quot;),"
+        errorLine2="                                   ~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="231"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val v = p.videoFormat; val a = p.audioFormat"
+        errorLine2="                  ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="241"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val v = p.videoFormat; val a = p.audioFormat"
+        errorLine2="                                         ~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="241"
+            column="42"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            v?.bitrate?.takeIf { it > 0 }?.let { &quot;${it / 1000} kbps&quot; }).joinToString(&quot; · &quot;)"
+        errorLine2="               ~~~~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="243"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="SwitchIntDef"
+        message="Switch statement on an `int` with known associated constant missing case `Player.STATE_IDLE`"
+        errorLine1="                when (state) {"
+        errorLine2="                ~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/ExoEngine.kt"
+            line="74"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="SwitchIntDef"
+        message="Switch statement on an `int` with known associated constant missing case `MPVLib.MPV_EVENT_AUDIO_RECONFIG`, `MPVLib.MPV_EVENT_CLIENT_MESSAGE`, `MPVLib.MPV_EVENT_COMMAND_REPLY`, `MPVLib.MPV_EVENT_GET_PROPERTY_REPLY`, `MPVLib.MPV_EVENT_HOOK`, `MPVLib.MPV_EVENT_LOG_MESSAGE`, `MPVLib.MPV_EVENT_NONE`, `MPVLib.MPV_EVENT_PROPERTY_CHANGE`, `MPVLib.MPV_EVENT_QUEUE_OVERFLOW`, `MPVLib.MPV_EVENT_SEEK`, `MPVLib.MPV_EVENT_SET_PROPERTY_REPLY`, `MPVLib.MPV_EVENT_SHUTDOWN`, `MPVLib.MPV_EVENT_START_FILE`, `MPVLib.MPV_EVENT_VIDEO_RECONFIG`"
+        errorLine1="        when (eventId) {"
+        errorLine2="        ~~~~">
+        <location
+            file="src/main/kotlin/app/streamsetu/core/playback/MpvEngine.kt"
+            line="187"
+            column="9"/>
+    </issue>
+
+</issues>

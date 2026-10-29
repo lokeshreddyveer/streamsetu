@@ -70,7 +70,7 @@ fun ProfileSettings(c: AppContainer) {
     var usePin by remember { mutableStateOf(false) }
     var pinDialog by remember { mutableStateOf(false) }
     var msg by remember { mutableStateOf<String?>(null) }
-    SettingGroup("Profiles", "Everyone uses the same playlists. Each profile keeps its own favorites, collections, history and resume points. A kids profile keeps adult folders hidden and needs its PIN to leave. Sync on this network carries the first profile only, so it pauses while another profile is in use. Your provider's limit on simultaneous streams still applies to everyone together.") {
+    SettingGroup("Profiles", "Each profile keeps separate favorites, collections, history and progress.") {
         profiles.forEach { p ->
             if (p.id == activeId) InfoRow(p.name, "In use now", if (p.kids) "Kids profile" else null)
             else {
@@ -82,7 +82,7 @@ fun ProfileSettings(c: AppContainer) {
     }
     if (adding) SettingGroup("New profile") {
         Box(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) { TvTextField(name, { name = it }, "Name", Modifier.fillMaxWidth()) }
-        ToggleRow("Kids profile", "Adult folders stay hidden, and leaving this profile needs its PIN.", kids) { kids = it }
+        ToggleRow("Kids profile", "Hides restricted folders and requires its PIN to leave.", kids) { kids = it }
         if (!kids) ToggleRow("Ask for a PIN to open this profile", null, usePin) { usePin = it }
         ActionRow("Create", if (kids || usePin) "Next you will choose a four-digit PIN." else null, label = "Create", confirm = false, enabled = name.isNotBlank()) {
             if (kids || usePin) pinDialog = true else { val ok = c.profiles.add(name, false, null) != null; msg = if (ok) null else "That name is already used."; if (ok) { adding = false; name = "" } }

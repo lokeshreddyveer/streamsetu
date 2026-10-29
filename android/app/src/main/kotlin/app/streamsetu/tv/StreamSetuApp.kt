@@ -1,5 +1,6 @@
 package app.streamsetu.tv
 
+import app.streamsetu.core.sync.programmeCount
 import android.app.Application
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,6 +29,9 @@ import kotlinx.coroutines.launch
 
 /** The single place screens ask for what they need. Everything inside is built by Hilt (see di/AppModule); this class only adds the app-wide behaviour that joins them. */
 @Singleton
+/** What was just chosen but is not playing yet (its folder, profile and connection are still being checked). The player shows it at once, over the last picture. [generation] tells a newer choice from an older one. */
+data class PendingPlayback(val itemId: String, val title: String, val generation: Long)
+
 class AppContainer @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext val context: android.content.Context,
     val appScope: CoroutineScope,
@@ -66,13 +70,21 @@ class AppContainer @Inject constructor(
 
     /** Who is using the app: each profile has its own favorites, collections, history and resume points. */
     val profiles: app.streamsetu.tv.sync.ProfileService by lazy {
-        app.streamsetu.tv.sync.ProfileService(db, context.getSharedPreferences("pin_throttle", android.content.Context.MODE_PRIVATE), beforeSwitch = { playback.stop(); lan.setEnabled(false) }) { p ->
+        app.streamsetu.tv.sync.ProfileService(db, context.getSharedPreferences("pin_throttle", android.content.Context.MODE_PRIVATE), beforeSwitch = {
+            // Before the tables change hands: what plays is stopped and its resume point is written (to the profile that was watching), the Wi-Fi exchange is closed, and folders the
+            // last person unlocked with the PIN lock again.
+            kotlinx.coroutines.runBlocking { kotlinx.coroutines.withTimeoutOrNull(2_000) { playback.stop(); playback.drainProgress() } }
+            lan.setEnabled(false); folders.lockAgain()
+        }) { p ->
             parental.setKids(p.kids)
             lan.setEnabled(lan.wanted && profiles.isMainActive)
         }.also { it.reload(); parental.setKids(it.active.kids) }
     }
 
     /** What the player plays next: the channels of the list it was started from, or the episodes of a series. */
+    /** The choice waiting for its check to finish, or null. */
+    val pendingPlayback = kotlinx.coroutines.flow.MutableStateFlow<PendingPlayback?>(null)
+    @Volatile private var playGeneration = 0L
     var queue: List<Playable> = emptyList()
     var queueIndex: Int = 0
     /** The channels Multi-View opens with (set by the player when it hands over). */
@@ -194,6 +206,43 @@ class AppContainer @Inject constructor(
         val p = activeKidsProfile() ?: return null
         val t = java.time.LocalDateTime.now()
         return viewingLimits.block(p.id, java.time.LocalDate.now().toEpochDay(), t.hour * 60 + t.minute)
+    }
+
+    /**
+     * The one check before a catalog title or channel is played, whoever asked (a click, a Continue Watching link, a voice shortcut, another app's streamsetu:// link): its connection
+     * is there and on, its folder is not locked (or has been unlocked with the PIN), and an adult folder is not hidden by this profile's settings. Done with the live state at the moment
+     * of playing, never with what was true when a list was drawn. Things that belong to no catalog (a file, an address) pass.
+     */
+    suspend fun mayPlay(item: app.streamsetu.core.model.Playable): Boolean {
+        val categoryId: String? = when (item) {
+            is app.streamsetu.core.model.ChannelPlayable -> item.channel.categoryId
+            is app.streamsetu.core.model.CatchUpPlayable -> item.channel.categoryId
+            is app.streamsetu.core.model.MoviePlayable -> item.movie.categoryId
+            is app.streamsetu.core.model.EpisodePlayable -> item.series.categoryId
+            is app.streamsetu.core.model.SeriesFeature -> item.series.categoryId
+            else -> return true
+        }
+        val source = sources.get(item.sourceId)
+        if (source == null || !source.enabled || source.draft) return false
+        if (categoryId == null) return true
+        if (categoryId in folders.lockedIdsNow()) return false
+        if (parental.hideAdult.value) { val name = db.catalog().categoryName(categoryId); if (name != null && app.streamsetu.core.data.repo.ParentalControls.isAdultName(name)) return false }
+        return true
+    }
+
+    /**
+     * Erases everything this app keeps. What is running is stopped first (playback, scheduled recordings and their alarms, saved titles being downloaded, Wi-Fi sync), then the stored
+     * data is removed (see MaintenanceService.deleteAllLocalData) and checked. Returns what is still there: empty means it is all gone, and the caller restarts the app so nothing
+     * held in memory comes back.
+     */
+    suspend fun eraseEverything(): List<String> {
+        kotlinx.coroutines.withContext(Dispatchers.Main) {
+            playback.stop(); lan.setEnabled(false)
+            downloads.removeAll()
+            app.streamsetu.tv.record.ScheduledRecordings.items.value.forEach { app.streamsetu.tv.record.ScheduledRecordings.cancel(context, it.id) }
+        }
+        maintenance.deleteAllLocalData()
+        return maintenance.leftoversAfterErase()
     }
 
     /** The AI the person chose (see [app.streamsetu.core.data.repo.AIStore]); they bring their own key. */
@@ -365,6 +414,26 @@ class AppContainer @Inject constructor(
         return r
     }
 
+    private var guideAt = 0L
+    private var guideBusy = false
+    /** Pulls the provider's programme guide when Live TV or the TV Guide is opened and the guide held is empty (or was last pulled more than six hours ago): once at a time, in the background. */
+    fun ensureGuide() {
+        val id = library.activeId.value ?: return
+        if (guideBusy) return
+        appScope.launch {
+            if (guideBusy) return@launch
+            guideBusy = true
+            try {
+                val empty = runCatching { epg.programmeCount(db) == 0 }.getOrDefault(true)
+                if (!empty && (guideAt == 0L || System.currentTimeMillis() - guideAt < 6 * 3600_000L)) { if (guideAt == 0L) guideAt = System.currentTimeMillis(); return@launch }
+                val src = sources.get(id) ?: return@launch
+                val fallback = if (src.type == SourceType.XTREAM) "${app.streamsetu.core.parse.Xtream.normalizeHost(src.address)}/xmltv.php?username=${src.username.orEmpty()}&password=${credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()}" else null
+                runCatching { epg.refresh(src, fallback, resolver.headers(src.id)) }
+                guideAt = System.currentTimeMillis()
+            } finally { guideBusy = false }
+        }
+    }
+
     /** Saves the guide address for a connection and reads that guide now. Returns the number of programmes found. */
     suspend fun setGuideAddress(sourceId: String, url: String?): Int {
         sources.setGuide(sourceId, url)
@@ -429,9 +498,17 @@ class AppContainer @Inject constructor(
         if (item is ChannelPlayable) { if (!PrivateWatch.on) settings.lastChannelId = item.id; if (!keepCopies) rememberChannelCopies(item) }
         queueIndex = queue.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
         UISound.play(UISoundEvent.PLAYBACK_START)
+        val generation = ++playGeneration
+        pendingPlayback.value = PendingPlayback(item.id, if (item is app.streamsetu.core.model.EpisodePlayable) item.series.title else item.title, generation)
         appScope.launch {
+            try {
+            if (!mayPlay(item)) {
+                if (generation == playGeneration) kotlinx.coroutines.withContext(Dispatchers.Main) { android.widget.Toast.makeText(context, "That is not available: its folder is locked or hidden for this profile, or its connection is off.", android.widget.Toast.LENGTH_LONG).show() }
+                return@launch
+            }
             val resume = if (item.isLive || !item.tracksProgress || startOver) 0 else if (settings.resumeAutomatically.value) user.progress(item.id)?.takeIf { !it.completed }?.positionMs ?: 0 else 0
-            kotlinx.coroutines.withContext(Dispatchers.Main) { playback.play(item, resume) }
+            kotlinx.coroutines.withContext(Dispatchers.Main) { if (generation == playGeneration) playback.play(item, resume) }          // a newer choice made while this was checked wins
+            } finally { if (pendingPlayback.value?.generation == generation) pendingPlayback.value = null }
         }
     }
 
@@ -464,8 +541,16 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             val u = container.ui
             SoundSettings(u.soundsEnabled.value, u.soundTheme.value, u.soundVolume.value, u.navTones.value, u.selectionTones.value, u.confirmationTones.value, u.errorTones.value, u.soundsDuringPlayback.value)
         }, videoPlaying = { container.playback.current.value != null && container.playback.state.value == app.streamsetu.core.playback.PlaybackState.Playing })
-        app.streamsetu.tv.record.ScheduledRecordings.rearm(this)
-        container.lan.startIfEnabled(container.profiles.isMainActive)
+        container.appScope.launch(Dispatchers.IO) {
+            // Not needed for the first screen: a recording the last process did not finish is marked interrupted, scheduled ones are armed again, local sync starts, and the
+            // search word list is warmed so the first search is quick. All of it runs off the main thread, after the first screen has had its time.
+            kotlinx.coroutines.delay(1500)
+            app.streamsetu.tv.record.ScheduledRecordings.recover(this@StreamSetuApp)
+            app.streamsetu.tv.record.ScheduledRecordings.rearm(this@StreamSetuApp)
+            container.lan.startIfEnabled(container.profiles.isMainActive)
+            kotlinx.coroutines.delay(5000)
+            runCatching { container.globalSearch.warmUp() }
+        }
         CrashReporter.install(this, runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?")
         container.appScope.launch {
             // "Refresh on app start": after the screen has settled, each connection is read once, one after another, and never while something plays.

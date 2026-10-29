@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.phone
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,14 +26,14 @@ import app.streamsetu.tv.vm
  */
 @Composable
 fun PhoneApp(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
-    val entries by c.library.entries.collectAsState(initial = emptyList())
+    val entries by c.library.entries.collectAsStateWithLifecycle(initialValue = emptyList())
     val noLibrary = entries.none { it.usable }
     val base = if (nav.base == Base.ChooseLibrary && noLibrary && entries.none { it.kind == LibraryEntry.Kind.CONNECTION }) Base.Welcome else nav.base
 
     // Android 13 and later asks before a notification can be shown; the lock-screen controls need one. It is asked once, when something first plays.
     val context = androidx.compose.ui.platform.LocalContext.current
     val askNotifications = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
-    val playing by c.playback.current.collectAsState()
+    val playing by c.playback.current.collectAsStateWithLifecycle()
     LaunchedEffect(playing != null) {
         if (playing != null && android.os.Build.VERSION.SDK_INT >= 33 && c.settings.backgroundAudio.value &&
             context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {

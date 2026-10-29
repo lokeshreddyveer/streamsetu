@@ -13,18 +13,22 @@ import kotlinx.coroutines.flow.*
 @OptIn(ExperimentalCoroutinesApi::class)
 class FolderRepository(private val db: AppDatabase, private val library: LibraryRepository, private val parental: ParentalControls, private val relockAfterMs: () -> Long = { Long.MAX_VALUE }) {
     private fun scopeName(kind: ContentKind) = kind.name
+    private companion object { const val EXPIRY_CHECK_MS = 3_000L }
 
     /** Folders the person unlocked with the PIN since the app started; they lock again when a library is closed. */
-    private val unlockedAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val unlockedAt: MutableMap<String, Long> = java.util.concurrent.ConcurrentHashMap()          // typed as a Map: the concurrent class's own key view needs Android 7
     private val unlocked = MutableStateFlow<Set<String>>(emptySet())
     fun unlock(folderId: String) { unlockedAt[folderId] = System.currentTimeMillis(); unlocked.value = unlockedAt.keys.toSet() }
     fun lockAgain() { unlockedAt.clear(); unlocked.value = emptySet() }
     /** Applies the auto-relock policy: folders unlocked longer ago than the limit lock again. */
-    private fun expire() { val limit = relockAfterMs(); if (limit == Long.MAX_VALUE) return; val now = System.currentTimeMillis(); if (unlockedAt.entries.removeIf { now - it.value > limit }) unlocked.value = unlockedAt.keys.toSet() }
+    private fun expire() { val limit = relockAfterMs(); if (limit == Long.MAX_VALUE) return; val now = System.currentTimeMillis(); var changed = false; val it = unlockedAt.entries.iterator(); while (it.hasNext()) { if (now - it.next().value > limit) { it.remove(); changed = true } }; if (changed) unlocked.value = unlockedAt.keys.toSet() }
     fun isUnlocked(folderId: String): Boolean { expire(); return unlockedAt.containsKey(folderId) }
 
     /** Folders whose content must stay out of lists, search and banners right now: locked and not yet unlocked. */
-    fun lockedIds(kind: ContentKind): Flow<Set<String>> = combine(db.browse().lockedFolders(scopeName(kind)), unlocked) { locked, open -> locked.toSet() - open }
+    fun lockedIds(kind: ContentKind): Flow<Set<String>> = combine(db.browse().lockedFolders(scopeName(kind)), unlocked, expiryTicks()) { locked, open, _ -> locked.toSet() - open }
+
+    /** The auto-relock interval is applied by the clock too, not only when something asks: an open screen is told within a few seconds of a folder's time running out. */
+    private fun expiryTicks(): Flow<Unit> = kotlinx.coroutines.flow.flow { while (true) { expire(); emit(Unit); kotlinx.coroutines.delay(EXPIRY_CHECK_MS) } }
     suspend fun lockedIdsNow(): Set<String> { expire(); return db.browse().lockedFoldersNow().toSet() - unlockedAt.keys }
 
     /** Every folder of [kind] in the open library, in the person's order (pinned first, then arranged order, then the provider's order). Hidden ones are included, flagged. */

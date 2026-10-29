@@ -33,16 +33,19 @@
         android:name=".StreamSetuApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
-        android:banner="@drawable/banner"
+        android:banner="@drawable/tv_banner"
         android:label="@string/app_name"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.StreamSetu">
+
+        <!-- Lets a developer profile this build over adb (Android 10 and later); it changes nothing else about the app. -->
+        <profileable android:shell="true" tools:targetApi="29" />
 
         <activity
             android:name=".MainActivity"
             android:windowSoftInputMode="adjustResize"
             android:icon="@mipmap/ic_launcher"
-            android:banner="@drawable/banner"
+            android:banner="@drawable/tv_banner"
             android:label="@string/app_name"
             android:exported="true"
             android:supportsPictureInPicture="true"

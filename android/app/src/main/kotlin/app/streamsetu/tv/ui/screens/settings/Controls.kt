@@ -1,7 +1,11 @@
 package app.streamsetu.tv.ui.screens.settings
 
+import app.streamsetu.tv.ui.theme.ui
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -19,10 +23,11 @@ import kotlinx.coroutines.delay
 
 /** A titled block of rows. */
 @Composable
-fun SettingGroup(title: String, footer: String? = null, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-        Label(title, Tokens.heading, Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 6.dp, bottom = 10.dp))
-        Column(Modifier.fillMaxWidth().background(Tokens.card, RoundedCornerShape(Tokens.radiusPanel)).padding(vertical = 8.dp, horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp), content = content)
+fun SettingGroup(title: String, footer: String? = null, danger: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    // A danger group (erase, reset) is set apart at the bottom of its page, tinted red, so it is never taken for an ordinary section.
+    Column(Modifier.fillMaxWidth().padding(top = if (danger) 24.dp else 8.dp)) {
+        Label(title, Tokens.heading, if (danger) Tokens.danger else Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 6.dp, bottom = 10.dp))
+        Column(Modifier.fillMaxWidth().background(if (danger) Tokens.danger.copy(alpha = 0.10f) else Tokens.card, RoundedCornerShape(Tokens.radiusPanel)).then(if (danger) Modifier.border(1.dp, Tokens.danger.copy(alpha = 0.45f), RoundedCornerShape(Tokens.radiusPanel)) else Modifier).padding(vertical = 8.dp, horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp), content = content)
         if (footer != null) Label(footer, Tokens.caption, Tokens.textTertiary, maxLines = 3, modifier = Modifier.padding(start = 4.dp, top = 6.dp))
     }
 }
@@ -32,15 +37,15 @@ fun SettingGroup(title: String, footer: String? = null, content: @Composable Col
  * and does nothing when pressed (it never just looks dead).
  */
 @Composable
-fun SettingRow(title: String, detail: String? = null, value: String? = null, enabled: Boolean = true, reason: String? = null, danger: Boolean = false, switch: Boolean? = null, onClick: () -> Unit = {}) {
+fun SettingRow(title: String, detail: String? = null, value: String? = null, enabled: Boolean = true, reason: String? = null, danger: Boolean = false, switch: Boolean? = null, chevron: Boolean = false, onClick: () -> Unit = {}) {
     Focusable(if (enabled) onClick else ({}), Modifier.fillMaxWidth(), shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.015f) { f ->
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(Modifier.heightIn(min = if (detail != null) 80.ui else 62.ui).padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Label(title, Tokens.row, if (!enabled) Tokens.textTertiary else if (danger) Tokens.danger else Tokens.text, FontWeight.Medium)
-                if (detail != null) Label(detail, Tokens.caption, Tokens.textSecondary, maxLines = 3)
-                if (!enabled && reason != null) Label(reason, Tokens.caption, Tokens.warning, maxLines = 3)
+                if (detail != null) Label(detail, Tokens.caption, Tokens.textSecondary, maxLines = 2)
+                if (!enabled && reason != null) Label(reason, Tokens.caption, Tokens.warning, maxLines = 2)
             }
-            if (switch != null) SwitchControl(switch, enabled) else if (value != null) Label(value, Tokens.row, if (!enabled) Tokens.textTertiary else if (f) Tokens.accent else Tokens.textSecondary, FontWeight.Medium, maxLines = 2, modifier = Modifier.widthIn(max = 220.dp))
+            if (switch != null) SwitchControl(switch, enabled) else if (value != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { Label(value, Tokens.row, if (!enabled) Tokens.textTertiary else if (f) Tokens.accent else Tokens.textSecondary, FontWeight.Medium, maxLines = 2, modifier = Modifier.widthIn(max = 220.dp)); if (chevron) Image(Icons.Filled.ChevronRight, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary)) }
         }
     }
 }
@@ -60,7 +65,7 @@ private fun SwitchControl(on: Boolean, enabled: Boolean) {
 @Composable
 fun <T> ChoiceRow(title: String, detail: String? = null, options: List<Pair<T, String>>, value: T, enabled: Boolean = true, reason: String? = null, onChange: (T) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    SettingRow(title, detail, options.firstOrNull { it.first == value }?.second ?: "—", enabled, reason) { open = true }
+    SettingRow(title, detail, options.firstOrNull { it.first == value }?.second ?: "—", enabled, reason, chevron = true) { open = true }
     if (open) ContextMenu(title, detail, options.map { (v, label) -> MenuAction(label + if (v == value) "   ✓" else "", if (v == value) Icons.Filled.Check else Icons.Filled.ChevronRight) { onChange(v) } }, onClose = { open = false })
 }
 
@@ -78,8 +83,17 @@ fun ActionRow(title: String, detail: String? = null, label: String = "Run", dang
     }
 }
 
+/** Information with nothing to do: shown as a plain row, so the remote does not stop on it. */
 @Composable
-fun InfoRow(title: String, value: String, detail: String? = null) = SettingRow(title, detail, value)
+fun InfoRow(title: String, value: String, detail: String? = null) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Label(title, Tokens.row, Tokens.text, FontWeight.Medium)
+            if (detail != null) Label(detail, Tokens.caption, Tokens.textSecondary, maxLines = 2)
+        }
+        Label(value, Tokens.row, Tokens.textSecondary, FontWeight.Medium, maxLines = 2, modifier = Modifier.widthIn(max = 220.dp))
+    }
+}
 
 /** A line of result text under a group (what an action just did). */
 @Composable

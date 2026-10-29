@@ -95,8 +95,21 @@ fun FeaturedBanner(
     topOverlay: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     // A slide with no picture at all is left out of the rotation (an empty tint is not a hero); if none has one, they are all kept.
-    val items = remember(candidates) { candidates.filter { !it.imageUrl.isNullOrBlank() }.ifEmpty { candidates } }
+    // A slide whose picture cannot be loaded (a dead link, an empty answer) is left out too: it would show a bare dark hero.
+    var failed by remember(candidates) { mutableStateOf(emptySet<String>()) }
+    val items = remember(candidates, failed) {
+        val withPicture = candidates.filter { !it.imageUrl.isNullOrBlank() }
+        withPicture.filter { it.id !in failed }.ifEmpty { withPicture.ifEmpty { candidates } }
+    }
     if (items.isEmpty()) return
+    val probeContext = LocalContext.current
+    LaunchedEffect(candidates) {
+        for (c in candidates) {
+            val url = c.imageUrl?.takeIf { it.isNotBlank() } ?: continue
+            val r = coil.Coil.imageLoader(probeContext).execute(ImageRequest.Builder(probeContext).data(url).size(coil.size.Size(64, 64)).memoryCachePolicy(coil.request.CachePolicy.DISABLED).build())
+            if (r is coil.request.ErrorResult) failed = failed + c.id
+        }
+    }
     val reduced = LocalReducedMotion.current
     var index by remember(items.firstOrNull()?.id, items.size) { mutableIntStateOf(0) }
     // The slideshow keeps going while the remote simply rests on a button; it waits only while the person is pressing keys on the banner.
@@ -119,23 +132,24 @@ fun FeaturedBanner(
     // The next slide's picture is requested now, so the crossfade never waits on the network.
     LaunchedEffect(i, items) {
         items.getOrNull((i + 1) % n)?.imageUrl?.takeIf { it.isNotBlank() }?.let { url ->
-            coil.Coil.imageLoader(context).enqueue(ImageRequest.Builder(context).data(url).build())
+            coil.Coil.imageLoader(context).enqueue(ImageRequest.Builder(context).data(url).size(coil.size.Size(64, 64)).memoryCachePolicy(coil.request.CachePolicy.DISABLED).build())          // fills the disk cache only: no full-size decode
         }
     }
 
     Box(modifier.fillMaxWidth().height(height)) {
         Crossfade(i, Modifier.fillMaxSize(), animationSpec = if (reduced) tween(0) else tween(Motion.BANNER), label = "bannerImage") { idx ->
             val it = items[idx.coerceIn(0, n - 1)]
+            val slideId = it.id
             Box(Modifier.fillMaxSize()) {
                 Box(Modifier.fillMaxSize().background(Tokens.card))
                 if (!it.imageUrl.isNullOrBlank()) {
                     if (it.imageIsBackdrop) {
                         // The subject of a wide picture is usually in the upper middle: crop from there, so faces are not cut off.
-                        AsyncImage(it.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -0.45f))
+                        AsyncImage(it.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -0.45f), onError = { _ -> failed = failed + slideId })
                     } else {
                         // Only a portrait poster exists: it is shown at its own shape on the right, over a calm tint of the title's colour, never blown up to fill the banner.
                         Box(Modifier.fillMaxSize().background(Tokens.background.copy(alpha = 0.55f)))
-                        AsyncImage(it.imageUrl, null, Modifier.align(Alignment.CenterEnd).padding(top = 72.dp, bottom = 30.dp, end = 150.dp).fillMaxHeight().aspectRatio(2f / 3f, matchHeightConstraintsFirst = true).clip(RoundedCornerShape(Tokens.radius)), contentScale = ContentScale.Crop)
+                        AsyncImage(it.imageUrl, null, Modifier.align(Alignment.CenterEnd).padding(top = 72.dp, bottom = 30.dp, end = 150.dp).fillMaxHeight().aspectRatio(2f / 3f, matchHeightConstraintsFirst = true).clip(RoundedCornerShape(Tokens.radius)), contentScale = ContentScale.Crop, onError = { _ -> failed = failed + slideId })
                     }
                 }
             }
@@ -147,7 +161,8 @@ fun FeaturedBanner(
 
         // Title, facts, story and the buttons sit at the bottom left; the column is sized so it never reaches the page header.
         Column(Modifier.align(Alignment.BottomStart).padding(start = startPadding, bottom = 30.dp).widthIn(max = 600.dp).heightIn(max = height - 64.dp), verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom)) {
-            AnimatedContent(i, contentAlignment = Alignment.BottomStart, transitionSpec = { fadeIn(tween(if (reduced) 0 else Motion.BANNER)) togetherWith fadeOut(tween(if (reduced) 0 else Motion.BANNER)) using SizeTransform(clip = false) { _, _ -> snap() } }, label = "bannerText") { idx ->
+            // The buttons are measured first and the text takes what is left: a long title (two lines) with facts and a synopsis used to use up the whole height and leave the buttons a thin strip with nothing in it.
+            AnimatedContent(i, modifier = Modifier.weight(1f, fill = false), contentAlignment = Alignment.BottomStart, transitionSpec = { fadeIn(tween(if (reduced) 0 else Motion.BANNER)) togetherWith fadeOut(tween(if (reduced) 0 else Motion.BANNER)) using SizeTransform(clip = false) { _, _ -> snap() } }, label = "bannerText") { idx ->
                 val it = items[idx.coerceIn(0, n - 1)]
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Label(it.title, 40.sp, Tokens.text, FontWeight.Bold, maxLines = 2)
@@ -156,15 +171,28 @@ fun FeaturedBanner(
                 }
             }
             Row(Modifier.railOnLeft().padding(top = 6.dp).onPreviewKeyEvent { lastKey = System.currentTimeMillis(); false }, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                TvButton(item.primaryLabel, { onPrimary(item) }, if (primaryEntry != null) Modifier.focusRequester(primaryEntry) else Modifier, icon = Icons.Filled.PlayArrow, primary = true)
-                TvButton("More Info", { onDetails(item) }, icon = Icons.Filled.Info)
+                HeroButton(item.primaryLabel, { onPrimary(item) }, if (primaryEntry != null) Modifier.focusRequester(primaryEntry) else Modifier, Icons.Filled.PlayArrow)
+                HeroButton("More Info", { onDetails(item) }, Modifier, Icons.Filled.Info)
                 val listed = isListed(item)
-                TvButton(if (listed) "In $listedLabel" else listedLabel, { onToggleListed(item) }, icon = if (listed) Icons.Filled.Check else Icons.Filled.Add)
+                HeroButton(if (listed) "In $listedLabel" else listedLabel, { onToggleListed(item) }, Modifier, if (listed) Icons.Filled.Check else Icons.Filled.Add)
             }
         }
         topOverlay?.invoke(this)
         if (n > 1) Row(Modifier.align(Alignment.BottomEnd).padding(end = Tokens.safeHorizontal, bottom = 18.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             repeat(n) { d -> Box(Modifier.size(width = if (d == i) 18.dp else 6.dp, height = 3.dp).background(if (d == i) Color.White else Tokens.text.copy(alpha = 0.3f), RoundedCornerShape(2.dp))) }
+        }
+    }
+}
+
+
+/** A button on the hero slideshow: a soft translucent pill that turns solid white (dark text) when the remote is on it, so it is always clear which one is chosen and nothing is drawn around it. */
+@Composable
+private fun HeroButton(text: String, onClick: () -> Unit, modifier: Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color.White.copy(alpha = 0.16f), focusedContainer = Color.White, scaleOnFocus = 1.05f, ringBand = false, showRing = false) { f ->
+        val ink = if (f) Color(0xFF101319) else Color.White
+        Row(Modifier.padding(horizontal = 22.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            androidx.compose.foundation.Image(icon, null, Modifier.size(18.dp), colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(ink))
+            Label(text, Tokens.row, ink, FontWeight.SemiBold)
         }
     }
 }

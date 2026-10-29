@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.phone
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -50,18 +51,18 @@ private fun DetailHeader(imageUrl: String?, title: String, onBack: () -> Unit) {
 
 @Composable
 fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
-    val overrides by c.collections.overrides.collectAsState(initial = emptyMap())
+    val overrides by c.collections.overrides.collectAsStateWithLifecycle(initialValue = emptyMap())
     val movie = overrides[movie0.id]?.let { o -> movie0.copy(title = o.title ?: movie0.title, posterUrl = o.posterUrl ?: movie0.posterUrl, plot = movie0.plot ?: o.plot) } ?: movie0
-    val favs by c.user.favouriteIds(UserRepository.FAVOURITES).collectAsState(initial = emptySet())
-    val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsState(initial = emptySet())
-    val allProgress by c.user.allProgress().collectAsState(initial = emptyMap())
+    val favs by c.user.favouriteIds(UserRepository.FAVOURITES).collectAsStateWithLifecycle(initialValue = emptySet())
+    val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsStateWithLifecycle(initialValue = emptySet())
+    val allProgress by c.user.allProgress().collectAsStateWithLifecycle(initialValue = emptyMap())
     val progress = allProgress[movie.id]
     var info by remember { mutableStateOf<SyncService.MovieInfo?>(null) }
     var variants by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var franchise by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var related by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Movie>>>(emptyList()) }
     var chooseOpen by remember { mutableStateOf(false) }
-    val sources by c.library.entries.collectAsState(initial = emptyList())
+    val sources by c.library.entries.collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
     LaunchedEffect(movie.id) {
         info = runCatching { c.sync.movieInfo(movie) }.getOrNull()
@@ -94,9 +95,9 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Chip(if (movie.id in favs) "Favorited" else "Favorite", movie.id in favs, { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in favs) } }, icon = Icons.Filled.Favorite)
                         Chip(if (movie.id in later) "In Watch Later" else "Watch Later", movie.id in later, { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in later, UserRepository.WATCH_LATER) } }, icon = Icons.Filled.Bookmark)
-                        val saved by c.downloads.items.collectAsState(); val saving = saved.firstOrNull { it.itemId == movie.id }
+                        val saved by c.downloads.items.collectAsStateWithLifecycle(); val saving = saved.firstOrNull { it.itemId == movie.id }
                         Chip(downloadLabel(saving), saving?.state == app.streamsetu.core.data.repo.SaveState.DONE, { downloadTap(c, saving) { c.downloads.enqueue(movie) } }, icon = Icons.Filled.Download, progress = saving?.takeIf { it.state == app.streamsetu.core.data.repo.SaveState.DOWNLOADING }?.fraction)
-                        val queued by c.watchQueue.items.collectAsState(); val inQueue = queued.any { it.id == movie.id }
+                        val queued by c.watchQueue.items.collectAsStateWithLifecycle(); val inQueue = queued.any { it.id == movie.id }
                         Chip(if (inQueue) "In queue" else "Add to queue", inQueue, { if (inQueue) c.watchQueue.remove(movie.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.MOVIE, movie.id, movie.title)) }, icon = Icons.Filled.Add)
                         Chip("Share link", false, { shareTitle(c.context, "movie", movie.title) }, icon = Icons.Filled.Share)
                         if (variants.size > 1) Chip("Choose stream", false, { chooseOpen = true }, icon = Icons.Filled.SwapHoriz)
@@ -137,15 +138,15 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
 
 @Composable
 fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator) {
-    val episodes by vm.episodes.collectAsState()
-    val loading by vm.loading.collectAsState()
-    val error by vm.error.collectAsState()
-    val progress by vm.progress.collectAsState()
+    val episodes by vm.episodes.collectAsStateWithLifecycle()
+    val loading by vm.loading.collectAsStateWithLifecycle()
+    val error by vm.error.collectAsStateWithLifecycle()
+    val progress by vm.progress.collectAsStateWithLifecycle()
     val series0 = vm.series
-    val overrides by c.collections.overrides.collectAsState(initial = emptyMap())
+    val overrides by c.collections.overrides.collectAsStateWithLifecycle(initialValue = emptyMap())
     val s = overrides[series0.id]?.let { o -> series0.copy(title = o.title ?: series0.title, posterUrl = o.posterUrl ?: series0.posterUrl, plot = series0.plot ?: o.plot) } ?: series0
-    val favs by c.user.favouriteIds(UserRepository.FAVOURITES).collectAsState(initial = emptySet())
-    val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsState(initial = emptySet())
+    val favs by c.user.favouriteIds(UserRepository.FAVOURITES).collectAsStateWithLifecycle(initialValue = emptySet())
+    val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsStateWithLifecycle(initialValue = emptySet())
     var similar by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Series>>>(emptyList()) }
     LaunchedEffect(series0.id) { similar = runCatching { c.search.similarSeries(series0) }.getOrDefault(emptyList()) }
     val seasons = episodes.groupBy { it.season }.toSortedMap()
@@ -184,7 +185,7 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Chip(if (s.id in favs) "Favorited" else "Favorite", s.id in favs, { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in favs) } }, icon = Icons.Filled.Favorite)
                         Chip(if (s.id in later) "In Watch Later" else "Watch Later", s.id in later, { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in later, UserRepository.WATCH_LATER) } }, icon = Icons.Filled.Bookmark)
-                        val queued by c.watchQueue.items.collectAsState(); val inQueue = queued.any { it.id == s.id }
+                        val queued by c.watchQueue.items.collectAsStateWithLifecycle(); val inQueue = queued.any { it.id == s.id }
                         Chip(if (inQueue) "In queue" else "Add to queue", inQueue, { if (inQueue) c.watchQueue.remove(s.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.SERIES, s.id, s.title)) }, icon = Icons.Filled.Add)
                         Chip("Share link", false, { shareTitle(c.context, "series", s.title) }, icon = Icons.Filled.Share)
                     }
@@ -208,7 +209,7 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                         Label(listOfNotNull(e.durationSec?.takeIf { it > 0 }?.let { "${it / 60} min" }, if (p?.completed == true) "Watched" else if (p != null && p.fraction > 0) "${minutes(p.durationMs - p.positionMs)}m left" else null).joinToString("  ·  "), Ph.caption, Tokens.textSecondary)
                     }
                     if (p?.completed == true) Icon(Icons.Filled.CheckCircle, Tokens.success, 18.dp)
-                    val saved by c.downloads.items.collectAsState(); val saving = saved.firstOrNull { it.itemId == e.id }
+                    val saved by c.downloads.items.collectAsStateWithLifecycle(); val saving = saved.firstOrNull { it.itemId == e.id }
                     Tap({ downloadTap(c, saving) { c.downloads.enqueue(e, s) } }, Modifier.size(40.dp)) {
                         Box(Modifier.fillMaxSize(), Alignment.Center) {
                             when (saving?.state) {

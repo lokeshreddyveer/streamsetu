@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.phone
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
@@ -37,6 +38,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import app.streamsetu.core.data.repo.GlobalResults
 import app.streamsetu.core.data.repo.SearchItem
 import app.streamsetu.core.data.repo.SearchKind
+import app.streamsetu.core.data.repo.badge
+import app.streamsetu.core.data.repo.exactMatch
+import app.streamsetu.core.data.repo.SearchResultOrder
 import app.streamsetu.core.data.repo.SearchTab
 import app.streamsetu.core.data.repo.SearchTarget
 import app.streamsetu.core.model.EpisodePlayable
@@ -73,11 +77,12 @@ import kotlinx.coroutines.launch
 /** The guide as a list that suits a phone held upright: each channel with what is on now, how far through it is, and what comes next. Tap a channel to watch; tap a programme for its details. */
 @Composable
 fun PhoneGuide(c: AppContainer, nav: Navigator, vm: GuideViewModel = hiltViewModel()) {
-    val rows by vm.rows.collectAsState()
-    val favOnly by vm.favouritesOnly.collectAsState()
-    val hasGuide by vm.hasGuide.collectAsState()
+    val rows by vm.rows.collectAsStateWithLifecycle()
+    val favOnly by vm.favouritesOnly.collectAsStateWithLifecycle()
+    val hasGuide by vm.hasGuide.collectAsStateWithLifecycle()
     var detail by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
-    val now by produceState(System.currentTimeMillis()) { while (true) { kotlinx.coroutines.delay(30_000); value = System.currentTimeMillis() } }          // moves on while the guide is open
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    app.streamsetu.tv.ui.components.PollWhileShown(30_000) { now = System.currentTimeMillis() }          // moves on while the guide is open and the app is on screen
     val time = remember { DateFormat.getTimeInstance(DateFormat.SHORT) }
     Column(Modifier.fillMaxSize()) {
         PhoneTopBar("TV Guide", leading = { RoundTap(Icons.Filled.ArrowBack, "Back") { nav.tab = Tab.LIVE } })
@@ -149,7 +154,7 @@ private fun PhoneSettings(c: AppContainer, nav: Navigator, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         PhoneTopBar(cat?.title ?: "Settings", leading = { RoundTap(Icons.Filled.ArrowBack, "Back") { if (open != null) open = null else onBack() } })
         if (cat == null) LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
-            items(Category.entries) { k ->
+            items(Category.entries, key = { it.name }) { k ->
                 Row(Modifier.fillMaxWidth().clickable { open = k.name }.padding(horizontal = Ph.gutter, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Tokens.elevated), Alignment.Center) { Icon(k.icon, Tokens.accent, 22.dp) }
                     Column(Modifier.weight(1f)) { Label(k.title, Ph.body, Tokens.text, FontWeight.SemiBold); Label(k.subtitle, Ph.caption, Tokens.textSecondary, maxLines = 2) }
@@ -198,16 +203,20 @@ fun PhoneSearch(c: AppContainer, nav: Navigator) {
     var q by remember { mutableStateOf("") }
     var results by remember { mutableStateOf(GlobalResults()) }
     var searching by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
+    var retry by remember { mutableIntStateOf(0) }
     var recents by remember { mutableStateOf(c.search.recentIn(scopeKey)) }
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) { delay(150); runCatching { focus.requestFocus() } }
     LaunchedEffect(Unit) { c.globalSearch.warmUp() }
-    LaunchedEffect(q, tab) {
-        if (q.trim().isEmpty()) { results = GlobalResults(); searching = false; return@LaunchedEffect }
-        searching = true
+    LaunchedEffect(q, tab, retry) {
+        if (q.trim().isEmpty()) { results = GlobalResults(); searching = false; failed = false; return@LaunchedEffect }
+        searching = true; failed = false
         delay(200)                                  // type-ahead: wait for a pause
-        results = runCatching { c.globalSearch.search(q, tab) }.getOrDefault(GlobalResults()); searching = false
+        // A search that failed is told apart from one that found nothing (the same states as on the TV).
+        try { results = c.globalSearch.search(q, tab) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { failed = true }
+        searching = false
     }
     fun remember() { c.search.rememberIn(scopeKey, q); recents = c.search.recentIn(scopeKey) }
     fun open(r: SearchItem) {
@@ -243,15 +252,18 @@ fun PhoneSearch(c: AppContainer, nav: Navigator) {
             blank -> Column(Modifier.weight(1f)) {
                 if (recents.isNotEmpty()) {
                     SectionHeader("Recent searches", Modifier.padding(top = 8.dp), action = "Clear", onAction = { c.search.clearIn(scopeKey); recents = emptyList() })
-                    LazyColumn { items(recents) { r -> Row(Modifier.fillMaxWidth().clickable { q = r }.padding(horizontal = Ph.gutter, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Icon(Icons.Filled.History, Tokens.textTertiary, 18.dp); Label(r, Ph.body, Tokens.text) } } }
+                    LazyColumn { items(recents.distinct(), key = { it }) { r -> Row(Modifier.fillMaxWidth().clickable { q = r }.padding(horizontal = Ph.gutter, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Icon(Icons.Filled.History, Tokens.textTertiary, 18.dp); Label(r, Ph.body, Tokens.text) } } }
                 } else Empty(if (tab == SearchTab.ALL) "Search your library" else "Search ${tab.label.lowercase()}", if (tab == SearchTab.ALL) "Channels, movies, series and episodes from every playlist." else "Try a title, or something like \u201chindi movies 2024\u201d.")
             }
             tab == SearchTab.ALL -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
                 if (found.isEmpty() && searching) item { app.streamsetu.tv.ui.components.Loading(Modifier.height(120.dp)) }
-                if (found.isEmpty() && !searching) item { Empty("No results", "Try fewer letters or another spelling.") }
+                if (failed) item { Column { Empty("Search could not be completed", "Try again in a moment."); Box(Modifier.padding(horizontal = Ph.gutter)) { app.streamsetu.tv.ui.components.TvButton("Retry", { retry++ }, icon = Icons.Filled.Refresh) } } }
+                else if (found.isEmpty() && !searching) item { Empty("No titles found", "Try another title, actor, language or spelling.") }
                 if (results.understood.isNotEmpty()) item { app.streamsetu.tv.ui.components.Label("Understood as  " + results.understood.joinToString("  \u00b7  "), Tokens.small, Tokens.accent, maxLines = 2, modifier = Modifier.padding(horizontal = Ph.gutter)) }
                 results.correctedTo?.let { fixed -> item { CorrectedNote(q, fixed) } }
-                SearchKind.entries.filter { !results.byKind[it].isNullOrEmpty() }.forEach { kind ->
+                // A title that is exactly what was typed comes first, then the groups in the same order as on the TV.
+                results.exactMatch(q)?.let { best -> item(key = "best") { Column { SectionHeader("Best match", Modifier.padding(top = 10.dp)); Result(best) { open(best) } } } }
+                SearchResultOrder.filter { !results.byKind[it].isNullOrEmpty() }.forEach { kind ->
                     item(key = "h-${kind.name}") { SectionHeader(kind.title, Modifier.padding(top = 10.dp)) }
                     items(results.byKind[kind].orEmpty(), key = { it.id }) { r -> Result(r) { open(r) } }
                 }
@@ -260,7 +272,8 @@ fun PhoneSearch(c: AppContainer, nav: Navigator) {
                 val channels = tab == SearchTab.LIVE
                 LazyVerticalGrid(GridCells.Fixed(3), Modifier.weight(1f), contentPadding = PaddingValues(start = Ph.gutter, end = Ph.gutter, top = 8.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     if (found.isEmpty() && searching) item(span = { GridItemSpan(maxLineSpan) }) { app.streamsetu.tv.ui.components.Loading(Modifier.height(120.dp)) }
-                    if (found.isEmpty() && !searching) item(span = { GridItemSpan(maxLineSpan) }) { Empty("No results", "Try fewer letters or another spelling.") }
+                    if (failed) item(span = { GridItemSpan(maxLineSpan) }) { Column { Empty("Search could not be completed", "Try again in a moment."); Box(Modifier.padding(horizontal = Ph.gutter)) { app.streamsetu.tv.ui.components.TvButton("Retry", { retry++ }, icon = Icons.Filled.Refresh) } } }
+                    else if (found.isEmpty() && !searching) item(span = { GridItemSpan(maxLineSpan) }) { Empty("No results", "Try fewer letters or another spelling.") }
                     results.correctedTo?.let { fixed -> item(span = { GridItemSpan(maxLineSpan) }) { CorrectedNote(q, fixed) } }
                     gridItems(found, key = { it.id }) { r ->
                         if (channels) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Tokens.card).clickable { open(r) }.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -293,5 +306,6 @@ private fun Result(r: SearchItem, onClick: () -> Unit) {
             Label(r.title, Ph.body, Tokens.text, FontWeight.Medium, maxLines = 2)
             if (r.subtitle.isNotBlank()) Label(r.subtitle, Ph.caption, Tokens.textSecondary)
         }
+        Label(r.kind.badge(), Ph.caption, Tokens.textTertiary, FontWeight.Bold)          // what kind of thing it is, as on the TV
     }
 }

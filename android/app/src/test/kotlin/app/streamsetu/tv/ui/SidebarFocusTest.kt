@@ -38,13 +38,14 @@ class SidebarFocusTest {
     @get:Rule val rule = createComposeRule()
     private val chosen = mutableStateListOf<Tab>()
     private val folderClicks = mutableStateListOf<Int>()
+    private var returns = 0
 
-    private val order = listOf(Tab.HOME, Tab.LIVE, Tab.MOVIES, Tab.SERIES, Tab.GUIDE, Tab.SEARCH, Tab.LIBRARIES, Tab.SETTINGS)
+    private val order = listOf(Tab.HOME, Tab.LIVE, Tab.GUIDE, Tab.MOVIES, Tab.SERIES, Tab.SEARCH, Tab.LIBRARIES, Tab.SETTINGS)
 
     private fun show(selected: Tab = Tab.MOVIES) {
         rule.setContent {
             Row {
-                Sidebar(selected, onSelect = { chosen += it }, entry = FocusRequester(), expanded = true)
+                Sidebar(selected, onSelect = { chosen += it }, entry = FocusRequester(), expanded = true, onReturn = { returns++ })
                 // A folder list beside the sidebar, taller than it, so there are focusable things below the last sidebar entry.
                 Column(Modifier.width(300.dp)) { androidx.compose.foundation.layout.Spacer(Modifier.height(900.dp)); repeat(10) { i -> Focusable({ folderClicks += i }, Modifier.testTag("folder-$i")) { Label("Folder $i") } } }
             }
@@ -54,11 +55,11 @@ class SidebarFocusTest {
     private fun key(k: Key) = rule.onNodeWithTag("sidebar-${Tab.MOVIES.name}").performKeyInput { pressKey(k) }
     private fun focusOn(t: Tab) = rule.onNodeWithTag("sidebar-${t.name}").requestFocus()
 
-    @Test fun downGoesFromMoviesToSeriesAndThenToTheGuide() {
+    @Test fun downGoesFromMoviesToSeriesAndThenToSearch() {
         show(); focusOn(Tab.MOVIES)
         key(Key.DirectionDown); rule.waitForIdle(); rule.onNodeWithTag("sidebar-SERIES").assertIsFocused()
         rule.onNodeWithTag("sidebar-SERIES").performKeyInput { pressKey(Key.DirectionDown) }; rule.waitForIdle()
-        rule.onNodeWithTag("sidebar-GUIDE").assertIsFocused()
+        rule.onNodeWithTag("sidebar-SEARCH").assertIsFocused()
     }
 
     @Test fun upGoesBackTheSameWay() {
@@ -95,15 +96,15 @@ class SidebarFocusTest {
     @Test fun rapidUpAndDownLandOnTheRightEntry() {
         show(Tab.HOME); focusOn(Tab.LIVE)
         listOf(Key.DirectionDown, Key.DirectionDown, Key.DirectionDown, Key.DirectionUp).forEach { k -> rule.onNodeWithTag("sidebar-LIVE").performKeyInput { pressKey(k) } }
-        rule.waitForIdle(); rule.onNodeWithTag("sidebar-SERIES").assertIsFocused()      // Live +3 -1 = Series... Live, Movies, Series, Guide, then back to Series
+        rule.waitForIdle(); rule.onNodeWithTag("sidebar-MOVIES").assertIsFocused()      // Live, +3 = Series (Guide, Movies, Series), -1 = Movies
     }
 
     @Test fun movingFocusNeverChoosesADestinationAndOkDoes() {
         show(); focusOn(Tab.MOVIES)
         key(Key.DirectionDown); key(Key.DirectionDown); rule.waitForIdle()
         assertTrue(chosen.isEmpty())
-        rule.onNodeWithTag("sidebar-GUIDE").performKeyInput { pressKey(Key.DirectionCenter) }; rule.waitForIdle()
-        assertEquals(listOf(Tab.GUIDE), chosen.toList())
+        rule.onNodeWithTag("sidebar-SEARCH").performKeyInput { pressKey(Key.DirectionCenter) }; rule.waitForIdle()
+        assertEquals(listOf(Tab.SEARCH), chosen.toList())
     }
 
     @Test fun everyEntryCanBeReachedInOrder() {
@@ -112,6 +113,27 @@ class SidebarFocusTest {
         order.drop(1).forEach { next ->
             rule.onNodeWithTag("sidebar-${current.name}").performKeyInput { pressKey(Key.DirectionDown) }; rule.waitForIdle()
             rule.onNodeWithTag("sidebar-${next.name}").assertIsFocused(); current = next
+        }
+    }
+
+    @Test fun rightOnMoviesSeriesOrLiveTvOpensThatScreensFoldersLikeOkAndDoesNotReturnToTheContent() {
+        for (t in listOf(Tab.MOVIES, Tab.SERIES, Tab.LIVE)) {
+            chosen.clear(); returns = 0
+            if (t == Tab.MOVIES) show(Tab.HOME)
+            focusOn(t); rule.waitForIdle()
+            rule.onNodeWithTag("sidebar-${t.name}").performKeyInput { pressKey(Key.DirectionRight) }; rule.waitForIdle()
+            assertEquals("$t: Right opens its folders (the same call as OK)", listOf(t), chosen.toList())
+            assertEquals("$t: Right does not hand the remote back to the content", 0, returns)
+        }
+    }
+
+    @Test fun rightOnAnyOtherEntryStillReturnsToThePage() {
+        show(Tab.HOME)
+        for (t in listOf(Tab.HOME, Tab.GUIDE, Tab.SEARCH, Tab.SETTINGS)) {
+            chosen.clear(); returns = 0
+            focusOn(t); rule.waitForIdle()
+            rule.onNodeWithTag("sidebar-${t.name}").performKeyInput { pressKey(Key.DirectionRight) }; rule.waitForIdle()
+            assertEquals("$t: Right returns to the page", 1, returns); assertTrue("$t: and selects nothing", chosen.isEmpty())
         }
     }
 }

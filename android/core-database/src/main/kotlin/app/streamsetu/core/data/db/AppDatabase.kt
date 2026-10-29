@@ -9,9 +9,9 @@ import androidx.room.RoomDatabase
     entities = [SourceEntity::class, CategoryEntity::class, ChannelEntity::class, MovieEntity::class, SeriesEntity::class,
         EpisodeEntity::class, EpgEntity::class, FavoriteEntity::class, ProgressEntity::class, WatchLogEntity::class,
         LibraryEntity::class, LibraryMemberEntity::class, FolderPrefEntity::class,
-        NewEpisodeEntity::class, CollectionEntity::class, CollectionItemEntity::class, OverrideEntity::class, EpgChannelEntity::class,
+        NewEpisodeEntity::class, CatalogFingerprintEntity::class, CollectionEntity::class, CollectionItemEntity::class, OverrideEntity::class, EpgChannelEntity::class,
         WatchTimeEntity::class, ChannelPrefEntity::class, ReminderEntity::class],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,6 +26,23 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         /** Adds drafts and cached counts to playlists, combined libraries, and folder arrangements. Nothing existing is touched. */
+        /** Every step from the first version to the current one, in order. There is no destructive fallback: a database that cannot be upgraded is never emptied. */
+        val MIGRATIONS: Array<androidx.room.migration.Migration> get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+
+        /** Indexes for the paths the screens browse by: newest first per library, a list in the order it was filled, what is partly watched, and the viewing history of one title. */
+        val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS catalog_fingerprints (sourceId TEXT NOT NULL, fingerprint INTEGER NOT NULL, rows INTEGER NOT NULL, version INTEGER NOT NULL, PRIMARY KEY(sourceId))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_channels_sourceId_addedAt ON channels (sourceId, addedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_movies_sourceId_addedAt ON movies (sourceId, addedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_series_sourceId_addedAt ON series (sourceId, addedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_favorites_listId_addedAt ON favorites (listId, addedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_progress_seriesId ON progress (seriesId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_progress_updatedAt ON progress (updatedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_watch_log_itemId ON watch_log (itemId)")
+            }
+        }
+
         /** Watch time for the Statistics page, what the person changed about channels, and programme reminders. */
         val MIGRATION_5_6 = object : androidx.room.migration.Migration(5, 6) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
@@ -84,7 +101,7 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         fun open(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, "streamsetu.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            Room.databaseBuilder(context, AppDatabase::class.java, "streamsetu.db").addMigrations(*MIGRATIONS)
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db); PeopleIndex.create(db); LanLog.create(db); Profiles.create(db) }
                     override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db); PeopleIndex.create(db); LanLog.create(db); Profiles.create(db) }

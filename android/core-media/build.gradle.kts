@@ -24,6 +24,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     api(libs.media3.exoplayer)
     api(libs.media3.exoplayer.hls)
+    api(libs.media3.exoplayer.dash)
     api(libs.media3.datasource.okhttp)
     api(libs.libmpv)
     api(libs.media3.ui)

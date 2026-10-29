@@ -257,5 +257,5 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         return if (left >= 1) "${left}m left" else "Almost done"
     }
 
-    companion object { val DEFAULT_ORDER = listOf("continue", "live", "favorites", "later", "foryou", "movies", "series", "categories") }
+    companion object { val DEFAULT_ORDER = listOf("continue", "live", "foryou", "movies", "series", "favorites", "later", "categories") }
 }

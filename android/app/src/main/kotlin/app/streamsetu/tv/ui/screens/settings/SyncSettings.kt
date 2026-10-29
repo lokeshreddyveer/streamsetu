@@ -27,8 +27,8 @@ fun SyncSettings(c: AppContainer) {
     DisposableEffect(adding) { lan.setPairing(adding); onDispose { lan.setPairing(false) } }
     LaunchedEffect(message) { if (message != null && message!!.endsWith("is now paired.")) adding = false }
 
-    SettingGroup("Sync on this network", "Devices on the same Wi-Fi share favourites, Watch Later, collections and resume points directly with each other. No account and no server; nothing leaves your network. Pair each device once.") {
-        ToggleRow("Sync on this network", "Works between Mac, iPhone, iPad, Android phones and Fire TV.", enabled) { lan.setEnabled(it, remember = true) }
+    SettingGroup("Sync on this network", "Shares favorites, collections and progress with paired devices on this Wi-Fi.") {
+        ToggleRow("Sync on this network", "Works with Mac, iPhone, iPad and Android devices.", enabled) { lan.setEnabled(it, remember = true) }
     }
     if (!enabled) return
     SettingGroup("Devices") {

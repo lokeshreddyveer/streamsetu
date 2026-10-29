@@ -54,14 +54,25 @@ object ScheduledRecordings {
 
     fun idOf(channelId: String, startMs: Long) = "$channelId@$startMs"
 
-    fun load(context: Context) {
+    /** Reads the saved list. An ordinary refresh (a screen opening, the service starting): a recording that is under way keeps its state. See [recover] for after a restart. */
+    fun load(context: Context) = synchronized(lock) { state.value = readSaved(context) }
+
+    /**
+     * Once, when the app process starts: a recording that was under way when the previous process ended did not finish, so it is marked as interrupted (what was written stays).
+     * Only here, never in [load]: a screen opening while a recording is running must not turn that recording into a failure.
+     */
+    fun recover(context: Context) = synchronized(lock) {
+        state.value = readSaved(context).map { if (it.state == ScheduledRec.RECORDING && !active.containsKey(it.id)) it.copy(state = ScheduledRec.FAILED, detail = "The recording was interrupted.") else it }
+        save(context)
+    }
+
+    private fun readSaved(context: Context): List<ScheduledRec> {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("list", "[]") ?: "[]"
         val list = runCatching {
             val a = JSONArray(raw)
             (0 until a.length()).map { a.getJSONObject(it).let { o -> ScheduledRec(o.getString("id"), o.getString("ch"), o.getString("chName"), o.getString("src"), o.getString("ref"), o.getString("title"), o.getLong("start"), o.getLong("end"), o.optString("state", ScheduledRec.SCHEDULED), o.optString("detail").takeIf { d -> d.isNotEmpty() }) } }
         }.getOrDefault(emptyList())
-        // anything recording when the app was last stopped did not finish
-        state.value = list.map { if (it.state == ScheduledRec.RECORDING) it.copy(state = ScheduledRec.FAILED, detail = "The recording was interrupted.") else it }
+        return list
     }
 
     private fun save(context: Context) {
@@ -85,9 +96,12 @@ object ScheduledRecordings {
 
     /** The download in progress for each recording, so Cancel can stop it and not only remove the entry. */
     internal val active = java.util.concurrent.ConcurrentHashMap<String, okhttp3.Call>()
+    /** Recordings the person cancelled while they were running, until the capture that was running has seen it and cleaned up. */
+    private val cancelled: MutableSet<String> = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())
+    internal fun takeCancelled(id: String): Boolean = cancelled.remove(id)
 
     fun cancel(context: Context, id: String) = synchronized(lock) {
-        active.remove(id)?.cancel()
+        active[id]?.let { cancelled += id; it.cancel() }
         (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pending(context, id))
         state.value = state.value.filterNot { it.id == id }; save(context)
     }
@@ -165,14 +179,24 @@ class RecordService : Service() {
             var endedEarly = false
             call.execute().use { resp ->
                 if (!resp.isSuccessful) error("The provider answered ${resp.code}. It may allow only one stream at a time.")
+                val type = resp.header("Content-Type").orEmpty().lowercase()
+                // A playlist (HLS) is a list of addresses, not video: copying it would save text under a video name. Told by the content type, or by the start of what arrives.
+                if ("mpegurl" in type) error("This channel streams as HLS, which cannot be recorded yet.")
                 val src = resp.body?.byteStream() ?: error("Nothing was received.")
                 file.outputStream().buffered().use { out ->
                     val buf = ByteArray(64 * 1024)
-                    while (System.currentTimeMillis() < stop) {
+                    // The first bytes are gathered (a short first read must not decide) and looked at without a byte-order mark or leading white space.
+                    val head = java.io.ByteArrayOutputStream()
+                    while (head.size() < PROBE_BYTES && System.currentTimeMillis() < stop) {
                         val n = src.read(buf)
                         if (n < 0) { endedEarly = System.currentTimeMillis() < stop - EARLY_SLACK_MS; break }
-                        // A playlist (HLS) is a list of addresses, not video: copying it would save text under a video name.
-                        if (wrote == 0L && String(buf, 0, minOf(n, 7), Charsets.ISO_8859_1) == "#EXTM3U") error("This channel streams as HLS, which cannot be recorded yet.")
+                        head.write(buf, 0, n)
+                    }
+                    if (looksLikePlaylist(head.toByteArray())) error("This channel streams as HLS, which cannot be recorded yet.")
+                    if (head.size() > 0) { out.write(head.toByteArray()); wrote += head.size() }
+                    while (!endedEarly && System.currentTimeMillis() < stop) {
+                        val n = src.read(buf)
+                        if (n < 0) { endedEarly = System.currentTimeMillis() < stop - EARLY_SLACK_MS; break }
                         out.write(buf, 0, n); wrote += n
                     }
                 }
@@ -184,7 +208,7 @@ class RecordService : Service() {
         } catch (e: Exception) {
             if (file.exists() && file.length() == 0L) file.delete()
             // Cancelled from Settings: the entry is already gone; the partial file goes with it.
-            if (ScheduledRecordings.active[rec.id]?.isCanceled() == true) file.delete()
+            if (ScheduledRecordings.takeCancelled(rec.id)) file.delete()
             else ScheduledRecordings.update(this, rec.id, ScheduledRec.FAILED, e.message ?: "It did not finish.")
         } finally { ScheduledRecordings.active.remove(rec.id) }
     }
@@ -196,7 +220,21 @@ class RecordService : Service() {
         return b.setSmallIcon(android.R.drawable.ic_media_play).setContentTitle("Recording").setContentText(title).setOngoing(true).build()
     }
 
-    override fun onDestroy() { scope.coroutineContext[kotlinx.coroutines.Job]?.cancel(); super.onDestroy() }
+    override fun onDestroy() {
+        // The service is going away (the system stopped it): a download that is still blocked on the network is cancelled with it, not left running.
+        ScheduledRecordings.active.values.forEach { runCatching { it.cancel() } }
+        scope.coroutineContext[kotlinx.coroutines.Job]?.cancel(); super.onDestroy()
+    }
 
-    companion object { private const val CHANNEL = "recording"; private const val NOTE_ID = 7041; private const val EARLY_SLACK_MS = 90_000L }
+    companion object { private const val CHANNEL = "recording"; private const val NOTE_ID = 7041; private const val EARLY_SLACK_MS = 90_000L; private const val PROBE_BYTES = 188
+
+        /** True when what arrived starts like an HLS playlist: "#EXTM3U", after an optional byte-order mark and white space. */
+        fun looksLikePlaylist(head: ByteArray): Boolean {
+            var i = 0
+            if (head.size >= 3 && head[0] == 0xEF.toByte() && head[1] == 0xBB.toByte() && head[2] == 0xBF.toByte()) i = 3
+            while (i < head.size && (head[i] == ' '.code.toByte() || head[i] == '\t'.code.toByte() || head[i] == '\r'.code.toByte() || head[i] == '\n'.code.toByte())) i++
+            val tag = "#EXTM3U".toByteArray(Charsets.ISO_8859_1)
+            return head.size - i >= tag.size && tag.indices.all { head[i + it] == tag[it] }
+        }
+    }
 }

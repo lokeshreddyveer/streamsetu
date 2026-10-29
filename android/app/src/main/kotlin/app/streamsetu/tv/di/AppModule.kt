@@ -87,7 +87,7 @@ object AppModule {
                 }
             }
         },
-    )
+    ).also { it.isPrivate = { app.streamsetu.tv.PrivateWatch.on } }
 }
 
 fun kindOf(p: Playable) = when (p) {

@@ -19,7 +19,7 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
     fun open(entry: LibraryEntry, then: () -> Unit) = viewModelScope.launch { c.library.open(entry); then() }
 
     /** What a connection form holds while it is being filled in or tested. */
-    data class Form(val name: String = "", val address: String = "", val user: String = "", val password: String = "", val userAgent: String = "", val headers: String = "")
+    data class Form(val name: String = "", val address: String = "", val user: String = "", val password: String = "", val userAgent: String = "", val headers: String = "", val trustCertificate: Boolean = false)
 
     sealed interface Test {
         data object Idle : Test
@@ -33,6 +33,7 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
     private var testing = false
 
     fun headersFor(id: String): String = c.resolver.customHeadersText(id)
+    fun trustsCertificate(id: String): Boolean = c.resolver.allowsSelfSignedTls(id)
 
     suspend fun draft(id: String): Pair<Source, String?>? = c.sources.get(id)?.let { it to c.sources.password(id) }
 
@@ -43,7 +44,7 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
                 address = f.address.trim(), username = f.user.trim().ifBlank { null }, draft = true, userAgent = f.userAgent.trim().ifBlank { null }),
             f.password.trim().ifBlank { null },
         )
-        c.resolver.setCustomHeaders(saved.id, f.headers)
+        c.resolver.setCustomHeaders(saved.id, f.headers); c.resolver.setAllowsSelfSignedTls(saved.id, f.trustCertificate)
         then(saved.id)
     }
 
@@ -58,7 +59,7 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
             _test.value = Test.Running
             val label = f.name.ifBlank { f.address.trim().substringAfter("://").substringBefore('/').substringAfterLast('/').take(30).ifBlank { "My connection" } }
             val saved = c.sources.add(Source(id = draftId.orEmpty(), name = label, type = type, address = f.address.trim(), username = f.user.trim().ifBlank { null }, draft = true, userAgent = f.userAgent.trim().ifBlank { null }), f.password.trim().ifBlank { null })
-            c.resolver.setCustomHeaders(saved.id, f.headers)
+            c.resolver.setCustomHeaders(saved.id, f.headers); c.resolver.setAllowsSelfSignedTls(saved.id, f.trustCertificate)
             runCatching { c.syncWithGuide(saved.id) }
                 .onSuccess { r ->
                     if (r.channels + r.movies + r.series == 0) _test.value = Test.Failed("The sign-in worked but the provider returned nothing to watch. Check that the subscription is active.").also { c.sources.setError(saved.id, "Nothing to watch") }

@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.phone
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.streamsetu.tv.ui.components.DownloadBadge
 import app.streamsetu.tv.ui.components.WatchedTick
 import android.content.Context
@@ -227,8 +228,8 @@ fun Empty(title: String, message: String, modifier: Modifier = Modifier) {
 /** The strip above the tab bar while something plays and the picture is closed: what it is, play or pause, and stop. Tap it to bring the picture back. */
 @Composable
 fun MiniPlayer(c: app.streamsetu.tv.AppContainer, onOpen: () -> Unit) {
-    val item by c.playback.current.collectAsState()
-    val state by c.playback.state.collectAsState()
+    val item by c.playback.current.collectAsStateWithLifecycle()
+    val state by c.playback.state.collectAsStateWithLifecycle()
     val shown = item ?: return
     val playing = state == app.streamsetu.core.playback.PlaybackState.Playing || state == app.streamsetu.core.playback.PlaybackState.Buffering
     Row(

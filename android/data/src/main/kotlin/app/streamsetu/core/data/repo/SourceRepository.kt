@@ -1,5 +1,6 @@
 package app.streamsetu.core.data.repo
 
+import androidx.room.withTransaction
 import app.streamsetu.core.data.db.AppDatabase
 import app.streamsetu.core.model.Source
 import app.streamsetu.core.model.SyncStatus
@@ -22,12 +23,16 @@ class SourceRepository(private val db: AppDatabase, private val credentials: Cre
         return s
     }
 
+    /** Removes a connection and everything read from it, as one step: all of it goes or none of it does. Its saved login is deleted only after that has happened. */
     suspend fun remove(id: String) {
-        val c = db.catalog()
-        c.clearChannels(id); c.clearMovies(id); c.clearSeries(id); c.clearCategories(id)
-        db.sources().delete(id)
-        db.libraries().removeSource(id)
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { app.streamsetu.core.data.db.SearchIndex.clear(db.openHelper.writableDatabase, id); app.streamsetu.core.data.db.PeopleIndex.clear(db.openHelper.writableDatabase, id) }
+        db.withTransaction {
+            val c = db.catalog()
+            c.clearChannels(id); c.clearMovies(id); c.clearSeries(id); c.clearCategories(id); c.clearFingerprint(id)
+            db.sources().delete(id)
+            db.libraries().removeSource(id)
+            val raw = db.openHelper.writableDatabase          // on this transaction's own thread, so these are part of it
+            app.streamsetu.core.data.db.SearchIndex.clear(raw, id); app.streamsetu.core.data.db.PeopleIndex.clear(raw, id)
+        }
         credentials.delete(credentialRef(id))
     }
 

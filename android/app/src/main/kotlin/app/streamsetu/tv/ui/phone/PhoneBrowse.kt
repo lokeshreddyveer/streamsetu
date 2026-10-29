@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.phone
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -44,13 +45,13 @@ private val shortcuts = listOf<Pair<String, Browse>>("All" to Browse.All, "Recen
 /** Movies or Series: the shortcuts and folders as chips, then a grid of posters. */
 @Composable
 fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navigator) {
-    val cards by vm.cards.collectAsState()
-    val browse by vm.browse.collectAsState()
-    val folders by vm.folders.collectAsState()
-    val favs by vm.favourites.collectAsState()
-    val later by vm.watchLater.collectAsState()
-    val progress by vm.progress.collectAsState()
-    val newSeries by vm.newSeries.collectAsState()
+    val cards by vm.cards.collectAsStateWithLifecycle()
+    val browse by vm.browse.collectAsStateWithLifecycle()
+    val folders by vm.folders.collectAsStateWithLifecycle()
+    val favs by vm.favourites.collectAsStateWithLifecycle()
+    val later by vm.watchLater.collectAsStateWithLifecycle()
+    val progress by vm.progress.collectAsStateWithLifecycle()
+    val newSeries by vm.newSeries.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<Pair<String, List<SheetItem>>?>(null) }
     var folderSheet by remember { mutableStateOf(false) }
     val grid = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
@@ -59,7 +60,7 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
     val shown = folders.filter { !it.pref.hidden }
     val folderName = (browse as? Browse.Folder)?.let { b -> folders.firstOrNull { it.id == b.id }?.title }
 
-    val banner by vm.banner.collectAsState()
+    val banner by vm.banner.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize()) {
         PhoneTopBar(title) {
             RoundTap(Icons.Filled.Search, "Search") { nav.openSearch(if (vm.kind == ContentKind.SERIES) SearchTab.SERIES else SearchTab.MOVIES) }
@@ -124,12 +125,12 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
-    val groups by vm.groups.collectAsState()
-    val browse by vm.browse.collectAsState()
-    val folders by vm.folders.collectAsState()
-    val now by vm.now.collectAsState()
-    val epgIds by vm.epgIds.collectAsState()
-    val favs by vm.favourites.collectAsState()
+    val groups by vm.groups.collectAsStateWithLifecycle()
+    val browse by vm.browse.collectAsStateWithLifecycle()
+    val folders by vm.folders.collectAsStateWithLifecycle()
+    val now by vm.now.collectAsStateWithLifecycle()
+    val epgIds by vm.epgIds.collectAsStateWithLifecycle()
+    val favs by vm.favourites.collectAsStateWithLifecycle()
     val state = rememberLazyListState()
     var folderSheet by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<Pair<String, List<SheetItem>>?>(null) }
@@ -139,6 +140,14 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
 
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     LaunchedEffect(browse) { gridState.scrollToItem(0) }
+    val total by vm.total.collectAsStateWithLifecycle()
+    val loadingMore by vm.loadingMore.collectAsStateWithLifecycle()
+    val pageFailed by vm.pageFailed.collectAsStateWithLifecycle()
+    // The channels come a page at a time (the view model starts with 150): the next page is asked for a few screens before the end of what is loaded, as on the TV, and never twice at once.
+    LaunchedEffect(gridState, vm) {
+        androidx.compose.runtime.snapshotFlow { Pair(gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0, gridState.layoutInfo.totalItemsCount) }
+            .collect { (last, n) -> if (n > 0 && last >= n - 30 && n < (vm.total.value ?: Int.MAX_VALUE)) vm.loadMore() }
+    }
     Column(Modifier.fillMaxSize()) {
         PhoneTopBar("Live TV") {
             RoundTap(Icons.Filled.CalendarMonth, "TV Guide") { nav.tab = Tab.GUIDE }
@@ -168,6 +177,11 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
                     Label((ch.number?.let { "$it " } ?: "") + ch.name, Ph.caption, Tokens.text, FontWeight.Medium, maxLines = 2)
                     Label(program?.title ?: if (g.variants.size > 1) "${g.variants.size} streams" else "Live", 11.sp, Tokens.textTertiary)
                 }
+            }
+            if (pageFailed) item(key = "retry", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                Box(Modifier.fillMaxWidth().padding(8.dp), Alignment.Center) { Chip("Could not load more. Tap to retry", false, { vm.retryPage() }, icon = Icons.Filled.Refresh) }
+            } else if (loadingMore) item(key = "loading", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                Box(Modifier.fillMaxWidth().padding(8.dp), Alignment.Center) { Label("Loading…", Ph.caption, Tokens.textTertiary) }
             }
         }
     }

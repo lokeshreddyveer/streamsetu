@@ -27,10 +27,12 @@ class ExoEngine(context: Context) : PlayerEngine {
     override var onEvent: (EngineEvent) -> Unit = {}
 
     private var player: ExoPlayer? = null
+    private val isTelevision = appContext.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK) || appContext.packageManager.hasSystemFeature("android.hardware.type.television")
     private var builtFor: List<Any?>? = null
     private var userAgent: String? = null
     private var options = EngineOptions()
     private var dropped = 0L
+    private var rebuilds = 0
     private var decoderName = ""
     private var viewRef: PlayerView? = null
     private var currentHeaders: Map<String, String> = emptyMap()
@@ -38,6 +40,12 @@ class ExoEngine(context: Context) : PlayerEngine {
     private fun ensurePlayer(mode: BufferingMode): ExoPlayer {
         val key = listOf(mode, options.decoderFallback, options.passthrough, userAgent, currentHeaders, options.softwareDecoding)
         if (player != null && builtFor == key) return player!!
+        // Counted and logged, not changed: a different provider or setting needs a player of its own (headers and decoders cannot be swapped in), and how often that happens is what decides whether it is worth avoiding.
+        builtFor?.takeIf { player != null }?.let { was ->
+            rebuilds++
+            val names = listOf("buffering", "decoder fallback", "passthrough", "user agent", "request headers", "software decoding")
+            android.util.Log.i("Playback", "player rebuilt (#$rebuilds): ${names.filterIndexed { i, _ -> was[i] != key[i] }.joinToString()} changed")
+        }
         player?.release()
         val factory = OkHttpDataSource.Factory(Http.client).setUserAgent(userAgent ?: Http.USER_AGENT).setDefaultRequestProperties(currentHeaders.filterKeys { !it.equals("User-Agent", true) })
         // IPTV transport streams are often cut mid-frame and start between keyframes: these flags let ExoPlayer start and recover on them.
@@ -62,7 +70,8 @@ class ExoEngine(context: Context) : PlayerEngine {
         val p = ExoPlayer.Builder(appContext, renderers)
             .setMediaSourceFactory(DefaultMediaSourceFactory(androidx.media3.datasource.DefaultDataSource.Factory(appContext, factory), extractors).setLiveTargetOffsetMs(mode.liveOffsetMs))
             .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(mode.minMs, mode.maxMs, mode.startMs, mode.rebufferMs).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(30_000, true).build())
-            .setHandleAudioBecomingNoisy(true)
+            // Pausing when the sound output "becomes noisy" is for unplugging headphones on a phone. On a TV the same signal comes from the TV's HDMI and input changes, and paused the film by itself.
+            .setHandleAudioBecomingNoisy(!isTelevision)
             .build()
         dropped = 0
         p.addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
@@ -233,14 +242,14 @@ class ExoEngine(context: Context) : PlayerEngine {
             "Decoder" to decoderName.ifBlank { "unknown" },
             "Buffered ahead" to "${((p.bufferedPosition - p.currentPosition).coerceAtLeast(0)) / 1000} s",
             "Dropped frames" to dropped.toString(),
+            "Player rebuilds" to rebuilds.toString(),
         )
     }
 
-    override fun streamInfo(): String {
-        val p = player ?: return ""
+    override fun facts(): StreamFacts {
+        val p = player ?: return StreamFacts()
         val v = p.videoFormat; val a = p.audioFormat
-        return listOfNotNull(v?.let { "${it.width}×${it.height}" }, v?.sampleMimeType?.substringAfter('/'), a?.sampleMimeType?.substringAfter('/'),
-            v?.bitrate?.takeIf { it > 0 }?.let { "${it / 1000} kbps" }).joinToString(" · ")
+        return StreamFacts(v?.width ?: 0, v?.height ?: 0, v?.codecs ?: v?.sampleMimeType?.substringAfter('/'), a?.sampleMimeType?.substringAfter('/'))
     }
 
     private fun classify(e: PlaybackException): PlaybackError {

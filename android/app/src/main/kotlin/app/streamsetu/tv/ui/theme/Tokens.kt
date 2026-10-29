@@ -27,10 +27,11 @@ enum class Accent(val label: String, val color: Color) {
 }
 
 /**
- * The Mac app's default theme (Obsidian): same colours, same roles. Sizes are the Mac sizes scaled up for reading from a sofa.
+ * The Mac app's default theme: same colours, same roles. Sizes are for reading from a sofa and follow the real size of the screen (see [UiScale]).
  * The colours that can change with the theme and accent are read from state, so every screen that uses them redraws when they change.
  */
 object Tokens {
+
     private var themeState by mutableStateOf(Theme.CINEMA)
     private var accentState by mutableStateOf(Accent.CYAN)
     fun apply(theme: Theme, accent: Accent) { themeState = theme; accentState = accent }
@@ -66,30 +67,46 @@ object Tokens {
     val border get() = line
     val accent2 get() = accent
 
-    // Mac: radius 7 / 8 / 10 / 12, sidebar 184, header 54, poster 150 x 218, landscape 240 x 135.
-    val radiusSmall = 6.dp; val radius = 10.dp; val radiusPanel = 14.dp; val radiusLarge = 16.dp
-    val sidebarWidth = 176.dp
-    val headerHeight = 44.dp
-    /** Design canvas 960 x 540 dp, 12 columns of 52 dp with 20 dp gutters (844 dp of content, 58 dp each side). Posters 6 across = 124 dp (2:3), landscape cards 4 across = 196, 3 across = 268 (16:9). */
-    val posterWidth = 124.dp
-    val landscapeWidth = 268.dp
-    val gutter = 20.dp
-    val screenPadding = 32.dp
-    /** About 5 % of the screen on each side, kept clear of the edge (television-safe area). */
-    val safeHorizontal = 58.dp
-    val safeVertical = 27.dp
-    val sidebarCompact = 64.dp
-    val sidebarExpanded = 184.dp
-    val folderPanelWidth = 168.dp
+    // Radii, spacing and television-safe margins. The sizes were designed on a 1280 dp wide screen; they are scaled by the real width of the screen (see [UiScale]) so the same proportions
+    // fill a 960 dp or a 1280 dp television without any scaling of the whole picture. Text sizes are in sp and follow the television's own density.
+    val radiusSmall get() = 10.ui; val radius get() = 14.ui; val radiusPanel get() = 18.ui; val radiusLarge get() = 18.ui
+    /** A poster is 154 x 230 on a 1280 dp screen; the Movies and Series grids work out their own column width from the space (about seven across with the folders closed). */
+    val posterWidth get() = 154.ui
+    val landscapeWidth get() = 240.ui
+    val gutter get() = 18.ui
+    val screenPadding get() = 40.ui
+    /** About 3.5 % of the width on each side, kept clear of the edge (television-safe area), and about 4 % of the height at the top and bottom. */
+    val safeHorizontal get() = (UiScale.widthDp * 0.035f).coerceIn(24f, 62f).dp
+    val safeVertical get() = (UiScale.heightDp * 0.04f).coerceIn(18f, 30f).dp
+    /** The main sidebar takes no width while it is closed; open, it floats over the page. */
+    val sidebarCompact = 0.dp
+    val sidebarExpanded get() = (UiScale.widthDp * 0.19f).coerceIn(180f, 240f).dp
+    /** The folder column is narrower than the main sidebar (about 19 % of the screen), so the page keeps most of the width. */
+    val folderPanelWidth get() = (UiScale.widthDp * (184f / 960f)).coerceIn(160f, 230f).dp          // 184 dp on a 960 dp wide television
 
-    /** Hero title 44; screen title 32; section title 22; card title 18; navigation 18; metadata 15; button 17. */
-    val hero = 44.sp; val display = 34.sp; val pageTitle = 30.sp; val title = 22.sp; val heading = 18.sp
-    val nav = 18.sp; val body = 16.sp; val row = 17.sp; val small = 15.sp; val caption = 13.sp; val eyebrow = 11.sp
+    /** Hero title 40; screen title 32; section title 23; card title 17; navigation 17; metadata 14; badge 13. */
+    val hero = 40.sp; val display = 32.sp; val pageTitle = 32.sp; val title = 23.sp; val heading = 17.sp
+    val nav = 17.sp; val body = 17.sp; val row = 17.sp; val small = 14.sp; val caption = 13.sp; val eyebrow = 12.sp
 }
 
-/** Poster widths on the television's 960 dp canvas: 8, 6 or 5 across (the phone layout keeps its own sizes). */
+/** Poster widths for a 1280 dp wide screen, scaled by the real width (the phone layout keeps its own sizes). */
 val app.streamsetu.core.settings.PosterSize.tv: androidx.compose.ui.unit.Dp get() = when (this) {
-    app.streamsetu.core.settings.PosterSize.COMPACT -> 104.dp
-    app.streamsetu.core.settings.PosterSize.STANDARD -> 124.dp
-    app.streamsetu.core.settings.PosterSize.LARGE -> 152.dp
+    app.streamsetu.core.settings.PosterSize.COMPACT -> 140.ui
+    app.streamsetu.core.settings.PosterSize.STANDARD -> 154.ui
+    app.streamsetu.core.settings.PosterSize.LARGE -> 168.ui
 }
+
+/**
+ * The real size of the screen in dp, and the scale that follows from it: the layout sizes are written for a 1280 dp wide screen and are multiplied by [k] (the screen's width over 1280, kept
+ * between 0.6 and 1.3). It is set once at the root of the television app from the actual window, before anything reads it; nothing is drawn through a scaled canvas.
+ */
+object UiScale {
+    @Volatile var widthDp = 1280f
+    @Volatile var heightDp = 720f
+    val k: Float get() = (widthDp / 1280f).coerceIn(0.6f, 1.3f)
+    fun apply(w: Float, h: Float) { if (w > 0f && h > 0f) { widthDp = w; heightDp = h } }
+}
+
+/** A size written for a 1280 dp wide screen, scaled to the real screen. */
+val Int.ui: androidx.compose.ui.unit.Dp get() = (this * UiScale.k).dp
+val Float.ui: androidx.compose.ui.unit.Dp get() = (this * UiScale.k).dp

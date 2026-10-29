@@ -31,6 +31,10 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
     val libs by c.library.entries.collectAsState(initial = emptyList())
     var result by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf<String?>(null) }
+    val startup by c.ui.startup.collectAsState()
+    SettingGroup("When the app opens", "Home and the other choices go straight into the library you used last. The chooser is the default, so nothing opens by itself.") {
+        ChoiceRow("Start on", null, listOf("CHOOSER" to "Library chooser", "HOME" to "Home", "LAST_SCREEN" to "Last screen", "LAST_CHANNEL" to "Last playing channel", "LIVE" to "Live TV", "GUIDE" to "TV Guide"), startup) { c.ui.setStartup(it) }
+    }
     SettingGroup("Connections", "A connection that is turned off is left out of combined libraries. It still opens on its own.") {
         if (all.isEmpty()) InfoRow("No connections yet", "")
         all.forEach { s ->
@@ -50,13 +54,14 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
     ResultLine(result)
     val hours by c.settings.backgroundSyncHours.collectAsState()
     val ctx = LocalContext.current
-    SettingGroup("Catalog refresh", "A refresh also looks for new episodes of series you have started. It never runs while something is playing, and a failed read keeps the last good catalog.") {
+    SettingGroup("Catalog refresh", "Updates connections and checks followed series for new episodes.") {
         val onStart by c.settings.refreshOnStart.collectAsState()
-        ToggleRow("Refresh when the app opens", "Reads every connection and its guide a few seconds after launch, one at a time, and never while something is playing.", onStart) { c.settings.setRefreshOnStart(it) }
+        ToggleRow("Refresh when the app opens", "Updates connections shortly after launch when nothing is playing.", onStart) { c.settings.setRefreshOnStart(it) }
         ChoiceRow("Refresh catalogs in the background", options = listOf(0 to "Only when I ask", 12 to "Every 12 hours", 24 to "Every day"), value = hours) { c.settings.setBackgroundSyncHours(it); app.streamsetu.tv.CatalogSyncWorker.schedule(ctx, it) }
     }
-    SettingGroup("Recordings", "Live channels recorded while you watched them, kept on this device. Recording uses the MPV player and the connection you are already watching with, so it needs no second one. Choose Record this channel in the player's menu.") {
-        val files by produceState(emptyList<app.streamsetu.core.data.repo.RecordingFiles.Item>()) { while (true) { value = app.streamsetu.core.data.repo.RecordingFiles.list(c.recordingsFolder); kotlinx.coroutines.delay(3_000) } }
+    SettingGroup("Recordings", "Live TV recordings stored on this device. Start recording from the player or Guide.") {
+        var files by remember { mutableStateOf(emptyList<app.streamsetu.core.data.repo.RecordingFiles.Item>()) }
+        PollWhileShown(5_000) { files = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { app.streamsetu.core.data.repo.RecordingFiles.list(c.recordingsFolder) } }
         if (files.isEmpty()) InfoRow("Nothing is recorded yet", "")
         files.forEach { r ->
             InfoRow(r.title, app.streamsetu.core.data.repo.SavedTitles.size(r.bytes), DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(java.util.Date(r.startedAt)))
@@ -75,7 +80,7 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
             InfoRow(src.name, st.summary(), if (st.level() == app.streamsetu.core.data.repo.AccountStatus.Level.FINE) null else "Renew it with your provider before it stops working.")
         }
     }
-    SettingGroup("Downloads", "Movies and episodes saved on this device to watch without a connection. They pause while something is playing and carry on from where they stopped. Choose Download on a movie or an episode.") {
+    SettingGroup("Downloads", "Movies and episodes saved on this device for offline playback.") {
         val saved by c.downloads.items.collectAsState()
         val wifi = remember { mutableStateOf(c.downloads.wifiOnly) }
         if (saved.isEmpty()) InfoRow("Nothing is saved yet", "")
@@ -98,10 +103,11 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
         if (saved.isNotEmpty()) InfoRow("Space used", app.streamsetu.core.data.repo.SavedTitles.size(c.downloads.totalBytes))
         ToggleRow("Only on Wi-Fi", "Off lets downloads use mobile data too.", wifi.value) { c.downloads.wifiOnly = it; wifi.value = it }
         val deleteAfter = remember { mutableStateOf(c.downloads.deleteWhenWatched) }
-        ToggleRow("Delete after watching", "A saved movie or episode is removed once you have watched it to the end, so the device does not fill up.", deleteAfter.value) { c.downloads.deleteWhenWatched = it; deleteAfter.value = it }
+        ToggleRow("Delete after watching", "Removes a completed download to free storage.", deleteAfter.value) { c.downloads.deleteWhenWatched = it; deleteAfter.value = it }
     }
-    SettingGroup("Cast and directors", "So you can search for an actor or a director. StreamSetu asks your connections about one movie at a time, slowly and never while something is playing, and keeps what it learns. Searching for a name finds the titles read so far.") {
-        val progress by produceState(c.people.progress()) { while (true) { value = c.people.progress(); kotlinx.coroutines.delay(5_000) } }
+    SettingGroup("Cast and directors", "Builds a searchable cast and director index in the background.") {
+        var progress by remember { mutableStateOf(c.people.progress()) }
+        PollWhileShown(5_000) { progress = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { c.people.progress() } }
         InfoRow("Movies read", "%,d of %,d".format(progress.first, progress.second))
         if (progress.first < progress.second) ActionRow("Read more now", "Carries on where it stopped.", "Read", confirm = false) { c.people.start() }
     }
@@ -135,7 +141,7 @@ fun SearchSettings(c: AppContainer) {
     var msg by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(msg) { indexRows = c.maintenance.indexRows(); catalogRows = c.maintenance.catalogRows() }
     val recent by c.search.recent.collectAsState()
-    SettingGroup("Default sorting", "Everything starts with the most recently added first. Every other order stays available; each section remembers its own choice. A folder can also have its own (use Sort inside the folder). Choices appear only when the catalog really has that information.") {
+    SettingGroup("Default sorting", "Sets the initial order. Each screen can remember a different choice.") {
         listOf(ContentKind.MOVIE to "Movies", ContentKind.SERIES to "Series", ContentKind.CHANNEL to "Live TV").forEach { (k, n) ->
             val spec by c.browse.sort(k, null).collectAsState()
             val fields = availability.offers(k)
@@ -173,7 +179,7 @@ fun FavouriteSettings(c: AppContainer) {
         ActionRow("Forget all resume positions", "Continue Watching empties; watched marks are removed too. Favorites and history stay.", "Forget", danger = true) { scope.launch { c.user.clearAllProgress(); msg = "Resume positions cleared." } }
     }
     val hiddenRows by c.ui.homeHidden.collectAsState()
-    SettingGroup("Home rows", "Choose where each row sits on Home, and which rows to show. A row with nothing in it is never shown.") {
+    SettingGroup("Home rows", "Choose which Home rows appear and their order. Empty rows stay hidden.") {
         order.forEach { id -> ToggleRow("Show: ${names[id] ?: id}", on = id !in hiddenRows) { c.ui.setHomeRowHidden(id, !it) } }
         order.forEachIndexed { i, id ->
             ChoiceRow(names[id] ?: id, options = (1..order.size).map { it to "Position $it" }, value = i + 1) { pos ->
@@ -201,10 +207,10 @@ fun AppearanceSettings(c: AppContainer) {
         ChoiceRow("Accent colour", "Highlights, selected items and primary buttons.", app.streamsetu.tv.ui.theme.Accent.entries.map { it.name to it.label }, accentName) { ui.setAccent(it) }
         ChoiceRow("Poster size", options = PosterSize.entries.map { it to it.label }, value = poster) { ui.setPosterSize(it) }
         ToggleRow("Show the year under posters", on = meta) { ui.setShowPosterMeta(it) }
-        ToggleRow("High-contrast focus", "A thicker white frame around whatever the remote is on.", contrast) { ui.setHighContrastFocus(it) }
+        ToggleRow("High-contrast focus", "Uses a thicker white frame around the focused item.", contrast) { ui.setHighContrastFocus(it) }
         ChoiceRow("Animation", options = AnimationLevel.entries.map { it to it.label }, value = anim) { ui.setAnimation(it) }
     }
-    SettingGroup("Artwork from TMDB", "Fills in pictures and descriptions your provider left out, using your own free API key from themoviedb.org. Only titles without a picture are looked up, and what is found is kept on this device. This product uses the TMDB API but is not endorsed or certified by TMDB.") {
+    SettingGroup("Artwork from TMDB", "Fills missing artwork and descriptions using your TMDB API key.") {
         var tmdbKey by remember { mutableStateOf(c.credentials.load("tmdb.key").orEmpty()) }
         var working by remember { mutableStateOf(false) }; var status by remember { mutableStateOf<String?>(null) }
         val scope = rememberCoroutineScope()
@@ -216,14 +222,14 @@ fun AppearanceSettings(c: AppContainer) {
         }
     }
     SettingGroup("Banner and shortcuts") {
-        ToggleRow("Featured banner slideshow", "The large picture at the top of Home, Movies and Series. Off: no banner.", banner) { ui.setBannerEnabled(it) }
+        ToggleRow("Featured banner slideshow", "Shows featured titles at the top of Home, Movies and Series.", banner) { ui.setBannerEnabled(it) }
         ChoiceRow("Slide duration", "The banner never changes while the remote is on one of its buttons.", listOf(6 to "6 seconds", 9 to "9 seconds", 12 to "12 seconds"), secs, enabled = banner, reason = "Turn on the banner first.") { ui.setBannerSeconds(it) }
         ToggleRow("Shortcut chips under the banner", "Favorites, Watch Later, Recently Watched, Continue Watching.", shortcuts) { ui.setShowShortcuts(it) }
     }
     val soundsOn by ui.soundsEnabled.collectAsState(); val theme by ui.soundTheme.collectAsState(); val vol by ui.soundVolume.collectAsState()
     val navT by ui.navTones.collectAsState(); val selT by ui.selectionTones.collectAsState(); val confT by ui.confirmationTones.collectAsState(); val errT by ui.errorTones.collectAsState(); val dur by ui.soundsDuringPlayback.collectAsState()
-    SettingGroup("Interface sounds", "Short, soft tones for moving, choosing and confirming. They never change the TV's volume, never take audio focus, and do not play for the banner slideshow or background updates.") {
-        ToggleRow("Interface sounds", "Off until you turn it on. One switch for every interface tone.", soundsOn) { ui.setSoundsEnabled(it) }
+    SettingGroup("Interface sounds", "Quiet tones for navigation, selections and results.") {
+        ToggleRow("Interface sounds", "Plays quiet tones for navigation, selections and results.", soundsOn) { ui.setSoundsEnabled(it) }
         ChoiceRow("Sound theme", "Pick a set of tones: Signature, Wood, Crystal, Soft or Arcade. Minimal keeps only choosing, going back, confirmations and errors.", listOf("SIGNATURE" to "StreamSetu Signature", "WOOD" to "Wood", "CRYSTAL" to "Crystal", "SOFT" to "Soft", "ARCADE" to "Arcade", "MINIMAL" to "Minimal", "SILENT" to "Silent"), theme, enabled = soundsOn, reason = "Interface sounds are off.") { ui.setSoundTheme(it); app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.SELECT) }
         ChoiceRow("Sound volume", "Relative to a deliberately low base level.", listOf(10, 25, 50, 75, 100).map { it to "$it%" }, vol, enabled = soundsOn, reason = "Interface sounds are off.") { ui.setSoundVolume(it); app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.SELECT) }
         ToggleRow("Navigation tones", "Moving between items and opening or closing menus.", navT, enabled = soundsOn, reason = "Interface sounds are off.") { ui.setNavTones(it) }
@@ -233,7 +239,7 @@ fun AppearanceSettings(c: AppContainer) {
         ChoiceRow("Sounds during playback", "What happens to these tones while a video is playing.", listOf("OFF" to "Off", "REDUCED" to "Reduced", "ON" to "On"), dur, enabled = soundsOn, reason = "Interface sounds are off.") { ui.setSoundsDuringPlayback(it) }
     }
     SettingGroup("Folders") {
-        ToggleRow("Open a folder when the remote rests on it", "Off: a folder opens only when OK is pressed.", dwell) { s.setFoldersOpenOnFocus(it) }
+        ToggleRow("Open a folder when the remote rests on it", "Opens a folder when focused. Turn off to require OK.", dwell) { s.setFoldersOpenOnFocus(it) }
     }
 }
 
@@ -248,12 +254,12 @@ fun PrivacySettings(c: AppContainer) {
     var msg by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(msg) { locked = c.folders.lockedCount(); hasPin = c.parental.hasPin }
     val hideAdult by c.parental.hideAdult.collectAsState()
-    SettingGroup("Folder lock", "A locked folder's titles are also left out of search, banners and Home until it is unlocked. If you forget the PIN, remove it here after clearing all locks, or erase local data in Storage & Backup; there is no back door.") {
+    SettingGroup("Folder lock", "Hides locked titles from browsing, Home, banners and search.") {
         InfoRow("Locked folders", locked.toString())
         ActionRow(if (hasPin) "Change PIN" else "Create a PIN", "Four digits. Only a scrambled form is stored on this device.", if (hasPin) "Change" else "Create", confirm = false) { pinDialog = if (hasPin) "verify-change" else "create" }
         if (hasPin) ActionRow("Remove the PIN", "Asks for the current PIN. Locked folders then ask you to create a new one.", "Remove", confirm = false) { pinDialog = "verify-remove" }
         ChoiceRow("Lock folders again", options = listOf("LEAVE" to "When I leave the library", "TEN" to "After 10 minutes", "SESSION" to "Only when the app closes"), value = relock) { s.setRelockPolicy(it) }
-        ToggleRow("Hide adult folders", "Folders named XXX, Adult, 18+ and similar are left out everywhere.", hideAdult) { c.parental.setHideAdult(it) }
+        ToggleRow("Hide adult folders", "Hides folders whose names indicate adult content.", hideAdult) { c.parental.setHideAdult(it) }
     }
     SettingGroup("Your data stays here", "Connections, favorites, history and progress are stored on this device only. Logins are kept in the Android Keystore and are never shown, logged or exported.") {
         ActionRow("Clear recent searches", null, "Clear", danger = true) { c.search.clearHistory(); msg = "Recent searches cleared." }
@@ -278,7 +284,7 @@ fun StorageSettings(c: AppContainer) {
     val dir = remember { File(context.getExternalFilesDir(null) ?: context.filesDir, "backups").also { it.mkdirs() } }
     var files by remember { mutableStateOf(dir.listFiles { f -> f.extension == "json" }?.sortedByDescending { it.lastModified() }.orEmpty()) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) scope.launch { msg = runCatching { val r = c.maintenance.restoreBackup(readText(context, uri)); "Restored ${r.favourites} favorites, ${r.folders} folder settings, ${r.progress} positions, ${r.history} history entries" + if (r.skipped > 0) ". ${r.skipped} items belonged to connections that are not on this device and were skipped." else "." }.getOrElse { it.message ?: "The backup could not be restored." } }
+        if (uri != null) scope.launch { msg = runCatching { val r = c.maintenance.restoreBackup(readText(context, uri)); "Restored ${r.favourites} favorites, ${r.folders} folder settings, ${r.progress} positions, ${r.history} history entries" + (if (r.skipped > 0) ". ${r.skipped} items belonged to connections that are not on this device and were skipped." else ".") + " The app is starting again so the settings apply." }.onSuccess { scope.launch { kotlinx.coroutines.delay(2000); restartApp(context) } }.getOrElse { it.message ?: "The backup could not be restored." } }
     }
     SettingGroup("Storage") {
         InfoRow("Catalog database", fmtBytes(db)); InfoRow("Artwork cache", fmtBytes(img))
@@ -286,21 +292,25 @@ fun StorageSettings(c: AppContainer) {
         ActionRow("Rebuild the search index", "Safe.", "Rebuild", confirm = false) { scope.launch { msg = "Search index rebuilt: %,d entries.".format(c.maintenance.rebuildSearchIndex()) } }
         ActionRow("Remove obsolete catalog data", "Removes episodes of series that no longer exist, then compacts the database. Safe.", "Clean", confirm = false) { scope.launch { val n = c.maintenance.cleanObsolete(); db = c.maintenance.databaseBytes(); msg = "Removed $n obsolete entries." } }
     }
-    SettingGroup("Backup", "A backup holds favorites, Watch Later, folder arrangements, resume positions, history and settings. It never holds logins, playlist links or stream addresses.") {
+    SettingGroup("Backup", "Saves settings and library activity without logins or provider addresses.") {
         val auto by c.settings.automaticBackups.collectAsState()
-        ToggleRow("Back up automatically", "About once a week, keeping the last five. They are saved in the same place and can be restored the same way.", auto) { c.settings.setAutomaticBackups(it); app.streamsetu.tv.AutoBackupWorker.schedule(context, it) }
+        ToggleRow("Back up automatically", "Creates a weekly backup and keeps the five newest copies.", auto) { c.settings.setAutomaticBackups(it); app.streamsetu.tv.AutoBackupWorker.schedule(context, it) }
         ActionRow("Create a backup", "Saved in ${dir.absolutePath.substringAfter("Android/")}.", "Back up", confirm = false) { scope.launch {
             val f = File(dir, "streamsetu-" + java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US).format(Date()) + ".json")
             runCatching { f.writeText(c.maintenance.exportBackup()) }.onSuccess { files = dir.listFiles { x -> x.extension == "json" }?.sortedByDescending { it.lastModified() }.orEmpty(); msg = "Backup saved: ${f.name}" }.onFailure { msg = "The backup could not be saved: ${it.message}" }
         } }
         files.take(5).forEach { f ->
-            ActionRow("Restore ${f.name}", "Newer positions on this device are kept. Connections are matched by name.", "Restore", danger = true) { scope.launch { msg = runCatching { val r = c.maintenance.restoreBackup(f.readText()); "Restored ${r.favourites} favorites, ${r.folders} folder settings, ${r.progress} positions." + if (r.skipped > 0) " ${r.skipped} skipped." else "" }.getOrElse { it.message ?: "Restore failed." } } }
+            ActionRow("Restore ${f.name}", "Newer positions on this device are kept. Connections are matched by name.", "Restore", danger = true) { scope.launch { msg = runCatching { val r = c.maintenance.restoreBackup(f.readText()); "Restored ${r.favourites} favorites, ${r.folders} folder settings, ${r.progress} positions." + (if (r.skipped > 0) " ${r.skipped} skipped." else "") + " The app is starting again so the settings apply." }.onSuccess { scope.launch { kotlinx.coroutines.delay(2000); restartApp(context) } }.getOrElse { it.message ?: "Restore failed." } } }
         }
         ActionRow("Restore from a file…", "Choose a backup file from this device or a USB drive.", "Choose", confirm = false) { picker.launch(arrayOf("*/*")) }
     }
-    SettingGroup("Reset", "Resetting settings never erases connections, favorites or progress.") {
-        ActionRow("Reset all settings", "Every setting goes back to its default.", "Reset", danger = true) { c.maintenance.resetSettings(); msg = "Settings reset. Some changes show after the app restarts." }
-        ActionRow("Erase all local data", "Deletes every connection, login, catalog, favorite, folder arrangement, progress and setting on this device. Cannot be undone.", "Erase", danger = true) { scope.launch { c.maintenance.deleteAllLocalData(); msg = "Everything was erased."; db = c.maintenance.databaseBytes() } }
+    SettingGroup("Danger zone", "Resetting settings never erases connections, favorites or progress. Erasing everything cannot be undone.", danger = true) {
+        ActionRow("Reset all settings", "Every setting goes back to its default.", "Reset", danger = true) { c.maintenance.resetSettings(); msg = "Settings reset. The app is starting again so they apply."; scope.launch { kotlinx.coroutines.delay(2000); restartApp(context) } }
+        ActionRow("Erase all local data", "Deletes every connection, login, catalog, favorite, folder arrangement, progress and setting on this device. Cannot be undone.", "Erase", danger = true) { scope.launch {
+            val left = runCatching { c.eraseEverything() }.getOrElse { listOf("it failed: ${it.message}") }
+            if (left.isEmpty()) { msg = "Everything was erased. The app is starting again."; kotlinx.coroutines.delay(1500); restartApp(context) }
+            else { msg = "Not everything could be erased (${left.size} left: ${left.take(3).joinToString(", ")}). Nothing was reported as done."; db = c.maintenance.databaseBytes() }
+        } }
     }
     ResultLine(msg)
 }
@@ -311,7 +321,8 @@ fun DiagnosticsSettings(c: AppContainer) {
     val context = LocalContext.current
     var facts by remember { mutableStateOf(c.playback.diagnostics()) }
     var errors by remember { mutableStateOf(c.playback.recentErrors()) }
-    LaunchedEffect(Unit) { while (true) { facts = c.playback.diagnostics(); errors = c.playback.recentErrors(); kotlinx.coroutines.delay(2000) } }
+    // With nothing playing there is nothing new to read: the facts are read again only while a stream is open.
+    PollWhileShown(3_000) { if (c.playback.current.value != null) { facts = c.playback.diagnostics(); errors = c.playback.recentErrors() } }
     val sources by c.sources.sources.collectAsState(initial = emptyList())
     var indexRows by remember { mutableStateOf(0) }; var catalogRows by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) { indexRows = c.maintenance.indexRows(); catalogRows = c.maintenance.catalogRows() }
@@ -329,7 +340,7 @@ fun DiagnosticsSettings(c: AppContainer) {
         InfoRow("Search index", if (indexRows == catalogRows) "Healthy" else "Out of date", "%,d indexed of %,d catalog entries".format(indexRows, catalogRows))
     }
     SettingGroup("Report", "A report has the stream format, error kinds, app version and device facts. Provider addresses, user names, passwords and tokens are removed.") {
-        ActionRow("Export a diagnostic report", "Saved as a text file you can share.", "Export", confirm = false) { scope.launch {
+        ActionRow("Export a diagnostic report", "Includes app, device and playback details without logins or provider addresses.", "Export", confirm = false) { scope.launch {
             val text = c.maintenance.diagnosticsReport(c.playback.diagnostics(), c.playback.recentErrors(), "StreamSetu $version")
             val dir = File(context.getExternalFilesDir(null) ?: context.filesDir, "reports").also { it.mkdirs() }
             val f = File(dir, "diagnostics-" + java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US).format(Date()) + ".txt"); f.writeText(text)
@@ -381,7 +392,7 @@ fun UpdateSettings(c: AppContainer) {
     val last = c.settings.lastUpdateCheckAt
     SettingGroup("Updates", "Updates come from the StreamSetu releases on GitHub. A file is used only if its checksum matches the release notes and it is signed with the same key as this app. The system installer always asks you to confirm.") {
         InfoRow("Installed version", u.installedVersion())
-        ToggleRow("Check for updates when the app opens", "Once a day, and never while something is playing. Only the release list is requested; nothing about you is sent.", auto) { c.settings.setAutoUpdateCheck(it) }
+        ToggleRow("Check for updates when the app opens", "Checks once daily when nothing is playing. No personal data is sent.", auto) { c.settings.setAutoUpdateCheck(it) }
         when (val s = st) {
             is UpdateState.Checking -> InfoRow("Checking…", "")
             is UpdateState.Downloading -> InfoRow("Downloading the update", "${s.percent}%", "Keep the app open until it finishes.")
@@ -399,4 +410,11 @@ fun UpdateSettings(c: AppContainer) {
             UpdateState.Idle -> ActionRow("Check for updates", if (last > 0) "Last checked " + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(last)) else null, "Check", confirm = false) { u.check(manual = true) }
         }
     }
+}
+
+/** Starts the app again in a fresh process, so nothing the erase removed is still held in memory. */
+private fun restartApp(context: android.content.Context) {
+    val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK) ?: return
+    context.startActivity(launch)
+    Runtime.getRuntime().exit(0)
 }

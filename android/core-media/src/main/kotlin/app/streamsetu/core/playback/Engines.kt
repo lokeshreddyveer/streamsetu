@@ -62,7 +62,7 @@ data class PlayerTuning(
 data class Chapter(val title: String, val startMs: Long)
 
 /** Choices that need the player to be built a certain way. */
-data class EngineOptions(val decoderFallback: Boolean = true, val passthrough: Boolean = true, val subtitles: SubtitleStyle = SubtitleStyle(), val httpProxy: String? = null, val softwareDecoding: Boolean = false)
+data class EngineOptions(val decoderFallback: Boolean = true, val passthrough: Boolean = true, val subtitles: SubtitleStyle = SubtitleStyle(), val httpProxy: String? = null, val softwareDecoding: Boolean = false, val allowSelfSigned: Boolean = false)
 
 data class EngineRequest(val url: String, val headers: Map<String, String>, val startMs: Long, val live: Boolean, val buffering: BufferingMode, val options: EngineOptions = EngineOptions())
 
@@ -93,8 +93,8 @@ interface PlayerEngine {
     fun subtitleTracks(): List<TrackOption>
     fun selectAudio(id: String?)
     fun selectSubtitle(id: String?)
-    /** A line of facts about the stream being played, for the "Show stream information" overlay. */
-    fun streamInfo(): String
+    /** The picture size and codecs of the stream playing now, for the stream information pill and chips. */
+    fun facts(): StreamFacts
     /** Facts about the stream playing now, for the diagnostics screen (no addresses, no logins). */
     fun diagnostics(): Map<String, String>
     /** The frame rate of the video playing now, or 0 when it is not known yet. */

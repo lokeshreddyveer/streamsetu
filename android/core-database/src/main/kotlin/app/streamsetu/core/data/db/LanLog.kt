@@ -14,8 +14,11 @@ object LanLog {
         db.execSQL("CREATE TABLE IF NOT EXISTS lan_flag(applying INTEGER NOT NULL)")
         db.execSQL("INSERT INTO lan_flag(applying) SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM lan_flag)")
         val on = "WHEN (SELECT applying FROM lan_flag) = 0"
-        // An upsert, not INSERT OR REPLACE: SQLite uses the conflict rule of the statement that fired a trigger instead of the trigger's own, which could fail with a UNIQUE error.
-        fun put(kind: String, key: String, deleted: Int) = "INSERT INTO lan_log(kind, key, ts, deleted) VALUES('$kind', $key, $NOW, $deleted) ON CONFLICT(kind, key) DO UPDATE SET ts = excluded.ts, deleted = excluded.deleted;"
+        // An update followed by an insert that only happens when there was nothing to update: not INSERT OR REPLACE (SQLite uses the conflict rule of the statement that fired a trigger
+        // instead of the trigger's own, which could fail with a UNIQUE error) and not an upsert (ON CONFLICT ... DO UPDATE needs SQLite 3.24; Android 9, API 28, has 3.22 and Fire OS 5 to 7 are older still).
+        fun put(kind: String, key: String, deleted: Int) =
+            "UPDATE lan_log SET ts = $NOW, deleted = $deleted WHERE kind = '$kind' AND key = $key; " +
+            "INSERT INTO lan_log(kind, key, ts, deleted) SELECT '$kind', $key, $NOW, $deleted WHERE NOT EXISTS (SELECT 1 FROM lan_log WHERE kind = '$kind' AND key = $key);"
         val tables = listOf(
             Triple("favorites", "fav", "%s.itemId || char(1) || %s.listId"),
             Triple("progress", "prog", "%s.itemId"),

@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.phone
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.streamsetu.tv.startOver
 import app.streamsetu.tv.startOverFor
 import android.app.Activity
@@ -11,6 +12,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -50,17 +53,20 @@ import app.streamsetu.core.playback.PlaybackState
 import app.streamsetu.core.sync.upcoming
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.ui.components.PlayerMenus
-import app.streamsetu.tv.ui.components.StatsOverlay
+import app.streamsetu.tv.ui.components.StreamInfoPill
+import app.streamsetu.tv.ui.components.rememberStreamChips
 import app.streamsetu.tv.ui.components.EngineSurface
 import app.streamsetu.tv.ui.components.Label
 import app.streamsetu.tv.ui.components.Spinner
 import app.streamsetu.tv.ui.theme.Tokens
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.onSizeChanged
 import kotlin.math.abs
 
-private enum class Panel { SEARCH, SEARCH_LIVE, TUNE, SOUND, SUBLOOK, SUBFIND, QUALITY, CHAPTERS, QUEUE, JUMPTO, AUDIO, SUBS, SPEED, PICTURE, ENGINE, EPISODES, CHANNELS, MORE, SLEEP, SYNC, CAST }
+private enum class Panel { SEARCH, SEARCH_LIVE, TUNE, SOUND, SUBLOOK, SUBFIND, QUALITY, CHAPTERS, QUEUE, JUMPTO, AUDIO, SUBS, SPEED, PICTURE, ENGINE, EPISODES, CHANNELS, MORE, SLEEP, SYNC, CAST, INFO }
 
 private val Ink = Color(0xFFF2F2F2)
 private val InkDim = Color(0xB3FFFFFF)
@@ -78,37 +84,38 @@ private fun clock(ms: Long): String {
 @Composable
 fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = onClose, onMultiView: () -> Unit = {}, onOpenSeries: (Series) -> Unit = {}) {
     val playback = c.playback
-    val state by playback.state.collectAsState()
-    val current by playback.current.collectAsState()
-    val speed by playback.speed.collectAsState()
-    val aspect by playback.aspect.collectAsState()
-    val resumedFrom by playback.resumedFrom.collectAsState()
-    val audio by playback.audioTracks.collectAsState()
-    val subs by playback.subtitleTracks.collectAsState()
-    val favourites by c.user.favouriteIds().collectAsState(initial = emptySet())
-    val castState by c.cast.state.collectAsState()
+    val state by playback.state.collectAsStateWithLifecycle()
+    val current by playback.current.collectAsStateWithLifecycle()
+    val speed by playback.speed.collectAsStateWithLifecycle()
+    val aspect by playback.aspect.collectAsStateWithLifecycle()
+    val resumedFrom by playback.resumedFrom.collectAsStateWithLifecycle()
+    val audio by playback.audioTracks.collectAsStateWithLifecycle()
+    val subs by playback.subtitleTracks.collectAsStateWithLifecycle()
+    val favourites by c.user.favouriteIds().collectAsStateWithLifecycle(initialValue = emptySet())
+    val castState by c.cast.state.collectAsStateWithLifecycle()
     val casting = castState as? app.streamsetu.tv.CastState.Casting
     val castScope = rememberCoroutineScope()
-    val sleepAt by playback.sleepEndsAt.collectAsState()
-    val subDelay by playback.subtitleDelayMs.collectAsState()
-    val audioDelay by playback.audioDelayMs.collectAsState()
+    val sleepAt by playback.sleepEndsAt.collectAsStateWithLifecycle()
+    val subDelay by playback.subtitleDelayMs.collectAsStateWithLifecycle()
+    val audioDelay by playback.audioDelayMs.collectAsStateWithLifecycle()
     val item = current
     val live = item?.isLive == true
-    val skip = c.settings.seekSeconds.collectAsState().value
+    val skip = c.settings.seekSeconds.collectAsStateWithLifecycle().value
     val context = LocalContext.current
     val view = LocalView.current
 
     var controls by remember { mutableStateOf(true) }
-    var tick by remember { mutableIntStateOf(0) }
+    // A touch tells the hide timer through a flow, not state: a state read while drawing would redraw the whole player on every touch and every move of the seek bar.
+    val pokes = remember { kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST) }
     var panel by remember { mutableStateOf<Panel?>(null) }
     var gotoOpen by remember { mutableStateOf(false) }
-    val tuning by playback.tuning.collectAsState()
-    val styleNow by playback.subtitleStyle.collectAsState()
-    val chapters by playback.chapters.collectAsState()
-    val qualities by playback.qualities.collectAsState()
-    val nextIn by c.nextEpisodeIn.collectAsState()
-    val lined by c.watchQueue.items.collectAsState()
-    val recording by playback.recording.collectAsState()
+    val tuning by playback.tuning.collectAsStateWithLifecycle()
+    val styleNow by playback.subtitleStyle.collectAsStateWithLifecycle()
+    val chapters by playback.chapters.collectAsStateWithLifecycle()
+    val qualities by playback.qualities.collectAsStateWithLifecycle()
+    val nextIn by c.nextEpisodeIn.collectAsStateWithLifecycle()
+    val lined by c.watchQueue.items.collectAsStateWithLifecycle()
+    val recording by playback.recording.collectAsStateWithLifecycle()
     val onlineSubs = remember { app.streamsetu.tv.ui.screens.OnlineSubtitles(context, c.credentials) }
     var subHits by remember { mutableStateOf<List<app.streamsetu.tv.ui.screens.OnlineSubtitles.Hit>?>(null) }
     var subMessage by remember { mutableStateOf<String?>(null) }
@@ -124,7 +131,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
     var hint by remember { mutableStateOf("") }
     var flash by remember { mutableStateOf<Int?>(null) }   // -1 left, +1 right
 
-    fun poke() { controls = true; tick++ }
+    fun poke() { controls = true; pokes.tryEmit(Unit) }
     // Opening the player brings the picture back after the mini player; the player closes itself when the sleep timer (or anything else) stops playback.
     LaunchedEffect(Unit) { playback.setMinimized(false) }
     LaunchedEffect(item) { if (item == null) onClose() }
@@ -152,11 +159,13 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
             window?.attributes = window.attributes.also { it.screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE }
         }
     }
-    LaunchedEffect(tick, state, controls, panel, dragFrac) { if (state == PlaybackState.Playing && panel == null && dragFrac == null && controls) { delay(3500); controls = false } else if (state != PlaybackState.Playing) controls = true }
+    LaunchedEffect(state, controls, panel, dragFrac) {
+        if (state == PlaybackState.Playing && panel == null && dragFrac == null && controls) pokes.onStart { emit(Unit) }.collectLatest { delay(3500); controls = false } else if (state != PlaybackState.Playing) controls = true
+    }
     LaunchedEffect(hint) { if (hint.isNotEmpty()) { delay(900); hint = "" } }
     LaunchedEffect(flash) { if (flash != null) { delay(450); flash = null } }
     val controlsNow by rememberUpdatedState(controls)
-    LaunchedEffect(Unit) { while (true) { position = playback.positionMs; duration = playback.durationMs; delay(if (controlsNow) 400 else 1500) } }
+    app.streamsetu.tv.ui.components.PollWhileShown(if (controlsNow) 400L else 1500L) { position = playback.positionMs; duration = playback.durationMs }
 
     val busy = state == PlaybackState.Resolving || state == PlaybackState.Buffering || state is PlaybackState.Retrying
     val failed = state is PlaybackState.Failed
@@ -267,7 +276,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
         Box(Modifier.align(Alignment.Center)) {
             Crossfade(if (failed) 2 else if (busy && (live || !controls)) 1 else 0, label = "status") { which ->
                 when (which) {
-                    1 -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) { Spinner(); Label(if (state is PlaybackState.Retrying) "Trying again…" else "Loading…", Ph.small, InkDim) }
+                    1 -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) { val providerWait by playback.providerWaitMs.collectAsStateWithLifecycle(); Spinner(); Label(app.streamsetu.tv.ui.components.loadingLabel(state, providerWait), Ph.small, InkDim) }
                     2 -> (state as? PlaybackState.Failed)?.let { st ->
                         Column(Modifier.padding(24.dp).background(Color(0xE60A0A0A), RoundedCornerShape(18.dp)).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Label("This stream did not play", Ph.heading, Ink, FontWeight.SemiBold)
@@ -319,22 +328,26 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
                             Label("−" + clock((duration - position).coerceAtLeast(0)), Ph.small, InkDim, modifier = Modifier.widthIn(min = 52.dp))
                         }
                     }
-                    Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    // What is playing is also the way to change it: each chip says the picture, the sound or the speed now, and opens its choices.
+                    val chips = rememberStreamChips(c, controls)
+                    Row(Modifier.fillMaxWidth().padding(top = 4.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Chip(chips.quality ?: "Picture: ${aspect.label}", false, { panel = Panel.PICTURE; poke() })
+                        Chip(chips.audio ?: "Audio", false, { panel = Panel.AUDIO; poke() })
+                        Chip(chips.subtitles?.let { if (it == "Off") "Subs off" else it } ?: "Subtitles", false, { panel = Panel.SUBS; poke() })
+                        if (!live) Chip(if (speed == 1f) "Speed" else "Speed ${speed}×", false, { panel = Panel.SPEED; poke() })
+                        Chip(playback.engineKind?.label ?: "Player", false, { panel = Panel.ENGINE; poke() })
+                    }
+                    if (hasNext || item is EpisodePlayable || (live && c.queue.size > 1)) Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                         if (hasNext) IconTap(Icons.Filled.SkipNext, "Next episode", { c.step(+1) })
                         if (item is EpisodePlayable) IconTap(Icons.Filled.List, "Episodes", { panel = Panel.EPISODES; poke() })
                         if (live && c.queue.size > 1) IconTap(Icons.Filled.FormatListBulleted, "Channels", { panel = Panel.CHANNELS; poke() })
-                        IconTap(Icons.Filled.Audiotrack, "Audio", { panel = Panel.AUDIO; poke() })
-                        IconTap(Icons.Filled.Subtitles, "Subtitles", { panel = Panel.SUBS; poke() })
-                        if (!live) IconTap(Icons.Filled.Speed, "Speed", { panel = Panel.SPEED; poke() })
-                        IconTap(Icons.Filled.AspectRatio, "Picture", { panel = Panel.PICTURE; poke() })
-                        IconTap(Icons.Filled.Tune, "Player", { panel = Panel.ENGINE; poke() })
                     }
                 }
             }
         }
     }
 
-    StatsOverlay(c, Modifier.windowInsetsPadding(WindowInsets.systemBars).padding(start = 12.dp, top = 56.dp))
+    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout)), Alignment.BottomCenter) { StreamInfoPill(c, controls, Modifier.padding(bottom = 16.dp)) }
     if (nextIn > 0) Box(Modifier.fillMaxSize(), Alignment.Center) { Label("Next episode in $nextIn", Ph.heading, Color.White, FontWeight.SemiBold) }
     if (gotoOpen) PhoneGoToDialog(onGo = { playback.goTo(it); gotoOpen = false; panel = null }, onClose = { gotoOpen = false })
     val close = { panel = null }
@@ -344,6 +357,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
         Panel.TUNE -> Sheet("Picture tuning", PlayerMenus.picture(playback, tuning).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
         Panel.SOUND -> Sheet("Sound", PlayerMenus.sound(playback, tuning).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
         Panel.SUBLOOK -> Sheet("Subtitle look", PlayerMenus.subtitleStyle(playback, styleNow ?: playback.currentSubtitleStyle()).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
+        Panel.INFO -> Sheet("Technical information", playback.diagnostics().entries.map { en -> SheetItem(en.key, null, false, en.value) {} }, close)
         Panel.QUALITY -> Sheet("Quality", PlayerMenus.quality(playback, qualities).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
         Panel.QUEUE -> Sheet("Up next", lined.map { t -> SheetItem(t.title, Icons.Filled.Close, false, "Tap to take it out of the queue") { c.watchQueue.remove(t.id) } } + SheetItem("Clear the queue", Icons.Filled.Delete) { c.watchQueue.clear(); panel = null }, close)
         Panel.CHAPTERS -> Sheet("Chapters", PlayerMenus.chapters(playback, chapters).map { e -> SheetItem(e.title, null, e.selected, e.detail, true, e.keepOpen) { e.action() } }, close)
@@ -366,7 +380,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
         Panel.CAST -> {
             var devices by remember { mutableStateOf(c.cast.devices()) }
             DisposableEffect(Unit) { c.cast.startScanning(); onDispose { c.cast.stopScanning() } }
-            LaunchedEffect(Unit) { while (true) { devices = c.cast.devices(); delay(1000) } }
+            app.streamsetu.tv.ui.components.PollWhileShown(1000) { devices = c.cast.devices() }
             Sheet("Cast to a device", if (devices.isEmpty()) listOf(SheetItem("Looking for devices…", null, false, "Your phone and the Chromecast must be on the same Wi-Fi") {}) else devices.map { route ->
                 SheetItem(route.name, Icons.Filled.Cast) {
                     val it2 = item ?: return@SheetItem
@@ -420,6 +434,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
             add(SheetItem("Remember settings for this title: " + if (playback.rememberPerTitle) "on" else "off", Icons.Filled.Bookmark, false, "Audio, subtitles, speed, picture, sound", true, true) { playback.rememberPerTitle = !playback.rememberPerTitle })
             if (item is EpisodePlayable) add(SheetItem("Play next episode by itself: " + if (c.settings.playNextAutomatically.value) "on" else "off", Icons.Filled.SkipNext, false, null, true, true) { c.settings.setPlayNext(!c.settings.playNextAutomatically.value) })
             add(SheetItem("Skip length: ${c.settings.seekSeconds.value} seconds", Icons.Filled.FastForward, false, "Tap to change: 5, 10, 15, 30, 85", true, true) { c.settings.setSeekSeconds(listOf(5, 10, 15, 30, 85).let { l -> l[(l.indexOf(c.settings.seekSeconds.value) + 1).mod(l.size)] }) })
+            add(SheetItem("Technical information", Icons.Filled.Info, false, "Player, picture, sound, buffer, decoder", true, true) { panel = Panel.INFO })
             add(SheetItem("Stream information: " + if (c.settings.showStreamInfo.value) "on" else "off", Icons.Filled.Info) { c.settings.setShowStreamInfo(!c.settings.showStreamInfo.value) })
             add(SheetItem(if (sleepAt > 0) "Sleep timer: ${((sleepAt - System.currentTimeMillis()) / 60_000 + 1).coerceAtLeast(1)} min left" else "Sleep timer", Icons.Filled.Bedtime) { panel = Panel.SLEEP }.copy(stays = true))
             add(SheetItem("Save a picture of this frame", Icons.Filled.PhotoCamera) {

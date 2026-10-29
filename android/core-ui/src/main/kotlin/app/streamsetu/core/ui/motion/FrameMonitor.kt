@@ -12,6 +12,7 @@ import android.view.Window
  * Counts frames and the ones that took too long (over 20 ms, a missed 60 Hz frame), and writes one line to the log every few seconds:
  * `adb logcat -s Motion`. Used to measure the app on the real Fire TV; off unless switched on.
  */
+@android.annotation.TargetApi(24)          // start() and stop() do nothing below Android 7
 class FrameMonitor(private val activity: Activity) {
     private var frames = 0; private var slow = 0; private var worstMs = 0.0
     private var windowStart = System.nanoTime()

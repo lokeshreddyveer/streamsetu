@@ -33,10 +33,15 @@ interface CatalogDao {
     @Query("SELECT * FROM categories WHERE kind = :kind AND sourceId IN (:sources) ORDER BY sortOrder, name") fun categories(kind: String, sources: List<String>): Flow<List<CategoryEntity>>
     @Query("SELECT * FROM categories WHERE sourceId = :sourceId AND kind = :kind ORDER BY sortOrder, name") fun categories(sourceId: String, kind: String): Flow<List<CategoryEntity>>
     @Query("DELETE FROM categories WHERE sourceId = :sourceId") suspend fun clearCategories(sourceId: String)
+    @Query("SELECT name FROM categories WHERE id = :id") suspend fun categoryName(id: String): String?
 
     // Channels
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putChannels(list: List<ChannelEntity>)
     @Query("DELETE FROM channels WHERE sourceId = :sourceId") suspend fun clearChannels(sourceId: String)
+    @Query("SELECT * FROM catalog_fingerprints WHERE sourceId = :id") suspend fun fingerprint(id: String): CatalogFingerprintEntity?
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putFingerprint(f: CatalogFingerprintEntity)
+    @Query("DELETE FROM catalog_fingerprints WHERE sourceId = :id") suspend fun clearFingerprint(id: String)
+    @Query("SELECT (SELECT COUNT(*) FROM channels WHERE sourceId = :id) + (SELECT COUNT(*) FROM movies WHERE sourceId = :id) + (SELECT COUNT(*) FROM series WHERE sourceId = :id) + (SELECT COUNT(*) FROM categories WHERE sourceId = :id)") suspend fun rowsFor(id: String): Int
     @Query("DELETE FROM channels WHERE name LIKE '%####%' OR name LIKE '%====%' OR name LIKE '%----%' OR name LIKE '%****%' OR TRIM(name) = ''") suspend fun deleteDividers(): Int
     @Query("SELECT * FROM channels WHERE categoryId = :categoryId AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name") fun channelsIn(categoryId: String): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE sourceId IN (:sources) AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name LIMIT :limit") fun allChannels(limit: Int, sources: List<String>): Flow<List<ChannelEntity>>
@@ -213,6 +218,8 @@ interface BrowseDao {
     fun series(q: SupportSQLiteQuery): Flow<List<SeriesEntity>>
     @RawQuery(observedEntities = [ChannelEntity::class, FavoriteEntity::class, WatchLogEntity::class, FolderPrefEntity::class])
     fun channels(q: SupportSQLiteQuery): Flow<List<ChannelEntity>>
+    @RawQuery(observedEntities = [ChannelEntity::class, FavoriteEntity::class, WatchLogEntity::class, FolderPrefEntity::class])
+    fun channelCount(q: SupportSQLiteQuery): Flow<Int>
 
     @Query("SELECT folderId FROM folder_prefs WHERE scope = :scope AND locked = 1") fun lockedFolders(scope: String): Flow<List<String>>
     @Query("SELECT folderId FROM folder_prefs WHERE locked = 1") suspend fun lockedFoldersNow(): List<String>
@@ -261,7 +268,8 @@ interface ExtrasDao {
     @Query("DELETE FROM overrides WHERE itemId = :id") suspend fun clearOverride(id: String)
 
     // Watch time
-    @Query("INSERT INTO watch_time(day, hour, itemId, kind, title, ms) VALUES(:day, :hour, :itemId, :kind, :title, :ms) ON CONFLICT(day, hour, itemId) DO UPDATE SET ms = ms + :ms")
+    // One statement, no upsert (ON CONFLICT ... DO UPDATE needs SQLite 3.24; the oldest supported Android and Fire OS have less): the new row carries the old total plus this time.
+    @Query("INSERT OR REPLACE INTO watch_time(day, hour, itemId, kind, title, ms) VALUES(:day, :hour, :itemId, :kind, :title, :ms + COALESCE((SELECT ms FROM watch_time WHERE day = :day AND hour = :hour AND itemId = :itemId), 0))")
     suspend fun addWatchTime(day: Long, hour: Int, itemId: String, kind: String, title: String, ms: Long)
     @Query("SELECT * FROM watch_time WHERE day >= :fromDay") suspend fun watchTimeSince(fromDay: Long): List<WatchTimeEntity>
     @Query("DELETE FROM watch_time") suspend fun clearWatchTime()

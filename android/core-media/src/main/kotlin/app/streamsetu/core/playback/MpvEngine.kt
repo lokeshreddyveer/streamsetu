@@ -38,7 +38,10 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
         MPVLib.setOptionString("hwdec", "mediacodec,mediacodec-copy")
         MPVLib.setOptionString("hwdec-codecs", "h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1")
         MPVLib.setOptionString("ao", "audiotrack,opensles")
-        MPVLib.setOptionString("tls-verify", "no")                  // many providers use self-signed https and mpv bundles no certificate list
+        // Certificates are checked. mpv carries no list of trusted authorities, so the device's own list is written to a file once and handed to it; a connection whose provider uses a
+        // self-signed certificate is only played unchecked when the person turned that on for it (see load).
+        MPVLib.setOptionString("tls-verify", "yes")
+        TrustedCertificates.file(appContext)?.let { MPVLib.setOptionString("tls-ca-file", it.absolutePath) }
         MPVLib.setOptionString("network-timeout", "20")
         MPVLib.setOptionString("cache", "yes")
         MPVLib.setOptionString("demuxer-max-bytes", "64MiB")
@@ -95,6 +98,7 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
         val st = request.options.subtitles
         applySubtitleStyle(st)
         MPVLib.setPropertyString("http-proxy", request.options.httpProxy ?: "")
+        MPVLib.setPropertyString("tls-verify", if (request.options.allowSelfSigned) "no" else "yes")
         MPVLib.setPropertyString("pause", "no")
         if (request.startMs > 5_000) MPVLib.command(arrayOf("loadfile", request.url, "replace", "-1", "start=${request.startMs / 1000}"))
         else MPVLib.command(arrayOf("loadfile", request.url, "replace"))
@@ -228,10 +232,9 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
     override fun selectAudio(id: String?) { if (initialised) MPVLib.setPropertyString("aid", id ?: "no") }
     override fun selectSubtitle(id: String?) { if (initialised) MPVLib.setPropertyString("sid", id ?: "no") }
 
-    override fun streamInfo(): String {
-        if (!initialised) return ""
-        val w = MPVLib.getPropertyInt("video-params/w"); val h = MPVLib.getPropertyInt("video-params/h")
-        return listOfNotNull(if (w != null && h != null) "${w}×$h" else null, MPVLib.getPropertyString("video-format"), MPVLib.getPropertyString("audio-codec-name"),
-            MPVLib.getPropertyString("hwdec-current")?.takeIf { it != "no" }?.let { "hw: $it" }).joinToString(" · ")
+    override fun facts(): StreamFacts {
+        if (!initialised) return StreamFacts()
+        fun prop(n: String) = runCatching { MPVLib.getPropertyString(n) }.getOrNull()
+        return StreamFacts(MPVLib.getPropertyInt("video-params/w") ?: 0, MPVLib.getPropertyInt("video-params/h") ?: 0, prop("video-format"), prop("audio-codec-name"))
     }
 }

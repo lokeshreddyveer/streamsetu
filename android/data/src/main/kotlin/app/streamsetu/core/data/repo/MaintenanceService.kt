@@ -2,6 +2,7 @@ package app.streamsetu.core.data.repo
 
 import android.content.Context
 import android.os.Build
+import androidx.room.withTransaction
 import app.streamsetu.core.data.db.*
 import app.streamsetu.core.model.*
 import kotlinx.coroutines.Dispatchers
@@ -9,6 +10,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.security.KeyStore
 
 /** What a restore did, in plain numbers. */
 data class RestoreResult(val favourites: Int, val folders: Int, val progress: Int, val history: Int, val skipped: Int)
@@ -68,6 +70,11 @@ class MaintenanceService(private val context: Context, private val db: AppDataba
         return o
     }
 
+    /**
+     * Restores a backup in two steps. First the whole file is read and checked (every kind and scope is a known one, text and numbers are sane, nothing is absurdly large); a file with
+     * anything wrong in it stops here with a message and changes nothing. Then everything is written in one database transaction, so a failure part-way leaves the device as it was.
+     * The settings are written last, once the data has gone in. Restoring settings needs the app to start again for them to apply (the screens that call this do that).
+     */
     suspend fun restoreBackup(text: String): RestoreResult = withContext(Dispatchers.IO) {
         val o = validateBackup(text)
         // Connections get new ids on a new device; entries are matched to this device's connections by name and rewritten.
@@ -77,22 +84,55 @@ class MaintenanceService(private val context: Context, private val db: AppDataba
         for (i in 0 until old.length()) { val c = old.getJSONObject(i); current[c.getString("name").lowercase()]?.let { remap[c.getString("id")] = it.id } }
         var skipped = 0
         fun fix(id: String): String? { val head = id.substringBefore(':'); if (head in remap.values) return id; val to = remap[head] ?: return null.also { skipped++ }; return to + id.substring(head.length) }
-        var fav = 0; var fol = 0; var prog = 0; var hist = 0
+
+        val kinds = ContentKind.entries.map { it.name }.toSet()
+        fun rows(name: String): JSONArray { val a = o.optJSONArray(name) ?: return JSONArray(); if (a.length() > MAX_BACKUP_ROWS) error("The backup's $name list is too long to be a real one."); return a }
+        fun obj(a: JSONArray, i: Int, list: String): JSONObject = a.optJSONObject(i) ?: error("The backup is damaged ($list entry ${i + 1} is not an entry).")
+        fun str(e: JSONObject, k: String, list: String, max: Int = 600, allowEmpty: Boolean = false): String {
+            val v = e.optString(k, "")
+            if (e.has(k) && e.get(k) !is String) error("The backup is damaged ($list has a $k that is not text).")
+            if ((!allowEmpty && v.isBlank()) || v.length > max) error("The backup is damaged ($list has a missing or oversized $k).")
+            return v
+        }
+        fun kind(e: JSONObject, k: String, list: String): String = str(e, k, list, 20).also { if (it !in kinds) error("The backup has an unknown kind \"${it.take(20)}\" in $list.") }
+        fun num(e: JSONObject, k: String, list: String, default: Long = 0): Long { val v = e.optLong(k, default); if (v < -1) error("The backup is damaged ($list has a negative $k)."); return v }
+
+        val favourites = ArrayList<FavoriteEntity>(); val folders = ArrayList<FolderPrefEntity>(); val progress = ArrayList<ProgressEntity>(); val history = ArrayList<WatchLogEntity>()
+        val collections = ArrayList<CollectionEntity>(); val collectionItems = ArrayList<CollectionItemEntity>()
+        rows("favourites").let { a -> for (i in 0 until a.length()) { val e = obj(a, i, "favourites"); val id = fix(str(e, "itemId", "favourites")) ?: continue
+            favourites += FavoriteEntity(id, kind(e, "kind", "favourites"), str(e, "listId", "favourites", 80), num(e, "addedAt", "favourites")) } }
+        rows("folders").let { a -> for (i in 0 until a.length()) { val e = obj(a, i, "folders"); val id = fix(str(e, "folderId", "folders")) ?: continue
+            folders += FolderPrefEntity(kind(e, "scope", "folders"), id, e.optBoolean("favorite"), e.optBoolean("pinned"), e.optBoolean("hidden"), e.optBoolean("locked"), if (e.isNull("alias")) null else str(e, "alias", "folders", 200), e.optInt("sortIndex", -1)) } }
         val u = db.user()
-        o.optJSONArray("favourites")?.let { a -> for (i in 0 until a.length()) { val e = a.getJSONObject(i); val id = fix(e.getString("itemId")) ?: continue; u.putFavorite(FavoriteEntity(id, e.getString("kind"), e.getString("listId"), e.optLong("addedAt"))); fav++ } }
-        o.optJSONArray("folders")?.let { a -> for (i in 0 until a.length()) { val e = a.getJSONObject(i); val id = fix(e.getString("folderId")) ?: continue
-            db.folders().put(FolderPrefEntity(e.getString("scope"), id, e.optBoolean("favorite"), e.optBoolean("pinned"), e.optBoolean("hidden"), e.optBoolean("locked"), if (e.isNull("alias")) null else e.getString("alias"), e.optInt("sortIndex", -1))); fol++ } }
-        o.optJSONArray("progress")?.let { a -> for (i in 0 until a.length()) { val e = a.getJSONObject(i); val id = fix(e.getString("itemId")) ?: continue
-            val existing = u.progress(id); if (existing != null && existing.updatedAt > e.optLong("updatedAt")) continue          // a newer position on this device wins
-            u.putProgress(ProgressEntity(id, e.getString("kind"), if (e.isNull("seriesId")) null else fix(e.getString("seriesId")), e.optLong("positionMs"), e.optLong("durationMs"), e.optLong("updatedAt"), e.optBoolean("completed"))); prog++ } }
-        o.optJSONArray("history")?.let { a -> val rows = ArrayList<WatchLogEntity>(); for (i in 0 until a.length()) { val e = a.getJSONObject(i); val id = fix(e.getString("itemId")) ?: continue; rows += WatchLogEntity(0, id, e.getString("kind"), e.optString("title"), e.optLong("playedAt")) }; u.putLog(rows); hist = rows.size }
-        o.optJSONArray("collections")?.let { a -> for (i in 0 until a.length()) { val e = a.getJSONObject(i); db.extras().putCollection(CollectionEntity(e.getString("id"), e.getString("name"), e.getString("scope"), System.currentTimeMillis())) } }
-        o.optJSONArray("collectionItems")?.let { a -> for (i in 0 until a.length()) { val e = a.getJSONObject(i); val id = fix(e.getString("itemId")) ?: continue; db.extras().putItem(CollectionItemEntity(e.getString("collectionId"), id, e.optLong("addedAt"))) } }
+        rows("progress").let { a -> for (i in 0 until a.length()) { val e = obj(a, i, "progress"); val id = fix(str(e, "itemId", "progress")) ?: continue
+            val updated = num(e, "updatedAt", "progress")
+            progress += ProgressEntity(id, kind(e, "kind", "progress"), if (e.isNull("seriesId")) null else fix(str(e, "seriesId", "progress")), num(e, "positionMs", "progress"), num(e, "durationMs", "progress"), updated, e.optBoolean("completed")) } }
+        rows("history").let { a -> for (i in 0 until a.length()) { val e = obj(a, i, "history"); val id = fix(str(e, "itemId", "history")) ?: continue
+            history += WatchLogEntity(0, id, kind(e, "kind", "history"), str(e, "title", "history", 400, allowEmpty = true), num(e, "playedAt", "history")) } }
+        rows("collections").let { a -> for (i in 0 until a.length()) { val e = obj(a, i, "collections")
+            collections += CollectionEntity(str(e, "id", "collections", 80), str(e, "name", "collections", 200), kind(e, "scope", "collections").uppercase(), System.currentTimeMillis()) } }
+        rows("collectionItems").let { a -> for (i in 0 until a.length()) { val e = obj(a, i, "collectionItems"); val id = fix(str(e, "itemId", "collectionItems")) ?: continue
+            collectionItems += CollectionItemEntity(str(e, "collectionId", "collectionItems", 80), id, num(e, "addedAt", "collectionItems")) } }
+        val prefOps = ArrayList<Pair<String, JSONObject>>()
         o.optJSONObject("preferences")?.let { p -> prefFiles.forEach { f -> p.optJSONObject(f)?.let { vals ->
+            if (vals.length() > 500) error("The backup's $f settings are too many to be real ones.")
+            vals.keys().forEach { k -> val v = vals.get(k); if (k.length > 120 || (v is String && v.length > 20_000) || !(v is Boolean || v is Int || v is Long || v is Double || v is String)) error("The backup's $f settings contain something that is not a setting.") }
+            prefOps += f to vals } } }
+
+        db.withTransaction {
+            favourites.forEach { u.putFavorite(it) }
+            folders.forEach { db.folders().put(it) }
+            progress.forEach { e -> val existing = u.progress(e.itemId); if (existing == null || existing.updatedAt <= e.updatedAt) u.putProgress(e) }          // a newer position on this device wins
+            if (history.isNotEmpty()) u.putLog(history)
+            collections.forEach { db.extras().putCollection(it) }
+            collectionItems.forEach { db.extras().putItem(it) }
+        }
+        prefOps.forEach { (f, vals) ->
             val ed = context.getSharedPreferences(f, Context.MODE_PRIVATE).edit()
             vals.keys().forEach { k -> when (val v = vals.get(k)) { is Boolean -> ed.putBoolean(k, v); is Int -> ed.putInt(k, v); is Long -> ed.putLong(k, v); is Double -> ed.putFloat(k, v.toFloat()); is String -> ed.putString(k, v) } }
-            ed.apply() } } }
-        RestoreResult(fav, fol, prog, hist, skipped)
+            ed.commit()
+        }
+        RestoreResult(favourites.size, folders.size, progress.size, history.size, skipped)
     }
 
     /** What this connection delivered: guide data, catch-up channels, movies, series, live channels. */
@@ -108,13 +148,56 @@ class MaintenanceService(private val context: Context, private val db: AppDataba
     /** Removes the person's marks on folders of one section (order, hidden, locked, labels). Provider content is untouched. */
     suspend fun resetFolderPrefs(kind: ContentKind) = db.folders().reset(kind.name)
 
-    /** Everything stored here: connections, logins, catalogs, favourites, folders, progress and settings. */
+    /**
+     * Everything this app keeps on the device, as one inventory, so erasing and checking use the same list:
+     *  - the database: every table, the ones Room knows and the ones made by hand (profiles and their saved rows, the Wi-Fi sync log, the search index);
+     *  - every preferences file (settings, logins, integrations, recordings schedule, downloads list, PIN state, ...) and the Keystore keys that sealed the logins;
+     *  - every file the app owns: its private files (crash reports), its folder on shared storage (recordings, saved titles, backups, reports, screenshots) and its caches.
+     * The caller stops what is running first (playback, recordings, downloads, Wi-Fi sync); see AppContainer.eraseEverything.
+     */
     suspend fun deleteAllLocalData() = withContext(Dispatchers.IO) {
         sources.all().forEach { sources.remove(it.id) }
         db.clearAllTables()
-        runCatching { db.openHelper.writableDatabase.execSQL("DELETE FROM ${SearchIndex.TABLE}") }
-        listOf("settings", "ui", "sort", "search", "library", "parental", "account-formats").forEach { context.getSharedPreferences(it, Context.MODE_PRIVATE).edit().clear().apply() }
+        val sdb = db.openHelper.writableDatabase
+        val tables = sdb.query("SELECT name, sql FROM sqlite_master WHERE type = 'table'").use { c -> buildList { while (c.moveToNext()) add(c.getString(0) to (c.getString(1) ?: "")) } }
+        val virtual = tables.filter { it.second.startsWith("CREATE VIRTUAL TABLE", true) }.map { it.first }
+        for ((name, _) in tables) {
+            if (name in setOf("android_metadata", "sqlite_sequence", "room_master_table") || name.startsWith("sqlite_")) continue
+            if (virtual.any { name != it && name.startsWith(it + "_") }) continue          // the hidden tables of a search index go with their index
+            runCatching { sdb.execSQL("DELETE FROM `$name`") }
+        }
+        Profiles.create(sdb); LanLog.create(sdb)          // the one profile every install has, and the sync switch the triggers read
+        val prefsDir = File(context.applicationInfo.dataDir, "shared_prefs")
+        prefsDir.listFiles()?.map { it.name.removeSuffix(".xml") }.orEmpty().forEach { name ->
+            context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
+            File(prefsDir, "$name.xml").delete()
+        }
+        runCatching { KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.let { ks -> listOf("streamsetu.credentials", "streamsetu.credentials.rsa").forEach { if (ks.containsAlias(it)) ks.deleteEntry(it) } } }
+        ownedFolders().forEach { dir -> dir.listFiles()?.forEach { it.deleteRecursively() } }
         clearImageCache(); library.close()
+    }
+
+    private fun ownedFolders(): List<File> = listOfNotNull(context.filesDir, context.cacheDir, context.getExternalFilesDir(null), context.externalCacheDir)
+
+    /** What is still there after an erase. Empty means the device holds nothing of this app's (the defaults every install starts with are not counted). */
+    suspend fun leftoversAfterErase(): List<String> = withContext(Dispatchers.IO) {
+        val out = ArrayList<String>()
+        val sdb = db.openHelper.writableDatabase
+        val tables = sdb.query("SELECT name, sql FROM sqlite_master WHERE type = 'table'").use { c -> buildList { while (c.moveToNext()) add(c.getString(0) to (c.getString(1) ?: "")) } }
+        val virtual = tables.filter { it.second.startsWith("CREATE VIRTUAL TABLE", true) }.map { it.first }
+        for ((name, _) in tables) {
+            if (name in setOf("android_metadata", "sqlite_sequence", "room_master_table", "lan_flag", "profile_state") || name.startsWith("sqlite_")) continue
+            if (virtual.any { name != it && name.startsWith(it + "_") }) continue
+            val n = sdb.query("SELECT COUNT(*) FROM `$name`").use { if (it.moveToFirst()) it.getInt(0) else 0 }
+            val default = name == "profiles" && n == 1
+            if (n > 0 && !default) out += "table $name ($n rows)"
+        }
+        File(context.applicationInfo.dataDir, "shared_prefs").listFiles()?.filter { it.name.endsWith(".xml") }?.forEach { f ->
+            if (context.getSharedPreferences(f.name.removeSuffix(".xml"), Context.MODE_PRIVATE).all.isNotEmpty()) out += "settings file ${f.name}"
+        }
+        ownedFolders().forEach { dir -> dir.listFiles()?.forEach { out += "file ${dir.name}/${it.name}" } }
+        runCatching { KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.let { ks -> listOf("streamsetu.credentials", "streamsetu.credentials.rsa").filter { ks.containsAlias(it) }.forEach { out += "key $it" } } }
+        out
     }
 
     // ---- Diagnostics ----
@@ -147,6 +230,7 @@ class MaintenanceService(private val context: Context, private val db: AppDataba
     }.getOrDefault(emptyList())
 
     companion object {
+        private const val MAX_BACKUP_ROWS = 500_000
         /** Takes web addresses and password-like values out of text before it is shown or exported. */
         fun redact(text: String): String = text.replace(Regex("""(?i)(https?|rtmp|rtsp)://\S+"""), "<address>").replace(Regex("""(?i)(password|pass|pwd|token|username|user)=[^&\s]+"""), "$1=<hidden>")
     }

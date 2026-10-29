@@ -1,68 +1,46 @@
-# StreamSetu Fire TV: status against the specifications
+# StreamSetu Android, Fire TV and Android TV: what exists
 
-Branch `rewrite-architecture`. "Done" means it is built, compiles, and where logic is pure it has unit tests. **Nothing here has been run on a Fire TV yet**: the screens were last verified on the device before this rewrite.
+Updated 25 October 2026 for release 0.19.0 and the work after it. This replaces an older status written when the app was a rewrite on the `rewrite-architecture` branch; most of what
+that file called "not built" has since been built. The branch is `main`.
 
-## Architecture
-| Spec item | State |
-|---|---|
-| Kotlin, Compose, MVVM, Room, Coroutines/Flow, Coil, Media3 + MPV fallback | Done |
-| Hilt dependency injection | Done (`di/AppModule.kt`) |
-| Retrofit | Dependency added, not used (the Xtream client is still hand-written OkHttp) |
-| WorkManager | Dependency added, no background sync yet |
-| DataStore | Not used: preferences are SharedPreferences behind typed `StateFlow`s |
-| Modules | `core-model`, `core-security`, `core-network`, `core-database`, `core-preferences`, `core-media` (playback), `core-ui` (motion), `data` (repositories, sync, search, sort), `app` (UI). The brief's 18 feature modules are packages inside `app` (home, section, live, guide, detail, search, settings, library). |
-| Android Keystore credentials | Done (existing) |
+How to read it: **Built** means the code is in the source and compiles. **Tested** names the kind of test. **Device** says what has been tried on a real device: the only one used so far
+is a Fire TV Stick 4K (Fire OS 7). Android TV (non-Fire), Fire OS 5 and 6, and Android phones and tablets have not been tested on real devices for this release.
+Anything not listed here is not claimed.
 
-## Screens
-| Spec | State |
-|---|---|
-| Choose Your Library at every launch (40/60, cached preview, no network on focus, long-press manage) | Done |
-| First-time welcome (3 setup cards, continue previous setup, remote hint) | Done |
-| Xtream / M3U URL / local M3U file, explicit Test, drafts, summary, combined libraries | Done |
-| Compact expandable sidebar, hidden on Movies / Series / Live TV, Back hierarchy | Done |
-| Home (header, ~40% banner slideshow, rows in the person's order, empty rows hidden) | Done |
-| Movies / Series (folder panel, search folders, long-press menu, reorder, hide, lock + PIN, banner, shortcut chips, grid, Search / Filter / Sort / View) | Done |
-| Fullscreen movie and series details (Resume / Start Over / Choose Stream / Continue Forward / Catch Up / gap warning / season selector / episode cards) | Done |
-| Live TV 20/20/60 with preview player and fullscreen hand-off | Done |
-| TV Guide timeline (now line, programme details, favorites filter, search, time shift) | Done |
-| Settings: 13 categories, all controls functional or disabled with a reason | Done |
-| Global search + section search (FTS, prefix, ranking, fuzzy rerank, history, suggestions) | Done |
+## Verified in release 0.19.0
 
-## Playback
-| Spec | State |
-|---|---|
-| Coordinator with typed state; UI never touches engines | Done (`PlaybackController`) |
-| Separate Live / VOD buffering, per-connection overrides, per-connection engine | Done |
-| Engine fallback retries the same stream; another provider stream only by choice | Done |
-| Stall watchdog, retry policy, error classes (network, auth, DRM, decoder, format, timeout, refused) | Done |
-| Home button / sleep: position saved, VOD paused, live closed after 20 s and restored | Done (not device-tested) |
-| One-connection providers (`max_connections` or a learned refusal) are paced | Done |
-| Diagnostics: engine, decoder, resolution, fps, buffer, dropped frames, startup time, errors | Done |
-| Progress: verified-session checkpoints, no overwrite by a failed seek | Done |
-| Surround passthrough, decoder fallback, subtitle size / background / outline | Done |
-| Refresh-rate matching, audio delay, subtitle delay | Not offered (settings say why) |
-| HDR / Dolby Vision | Reported only; played when the device supports it |
-| Catch-up playback / timeshift | **Not built.** Channels that offer it are counted and shown. |
-| Stale stream URL refresh for M3U tokens | **Not built.** Xtream URLs are built fresh each play. |
-| Picture-in-Picture | Menu entry; unverified on Fire OS |
+| Area | Built | Tested | Device |
+|---|---|---|---|
+| Cinema theme, auto-hiding rail, rails on Movies and Series, library switcher | Yes | Unit tests for the navigator, focus memory, left-edge and rapid input (Robolectric) | Fire TV Stick 4K: screens and navigation exercised by a scripted run; Guide scrolling measured |
+| Series episode layouts (object by season, one list per season, flat list) | Yes | Unit tests (`XtreamEpisodesTests`) | Fire TV: Bigg Boss (Telugu) seasons 8, 9, 10 show |
+| Guide rows with no data are focusable | Yes | Not unit-tested | Fire TV: 6 Down and 6 Right presses in about 3 s, none janky (was a 19 s freeze) |
+| Back returns to the poster it left | Yes | Unit test of the saved return point | Fire TV: scripted check passes |
+| Held direction keys are thinned | Yes | Unit tests (`DirectionThrottleTests`) | Fire TV: flood test, no freezes |
 
-## Catalog
-| Spec | State |
-|---|---|
-| Atomic refresh (catalog + index in one transaction; failure keeps the last catalog) | Done |
-| FTS4 search index, rebuilt on demand, health shown | Done (FTS5 not available through Room) |
-| Sorting with only honest options, per section and per folder, stable ties | Done |
-| Folder lock covers lists, search, banners; PIN stored as salted hash; relock policy | Done |
-| Combined libraries without copying catalogs; duplicate titles grouped in search, variants offered in details | Done |
-| Capability model per connection (guide, catch-up, movies, series, live) | Partial: derived from delivered data and shown in Settings; per-stream capabilities (seek, tracks) come from the player |
-| EPG matching by `epg_channel_id` only | Partial: no name matching, no multiple EPG sources, no retention limit yet |
-| Duplicate-channel grouping | Not built |
-| Local metadata overrides (artwork, titles) | Not built (folder labels only) |
-| New-episode detection when a series gains an episode | **Not built** (needs a background refresh of watched series) |
-| Custom / smart collections | Not built |
-| Network-aware artwork loading | Not built |
-| Background sync (WorkManager) | Not built |
-| QR phone setup | Not built |
+## Built after 0.19.0, not yet built into an APK or run on a device
 
-## Release
-Backup / restore (versioned, validated, credentials excluded) is done. Signing, staged testing, crash diagnostics and distribution are not set up. Real-device frame-pacing and long-session tests have not been run.
+- Profile switching stops playback, writes the resume point and waits for pending writes, closes Wi-Fi sync and locks folders again; the auto-relock interval is applied by the clock.
+- Private watching writes no progress, history, statistics or per-title player choices.
+- Playback of any catalog item is re-checked at the moment of playing (connection on, folder locked, adult folder hidden), including for `streamsetu://` links.
+- MPV checks certificates by default; a connection can be set to trust its own certificate.
+- Scheduled recordings: HLS refused, early ending reported as partial, Cancel stops the download and deletes the partial file, opening a screen does not mark a running recording as failed.
+- Guide import is bounded (download size, unpacked size, expansion ratio, programme count, time).
+- Backup restore reads and checks the whole file first and writes in one transaction; restoring or resetting settings restarts the app so they apply.
+- Removing a connection is one transaction. "Erase all local data" stops what runs, wipes every table, preferences file, Keystore key and app file, checks nothing is left, then restarts.
+- No SQL newer than SQLite 3.22 (a source scan test). Android 5.1 saves logins with a Keystore-wrapped key.
+- DASH: the Media3 DASH module is now a dependency (no DASH stream has been played yet).
+
+## Features that exist (not re-checked against a device in this pass)
+
+Library chooser and setup (Xtream, M3U, local file and folder, Plex, Jellyfin, Emby, Stalker, tuners, WebDAV), combined libraries, Home, Movies, Series, details pages, Live TV with
+preview, TV Guide, global and section search, favorites, Watch Later and collections, folder arrangement and locks with PIN, new-episode detection, channel manager, catch-up and
+start-over, scheduled recordings, saved titles, reminders, statistics, backup and restore, profiles with kids limits, Wi-Fi sync between devices, phone-assisted setup, background
+sync, screenshots, crash reports, update check, refresh-rate matching, audio and subtitle delay, Trakt, debrid links, your own AI, and the touch layout for phones and tablets.
+
+## Not built or not working
+
+- The Setu chat is not in the Android apps.
+- Recording of HLS channels (they are refused with a message).
+- No Windows app.
+- Real-device tests are missing for Fire OS 5 and 6, Android TV (non-Fire), phones and tablets, long sessions, and every provider type.
+- The release script runs every module's unit tests, lint and the dependency check; the connected (on-device) tests run only with `CONNECTED=1`.

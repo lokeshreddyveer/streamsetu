@@ -18,14 +18,14 @@ import androidx.compose.ui.unit.dp
  */
 object Motion {
     // ---- Durations (ms) ----
-    const val FOCUS = 160                 // a card or button taking focus
-    const val SHORT = 200                 // chips, badges, small reveals
-    const val CONTROLS = 180              // player controls in and out
-    const val SIDEBAR = 260               // sidebar widening or narrowing
-    const val SCREEN = 300                // moving between screens
-    const val DETAIL = 320                // poster to fullscreen detail
+    const val FOCUS = 90                  // a card or button taking focus
+    const val SHORT = 120                 // chips, badges, small reveals
+    const val CONTROLS = 110              // player controls in and out
+    const val SIDEBAR = 150               // sidebar widening or narrowing
+    const val SCREEN = 170                // moving between screens
+    const val DETAIL = 190                // poster to fullscreen detail
     const val BANNER = 800                // featured slideshow crossfade (700 to 900)
-    const val HIGHLIGHT = 180             // the folder highlight sliding to the next row
+    const val HIGHLIGHT = 100             // the folder highlight sliding to the next row
 
     // ---- Curves ----
     /** Quick start, soft landing: the default for anything that moves. */

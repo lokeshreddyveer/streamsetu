@@ -35,15 +35,22 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
         )
     }
 
-    fun movies(browse: Browse, sort: SortSpec, limit: Int = 600): Flow<List<Movie>> = query(ContentKind.MOVIE, browse, sort, limit) { db.browse().movies(it).map { l -> l.map { e -> e.toModel() } } }
-    fun series(browse: Browse, sort: SortSpec, limit: Int = 600): Flow<List<Series>> = query(ContentKind.SERIES, browse, sort, limit) { db.browse().series(it).map { l -> l.map { e -> e.toModel() } } }
+    fun movies(browse: Browse, sort: SortSpec, limit: Int = 600, offset: Int = 0): Flow<List<Movie>> = query(ContentKind.MOVIE, browse, sort, limit, offset = offset) { db.browse().movies(it).map { l -> l.map { e -> e.toModel() } } }
+    fun series(browse: Browse, sort: SortSpec, limit: Int = 600, offset: Int = 0): Flow<List<Series>> = query(ContentKind.SERIES, browse, sort, limit, offset = offset) { db.browse().series(it).map { l -> l.map { e -> e.toModel() } } }
     fun channels(browse: Browse, sort: SortSpec, limit: Int = 40000): Flow<List<Channel>> = query(ContentKind.CHANNEL, browse, sort, limit) { db.browse().channels(it).map { l -> l.map { e -> e.toModel() } } }
 
-    private fun <T> query(kind: ContentKind, browse: Browse, sort: SortSpec, limit: Int, run: (androidx.sqlite.db.SupportSQLiteQuery) -> Flow<T>): Flow<T> =
-        combine(library.sourceIds, folders.lockedIds(kind), db.browse().favoriteFolders(kind.name)) { ids, locked, favFolders -> Triple(ids, locked, favFolders) }
-            .flatMapLatest { (ids, locked, favFolders) -> run(build(kind, browse, sort, limit, ids, locked, favFolders)) }
+    /** One page of channels from [offset] on, read once (not watched): the next rows of the list the screen already shows. */
+    suspend fun channelPage(browse: Browse, sort: SortSpec, limit: Int, offset: Int): List<Channel> =
+        query(ContentKind.CHANNEL, browse, sort, limit, offset = offset) { db.browse().channels(it).map { l -> l.map { e -> e.toModel() } } }.first()
 
-    private fun build(kind: ContentKind, browse: Browse, sort: SortSpec, limit: Int, sources: List<String>, locked: Set<String>, favFolders: List<String>): SimpleSQLiteQuery {
+    /** How many channels the same shortcut or folder holds in all (counted by the database, kept apart from the rows that are loaded). */
+    fun channelCount(browse: Browse): Flow<Int> = query(ContentKind.CHANNEL, browse, SortSpec.defaultFor(ContentKind.CHANNEL), -1, wrap = true) { db.browse().channelCount(it) }
+
+    private fun <T> query(kind: ContentKind, browse: Browse, sort: SortSpec, limit: Int, wrap: Boolean = false, offset: Int = 0, run: (androidx.sqlite.db.SupportSQLiteQuery) -> Flow<T>): Flow<T> =
+        combine(library.sourceIds, folders.lockedIds(kind), db.browse().favoriteFolders(kind.name)) { ids, locked, favFolders -> Triple(ids, locked, favFolders) }
+            .flatMapLatest { (ids, locked, favFolders) -> run(build(kind, browse, sort, limit, ids, locked, favFolders, wrap, offset)) }
+
+    private fun build(kind: ContentKind, browse: Browse, sort: SortSpec, limit: Int, sources: List<String>, locked: Set<String>, favFolders: List<String>, count: Boolean = false, offset: Int = 0): SimpleSQLiteQuery {
         val table = when (kind) { ContentKind.MOVIE -> "movies"; ContentKind.SERIES -> "series"; else -> "channels" }
         val title = if (kind == ContentKind.CHANNEL) "x.name" else "x.title"
         val args = ArrayList<Any?>()
@@ -104,7 +111,15 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
             SortField.DURATION -> "x.rowid ASC"
         }
         order += primary; order += "x.id ASC"
-        val sql = "SELECT x.* FROM $table x$joins WHERE ${where.joinToString(" AND ")} ORDER BY ${order.joinToString(", ")} LIMIT $limit"
+        val sql = if (count) "SELECT COUNT(*) FROM $table x$joins WHERE ${where.joinToString(" AND ")}"
+            else "SELECT x.* FROM $table x$joins WHERE ${where.joinToString(" AND ")} ORDER BY ${order.joinToString(", ")} LIMIT $limit OFFSET $offset"
         return SimpleSQLiteQuery(sql, args.toTypedArray())
     }
 }
+
+/**
+ * True for an order or a shortcut whose members move when the person favourites, watches or changes something (favourites first, unwatched first, recently watched, new episodes,
+ * and the person's own lists). Pages loaded earlier cannot be trusted after such a change, so a list in one of these starts again from its first page.
+ */
+fun orderMoves(b: Browse, s: SortSpec) = s.favoritesFirst || s.unwatchedFirst || s.field == SortField.RECENTLY_WATCHED || s.field == SortField.NEW_EPISODES ||
+    b is Browse.Favorites || b is Browse.WatchLater || b is Browse.Recent || b is Browse.Continue || b is Browse.FavoriteFolders || b is Browse.Collection || b is Browse.Smart

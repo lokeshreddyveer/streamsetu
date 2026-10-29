@@ -2,16 +2,22 @@ package app.streamsetu.tv.ui.screens.search
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.streamsetu.core.data.repo.CommandTarget
+import app.streamsetu.core.data.repo.SearchTarget
+import app.streamsetu.core.data.repo.SearchKind
+import app.streamsetu.core.data.repo.SearchItem
 import app.streamsetu.core.data.repo.SearchCommand
 import app.streamsetu.core.data.repo.SearchCommands
 import app.streamsetu.core.data.repo.SearchScope
@@ -80,9 +86,13 @@ private fun icon(cmd: SearchCommand): ImageVector = when (cmd) {
     is SearchCommand.WatchLater -> Icons.Filled.Bookmark
 }
 
-/** Rows above the search results: what the typed words can do besides search, and (when an AI is set up) a way to ask it. */
+/**
+ * What the typed words can do besides search (commands), a way to ask the AI when one is set up, its answer, and the titles it named that are in the library. Returned as rows to add
+ * to the Search screen's one list, in this order, so the AI's rows and the library's results are one list the remote moves through and never push each other off the screen.
+ * The AI only names titles; each one is looked up in the library (see askWhatToWatch) and only those found are shown or can be opened.
+ */
 @Composable
-fun SearchActions(c: AppContainer, nav: Navigator, typed: String) {
+fun rememberSearchActions(c: AppContainer, nav: Navigator, typed: String, session: app.streamsetu.tv.nav.SearchSession? = null, firstAction: androidx.compose.ui.focus.FocusRequester? = null): Pair<LazyListScope.() -> Unit, LazyListScope.() -> Unit> {
     val scope = rememberCoroutineScope()
     var message by remember(typed) { mutableStateOf<String?>(null) }
     val commands = remember(typed) { SearchCommands.parse(typed) }
@@ -91,46 +101,73 @@ fun SearchActions(c: AppContainer, nav: Navigator, typed: String) {
     val looksLikeARequest = typed.trim().split(Regex("\\s+")).size >= 4 || (typed.trim().split(Regex("\\s+")).size >= 3 && app.streamsetu.core.data.repo.MoodVocabulary.understands(typed))
     var busy by remember(typed) { mutableStateOf(false) }
     var error by remember(typed) { mutableStateOf<String?>(null) }
-    var note by remember(typed) { mutableStateOf<String?>(null) }
-    var found by remember(typed) { mutableStateOf<List<FoundTitle>>(emptyList()) }
-    var asked by remember(typed) { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        commands.forEach { cmd ->
-            Focusable({ scope.launch { message = runSearchCommand(cmd, c, nav) } }, Modifier.widthIn(max = 620.dp).fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
+    // What the AI suggested for these very words is put back when the person returns to the page.
+    val kept = session?.takeIf { it.aiFor == typed }
+    var note by remember(typed) { mutableStateOf<String?>(kept?.aiNote) }
+    var found by remember(typed) { mutableStateOf<List<FoundTitle>>(kept?.aiFound.orEmpty()) }
+    var asked by remember(typed) { mutableStateOf(kept?.aiAsked ?: false) }
+    LaunchedEffect(typed, found, note, asked) { session?.let { if (asked) { it.aiFor = typed; it.aiFound = found; it.aiNote = note; it.aiAsked = true } } }
+    val aiName = c.ai.provider.title
+    val showAsk = aiReady && looksLikeARequest && commands.isEmpty()
+    fun runAi() {
+        if (busy) return
+        busy = true; asked = true; error = null
+        scope.launch {
+            try { val r = c.askWhatToWatch(typed); note = r.first.note.ifBlank { null }; found = r.second } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { error = "failed" }
+            busy = false
+        }
+    }
+    val matches = found.distinctBy { listOf(it.title.lowercase(), it.year, it.isSeries) }.take(MAX_AI_MATCHES)
+    var showAll by remember(typed) { mutableStateOf(false) }
+    val shownMatches = if (showAll) matches else matches.take(INITIAL_AI_MATCHES)           // the first five; the rest on request
+
+    val top: LazyListScope.() -> Unit = {
+        itemsIndexed(commands, key = { i, _ -> "command:$i" }) { index, cmd ->
+            Focusable({ scope.launch { message = runSearchCommand(cmd, c, nav) } }, Modifier.then(if (index == 0 && firstAction != null) Modifier.focusRequester(firstAction) else Modifier).widthIn(max = 620.dp).fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
                 Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Image(icon(cmd), null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(Tokens.accent)); Label(cmd.title, Tokens.row, Tokens.text, FontWeight.Medium, maxLines = 1)
                 }
             }
         }
-        if (aiReady && looksLikeARequest && commands.isEmpty()) {
-            Focusable({
-                if (busy) return@Focusable
-                busy = true; asked = true; error = null
-                scope.launch {
-                    try { val r = c.askWhatToWatch(typed); note = r.first.note.ifBlank { null }; found = r.second } catch (e: Exception) { error = e.message }
-                    busy = false
-                }
-            }, Modifier.widthIn(max = 620.dp).fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
+        if (showAsk) item(key = "ask-ai") {
+            Focusable({ runAi() }, Modifier.then(if (firstAction != null) Modifier.focusRequester(firstAction) else Modifier).widthIn(max = 620.dp).fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
                 Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Image(Icons.Filled.AutoAwesome, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(Tokens.accent))
                     Column(Modifier.weight(1f)) {
-                        Label(if (busy) "Thinking…" else "Ask ${c.ai.provider.title}", Tokens.row, Tokens.text, FontWeight.Medium, maxLines = 1)
-                        Label("Finds matches in your own library. Only what you typed is sent.", Tokens.caption, Tokens.textSecondary, maxLines = 1)
+                        Label(if (busy) "Thinking…" else "Ask $aiName to suggest titles", Tokens.row, Tokens.text, FontWeight.Medium, maxLines = 1)
+                        Label("Only the words you typed are sent.", Tokens.caption, Tokens.textSecondary, maxLines = 1)
                     }
                 }
             }
         }
-        message?.let { Label(it, Tokens.small, Tokens.textSecondary, maxLines = 2) }
-        error?.let { Label(it, Tokens.small, Tokens.textSecondary, maxLines = 3) }
-        note?.let { Label(it, Tokens.small, Tokens.accent, maxLines = 3) }
-        found.forEach { f ->
-            Focusable({ f.open(nav) }, Modifier.widthIn(max = 620.dp).fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
-                Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Image(if (f.isSeries) Icons.Filled.VideoLibrary else Icons.Filled.Movie, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(Tokens.accent))
-                    Label(listOfNotNull(f.title, f.year?.toString()).joinToString("  ·  "), Tokens.row, Tokens.text, FontWeight.Medium, maxLines = 1)
-                }
+        message?.let { m -> item(key = "search-message") { Label(m, Tokens.small, Tokens.textSecondary, maxLines = 2) } }
+        // If the suggestions could not be had, the app's own results stay as they are; only this short note appears, with a way to ask again. Nothing technical is shown.
+        if (error != null) item(key = "ai-error") {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Label("Suggestions are unavailable right now.", Tokens.small, Tokens.textSecondary, maxLines = 2)
+                TvButton("Try suggestions again", { runAi() }, icon = Icons.Filled.Refresh)
             }
         }
-        if (asked && !busy && error == null && found.isEmpty()) Label("None of the suggestions are in your library.", Tokens.small, Tokens.textSecondary)
     }
+    val bottom: LazyListScope.() -> Unit = {
+        // The AI's titles, labelled for what they are, come after what the app itself found; its own words (kept short) after them.
+        if (shownMatches.isNotEmpty()) item(key = "ai-heading") { Eyebrow("Suggested titles found in your library", Modifier.padding(top = 4.dp)) }
+        itemsIndexed(shownMatches, key = { i, f -> "ai:$i:${f.title}" }) { _, f ->
+            // A suggestion that was found in the library is an ordinary result row, with a line saying what it was suggested for.
+            val item = f.movie?.let { m -> SearchItem(m.id, SearchKind.MOVIE, m.title, listOfNotNull(f.year?.toString()).joinToString(), m.posterUrl, SearchTarget.OpenMovie(m), 0) }
+                ?: f.series?.let { sr -> SearchItem(sr.id, SearchKind.SERIES, sr.title, listOfNotNull(f.year?.toString()).joinToString(), sr.posterUrl, SearchTarget.OpenSeries(sr), 0) }
+            if (item != null) SearchResultRow(item, Modifier, {}, "Suggested for “${typed.trim().take(40)}”") { f.open(nav) }
+        }
+        if (!showAll && matches.size > INITIAL_AI_MATCHES) item(key = "ai-more") {
+            Focusable({ showAll = true }, Modifier.widthIn(max = 620.dp).fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
+                Label("Show all ${matches.size} suggestions", Tokens.row, Tokens.accent, FontWeight.Medium, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+            }
+        }
+        note?.let { n -> item(key = "ai-note") { Label(n, Tokens.small, Tokens.textSecondary, maxLines = 2) } }
+        if (asked && !busy && error == null && found.isEmpty()) item(key = "ai-none") { Label("None of the suggestions are in your library.", Tokens.small, Tokens.textSecondary) }
+    }
+    return top to bottom
 }
+
+private const val MAX_AI_MATCHES = 8
+private const val INITIAL_AI_MATCHES = 5

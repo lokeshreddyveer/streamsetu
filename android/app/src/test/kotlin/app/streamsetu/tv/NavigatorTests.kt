@@ -39,10 +39,12 @@ class NavigatorTests {
         n.contentFocusChanged(true)
         assertEquals(SidebarMode.EXPANDED, n.sidebarMode)
     }
-    @Test fun backOnTheOpenRailGoesOnToHome() {
+    @Test fun backOnTheOpenRailClosesItAndStaysOnThePage() {
         val n = inLibrary(Tab.LIVE); n.back(); n.sidebarFocusChanged(true)
+        val before = n.restoreFocusTick
         assertTrue(n.back())
-        assertEquals(Tab.HOME, n.tab); assertEquals(SidebarMode.HIDDEN, n.sidebarMode); assertFalse(n.sidebarFocused)
+        assertEquals(Tab.LIVE, n.tab); assertEquals(SidebarMode.HIDDEN, n.sidebarMode); assertFalse(n.sidebarFocused)      // closed, and still on Live TV
+        assertEquals(before + 1, n.restoreFocusTick)                                                                       // the remote goes back to where it was in the page
     }
     @Test fun rightOnTheRailGivesThePageBackWithoutLeavingIt() {
         val n = inLibrary(Tab.LIVE); n.back(); n.sidebarFocusChanged(true)
@@ -50,15 +52,24 @@ class NavigatorTests {
         n.closeSidebar()                                              // what Right does
         assertEquals(Tab.LIVE, n.tab); assertEquals(SidebarMode.HIDDEN, n.sidebarMode); assertEquals(before + 1, n.restoreFocusTick)
     }
-    @Test fun backFromHomesSidebarGoesToTheChooserAndNeverExitsFromHome() {
+    @Test fun backFromHomesSidebarJustClosesIt() {
         val n = inLibrary(); assertTrue(n.back()); n.sidebarFocusChanged(true)
         assertEquals(SidebarMode.EXPANDED, n.sidebarMode)
-        assertTrue(n.back()); assertEquals(Base.ChooseLibrary, n.base)
+        assertTrue(n.back()); assertEquals(Base.Shell, n.base); assertEquals(Tab.HOME, n.tab); assertEquals(SidebarMode.HIDDEN, n.sidebarMode)
     }
-    @Test fun backTwiceFromAPageOpensTheRailThenGoesHome() {
+    @Test fun backTwiceFromAPageOpensTheRailThenClosesItOnTheSamePage() {
         val n = inLibrary(Tab.MOVIES)
         n.back(); n.sidebarFocusChanged(true); assertEquals(SidebarMode.EXPANDED, n.sidebarMode)
-        n.back(); assertEquals(Tab.HOME, n.tab); assertEquals(SidebarMode.HIDDEN, n.sidebarMode)
+        n.back(); assertEquals(Tab.MOVIES, n.tab); assertEquals(SidebarMode.HIDDEN, n.sidebarMode)
+    }
+    @Test fun searchChosenInTheSidebarIsAPageOfItsOwnAndBackOpensTheSidebar() {
+        val n = inLibrary(Tab.MOVIES); n.openSearch(); n.go(Tab.SEARCH)            // an earlier journey from Movies, then Search from the sidebar
+        assertFalse(n.searchTemporary)
+        assertTrue(n.back()); assertEquals(Tab.SEARCH, n.tab); assertEquals(SidebarMode.EXPANDED, n.sidebarMode)       // the sidebar opens; it does not return to Movies
+    }
+    @Test fun searchOpenedFromAnotherPageStillReturnsToIt() {
+        val n = inLibrary(Tab.SERIES); n.openSearch(); assertTrue(n.searchTemporary)
+        assertTrue(n.back()); assertEquals(Tab.SERIES, n.tab)
     }
     @Test fun anOverlayClosesBeforeAnythingElse() {
         val n = inLibrary(Tab.MOVIES); n.open(Overlay.Player)
@@ -145,9 +156,9 @@ class NavigatorTests {
     @Test fun backNeverLeavesTheAppFromInsideALibraryEvenAfterManySwitches() {
         val n = inLibrary(Tab.SERIES); repeat(5) { n.switchLibrary() }
         n.back(); n.sidebarFocusChanged(true)                         // the rail opens and takes the remote
-        n.back(); assertEquals(Tab.HOME, n.tab)                       // on to Home
-        n.back(); n.sidebarFocusChanged(true)                         // Home: the rail again
-        assertTrue(n.back()); assertEquals(Base.ChooseLibrary, n.base) // and then the chooser: never "close the app" from inside a library
+        n.back(); assertEquals(Tab.SERIES, n.tab)                     // Back closes it: still in the library, on the same page
+        repeat(6) { n.back(); n.sidebarFocusChanged(true); n.back() }
+        assertEquals(Base.Shell, n.base)                              // never "close the app" from inside a library, however often Back is pressed
     }
     @Test fun theFirstPageThatOpensRemembersWhereTheRemoteWas_andPagesOnTopOfItDoNot() {
         val poster = androidx.compose.ui.focus.FocusRequester(); val other = androidx.compose.ui.focus.FocusRequester()
