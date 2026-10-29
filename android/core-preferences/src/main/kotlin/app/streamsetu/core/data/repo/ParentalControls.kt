@@ -33,10 +33,17 @@ class ParentalControls(context: Context) {
         if (_kids.value) return false
         return throttle.attempt {
             val salt = prefs.getString("pin_salt", null)
-            salt != null && hash(salt, pin) == prefs.getString("pin_hash", null)
+            val stored = prefs.getString("pin_hash", null)
+            if (salt == null || stored == null) false
+            else when (app.streamsetu.core.model.PinHash.verify(pin, salt.toByteArray(), stored)) {
+                app.streamsetu.core.model.PinHash.Check.RIGHT -> true
+                app.streamsetu.core.model.PinHash.Check.RIGHT_BUT_OLD -> { prefs.edit().putString("pin_hash", hash(salt, pin)).apply(); true }          // stored the old, fast way: now stored properly
+                app.streamsetu.core.model.PinHash.Check.WRONG -> false
+            }
         } == app.streamsetu.core.model.PinThrottle.Outcome.Right
     }
-    private fun hash(salt: String, pin: String) = java.security.MessageDigest.getInstance("SHA-256").digest((salt + pin).toByteArray()).joinToString("") { "%02x".format(it) }
+    /** What is stored for a PIN: see [app.streamsetu.core.model.PinHash]. */
+    private fun hash(salt: String, pin: String) = app.streamsetu.core.model.PinHash.make(pin, salt.toByteArray())
 
     fun visible(category: Category, hide: Boolean = _effective.value) = !hide || !isAdultName(category.name)
 

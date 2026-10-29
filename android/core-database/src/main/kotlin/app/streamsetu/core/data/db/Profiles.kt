@@ -1,7 +1,7 @@
 package app.streamsetu.core.data.db
 
 import androidx.sqlite.db.SupportSQLiteDatabase
-import java.security.MessageDigest
+import app.streamsetu.core.model.PinHash
 
 class Profile(val id: String, val name: String, val kids: Boolean, val hasPin: Boolean, val color: Int)
 
@@ -26,7 +26,8 @@ object Profiles {
         db.execSQL("INSERT OR IGNORE INTO profiles(id, name, kids, color, sort_order, created_at) VALUES('$MAIN', 'Me', 0, 0, 0, 0)")
     }
 
-    fun hash(pin: String, salt: String): String = MessageDigest.getInstance("SHA-256").digest((salt + pin).toByteArray()).joinToString("") { "%02x".format(it) }
+    /** What is stored for a PIN: see [PinHash]. */
+    fun hash(pin: String, salt: String): String = PinHash.make(pin, salt.toByteArray())
     /** Four digits, so the remote's number pad can enter it. */
     fun validPin(pin: String) = pin.length == 4 && pin.all { it in '0'..'9' }
 
@@ -67,8 +68,14 @@ object Profiles {
         return true
     }
 
-    fun checkPin(db: SupportSQLiteDatabase, id: String, pin: String): Boolean =
-        db.query("SELECT pin_salt, pin_hash FROM profiles WHERE id = ?", arrayOf(id)).use { c -> c.moveToFirst() && !c.isNull(1) && hash(pin, c.getString(0)) == c.getString(1) }
+    fun checkPin(db: SupportSQLiteDatabase, id: String, pin: String): Boolean {
+        val row = db.query("SELECT pin_salt, pin_hash FROM profiles WHERE id = ?", arrayOf(id)).use { c -> if (c.moveToFirst() && !c.isNull(1)) c.getString(0) to c.getString(1) else null } ?: return false
+        return when (PinHash.verify(pin, row.first.toByteArray(), row.second)) {
+            PinHash.Check.RIGHT -> true
+            PinHash.Check.RIGHT_BUT_OLD -> { db.execSQL("UPDATE profiles SET pin_hash = ? WHERE id = ?", arrayOf(hash(pin, row.first), id)); true }          // stored the old, fast way: now stored properly
+            PinHash.Check.WRONG -> false
+        }
+    }
 
     private class Col(val name: String, val type: String)
 
