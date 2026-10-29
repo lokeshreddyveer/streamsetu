@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="branding/originals/StreamSetu_FireTV_Landscape_1920x1080.png" alt="StreamSetu: your streams, one home" width="720">
+  <img src="branding/firetv/app-icon-1280x720.png" alt="StreamSetu: your streams, one home" width="720">
 </p>
 
 # StreamSetu

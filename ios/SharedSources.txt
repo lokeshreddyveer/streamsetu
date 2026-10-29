@@ -1,6 +1,7 @@
 Application/AppConfiguration.swift
 Application/AppContainer.swift
 Application/AppRouter.swift
+Domain/Navigation/PhoneRoutes.swift
 Application/AppSettings.swift
 Application/AppState.swift
 Application/DeepLink.swift

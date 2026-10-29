@@ -186,12 +186,8 @@ final class IOSCoordinator {
 /// Navigation state for the iOS interface.
 @MainActor @Observable
 final class IOSRouter {
-    enum Tab: Hashable {
-        case home, live, guide, movies, series, search, library, playlists, settings, more
-        init(_ t: AppTab) {
-            switch t { case .home: self = .home; case .liveTV: self = .live; case .guide: self = .guide; case .movies: self = .movies; case .series: self = .series }
-        }
-    }
+    /// The screens and pages are defined once, with the rule for where each one opens (see PhoneRoutes).
+    typealias Tab = PhoneTab
     var tab: Tab = .home
     /// Set by a title's page ("In folder …") and taken by Movies or Series, which then opens that folder.
     var pendingFolder: (kind: ContentKind, id: String)?
@@ -201,20 +197,15 @@ final class IOSRouter {
     var pendingAssistantItem: LibraryItem?
     var pendingShelf: String?
     /// On iPhone, Search, Guide, Library and Settings live inside the More tab so Movies and Series stay on the bar.
-    enum MoreRoute: Hashable { case search, guide, library, playlists, settings }
+    typealias MoreRoute = PhoneMoreRoute
     var morePath: [MoreRoute] = []
     var compact = true
 
+    /// Opens a screen. A page of More (Search, the TV Guide, Library, Playlists, Settings) is pushed onto the More tab's own stack; it is never replaced by the tab that holds a button for it.
     func go(_ t: Tab) {
-        let route: MoreRoute?
-        switch t { case .search: route = .search; case .guide: route = .guide; case .library: route = .library; case .playlists: route = .playlists; case .settings: route = .settings; default: route = nil }
-        if compact, let route {
-            switch route {
-            case .guide: tab = .live                      // the guide is opened from Live TV's top bar
-            case .search: tab = .home                     // and search from Home's
-            default: tab = .more; morePath = [route]
-            }
-        } else { tab = t }
+        let route = PhoneRoutes.resolve(t)
+        tab = route.tab
+        if let page = route.page { morePath = [page] }
     }
     var query = ""
     var presentAdd = false
