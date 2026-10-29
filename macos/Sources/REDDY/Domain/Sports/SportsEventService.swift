@@ -179,7 +179,7 @@ actor SportsEventService {
         let hits = byChannel.values.sorted { (qualityRank($0.match.quality?.value), $1.channel.name, $0.channel.id) > (qualityRank($1.match.quality?.value), $0.channel.name, $1.channel.id) }
         let feeds = hits.map { h in
             SportsFeed(channelID: h.channel.id, sourceID: h.channel.sourceID, channelName: h.channel.name, language: h.match.language?.value, languageSource: h.match.language?.source ?? .unknown,
-                       quality: h.match.quality?.value, qualitySource: h.match.quality?.source ?? .unknown, variant: h.match.variant, guideProgrammeID: h.programme.id, catchUp: h.channel.archiveDays > 0)
+                       quality: h.match.quality?.value, qualitySource: h.match.quality?.source ?? .unknown, variant: h.match.variant, guideProgrammeID: h.programme.id, catchUp: h.channel.archiveDays > 0, logoURL: h.channel.logoURL)
         }
         let best = cluster.map(\.match).max { $0.confidence < $1.confidence }!
         let end = min(cluster.map(\.programme.end).max()!, anchor.addingTimeInterval(12 * 3600))

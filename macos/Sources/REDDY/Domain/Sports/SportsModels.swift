@@ -53,6 +53,8 @@ struct SportsFeed: Hashable, Sendable, Identifiable {
     let guideProgrammeID: Int64
     /// The provider keeps this channel's past programmes.
     let catchUp: Bool
+    /// The channel's own logo address, for showing a card; never shown as text.
+    var logoURL: String? = nil
 }
 
 struct SportsEvent: Identifiable, Hashable, Sendable {

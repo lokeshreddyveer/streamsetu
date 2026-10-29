@@ -16,5 +16,16 @@ Those features need a **durable record** of their own that re-associates an even
 
 - Listings about sport are not events: news, studio shows, highlights, documentaries, replays and "sports channel" listings. A listing that only says "Cricket Live" is skipped, never guessed at.
 - Language and quality are unknown unless the playlist says so. A language or quality read out of a title or a channel name is marked as a hint (`MetadataSource.parsedFromName`), never as provider data. The Android channel model carries neither, so there they are unknown unless a name says one.
-- A hidden channel, or one in a folder the person's restrictions hide, is removed before any event is built; it can never appear as a feed, and an event only such channels carried does not appear.
+- A channel is removed before any event is built, and can never appear as a feed, when the person hid it, when its folder is **locked with the PIN and not unlocked right now**, or (while the adult filter or kids mode is on) when its folder has an adult name. An event only such channels carried does not appear. On Android the locks are the app's own (`FolderRepository.lockedIds`): a folder unlocked with the PIN shows its events until it relocks, and it relocks when the profile is switched, when the library is left and after the relock time. (An earlier version of this page said Android had no PIN-locked folders. That was wrong.)
+- Sports follows the **open library** exactly as Movies, Series and Live TV do: it reads the library's source ids as they are, and with no library open nothing is shown.
 - The guide window is limited to 72 hours; work runs off the main thread, can be cancelled, and is cached by playlist guide revision, channel list, profile, restrictions and window. The cache is bounded (24 entries).
+
+## The Sports Hub on Android TV and Fire TV (Phase 2, read-only)
+
+`ui/screens/sports/`: `SportsHubUiState` and `SportsSections` (pure: sections, filters, card labels, detail), `SportsViewModel` (owns the selected filter, the detail and the content), `SportsScreen` (draws the prepared state; no database or classification work in a composable).
+
+- **Sections:** Live Now (now inside the programme interval), Starting Soon (within two hours, not live), Today's Schedule (the rest of the user's local calendar day) and Upcoming (later, inside the 72-hour window). A finished event is not listed. A section with no events is not shown.
+- **When the screen refreshes:** when the guide revision changes, the playlists change, the guide time offset changes, or Refresh/Retry is chosen. Ordinary refreshes keep the old content on screen while the new is built. **Never** because focus moved, a card became visible, the clock ticked, or the detail opened or closed.
+- **Security-context changes clear the screen at once and rebuild:** a profile switch, a different open library, the adult filter or kids mode changing, a folder relock, a hidden channel, or a source removed or disabled. A result that was started before such a change is dropped.
+- **Guide change signal:** `EpgDao.guideTouched()` reads one row and emits whenever the guide table is written; the ViewModel debounces the burst and then reads what it needs once.
+- **Detail:** read-only. Language and quality read out of a title or channel name are marked "(inferred)"; nothing is shown as provider data unless the playlist supplied it. Playback from Sports is not wired.

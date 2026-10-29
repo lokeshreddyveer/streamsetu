@@ -52,6 +52,8 @@ data class SportsFeed(
     val programmeStartMs: Long,
     /** The provider keeps this channel's past programmes. */
     val catchUp: Boolean,
+    /** The channel's own logo address, for showing a card; never shown as text. */
+    val logoUrl: String? = null,
 )
 
 data class SportsEvent(

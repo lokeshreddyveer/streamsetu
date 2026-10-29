@@ -136,22 +136,7 @@ fun ChannelManagerSettings(c: AppContainer) {
         }, onClose = { menuFor = null })
     }
     guideFor?.let { src ->
-        TvDialog(onDismissRequest = { guideFor = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(20.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Label("Guide for ${src.name}", Tokens.title, Tokens.text, FontWeight.Bold)
-                    Label("An XMLTV link (.xml or .xml.gz). Empty goes back to the provider's guide. The guide is read right after you save.", Tokens.small, Tokens.textSecondary)
-                    TvTextField(guideText, { guideText = it }, "https://…/guide.xml", Modifier.fillMaxWidth())
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TvButton("Save", {
-                            val text = guideText; guideFor = null; msg = "Reading the guide…"
-                            scope.launch { val n = c.setGuideAddress(src.id, text); msg = if (n > 0) "Guide read: $n programmes." else if (n == 0) "Saved, but that guide has no programmes in the next two days." else "Saved, but the guide could not be read from that address." }
-                        }, primary = true)
-                        TvButton("Cancel", { guideFor = null })
-                    }
-                }
-            }
-        }
+        GuideAddressDialog(src, guideText, onClose = { guideFor = null }, onSave = { text -> guideFor = null; msg = "Reading the guide…"; scope.launch { msg = saveGuideAddress(c, src, text) } })
     }
     prompt?.let { (ch, forGuide, start) ->
         var text by remember { mutableStateOf(start) }
@@ -216,5 +201,30 @@ fun RemindersSettings(c: AppContainer) {
     SettingGroup("Programme reminders", "Open the TV Guide, choose a programme that has not started, and pick Remind me. A notification arrives a minute before it starts.") {
         if (list.isEmpty()) InfoRow("No reminders set", "")
         list.forEach { r -> ActionRow(r.title, "${r.channelName} · ${time.format(Date(r.startMs))}", "Cancel", confirm = false) { scope.launch { Reminders.cancel(c, context, r.id) } } }
+    }
+}
+
+/** Saves a connection's guide address and reads that guide now; returns the sentence to show. Used by the Channel Manager and by the Guide settings on the Live TV page. */
+suspend fun saveGuideAddress(c: AppContainer, src: app.streamsetu.core.model.Source, text: String): String {
+    val n = c.setGuideAddress(src.id, text)
+    return if (n > 0) "Guide read: $n programmes." else if (n == 0) "Saved, but that guide has no programmes in the next two days." else "Saved, but the guide could not be read from that address."
+}
+
+/** The window for a connection's guide address (an XMLTV link). The caller does the saving, so it outlives the window. */
+@Composable
+fun GuideAddressDialog(src: app.streamsetu.core.model.Source, initial: String, onClose: () -> Unit, onSave: (String) -> Unit) {
+    var text by remember(src.id) { mutableStateOf(initial) }
+    TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize(), Alignment.Center) {
+            Column(Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(20.dp).background(Tokens.surface, RoundedCornerShape(Tokens.radiusLarge)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Label("Guide for ${src.name}", Tokens.title, Tokens.text, FontWeight.Bold)
+                Label("An XMLTV link (.xml or .xml.gz). Empty goes back to the provider's guide. The guide is read right after you save.", Tokens.small, Tokens.textSecondary)
+                TvTextField(text, { text = it }, "https://…/guide.xml", Modifier.fillMaxWidth())
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TvButton("Save", { onSave(text) }, primary = true)
+                    TvButton("Cancel", onClose)
+                }
+            }
+        }
     }
 }

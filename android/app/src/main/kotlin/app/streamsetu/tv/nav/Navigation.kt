@@ -12,7 +12,7 @@ import app.streamsetu.core.model.SourceType
 
 /** The sections reached from the sidebar rail. */
 enum class Tab(val title: String) {
-    HOME("Home"), LIVE("Live TV"), MOVIES("Movies"), SERIES("Series"), GUIDE("TV Guide"), SEARCH("Search"), LIBRARIES("Libraries"), SETTINGS("Settings")
+    HOME("Home"), LIVE("Live TV"), SPORTS("Sports"), MOVIES("Movies"), SERIES("Series"), GUIDE("TV Guide"), SEARCH("Search"), LIBRARIES("Libraries"), SETTINGS("Settings")
 }
 
 /** What fills the screen under any overlay. */
@@ -100,6 +100,9 @@ class Navigator {
     fun openFolder(kind: app.streamsetu.core.model.ContentKind, folderId: String) { pendingFolder = kind to folderId; go(if (kind == app.streamsetu.core.model.ContentKind.MOVIE) Tab.MOVIES else Tab.SERIES) }
 
     fun openFolderTab(kind: app.streamsetu.core.model.ContentKind, folderId: String) { pendingFolder = kind to folderId; go(when (kind) { app.streamsetu.core.model.ContentKind.MOVIE -> Tab.MOVIES; app.streamsetu.core.model.ContentKind.SERIES -> Tab.SERIES; else -> Tab.LIVE }) }
+
+    /** Set when something elsewhere wants Settings opened on one category (by its name); Settings takes it when it appears. */
+    var pendingSettings: String? by mutableStateOf(null)
 
     /** Set by Home so Movies or Series opens on one of the person's collections. */
     var pendingCollection: Triple<app.streamsetu.core.model.ContentKind, String, Boolean>? by mutableStateOf(null)

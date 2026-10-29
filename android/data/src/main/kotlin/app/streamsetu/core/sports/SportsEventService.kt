@@ -10,7 +10,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * What the person using the app now may see. Passed with every request and part of the cache key, so a profile switch or a filter change can never be answered from another person's results.
- * On Android "locked" means what the app can actually restrict: channels the person hid, and (while the adult filter or kids mode is on) channels in folders it filters out.
+ * On Android "locked" means what the app restricts: channels the person hid, folders locked with the PIN and not unlocked right now (FolderRepository.lockedIds, which relock on a profile switch, when the
+ * library is left and after the relock time), and, while the adult filter or kids mode is on, folders with adult names.
  */
 data class SportsContext(
     val profileId: String,
@@ -169,7 +170,7 @@ class SportsEventService(private val inputs: Inputs, private val startToleranceM
             val hits = byChannel.values.sortedWith(compareByDescending<Hit> { qualityRank(it.match.quality?.value) }.thenBy { it.channel.name }.thenBy { it.channel.id })
             val feeds = hits.map { h ->
                 SportsFeed(h.channel.id, h.channel.sourceId, h.channel.name, h.match.language?.value, h.match.language?.source ?: MetadataSource.UNKNOWN, h.match.quality?.value,
-                    h.match.quality?.source ?: MetadataSource.UNKNOWN, h.match.variant, h.channel.epgId.orEmpty(), h.programme.startMs, h.channel.catchupDays > 0)
+                    h.match.quality?.source ?: MetadataSource.UNKNOWN, h.match.variant, h.channel.epgId.orEmpty(), h.programme.startMs, h.channel.catchupDays > 0, h.channel.logoUrl)
             }
             val best = cluster.map { it.match }.maxByOrNull { it.confidence }!!
             val end = minOf(cluster.maxOf { it.programme.endMs }, anchor + 12 * 3_600_000L)

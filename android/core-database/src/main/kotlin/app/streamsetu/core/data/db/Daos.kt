@@ -148,6 +148,10 @@ interface EpgDao {
     @Query("SELECT MAX(endMs) FROM epg") suspend fun lastEnd(): Long?
     /** What the guide holds for each playlist (the part of the stored id before the separator; "" for a guide stored before ids were scoped): how many programmes and when the last one ends. */
     @Query("SELECT CASE WHEN instr(channelEpgId, char(1)) > 0 THEN substr(channelEpgId, 1, instr(channelEpgId, char(1)) - 1) ELSE '' END AS scope, COUNT(*) AS n, MAX(endMs) AS lastEnd FROM epg GROUP BY scope") suspend fun guideStamps(): List<GuideStamp>
+    /**
+     * A signal, not data: it emits whenever the guide table is written (a refresh writes it in bursts) and costs one row to read. Callers debounce it and then read what they need once.
+     */
+    @Query("SELECT 1 FROM epg LIMIT 1") fun guideTouched(): Flow<List<Int>>
 }
 
 @Dao

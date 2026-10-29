@@ -40,7 +40,7 @@ class SidebarFocusTest {
     private val folderClicks = mutableStateListOf<Int>()
     private var returns = 0
 
-    private val order = listOf(Tab.HOME, Tab.LIVE, Tab.GUIDE, Tab.MOVIES, Tab.SERIES, Tab.SEARCH, Tab.LIBRARIES, Tab.SETTINGS)
+    private val order = listOf(Tab.HOME, Tab.LIVE, Tab.SPORTS, Tab.GUIDE, Tab.MOVIES, Tab.SERIES, Tab.SEARCH, Tab.LIBRARIES, Tab.SETTINGS)
 
     private fun show(selected: Tab = Tab.MOVIES) {
         rule.setContent {
@@ -96,7 +96,7 @@ class SidebarFocusTest {
     @Test fun rapidUpAndDownLandOnTheRightEntry() {
         show(Tab.HOME); focusOn(Tab.LIVE)
         listOf(Key.DirectionDown, Key.DirectionDown, Key.DirectionDown, Key.DirectionUp).forEach { k -> rule.onNodeWithTag("sidebar-LIVE").performKeyInput { pressKey(k) } }
-        rule.waitForIdle(); rule.onNodeWithTag("sidebar-MOVIES").assertIsFocused()      // Live, +3 = Series (Guide, Movies, Series), -1 = Movies
+        rule.waitForIdle(); rule.onNodeWithTag("sidebar-GUIDE").assertIsFocused()      // Live, +3 = Movies (Sports, Guide, Movies), -1 = Guide
     }
 
     @Test fun movingFocusNeverChoosesADestinationAndOkDoes() {

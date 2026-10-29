@@ -13,6 +13,7 @@ import app.streamsetu.core.model.EpgIds
 import app.streamsetu.core.sports.SportsContext
 import app.streamsetu.core.sports.SportsEventService
 import app.streamsetu.core.sync.EpgService
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -29,15 +30,16 @@ class SportsAdapterTests {
     private lateinit var db: AppDatabase
     private lateinit var epg: EpgService
     private var offset = 0L
+    private var locked: Set<String> = emptySet()
     private lateinit var svc: SportsEventService
     private val t0 = 1_800_000_000_000L; private val h = 3_600_000L; private val min = 60_000L
-    private val parent get() = runBlocking { SportsGuideInputs.context(db, "main", false, ParentalControls::isAdultName) }
-    private val kid get() = runBlocking { SportsGuideInputs.context(db, "kid", true, ParentalControls::isAdultName) }
+    private val parent get() = runBlocking { SportsGuideInputs.context(db, "main", false, locked, ParentalControls::isAdultName) }
+    private val kid get() = runBlocking { SportsGuideInputs.context(db, "kid", true, locked, ParentalControls::isAdultName) }
 
     @Before fun open() {
         db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java).allowMainThreadQueries().build()
         epg = EpgService(db)
-        svc = SportsGuideInputs.service(db, epg) { offset }
+        svc = SportsGuideInputs.service(db, epg, offsetMs = { offset })
         runBlocking { source("A"); source("B") }
     }
     @After fun close() { db.close() }
@@ -132,5 +134,100 @@ class SportsAdapterTests {
             events(parent); events(kid); peak = maxOf(peak, svc.cachedEntries)
         }
         assertTrue("peak $peak", peak <= SportsEventService.CACHE_LIMIT)
+    }
+
+    // ---- the active library, and the PIN lock, exactly as the rest of the app reads them
+
+    private fun serviceFor(active: () -> List<String>) = SportsGuideInputs.service(db, epg, { offset }, active)
+
+    @Test fun onlyTheActiveLibrarysSourcesAppearAndAnotherLibrarysEventsNeverLeak() = runBlocking {
+        channel("A:1", "A", "Sky Sports NBA", "nba"); guide("A", "nba", "NBA: Lakers vs Celtics")
+        channel("B:1", "B", "Premier Sports", "epl"); guide("B", "epl", "Premier League: Arsenal v Chelsea")
+        val onlyA = serviceFor { listOf("A") }.events(t0 - h, t0 + 12 * h, parent)
+        assertEquals(1, onlyA.size); assertEquals(setOf("A"), onlyA.single().sourceIds); assertTrue(onlyA.none { it.title.contains("Arsenal") })
+        val both = serviceFor { listOf("A", "B") }.events(t0 - h, t0 + 12 * h, parent)
+        assertEquals(2, both.size)
+        val onlyB = serviceFor { listOf("B") }.events(t0 - h, t0 + 12 * h, parent)
+        assertEquals(setOf("B"), onlyB.single().sourceIds); assertTrue("A's event does not leak into B's library", onlyB.none { it.title.contains("Lakers") })
+    }
+
+    @Test fun anEmptyActiveLibraryShowsNothingLikeMoviesSeriesAndLiveTv() = runBlocking {
+        channel("A:1", "A", "Sky Sports NBA", "nba"); guide("A", "nba", "NBA: Lakers vs Celtics")
+        assertTrue("no library open: nothing is shown, not everything", serviceFor { emptyList() }.events(t0 - h, t0 + 12 * h, parent).isEmpty())
+    }
+
+    @Test fun theRealLibraryRepositoryDecidesTheSources() = runBlocking {
+        channel("A:1", "A", "Sky Sports NBA", "nba"); guide("A", "nba", "NBA: Lakers vs Celtics")
+        channel("B:1", "B", "Premier Sports", "epl"); guide("B", "epl", "Premier League: Arsenal v Chelsea")
+        val ctxApp = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val library = app.streamsetu.core.data.repo.LibraryRepository(db, ctxApp, kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined))
+        val s = serviceFor { library.sourceIds.value }
+        assertTrue("nothing is open yet", s.events(t0 - h, t0 + 12 * h, parent).isEmpty())
+        library.open(library.entries.first().first { e -> e.id == "src:A" }); kotlinx.coroutines.yield()
+        assertEquals(setOf("A"), s.events(t0 - h, t0 + 12 * h, parent).single().sourceIds)
+        library.open(library.entries.first().first { e -> e.id == "src:B" }); kotlinx.coroutines.yield()
+        assertEquals(setOf("B"), s.events(t0 - h, t0 + 12 * h, parent).single().sourceIds)
+        library.close(); kotlinx.coroutines.yield()
+        assertTrue(s.events(t0 - h, t0 + 12 * h, parent).isEmpty())
+    }
+
+    private fun folderRepo(): app.streamsetu.core.data.repo.FolderRepository {
+        val ctxApp = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val library = app.streamsetu.core.data.repo.LibraryRepository(db, ctxApp, kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined))
+        return app.streamsetu.core.data.repo.FolderRepository(db, library, ParentalControls(ctxApp))
+    }
+    private suspend fun lockFolder(id: String) = db.folders().put(app.streamsetu.core.data.db.FolderPrefEntity("CHANNEL", id, locked = true))
+    private suspend fun contextNow(folders: app.streamsetu.core.data.repo.FolderRepository) = SportsGuideInputs.context(db, "main", false, folders.lockedIdsNow(), ParentalControls::isAdultName)
+
+    @Test fun pinLockedFoldersAreExcludedSessionUnlockedFoldersAppearAndRelockingRemovesThemAtOnce() = runBlocking {
+        category("cat-locked", "A", "Premium")
+        channel("A:open", "A", "Sky Sports NBA", "nba"); guide("A", "nba", "NBA: Lakers vs Celtics")
+        channel("A:locked", "A", "Premium NBA", "prem", "cat-locked"); guide("A", "prem", "NFL: Chiefs vs Eagles")
+        lockFolder("cat-locked")
+        val folders = folderRepo(); val s = serviceFor { listOf("A") }
+        assertEquals("the locked folder's event is excluded", 1, s.events(t0 - h, t0 + 12 * h, contextNow(folders)).size)
+        folders.unlock("cat-locked")
+        assertEquals("unlocked with the PIN this session: it appears", 2, s.events(t0 - h, t0 + 12 * h, contextNow(folders)).size)
+        folders.lockAgain()
+        val after = s.events(t0 - h, t0 + 12 * h, contextNow(folders))
+        assertEquals("relocked: gone immediately", 1, after.size); assertTrue(after.flatMap { it.feeds }.none { it.channelId == "A:locked" })
+    }
+
+    @Test fun aProfileSwitchRelocksFoldersAccordingToTheAppsOwnRule() = runBlocking {
+        category("cat-locked", "A", "Premium")
+        channel("A:open", "A", "Sky Sports NBA", "nba"); guide("A", "nba", "NBA: Lakers vs Celtics")
+        channel("A:locked", "A", "Premium NBA", "prem", "cat-locked"); guide("A", "prem", "NFL: Chiefs vs Eagles")
+        lockFolder("cat-locked")
+        val folders = folderRepo(); val s = serviceFor { listOf("A") }
+        // the app's ProfileService relocks folders before the tables change hands (see AppContainer.profiles)
+        val profiles = app.streamsetu.tv.sync.ProfileService(db, null, beforeSwitch = { folders.lockAgain() }) { }
+        app.streamsetu.core.data.db.LanLog.create(db.openHelper.writableDatabase)           // what the real app creates at start; a profile switch swaps these tables too
+        profiles.reload()
+        val other = profiles.add("Guest", kids = false, pin = null)!!
+        folders.unlock("cat-locked")
+        assertEquals(2, s.events(t0 - h, t0 + 12 * h, contextNow(folders)).size)
+        assertEquals(app.streamsetu.tv.sync.SwitchResult.Switched, profiles.switchTo(other.id))
+        val afterSwitch = s.events(t0 - h, t0 + 12 * h, SportsGuideInputs.context(db, other.id, false, folders.lockedIdsNow(), ParentalControls::isAdultName))
+        assertEquals("the switch locked the folder again, so its event is gone", 1, afterSwitch.size)
+        assertTrue(afterSwitch.flatMap { it.feeds }.none { it.channelId == "A:locked" })
+    }
+
+    // ---- timing through the real database path, as the Sports Hub uses it
+
+    @Test fun firstLoadCachedReturnAndFilterChangeThroughTheRealDatabase() = runBlocking {
+        val titles = listOf("NBA: Lakers vs Celtics", "Premier League: Arsenal v Chelsea", "IPL: Mumbai Indians vs Chennai Super Kings", "Evening News", "Cooking Today", "Weather", "Quiz Night", "Kids Hour")
+        val channels = ArrayList<ChannelEntity>(); val rows = ArrayList<EpgEntity>()
+        for (i in 0 until 3_000) {
+            channels.add(ChannelEntity("A:$i", "A", null, "Channel $i", null, null, "ref", "g$i", 0, i))
+            for (j in 0 until 6) rows.add(EpgEntity(EpgIds.scope("A", "g$i"), t0 + j * h, t0 + (j + 1) * h, if (i % 40 == 0 && j == 2) titles[(i / 40) % 3] else titles[3 + (i + j) % 5], null))
+        }
+        db.catalog().putChannels(channels); db.epg().put(rows)
+        val svc = serviceFor { listOf("A") }
+        val t1 = System.nanoTime(); val first = svc.events(t0 - h, t0 + 12 * h, parent); val firstMs = (System.nanoTime() - t1) / 1e6
+        val t2 = System.nanoTime(); svc.events(t0 - h, t0 + 12 * h, parent); val cachedMs = (System.nanoTime() - t2) / 1e6
+        val t3 = System.nanoTime(); val r = app.streamsetu.tv.ui.screens.sports.SportsSections.build(first, t0 + h, java.util.TimeZone.getTimeZone("UTC"), app.streamsetu.core.sports.Sport.CRICKET, null, mapOf("A" to "A")); val filterMs = (System.nanoTime() - t3) / 1e6
+        println("SPORTS PHASE 2 TIMING (3000 channels, 18000 guide rows, real Room database): first load ${"%.0f".format(firstMs)} ms, cached return ${"%.0f".format(cachedMs)} ms, filter change (state rebuild) ${"%.1f".format(filterMs)} ms")
+        assertEquals(3, first.size); assertTrue(r.live.size + r.soon.size + r.today.size + r.upcoming.size > 0)
+        assertTrue("the cached return is much quicker than the first load ($cachedMs vs $firstMs ms)", cachedMs < firstMs)
     }
 }

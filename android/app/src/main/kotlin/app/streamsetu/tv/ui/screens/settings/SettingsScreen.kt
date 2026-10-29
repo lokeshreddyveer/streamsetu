@@ -71,6 +71,8 @@ enum class Category(val title: String, val subtitle: String, val icon: ImageVect
 @Composable
 fun SettingsScreen(c: AppContainer, nav: Navigator) {
     var selected by rememberSaveable { mutableStateOf(Category.PLAYBACK.name) }
+    // Something elsewhere asked for one category (the Sports Hub's "Open Guide Settings"): open on it once.
+    LaunchedEffect(nav.pendingSettings) { nav.pendingSettings?.let { name -> categoryFromRequest(name)?.let { selected = it.name }; nav.pendingSettings = null } }
     val current = Category.valueOf(selected)
     val listEntry = LocalContentEntry.current ?: remember { FocusRequester() }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -344,12 +346,50 @@ fun LiveSettings(c: AppContainer) {
         ToggleRow("Fold the same channel into one row", "A channel that comes in HD, FHD and SD, or from two connections, is one row. Hold OK on it to pick a version.", group) { ui.setGroupDuplicates(it) }
         ToggleRow("Open Live TV on the last channel", "Starts the last channel you watched when Live TV opens. Off: nothing plays until you choose a channel.", resumeLast) { s.setResumeLastChannel(it) }
     }
-    SettingGroup("Guide") {
-        ChoiceRow("Guide time shift", "For a provider whose guide is early or late: every programme time moves by this much.", listOf(-120, -90, -60, -30, 0, 30, 60, 90, 120).map { it to if (it == 0) "None" else (if (it > 0) "+" else "−") + "${kotlin.math.abs(it)} min" }, off) { ui.setEpgOffsetMinutes(it) }
-        val zone by s.catchupZone.collectAsStateWithLifecycle()
-        ChoiceRow("Catch-up start time", "Providers read the start of a catch-up programme in their own time zone. If a catch-up plays the wrong programme, switch this.", listOf("UTC" to "UTC", "DEVICE" to "This device's time zone"), zone) { s.setCatchupZone(it) }
-        InfoRow("Time zone", java.util.TimeZone.getDefault().id, "Guide times are shown in this device's time zone.")
+    val scope = rememberCoroutineScope()
+    var guideMsg by remember { mutableStateOf<String?>(null) }
+    var editing by remember { mutableStateOf<app.streamsetu.core.model.Source?>(null) }
+    val sources by c.sources.sources.collectAsState(initial = emptyList())
+    val openIds by c.library.sourceIds.collectAsStateWithLifecycle()
+    val zone by s.catchupZone.collectAsStateWithLifecycle()
+    val connections = sources.filter { it.id in openIds && !it.draft }.map { GuideConnection(it.id, it.name, it.epgUrl) }
+    GuideSettingsContent(
+        GuideSettingsModel(connections, off, zone, java.util.TimeZone.getDefault().id, guideMsg),
+        GuideSettingsActions(
+            refresh = { c.ensureGuide(force = true); guideMsg = "Reading the guide in the background. New programmes and sports events appear when it is done." },
+            changeAddress = { id -> editing = sources.firstOrNull { it.id == id } },
+            setOffset = { ui.setEpgOffsetMinutes(it) },
+            setCatchupZone = { s.setCatchupZone(it) },
+        ),
+    )
+    editing?.let { src ->
+        GuideAddressDialog(src, src.epgUrl.orEmpty(), onClose = { editing = null }, onSave = { text -> editing = null; guideMsg = "Reading the guide…"; scope.launch { guideMsg = saveGuideAddress(c, src, text) } })
     }
+}
+
+/** The one page that holds the guide's own settings: refresh now, each connection's guide address, the guide time shift and the catch-up time zone. The Sports Hub's "Open Guide Settings" opens it. */
+/** The category a "show me this settings page" request names, or null for a name that is not one. */
+fun categoryFromRequest(name: String?): Category? = name?.let { n -> Category.values().firstOrNull { it.name == n } }
+
+object GuideSettingsPage { val category = Category.LIVE; val request: String get() = category.name }
+
+@androidx.compose.runtime.Immutable data class GuideConnection(val id: String, val name: String, val address: String?)
+@androidx.compose.runtime.Immutable data class GuideSettingsModel(val connections: List<GuideConnection>, val offsetMinutes: Int, val catchupZone: String, val timeZoneId: String, val message: String?)
+class GuideSettingsActions(val refresh: () -> Unit, val changeAddress: (String) -> Unit, val setOffset: (Int) -> Unit, val setCatchupZone: (String) -> Unit)
+
+/** The Guide group, as a function of what it shows and what its rows do (so it can be checked without the rest of the app). */
+@Composable
+fun GuideSettingsContent(m: GuideSettingsModel, a: GuideSettingsActions) {
+    SettingGroup("Guide") {
+        ActionRow("Refresh guide now", "Reads the programme guide again from your provider.", "Refresh", confirm = false) { a.refresh() }
+        m.connections.forEach { cn ->
+            ActionRow(if (m.connections.size > 1) "Guide (EPG) address: ${cn.name}" else "Guide (EPG) address", if (cn.address.isNullOrBlank()) "The provider's own guide is used. Paste an XMLTV link here to use another one." else cn.address, "Change", confirm = false) { a.changeAddress(cn.id) }
+        }
+        ChoiceRow("Guide time shift", "For a provider whose guide is early or late: every programme time moves by this much.", listOf(-120, -90, -60, -30, 0, 30, 60, 90, 120).map { it to if (it == 0) "None" else (if (it > 0) "+" else "−") + "${kotlin.math.abs(it)} min" }, m.offsetMinutes) { a.setOffset(it) }
+        ChoiceRow("Catch-up start time", "Providers read the start of a catch-up programme in their own time zone. If a catch-up plays the wrong programme, switch this.", listOf("UTC" to "UTC", "DEVICE" to "This device's time zone"), m.catchupZone) { a.setCatchupZone(it) }
+        InfoRow("Time zone", m.timeZoneId, "Guide times are shown in this device's time zone.")
+    }
+    ResultLine(m.message)
 }
 
 internal fun fmtBytes(b: Long): String = when { b >= 1L shl 30 -> "%.1f GB".format(b / (1L shl 30).toDouble()); b >= 1L shl 20 -> "%.1f MB".format(b / (1L shl 20).toDouble()); b >= 1L shl 10 -> "%.0f KB".format(b / 1024.0); else -> "$b B" }

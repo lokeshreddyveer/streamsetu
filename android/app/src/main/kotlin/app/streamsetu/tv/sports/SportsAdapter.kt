@@ -14,8 +14,19 @@ import app.streamsetu.core.sync.programmesFor
  * Connects the Sports service to the real database: the channels of the enabled playlists that the person has not hidden, the guide through the same matching and time offset as the TV Guide, and
  * a guide revision for each playlist made from the part of the guide table that playlist actually reads from. Nothing is written; everything is derived and rebuildable.
  */
-class SportsGuideInputs(private val db: AppDatabase, private val epg: EpgService, private val offsetMs: () -> Long = { 0L }) : SportsEventService.Inputs {
-    private suspend fun enabledSourceIds(): List<String> = db.sources().all().filter { it.enabled && !it.draft }.map { it.id }
+class SportsGuideInputs(
+    private val db: AppDatabase,
+    private val epg: EpgService,
+    private val offsetMs: () -> Long = { 0L },
+    /** The sources of the library that is open (LibraryRepository.sourceIds); null reads every enabled playlist. Sports shows what the rest of the app shows, so it follows the open library. */
+    private val activeSourceIds: (() -> List<String>)? = null,
+) : SportsEventService.Inputs {
+    /**
+     * The playlists Sports reads. With an active library given, exactly its sources and nothing else, as Movies, Series and Live TV read them (BrowseRepository uses the library's source ids as they
+     * are, and an empty list means nothing is shown). Without one, every enabled playlist.
+     */
+    private suspend fun enabledSourceIds(): List<String> =
+        activeSourceIds?.invoke() ?: db.sources().all().filter { it.enabled && !it.draft }.map { it.id }
 
     override suspend fun channels(): List<Channel> {
         val sources = enabledSourceIds()
@@ -47,15 +58,17 @@ class SportsGuideInputs(private val db: AppDatabase, private val epg: EpgService
 
     companion object {
         /** The service wired to the real database. */
-        fun service(db: AppDatabase, epg: EpgService, offsetMs: () -> Long = { 0L }) = SportsEventService(SportsGuideInputs(db, epg, offsetMs))
+        fun service(db: AppDatabase, epg: EpgService, offsetMs: () -> Long = { 0L }, activeSourceIds: (() -> List<String>)? = null) = SportsEventService(SportsGuideInputs(db, epg, offsetMs, activeSourceIds))
 
         /**
-         * What the person may see now. [profileId] is the active profile and [restricting] is the adult filter or kids mode (ParentalControls.hideAdult, which includes kids). The folders that count as
-         * locked are the ones the app's own adult filter hides; the channels the person hid are read here too, so a restricted channel is removed even if a caller forgot to filter it.
+         * What the person may see now, from the same sources the rest of the app uses: [profileId] is the active profile; [lockedFolderIds] are the folders that are PIN-locked and not unlocked right now
+         * (FolderRepository.lockedIdsNow); [hideAdult] is the adult filter or kids mode (ParentalControls.hideAdult), which hides folders whose names are adult. The channels the person hid are read here too, so
+         * a restricted channel is removed even if a caller forgot to filter it.
          */
-        suspend fun context(db: AppDatabase, profileId: String, restricting: Boolean, isAdultName: (String) -> Boolean): SportsContext {
-            val locked = if (restricting) db.catalog().allCategories().filter { isAdultName(it.name) }.map { it.id }.toSet() else emptySet()
-            return SportsContext(profileId, restricting, locked, db.catalog().hiddenChannelIds().toSet())
+        suspend fun context(db: AppDatabase, profileId: String, hideAdult: Boolean, lockedFolderIds: Set<String>, isAdultName: (String) -> Boolean): SportsContext {
+            val adult = if (hideAdult) db.catalog().allCategories().filter { isAdultName(it.name) }.map { it.id }.toSet() else emptySet()
+            val locked = lockedFolderIds + adult
+            return SportsContext(profileId, restricting = locked.isNotEmpty(), lockedCategoryIds = locked, hiddenChannelIds = db.catalog().hiddenChannelIds().toSet())
         }
     }
 }

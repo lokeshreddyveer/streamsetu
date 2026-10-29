@@ -48,6 +48,7 @@ import app.streamsetu.tv.ui.theme.Tokens
 private fun iconOf(t: Tab): ImageVector = when (t) {
     Tab.HOME -> Icons.Filled.Home
     Tab.LIVE -> Icons.Filled.LiveTv
+    Tab.SPORTS -> Icons.Filled.SportsScore
     Tab.MOVIES -> Icons.Filled.Movie
     Tab.SERIES -> Icons.Filled.VideoLibrary
     Tab.GUIDE -> Icons.Filled.CalendarMonth
@@ -61,7 +62,7 @@ private fun nameOf(t: Tab) = when (t) { Tab.LIBRARIES -> "Libraries"; Tab.GUIDE 
 
 // The rail in three groups, with their names shown while it is open: what you watch, finding something, and managing the app.
 private val Groups = listOf(
-    "WATCH" to listOf(Tab.HOME, Tab.LIVE, Tab.GUIDE, Tab.MOVIES, Tab.SERIES),
+    "WATCH" to listOf(Tab.HOME, Tab.LIVE, Tab.SPORTS, Tab.GUIDE, Tab.MOVIES, Tab.SERIES),
     "DISCOVER" to listOf(Tab.SEARCH),
     "MANAGE" to listOf(Tab.LIBRARIES, Tab.SETTINGS),
 )

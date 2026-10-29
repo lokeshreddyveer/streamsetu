@@ -68,6 +68,10 @@ class AppContainer @Inject constructor(
     /** Podcasts the person follows. */
     val podcasts: app.streamsetu.tv.sync.PodcastService by lazy { app.streamsetu.tv.sync.PodcastService(context) }
 
+    /** Sports events built from the open library's guide (see tv/sports/SportsAdapter.kt). One service for the app, so its cache outlives any screen. */
+    val sportsInputs: app.streamsetu.tv.sports.SportsGuideInputs by lazy { app.streamsetu.tv.sports.SportsGuideInputs(db, epg, { ui.epgOffsetMinutes.value * 60_000L }, { library.sourceIds.value }) }
+    val sportsService: app.streamsetu.core.sports.SportsEventService by lazy { app.streamsetu.core.sports.SportsEventService(sportsInputs) }
+
     /** Who is using the app: each profile has its own favorites, collections, history and resume points. */
     val profiles: app.streamsetu.tv.sync.ProfileService by lazy {
         app.streamsetu.tv.sync.ProfileService(db, context.getSharedPreferences("pin_throttle", android.content.Context.MODE_PRIVATE), beforeSwitch = {
@@ -417,7 +421,7 @@ class AppContainer @Inject constructor(
     private var guideAt = 0L
     private var guideBusy = false
     /** Pulls the provider's programme guide when Live TV or the TV Guide is opened and the guide held is empty (or was last pulled more than six hours ago): once at a time, in the background. */
-    fun ensureGuide() {
+    fun ensureGuide(force: Boolean = false) {
         val id = library.activeId.value ?: return
         if (guideBusy) return
         appScope.launch {
@@ -425,7 +429,7 @@ class AppContainer @Inject constructor(
             guideBusy = true
             try {
                 val empty = runCatching { epg.programmeCount(db) == 0 }.getOrDefault(true)
-                if (!empty && (guideAt == 0L || System.currentTimeMillis() - guideAt < 6 * 3600_000L)) { if (guideAt == 0L) guideAt = System.currentTimeMillis(); return@launch }
+                if (!force && !empty && (guideAt == 0L || System.currentTimeMillis() - guideAt < 6 * 3600_000L)) { if (guideAt == 0L) guideAt = System.currentTimeMillis(); return@launch }
                 val src = sources.get(id) ?: return@launch
                 val fallback = if (src.type == SourceType.XTREAM) "${app.streamsetu.core.parse.Xtream.normalizeHost(src.address)}/xmltv.php?username=${src.username.orEmpty()}&password=${credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()}" else null
                 runCatching { epg.refresh(src, fallback, resolver.headers(src.id)) }
