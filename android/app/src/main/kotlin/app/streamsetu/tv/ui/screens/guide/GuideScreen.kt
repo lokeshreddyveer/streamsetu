@@ -277,7 +277,7 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
             if (p.endMs > now) {
                 val rec = app.streamsetu.tv.record.ScheduledRecordings.isScheduled(ch.id, p.startMs)
                 add(MenuAction(if (rec) "Cancel recording" else "Record", Icons.Filled.FiberManualRecord) {
-                    if (rec) app.streamsetu.tv.record.ScheduledRecordings.cancel(context, app.streamsetu.tv.record.ScheduledRecordings.idOf(ch.id, p.startMs)) else app.streamsetu.tv.record.ScheduledRecordings.schedule(context, ch, p)
+                    if (rec) app.streamsetu.tv.record.ScheduledRecordings.cancel(context, app.streamsetu.tv.record.ScheduledRecordings.idOf(ch.id, p.startMs)) else app.streamsetu.tv.record.ScheduledRecordings.schedule(context, ch, p, c.profiles.activeId.value)
                 })
             }
             add(MenuAction(if (fav) "Remove channel from Favorites" else "Add channel to Favorites", Icons.Filled.Favorite) { vm.toggleFavourite(ch) })

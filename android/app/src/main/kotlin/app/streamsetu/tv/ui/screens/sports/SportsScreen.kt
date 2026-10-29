@@ -119,15 +119,26 @@ class SportsActions(
     val changeReminder: (id: String, leadMs: Long) -> Unit = { _, _ -> },
     val removeReminder: (id: String) -> Unit = {},
     val keepReminder: (id: String) -> Unit = {},
+    /** Recording, start over and catch-up. Each is the person pressing OK on the action; the same checks are made again when it runs. */
+    val openRecord: () -> Unit = {},
+    val closeRecord: () -> Unit = {},
+    val recordPadding: (preMin: Int, postMin: Int) -> Unit = { _, _ -> },
+    val recordFeed: (channelId: String) -> Unit = {},
+    val confirmRecord: () -> Unit = {},
+    val cancelRecording: (id: String) -> Unit = {},
+    val stopRecording: (id: String) -> Unit = {},
+    val watchRecording: (playId: String) -> Unit = {},
+    val startOver: (channelId: String) -> Unit = {},
+    val watchCatchUp: (channelId: String) -> Unit = {},
 )
 
 /** The page as the shell shows it. Refresh Guide uses the application's own guide refresh. */
 @Composable
-fun SportsScreen(vm: SportsViewModel, c: AppContainer, nav: Navigator) = SportsScreenHost(vm, nav) { c.ensureGuide(force = true) }
+fun SportsScreen(vm: SportsViewModel, c: AppContainer, nav: Navigator) = SportsScreenHost(vm, nav, playRecording = { playId -> app.streamsetu.tv.play(c, nav, app.streamsetu.core.model.MoviePlayable(app.streamsetu.core.model.Movie(playId, "recordings", null, "Recording", null, null, null, null, "", 0))) }) { c.ensureGuide(force = true) }
 
 /** Wires the screen to the ViewModel, the Navigator (tab, Back, focus memory) and the application's existing routes. It does no work of its own. */
 @Composable
-fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, refreshGuideNow: () -> Unit) {
+fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, playRecording: (String) -> Unit = {}, refreshGuideNow: () -> Unit) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val current by rememberUpdatedState(state)
     val entry = LocalContentEntry.current ?: remember { FocusRequester() }
@@ -139,7 +150,7 @@ fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, refreshGuideNow: () ->
     var returnTick by remember { mutableStateOf(0) }
     // Back: from the embedded picture the remote goes back to the feed list (playback goes on); from the detail it closes the event, which ends what played from it.
     DisposableEffect(vm) {
-        val hook: () -> Boolean = { if (current.manage != null) { vm.closeManage(); true } else if (current.detail != null) { if (previewFocused) returnTick++ else vm.closeDetail(); true } else false }
+        val hook: () -> Boolean = { if (current.recordPanel != null) { vm.closeRecord(); true } else if (current.manage != null) { vm.closeManage(); true } else if (current.detail != null) { if (previewFocused) returnTick++ else vm.closeDetail(); true } else false }
         nav.backHook = hook
         onDispose { if (nav.backHook === hook) nav.backHook = null }
     }
@@ -166,6 +177,11 @@ fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, refreshGuideNow: () ->
             addToMultiview = { vm.addToMultiview() }, addFeedToMultiview = { vm.addToMultiview(it) },
             selectMy = vm::selectMy, follow = vm::follow, unfollow = vm::unfollow, clearFollows = vm::clearFollows, openManage = vm::openManage, closeManage = vm::closeManage,
             remind = vm::remind, changeReminder = vm::changeReminder, removeReminder = vm::removeReminder, keepReminder = vm::keepReminder,
+            openRecord = vm::openRecord, closeRecord = vm::closeRecord, recordPadding = vm::recordPadding, recordFeed = vm::recordFeed, confirmRecord = vm::confirmRecord,
+            cancelRecording = vm::cancelRecording, stopRecording = vm::stopRecording,
+            watchRecording = { playId -> vm.stopPlayback(); playRecording(playId) },
+            startOver = { id -> vm.archive(id, true) { nav.liveFullscreen = false; nav.open(app.streamsetu.tv.nav.Overlay.Player) } },
+            watchCatchUp = { id -> vm.archive(id, false) { nav.liveFullscreen = false; nav.open(app.streamsetu.tv.nav.Overlay.Player) } },
             openMultiview = { vm.beforeMultiview(); nav.open(app.streamsetu.tv.nav.Overlay.SportsMultiview) },
         )
     }
@@ -215,6 +231,7 @@ fun SportsHubContent(state: SportsHubUiState, actions: SportsActions, entry: Foc
         }
         state.detail?.let { SportsDetailPanel(it, actions, returnTick) }
         state.manage?.let { SportsManagePanel(it, actions) }
+        state.recordPanel?.let { SportsRecordPanel(it, actions) }
     }
 }
 
@@ -331,6 +348,7 @@ private fun SportsEventCardView(card: SportsEventCard, modifier: Modifier, onOpe
                 if (card.reminded) Label("Reminder set", Tokens.small, Tokens.accent, FontWeight.SemiBold, maxLines = 1, modifier = Modifier.testTag("sports-reminded"))
             }
             card.reason?.let { Label(it, Tokens.caption, Tokens.textSecondary, maxLines = 1, modifier = Modifier.testTag("sports-reason")) }
+            card.recordingLabel?.let { Label(it, Tokens.caption, Tokens.accent, FontWeight.SemiBold, maxLines = 1, modifier = Modifier.testTag("sports-recording-mark")) }
         }
     }
 }
@@ -454,6 +472,7 @@ private fun SportsDetailPanel(d: SportsEventDetail, actions: SportsActions, retu
                         }
                     }
                 }
+                item(key = "recording") { SportsRecordingBlock(d, actions) }
                 if (play != null) item(key = "playnote") { SportsPlaybackNote(play, d, actions, rows) }
                 item(key = "feeds-title") { Label("Available feeds", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp)) }
                 items(d.feeds.size, key = { "f-" + d.feeds[it].channelId.ifEmpty { it.toString() } }) { i ->
@@ -617,3 +636,81 @@ private fun androidx.compose.foundation.lazy.LazyListScope.manageSection(title: 
         }
     }
 }
+
+
+// ---- recording, start over and catch-up
+
+/** The actions that are valid for this event right now, and only those: Record, Cancel, Stop, Watch Recording, Review Schedule, Start Over, Watch Catch-Up. Watch Live is Watch Best Feed above. */
+@Composable
+private fun SportsRecordingBlock(d: SportsEventDetail, actions: SportsActions) {
+    if (d.card.id == "held") return
+    var confirm by remember(d.card.id, d.recording?.id, d.recording?.status) { mutableStateOf<String?>(null) }
+    var pick by remember(d.card.id) { mutableStateOf<Boolean?>(null) }                      // true: Start Over, false: Catch-Up
+    val r = d.recording; val a = d.abilities
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (r != null) {
+            Label(r.line, Tokens.small, if (r.review) Tokens.warning else Tokens.accent, FontWeight.SemiBold, modifier = Modifier.testTag("sports-recording-line"))
+            if (r.canCancel && !r.review) TvButton("Cancel Recording", { confirm = "cancel" }, Modifier.testTag("sports-recording-cancel"))
+            if (r.canStop) TvButton("Stop Recording", { confirm = "stop" }, Modifier.testTag("sports-recording-stop"))
+            if (r.playId != null) TvButton("Watch Recording", { actions.watchRecording(r.playId) }, Modifier.testTag("sports-recording-watch"), icon = Icons.Filled.PlayArrow)
+            if (r.review) TvButton("Review Schedule", { confirm = "review" }, Modifier.testTag("sports-recording-review"))
+        } else if (a != null && a.canRecord) {
+            TvButton(if (d.card.live) "Record Now" else "Record", actions.openRecord, Modifier.testTag("sports-record"))
+        } else a?.recordHint?.let { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-record-hint")) }
+        if (d.startOver.isNotEmpty()) TvButton("Start Over", { if (d.startOver.size == 1) actions.startOver(d.startOver[0].channelId) else pick = true }, Modifier.testTag("sports-start-over"), icon = Icons.Filled.PlayArrow)
+        if (d.catchUp.isNotEmpty()) TvButton("Watch Catch-Up", { if (d.catchUp.size == 1) actions.watchCatchUp(d.catchUp[0].channelId) else pick = false }, Modifier.testTag("sports-catch-up"), icon = Icons.Filled.PlayArrow)
+    }
+    when (confirm) {
+        "cancel" -> if (r != null) app.streamsetu.tv.ui.components.ContextMenu("Cancel this recording?", "Nothing has been recorded yet.", listOf(
+            app.streamsetu.tv.ui.components.MenuAction("Cancel Recording", Icons.Filled.Close, danger = true) { actions.cancelRecording(r.id) }, app.streamsetu.tv.ui.components.MenuAction("Keep it", Icons.Filled.PlayArrow) {}), onClose = { confirm = null })
+        "stop" -> if (r != null) app.streamsetu.tv.ui.components.ContextMenu("Stop recording?", "What has been recorded so far is kept in Recordings.", listOf(
+            app.streamsetu.tv.ui.components.MenuAction("Stop Recording", Icons.Filled.Close, danger = true) { actions.stopRecording(r.id) }, app.streamsetu.tv.ui.components.MenuAction("Keep recording", Icons.Filled.PlayArrow) {}), onClose = { confirm = null })
+        "review" -> if (r != null) app.streamsetu.tv.ui.components.ContextMenu("Schedule changed", "The guide now shows this event differently, so it is not recorded until it is clear which showing it is. It is restored by itself if that becomes clear.", listOf(
+            app.streamsetu.tv.ui.components.MenuAction("Cancel Recording", Icons.Filled.Close, danger = true) { actions.cancelRecording(r.id) }, app.streamsetu.tv.ui.components.MenuAction("Keep waiting", Icons.Filled.PlayArrow) {}), onClose = { confirm = null })
+    }
+    pick?.let { startOver ->
+        val choices = if (startOver) d.startOver else d.catchUp
+        app.streamsetu.tv.ui.components.ContextMenu(if (startOver) "Start over on" else "Catch-up on", null, choices.map { ch ->
+            app.streamsetu.tv.ui.components.MenuAction(ch.label, Icons.Filled.PlayArrow) { if (startOver) actions.startOver(ch.channelId) else actions.watchCatchUp(ch.channelId) }
+        }, onClose = { pick = null })
+    }
+}
+
+/** What will be recorded, when, for how long, the estimate and anything in the way, before the person confirms. Nothing is cancelled or replaced to make room. */
+@Composable
+private fun SportsRecordPanel(p: RecordPanelUi, actions: SportsActions) {
+    val first = remember { FocusRequester() }
+    var feedMenu by remember { mutableStateOf(false) }
+    LaunchedEffect(p.eventId) { requestFocusOnFrames(8, { first.requestFocus() }, { false }) }
+    Row(Modifier.fillMaxSize().testTag("sports-record-panel")) {
+        Spacer(Modifier.weight(1f).fillMaxHeight().background(androidx.compose.ui.graphics.Color(0x99000000)))
+        Column(Modifier.width(560.ui).fillMaxHeight().background(Tokens.panel).padding(horizontal = 28.dp, vertical = Tokens.safeVertical).focusGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Label(if (p.recordNow) "Record now" else "Record this event", Tokens.title, Tokens.text, FontWeight.Bold)
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { Label(p.timeLabel, Tokens.body, Tokens.text, modifier = Modifier.testTag("sports-record-time")) }
+                item { Label("Recording for about " + p.durationLabel, Tokens.small, Tokens.textSecondary) }
+                p.feeds.firstOrNull { it.channelId == p.chosen }?.let { f -> item { Label("Feed: " + f.label, Tokens.small, Tokens.textSecondary, maxLines = 2, modifier = Modifier.testTag("sports-record-feed")) } }
+                if (p.feeds.size > 1) item { TvButton("Choose another feed", { feedMenu = true }, Modifier.testTag("sports-record-change-feed")) }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TvButton("Before: ${p.preMin} min", { actions.recordPadding(nextOf(listOf(0, 1, 5, 10), p.preMin), p.postMin) }, Modifier.testTag("sports-record-pre"))
+                        TvButton("After: ${p.postMin} min", { actions.recordPadding(p.preMin, nextOf(listOf(0, 5, 10, 30), p.postMin)) }, Modifier.testTag("sports-record-post"))
+                    }
+                }
+                p.storageLabel?.let { item { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-record-storage")) } }
+                p.freeLabel?.let { item { Label(it, Tokens.small, Tokens.textSecondary) } }
+                p.problems.forEach { t -> item { Label(t, Tokens.small, Tokens.warning, FontWeight.SemiBold, modifier = Modifier.testTag("sports-record-problem")) } }
+                p.notes.forEach { t -> item { Label(t, Tokens.small, Tokens.textSecondary) } }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (p.canConfirm) TvButton(if (p.recordNow) "Start Recording" else "Schedule Recording", actions.confirmRecord, Modifier.focusRequester(first).testTag("sports-record-confirm"), primary = true)
+                TvButton("Cancel", actions.closeRecord, (if (p.canConfirm) Modifier else Modifier.focusRequester(first)).testTag("sports-record-close"))
+            }
+        }
+    }
+    if (feedMenu) app.streamsetu.tv.ui.components.ContextMenu("Record from", null, p.feeds.map { f ->
+        app.streamsetu.tv.ui.components.MenuAction(f.label + if (f.recordable) "" else "  (can't be recorded)", Icons.Filled.PlayArrow, enabled = f.recordable) { actions.recordFeed(f.channelId) }
+    }, onClose = { feedMenu = false })
+}
+
+private fun nextOf(options: List<Int>, current: Int): Int = options[(options.indexOf(current).let { if (it < 0) -1 else it } + 1) % options.size]

@@ -214,3 +214,41 @@ data class SportsReminderEntity(
     val createdAt: Long,
     val updatedAt: Long,
 )
+
+/**
+ * A recording the person asked for from a Sports event. This table owns the Sports identity and its matching; the recording itself is made by the app's scheduled-recording service, which this row is
+ * linked to by [scheduleId], a generated id that never changes (not the channel and start time). Nothing here is a title, a description, an address, a login or a file path. [programmeId] is empty today:
+ * no stable programme id is read from the guide, and the column is there so one can be used later without changing how a recording is identified. [authStamp] is audit context (what was true when it was
+ * made) and never authorizes anything.
+ */
+@Entity(
+    tableName = "sports_recordings",
+    indices = [Index(value = ["profileId", "sport", "identity", "slot"], unique = true), Index(value = ["scheduleId"], unique = true), Index(value = ["profileId"]), Index(value = ["identity"]), Index(value = ["startMs"]), Index(value = ["status"])],
+)
+data class SportsRecordingEntity(
+    @PrimaryKey val id: String,
+    val profileId: String,
+    val libraryKey: String,
+    val sport: String,
+    val identity: String,
+    val competitionKey: String?,
+    val participantsKey: String,
+    val sourceId: String,
+    val channelId: String,
+    /** The programme's expected start and end as the guide gives them now, without the padding. */
+    val startMs: Long,
+    val endMs: Long,
+    val preMs: Long,
+    val postMs: Long,
+    val slot: Long,
+    val siblings: Int,
+    val distinguishing: String,
+    val programmeId: String?,
+    val scheduleId: String,
+    val matchedEventId: String?,
+    val status: String,
+    val failure: String?,
+    val authStamp: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+)

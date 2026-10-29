@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
 /** (The text index, search_fts, is a virtual table made outside Room, so dropped-table checking is off.) */
 class DatabaseMigrationTests {
     @get:Rule val helper = MigrationTestHelper(InstrumentationRegistry.getInstrumentation(), AppDatabase::class.java)
-    private val current = 8
+    private val current = 9
 
     private fun SupportSQLiteDatabase.count(table: String) = query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); it.getInt(0) }
 

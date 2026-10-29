@@ -332,4 +332,19 @@ interface SportsDao {
     @Query("DELETE FROM sports_reminders WHERE id = :id") suspend fun deleteReminder(id: String): Int
     @Query("DELETE FROM sports_reminders WHERE profileId = :profile") suspend fun clearReminders(profile: String): Int
     @Query("SELECT COUNT(*) FROM sports_reminders") suspend fun reminderCount(): Int
+
+    // Recordings (the Sports side: identity, matching, state; the executor is the scheduled-recording service)
+    @Query("SELECT * FROM sports_recordings WHERE profileId = :profile ORDER BY startMs, id") suspend fun recordings(profile: String): List<SportsRecordingEntity>
+    @Query("SELECT * FROM sports_recordings WHERE profileId = :profile ORDER BY startMs, id") fun recordingsFlow(profile: String): Flow<List<SportsRecordingEntity>>
+    @Query("SELECT * FROM sports_recordings WHERE id = :id") suspend fun recording(id: String): SportsRecordingEntity?
+    @Query("SELECT * FROM sports_recordings WHERE scheduleId = :scheduleId") suspend fun recordingBySchedule(scheduleId: String): SportsRecordingEntity?
+    @Query("SELECT * FROM sports_recordings WHERE status IN ('SCHEDULED', 'RECORDING', 'REVIEW_REQUIRED') ORDER BY startMs, id") suspend fun openRecordings(): List<SportsRecordingEntity>
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertRecording(r: SportsRecordingEntity): Long
+    @Update suspend fun updateRecordings(list: List<SportsRecordingEntity>)
+    @Query("DELETE FROM sports_recordings WHERE id = :id") suspend fun deleteRecording(id: String): Int
+    @Query("DELETE FROM sports_recordings WHERE profileId = :profile") suspend fun clearRecordings(profile: String): Int
+
+    /** Moves a recording from one of [from] to [to] in one statement: it applies only if it is still in one of those states, so a repeated or late call changes nothing. Returns how many rows changed. */
+    @Query("UPDATE sports_recordings SET status = :to, failure = :failure, updatedAt = :now WHERE id = :id AND status IN (:from)")
+    suspend fun transition(id: String, from: List<String>, to: String, failure: String?, now: Long): Int
 }

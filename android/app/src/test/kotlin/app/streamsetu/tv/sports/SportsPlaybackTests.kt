@@ -137,14 +137,14 @@ class SportsPlaybackTests {
         r.c.watch("e"); await { r.deps.played.size == 1 }
         await { r.c.state.value.status == SportsPlayStatus.IDLE && r.c.state.value.message != null }
         assertNull(r.c.state.value.origin); assertEquals("That feed is not available.", r.c.state.value.message)
-        assertTrue(r.reports.all.any { it.stage == SportsPlayStage.REJECTED && it.rejection == PlayRejection.PLAYER_REFUSED })
+        assertTrue(r.reports.all.toTypedArray().any { it.stage == SportsPlayStage.REJECTED && it.rejection == PlayRejection.PLAYER_REFUSED })
     }
 
     // ---- authorization at the moment of the request
 
     private fun refused(why: PlayRejection, change: (Rig) -> Unit) {
         val r = rig(feed("a")); change(r)
-        r.c.watchFeed("e", "a"); await { r.reports.all.any { it.stage == SportsPlayStage.REJECTED } }
+        r.c.watchFeed("e", "a"); await { r.reports.all.toTypedArray().any { it.stage == SportsPlayStage.REJECTED } }
         assertTrue("nothing may play: $why", r.deps.played.isEmpty()); assertNull(r.c.state.value.origin)
         assertEquals(why, r.reports.all.first { it.stage == SportsPlayStage.REJECTED }.rejection)
         assertEquals("That feed is not available.", r.c.state.value.message)
@@ -158,19 +158,19 @@ class SportsPlaybackTests {
 
     @Test fun aFeedThatIsNotPartOfTheEventIsRefused() {
         val r = rig(feed("a")); r.deps.channels["other"] = channel("other")
-        r.c.watchFeed("e", "other"); await { r.reports.all.any { it.stage == SportsPlayStage.REJECTED } }
+        r.c.watchFeed("e", "other"); await { r.reports.all.toTypedArray().any { it.stage == SportsPlayStage.REJECTED } }
         assertTrue(r.deps.played.isEmpty())
     }
 
     @Test fun anEventThatNoLongerExistsIsRefused() {
         val r = rig(feed("a")); r.c.useEvents { null }
-        r.c.watch("e"); await { r.reports.all.any { it.rejection == PlayRejection.EVENT_GONE } }
+        r.c.watch("e"); await { r.reports.all.toTypedArray().any { it.rejection == PlayRejection.EVENT_GONE } }
         assertTrue(r.deps.played.isEmpty())
     }
 
     @Test fun aProfileChangedWhileTheChecksRunIsRefused() {
         val r = rig(feed("a")); r.deps.onLookup = { r.deps.profile = "kid" }
-        r.c.watchFeed("e", "a"); await { r.reports.all.any { it.stage == SportsPlayStage.REJECTED } }
+        r.c.watchFeed("e", "a"); await { r.reports.all.toTypedArray().any { it.stage == SportsPlayStage.REJECTED } }
         assertTrue(r.deps.played.isEmpty()); assertEquals(PlayRejection.PROFILE_CHANGED, r.reports.all.first { it.stage == SportsPlayStage.REJECTED }.rejection)
     }
 
@@ -310,7 +310,7 @@ class SportsPlaybackTests {
         val s = r.c.state.value
         assertEquals("Could not switch. Returned to the previous feed.", s.message); assertEquals("a", s.origin?.channelId); assertTrue(s.options.single { it.channelId == "a" }.current)
         assertEquals("restoring is not switching to an alternate: the third feed was never started", 3, r.deps.played.size); assertEquals(0, r.deps.stops.get())
-        assertTrue(r.reports.all.any { it.mode == SportsPlayMode.RESTORE && it.stage == SportsPlayStage.PLAYING })
+        assertTrue(r.reports.all.toTypedArray().any { it.mode == SportsPlayMode.RESTORE && it.stage == SportsPlayStage.PLAYING })
     }
 
     @Test fun ifTheRestorationAlsoFailsTheNormalFailureStateShows() {

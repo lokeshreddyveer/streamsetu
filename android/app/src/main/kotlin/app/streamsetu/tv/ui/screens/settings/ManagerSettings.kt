@@ -186,7 +186,10 @@ fun ScheduledRecordingsSettings(c: AppContainer) {
         if (list.isEmpty()) InfoRow("Nothing scheduled", "")
         list.forEach { r ->
             val status = when (r.state) { "scheduled" -> "Waiting"; "recording" -> "Recording now"; "done" -> "Recorded"; else -> r.detail ?: "Did not finish" }
-            ActionRow(r.title, "${r.channelName} · ${time.format(Date(r.startMs))} · $status", if (r.state == "scheduled" || r.state == "recording") "Cancel" else "Remove", confirm = false) { app.streamsetu.tv.record.ScheduledRecordings.cancel(context, r.id) }
+            ActionRow(r.title, "${r.channelName} · ${time.format(Date(r.startMs))} · $status", when (r.state) { "scheduled" -> "Cancel"; "recording" -> "Stop"; else -> "Remove" }, confirm = false) {
+                // Cancel removes a recording that has not started (no file exists); Stop ends one that is running and keeps what it recorded; Remove clears a finished entry (the file stays in Recordings).
+                if (r.state == "recording") app.streamsetu.tv.record.ScheduledRecordings.stop(context, r.id) else app.streamsetu.tv.record.ScheduledRecordings.cancel(context, r.id)
+            }
         }
         if (list.any { it.state != "scheduled" && it.state != "recording" }) ActionRow("Clear finished", label = "Clear", confirm = false) { app.streamsetu.tv.record.ScheduledRecordings.clearFinished(context) }
     }

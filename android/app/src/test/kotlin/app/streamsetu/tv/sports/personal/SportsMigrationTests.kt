@@ -85,4 +85,60 @@ class SportsMigrationTests {
         val src = java.io.File("../core-database/src/main/kotlin/app/streamsetu/core/data/db/AppDatabase.kt").readText()
         assertFalse(src.contains("fallbackToDestructiveMigration")); assertTrue(src.contains("MIGRATION_7_8"))
     }
+
+    // ---- schema 9: Sports recordings
+
+    private fun SupportSQLiteDatabase.recording(id: String, profile: String = "main", slot: Int = 1, scheduleId: String = "s-$id") =
+        execSQL("INSERT INTO sports_recordings (id, profileId, libraryKey, sport, identity, competitionKey, participantsKey, sourceId, channelId, startMs, endMs, preMs, postMs, slot, siblings, distinguishing, programmeId, scheduleId, matchedEventId, status, failure, authStamp, createdAt, updatedAt) VALUES ('$id', '$profile', 'lib', 'CRICKET', 'cricket|head_to_head|australia|india|', NULL, 'australia|india', 'A', 'c', 10, 20, 0, 0, $slot, 1, '', NULL, '$scheduleId', NULL, 'SCHEDULED', NULL, 'p', 1, 1)")
+
+    @Test fun theProductionSchema8UpgradesToNineWithAnEmptyRecordingsTableAndKeepsEverythingElse() {
+        helper.createDatabase("p8", 8).apply {
+            execSQL("INSERT INTO sources (id, name, type, address, enabled, lastSyncAt, status, sortOrder, draft, channelCount, movieCount, seriesCount, lastOpenedAt) VALUES ('s','Home','XTREAM','x',1,0,'OK',0,0,5,0,0,0)")
+            follow("main"); reminder("r1"); close()
+        }
+        val db = helper.runMigrationsAndValidate("p8", 9, false, *AppDatabase.MIGRATIONS)
+        assertEquals(0, db.count("sports_recordings")); assertEquals(1, db.count("sources")); assertEquals(1, db.count("sports_follows")); assertEquals(1, db.count("sports_reminders")); db.close()
+    }
+
+    @Test fun everyEarlierVersionReachesSchemaNine() {
+        for (v in 1 until 9) { helper.createDatabase("n$v", v).close(); helper.runMigrationsAndValidate("n$v", 9, false, *AppDatabase.MIGRATIONS).close() }
+    }
+
+    @Test fun recordingsCannotBeDuplicatedOrShareAScheduleId() {
+        val db = helper.createDatabase("rdup", 9)
+        db.recording("a"); try { db.recording("b", scheduleId = "s-other"); fail("the same event and slot twice must be refused") } catch (e: android.database.sqlite.SQLiteConstraintException) { }
+        try { db.recording("c", slot = 2, scheduleId = "s-a"); fail("a schedule id belongs to one recording") } catch (e: android.database.sqlite.SQLiteConstraintException) { }
+        db.recording("d", profile = "kid"); db.recording("e", slot = 2); assertEquals(3, db.count("sports_recordings")); db.close()
+    }
+
+    @Test fun theRecordingIndexesExistAndProfileQueriesUseThem() {
+        val db = helper.createDatabase("ridx", 9)
+        for (i in 0 until 300) db.recording("r$i", profile = if (i % 2 == 0) "main" else "kid", slot = i)
+        val names = db.query("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'sports_recordings'").use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+        for (n in listOf("index_sports_recordings_profileId", "index_sports_recordings_identity", "index_sports_recordings_startMs", "index_sports_recordings_status", "index_sports_recordings_scheduleId", "index_sports_recordings_profileId_sport_identity_slot")) assertTrue("$n in $names", n in names)
+        val plan = db.query("EXPLAIN QUERY PLAN SELECT * FROM sports_recordings WHERE status IN ('SCHEDULED') ORDER BY startMs").use { c -> buildString { while (c.moveToNext()) append(c.getString(3)).append(" | ") } }
+        assertTrue(plan, "INDEX" in plan.uppercase()); db.close()
+    }
+
+    @Test fun removingAProfileRemovesItsRecordingsOnly() {
+        val db = helper.createDatabase("rprof", 9); Profiles.create(db); val kid = Profiles.add(db, "Kid", false, null)!!
+        db.recording("m", "main"); db.recording("k", kid.id, slot = 2); assertTrue(Profiles.remove(db, kid.id))
+        assertEquals(1, db.count("sports_recordings")); db.query("SELECT profileId FROM sports_recordings").use { it.moveToFirst(); assertEquals("main", it.getString(0)) }; db.close()
+    }
+
+    @Test fun deletingAPlaylistOrItsGuideLeavesRecordingsAsTheyWere() {
+        val db = helper.createDatabase("rguide", 9); db.recording("a")
+        db.execSQL("DELETE FROM sources"); db.execSQL("DELETE FROM epg"); db.execSQL("DELETE FROM channels"); assertEquals(1, db.count("sports_recordings")); db.close()
+    }
+
+    @Test fun aMigrationThatFailsLeavesSchemaEightUsable() {
+        helper.createDatabase("fail", 8).apply { follow("main"); reminder("r"); close() }
+        val broken = object : androidx.room.migration.Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE sports_recordings (id TEXT NOT NULL, PRIMARY KEY(id))"); throw IllegalStateException("the upgrade failed half way") }
+        }
+        try { helper.runMigrationsAndValidate("fail", 9, false, broken); fail("the broken upgrade must not pass") } catch (e: Exception) { }
+        val db = helper.runMigrationsAndValidate("fail", 8, false, *AppDatabase.MIGRATIONS)          // reopened at the old version: nothing was lost and nothing half-made remains
+        assertEquals(1, db.count("sports_follows")); assertEquals(1, db.count("sports_reminders"))
+        assertEquals(0, db.query("SELECT COUNT(*) FROM sqlite_master WHERE name = 'sports_recordings'").use { it.moveToFirst(); it.getInt(0) }); db.close()
+    }
 }

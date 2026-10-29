@@ -36,8 +36,9 @@ import javax.inject.Inject
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class SportsViewModel internal constructor(private val deps: SportsDeps, scope: CoroutineScope?, private val debounceMs: Long, private val diagnostics: SportsDiagnostics = SportsDiagnostics.Log, private val playback: SportsPlaybackCoordinator? = null, private val multiview: app.streamsetu.tv.sports.multiview.SportsMultiviewController? = null,
-    private val follows: app.streamsetu.tv.sports.personal.SportsFollowService? = null, private val reminders: app.streamsetu.tv.sports.personal.SportsReminderService? = null) : ViewModel() {
-    @Inject constructor(c: AppContainer) : this(RealSportsDeps(c), null, 1_500L, SportsDiagnostics.Log, c.sportsPlayback, c.sportsMultiview, c.sportsFollows, c.sportsReminders)
+    private val follows: app.streamsetu.tv.sports.personal.SportsFollowService? = null, private val reminders: app.streamsetu.tv.sports.personal.SportsReminderService? = null,
+    private val recordings: app.streamsetu.tv.sports.recording.SportsRecordingService? = null) : ViewModel() {
+    @Inject constructor(c: AppContainer) : this(RealSportsDeps(c), null, 1_500L, SportsDiagnostics.Log, c.sportsPlayback, c.sportsMultiview, c.sportsFollows, c.sportsReminders, c.sportsRecordings)
 
     private val work: CoroutineScope = scope ?: viewModelScope
 
@@ -63,7 +64,10 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
     private val managing = MutableStateFlow(false)
     private val personalNote = MutableStateFlow<String?>(null)
     private class Personal(val follows: app.streamsetu.tv.sports.personal.FollowSet, val reminders: List<app.streamsetu.core.data.db.SportsReminderEntity>, val my: Boolean, val manage: Boolean, val note: String?)
-    private class Extras(val playback: SportsPlaybackState, val multiviewCount: Int, val note: String?, val personal: Personal)
+    private val abilities = MutableStateFlow<EventAbilities?>(null)
+    private val panel = MutableStateFlow<RecordPanelUi?>(null)
+    private class Recs(val rows: List<app.streamsetu.core.data.db.SportsRecordingEntity>, val abilities: EventAbilities?, val panel: RecordPanelUi?)
+    private class Extras(val playback: SportsPlaybackState, val multiviewCount: Int, val note: String?, val personal: Personal, val recs: Recs)
     private val extras = combine(
         combine(
             playback?.state ?: kotlinx.coroutines.flow.flowOf(SportsPlaybackState()),
@@ -75,7 +79,8 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
             reminders?.reminders ?: kotlinx.coroutines.flow.flowOf(emptyList()),
             mySports, managing, personalNote,
         ) { f, r, my, m, n -> Personal(f, r, my, m, n) },
-    ) { a, p -> Extras(a.first, a.second, a.third, p) }
+        combine(recordings?.recordings ?: kotlinx.coroutines.flow.flowOf(emptyList()), abilities, panel) { rows, ab, pn -> Recs(rows, ab, pn) },
+    ) { a, p, rc -> Extras(a.first, a.second, a.third, p, rc) }
 
     val uiState: StateFlow<SportsHubUiState> = combine(loaded, selected, detailId, deps.minutes, extras) { l, sel, detail, now, x -> build(l, sel, detail, now, x) }
         .flowOn(Dispatchers.Default)
@@ -94,12 +99,12 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
     fun select(sport: Sport?) { mySports.value = false; selected.value = sport }
     /** My Sports: what the active profile follows, from the events already loaded. */
     fun selectMy() { mySports.value = true }
-    fun openDetail(id: String) { if (detailId.value != id) { playback?.end(); mvNote.value = null; personalNote.value = null }; detailId.value = id }
+    fun openDetail(id: String) { if (detailId.value != id) { playback?.end(); mvNote.value = null; personalNote.value = null; abilities.value = null; panel.value = null }; detailId.value = id; refreshAbilities(id) }
     /** Closing the detail ends the Sports playback that belongs to it. */
     fun closeDetail() {
         // A channel that outlived its event is not stopped by leaving the panel: Sports gives it up to Live TV's embedded player.
         if (playback?.state?.value?.held != null) { playback.handOff(); return }
-        detailId.value = null; playback?.end()
+        detailId.value = null; panel.value = null; abilities.value = null; playback?.end()
     }
     /** Stop on the held channel's panel. */
     fun stopHeld() { detailId.value = null; playback?.end() }
@@ -144,6 +149,94 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
         }
     }
 
+    // ---- recording, start over and catch-up (each is the person choosing; none runs from focus)
+
+    private var abilitiesGen = 0
+
+    /** Works out, from what the app already knows (no provider is asked), what the open event can offer. A result that arrives after the person has moved on is dropped. */
+    private fun refreshAbilities(eventId: String) {
+        val svc = recordings ?: return; val gen = ++abilitiesGen
+        work.launch {
+            val e = loaded.value.events.firstOrNull { it.id == eventId } ?: run { if (gen == abilitiesGen) abilities.value = null; return@launch }
+            val p = svc.plan(e, null, PRE_DEFAULT_MS, POST_DEFAULT_MS, loaded.value.events)
+            val (startOver, catchUp) = svc.archiveOptions(e, deps.now())
+            if (gen != abilitiesGen || detailId.value != eventId) return@launch
+            val any = p.feeds.any { it.recordable }
+            abilities.value = EventAbilities(eventId, canRecord = any && app.streamsetu.tv.sports.recording.PlanIssue.EVENT_OVER !in p.issues,
+                recordHint = if (!any && p.feeds.isNotEmpty() && app.streamsetu.tv.sports.recording.PlanIssue.EVENT_OVER !in p.issues) "Recording isn't supported for this stream format yet." else null, startOver = startOver, catchUp = catchUp)
+        }
+    }
+
+    fun openRecord() { val e = openEvent() ?: return; buildPanel(e.id, null, (PRE_DEFAULT_MS / 60_000).toInt(), (POST_DEFAULT_MS / 60_000).toInt()) }
+    fun closeRecord() { panel.value = null }
+    fun recordPadding(preMin: Int, postMin: Int) { val p = panel.value ?: return; buildPanel(p.eventId, p.chosen, preMin, postMin) }
+    fun recordFeed(channelId: String) { val p = panel.value ?: return; buildPanel(p.eventId, channelId, p.preMin, p.postMin) }
+
+    private fun buildPanel(eventId: String, chosen: String?, preMin: Int, postMin: Int) {
+        val svc = recordings ?: return
+        work.launch {
+            val e = loaded.value.events.firstOrNull { it.id == eventId } ?: return@launch
+            val p = svc.plan(e, chosen, preMin * 60_000L, postMin * 60_000L, loaded.value.events)
+            if (detailId.value != eventId) return@launch
+            val names = loaded.value.sourceNames
+            val clock = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).also { it.timeZone = deps.zone }
+            val gb = { b: Long -> String.format(java.util.Locale.US, "%.1f", b / 1_073_741_824.0) }
+            panel.value = RecordPanelUi(
+                eventId, p.recordNow, if (p.recordNow) "Starting now, until " + clock.format(java.util.Date(e.endMs)) else clock.format(java.util.Date(e.startMs)) + " – " + clock.format(java.util.Date(e.endMs)),
+                p.feeds.map { f -> e.feeds.firstOrNull { it.channelId == f.channelId }?.let { RecordFeedUi(f.channelId, it.channelName + "  ·  " + (names[it.sourceId] ?: "Playlist"), f.recordable) } }.filterNotNull(),
+                p.chosenChannelId, preMin, postMin, durationText(p.durationMs),
+                p.estimate?.let { "About ${gb(it.lowBytes)} to ${gb(it.highBytes)} GB (an estimate)" }, if (p.freeBytes > 0) "${gb(p.freeBytes)} GB free" else null,
+                p.issues.map(::problemText), p.notes.map(::noteText), p.canConfirm,
+            )
+        }
+    }
+
+    private fun durationText(ms: Long): String { val m = (ms / 60_000L).coerceAtLeast(0); return if (m >= 60) "${m / 60} h ${m % 60} min" else "$m min" }
+
+    private fun problemText(i: app.streamsetu.tv.sports.recording.PlanIssue) = when (i) {
+        app.streamsetu.tv.sports.recording.PlanIssue.EVENT_OVER -> "This event is over."
+        app.streamsetu.tv.sports.recording.PlanIssue.NO_RECORDABLE_FEED -> "Recording isn't supported for this stream format yet."
+        app.streamsetu.tv.sports.recording.PlanIssue.DUPLICATE_EXACT -> "This event is already scheduled."
+        app.streamsetu.tv.sports.recording.PlanIssue.SAME_EVENT_SCHEDULED -> "This event is already scheduled with other settings."
+        app.streamsetu.tv.sports.recording.PlanIssue.CONNECTION_LIMIT -> "Your provider has no free connection for a recording at that time."
+        app.streamsetu.tv.sports.recording.PlanIssue.DEVICE_RECORDING_LIMIT -> "Two recordings would run at once, which is as many as this device records."
+        app.streamsetu.tv.sports.recording.PlanIssue.STORAGE_NOT_ENOUGH -> "There is not enough free space to record this."
+        app.streamsetu.tv.sports.recording.PlanIssue.STORAGE_UNAVAILABLE -> "The recordings folder cannot be written to."
+        app.streamsetu.tv.sports.recording.PlanIssue.REVIEW_REQUIRED -> "The schedule changed and needs a review."
+    }
+
+    private fun noteText(n: app.streamsetu.tv.sports.recording.PlanNote) = when (n) {
+        app.streamsetu.tv.sports.recording.PlanNote.OVERLAP_ALLOWED -> "It overlaps another recording that can run alongside it."
+        app.streamsetu.tv.sports.recording.PlanNote.STORAGE_UNCERTAIN -> "Free space may not be enough: the size is only an estimate."
+        app.streamsetu.tv.sports.recording.PlanNote.FORMAT_UNCONFIRMED -> "The stream's format is confirmed when recording starts."
+    }
+
+    /** Confirms what the panel shows; everything is checked again first. Nothing else is cancelled or replaced. */
+    fun confirmRecord() {
+        val svc = recordings ?: return; val p = panel.value ?: return
+        work.launch {
+            val e = loaded.value.events.firstOrNull { it.id == p.eventId } ?: return@launch
+            when (val out = svc.record(e, p.chosen, p.preMin * 60_000L, p.postMin * 60_000L, loaded.value.events)) {
+                is app.streamsetu.tv.sports.recording.RecordOutcome.Scheduled -> { panel.value = null; personalNote.value = if (p.recordNow) "Recording started." else "Recording scheduled. It is listed in Settings, under Recordings." }
+                is app.streamsetu.tv.sports.recording.RecordOutcome.Exists -> { panel.value = null; personalNote.value = "This event is already scheduled." }
+                is app.streamsetu.tv.sports.recording.RecordOutcome.Blocked -> buildPanel(p.eventId, p.chosen, p.preMin, p.postMin)
+            }
+            refreshAbilities(p.eventId)
+        }
+    }
+
+    fun cancelRecording(id: String) { val svc = recordings ?: return; work.launch { svc.cancel(id); detailId.value?.let(::refreshAbilities) } }
+    fun stopRecording(id: String) { val svc = recordings ?: return; work.launch { svc.stop(id); svc.syncFromExecutor(); detailId.value?.let(::refreshAbilities) } }
+
+    /** Start Over / Catch-Up on one feed. The channel and the offer are checked again now, the playback is the app's catch-up playback, and there is never a fall back to live. */
+    fun archive(channelId: String, startOver: Boolean, opened: () -> Unit) {
+        val e = openEvent() ?: return; val svc = recordings ?: return
+        work.launch {
+            val ok = svc.playArchive(e, channelId, startOver) { }
+            if (ok) { playback?.end(stopPlayback = false); kotlinx.coroutines.withContext(Dispatchers.Main) { opened() } } else personalNote.value = "That is not available any more."
+        }
+    }
+
     // ---- playback (nothing here is called by focus; each is the person pressing OK)
 
     fun watchBest() { detailId.value?.let { playback?.watch(it) } }
@@ -180,7 +273,7 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
         val changed = currentScope != s
         currentScope = s
         if (!changed) return
-        if (!first) { reminders?.securityChanged(); playback?.invalidate() }             // the banner goes at once; a pending play request or open feed list from before the change is dropped
+        if (!first) { reminders?.securityChanged(); panel.value = null; abilities.value = null; playback?.invalidate() }             // the banner goes at once; a pending play request or open feed list from before the change is dropped
         startLoad(clear = !first)                          // a change to who may see what: clear at once (the first value has nothing to clear)
     }
 
@@ -204,6 +297,8 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
                 loaded.value = Loaded(events = r.events, revision = r.revision, sourceNames = names, hasGuide = hasGuide, loading = false)
                 diagnostics.record(SportsLoadReport.of(r.events, now, deps.zone, scope.sourceIds.size, ms(), r.cacheHit))
                 reminders?.reassociate(r.events)                                                  // durable reminders find their events again, in one batch
+                recordings?.reassociate(r.events)                                                 // so do recordings that have not started, on the same evidence
+                detailId.value?.let(::refreshAbilities)
                 playback?.refreshOptions()                                                        // a feed that is no longer allowed leaves the list; a playing one that is not is let go
             } catch (e: CancellationException) {
                 diagnostics.record(SportsLoadReport.failed(SportsLoadOutcome.CANCELLED, null, scope.sourceIds.size, ms()))
@@ -216,6 +311,30 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
     }
 
     // ---- state (computed here, never in a composable)
+
+    private fun recordingUi(e: SportsEvent, rows: List<app.streamsetu.core.data.db.SportsRecordingEntity>): RecordingUi? {
+        val identity = app.streamsetu.tv.sports.personal.SportsKeys.identity(e); val slot = app.streamsetu.tv.sports.personal.SportsKeys.slot(e.startMs)
+        val r = rows.firstOrNull { (it.matchedEventId == e.id || (it.identity == identity && it.slot == slot)) && it.status != app.streamsetu.tv.sports.recording.SportsRecordingStatus.CANCELLED.name } ?: return null
+        val status = app.streamsetu.tv.sports.recording.SportsRecordingStatus.valueOf(r.status)
+        val clock = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).also { it.timeZone = deps.zone }
+        val file = recordings?.fileOf(r.scheduleId)
+        val line = when (status) {
+            app.streamsetu.tv.sports.recording.SportsRecordingStatus.SCHEDULED -> "Recording scheduled · " + clock.format(java.util.Date(r.startMs))
+            app.streamsetu.tv.sports.recording.SportsRecordingStatus.RECORDING -> "Recording now"
+            app.streamsetu.tv.sports.recording.SportsRecordingStatus.COMPLETED -> "Recorded"
+            app.streamsetu.tv.sports.recording.SportsRecordingStatus.FAILED -> "Recording failed" + (r.failure?.let { " · " + failureText(it) } ?: "") + if (file != null) ". The part recorded was kept." else ""
+            app.streamsetu.tv.sports.recording.SportsRecordingStatus.REVIEW_REQUIRED -> "Schedule changed — review required"
+            app.streamsetu.tv.sports.recording.SportsRecordingStatus.CANCELLED -> ""
+        }
+        return RecordingUi(r.id, status, line, status == app.streamsetu.tv.sports.recording.SportsRecordingStatus.SCHEDULED || status == app.streamsetu.tv.sports.recording.SportsRecordingStatus.REVIEW_REQUIRED,
+            status == app.streamsetu.tv.sports.recording.SportsRecordingStatus.RECORDING, file?.let { app.streamsetu.core.data.repo.RecordingFiles.playId(it) }, status == app.streamsetu.tv.sports.recording.SportsRecordingStatus.REVIEW_REQUIRED)
+    }
+
+    private fun failureText(f: String) = when (f) {
+        "CONNECTION_LIMIT" -> "no free connection from the provider"; "DEVICE_RECORDING_LIMIT" -> "two recordings were already running"; "STORAGE" -> "not enough free space"
+        "UNSUPPORTED_FORMAT" -> "the stream format cannot be recorded yet"; "ENDED_EARLY" -> "the stream stopped early"; "INTERRUPTED" -> "it was interrupted"; "MISSED" -> "the device was off"
+        "UNAUTHORIZED", "PROFILE_CHANGED", "CHANNEL_MISSING", "SOURCE_OFF" -> "it was no longer allowed"; "REVIEW_REQUIRED" -> "the schedule needed a review"; else -> "it did not finish"
+    }
 
     private fun build(l: Loaded, sel: Sport?, detail: String?, now: Long, x: Extras): SportsHubUiState {
         val pb = x.playback; val ps = x.personal
@@ -236,6 +355,7 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
                 val on = ps.follows.isFollowing(kind, e.sport, key)
                 FollowOptionUi(kind, e.sport, name, (if (on) "Following " else "Follow ") + name, on)
             }.orEmpty() },
+            recordingFor = { e -> recordingUi(e, x.recs.rows) }, abilities = x.recs.abilities,
             reminderFor = { e ->
                 val identity = app.streamsetu.tv.sports.personal.SportsKeys.identity(e); val slot = app.streamsetu.tv.sports.personal.SportsKeys.slot(e.startMs)
                 ps.reminders.firstOrNull { it.matchedEventId == e.id || (it.identity == identity && it.slot == slot) }?.let(::reminderUi)
@@ -256,6 +376,10 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
         )
         return SportsHubUiState(l.loading, l.refreshing, r.selected, r.filters, r.live, r.soon, r.today, r.upcoming,
             r.detail?.copy(multiviewNote = x.note) ?: pb.held?.takeIf { !pb.handoff }?.let { SportsSections.heldDetail(it.channelName) }, message, l.revision, now, pb.handoff, x.multiviewCount, r.my, !ps.follows.isEmpty, manage)
+            .let { it.copy(recordPanel = x.recs.panel) }
             .let { if (it.detail != null && ps.note != null) it.copy(detail = it.detail.copy(multiviewNote = it.detail.multiviewNote ?: ps.note)) else it }
     }
 }
+
+private const val PRE_DEFAULT_MS = 60_000L
+private const val POST_DEFAULT_MS = 5 * 60_000L

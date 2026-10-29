@@ -122,7 +122,12 @@ class MultiviewSession(
     private val _state = MutableStateFlow(MultiviewState(limit = TileLimitPolicy.MAX))
     val state: StateFlow<MultiviewState> = _state.asStateFlow()
 
+    @Volatile private var sources: List<String> = emptyList()
+    /** One entry per connection the tiles are using (or about to use), for the recording capacity check. Read from any thread. */
+    fun activeSources(): List<String> = sources
+
     private fun publish() {
+        sources = tiles.filter { it.status != TileStatus.FAILED && it.status != TileStatus.NO_DECODER }.map { it.entry.sourceId }
         val t = tiles.map { it.toUi() }
         _state.value = MultiviewState(t, capability.usableLimit(), notice, sessionMessage)
     }

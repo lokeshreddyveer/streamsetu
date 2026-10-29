@@ -76,6 +76,10 @@ class AppContainer @Inject constructor(
 
     /** Set by the main screen: asks the system for the notification permission. Called only by the first Sports reminder, never at launch. */
     @Volatile var askNotificationPermission: (() -> Unit)? = null
+    /** Recordings asked for from Sports events (identity and matching); the recording itself is the scheduled-recording service's. */
+    val sportsRecordings: app.streamsetu.tv.sports.recording.SportsRecordingService by lazy { app.streamsetu.tv.sports.recording.SportsRecordingService(db.sports(), app.streamsetu.tv.sports.recording.RealRecordingDeps(context, this)) }
+    /** The check every scheduled recording passes when it is due. */
+    val recordingGate: app.streamsetu.tv.record.RecordingGate by lazy { app.streamsetu.tv.sports.recording.RealRecordingGate(this) }
     /** What the active profile follows in Sports. */
     val sportsFollows: app.streamsetu.tv.sports.personal.SportsFollowService by lazy { app.streamsetu.tv.sports.personal.SportsFollowService(db.sports(), app.streamsetu.tv.sports.RealSportsAuthorization(this), profiles.activeId) }
     /** The reminders the active profile asked for, their alarms and the banner. */
@@ -577,6 +581,7 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             kotlinx.coroutines.delay(1500)
             app.streamsetu.tv.record.ScheduledRecordings.recover(this@StreamSetuApp)
             app.streamsetu.tv.record.ScheduledRecordings.rearm(this@StreamSetuApp)
+            container.sportsRecordings.start(container.appScope)          // the Sports rows follow the recordings
             container.lan.startIfEnabled(container.profiles.isMainActive)
             kotlinx.coroutines.delay(5000)
             runCatching { container.globalSearch.warmUp() }

@@ -137,7 +137,7 @@ fun PhoneGuide(c: AppContainer, nav: Navigator, vm: GuideViewModel = hiltViewMod
                 val recorded = app.streamsetu.tv.record.ScheduledRecordings.isScheduled(ch.id, p.startMs)
                 add(SheetItem(if (recorded) "Cancel recording" else "Record", Icons.Filled.FiberManualRecord) {
                     if (recorded) app.streamsetu.tv.record.ScheduledRecordings.cancel(remindContext, app.streamsetu.tv.record.ScheduledRecordings.idOf(ch.id, p.startMs))
-                    else { app.streamsetu.tv.record.ScheduledRecordings.schedule(remindContext, ch, p); android.widget.Toast.makeText(remindContext, "Will record " + p.title, android.widget.Toast.LENGTH_SHORT).show() }
+                    else { app.streamsetu.tv.record.ScheduledRecordings.schedule(remindContext, ch, p, c.profiles.activeId.value); android.widget.Toast.makeText(remindContext, "Will record " + p.title, android.widget.Toast.LENGTH_SHORT).show() }
                 })
             }
         },

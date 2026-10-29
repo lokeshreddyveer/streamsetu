@@ -46,7 +46,26 @@ class StreamResolver(private val sources: SourceRepository, private val credenti
         return out
     }
 
-    override suspend fun resolve(sourceId: String, streamRef: String): String? {
+    override suspend fun resolve(sourceId: String, streamRef: String): String? = resolveInternal(sourceId, streamRef, preferTs = false)
+
+    /** The address to record from: the same resolver, but a live Xtream channel is asked for the transport stream when the account offers it (a recording copies bytes; an HLS playlist cannot be copied). */
+    suspend fun resolveForRecording(sourceId: String, streamRef: String): String? = resolveInternal(sourceId, streamRef, preferTs = true)
+
+    /** What a live channel would be recorded as, judged only from what is already known: no request is made, so it is safe to ask from a screen. */
+
+    fun recordableFormat(sourceId: String, streamRef: String): RecordableFormat {
+        if (streamRef.startsWith("live:")) {
+            val allowed = prefs.getString(sourceId, null)?.split(',')?.filter { it.isNotBlank() }.orEmpty()
+            return when { allowed.isEmpty() -> RecordableFormat.UNKNOWN; "ts" in allowed -> RecordableFormat.TS; "m3u8" in allowed -> RecordableFormat.HLS; else -> RecordableFormat.UNKNOWN }
+        }
+        if (streamRef.startsWith("http://") || streamRef.startsWith("https://")) {
+            val path = streamRef.substringBefore('?').lowercase()
+            return when { path.endsWith(".m3u8") || ".m3u8" in streamRef.lowercase() -> RecordableFormat.HLS; path.endsWith(".ts") -> RecordableFormat.TS; else -> RecordableFormat.UNKNOWN }
+        }
+        return RecordableFormat.UNKNOWN
+    }
+
+    private suspend fun resolveInternal(sourceId: String, streamRef: String, preferTs: Boolean): String? {
         if (streamRef.startsWith("stalker:")) {
             val src = sources.get(sourceId) ?: return null
             return withContext(Dispatchers.IO) { runCatching { stalker.link(src, streamRef.removePrefix("stalker:")) }.getOrNull() }
@@ -71,7 +90,7 @@ class StreamResolver(private val sources: SourceRepository, private val credenti
         if (ref.startsWith("live:")) {
             val parts = ref.split(':')
             val allowed = allowedFormats(sourceId, s.address, s.username.orEmpty(), pass)
-            val ext = pickLiveFormat(allowed, parts.getOrNull(2).orEmpty())
+            val ext = if (preferTs && "ts" in allowed) "ts" else pickLiveFormat(allowed, parts.getOrNull(2).orEmpty())
             ref = "live:${parts.getOrNull(1)}:$ext"
         }
         return Xtream.streamUrl(s.address, s.username.orEmpty(), pass, ref)
@@ -121,3 +140,6 @@ class StreamResolver(private val sources: SourceRepository, private val credenti
         }
     }
 }
+
+/** What a channel can be recorded as: a continuous transport stream, a playlist of segments (not recordable here), or not known without asking the provider. */
+enum class RecordableFormat { TS, HLS, UNKNOWN }

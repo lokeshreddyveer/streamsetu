@@ -32,6 +32,8 @@ data class SportsEventCard(
     val statusLabel: String,
     /** In My Sports: "Because you follow India". Shown small; never logged. */
     val reason: String? = null,
+    /** A small mark when a recording of this event is scheduled, running, done or waiting for review. Existing Recordings stays the only list. */
+    val recordingLabel: String? = null,
     /** The person asked to be reminded of this event. */
     val reminded: Boolean = false,
 )
@@ -39,6 +41,33 @@ data class SportsEventCard(
 /** One thing the open event offers to follow, and whether it already is. */
 @Immutable
 data class FollowOptionUi(val kind: app.streamsetu.tv.sports.personal.FollowKind, val sport: Sport, val name: String, val label: String, val following: Boolean)
+
+/** A recording of the open event, as the screen shows it. */
+@Immutable
+data class RecordingUi(
+    val id: String, val status: app.streamsetu.tv.sports.recording.SportsRecordingStatus, val line: String,
+    val canCancel: Boolean, val canStop: Boolean,
+    /** The id the finished (or partly kept) recording plays under, or null if there is no file to open. */
+    val playId: String?, val review: Boolean,
+)
+
+/** One feed an archive action can use, in ranked order. */
+@Immutable
+data class ArchiveChoiceUi(val channelId: String, val label: String)
+
+/** What Start Over, Catch-Up and Record offer for the open event. Worked out when the event is opened, from what the app already knows; no provider is asked. */
+@Immutable
+data class EventAbilities(val eventId: String, val canRecord: Boolean, val recordHint: String?, val startOver: List<String>, val catchUp: List<String>)
+
+/** The recording confirmation: what will be recorded, when, for how long, and anything in the way. Nothing here is a path or an address. */
+@Immutable
+data class RecordPanelUi(
+    val eventId: String, val recordNow: Boolean, val timeLabel: String, val feeds: List<RecordFeedUi>, val chosen: String?, val preMin: Int, val postMin: Int,
+    val durationLabel: String, val storageLabel: String?, val freeLabel: String?, val problems: List<String>, val notes: List<String>, val canConfirm: Boolean,
+)
+
+@Immutable
+data class RecordFeedUi(val channelId: String, val label: String, val recordable: Boolean)
 
 /** A reminder as the screen shows it. */
 @Immutable
@@ -110,6 +139,10 @@ data class SportsEventDetail(
     val heldChannel: String? = null,
     val followOptions: List<FollowOptionUi> = emptyList(),
     val reminder: ReminderUi? = null,
+    val recording: RecordingUi? = null,
+    val abilities: EventAbilities? = null,
+    val startOver: List<ArchiveChoiceUi> = emptyList(),
+    val catchUp: List<ArchiveChoiceUi> = emptyList(),
     /** What the last "Add to Multiview" said, shown under the button. */
     val multiviewNote: String? = null,
 )
@@ -157,6 +190,8 @@ data class SportsHubUiState(
     val hasFollows: Boolean = false,
     /** The Manage My Sports panel: what is followed, and the reminders. Null when it is closed. */
     val manage: ManageUi? = null,
+    /** The recording confirmation, or null when it is closed. */
+    val recordPanel: RecordPanelUi? = null,
 ) {
     val isEmpty: Boolean get() = live.isEmpty() && startingSoon.isEmpty() && today.isEmpty() && upcoming.isEmpty()
     fun section(s: SportsSection): List<SportsEventCard> = when (s) { SportsSection.LIVE_NOW -> live; SportsSection.STARTING_SOON -> startingSoon; SportsSection.TODAY -> today; SportsSection.UPCOMING -> upcoming }
@@ -200,7 +235,8 @@ object SportsSections {
     }
 
     fun build(events: List<SportsEvent>, nowMs: Long, zone: TimeZone, selected: Sport?, detailId: String?, sourceNames: Map<String, String>, locale: java.util.Locale = java.util.Locale.getDefault(), play: SportsDetailPlay = SportsDetailPlay(),
-        personal: app.streamsetu.tv.sports.personal.Personalization = app.streamsetu.tv.sports.personal.Personalization.NONE, followOptions: (SportsEvent) -> List<FollowOptionUi> = { emptyList() }, reminderFor: (SportsEvent) -> ReminderUi? = { null }): Result {
+        personal: app.streamsetu.tv.sports.personal.Personalization = app.streamsetu.tv.sports.personal.Personalization.NONE, followOptions: (SportsEvent) -> List<FollowOptionUi> = { emptyList() }, reminderFor: (SportsEvent) -> ReminderUi? = { null },
+        recordingFor: (SportsEvent) -> RecordingUi? = { null }, abilities: EventAbilities? = null): Result {
         val labels = Labels(zone, locale, nowMs)
         val upcomingOrLive = events.filter { it.endMs > nowMs }                                   // a finished event is not listed
         val present = Sport.values().filter { s -> upcomingOrLive.any { it.sport == s } }
@@ -215,7 +251,7 @@ object SportsSections {
         val live = ArrayList<SportsEventCard>(); val soon = ArrayList<SportsEventCard>(); val today = ArrayList<SportsEventCard>(); val later = ArrayList<SportsEventCard>()
         // Inside a section: reminded events, then followed sides, competitions and sports, then the usual order by time. An event never changes section.
         for (e in shown.sortedWith(compareBy({ personal.rank(it) }, { it.startMs }, { it.title }, { it.id }))) {
-            val c = card(e, nowMs, labels).copy(reason = if (my) personal.reasonText(e) else null, reminded = e.id in personal.remindedEventIds)
+            val c = card(e, nowMs, labels).copy(reason = if (my) personal.reasonText(e) else null, reminded = e.id in personal.remindedEventIds, recordingLabel = recordingFor(e)?.let { recordingMark(it) })
             when {
                 e.state(nowMs) == SportsEventState.LIVE -> live.add(c)
                 e.startMs <= nowMs + SOON_MS -> soon.add(c)
@@ -223,9 +259,20 @@ object SportsSections {
                 else -> later.add(c)
             }
         }
-        val detail = detailId?.let { id -> events.firstOrNull { it.id == id } }?.let { detail(it, nowMs, sourceNames, labels, play).copy(followOptions = followOptions(it), reminder = reminderFor(it)) }
+        val detail = detailId?.let { id -> events.firstOrNull { it.id == id } }?.let { detail(it, nowMs, sourceNames, labels, play).let { dd -> dd.copy(followOptions = followOptions(it), reminder = reminderFor(it), recording = recordingFor(it), abilities = abilities?.takeIf { a -> a.eventId == it.id }, startOver = archiveChoices(abilities?.takeIf { a -> a.eventId == it.id }?.startOver, dd), catchUp = archiveChoices(abilities?.takeIf { a -> a.eventId == it.id }?.catchUp, dd)) } }
         return Result(live, soon, today, later, filters, effective, detail, my)
     }
+
+    fun recordingMark(r: RecordingUi) = when (r.status) {
+        app.streamsetu.tv.sports.recording.SportsRecordingStatus.SCHEDULED -> "Recording scheduled"
+        app.streamsetu.tv.sports.recording.SportsRecordingStatus.RECORDING -> "Recording now"
+        app.streamsetu.tv.sports.recording.SportsRecordingStatus.COMPLETED -> "Recorded"
+        app.streamsetu.tv.sports.recording.SportsRecordingStatus.FAILED -> "Recording failed"
+        app.streamsetu.tv.sports.recording.SportsRecordingStatus.REVIEW_REQUIRED -> "Review recording"
+        app.streamsetu.tv.sports.recording.SportsRecordingStatus.CANCELLED -> null
+    }
+
+    private fun archiveChoices(ids: List<String>?, d: SportsEventDetail): List<ArchiveChoiceUi> = ids.orEmpty().mapNotNull { id -> d.feeds.firstOrNull { it.channelId == id }?.let { ArchiveChoiceUi(id, it.channelName + "  ·  " + it.sourceName) } }
 
     /** What the panel shows for a channel that keeps playing after its event left the guide: no event content is carried over. */
     fun heldDetail(channelName: String) = SportsEventDetail(
