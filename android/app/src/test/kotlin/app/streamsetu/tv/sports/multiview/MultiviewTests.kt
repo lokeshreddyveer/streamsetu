@@ -228,8 +228,13 @@ class MultiviewTests {
     @Test fun staleOrRestrictedEntriesAreRejectedBeforeAnythingPlays() {
         val r = rig("1", "2", "3"); r.d.auth.hiddenChannels.add("3")
         r.s.start(listOf(entry("1"), entry("2"), entry("3"))); r.ready(0)
-        await { r.states().size == 2 }
-        assertEquals(listOf("1", "2"), r.states().map { it.channelId }); assertEquals("the restricted one was never created", 2, r.d.createdCount.get())
+        try { await { r.states().size == 2 && r.d.createdCount.get() >= 2 } }                           // observable session state, bounded: the list is published and the second engine has been made
+        catch (e: Throwable) { fail("timed out: tiles=${r.states().map { it.channelId }} created=${r.d.createdCount.get()} released=${r.d.releasedCount.get()} loads=${r.d.loadCalls.get()}") }
+        assertEquals(listOf("1", "2"), r.states().map { it.channelId })
+        // createdCount counts every engine ever made, including one made and then released, so equality here is the whole history
+        assertEquals("exactly the two allowed tiles made one engine each, and the restricted one never made one", 2, r.d.createdCount.get())
+        assertEquals("none was made and then torn down", 0, r.d.releasedCount.get())
+        assertEquals("one load per allowed tile, none for the restricted one", 2, r.d.loadCalls.get()); assertTrue("it was never asked to play, even briefly", r.d.auth.played.none { it.id == "3" })
         val few = rig("1", "2"); few.d.auth.channels.remove("2"); few.s.start(listOf(entry("1"), entry("2")))
         await { few.s.state.value.notice == MultiviewNotice.NOT_ENOUGH }
         assertEquals("fewer than two valid feeds: no player was ever made", 0, few.d.createdCount.get())

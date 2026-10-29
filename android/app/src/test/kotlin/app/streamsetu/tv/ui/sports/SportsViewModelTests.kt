@@ -55,6 +55,20 @@ class FakeSportsDeps(startScope: SportsScope = SportsScope(listOf("A"), "main", 
         return SportsLoad(result(scope), "rev-${loads.get()}", cacheHit)
     }
     fun tick() { minuteFlow.tryEmit(nowMs) }
+
+    // Catch-Up history for the pages: counted, optionally held, never part of the hub's own load
+    val historyCalls = AtomicInteger(); val historyWindows = java.util.Collections.synchronizedList(ArrayList<Pair<Long, Long>>())
+    @Volatile var historyGate: CompletableDeferred<Unit>? = null
+    @Volatile var historyCancelled = 0
+    @Volatile var historyResult: List<SportsEvent> = emptyList()
+    @Volatile var declaredDays = 0
+    val dayQueries = AtomicInteger()
+    override suspend fun history(scope: SportsScope, fromMs: Long, toMs: Long): SportsLoad {
+        historyCalls.incrementAndGet(); historyWindows.add(fromMs to toMs)
+        try { historyGate?.await() } catch (e: CancellationException) { historyCancelled++; throw e }
+        return SportsLoad(historyResult, "hist", false)
+    }
+    override suspend fun catchUpDays(channelIds: List<String>): Int { dayQueries.incrementAndGet(); return declaredDays }
 }
 
 class SportsViewModelTests {

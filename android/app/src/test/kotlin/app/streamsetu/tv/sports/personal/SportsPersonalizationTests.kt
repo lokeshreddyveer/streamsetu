@@ -40,7 +40,7 @@ class SportsPersonalizationTests {
     private fun event(id: String, startMs: Long, sides: List<String>, sport: Sport = Sport.CRICKET, competition: String? = "League") =
         SportsEvent(id, sport, SportsEventKind.HEAD_TO_HEAD, competition, sides, null, sides.joinToString(" vs "), startMs, startMs + 2 * h, listOf(feed()), 0.95, setOf("A"), "r")
     private val follows = FollowSet(listOf(
-        Follow(FollowKind.SPORT, Sport.CRICKET, "cricket", "Cricket"), Follow(FollowKind.COMPETITION, Sport.CRICKET, "ipl", "IPL"), Follow(FollowKind.PARTICIPANT, Sport.CRICKET, "india", "India"),
+        Follow(FollowKind.SPORT, Sport.CRICKET, "cricket", "Cricket"), Follow(FollowKind.COMPETITION, Sport.CRICKET, "v2:competition:cricket:ipl", "IPL"), Follow(FollowKind.PARTICIPANT, Sport.CRICKET, "v2:participant:cricket:india", "India"),
     ))
     private fun ids(l: List<app.streamsetu.tv.ui.screens.sports.SportsEventCard>) = l.map { it.id }
     private fun build(events: List<SportsEvent>, p: Personalization, sel: Sport? = null) = SportsSections.build(events, now, utc, sel, null, emptyMap(), personal = p)

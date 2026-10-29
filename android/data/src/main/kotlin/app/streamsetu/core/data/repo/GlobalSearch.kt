@@ -11,8 +11,13 @@ import java.util.Locale
 
 /** What a result is. The order here is the order of the groups on the results screen, as on the iPhone. */
 enum class SearchKind(val title: String) {
-    CHANNEL("Live TV"), MOVIE("Movies"), SERIES("Series"), EPISODE("Episodes"), PROGRAMME("TV Guide"), FOLDER("Folders"), COLLECTION("Collections")
+    CHANNEL("Live TV"), MOVIE("Movies"), SERIES("Series"), EPISODE("Episodes"), PROGRAMME("TV Guide"), FOLDER("Folders"), COLLECTION("Collections"),
+    /** Sports: found in the Sports screens' own index and merged into the same list by the TV Search screen; [GlobalSearch] itself never returns these, and the phone never shows them. */
+    SPORTS_EVENT("Sports"), SPORTS_TEAM("Teams"), SPORTS_COMPETITION("Competitions"), SPORTS_RECORDING("Sports recordings")
 }
+
+/** The Sports groups, in the order the TV Search screen lists them (after the library's own groups). */
+val SportsSearchOrder = listOf(SearchKind.SPORTS_EVENT, SearchKind.SPORTS_TEAM, SearchKind.SPORTS_COMPETITION, SearchKind.SPORTS_RECORDING)
 
 /** The order the groups of results are shown in, on every device: films and series first, then channels, then the rest. */
 val SearchResultOrder = listOf(SearchKind.MOVIE, SearchKind.SERIES, SearchKind.CHANNEL, SearchKind.EPISODE, SearchKind.PROGRAMME, SearchKind.FOLDER, SearchKind.COLLECTION)
@@ -21,6 +26,7 @@ val SearchResultOrder = listOf(SearchKind.MOVIE, SearchKind.SERIES, SearchKind.C
 fun SearchKind.badge(): String = when (this) {
     SearchKind.CHANNEL -> "LIVE"; SearchKind.MOVIE -> "MOVIE"; SearchKind.SERIES -> "SERIES"; SearchKind.EPISODE -> "EPISODE"
     SearchKind.PROGRAMME -> "GUIDE"; SearchKind.FOLDER -> "FOLDER"; SearchKind.COLLECTION -> "COLLECTION"
+    SearchKind.SPORTS_EVENT -> "SPORTS"; SearchKind.SPORTS_TEAM -> "TEAM"; SearchKind.SPORTS_COMPETITION -> "COMPETITION"; SearchKind.SPORTS_RECORDING -> "RECORDING"
 }
 
 /** The result whose title is exactly what was typed, if there is one. It is shown first, ahead of everything else. */
@@ -47,6 +53,8 @@ sealed interface SearchTarget {
     data class PlayProgramme(val channel: Channel) : SearchTarget
     data class OpenFolder(val kind: ContentKind, val folderId: String) : SearchTarget
     data class OpenCollection(val id: String, val kind: ContentKind) : SearchTarget
+    /** A Sports event, team, competition or recording. Plain text only: the Sports screens work out what it means (see SportsLink). */
+    data class OpenSports(val kind: String, val key: String, val sport: String, val name: String, val eventId: String?) : SearchTarget
 }
 
 data class SearchItem(val id: String, val kind: SearchKind, val title: String, val subtitle: String, val artworkUrl: String?, val target: SearchTarget, val score: Int)

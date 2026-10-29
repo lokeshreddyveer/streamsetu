@@ -81,6 +81,8 @@ class AppContainer @Inject constructor(
     /** The check every scheduled recording passes when it is due. */
     val recordingGate: app.streamsetu.tv.record.RecordingGate by lazy { app.streamsetu.tv.sports.recording.RealRecordingGate(this) }
     /** What the active profile follows in Sports. */
+    val sportsSearchSource: app.streamsetu.tv.sports.discovery.RealSportsSearchSource by lazy { app.streamsetu.tv.sports.discovery.RealSportsSearchSource(this) }
+    val sportsSearch: app.streamsetu.tv.sports.discovery.SportsSearch by lazy { app.streamsetu.tv.sports.discovery.SportsSearch(sportsSearchSource) }
     val sportsFollows: app.streamsetu.tv.sports.personal.SportsFollowService by lazy { app.streamsetu.tv.sports.personal.SportsFollowService(db.sports(), app.streamsetu.tv.sports.RealSportsAuthorization(this), profiles.activeId) }
     /** The reminders the active profile asked for, their alarms and the banner. */
     val sportsReminders: app.streamsetu.tv.sports.personal.SportsReminderService by lazy { app.streamsetu.tv.sports.personal.SportsReminderService(db.sports(), app.streamsetu.tv.sports.personal.RealReminderDeps(context, this), appScope) }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -130,6 +131,13 @@ class SportsActions(
     val watchRecording: (playId: String) -> Unit = {},
     val startOver: (channelId: String) -> Unit = {},
     val watchCatchUp: (channelId: String) -> Unit = {},
+    /** Team and competition pages, and what an unresolved follow means. Each is the person pressing OK. */
+    val openPage: (app.streamsetu.tv.sports.discovery.PageRef) -> Unit = {},
+    val followPage: (app.streamsetu.tv.sports.discovery.PageRef) -> Unit = {},
+    val unfollowPage: (app.streamsetu.tv.sports.discovery.PageRef) -> Unit = {},
+    val chooseFollow: (app.streamsetu.tv.sports.personal.Follow, String) -> Unit = { _, _ -> },
+    val openGuide: () -> Unit = {},
+    val closePageUi: () -> Unit = {},
 )
 
 /** The page as the shell shows it. Refresh Guide uses the application's own guide refresh. */
@@ -144,18 +152,29 @@ fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, playRecording: (String
     val entry = LocalContentEntry.current ?: remember { FocusRequester() }
     LaunchedEffect(Unit) { vm.onEntered() }
     LaunchedEffect(nav.pendingSportsReminder) { nav.pendingSportsReminder?.let { vm.openReminder(it); nav.pendingSportsReminder = null } }
+    LaunchedEffect(nav.pendingSportsTarget) { nav.pendingSportsTarget?.let { vm.openLink(it); nav.pendingSportsTarget = null } }
 
     // Back closes the detail first; with none open the page does not take Back, so the sidebar opens.
     var previewFocused by remember { mutableStateOf(false) }
     var returnTick by remember { mutableStateOf(0) }
     // Back: from the embedded picture the remote goes back to the feed list (playback goes on); from the detail it closes the event, which ends what played from it.
     DisposableEffect(vm) {
-        val hook: () -> Boolean = { if (current.recordPanel != null) { vm.closeRecord(); true } else if (current.manage != null) { vm.closeManage(); true } else if (current.detail != null) { if (previewFocused) returnTick++ else vm.closeDetail(); true } else false }
+        val hook: () -> Boolean = {
+            if (current.recordPanel != null) { vm.closeRecord(); true }
+            else if (current.manage != null) { vm.closeManage(); true }
+            else if (current.detail != null) {
+                if (previewFocused) returnTick++
+                else if (vm.closeDetail() && current.fromSearch && current.page == null) { vm.clearOrigin(); nav.returnToSearch() }          // an event opened from Search goes back to its result
+                true
+            }
+            else if (current.page != null) { vm.closePage(); if (current.fromSearch && current.pageDepth <= 1) { vm.clearOrigin(); nav.returnToSearch() }; true }
+            else false
+        }
         nav.backHook = hook
         onDispose { if (nav.backHook === hook) nav.backHook = null }
     }
 
-    val ids = remember(state.live, state.startingSoon, state.today, state.upcoming) { (state.live + state.startingSoon + state.today + state.upcoming).map { it.id } }
+    val ids = remember(state.live, state.startingSoon, state.today, state.upcoming, state.board) { state.cardIds }
     // The event to put the remote back on: the one it was on if it is still listed, else the nearest position, else the first control.
     val restoreId = nav.memory.target(Tab.SPORTS, ids)?.let { ids.getOrNull(it) }
     var origin by remember { mutableStateOf<String?>(null) }
@@ -183,6 +202,9 @@ fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, playRecording: (String
             startOver = { id -> vm.archive(id, true) { nav.liveFullscreen = false; nav.open(app.streamsetu.tv.nav.Overlay.Player) } },
             watchCatchUp = { id -> vm.archive(id, false) { nav.liveFullscreen = false; nav.open(app.streamsetu.tv.nav.Overlay.Player) } },
             openMultiview = { vm.beforeMultiview(); nav.open(app.streamsetu.tv.nav.Overlay.SportsMultiview) },
+            openPage = vm::openPage, followPage = vm::followPage, unfollowPage = vm::unfollowPage, chooseFollow = vm::chooseFollow,
+            openGuide = { nav.go(Tab.GUIDE) },
+            closePageUi = { vm.closePage(); if (vm.hubFromSearch() && vm.pageCount() == 0) { vm.clearOrigin(); nav.returnToSearch() } },
         )
     }
     // Sports can no longer keep the embedded player for a stream that is still allowed: it goes to Live TV's embedded channel player, selected there as the channel now playing. Nothing is
@@ -208,10 +230,11 @@ fun SportsHubContent(state: SportsHubUiState, actions: SportsActions, entry: Foc
     val restore = remember { FocusRequester() }
     var restoring by remember { mutableStateOf(false) }
     val detailOpen = state.detail != null
-    // Closing the detail puts the remote back on the event it came from (or the nearest one), by frames and with no timers.
+    val covered = detailOpen || state.page != null
+    // Closing the detail (or the page) puts the remote back on the event it came from (or the nearest one), by frames and with no timers.
     var wasOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(detailOpen) {
-        if (detailOpen) { wasOpen = true; return@LaunchedEffect }
+    LaunchedEffect(covered) {
+        if (covered) { wasOpen = true; return@LaunchedEffect }
         if (!wasOpen) return@LaunchedEffect
         wasOpen = false
         if (restoreId != null) requestFocusOnFrames(8, { restore.requestFocus() }, { FocusMemory.focused === restore })
@@ -227,7 +250,8 @@ fun SportsHubContent(state: SportsHubUiState, actions: SportsActions, entry: Foc
     Box(Modifier.fillMaxSize().testTag("sports-hub")) {
         // While the detail is open the Hub behind it cannot take the remote.
         CompositionLocalProvider(LocalFocusEnabled provides (parentFocusEnabled && !detailOpen)) {
-            Hub(state, actions, entry, restore, restoreId, scroll)
+            val page = state.page
+            if (page != null) SportsPageView(page, state.pageDepth, detailOpen, actions) else Hub(state, actions, entry, restore, restoreId, scroll)
         }
         state.detail?.let { SportsDetailPanel(it, actions, returnTick) }
         state.manage?.let { SportsManagePanel(it, actions) }
@@ -243,11 +267,13 @@ private fun Hub(state: SportsHubUiState, actions: SportsActions, entry: FocusReq
         if (hasFilters) {
             SportsFilters(state.filters, state.selectedSport, state.mySports, entry, restore.takeIf { restoreId != null }, actions.select, actions.selectMy)
         }
+        state.linkNotice?.let { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.padding(top = 6.dp).testTag("sports-link-notice")) }
         Spacer(Modifier.height(12.dp))
         val message = state.message
         when {
             state.loading && state.isEmpty -> SportsSkeleton()
             message != null -> SportsMessageView(message, actions)
+            state.board != null -> SportsBoard(state.board, actions, entry, restore, restoreId, scroll)
             else -> SportsSections(state, actions, entry, restore, restoreId, scroll)
         }
     }
@@ -304,23 +330,97 @@ private fun SportsSections(state: SportsHubUiState, actions: SportsActions, entr
     }
     LazyColumn(Modifier.fillMaxSize().testTag("sports-list"), list, verticalArrangement = Arrangement.spacedBy(18.dp)) {
         items(sections, key = { it.name }) { s ->
-            SportsSectionRail(s, state.section(s), starts.getValue(s), actions, restore, restoreId, entry.takeIf { s == sections.first() })
+            SportsSectionRail(s.name, s.title, state.section(s), starts.getValue(s), restore, restoreId, entry.takeIf { s == sections.first() }, actions.open, actions.remember)
+        }
+    }
+}
+
+/** My Sports: the followed things in the order that matters most, each event once. */
+@Composable
+private fun SportsBoard(board: app.streamsetu.tv.sports.discovery.MyBoardUi, actions: SportsActions, entry: FocusRequester, restore: FocusRequester, restoreId: String?, scroll: ScrollHolder) {
+    val list = rememberLazyListState(scroll.index, scroll.offset)
+    DisposableEffect(list) { onDispose { scroll.index = list.firstVisibleItemIndex; scroll.offset = list.firstVisibleItemScrollOffset } }
+    val starts = remember(board) { var n = 0; board.sections.associate { s -> s.id to n.also { n += s.cards.size } } }
+    LazyColumn(Modifier.fillMaxSize().testTag("sports-list"), list, verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        items(board.sections, key = { it.id }) { s ->
+            SportsSectionRail(s.id, s.title, s.cards, starts.getValue(s.id), restore, restoreId, entry.takeIf { s === board.sections.first() }, actions.open, actions.remember)
+        }
+        if (board.recordings.isNotEmpty()) item(key = "board-recordings") { RecordingRows(board.recordings, actions, "sports-board-recordings") }
+    }
+}
+
+/** Recordings that are listed on a page or in My Sports. A row you can act on (watch the recording, open its event) takes the remote; a row you cannot is only text. */
+@Composable
+private fun RecordingRows(rows: List<app.streamsetu.tv.sports.discovery.PageRecordingUi>, actions: SportsActions, tag: String) {
+    Column(Modifier.testTag(tag), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Label("Recordings", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(bottom = 2.dp))
+        rows.forEach { r ->
+            val act: (() -> Unit)? = if (r.playId != null) ({ actions.watchRecording(r.playId) }) else r.eventId?.let { id -> ({ actions.open(id) }) }
+            val text = r.line + when { r.playId != null -> "  ·  OK to watch"; r.eventId != null -> "  ·  OK to open the event"; else -> "" }
+            if (act != null) Focusable(act, Modifier.fillMaxWidth().widthIn(max = 860.ui).testTag("sports-recording-row-${r.id}"), shape = RoundedCornerShape(Tokens.radiusSmall), scaleOnFocus = 1.0f) {
+                Label(text, Tokens.small, Tokens.text, maxLines = 2, modifier = Modifier.padding(12.dp))
+            } else Label(text, Tokens.small, Tokens.textSecondary, maxLines = 2, modifier = Modifier.padding(12.dp).testTag("sports-recording-row-${r.id}"))
+        }
+    }
+}
+
+/** A team's or a competition's page. Only what the guide and the person's own records say; nothing is looked up. */
+@Composable
+private fun SportsPageView(page: app.streamsetu.tv.sports.discovery.SportsPageUi, depth: Int, detailOpen: Boolean, actions: SportsActions) {
+    val close = remember { FocusRequester() }
+    val restore = remember { FocusRequester() }
+    var last by remember(page.ref) { mutableStateOf<String?>(null) }
+    val ids = page.allCardIds
+    val restoreId = last?.takeIf { it in ids } ?: ids.getOrNull((ids.indexOf(last).takeIf { it >= 0 } ?: 0).coerceAtMost(ids.lastIndex)) ?: ids.firstOrNull()     // the card it was on, else the nearest, else the first
+    var wasOpen by remember { mutableStateOf(false) }
+    // Opening: the remote goes to the first event, or to Close when there is none. Coming back from an event: to the card it came from. By frames, no timers.
+    LaunchedEffect(page.ref, detailOpen) {
+        if (detailOpen) { wasOpen = true; return@LaunchedEffect }
+        wasOpen = false
+        if (restoreId != null) requestFocusOnFrames(8, { restore.requestFocus() }, { FocusMemory.focused === restore }) else requestFocusOnFrames(8, { close.requestFocus() }, { FocusMemory.focused === close })
+    }
+    val list = rememberLazyListState()
+    val starts = remember(page) { var n = 0; page.sections.associate { s -> s.id to n.also { n += s.cards.size } } }
+    Column(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical).testTag("sports-page")) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.weight(1f)) {
+                Label(page.ref.name, Tokens.pageTitle, Tokens.text, FontWeight.Bold, maxLines = 2, modifier = Modifier.testTag("sports-page-title"))
+                Label(page.sportLabel + "  ·  " + (if (page.ref.kind == app.streamsetu.tv.sports.discovery.PageKind.TEAM) "Team" else "Competition"), Tokens.body, Tokens.textSecondary, maxLines = 1)
+            }
+            if (page.canFollow) TvButton(if (page.following) "Following  ·  Unfollow" else "Follow", { if (page.following) actions.unfollowPage(page.ref) else actions.followPage(page.ref) }, Modifier.testTag("sports-page-follow"))
+            TvButton("Close", { actions.closePageUi() }, Modifier.focusRequester(close).testTag("sports-page-close"), icon = Icons.Filled.Close)
+        }
+        page.note?.let { Label(it, Tokens.small, Tokens.warning, modifier = Modifier.padding(bottom = 4.dp).testTag("sports-page-note")) }
+        val meta = listOfNotNull(page.channelCount.takeIf { it > 0 }?.let { "$it channel" + if (it == 1) "" else "s" }, page.reminderCount.takeIf { it > 0 }?.let { "$it reminder" + if (it == 1) "" else "s" }).joinToString("  ·  ")
+        if (meta.isNotEmpty()) Label(meta, Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-page-meta"))
+        if (page.catchUpLoading) Label("Loading Catch-Up…", Tokens.small, Tokens.textSecondary, modifier = Modifier.padding(top = 4.dp).testTag("sports-page-loading"))
+        Spacer(Modifier.height(10.dp))
+        if (page.isEmpty) {
+            Column(Modifier.fillMaxWidth().testTag("sports-page-empty"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Label("Nothing in your guide right now", Tokens.title, Tokens.text, FontWeight.SemiBold)
+                Label("No live or upcoming events for this are in the current guide. Recordings and reminders you make for it will appear here.", Tokens.body, Tokens.textSecondary, modifier = Modifier.fillMaxWidth(0.6f))
+            }
+        } else LazyColumn(Modifier.fillMaxSize().testTag("sports-page-list"), list, verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            items(page.sections, key = { it.id }) { s ->
+                SportsSectionRail(s.id, s.title, s.cards, starts.getValue(s.id), restore, restoreId, close.takeIf { s === page.sections.first() }, actions.open) { id, _ -> last = id }
+            }
+            if (page.recordings.isNotEmpty()) item(key = "page-recordings") { RecordingRows(page.recordings, actions, "sports-page-recordings") }
         }
     }
 }
 
 /** One section on its own: moving the remote inside it recomposes this and nothing else. */
 @Composable
-private fun SportsSectionRail(section: SportsSection, cards: List<SportsEventCard>, firstIndex: Int, actions: SportsActions, restore: FocusRequester, restoreId: String?, upTo: FocusRequester?) {
+private fun SportsSectionRail(id: String, title: String, cards: List<SportsEventCard>, firstIndex: Int, restore: FocusRequester, restoreId: String?, upTo: FocusRequester?, open: (String) -> Unit, remember: (String, Int) -> Unit) {
     // Starts on the remembered event when it is in this section, so it is composed and can take the remote at once.
     val at = cards.indexOfFirst { it.id == restoreId }.coerceAtLeast(0)
     val row: LazyListState = rememberLazyListState(initialFirstVisibleItemIndex = at)
-    Column(Modifier.testTag("sports-section-${section.name}")) {
-        Label(section.title, Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
+    Column(Modifier.testTag("sports-section-$id")) {
+        Label(title, Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
         LazyRow(state = row, horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 6.dp)) {
             items(cards, key = { it.id }) { card ->
                 val index = firstIndex + cards.indexOf(card)
-                SportsEventCardView(card, (if (card.id == restoreId) Modifier.focusRequester(restore) else Modifier).then(if (upTo != null) Modifier.focusProperties { up = upTo } else Modifier), { actions.open(card.id) }) { focused -> if (focused) actions.remember(card.id, index) }
+                SportsEventCardView(card, (if (card.id == restoreId) Modifier.focusRequester(restore) else Modifier).then(if (upTo != null) Modifier.focusProperties { up = upTo } else Modifier), { open(card.id) }) { focused -> if (focused) remember(card.id, index) }
             }
         }
     }
@@ -466,10 +566,16 @@ private fun SportsDetailPanel(d: SportsEventDetail, actions: SportsActions, retu
                         SportsReminderBlock(d.reminder, actions)
                         d.followOptions.forEach { o ->
                             TvButton(if (o.following) "Following ${o.name}  ·  Unfollow" else o.label, {
-                                if (o.following) actions.unfollow(app.streamsetu.tv.sports.personal.Follow(o.kind, o.sport, if (o.kind == app.streamsetu.tv.sports.personal.FollowKind.SPORT) app.streamsetu.tv.sports.personal.SportsKeys.sportKey(o.sport) else app.streamsetu.tv.sports.personal.SportsKeys.key(o.name), o.name))
+                                if (o.following) actions.unfollow(app.streamsetu.tv.sports.personal.Follow(o.kind, o.sport, o.key, o.name))
                                 else actions.follow(o.kind, o.name)
                             }, Modifier.testTag("sports-follow-${o.kind.name}-${app.streamsetu.tv.sports.personal.SportsKeys.key(o.name)}"))
                         }
+                    }
+                }
+                item(key = "pages") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        d.pageLinks.forEach { l -> TvButton(l.label, { actions.openPage(l.ref) }, Modifier.testTag("sports-page-link-${l.ref.kind.name}-${app.streamsetu.tv.sports.personal.SportsKeys.key(l.ref.name)}")) }
+                        if (d.card.id != "held") TvButton("Open Guide", actions.openGuide, Modifier.testTag("sports-open-guide"))
                     }
                 }
                 item(key = "recording") { SportsRecordingBlock(d, actions) }
@@ -599,9 +705,9 @@ private fun SportsManagePanel(m: ManageUi, actions: SportsActions) {
                 TvButton("Close", actions.closeManage, Modifier.focusRequester(first).testTag("sports-manage-close"), icon = Icons.Filled.Close)
             }
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                manageSection("Sports", m.sports, actions)
-                manageSection("Competitions", m.competitions, actions)
-                manageSection("Teams and participants", m.participants, actions)
+                manageSection("Sports", m.sports, actions, m)
+                manageSection("Competitions", m.competitions, actions, m)
+                manageSection("Teams and participants", m.participants, actions, m)
                 if (m.reminders.isNotEmpty()) {
                     item(key = "h-rem") { Label("Reminders", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp)) }
                     items(m.reminders.size, key = { "r-" + m.reminders[it].id }) { i ->
@@ -626,14 +732,20 @@ private fun SportsManagePanel(m: ManageUi, actions: SportsActions) {
     ), onClose = { confirm = false })
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.manageSection(title: String, rows: List<app.streamsetu.tv.sports.personal.Follow>, actions: SportsActions) {
+private fun androidx.compose.foundation.lazy.LazyListScope.manageSection(title: String, rows: List<app.streamsetu.tv.sports.personal.Follow>, actions: SportsActions, m: ManageUi) {
     if (rows.isEmpty()) return
     item(key = "h-$title") { Label(title, Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp)) }
     items(rows.size, key = { "f-$title-" + rows[it].sport.name + rows[it].key }) { i ->
         val f = rows[i]
-        Focusable({ actions.unfollow(f) }, Modifier.fillMaxWidth().testTag("sports-manage-follow-${f.kind.name}-${f.key}"), shape = RoundedCornerShape(Tokens.radiusSmall), scaleOnFocus = 1.0f) {
-            Label(f.displayName + "  ·  " + f.sport.title + "  ·  OK to unfollow", Tokens.small, Tokens.text, maxLines = 1, modifier = Modifier.padding(12.dp))
+        val id = ManageUi.manageId(f); val choices = m.choices[id]
+        var choose by remember(id) { mutableStateOf(false) }
+        Focusable({ if (choices != null) choose = true else actions.unfollow(f) }, Modifier.fillMaxWidth().testTag("sports-manage-follow-${f.kind.name}-${f.key}"), shape = RoundedCornerShape(Tokens.radiusSmall), scaleOnFocus = 1.0f) {
+            val what = if (f.kind == app.streamsetu.tv.sports.personal.FollowKind.COMPETITION) "competition" else "team"
+            Label(f.displayName + "  ·  " + f.sport.title + "  ·  " + when { choices != null -> "Choose the $what"; id in m.unavailable -> "Not in the guide right now  ·  OK to unfollow"; else -> "OK to unfollow" }, Tokens.small, Tokens.text, maxLines = 2, modifier = Modifier.padding(12.dp))
         }
+        if (choose && choices != null) app.streamsetu.tv.ui.components.ContextMenu(f.displayName, "More than one fits. Until you choose, nothing is followed under this name.", choices.map { ch ->
+            app.streamsetu.tv.ui.components.MenuAction(ch.label, Icons.Filled.PlayArrow) { actions.chooseFollow(f, ch.key) }
+        } + app.streamsetu.tv.ui.components.MenuAction("Stop following", Icons.Filled.Close, danger = true) { actions.unfollow(f) }, onClose = { choose = false })
     }
 }
 

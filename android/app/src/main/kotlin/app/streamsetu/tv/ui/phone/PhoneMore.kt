@@ -229,6 +229,7 @@ fun PhoneSearch(c: AppContainer, nav: Navigator) {
             is SearchTarget.PlayEpisode -> play(c, nav, EpisodePlayable(t.episode, t.series))
             is SearchTarget.OpenFolder -> nav.openFolderTab(t.kind, t.folderId)
             is SearchTarget.OpenCollection -> nav.openCollection(t.kind, t.id)
+            is SearchTarget.OpenSports -> Unit                                                         // Sports results are only ever added by the TV Search screen
         }
     }
     val prompt = if (tab == SearchTab.ALL) "Channels, movies, series" else "Search ${tab.label.lowercase()}"

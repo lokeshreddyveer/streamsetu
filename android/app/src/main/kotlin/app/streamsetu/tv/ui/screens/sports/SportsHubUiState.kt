@@ -40,7 +40,11 @@ data class SportsEventCard(
 
 /** One thing the open event offers to follow, and whether it already is. */
 @Immutable
-data class FollowOptionUi(val kind: app.streamsetu.tv.sports.personal.FollowKind, val sport: Sport, val name: String, val label: String, val following: Boolean)
+data class FollowOptionUi(val kind: app.streamsetu.tv.sports.personal.FollowKind, val sport: Sport, val name: String, val label: String, val following: Boolean, val key: String = "")
+
+/** A link from an event to the page of one of its teams or its competition. */
+@Immutable
+data class PageLinkUi(val label: String, val ref: app.streamsetu.tv.sports.discovery.PageRef)
 
 /** A recording of the open event, as the screen shows it. */
 @Immutable
@@ -138,6 +142,7 @@ data class SportsEventDetail(
     /** The event is gone from the guide but this channel is still allowed and playing: its name. The panel then says so and offers Live TV or Stop. */
     val heldChannel: String? = null,
     val followOptions: List<FollowOptionUi> = emptyList(),
+    val pageLinks: List<PageLinkUi> = emptyList(),
     val reminder: ReminderUi? = null,
     val recording: RecordingUi? = null,
     val abilities: EventAbilities? = null,
@@ -160,7 +165,16 @@ sealed interface SportsHubMessage {
 
 /** What Manage My Sports lists. */
 @Immutable
-data class ManageUi(val sports: List<app.streamsetu.tv.sports.personal.Follow>, val competitions: List<app.streamsetu.tv.sports.personal.Follow>, val participants: List<app.streamsetu.tv.sports.personal.Follow>, val reminders: List<ReminderUi>, val note: String?)
+data class ManageUi(
+    val sports: List<app.streamsetu.tv.sports.personal.Follow>, val competitions: List<app.streamsetu.tv.sports.personal.Follow>, val participants: List<app.streamsetu.tv.sports.personal.Follow>, val reminders: List<ReminderUi>, val note: String?,
+    /** Follows that fit more than one team or competition, by [manageId]: the person chooses. Until then they match nothing. */
+    val choices: Map<String, List<ChoiceUi>> = emptyMap(),
+    /** Follows nothing in the current guide fits. They are kept, and match nothing. */
+    val unavailable: Set<String> = emptySet(),
+) { companion object { fun manageId(f: app.streamsetu.tv.sports.personal.Follow) = f.kind.name + "|" + f.sport.name + "|" + f.key } }
+
+@Immutable
+data class ChoiceUi(val key: String, val label: String)
 
 /** Everything the Sports Hub draws, as one immutable value. Built off the main thread; the composables never compute or query. */
 @Immutable
@@ -192,7 +206,19 @@ data class SportsHubUiState(
     val manage: ManageUi? = null,
     /** The recording confirmation, or null when it is closed. */
     val recordPanel: RecordPanelUi? = null,
+    /** A Team or Competition page is open. */
+    val page: app.streamsetu.tv.sports.discovery.SportsPageUi? = null,
+    /** My Sports as ordered sections (null outside My Sports). */
+    val board: app.streamsetu.tv.sports.discovery.MyBoardUi? = null,
+    /** The open page or event was reached from Search: Back goes there. */
+    val fromSearch: Boolean = false,
+    /** What the last Search link said when it could not be opened. */
+    val linkNotice: String? = null,
+    /** How many pages are stacked (Back goes down one at a time). */
+    val pageDepth: Int = 0,
 ) {
+    /** Every card the remote can be on in the hub behind, in order (for putting it back). */
+    val cardIds: List<String> get() = board?.sections?.flatMap { s -> s.cards.map { it.id } } ?: (live + startingSoon + today + upcoming).map { it.id }
     val isEmpty: Boolean get() = live.isEmpty() && startingSoon.isEmpty() && today.isEmpty() && upcoming.isEmpty()
     fun section(s: SportsSection): List<SportsEventCard> = when (s) { SportsSection.LIVE_NOW -> live; SportsSection.STARTING_SOON -> startingSoon; SportsSection.TODAY -> today; SportsSection.UPCOMING -> upcoming }
     /** The sections that have events, in order. Only these are shown. */
@@ -236,7 +262,7 @@ object SportsSections {
 
     fun build(events: List<SportsEvent>, nowMs: Long, zone: TimeZone, selected: Sport?, detailId: String?, sourceNames: Map<String, String>, locale: java.util.Locale = java.util.Locale.getDefault(), play: SportsDetailPlay = SportsDetailPlay(),
         personal: app.streamsetu.tv.sports.personal.Personalization = app.streamsetu.tv.sports.personal.Personalization.NONE, followOptions: (SportsEvent) -> List<FollowOptionUi> = { emptyList() }, reminderFor: (SportsEvent) -> ReminderUi? = { null },
-        recordingFor: (SportsEvent) -> RecordingUi? = { null }, abilities: EventAbilities? = null): Result {
+        recordingFor: (SportsEvent) -> RecordingUi? = { null }, abilities: EventAbilities? = null, pageLinks: (SportsEvent) -> List<PageLinkUi> = { emptyList() }): Result {
         val labels = Labels(zone, locale, nowMs)
         val upcomingOrLive = events.filter { it.endMs > nowMs }                                   // a finished event is not listed
         val present = Sport.values().filter { s -> upcomingOrLive.any { it.sport == s } }
@@ -259,7 +285,7 @@ object SportsSections {
                 else -> later.add(c)
             }
         }
-        val detail = detailId?.let { id -> events.firstOrNull { it.id == id } }?.let { detail(it, nowMs, sourceNames, labels, play).let { dd -> dd.copy(followOptions = followOptions(it), reminder = reminderFor(it), recording = recordingFor(it), abilities = abilities?.takeIf { a -> a.eventId == it.id }, startOver = archiveChoices(abilities?.takeIf { a -> a.eventId == it.id }?.startOver, dd), catchUp = archiveChoices(abilities?.takeIf { a -> a.eventId == it.id }?.catchUp, dd)) } }
+        val detail = detailId?.let { id -> events.firstOrNull { it.id == id } }?.let { detail(it, nowMs, sourceNames, labels, play).let { dd -> dd.copy(followOptions = followOptions(it), pageLinks = pageLinks(it), reminder = reminderFor(it), recording = recordingFor(it), abilities = abilities?.takeIf { a -> a.eventId == it.id }, startOver = archiveChoices(abilities?.takeIf { a -> a.eventId == it.id }?.startOver, dd), catchUp = archiveChoices(abilities?.takeIf { a -> a.eventId == it.id }?.catchUp, dd)) } }
         return Result(live, soon, today, later, filters, effective, detail, my)
     }
 

@@ -114,7 +114,7 @@ class SportsRecordingService(private val dao: SportsDao, private val deps: Recor
 
     /** The active profile's recordings; switches with the profile. */
     @kotlin.OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val recordings: Flow<List<SportsRecordingEntity>> = deps.activeProfile.flatMapLatest { dao.recordingsFlow(it) }
+    val recordings: Flow<List<SportsRecordingEntity>> = deps.activeProfile.flatMapLatest { dao.recentRecordingsFlow(it, RECENT_CLOSED) }
 
     private val OPEN = listOf(SportsRecordingStatus.SCHEDULED.name, SportsRecordingStatus.RECORDING.name, SportsRecordingStatus.REVIEW_REQUIRED.name)
 
@@ -350,5 +350,5 @@ class SportsRecordingService(private val dao: SportsDao, private val deps: Recor
     private fun report(outcome: String, p: RecordingPreview, startedNs: Long) =
         diagnostics.record(RecordingReport(outcome, p.issues, 0, 0, p.feeds.size, p.feeds.count { it.recordable }, (System.nanoTime() - startedNs) / 1_000_000))
 
-    companion object { const val ORIGIN = "sports" }
+    companion object { const val ORIGIN = "sports"; /** How many ended requests the screens keep in view (the open ones are always all there). */ const val RECENT_CLOSED = 100 }
 }

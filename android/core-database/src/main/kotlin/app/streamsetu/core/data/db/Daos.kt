@@ -322,6 +322,12 @@ abstract class SportsDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) abstract suspend fun insertFollow(f: SportsFollowEntity): Long
     @Query("DELETE FROM sports_follows WHERE profileId = :profile AND kind = :kind AND sport = :sport AND normKey = :key") abstract suspend fun deleteFollow(profile: String, kind: String, sport: String, key: String): Int
     @Query("DELETE FROM sports_follows WHERE profileId = :profile") abstract suspend fun clearFollows(profile: String): Int
+    /** Moves one follow to another key in one transaction. False if the old follow is gone (another caller already moved or removed it), so repeating or racing the call changes nothing more. */
+    @Transaction open suspend fun replaceFollowKey(profile: String, kind: String, sport: String, oldKey: String, newKey: String, displayName: String, now: Long): Boolean {
+        if (deleteFollow(profile, kind, sport, oldKey) == 0) return false
+        insertFollow(SportsFollowEntity(profileId = profile, kind = kind, sport = sport, normKey = newKey, displayName = displayName, createdAt = now))
+        return true
+    }
 
     // Reminders
     @Query("SELECT * FROM sports_reminders WHERE profileId = :profile ORDER BY startMs, id") abstract suspend fun reminders(profile: String): List<SportsReminderEntity>
@@ -337,6 +343,9 @@ abstract class SportsDao {
     // Recordings (the Sports side: identity, matching, state; the executor is the scheduled-recording service)
     @Query("SELECT * FROM sports_recordings WHERE profileId = :profile ORDER BY startMs, id") abstract suspend fun recordings(profile: String): List<SportsRecordingEntity>
     @Query("SELECT * FROM sports_recordings WHERE profileId = :profile ORDER BY startMs, id") abstract fun recordingsFlow(profile: String): Flow<List<SportsRecordingEntity>>
+    /** What the screens need: every open request, and the most recent ended ones. The long history is never read to draw a card. */
+    @Query("SELECT * FROM sports_recordings WHERE profileId = :profile AND (status IN ('SCHEDULED', 'RECORDING', 'REVIEW_REQUIRED') OR id IN (SELECT id FROM sports_recordings WHERE profileId = :profile AND status NOT IN ('SCHEDULED', 'RECORDING', 'REVIEW_REQUIRED') ORDER BY updatedAt DESC, id LIMIT :closed)) ORDER BY startMs, id")
+    abstract fun recentRecordingsFlow(profile: String, closed: Int): Flow<List<SportsRecordingEntity>>
     @Query("SELECT * FROM sports_recordings WHERE id = :id") abstract suspend fun recording(id: String): SportsRecordingEntity?
     @Query("SELECT * FROM sports_recordings WHERE scheduleId = :scheduleId") abstract suspend fun recordingBySchedule(scheduleId: String): SportsRecordingEntity?
     @Query("SELECT * FROM sports_recordings WHERE status IN ('SCHEDULED', 'RECORDING', 'REVIEW_REQUIRED') ORDER BY startMs, id") abstract suspend fun openRecordings(): List<SportsRecordingEntity>

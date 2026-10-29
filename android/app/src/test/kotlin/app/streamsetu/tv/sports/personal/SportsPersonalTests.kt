@@ -150,9 +150,9 @@ class SportsPersonalTests {
         val e = event("e", t0 + h, sides = listOf("India", "FC Australia"), competition = "Premier League")
         assertEquals(FollowResult.Followed, follows.follow(e, FollowKind.SPORT, "Cricket")); assertEquals(FollowResult.Followed, follows.follow(e, FollowKind.COMPETITION, "Premier League")); assertEquals(FollowResult.Followed, follows.follow(e, FollowKind.PARTICIPANT, "India"))
         assertEquals(FollowResult.Followed, follows.follow(e, FollowKind.PARTICIPANT, "FC Australia"))
-        assertEquals("the same normalized name is one follow", FollowResult.AlreadyFollowing, follows.follow(e, FollowKind.PARTICIPANT, "australia")); assertEquals(FollowResult.AlreadyFollowing, follows.follow(e, FollowKind.COMPETITION, "premier league"))
+        assertEquals("the same strict name is one follow", FollowResult.AlreadyFollowing, follows.follow(e, FollowKind.PARTICIPANT, "fc  AUSTRALIA")); assertEquals("a name without the club marker is a different team", FollowResult.Refused, follows.follow(e, FollowKind.PARTICIPANT, "australia")); assertEquals(FollowResult.AlreadyFollowing, follows.follow(e, FollowKind.COMPETITION, "premier league"))
         val set = follows.current()
-        assertEquals(4, set.follows.size); assertEquals("the name as first chosen is kept", "FC Australia", set.follows.first { it.key == "australia" }.displayName)
+        assertEquals(4, set.follows.size); assertEquals("the name as first chosen is kept", "FC Australia", set.follows.first { it.key == "v2:participant:cricket:fc australia" }.displayName)
         follows.unfollow(set.follows.first { it.kind == FollowKind.COMPETITION }); assertEquals(3, follows.current().follows.size)
         follows.clear(); assertTrue(follows.current().isEmpty)
     }
@@ -184,7 +184,7 @@ class SportsPersonalTests {
     }
 
     @Test fun theFollowSetAnswersByStrongestReasonAndSport() {
-        val set = FollowSet(listOf(Follow(FollowKind.SPORT, Sport.CRICKET, "cricket", "Cricket"), Follow(FollowKind.COMPETITION, Sport.CRICKET, "test series", "Test Series"), Follow(FollowKind.PARTICIPANT, Sport.CRICKET, "india", "India")))
+        val set = FollowSet(listOf(Follow(FollowKind.SPORT, Sport.CRICKET, "cricket", "Cricket"), Follow(FollowKind.COMPETITION, Sport.CRICKET, "v2:competition:cricket:test series", "Test Series"), Follow(FollowKind.PARTICIPANT, Sport.CRICKET, "v2:participant:cricket:india", "India")))
         val e = event("e", t0)
         assertEquals(FollowReason(FollowKind.PARTICIPANT, "India"), set.reason(e))
         assertEquals(FollowReason(FollowKind.COMPETITION, "Test Series"), set.reason(event("f", t0, sides = listOf("Brazil", "Chile"))))

@@ -154,8 +154,8 @@ class SportsPersonalScreenTests {
         show(events); run { follows.follow(events[0], FollowKind.SPORT, "Cricket"); follows.follow(events[0], FollowKind.COMPETITION, "Test Series"); follows.follow(events[0], FollowKind.PARTICIPANT, "India") }
         until { rule.onAllNodesWithTag("sports-manage").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("sports-manage").requestFocus(); key(Key.Enter); until { rule.onAllNodesWithTag("sports-manage-panel").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithTag("sports-manage-follow-SPORT-cricket").assertExists(); rule.onNodeWithTag("sports-manage-follow-COMPETITION-test series").assertExists(); rule.onNodeWithTag("sports-manage-follow-PARTICIPANT-india").assertExists()
-        rule.onNodeWithTag("sports-manage-follow-PARTICIPANT-india").requestFocus(); key(Key.Enter); until { run { db.sports().follows("main").size } == 2 }
+        rule.onNodeWithTag("sports-manage-follow-SPORT-cricket").assertExists(); rule.onNodeWithTag("sports-manage-follow-COMPETITION-v2:competition:cricket:test series").assertExists(); rule.onNodeWithTag("sports-manage-follow-PARTICIPANT-v2:participant:cricket:india").assertExists()
+        rule.onNodeWithTag("sports-manage-follow-PARTICIPANT-v2:participant:cricket:india").requestFocus(); key(Key.Enter); until { run { db.sports().follows("main").size } == 2 }
         rule.onNodeWithTag("sports-manage-clear").requestFocus(); key(Key.Enter)
         assertEquals("nothing is cleared until it is confirmed", 2, run { db.sports().follows("main").size })
         rule.runOnUiThread { assertTrue(nav.back()) }; rule.waitForIdle(); assertEquals("Back closed the confirmation, not the panel", 2, run { db.sports().follows("main").size })
@@ -199,9 +199,9 @@ class SportsPersonalScreenTests {
     @Test fun aReminderWhoseEventIsNoLongerAllowedOpensNothingAndOneThatIsOpensItsEvent() {
         show(events); run { reminders.create(events[0]) }
         val id = run { db.sports().reminders("main").single().id }
-        deps.result = { listOf(events[1]) }; rule.runOnUiThread { vm.refresh() }; rule.waitForIdle()            // the event is not among what this profile may see now
+        deps.result = { listOf(events[1]) }; rule.runOnUiThread { vm.refresh() }; until { rule.onAllNodesWithTag("sports-card-a").fetchSemanticsNodes().isEmpty() && rule.onAllNodesWithTag("sports-card-b").fetchSemanticsNodes().isNotEmpty() }            // the event is not among what this profile may see now
         rule.runOnUiThread { vm.openReminder(id) }; rule.waitForIdle(); Thread.sleep(150); rule.onAllNodesWithTag("sports-detail").assertCountEquals(0)
-        deps.result = { events }; rule.runOnUiThread { vm.refresh() }; rule.waitForIdle()
+        deps.result = { events }; rule.runOnUiThread { vm.refresh() }; until { rule.onAllNodesWithTag("sports-card-a").fetchSemanticsNodes().isNotEmpty() }
         rule.runOnUiThread { vm.openReminder(id) }; until { rule.onAllNodesWithTag("sports-detail").fetchSemanticsNodes().isNotEmpty() }
     }
 

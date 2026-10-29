@@ -57,6 +57,8 @@ fun SearchContent(
     /** What goes between the filters and the results, as rows of the screen's one list (see [rememberSearchActions]). */
     above: @Composable (String, FocusRequester) -> Pair<androidx.compose.foundation.lazy.LazyListScope.() -> Unit, androidx.compose.foundation.lazy.LazyListScope.() -> Unit> = { _, _ -> Pair({ }, { }) },
     onEpisode: (Episode, Series) -> Unit = { _, _ -> }, onFolder: (ContentKind, String) -> Unit = { _, _ -> }, onCollection: (String, ContentKind) -> Unit = { _, _ -> },
+    /** Set only by the Search page: Sports results are merged into this list and open the Sports screens. Null everywhere else, which then shows none. */
+    onSports: ((SearchTarget.OpenSports) -> Unit)? = null,
 ) {
     val held = remember { session?.open(sessionKey) }
     var results by remember { mutableStateOf<GlobalResults?>(null) }
@@ -85,6 +87,18 @@ fun SearchContent(
         } catch (e: Exception) { android.util.Log.w("Search", "search failed: ${e.javaClass.simpleName}: ${e.message?.take(120)}"); failed = true }
         searching = false
     }
+    // Sports results come from a second, separate lookup. They are added to the list when they arrive and never wait for, replace or reorder what the library found; if the lookup fails or is
+    // cancelled, the library's results stay exactly as they are. A change to who may see what drops them at once.
+    val sportsOn = onSports != null && typeFilter == null && tab == SearchTab.ALL
+    val sportsContext by (if (sportsOn) c.sportsSearchSource.contextFlow else kotlinx.coroutines.flow.flowOf("")).collectAsState("")
+    var sportsItems by remember(sportsContext) { mutableStateOf<List<SearchItem>>(emptyList()) }
+    LaunchedEffect(query, sportsOn, retryTick, sportsContext) {
+        if (!sportsOn || query.isBlank()) { sportsItems = emptyList(); return@LaunchedEffect }
+        delay(150)
+        try { sportsItems = c.sportsSearch.search(query) }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) { android.util.Log.w("Search", "sports search failed: ${e.javaClass.simpleName}"); sportsItems = emptyList() }
+    }
     fun open(r: SearchItem) {
         remember()
         when (val t = r.target) {
@@ -95,6 +109,7 @@ fun SearchContent(
             is SearchTarget.PlayEpisode -> onEpisode(t.episode, t.series)
             is SearchTarget.OpenFolder -> onFolder(t.kind, t.folderId)
             is SearchTarget.OpenCollection -> onCollection(t.id, t.kind)
+            is SearchTarget.OpenSports -> onSports?.invoke(t)
         }
     }
 
@@ -199,8 +214,8 @@ fun SearchContent(
                     }
                 }
             }
-            r == null -> { if (!failed) item(key = "loading") { Loading(Modifier.height(100.dp)) } }
-            r.isEmpty -> { if (!searching && !failed) item(key = "no-results") { TvStatusState("No titles found", detail = "Try fewer letters or another spelling.") } }
+            r == null -> { if (!failed && sportsItems.isEmpty()) item(key = "loading") { Loading(Modifier.height(100.dp)) }; sportsRows(sportsItems, targetId, focusTarget, held, ::open) }
+            r.isEmpty -> { if (!searching && !failed && sportsItems.isEmpty()) item(key = "no-results") { TvStatusState("No titles found", detail = "Try fewer letters or another spelling.") }; sportsRows(sportsItems, targetId, focusTarget, held, ::open) }
             else -> {
                 if (r.understood.isNotEmpty()) item { Label("Understood as  " + r.understood.joinToString("  \u00b7  "), Tokens.small, Tokens.accent, maxLines = 2) }
                 r.correctedTo?.let { fixed -> item { Label("Showing results for \u201c$fixed\u201d instead of \u201c${query.trim()}\u201d.", Tokens.small, Tokens.textSecondary, maxLines = 2) } }
@@ -213,9 +228,21 @@ fun SearchContent(
                     // Every kind of result is the same row: artwork, a title, one line about it, and what kind it is.
                     items(rows, key = { it.id }) { x -> SearchResultRow(x, (if (x.id == targetId) Modifier.focusRequester(focusTarget) else Modifier), { if (it) held?.focusedId = x.id }) { open(x) } }
                 }
+                sportsRows(sportsItems, targetId, focusTarget, held, ::open)
             }
         }
         belowItems()
+    }
+}
+
+/** The Sports groups, after the library's own, each row the same row as any other result. */
+private fun androidx.compose.foundation.lazy.LazyListScope.sportsRows(items: List<SearchItem>, targetId: String?, focusTarget: FocusRequester, held: app.streamsetu.tv.nav.SearchSession?, open: (SearchItem) -> Unit) {
+    if (items.isEmpty()) return
+    app.streamsetu.core.data.repo.SportsSearchOrder.forEach { kind ->
+        val rows = items.filter { it.kind == kind }
+        if (rows.isEmpty()) return@forEach
+        item(key = "t-${kind.name}") { SectionTitle("${kind.title}  ·  ${rows.size}") }
+        items(rows, key = { it.id }) { x -> SearchResultRow(x, (if (x.id == targetId) Modifier.focusRequester(focusTarget) else Modifier), { if (it) held?.focusedId = x.id }) { open(x) } }
     }
 }
 
@@ -226,7 +253,8 @@ internal fun SearchResultRow(x: SearchItem, extra: Modifier, onFocus: (Boolean) 
         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.size(58.ui).clip(RoundedCornerShape(8.dp)).background(Tokens.elevated), Alignment.Center) {
                 if (!x.artworkUrl.isNullOrBlank()) coil.compose.AsyncImage(x.artworkUrl, null, Modifier.fillMaxSize(), contentScale = if (x.kind == SearchKind.CHANNEL) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
-                else Image(when (x.kind) { SearchKind.CHANNEL -> Icons.Filled.LiveTv; SearchKind.MOVIE -> Icons.Filled.Movie; SearchKind.SERIES -> Icons.Filled.VideoLibrary; SearchKind.EPISODE -> Icons.Filled.PlayCircle; SearchKind.PROGRAMME -> Icons.Filled.CalendarMonth; SearchKind.FOLDER -> Icons.Filled.Folder; SearchKind.COLLECTION -> Icons.Filled.Layers },
+                else Image(when (x.kind) { SearchKind.CHANNEL -> Icons.Filled.LiveTv; SearchKind.MOVIE -> Icons.Filled.Movie; SearchKind.SERIES -> Icons.Filled.VideoLibrary; SearchKind.EPISODE -> Icons.Filled.PlayCircle; SearchKind.PROGRAMME -> Icons.Filled.CalendarMonth; SearchKind.FOLDER -> Icons.Filled.Folder; SearchKind.COLLECTION -> Icons.Filled.Layers
+                        SearchKind.SPORTS_EVENT, SearchKind.SPORTS_RECORDING -> Icons.Filled.SportsScore; SearchKind.SPORTS_TEAM -> Icons.Filled.Groups; SearchKind.SPORTS_COMPETITION -> Icons.Filled.EmojiEvents },
                     null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Tokens.accent))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -282,6 +310,7 @@ fun SearchScreen(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
             onEpisode = { e, s -> app.streamsetu.tv.play(c, nav, EpisodePlayable(e, s)) },
             onFolder = { k, id -> nav.openFolderTab(k, id) },
             onCollection = { id, k -> nav.openCollection(k, id) },
+            onSports = { t -> nav.openSports(t) },
             session = nav.search, sessionKey = "${c.library.activeId.value}|${c.profiles.activeId.value}|${nav.searchScope.name}",
             initialType = when (nav.searchScope) { app.streamsetu.core.data.repo.SearchTab.LIVE -> ContentKind.CHANNEL; app.streamsetu.core.data.repo.SearchTab.MOVIES -> ContentKind.MOVIE; app.streamsetu.core.data.repo.SearchTab.SERIES -> ContentKind.SERIES; else -> null },
             above = { typed, first -> rememberSearchActions(c, nav, typed, nav.search, first) })

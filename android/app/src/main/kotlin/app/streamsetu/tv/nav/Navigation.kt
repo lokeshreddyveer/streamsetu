@@ -106,6 +106,12 @@ class Navigator {
     /** A Sports reminder to open (from a notification or the in-app banner), by its id. Sports takes it when it appears; the event is found and checked again before anything opens. */
     var pendingSportsReminder: String? by mutableStateOf(null)
 
+    /** A Sports event, team or competition chosen in Search. Sports takes it when it appears; Back then returns to the Search result it came from (the Sports screen remembers that it was opened from Search). */
+    var pendingSportsTarget: app.streamsetu.core.data.repo.SearchTarget.OpenSports? by mutableStateOf(null)
+    fun openSports(t: app.streamsetu.core.data.repo.SearchTarget.OpenSports) { pendingSportsTarget = t; go(Tab.SPORTS) }
+    /** Back from Sports to the Search page, whose words and result position are still held by [search]. */
+    fun returnToSearch() { go(Tab.SEARCH) }
+
     /** Set when something elsewhere wants Settings opened on one category (by its name); Settings takes it when it appears. */
     var pendingSettings: String? by mutableStateOf(null)
 

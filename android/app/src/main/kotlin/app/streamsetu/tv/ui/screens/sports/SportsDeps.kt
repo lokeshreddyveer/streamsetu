@@ -41,6 +41,10 @@ interface SportsDeps {
     suspend fun sourceNames(): Map<String, String>
     suspend fun hasGuide(): Boolean
     suspend fun load(scope: SportsScope, fromMs: Long, toMs: Long): SportsLoad
+    /** Events that already ended, for a page's Catch-Up: the same service and the same authorization as [load], over a window the page asked for. */
+    suspend fun history(scope: SportsScope, fromMs: Long, toMs: Long): SportsLoad = SportsLoad(emptyList(), "")
+    /** The longest archive the provider declares for these channels, in days (0: none). */
+    suspend fun catchUpDays(channelIds: List<String>): Int = 0
 }
 
 /** The real thing, built from the application's services. */
@@ -71,4 +75,9 @@ class RealSportsDeps(private val c: AppContainer) : SportsDeps {
         val revision = c.sportsInputs.revisions().toSortedMap().values.joinToString("|").let { app.streamsetu.core.sports.SportsEventService.hash(it) }
         return SportsLoad(events, revision, hit)
     }
+
+    override suspend fun history(scope: SportsScope, fromMs: Long, toMs: Long): SportsLoad = load(scope, fromMs, toMs)
+
+    override suspend fun catchUpDays(channelIds: List<String>): Int =
+        channelIds.distinct().chunked(400).maxOfOrNull { ids -> c.db.catalog().channelsByIds(ids).maxOfOrNull { it.catchupDays } ?: 0 } ?: 0
 }
