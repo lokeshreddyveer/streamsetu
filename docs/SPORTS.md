@@ -29,3 +29,12 @@ Those features need a **durable record** of their own that re-associates an even
 - **Security-context changes clear the screen at once and rebuild:** a profile switch, a different open library, the adult filter or kids mode changing, a folder relock, a hidden channel, or a source removed or disabled. A result that was started before such a change is dropped.
 - **Guide change signal:** `EpgDao.guideTouched()` reads one row and emits whenever the guide table is written; the ViewModel debounces the burst and then reads what it needs once.
 - **Detail:** read-only. Language and quality read out of a title or channel name are marked "(inferred)"; nothing is shown as provider data unless the playlist supplied it. Playback from Sports is not wired.
+
+## Phase 3 (Android TV and Fire TV): playing a Sports feed
+
+- Watch Best Feed and OK on a feed start the channel through `AppContainer.play`, the action Live TV uses. Sports has no player, surface or network path of its own; the one video surface is placed on the detail panel's picture box.
+- One ranking (`SportsFeedRanker`) serves the button and the Recommended tag: the person's choice, the feed that played earlier this session, a feed the device is not known to be unable to show, preferred language, quality, preferred connection, known-healthy, provider order. Provider-supplied values outrank values read from names. Ranking reads memory only.
+- Every request re-reads and re-authorizes the channel (source, library, profile, folder lock, adult filter, hidden, feed still part of the event). The play action reports how each request ended (started, refused, overtaken); only the newest request changes the screen.
+- A failed switch starts the feed that was playing again through the same action ("Could not switch. Returned to the previous feed."). It never moves to an alternate feed by itself.
+- A guide change never stops an allowed channel. If its event leaves the guide, the embedded picture stays with a notice; leaving that panel hands the stream to Live TV's embedded player without restarting it. Fullscreen is always the person's own action.
+- Diagnostics are counts, durations and fixed words only.

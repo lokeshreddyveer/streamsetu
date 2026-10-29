@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import app.streamsetu.core.sports.Sport
 import app.streamsetu.core.sports.SportsEvent
 import app.streamsetu.tv.AppContainer
+import app.streamsetu.tv.sports.SportsPlaybackCoordinator
+import app.streamsetu.tv.sports.SportsPlaybackState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -32,8 +34,8 @@ import javax.inject.Inject
  */
 @OptIn(FlowPreview::class)
 @HiltViewModel
-class SportsViewModel internal constructor(private val deps: SportsDeps, scope: CoroutineScope?, private val debounceMs: Long, private val diagnostics: SportsDiagnostics = SportsDiagnostics.Log) : ViewModel() {
-    @Inject constructor(c: AppContainer) : this(RealSportsDeps(c), null, 1_500L)
+class SportsViewModel internal constructor(private val deps: SportsDeps, scope: CoroutineScope?, private val debounceMs: Long, private val diagnostics: SportsDiagnostics = SportsDiagnostics.Log, private val playback: SportsPlaybackCoordinator? = null) : ViewModel() {
+    @Inject constructor(c: AppContainer) : this(RealSportsDeps(c), null, 1_500L, SportsDiagnostics.Log, c.sportsPlayback)
 
     private val work: CoroutineScope = scope ?: viewModelScope
 
@@ -54,11 +56,12 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
     private var loadJob: Job? = null
     @Volatile var loadCount = 0; private set
 
-    val uiState: StateFlow<SportsHubUiState> = combine(loaded, selected, detailId, deps.minutes) { l, sel, detail, now -> build(l, sel, detail, now) }
+    val uiState: StateFlow<SportsHubUiState> = combine(loaded, selected, detailId, deps.minutes, playback?.state ?: kotlinx.coroutines.flow.flowOf(SportsPlaybackState())) { l, sel, detail, now, pb -> build(l, sel, detail, now, pb) }
         .flowOn(Dispatchers.Default)
         .stateIn(work, SharingStarted.WhileSubscribed(5_000), SportsHubUiState(loading = true, nowMs = deps.now()))
 
     init {
+        playback?.useEvents { id -> loaded.value.events.firstOrNull { it.id == id } }
         work.launch { deps.scope.collect { s -> onScope(s) } }
         work.launch { deps.dataSignals.debounce(debounceMs).collect { if (currentScope != null) startLoad(clear = false) } }
     }
@@ -67,8 +70,26 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
 
     /** Applies a filter that is already loaded; nothing is queried. */
     fun select(sport: Sport?) { selected.value = sport }
-    fun openDetail(id: String) { detailId.value = id }
-    fun closeDetail() { detailId.value = null }
+    fun openDetail(id: String) { if (detailId.value != id) playback?.end(); detailId.value = id }
+    /** Closing the detail ends the Sports playback that belongs to it. */
+    fun closeDetail() {
+        // A channel that outlived its event is not stopped by leaving the panel: Sports gives it up to Live TV's embedded player.
+        if (playback?.state?.value?.held != null) { playback.handOff(); return }
+        detailId.value = null; playback?.end()
+    }
+    /** Stop on the held channel's panel. */
+    fun stopHeld() { detailId.value = null; playback?.end() }
+    /** The hand-over to Live TV was carried out. */
+    fun completeHandoff() { detailId.value = null; playback?.consumeHandoff() }
+
+    // ---- playback (nothing here is called by focus; each is the person pressing OK)
+
+    fun watchBest() { detailId.value?.let { playback?.watch(it) } }
+    fun watchFeed(channelId: String) { detailId.value?.let { playback?.watchFeed(it, channelId) } }
+    fun retryPlayback() { playback?.retry() }
+    /** Back to Event, leaving the detail open; and leaving Sports. Both release the stream that Sports started. */
+    fun stopPlayback() { playback?.end() }
+    fun dismissPlaybackMessage() { playback?.dismissMessage() }
     /** The person chose Refresh (or Retry): the old content stays until the new is ready. */
     fun refresh() { if (currentScope != null) startLoad(clear = false) }
     /** The screen was entered again; the events are refreshed in the background only if they are old. */
@@ -83,6 +104,7 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
         val changed = currentScope != s
         currentScope = s
         if (!changed) return
+        if (!first) playback?.invalidate()                 // a pending play request or open feed list from before the change is dropped
         startLoad(clear = !first)                          // a change to who may see what: clear at once (the first value has nothing to clear)
     }
 
@@ -90,7 +112,7 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
         val scope = currentScope ?: return
         loadJob?.cancel()
         val gen = ++generation
-        if (clear) { loaded.value = Loaded(loading = true); detailId.value = null }
+        if (clear) { loaded.value = Loaded(loading = true); detailId.value = null; playback?.revalidate() }          // the stream goes on only if its channel is still allowed (see SportsPlaybackCoordinator.revalidate)
         else loaded.update { it.copy(refreshing = true, error = null) }
         loadJob = work.launch {
             val startedAt = System.nanoTime()
@@ -105,6 +127,7 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
                 loadedAt = deps.now()
                 loaded.value = Loaded(events = r.events, revision = r.revision, sourceNames = names, hasGuide = hasGuide, loading = false)
                 diagnostics.record(SportsLoadReport.of(r.events, now, deps.zone, scope.sourceIds.size, ms(), r.cacheHit))
+                playback?.refreshOptions()                                                        // a feed that is no longer allowed leaves the list; a playing one that is not is let go
             } catch (e: CancellationException) {
                 diagnostics.record(SportsLoadReport.failed(SportsLoadOutcome.CANCELLED, null, scope.sourceIds.size, ms()))
                 throw e
@@ -117,8 +140,12 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
 
     // ---- state (computed here, never in a composable)
 
-    private fun build(l: Loaded, sel: Sport?, detail: String?, now: Long): SportsHubUiState {
-        val r = SportsSections.build(l.events, now, deps.zone, sel, detail, l.sourceNames)
+    private fun build(l: Loaded, sel: Sport?, detail: String?, now: Long, pb: SportsPlaybackState): SportsHubUiState {
+        val play = if (detail != null && playback != null) {
+            val (ranked, why) = playback.recommendedFor(detail)
+            SportsDetailPlay(ranked.map { it.feed.channelId }, ranked.filter { it.deprioritized }.map { it.feed.channelId }.toSet(), why, pb)
+        } else SportsDetailPlay()
+        val r = SportsSections.build(l.events, now, deps.zone, sel, detail, l.sourceNames, play = play)
         val message = when {
             l.loading -> null
             r.live.isEmpty() && r.soon.isEmpty() && r.today.isEmpty() && r.upcoming.isEmpty() && l.error != null -> SportsHubMessage.Error(l.error)
@@ -126,6 +153,6 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
             l.events.none { it.endMs > now } -> SportsHubMessage.NoSports
             else -> null
         }
-        return SportsHubUiState(l.loading, l.refreshing, r.selected, r.filters, r.live, r.soon, r.today, r.upcoming, r.detail, message, l.revision, now)
+        return SportsHubUiState(l.loading, l.refreshing, r.selected, r.filters, r.live, r.soon, r.today, r.upcoming, r.detail ?: pb.held?.takeIf { !pb.handoff }?.let { SportsSections.heldDetail(it.channelName) }, message, l.revision, now, pb.handoff)
     }
 }

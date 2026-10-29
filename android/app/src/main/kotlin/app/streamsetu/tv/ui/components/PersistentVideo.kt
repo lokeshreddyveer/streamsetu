@@ -38,7 +38,7 @@ fun PersistentVideo(c: AppContainer, nav: Navigator) {
     val audioOnly by c.playback.audioOnly.collectAsStateWithLifecycle()
     val fullscreen = nav.top == Overlay.Player
     val bounds = nav.videoBounds
-    val onLivePreview = nav.base == Base.Shell && nav.tab == Tab.LIVE && nav.top == null && bounds != null
+    val onLivePreview = nav.base == Base.Shell && (nav.tab == Tab.LIVE || nav.tab == Tab.SPORTS) && nav.top == null && bounds != null
     val shown = item != null && !audioOnly && (fullscreen || onLivePreview)
     if (!shown) return
     val ring = with(LocalDensity.current) { 3.dp.roundToPx() }          // the focus ring of the preview stays visible around the picture

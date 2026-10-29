@@ -159,6 +159,9 @@ class Navigator {
     /** True while the fullscreen player was opened from the Live TV browser: Back then leaves the stream playing in the preview. */
     var liveFullscreen = false
 
+    /** Set when a stream was handed from Sports to Live TV's embedded player: the next time Sports is shown, the remote goes to its remembered (or nearest) event card, and the page clears this. */
+    var sportsReturnToCard by mutableStateOf(false)
+
     /** Where the Live TV preview sits on screen (in the window), published by that screen while it is showing. The one video surface (see PersistentVideo) is placed here. Null when there is no preview. */
     var videoBounds by mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
 

@@ -61,7 +61,7 @@ import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
-private enum class PanelKind(val title: String) { TRACKS("Audio & Subtitles"), SPEED("Speed"), PICTURE("Picture"), ENGINE("Player"), MORE("More"), TUNE_PICTURE("Picture tuning"), SOUND("Sound"), SUBLOOK("Subtitle look"), SUBFIND("Subtitles online"), QUALITY("Quality"), CHAPTERS("Chapters"), QUEUE("Up next"), JUMPTO("Go to"), SLEEP("Sleep timer"), JUMP("Jump"), SYNC("Sync"), CHANNELS("Channels"), GROUPS("Groups"), PROGRAMME("Programme"), INFO("Technical information"), EPISODES("Episodes") }
+private enum class PanelKind(val title: String) { TRACKS("Audio & Subtitles"), SPEED("Speed"), PICTURE("Picture"), ENGINE("Player"), MORE("More"), TUNE_PICTURE("Picture tuning"), SOUND("Sound"), SUBLOOK("Subtitle look"), SUBFIND("Subtitles online"), QUALITY("Quality"), CHAPTERS("Chapters"), QUEUE("Up next"), JUMPTO("Go to"), SLEEP("Sleep timer"), JUMP("Jump"), SYNC("Sync"), CHANNELS("Channels"), GROUPS("Groups"), PROGRAMME("Programme"), INFO("Technical information"), EPISODES("Episodes"), FEEDS("Feeds") }
 
 private val Ink = Color(0xFFF2F2F2)
 private val InkDim = Color(0xB3FFFFFF)
@@ -83,6 +83,9 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     val resumedFrom by playback.resumedFrom.collectAsStateWithLifecycle()
     val item = current
     val live = item?.isLive == true
+    // Feeds: only when this stream was started from a Sports event that has more than one currently allowed feed.
+    val sports by c.sportsPlayback.state.collectAsStateWithLifecycle()
+    val feedsAvailable = live && item is ChannelPlayable && sports.canSwitch()
     val reduced = LocalReducedMotion.current
     fun ms(n: Int) = if (reduced) 0 else n
 
@@ -372,6 +375,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                     fun req(): Modifier = if (first) { first = false; Modifier.focusRequester(controlsFirst) } else Modifier
                     if (hasNextEpisode) ControlPill(Icons.Filled.SkipNext, "Next", req()) { c.step(+1) }
                     if (item is EpisodePlayable) ControlPill(Icons.AutoMirrored.Filled.List, "Episodes", req()) { panel = PanelKind.EPISODES }
+                    if (feedsAvailable) ControlPill(Icons.Filled.SwapHoriz, "Feeds", req()) { c.sportsPlayback.refreshOptions(); panel = PanelKind.FEEDS }
                     if (live && c.queue.size > 1) ControlPill(Icons.AutoMirrored.Filled.FormatListBulleted, "Channels", req()) { panel = PanelKind.CHANNELS }
                     ControlPill(Icons.Filled.Subtitles, listOfNotNull(chips.audio, chips.subtitles?.let { if (it == "Off") "Subs off" else "Subs $it" }).joinToString("  ·  ").ifBlank { "Audio & subtitles" }, req()) { panel = PanelKind.TRACKS }
                     if (!live) ControlPill(Icons.Filled.Speed, if (speed == 1f) "Speed" else "${speed}×", req()) { panel = PanelKind.SPEED }
@@ -455,6 +459,19 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                         PanelKind.PICTURE -> items(AspectMode.entries, key = { "p" + it.name }) { m -> TextOption(m.label, m == aspect, if (m == aspect) Modifier.focusRequester(selectedReq) else Modifier) { playback.setAspect(m); closePanel() } }
                         PanelKind.ENGINE -> items(playback.available.toList(), key = { "e" + it.name }) { k -> TextOption(k.label, k == playback.engineKind, if (k == playback.engineKind) Modifier.focusRequester(selectedReq) else Modifier, if (k == EngineKind.MPV) "MKV, AVI and unusual formats" else "HLS, MP4 and transport streams") { playback.switchEngine(k); closePanel() } }
                         PanelKind.CHANNELS -> { item { TextOption("Folders…", false, Modifier, "Choose another list of channels") { panel = PanelKind.GROUPS } }; item { TextOption("Search channels…", false, Modifier, "Type a name") { searchLiveOnly = true; searching = true; panel = null } }; items(c.queue.filterIsInstance<ChannelPlayable>(), key = { "c" + it.id }) { ch -> TextOption("${ch.channel.number?.let { "$it  " } ?: ""}${ch.channel.name}", ch.id == item?.id, if (ch.id == item?.id) Modifier.focusRequester(selectedReq) else Modifier, channelNow[ch.id]?.let { p -> p.title + "  ·  " + (((p.endMs - System.currentTimeMillis()) / 60_000L).coerceAtLeast(0)) + " min left" }) { c.play(ch, c.queue); closePanel() } } }
+                        PanelKind.FEEDS -> {
+                            // Read from the Sports playback, which reauthorises the feeds whenever what is allowed can have changed: a feed that is no longer allowed is not here.
+                            sports.message?.let { m -> item { Label(m, Tokens.small, Ink, modifier = Modifier.padding(bottom = 6.dp)) } }
+                            if (sports.status == app.streamsetu.tv.sports.SportsPlayStatus.FAILED) item { TextOption("Try Again", false, Modifier) { c.sportsPlayback.retry(); closePanel() } }
+                            items(sports.options, key = { "f" + it.channelId }) { o ->
+                                val detail = listOfNotNull(
+                                    o.language?.let { app.streamsetu.tv.ui.screens.sports.SportsSections.languageName(it) + if (o.languageInferred) " (inferred)" else "" },
+                                    o.quality?.let { it + if (o.qualityInferred) " (inferred)" else "" }, o.sourceName.ifBlank { null }, if (o.catchUp) "Catch-up" else null,
+                                    if (o.channelId == sports.suggestedChannelId) "Next best" else null, if (o.unsupported) "May not show on this device" else null,
+                                ).joinToString("  ·  ")
+                                TextOption(o.channelName, o.current, if (o.current || o.channelId == sports.suggestedChannelId) Modifier.focusRequester(selectedReq) else Modifier, detail) { if (!o.current) c.sportsPlayback.switchTo(o.channelId); closePanel() }
+                            }
+                        }
                         PanelKind.EPISODES -> {
                             val eps = c.queue.filterIsInstance<EpisodePlayable>().filter { (item as? EpisodePlayable)?.episode?.season == it.episode.season }
                             items(eps, key = { "ep" + it.id }) { ep -> TextOption("${ep.episode.number}.  ${ep.episode.title}", ep.id == item?.id, if (ep.id == item?.id) Modifier.focusRequester(selectedReq) else Modifier) { c.play(ep, c.queue); closePanel() } }

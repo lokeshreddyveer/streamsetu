@@ -41,7 +41,36 @@ data class SportsFilter(val sport: Sport?, val label: String, val count: Int)
 data class SportsLabelled(val text: String, val inferred: Boolean)
 
 @Immutable
-data class SportsFeedRow(val channelName: String, val sourceName: String, val language: SportsLabelled?, val quality: SportsLabelled?, val catchUp: Boolean)
+data class SportsFeedRow(
+    val channelName: String, val sourceName: String, val language: SportsLabelled?, val quality: SportsLabelled?, val catchUp: Boolean,
+    /** What OK on the row plays. Only the id: the channel itself is read again at the moment of the request. */
+    val channelId: String = "",
+    /** The feed Watch Best Feed would play. */
+    val recommended: Boolean = false,
+    /** The feed playing or selected now. */
+    val current: Boolean = false,
+    /** The feed a start just failed on. */
+    val failed: Boolean = false,
+    /** After a failure: the next best feed, highlighted for the person to confirm. */
+    val suggested: Boolean = false,
+    /** A quality the provider supplied that this device cannot show; the feed is listed last-ish and never chosen for the person. */
+    val unsupported: Boolean = false,
+)
+
+/** What the open event's playback is doing, for its detail screen. */
+@Immutable
+data class SportsDetailPlayback(val status: app.streamsetu.tv.sports.SportsPlayStatus, val message: String?, val canSwitch: Boolean)
+
+/** What the ranking and the playback add to an event's detail. Worked out outside the composables. */
+@Immutable
+data class SportsDetailPlay(
+    /** The event's currently allowed feeds, best first. Empty: provider order. */
+    val rankedChannelIds: List<String> = emptyList(),
+    val unsupportedIds: Set<String> = emptySet(),
+    /** "Best available · English · FHD". */
+    val bestExplanation: String? = null,
+    val state: app.streamsetu.tv.sports.SportsPlaybackState = app.streamsetu.tv.sports.SportsPlaybackState(),
+)
 
 @Immutable
 data class SportsEventDetail(
@@ -52,6 +81,12 @@ data class SportsEventDetail(
     val feeds: List<SportsFeedRow>,
     /** True when the rules were less sure this is a real event of this sport. */
     val lowConfidence: Boolean,
+    /** Why Watch Best Feed picks the feed it does; null when there is no feed to play. */
+    val bestLabel: String? = null,
+    /** Set while a feed of this event is starting, playing or has failed. */
+    val playback: SportsDetailPlayback? = null,
+    /** The event is gone from the guide but this channel is still allowed and playing: its name. The panel then says so and offers Live TV or Stop. */
+    val heldChannel: String? = null,
 )
 
 /** What the screen says when it has no events to show. */
@@ -82,6 +117,8 @@ data class SportsHubUiState(
     val revision: String = "",
     /** The time the sections were worked out for. */
     val nowMs: Long = 0,
+    /** The stream Sports started can no longer be kept in Sports: the screen hands it to Live TV's embedded player, without restarting it. */
+    val playbackHandoff: Boolean = false,
 ) {
     val isEmpty: Boolean get() = live.isEmpty() && startingSoon.isEmpty() && today.isEmpty() && upcoming.isEmpty()
     fun section(s: SportsSection): List<SportsEventCard> = when (s) { SportsSection.LIVE_NOW -> live; SportsSection.STARTING_SOON -> startingSoon; SportsSection.TODAY -> today; SportsSection.UPCOMING -> upcoming }
@@ -124,7 +161,7 @@ object SportsSections {
         return c.timeInMillis
     }
 
-    fun build(events: List<SportsEvent>, nowMs: Long, zone: TimeZone, selected: Sport?, detailId: String?, sourceNames: Map<String, String>, locale: java.util.Locale = java.util.Locale.getDefault()): Result {
+    fun build(events: List<SportsEvent>, nowMs: Long, zone: TimeZone, selected: Sport?, detailId: String?, sourceNames: Map<String, String>, locale: java.util.Locale = java.util.Locale.getDefault(), play: SportsDetailPlay = SportsDetailPlay()): Result {
         val labels = Labels(zone, locale, nowMs)
         val upcomingOrLive = events.filter { it.endMs > nowMs }                                   // a finished event is not listed
         val present = Sport.values().filter { s -> upcomingOrLive.any { it.sport == s } }
@@ -142,20 +179,36 @@ object SportsSections {
                 else -> later.add(c)
             }
         }
-        val detail = detailId?.let { id -> events.firstOrNull { it.id == id } }?.let { detail(it, nowMs, sourceNames, labels) }
+        val detail = detailId?.let { id -> events.firstOrNull { it.id == id } }?.let { detail(it, nowMs, sourceNames, labels, play) }
         return Result(live, soon, today, later, filters, effective, detail)
     }
 
-    fun detail(e: SportsEvent, nowMs: Long, sourceNames: Map<String, String>, labels: Labels): SportsEventDetail {
-        val feeds = e.feeds.map { f ->
+    /** What the panel shows for a channel that keeps playing after its event left the guide: no event content is carried over. */
+    fun heldDetail(channelName: String) = SportsEventDetail(
+        SportsEventCard("held", channelName, Sport.FOOTBALL, "", null, 0, 0, true, 1, null, false, "", "LIVE"), "Live now", "", emptyList(), false, null,
+        SportsDetailPlayback(app.streamsetu.tv.sports.SportsPlayStatus.PLAYING, null, false), channelName,
+    )
+
+    fun detail(e: SportsEvent, nowMs: Long, sourceNames: Map<String, String>, labels: Labels, play: SportsDetailPlay = SportsDetailPlay()): SportsEventDetail {
+        val own = play.state.takeIf { it.origin?.eventId == e.id }
+        val order = play.rankedChannelIds.withIndex().associate { it.value to it.index }
+        val ordered = if (order.isEmpty()) e.feeds else e.feeds.sortedBy { order[it.channelId] ?: Int.MAX_VALUE }          // sortedBy is stable: unranked feeds keep the provider's order
+        val best = play.rankedChannelIds.firstOrNull()
+        val feeds = ordered.map { f ->
             SportsFeedRow(
                 channelName = f.channelName, sourceName = sourceNames[f.sourceId] ?: "Playlist",
                 language = f.language?.let { SportsLabelled(languageName(it), f.languageSource != MetadataSource.PROVIDER) },
                 quality = f.quality?.let { SportsLabelled(it, f.qualitySource != MetadataSource.PROVIDER) }, catchUp = f.catchUp,
+                channelId = f.channelId, recommended = f.channelId == best, current = own?.origin?.channelId == f.channelId,
+                failed = own?.status == app.streamsetu.tv.sports.SportsPlayStatus.FAILED && own.attemptedChannelId == f.channelId,
+                suggested = own?.suggestedChannelId == f.channelId, unsupported = f.channelId in play.unsupportedIds,
             )
         }
         val label = when (e.state(nowMs)) { SportsEventState.LIVE -> "Live now"; SportsEventState.UPCOMING -> "Upcoming"; SportsEventState.FINISHED -> "Finished" }
-        return SportsEventDetail(card(e, nowMs, labels), label, labels.range(e), feeds, e.confidence < LOW_CONFIDENCE)
+        return SportsEventDetail(
+            card(e, nowMs, labels), label, labels.range(e), feeds, e.confidence < LOW_CONFIDENCE, play.bestExplanation,
+            own?.let { SportsDetailPlayback(it.status, it.message, it.canSwitch()) } ?: play.state.message?.let { SportsDetailPlayback(app.streamsetu.tv.sports.SportsPlayStatus.IDLE, it, false) },
+        )
     }
 
     private val names = mapOf("en" to "English", "es" to "Spanish", "fr" to "French", "de" to "German", "ar" to "Arabic", "hi" to "Hindi", "te" to "Telugu", "ta" to "Tamil", "kn" to "Kannada", "ml" to "Malayalam",

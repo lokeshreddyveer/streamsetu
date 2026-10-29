@@ -408,7 +408,9 @@ fun closePlayer(c: AppContainer, nav: Navigator, embeddedLive: Boolean = false) 
     if (!keepLive) c.playback.stop()
     nav.liveFullscreen = false
     nav.close()
-    if (keepLive && nav.tab != Tab.LIVE) nav.go(Tab.LIVE)
+    // Back lands where the stream was started: the Sports event it came from (or the Sports panel for a channel whose event is gone), or Live TV.
+    val home = if (c.sportsPlayback.hasOrigin || c.sportsPlayback.isHeld) Tab.SPORTS else Tab.LIVE
+    if (keepLive && nav.tab != home) nav.go(home)
 }
 
 /** Hands the channel playing now over to Multi-View: the player closes and its stream stops (so a one-connection provider is free for the tiles). */

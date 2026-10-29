@@ -71,6 +71,8 @@ class AppContainer @Inject constructor(
     /** Sports events built from the open library's guide (see tv/sports/SportsAdapter.kt). One service for the app, so its cache outlives any screen. */
     val sportsInputs: app.streamsetu.tv.sports.SportsGuideInputs by lazy { app.streamsetu.tv.sports.SportsGuideInputs(db, epg, { ui.epgOffsetMinutes.value * 60_000L }, { library.sourceIds.value }) }
     val sportsService: app.streamsetu.core.sports.SportsEventService by lazy { app.streamsetu.core.sports.SportsEventService(sportsInputs) }
+    /** Plays Sports feeds through the same play action as Live TV (see [app.streamsetu.tv.sports.RealSportsPlaybackDeps]). */
+    val sportsPlayback: app.streamsetu.tv.sports.SportsPlaybackCoordinator by lazy { app.streamsetu.tv.sports.SportsPlaybackCoordinator(app.streamsetu.tv.sports.RealSportsPlaybackDeps(this), appScope) }
 
     /** Who is using the app: each profile has its own favorites, collections, history and resume points. */
     val profiles: app.streamsetu.tv.sync.ProfileService by lazy {
@@ -493,8 +495,8 @@ class AppContainer @Inject constructor(
     }
 
     /** `privately` null carries on as it is (a channel change, the next episode or another copy while something private plays); true or false starts afresh. */
-    fun play(item: Playable, queue: List<Playable> = listOf(item), startOver: Boolean = false, keepCopies: Boolean = false, privately: Boolean? = null) {
-        blockNow()?.let { viewingBlock.value = it; return }
+    fun play(item: Playable, queue: List<Playable> = listOf(item), startOver: Boolean = false, keepCopies: Boolean = false, privately: Boolean? = null, onResult: ((PlayStart) -> Unit)? = null) {
+        blockNow()?.let { viewingBlock.value = it; onResult?.invoke(PlayStart.REJECTED); return }
         PrivateWatch.on = PrivateWatch.resolve(privately, PrivateWatch.on, playback.current.value != null)
         if (!keepCopies) fallbackCopies = emptyList()
         playback.current.value?.takeIf { it.isLive && it.id != item.id }?.let { previousLive = it }
@@ -505,14 +507,16 @@ class AppContainer @Inject constructor(
         val generation = ++playGeneration
         pendingPlayback.value = PendingPlayback(item.id, if (item is app.streamsetu.core.model.EpisodePlayable) item.series.title else item.title, generation)
         appScope.launch {
+            var result = PlayStart.REJECTED
             try {
             if (!mayPlay(item)) {
+                if (generation != playGeneration) result = PlayStart.SUPERSEDED
                 if (generation == playGeneration) kotlinx.coroutines.withContext(Dispatchers.Main) { android.widget.Toast.makeText(context, "That is not available: its folder is locked or hidden for this profile, or its connection is off.", android.widget.Toast.LENGTH_LONG).show() }
                 return@launch
             }
             val resume = if (item.isLive || !item.tracksProgress || startOver) 0 else if (settings.resumeAutomatically.value) user.progress(item.id)?.takeIf { !it.completed }?.positionMs ?: 0 else 0
-            kotlinx.coroutines.withContext(Dispatchers.Main) { if (generation == playGeneration) playback.play(item, resume) }          // a newer choice made while this was checked wins
-            } finally { if (pendingPlayback.value?.generation == generation) pendingPlayback.value = null }
+            kotlinx.coroutines.withContext(Dispatchers.Main) { if (generation == playGeneration) { playback.play(item, resume); result = PlayStart.STARTED } else result = PlayStart.SUPERSEDED }          // a newer choice made while this was checked wins
+            } finally { if (pendingPlayback.value?.generation == generation) pendingPlayback.value = null; onResult?.invoke(result) }
         }
     }
 
@@ -524,6 +528,9 @@ class AppContainer @Inject constructor(
     }
 
 }
+
+/** How a request to [AppContainer.play] ended, reported once: handed to the player, refused (a viewing limit, a locked or hidden folder, a connection that is off), or overtaken by a newer request. */
+enum class PlayStart { STARTED, REJECTED, SUPERSEDED }
 
 @HiltAndroidApp
 class StreamSetuApp : Application(), coil.ImageLoaderFactory {

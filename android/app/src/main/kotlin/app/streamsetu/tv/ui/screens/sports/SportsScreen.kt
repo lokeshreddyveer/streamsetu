@@ -35,6 +35,10 @@ import androidx.compose.material.icons.filled.SportsRugby
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.SportsTennis
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -86,6 +90,18 @@ class SportsActions(
     val viewSportsChannels: () -> Unit,
     /** The remote is on this event (its id and its position among all cards): remembered so coming back finds it. */
     val remember: (id: String, index: Int) -> Unit,
+    /** Watch Best Feed, and OK on one feed. Each is the person pressing OK; nothing plays from focus. */
+    val watchBest: () -> Unit = {},
+    val watchFeed: (channelId: String) -> Unit = {},
+    val retryPlayback: () -> Unit = {},
+    /** Stops the Sports playback and leaves the event detail open. */
+    val backToEvent: () -> Unit = {},
+    /** The embedded picture's place in the window (null when it is gone), and OK on it (the existing fullscreen player). */
+    val previewBounds: (androidx.compose.ui.geometry.Rect?) -> Unit = {},
+    val openFullscreen: () -> Unit = {},
+    val previewFocused: (Boolean) -> Unit = {},
+    /** Stop on the panel of a channel that outlived its event. */
+    val stopHeld: () -> Unit = {},
 )
 
 /** The page as the shell shows it. Refresh Guide uses the application's own guide refresh. */
@@ -101,8 +117,11 @@ fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, refreshGuideNow: () ->
     LaunchedEffect(Unit) { vm.onEntered() }
 
     // Back closes the detail first; with none open the page does not take Back, so the sidebar opens.
+    var previewFocused by remember { mutableStateOf(false) }
+    var returnTick by remember { mutableStateOf(0) }
+    // Back: from the embedded picture the remote goes back to the feed list (playback goes on); from the detail it closes the event, which ends what played from it.
     DisposableEffect(vm) {
-        val hook: () -> Boolean = { if (current.detail != null) { vm.closeDetail(); true } else false }
+        val hook: () -> Boolean = { if (current.detail != null) { if (previewFocused) returnTick++ else vm.closeDetail(); true } else false }
         nav.backHook = hook
         onDispose { if (nav.backHook === hook) nav.backHook = null }
     }
@@ -122,9 +141,21 @@ fun SportsScreenHost(vm: SportsViewModel, nav: Navigator, refreshGuideNow: () ->
             openGuideSettings = { nav.pendingSettings = app.streamsetu.tv.ui.screens.settings.GuideSettingsPage.request; nav.go(Tab.SETTINGS) },
             viewSportsChannels = { nav.go(Tab.LIVE) },
             remember = { id, index -> nav.memory.remember(Tab.SPORTS, id, index) },
+            watchBest = vm::watchBest, watchFeed = vm::watchFeed, retryPlayback = vm::retryPlayback, backToEvent = vm::stopPlayback,
+            previewBounds = { nav.videoBounds = it },
+            openFullscreen = { nav.liveFullscreen = true; nav.open(app.streamsetu.tv.nav.Overlay.Player) },
+            previewFocused = { previewFocused = it }, stopHeld = vm::stopHeld,
         )
     }
-    SportsHubContent(state, actions, entry, restoreId, ScrollHolder(vm), nav.contentRestoreAllowed)
+    // Sports can no longer keep the embedded player for a stream that is still allowed: it goes to Live TV's embedded channel player, selected there as the channel now playing. Nothing is
+    // restarted and fullscreen is never opened: that stays the person's own action. The Sports panel is told first so leaving it does not stop the stream.
+    LaunchedEffect(state.playbackHandoff) {
+        if (!state.playbackHandoff) return@LaunchedEffect
+        vm.completeHandoff(); nav.sportsReturnToCard = true; nav.go(Tab.LIVE)
+    }
+    // Leaving Sports releases the stream (a provider may allow only one connection), unless the fullscreen player has taken over.
+    DisposableEffect(vm) { onDispose { nav.videoBounds = null; if (nav.top != app.streamsetu.tv.nav.Overlay.Player) vm.stopPlayback() } }
+    SportsHubContent(state, actions, entry, restoreId, ScrollHolder(vm), nav.contentRestoreAllowed, returnTick, nav.sportsReturnToCard) { nav.sportsReturnToCard = false }
 }
 
 /** Where the list was scrolled, kept by the ViewModel (the screen is not composed while another tab is open). */
@@ -135,7 +166,7 @@ class ScrollHolder(private val vm: SportsViewModel) {
 
 /** The whole Hub as a function of its state. No database, no classification, no formatting: everything is already in [state]. */
 @Composable
-fun SportsHubContent(state: SportsHubUiState, actions: SportsActions, entry: FocusRequester, restoreId: String?, scroll: ScrollHolder, parentFocusEnabled: Boolean = true) {
+fun SportsHubContent(state: SportsHubUiState, actions: SportsActions, entry: FocusRequester, restoreId: String?, scroll: ScrollHolder, parentFocusEnabled: Boolean = true, returnTick: Int = 0, returnToCard: Boolean = false, onReturnedToCard: () -> Unit = {}) {
     val restore = remember { FocusRequester() }
     var restoring by remember { mutableStateOf(false) }
     val detailOpen = state.detail != null
@@ -148,12 +179,19 @@ fun SportsHubContent(state: SportsHubUiState, actions: SportsActions, entry: Foc
         if (restoreId != null) requestFocusOnFrames(8, { restore.requestFocus() }, { FocusMemory.focused === restore })
         else requestFocusOnFrames(8, { entry.requestFocus() }, { FocusMemory.focused === entry })
     }
+    // Coming back to Sports after its stream was handed to Live TV: the remote goes to the remembered event, or the nearest one, or the filters. No timers: by frames.
+    LaunchedEffect(returnToCard) {
+        if (!returnToCard || detailOpen) return@LaunchedEffect
+        if (restoreId != null) requestFocusOnFrames(8, { restore.requestFocus() }, { FocusMemory.focused === restore })
+        else requestFocusOnFrames(8, { entry.requestFocus() }, { FocusMemory.focused === entry })
+        onReturnedToCard()
+    }
     Box(Modifier.fillMaxSize().testTag("sports-hub")) {
         // While the detail is open the Hub behind it cannot take the remote.
         CompositionLocalProvider(LocalFocusEnabled provides (parentFocusEnabled && !detailOpen)) {
             Hub(state, actions, entry, restore, restoreId, scroll)
         }
-        state.detail?.let { SportsDetailPanel(it, actions.closeDetail) }
+        state.detail?.let { SportsDetailPanel(it, actions, returnTick) }
     }
 }
 
@@ -325,34 +363,101 @@ private fun MessageActions(actions: SportsActions) {
 
 /** A read-only panel over the Hub. The feed rows only inform: playback from Sports comes in a later phase. */
 @Composable
-private fun SportsDetailPanel(d: SportsEventDetail, onClose: () -> Unit) {
+private fun SportsDetailPanel(d: SportsEventDetail, actions: SportsActions, returnTick: Int) {
     val close = remember { FocusRequester() }
+    val best = remember { FocusRequester() }
     var closeFocused by remember { mutableStateOf(false) }
+    val rows = remember(d.card.id) { HashMap<String, FocusRequester>() }
+    val play = d.playback
+    val showPreview = play != null && play.status != app.streamsetu.tv.sports.SportsPlayStatus.IDLE
     LaunchedEffect(d.card.id) { requestFocusOnFrames(8, { close.requestFocus() }, { closeFocused }) }
+    // Back from the embedded picture: the remote returns to the feed that is playing, or to Watch Best Feed.
+    LaunchedEffect(returnTick) {
+        if (returnTick == 0) return@LaunchedEffect
+        val target = d.feeds.firstOrNull { it.current }?.channelId?.let { rows[it] } ?: best
+        runCatching { target.requestFocus() }
+    }
     Row(Modifier.fillMaxSize().testTag("sports-detail")) {
-        Spacer(Modifier.weight(1f).fillMaxHeight().background(androidx.compose.ui.graphics.Color(0x99000000)))
+        Box(Modifier.weight(1f).fillMaxHeight().background(androidx.compose.ui.graphics.Color(0x99000000)), Alignment.Center) {
+            if (showPreview) SportsPreview(actions)
+        }
         Column(Modifier.width(560.ui).fillMaxHeight().background(Tokens.panel).padding(horizontal = 28.dp, vertical = Tokens.safeVertical).focusGroup(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (d.heldChannel != null) { SportsHeldBody(d, actions, close, best, { closeFocused = it }); return@Column }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Label(d.card.title, Tokens.title, Tokens.text, FontWeight.Bold, maxLines = 3, modifier = Modifier.weight(1f))
-                TvButton("Close", onClose, Modifier.focusRequester(close).testTag("sports-detail-close"), icon = Icons.Filled.Close, onFocus = { closeFocused = it })
+                TvButton("Close", actions.closeDetail, Modifier.focusRequester(close).testTag("sports-detail-close"), icon = Icons.Filled.Close, onFocus = { closeFocused = it })
             }
             Label(d.card.sportLabel + (d.card.competition?.let { " · $it" } ?: ""), Tokens.body, Tokens.textSecondary)
             Label(d.timeRange, Tokens.body, Tokens.text)
             Label(d.stateLabel, Tokens.body, if (d.card.live) Tokens.accent else Tokens.textSecondary, FontWeight.SemiBold)
             if (d.lowConfidence) Label("This listing was matched with lower confidence, so the details may be wrong.", Tokens.small, Tokens.warning, modifier = Modifier.testTag("sports-low-confidence"))
-            Label("Channels", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(d.feeds.size, key = { it }) { i -> SportsFeedRowView(d.feeds[i]) }
+            if (d.feeds.isNotEmpty()) {
+                TvButton("Watch Best Feed", actions.watchBest, Modifier.focusRequester(best).testTag("sports-watch-best"), icon = Icons.Filled.PlayArrow, primary = true)
+                d.bestLabel?.let { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-best-label")) }
             }
-            Label("Playback from Sports will be added in the next phase. You can still find this channel in Live TV.", Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-detail-note"))
+            if (play != null) SportsPlaybackNote(play, d, actions, rows)
+            Label("Available feeds", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(d.feeds.size, key = { d.feeds[it].channelId.ifEmpty { it.toString() } }) { i ->
+                    val f = d.feeds[i]
+                    SportsFeedRowView(f, if (f.channelId.isNotEmpty()) Modifier.focusRequester(rows.getOrPut(f.channelId) { FocusRequester() }) else Modifier) { if (f.channelId.isNotEmpty()) actions.watchFeed(f.channelId) }
+                }
+            }
         }
     }
 }
 
+/** The panel for a channel that keeps playing after its event left the guide. The picture above stays where it was; the choices are Live TV's embedded player or Stop. */
 @Composable
-private fun SportsFeedRowView(f: SportsFeedRow) {
-    // Informational: OK does nothing. The row can hold the remote only so a long list can be scrolled with the remote.
-    Focusable({}, Modifier.fillMaxWidth().testTag("sports-feed"), shape = RoundedCornerShape(Tokens.radiusSmall), container = Tokens.card, scaleOnFocus = 1.0f, focusSound = null, selectSound = null) { _ ->
+private fun androidx.compose.foundation.layout.ColumnScope.SportsHeldBody(d: SportsEventDetail, actions: SportsActions, close: FocusRequester, primary: FocusRequester, onCloseFocus: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Label(d.heldChannel.orEmpty(), Tokens.title, Tokens.text, FontWeight.Bold, maxLines = 3, modifier = Modifier.weight(1f))
+        TvButton("Close", actions.closeDetail, Modifier.focusRequester(close).testTag("sports-detail-close"), icon = Icons.Filled.Close, onFocus = onCloseFocus)
+    }
+    Label("The guide changed. This channel is still playing.", Tokens.body, Tokens.text, FontWeight.SemiBold, modifier = Modifier.testTag("sports-held-notice"))
+    Label("It is no longer listed as a Sports event. Open it in Live TV to keep watching, or stop it.", Tokens.small, Tokens.textSecondary)
+    TvButton("Open in Live TV", actions.closeDetail, Modifier.focusRequester(primary).testTag("sports-held-live"), icon = Icons.Filled.PlayArrow, primary = true)
+    TvButton("Stop", actions.stopHeld, Modifier.testTag("sports-held-stop"))
+}
+
+/** The embedded picture: the one video surface is placed on this box (see PersistentVideo); OK opens the existing fullscreen player. */
+@Composable
+private fun SportsPreview(actions: SportsActions) {
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().padding(32.dp), Alignment.Center) {
+        val w = minOf(maxWidth, maxHeight * 16f / 9f); val h = w * 9f / 16f
+        DisposableEffect(Unit) { onDispose { actions.previewBounds(null) } }
+        Focusable({ actions.openFullscreen() }, Modifier.size(w, h).testTag("sports-preview").onFocusChanged { actions.previewFocused(it.hasFocus) }.onGloballyPositioned { actions.previewBounds(it.boundsInWindow()) },
+            scaleOnFocus = 1.0f, container = androidx.compose.ui.graphics.Color.Black, shape = RoundedCornerShape(16.dp), ringWidth = 3.dp) {
+            Box(Modifier.fillMaxSize())
+        }
+    }
+}
+
+/** What the playback says under Watch Best Feed: a concise failure with its three choices, or a short line while it starts. */
+@Composable
+private fun SportsPlaybackNote(play: SportsDetailPlayback, d: SportsEventDetail, actions: SportsActions, rows: Map<String, FocusRequester>) {
+    val failed = play.status == app.streamsetu.tv.sports.SportsPlayStatus.FAILED
+    if (play.message != null) {
+        Column(Modifier.fillMaxWidth().testTag("sports-play-error"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Label(play.message, Tokens.body, Tokens.warning, FontWeight.SemiBold)
+            if (failed) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TvButton("Try Again", actions.retryPlayback, Modifier.testTag("sports-try-again"))
+                if (d.feeds.size > 1) TvButton("Choose Another Feed", {
+                    val target = d.feeds.firstOrNull { it.suggested }?.channelId ?: d.feeds.firstOrNull { !it.failed }?.channelId
+                    target?.let { rows[it] }?.let { r -> runCatching { r.requestFocus() } }
+                }, Modifier.testTag("sports-choose-another"))
+                TvButton("Back to Event", actions.backToEvent, Modifier.testTag("sports-back-to-event"))
+            }
+        }
+    } else if (play.status == app.streamsetu.tv.sports.SportsPlayStatus.STARTING) {
+        Label("Starting…", Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-starting"))
+    }
+}
+
+@Composable
+private fun SportsFeedRowView(f: SportsFeedRow, modifier: Modifier, onPlay: () -> Unit) {
+    // OK plays this exact feed. Focus alone does nothing.
+    Focusable(onPlay, modifier.fillMaxWidth().testTag("sports-feed"), shape = RoundedCornerShape(Tokens.radiusSmall), container = Tokens.card, scaleOnFocus = 1.0f, focusSound = null, selectSound = null) { _ ->
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Label(f.channelName + "  ·  " + f.sourceName, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 1)
             val parts = ArrayList<String>()
@@ -360,6 +465,13 @@ private fun SportsFeedRowView(f: SportsFeedRow) {
             f.quality?.let { parts.add("Quality: ${it.text}" + (if (it.inferred) " (inferred)" else "")) }
             if (f.catchUp) parts.add("Catch-up available")
             if (parts.isNotEmpty()) Label(parts.joinToString("  ·  "), Tokens.small, Tokens.textSecondary, maxLines = 2)
+            val tags = ArrayList<String>()
+            if (f.current) tags.add("Playing now") 
+            if (f.recommended) tags.add("Recommended")
+            if (f.failed) tags.add("Could not play")
+            if (f.suggested) tags.add("Next best: press OK to switch")
+            if (f.unsupported) tags.add("This device may not show this quality")
+            if (tags.isNotEmpty()) Label(tags.joinToString("  ·  "), Tokens.small, if (f.failed) Tokens.warning else Tokens.accent, FontWeight.SemiBold, modifier = Modifier.testTag("sports-feed-tags"))
         }
     }
 }

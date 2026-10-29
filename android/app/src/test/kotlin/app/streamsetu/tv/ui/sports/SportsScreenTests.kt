@@ -73,9 +73,9 @@ class SportsScreenTests {
     /** live: a1, a2 · soon: b1, b2 · today: c1 · upcoming: d1 (cricket) */
     private fun standard() = listOf(event("a1", -30), event("a2", -10, Sport.CRICKET), event("b1", 30), event("b2", 60, Sport.CRICKET), event("c1", 300), event("d1", 1800, Sport.CRICKET))
 
-    private fun show(events: List<SportsEvent>, withRail: Boolean = false, onReturn: () -> Unit = {}): FocusRequester {
+    private fun show(events: List<SportsEvent>, withRail: Boolean = false, playback: app.streamsetu.tv.sports.SportsPlaybackCoordinator? = null, onReturn: () -> Unit = {}): FocusRequester {
         deps.result = { events }; deps.nowMs = now0; deps.tick()
-        vm = SportsViewModel(deps, scope, 40L)
+        vm = SportsViewModel(deps, scope, 40L, SportsDiagnostics.Log, playback)
         val entry = FocusRequester()
         rule.setContent {
             CompositionLocalProvider(LocalContentEntry provides entry) {
@@ -201,7 +201,7 @@ class SportsScreenTests {
         assertTrue(nav.back()); assertTrue("the next Back opens the sidebar", nav.sidebarRevealed)
     }
 
-    @Test fun detailShowsFeedsInOrderWithInferredValuesMarkedAndTheNextPhaseNote() {
+    @Test fun detailShowsFeedsInOrderWithInferredValuesMarkedAndWatchBestFeed() {
         val ev = event("a1", -30, feeds = listOf(feed("1", "hi", MetadataSource.PROVIDER, "FHD", MetadataSource.PROVIDER), feed("2", "te", MetadataSource.PARSED_FROM_NAME, "HD", MetadataSource.PARSED_FROM_NAME), feed("3")), confidence = 0.6)
         val entry = show(listOf(ev)); ready()
         rule.runOnUiThread { entry.requestFocus() }; rule.waitForIdle()
@@ -210,7 +210,8 @@ class SportsScreenTests {
         feeds[0].assert(hasText("Language: Hindi", substring = true)); feeds[0].assert(hasText("(inferred)", substring = true).not())
         feeds[1].assert(hasText("Language: Telugu (inferred)", substring = true)); feeds[1].assert(hasText("Quality: HD (inferred)", substring = true))
         rule.onNodeWithTag("sports-low-confidence").assertExists()
-        rule.onNodeWithTag("sports-detail-note").assert(hasText("Playback from Sports will be added in the next phase. You can still find this channel in Live TV."))
+        rule.onNodeWithTag("sports-watch-best").assertExists()
+        rule.onAllNodesWithTag("sports-detail-note").assertCountEquals(0)
     }
 
     @Test fun whenTheEventDisappearsWhileDetailIsOpenTheRemoteLandsOnTheNearestEvent() {
