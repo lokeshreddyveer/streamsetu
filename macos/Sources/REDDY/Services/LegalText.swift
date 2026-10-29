@@ -32,6 +32,8 @@ StreamSetu connects only to the places below, and only for the reason given.
 - **YouTube.** If you tap Watch Trailer and the trailer is a YouTube video, the video is shown by YouTube's own player, which can set its own cookies and is covered by Google's privacy policy.
 - **Apple.** The App Store, TestFlight and iCloud are Apple services under Apple's privacy policy.
 
+- **A DNS provider, only if you turn on App DNS (Settings, Network).** It is off by default. When on, StreamSetu looks up the names of the servers it connects to through the DNS provider you pick (Cloudflare, Google, Quad9, AdGuard, Control D or one of your own), over an encrypted connection and inside StreamSetu only. That provider can see those host names, and may be able to tell which IPTV or CDN service you use from them. It does not receive your playlist passwords, stream addresses beyond the host name, or your viewing history.
+
 ## Security
 
 Credentials are stored in the Keychain (on Android, in encrypted storage). An access token for a media server is sent only to that server, and is removed from a request if a redirect sends it to another one. The phone-assisted setup on a TV sends what you type over your home network without encryption, so use it on your own Wi-Fi only. Connections use TLS with certificate validation, and sensitive addresses and tokens are removed from logs. The optional App Lock uses Face ID, Touch ID or your device passcode.

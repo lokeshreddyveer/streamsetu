@@ -32,6 +32,8 @@ Data/Indexing/IndexHealthMonitor.swift
 Data/Indexing/MetadataNormalizer.swift
 Data/Indexing/SearchIndexer.swift
 Data/Network/ProxyConfig.swift
+Data/Network/AppDNS.swift
+Data/Network/AppDNSTest.swift
 Data/Network/HTTPClient.swift
 Data/Network/RedirectPolicy.swift
 Data/Network/NetworkConfiguration.swift

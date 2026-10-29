@@ -52,6 +52,8 @@ final class AppSettings {
     var proxyHost: String { didSet { save(proxyHost, "proxyhost") } }
     var proxyPort: Int { didSet { save(proxyPort, "proxyport") } }
     var proxy: ProxyConfig { ProxyConfig(kind: proxyKind, host: proxyHost, port: proxyPort) }
+    /// App DNS: encrypted DNS for StreamSetu's own traffic only. About this device's network, so it is not synced.
+    var appDNS: AppDNSConfiguration { didSet { if let data = try? JSONEncoder().encode(appDNS) { save(String(decoding: data, as: UTF8.self), "appdns") } } }
     var lastAutoBackup: Date? { didSet { save(lastAutoBackup, "lastautobackup") } }
     var resumeLastChannel: Bool { didSet { save(resumeLastChannel, "resumelast") } }
     /// The live channel last played (set by playback, not a preference, so it isn't part of backups).
@@ -193,6 +195,7 @@ final class AppSettings {
         proxyKind = ProxyConfig.Kind(rawValue: str("proxykind", "Off")) ?? .off
         proxyHost = str("proxyhost", "")
         proxyPort = Int(dbl("proxyport", 0))
+        appDNS = (try? JSONDecoder().decode(AppDNSConfiguration.self, from: Data(str("appdns", "").utf8))) ?? AppDNSConfiguration()
         // The redesign: everyone starts on the new Cinematic look once; after that their own choice is kept.
         if !bool("design2", false) { defaults.set("Cinematic", forKey: "settings.theme"); defaults.set(true, forKey: "settings.design2") }
         theme = get("theme", Defaults.theme)

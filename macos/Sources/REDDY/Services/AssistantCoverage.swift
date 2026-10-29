@@ -45,7 +45,7 @@ struct AssistantCoverageRow: Equatable {
         "autoPlayNextEpisode": nil, "rememberPosition": nil, "resumeAutomatically": nil, "bestVersionFirst": nil, "showDiagnosticsOverlay": nil, "renderingProfile": nil, "toneMapping": nil,
         "stereoDownmix": nil, "subtitleOutline": nil, "catalogRefresh": nil, "guideRefresh": nil, "subtitlePosition": nil, "guideRetentionDays": nil, "guideHoursVisible": nil,
         // explained under another entry (and not changeable by the assistant)
-        "iCloudSync": "icloudSync", "syncLogins": "icloudSync", "vpnPause": "vpn", "proxyKind": "proxy", "proxyHost": "proxy", "proxyPort": "proxy",
+        "iCloudSync": "icloudSync", "syncLogins": "icloudSync", "vpnPause": "vpn", "proxyKind": "proxy", "proxyHost": "proxy", "proxyPort": "proxy", "appDNS": "proxy",
     ]
 
     /// Stored properties that are not an entry of the catalogue, and why.

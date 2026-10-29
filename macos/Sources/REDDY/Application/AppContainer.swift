@@ -15,6 +15,7 @@ final class AppContainer {
     let videoPrefs: SQLiteVideoPreferencesRepository
 
     let settings: AppSettings
+    private var appliedDNS = AppDNSConfiguration()
     let http: HTTPClient
     let credentials: CredentialStore
     let sources: SourceManager
@@ -92,6 +93,7 @@ final class AppContainer {
         videoPrefs = SQLiteVideoPreferencesRepository(db: db)
 
         settings = AppSettings()
+        AppDNSController.apply(settings.appDNS)          // before the first session or player is created
         http = HTTPClient()
         self.credentials = credentials
         podcasts = PodcastService(defaults: settings.defaultsStore)
@@ -289,9 +291,14 @@ final class AppContainer {
         scheduler.setCatalogInterval(settings.catalogRefresh.seconds)
         scheduler.setRefreshOnOpen(settings.refreshOnOpen)
         http.setProxy(settings.proxy.isActive ? settings.proxy : nil)
+        if settings.appDNS != appliedDNS {                // a change of resolver: clear the caches and start the network sessions afresh; playing streams carry on
+            appliedDNS = settings.appDNS
+            AppDNSController.apply(appliedDNS)
+            http.setProxy(settings.proxy.isActive ? settings.proxy : nil)
+        }
         epgSync.configure(refreshInterval: settings.guideRefresh.seconds, pastRetentionDays: settings.guideRetentionDays)
         withObservationTracking {
-            _ = settings.catalogRefresh; _ = settings.refreshOnOpen; _ = settings.guideRefresh; _ = settings.guideRetentionDays; _ = settings.proxyKind; _ = settings.proxyHost; _ = settings.proxyPort
+            _ = settings.catalogRefresh; _ = settings.refreshOnOpen; _ = settings.guideRefresh; _ = settings.guideRetentionDays; _ = settings.proxyKind; _ = settings.proxyHost; _ = settings.proxyPort; _ = settings.appDNS
         } onChange: { [weak self] in
             Task { @MainActor in self?.applySettings() }
         }

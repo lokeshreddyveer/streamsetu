@@ -285,6 +285,7 @@ struct SettingsView: View {
                     NavigationLink { CloudSyncView() } label: { Label("iCloud Sync", systemImage: "icloud") }
                     NavigationLink { LanSyncView() } label: { Label("Sync on this network", systemImage: "wifi") }
                     NavigationLink { ProxyView() } label: { Label("Proxy", systemImage: "network") }
+                    NavigationLink { AppDNSView() } label: { Label("App DNS", systemImage: "lock.rectangle.stack") }
                     NavigationLink { VPNView() } label: { Label("VPN", systemImage: "lock.shield") }
                     NavigationLink { BackupView() } label: { Label("Backup and Restore", systemImage: "externaldrive") }
                     NavigationLink { StorageView() } label: { Label("Storage and Maintenance", systemImage: "internaldrive") }

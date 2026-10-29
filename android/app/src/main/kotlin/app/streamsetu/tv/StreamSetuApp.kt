@@ -583,6 +583,13 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
                 .collect { (t, a) -> kotlinx.coroutines.withContext(Dispatchers.Main) { app.streamsetu.tv.ui.theme.Tokens.apply(t, a) } }
         }
         container.appScope.launch {
+            // App DNS: the resolver chosen in Settings applies to every request from the shared client, now and whenever it changes.
+            val s = container.settings
+            kotlinx.coroutines.flow.combine(s.appDnsEnabled, s.appDnsProvider, s.appDnsName, s.appDnsUrl, s.appDnsBootstrap) { on, p, n, u, b ->
+                app.streamsetu.core.net.AppDns.Config(on, app.streamsetu.core.net.AppDns.Provider.of(p), n, u, b.split(',', ';', ' ').map { it.trim() }.filter { it.isNotEmpty() })
+            }.kotlinx_combineLocal(s.appDnsLocalUsesSystem).collect { cfg -> app.streamsetu.core.net.AppDns.configure(cfg, container.context.cacheDir) }
+        }
+        container.appScope.launch {
             // The proxy chosen in Settings applies to every request, now and whenever it changes.
             kotlinx.coroutines.flow.combine(container.settings.proxyKind, container.settings.proxyHost, container.settings.proxyPort) { k, h, p -> app.streamsetu.core.net.Http.makeProxy(k, h, p) }
                 .collect { app.streamsetu.core.net.Http.proxy = it }
@@ -635,3 +642,6 @@ class FoundTitle(val title: String, val year: Int?, val isSeries: Boolean, val m
         series?.let { nav.open(app.streamsetu.tv.nav.Overlay.SeriesDetail(it)) }
     }
 }
+
+private fun kotlinx.coroutines.flow.Flow<app.streamsetu.core.net.AppDns.Config>.kotlinx_combineLocal(local: kotlinx.coroutines.flow.Flow<Boolean>) =
+    kotlinx.coroutines.flow.combine(this, local) { c, l -> c.copy(localUsesSystem = l) }

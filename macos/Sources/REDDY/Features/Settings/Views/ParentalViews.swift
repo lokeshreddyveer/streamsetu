@@ -210,6 +210,60 @@ struct ProxySettingsGroup: View {
     }
 }
 
+/// Encrypted DNS for StreamSetu's own traffic only (see AppDNS.swift). Not a VPN.
+struct AppDNSSettingsGroup: View {
+    @Environment(\.container) private var container
+    @Environment(AppSettings.self) private var settings
+    @State private var testing = false
+    @State private var result: AppDNSTestResult?
+    @State private var bootstrap = ""
+
+    var body: some View {
+        @Bindable var s = settings
+        SettingsGroup(title: "App DNS", footer: AppDNSStatus.privacyNotice + " It can fix DNS blocking; it cannot get past IP blocking, routing problems or geographic limits.") {
+            SettingsRow(title: "Use App DNS", detail: AppDNSStatus.line(s.appDNS, mpvInUse: true)) { Toggle("", isOn: $s.appDNS.enabled).labelsHidden() }
+            SettingsRow(title: "DNS provider", detail: s.appDNS.provider.summary) {
+                Picker("", selection: $s.appDNS.provider) { ForEach(AppDNSProvider.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.labelsHidden().fixedSize()
+            }
+            if s.appDNS.provider == .custom {
+                SettingsRow(title: "Custom DNS", detail: customProblem(s.appDNS.customURL) ?? "A DNS-over-HTTPS address, and optionally the resolver's IP addresses.") {
+                    VStack(alignment: .trailing) {
+                        TextField("name", text: $s.appDNS.customName).textFieldStyle(.roundedBorder).frame(width: 260)
+                        TextField("https://example.com/dns-query", text: $s.appDNS.customURL).textFieldStyle(.roundedBorder).frame(width: 260)
+                        TextField("bootstrap IPs (optional)", text: $bootstrap).textFieldStyle(.roundedBorder).frame(width: 260)
+                            .onChange(of: bootstrap) { _, v in s.appDNS.customBootstrap = v.split(whereSeparator: { ",; ".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) } }
+                    }
+                }
+            }
+            SettingsRow(title: "Local devices use system DNS", detail: ".local names, single-label names and local addresses.") { Toggle("", isOn: $s.appDNS.localUsesSystem).labelsHidden() }
+            SettingsRow(title: "Test", detail: result.map { $0.headline + ($0.reachable ? " · \($0.milliseconds) ms" : "") } ?? "Checks your playlist and guide servers as well as a public name.") {
+                HStack {
+                    SecondaryButton(title: testing ? "Testing…" : "Test App DNS") { Task { await runTest() } }.disabled(testing)
+                    SecondaryButton(title: "Clear DNS Cache") { AppDNSController.clearCache(); container?.http.setProxy(settings.proxy.isActive ? settings.proxy : nil) }
+                }
+            }
+            if let r = result {
+                ForEach(r.rows) { row in SettingsRow(title: row.label, detail: row.host) { Text(row.detail).foregroundStyle(row.resolved ? ColorTokens.textSecondary : ColorTokens.warning) } }
+                if let c = r.comparison { SettingsRow(title: "Compared with device DNS", detail: c) { EmptyView() } }
+            }
+        }
+        .onAppear { bootstrap = s.appDNS.customBootstrap.joined(separator: ", ") }
+    }
+
+    private func customProblem(_ text: String) -> String? {
+        if case .failure(let p) = AppDNSValidator.validate(text), !text.isEmpty { return p.description }
+        return nil
+    }
+
+    private func runTest() async {
+        guard let c = container else { return }
+        testing = true; defer { testing = false }
+        var hosts: [(label: String, address: String)] = []
+        if let src = ((try? c.catalog.sources()) ?? []).first(where: { $0.enabled }) { hosts.append(("Playlist provider", src.baseURL)); if let g = src.epgURL { hosts.append(("Guide", g)) } }
+        result = await AppDNSTest.run(settings.appDNS, hosts: hosts)
+    }
+}
+
 struct VPNSettingsGroup: View {
     @Environment(\.container) private var container
     @Environment(AppSettings.self) private var settings

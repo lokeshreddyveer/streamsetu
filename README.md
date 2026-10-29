@@ -193,6 +193,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | WebDAV server and local video files | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Custom User-Agent per connection | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Extra request headers per connection, and a proxy | ✓ | ✓ | ✓ | ✓ | ✓ |
+| App DNS: encrypted DNS (Cloudflare, Google, Quad9, AdGuard, Control D or your own) for StreamSetu only, no VPN | ✓ (not yet for MPV) | ✓ | ✓ | ✓ | ✓ |
 | **Watching** | | | | | |
 | Live TV with groups and channel numbers | ✓ | ✓ | ✓ | ✓ | ✓ |
 | TV Guide, XMLTV | ✓ | ✓ | ✓ | ✓ | ✓ |

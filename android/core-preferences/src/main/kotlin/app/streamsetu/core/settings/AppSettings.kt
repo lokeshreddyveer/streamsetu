@@ -188,6 +188,27 @@ class AppSettings(context: Context) {
     val automaticBackups: StateFlow<Boolean> = _autoBackup
     fun setAutomaticBackups(v: Boolean) { prefs.edit().putBoolean("autoBackup", v).apply(); _autoBackup.value = v }
 
+    // ---- App DNS: encrypted DNS for the app's own traffic (see core-network AppDns). Off by default; the provider is remembered while it is off. ----
+    private val _dnsOn = flow(prefs.getBoolean("dnsOn", false))
+    val appDnsEnabled: StateFlow<Boolean> = _dnsOn
+    fun setAppDnsEnabled(v: Boolean) { prefs.edit().putBoolean("dnsOn", v).apply(); _dnsOn.value = v }
+    private val _dnsProvider = flow(prefs.getString("dnsProvider", "CLOUDFLARE") ?: "CLOUDFLARE")
+    val appDnsProvider: StateFlow<String> = _dnsProvider
+    fun setAppDnsProvider(v: String) { prefs.edit().putString("dnsProvider", v).apply(); _dnsProvider.value = v }
+    private val _dnsName = flow(prefs.getString("dnsName", "") ?: "")
+    val appDnsName: StateFlow<String> = _dnsName
+    fun setAppDnsName(v: String) { prefs.edit().putString("dnsName", v).apply(); _dnsName.value = v }
+    private val _dnsUrl = flow(prefs.getString("dnsUrl", "") ?: "")
+    val appDnsUrl: StateFlow<String> = _dnsUrl
+    fun setAppDnsUrl(v: String) { prefs.edit().putString("dnsUrl", v.trim()).apply(); _dnsUrl.value = v.trim() }
+    private val _dnsBootstrap = flow(prefs.getString("dnsBootstrap", "") ?: "")
+    /** Comma-separated IP addresses of a custom resolver (optional). */
+    val appDnsBootstrap: StateFlow<String> = _dnsBootstrap
+    fun setAppDnsBootstrap(v: String) { prefs.edit().putString("dnsBootstrap", v).apply(); _dnsBootstrap.value = v }
+    private val _dnsLocal = flow(prefs.getBoolean("dnsLocal", true))
+    val appDnsLocalUsesSystem: StateFlow<Boolean> = _dnsLocal
+    fun setAppDnsLocalUsesSystem(v: Boolean) { prefs.edit().putBoolean("dnsLocal", v).apply(); _dnsLocal.value = v }
+
     // ---- Network proxy ----
     private val _proxyKind = flow(prefs.getString("proxyKind", "NONE") ?: "NONE")
     /** NONE, HTTP or SOCKS. Streams and playlist reads go through it; addresses on the local network never do. */

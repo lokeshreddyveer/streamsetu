@@ -92,6 +92,31 @@
 		<!-- Providers are often plain http, so arbitrary loads stay on; StreamSetu's own services and the third-party services it uses are held to HTTPS. -->
 		<key>NSExceptionDomains</key>
 		<dict>
+			<key>cloudflare-dns.com</key>
+			<dict>
+				<key>NSIncludesSubdomains</key><true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+			</dict>
+			<key>dns.adguard-dns.com</key>
+			<dict>
+				<key>NSIncludesSubdomains</key><true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+			</dict>
+			<key>dns.google</key>
+			<dict>
+				<key>NSIncludesSubdomains</key><true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+			</dict>
+			<key>dns.quad9.net</key>
+			<dict>
+				<key>NSIncludesSubdomains</key><true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+			</dict>
+			<key>controld.com</key>
+			<dict>
+				<key>NSIncludesSubdomains</key><true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+			</dict>
 			<key>supabase.co</key>
 			<dict>
 				<key>NSIncludesSubdomains</key><true/>

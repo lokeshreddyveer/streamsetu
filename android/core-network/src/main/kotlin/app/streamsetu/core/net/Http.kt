@@ -14,6 +14,7 @@ object Http {
 
     val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
+            .dns(AppDns)                                  // the person's encrypted resolver when App DNS is on, the device's otherwise
             .proxySelector(object : java.net.ProxySelector() {
                 override fun select(uri: java.net.URI?): List<java.net.Proxy> {
                     val p = proxy ?: return listOf(java.net.Proxy.NO_PROXY)

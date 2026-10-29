@@ -22,6 +22,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     api(libs.kotlinx.serialization.json)
     api(libs.okhttp)
+    implementation(libs.okhttp.dnsoverhttps)
     api(libs.retrofit)
     api(libs.retrofit.serialization)
 

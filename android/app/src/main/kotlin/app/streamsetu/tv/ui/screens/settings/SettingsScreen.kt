@@ -232,6 +232,7 @@ fun PlaybackSettings(c: AppContainer) {
             if (conns.size > 1) ChoiceRow("Live buffer for ${src.name}", "Overrides the global Live TV buffer for this connection.", listOf<Pair<BufferingMode?, String>>(null to "Use global default", BufferingMode.LOW_LATENCY to "Low latency", BufferingMode.AUTOMATIC to "Balanced", BufferingMode.LARGE to "Stable"), s.liveBufferFor(src.id)) { s.setLiveBufferFor(src.id, it); tick++ }
         }
     }
+    AppDnsGroup(s)
     SettingGroup("Network proxy", "Sends internet streams and playlists through your proxy. Local devices connect directly.") {
         val pk by s.proxyKind.collectAsStateWithLifecycle(); val ph by s.proxyHost.collectAsStateWithLifecycle(); val pp by s.proxyPort.collectAsStateWithLifecycle()
         ChoiceRow("Proxy", options = listOf("NONE" to "None", "HTTP" to "HTTP", "SOCKS" to "SOCKS"), value = pk) { s.setProxyKind(it) }
@@ -352,3 +353,40 @@ fun LiveSettings(c: AppContainer) {
 }
 
 internal fun fmtBytes(b: Long): String = when { b >= 1L shl 30 -> "%.1f GB".format(b / (1L shl 30).toDouble()); b >= 1L shl 20 -> "%.1f MB".format(b / (1L shl 20).toDouble()); b >= 1L shl 10 -> "%.0f KB".format(b / 1024.0); else -> "$b B" }
+
+
+/** Encrypted DNS for StreamSetu's own traffic only. Not a VPN: nothing outside the app changes. */
+@Composable
+private fun AppDnsGroup(s: app.streamsetu.core.settings.AppSettings) {
+    val on by s.appDnsEnabled.collectAsStateWithLifecycle(); val prov by s.appDnsProvider.collectAsStateWithLifecycle()
+    val name by s.appDnsName.collectAsStateWithLifecycle(); val url by s.appDnsUrl.collectAsStateWithLifecycle(); val boot by s.appDnsBootstrap.collectAsStateWithLifecycle()
+    val local by s.appDnsLocalUsesSystem.collectAsStateWithLifecycle()
+    val provider = app.streamsetu.core.net.AppDns.Provider.of(prov)
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var result by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<app.streamsetu.core.net.AppDns.TestResult?>(null) }
+    var testing by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val cfg = app.streamsetu.core.net.AppDns.Config(on, provider, name, url, boot.split(',', ';', ' ').map { it.trim() }.filter { it.isNotEmpty() }, local)
+    val problem = if (provider == app.streamsetu.core.net.AppDns.Provider.CUSTOM && url.isNotEmpty()) app.streamsetu.core.net.AppDns.validate(url).exceptionOrNull()?.message else null
+    val status = when { !on -> "Not active"; cfg.resolver == null -> "Custom resolver is not valid"; else -> "Requested through ${cfg.resolver!!.name} for library, guide and playback" }
+    SettingGroup("App DNS", app.streamsetu.core.net.AppDns.PRIVACY_NOTICE + " It can fix DNS blocking; it cannot get past IP blocking, routing problems or geographic limits.") {
+        ToggleRow("Use App DNS", status, on) { s.setAppDnsEnabled(it) }
+        ChoiceRow("DNS provider", provider.summary, app.streamsetu.core.net.AppDns.Provider.entries.map { it.name to it.label }, prov) { s.setAppDnsProvider(it) }
+        if (provider == app.streamsetu.core.net.AppDns.Provider.CUSTOM) {
+            app.streamsetu.tv.ui.components.TvTextField(name, { s.setAppDnsName(it) }, "Name", Modifier.fillMaxWidth())
+            app.streamsetu.tv.ui.components.TvTextField(url, { s.setAppDnsUrl(it) }, "https://example.com/dns-query", Modifier.fillMaxWidth())
+            app.streamsetu.tv.ui.components.TvTextField(boot, { s.setAppDnsBootstrap(it) }, "Bootstrap IP addresses (optional)", Modifier.fillMaxWidth())
+            if (problem != null) InfoRow("Address", problem)
+        }
+        ToggleRow("Use system DNS for local devices", ".local names, single-label names and local addresses.", local) { s.setAppDnsLocalUsesSystem(it) }
+        ActionRow("Test App DNS", result?.let { it.resolverName + (if (it.reachable) " is working · ${it.milliseconds} ms" else " is unavailable") } ?: "Checks your playlist server as well as a public name.", if (testing) "Testing…" else "Test", enabled = !testing) {
+            testing = true
+            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                val r = app.streamsetu.core.net.AppDns.test(cfg, emptyList())
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { result = r; testing = false }
+            }
+        }
+        result?.rows?.forEach { InfoRow(it.label, it.detail, it.host) }
+        result?.comparison?.let { InfoRow("Compared with device DNS", "", it) }
+        ActionRow("Clear DNS cache", null, "Clear") { app.streamsetu.core.net.AppDns.clearCache(); app.streamsetu.core.net.Http.client.connectionPool.evictAll() }
+    }
+}

@@ -17,6 +17,7 @@ struct PrivacySettingsPage: View {
             ParentalSettingsGroup()
             AppLockSettingsGroup()
             ProxySettingsGroup()
+            AppDNSSettingsGroup()
             VPNSettingsGroup()
         }
     }
