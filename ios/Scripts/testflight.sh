@@ -21,7 +21,9 @@ BUILD="${ARG1:-$((LAST + 1))}"
 case "$BUILD" in ''|*[!0-9]*) echo "build number must be a whole number"; exit 1;; esac
 ARCHIVE="$OUT/StreamSetu-$BUILD.xcarchive"
 python3 ../legal/sync-legal.py --check
-python3 ../Scripts/audit-dependencies.py | grep -v "^  - " || true
+# Dependency gate: a reported vulnerability, a failed lookup or an unidentified library stops the archive. The report is kept with the build.
+mkdir -p "$OUT/reports"
+python3 ../Scripts/audit-dependencies.py --strict --scope ios --report "$OUT/reports/dependencies-$BUILD.json" || { echo "✘ dependency check did not come back clean (see above). The only way past it is a signed, expiring entry in Scripts/risk-acceptances.json (docs/RELEASE-SECURITY.md)."; exit 1; }
 python3 Scripts/generate-project.py >/dev/null
 
 echo "▸ Archiving build ${BUILD}…"
@@ -41,6 +43,20 @@ cat > "$OUT/ExportOptions.plist" <<PL
   <key>uploadSymbols</key><true/>
 </dict></plist>
 PL
+# Entitlements gate: the source file says aps-environment "development" (Xcode rewrites it when it signs for distribution). Export the same archive to a local .ipa first and refuse
+# to upload unless the signed app really carries production push, so a development entitlement can never reach TestFlight.
+echo "▸ Checking the signed entitlements…"
+CHECK="$(mktemp -d)"
+sed 's|<string>upload</string>|<string>export</string>|' "$OUT/ExportOptions.plist" > "$CHECK/ExportOptions.plist"
+xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportOptionsPlist "$CHECK/ExportOptions.plist" -exportPath "$CHECK/out" -allowProvisioningUpdates >/dev/null 2>&1 || { echo "✘ could not export the archive to check its entitlements"; exit 1; }
+IPA="$(ls "$CHECK"/out/*.ipa 2>/dev/null | head -1)"; [ -n "$IPA" ] || { echo "✘ no .ipa was produced to check"; exit 1; }
+unzip -q -o "$IPA" -d "$CHECK/ipa"
+APP_IN_IPA="$(ls -d "$CHECK"/ipa/Payload/*.app | head -1)"
+ENT="$(codesign -d --entitlements :- "$APP_IN_IPA" 2>/dev/null)"
+echo "$ENT" | grep -A1 "aps-environment" | grep -q "<string>production</string>" || { echo "✘ the signed app does not have production push (aps-environment). Not uploading."; rm -rf "$CHECK"; exit 1; }
+echo "$ENT" | grep -q "com.apple.developer.icloud" && { echo "$ENT" | grep -A3 "icloud-container-environment" | grep -q "Production" || echo "  – iCloud container environment not marked Production in the signed app (check it)"; }
+rm -rf "$CHECK"
+echo "✔ production push entitlement confirmed in the signed app"
 echo "▸ Uploading to App Store Connect…"
 xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportOptionsPlist "$OUT/ExportOptions.plist" -allowProvisioningUpdates 2>&1 | grep -E "error:|Upload|EXPORT (SUCCEEDED|FAILED)|Uploaded|There is no" 
 echo "$BUILD" > "$OUT/last-build"

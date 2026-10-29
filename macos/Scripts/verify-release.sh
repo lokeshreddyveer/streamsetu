@@ -13,7 +13,14 @@ grep -q "flags=.*runtime" <<<"$SIG" && ok "Hardened Runtime enabled" || bad "Har
 echo "  architectures: $(lipo -archs "$APP/Contents/MacOS/StreamSetu" 2>/dev/null)"
 /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Contents/Info.plist" | grep -q "app.streamsetu.mac" && ok "bundle identifier" || bad "bundle identifier"
 [ -f "$APP/Contents/Resources/AppIcon.icns" ] && ok "app icon" || bad "app icon missing"
-[ -f "$APP/Contents/Resources/PrivacyInfo.xcprivacy" ] && plutil -lint "$APP/Contents/Resources/PrivacyInfo.xcprivacy" >/dev/null && ok "privacy manifest valid" || bad "privacy manifest"
+PRIV="$APP/Contents/Resources/PrivacyInfo.xcprivacy"
+if [ -f "$PRIV" ] && plutil -lint "$PRIV" >/dev/null; then
+  ok "privacy manifest valid"
+  # The packaged manifest must say what the source says (collected data types, tracking, accessed APIs), not just parse: an old package once shipped an empty list.
+  norm() { plutil -convert json -o - "$1" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True))'; }
+  if [ "$(norm "$PRIV")" = "$(norm Configuration/PrivacyInfo.xcprivacy)" ]; then ok "privacy manifest matches Configuration/PrivacyInfo.xcprivacy"; else bad "privacy manifest differs from Configuration/PrivacyInfo.xcprivacy (repackage from current source)"; fi
+  for t in DeviceID OtherDiagnosticData OtherUserContent; do plutil -extract NSPrivacyCollectedDataTypes json -o - "$PRIV" | grep -q "NSPrivacyCollectedDataType$t" || bad "privacy manifest does not declare $t"; done
+else bad "privacy manifest"; fi
 vtool -show-build "$APP/Contents/MacOS/StreamSetu" 2>/dev/null | grep -q "minos 14" && ok "minimum macOS 14" || echo "  – could not confirm minimum macOS"
 if [ -n "${REDDY_FORBIDDEN_PATTERN:-}" ]; then
   if strings -a "$APP/Contents/MacOS/StreamSetu" | grep -qiE "$REDDY_FORBIDDEN_PATTERN"; then bad "binary contains a forbidden string"; else ok "no forbidden strings in binary"; fi

@@ -5,10 +5,9 @@ set -e
 cd "$(dirname "$0")"
 export JAVA_HOME=${JAVA_HOME:-/opt/homebrew/opt/openjdk@17} ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk}
 # Everything that can be checked without a device: every module's unit tests (navigation, network security, data, playback), Android lint, and the dependency report, which stops the build
-# when a library has a reported vulnerability or could not be checked. ALLOW_DEPENDENCY_ISSUES=1 goes ahead after the report has been read.
+# when a library has a reported vulnerability or could not be checked. There is no switch around it; the only override is a signed, expiring entry in Scripts/risk-acceptances.json.
 ./gradlew testDebugUnitTest lintRelease
-DEP_RC=0; python3 ../scripts/audit-dependencies.py --strict || DEP_RC=$?
-if [ "$DEP_RC" -ne 0 ] && [ "${ALLOW_DEPENDENCY_ISSUES:-}" != "1" ]; then echo "✘ dependency check did not come back clean (exit $DEP_RC)."; exit 1; fi
+python3 ../scripts/audit-dependencies.py --strict --scope android || { echo "✘ dependency check did not come back clean (see above)."; exit 1; }
 # With a Fire TV or phone connected and CONNECTED=1, the tests that need a device run too.
 [ "${CONNECTED:-}" = "1" ] && ./gradlew connectedDebugAndroidTest
 ./gradlew :app:assembleRelease -PappVersionName="${1:-0.2.0}" -PappVersionCode="${2:-1}"
