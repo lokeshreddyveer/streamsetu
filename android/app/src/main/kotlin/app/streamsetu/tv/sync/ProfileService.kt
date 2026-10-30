@@ -33,7 +33,9 @@ class ProfileService(private val db: AppDatabase, private val pinPrefs: android.
 
     fun add(name: String, kids: Boolean, pin: String?): Profile? = Profiles.add(raw, name, kids, pin).also { reload() }
     fun rename(id: String, name: String) { Profiles.rename(raw, id, name); reload() }
-    fun remove(id: String): Boolean = Profiles.remove(raw, id).also { reload() }
+    /** [onRemoved] runs after a profile is really gone (its recent searches go with it). */
+    var onRemoved: (String) -> Unit = {}
+    fun remove(id: String): Boolean = Profiles.remove(raw, id).also { ok -> reload(); if (ok) onRemoved(id) }
 
     /** The profile whose PIN is asked to switch to [target]: the kids profile in use (to leave it), else the target itself. Null when no PIN is needed. */
     fun pinOwnerFor(target: String): String? {

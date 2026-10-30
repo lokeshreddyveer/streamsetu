@@ -99,6 +99,24 @@ class AppContainer @Inject constructor(
     }
 
     /** Who is using the app: each profile has its own favorites, collections, history and resume points. */
+    /**
+     * Who may see what in Search, as one value that changes the moment any of it does: profile, library and its playlists, the adult filter or kids mode, every folder lock, hidden channels.
+     * The Search screen drops what it shows and cancels what it is doing when this changes, then looks again under the new value.
+     */
+    val searchContext: kotlinx.coroutines.flow.Flow<String> by lazy {
+        kotlinx.coroutines.flow.combine(
+            profiles.activeId, library.sourceIds, parental.hideAdult,
+            kotlinx.coroutines.flow.combine(folders.lockedIds(ContentKind.CHANNEL), folders.lockedIds(ContentKind.MOVIE), folders.lockedIds(ContentKind.SERIES)) { a, b, c -> Triple(a, b, c) },
+            db.extras().channelPrefs().map { l -> l.filter { it.hidden }.map { it.channelId }.toSet() },
+        ) { p, src, adult, locks, hidden -> app.streamsetu.core.data.repo.SearchContext.key(p, src, adult, locks.first + locks.second + locks.third, hidden) }.let { f -> kotlinx.coroutines.flow.flow { var last: String? = null; f.collect { v -> if (v != last) { last = v; emit(v) } } } }
+    }
+
+    /** Search remembers words per profile and library: this is how it learns who is using the app, and when that changes. */
+    private fun wireSearchContext() {
+        profiles.onRemoved = { search.forgetProfile(it) }
+        search.contextOf = { profiles.activeId.value + "|" + (library.activeId.value ?: "") }
+        appScope.launch { kotlinx.coroutines.flow.combine(profiles.activeId, library.activeId) { p, l -> "$p|$l" }.collect { search.contextChanged() } }
+    }
     val profiles: app.streamsetu.tv.sync.ProfileService by lazy {
         app.streamsetu.tv.sync.ProfileService(db, context.getSharedPreferences("pin_throttle", android.content.Context.MODE_PRIVATE), beforeSwitch = {
             // Before the tables change hands: what plays is stopped and its resume point is written (to the profile that was watching), the Wi-Fi exchange is closed, and folders the
@@ -355,6 +373,7 @@ class AppContainer @Inject constructor(
     val online = kotlinx.coroutines.flow.MutableStateFlow(true)
 
     init {
+        wireSearchContext()
         runCatching {
             val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
             online.value = app.streamsetu.core.playback.NetworkCompat.isOnline(cm)

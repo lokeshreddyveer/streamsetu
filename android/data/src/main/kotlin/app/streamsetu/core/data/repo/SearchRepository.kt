@@ -24,29 +24,19 @@ data class SearchScope(val kinds: Set<ContentKind> = setOf(ContentKind.CHANNEL, 
  * The caller debounces typing and cancels the previous call when the text changes.
  */
 class SearchRepository(private val db: AppDatabase, private val library: LibraryRepository, private val folders: FolderRepository, context: Context) {
-    private val prefs = context.getSharedPreferences("search", Context.MODE_PRIVATE)
-    private val _recent = MutableStateFlow(prefs.getString("recent", "").orEmpty().split('\n').filter { it.isNotBlank() })
-    val recent: StateFlow<List<String>> = _recent
-
-    fun remember(query: String) {
-        val q = query.trim(); if (q.length < 2) return
-        val list = (listOf(q) + _recent.value.filter { !it.equals(q, true) }).take(10)
-        prefs.edit().putString("recent", list.joinToString("\n")).apply(); _recent.value = list
-    }
-    /** Recent searches kept apart for each screen they were made on (Home, Live TV, Movies, Series), newest first, as on the iPhone. */
-    fun recentIn(scope: String): List<String> = prefs.getString("recent.$scope", "").orEmpty().split('\n').filter { it.isNotBlank() }
-    fun rememberIn(scope: String, query: String) {
-        val q = query.trim(); if (q.length < 2) return
-        val list = (listOf(q) + recentIn(scope).filter { !it.equals(q, true) }).take(8)
-        prefs.edit().putString("recent.$scope", list.joinToString("\n")).apply()
-    }
-    /** The text last typed on a screen's search, kept while the app runs so Back from a title returns to the same results. */
-    private val lastTyped = HashMap<String, String>()
-    fun lastIn(scope: String): String = lastTyped[scope].orEmpty()
-    fun setLastIn(scope: String, query: String) { if (query.isEmpty()) lastTyped.remove(scope) else lastTyped[scope] = query }
-    fun clearIn(scope: String) { prefs.edit().remove("recent.$scope").apply() }
-
-    fun clearHistory() { prefs.edit().remove("recent").apply(); _recent.value = emptyList() }
+    private val history = SearchHistory(context.getSharedPreferences("search", Context.MODE_PRIVATE))
+    /** Who is searching (profile and library); set by the app once its profile service exists. See [SearchHistory]. */
+    var contextOf: () -> String get() = history.contextOf; set(v) { history.contextOf = v }
+    val recent: StateFlow<List<String>> get() = history.recent
+    fun contextChanged() = history.contextChanged()
+    fun remember(query: String) = history.remember(query)
+    fun recentIn(scope: String): List<String> = history.recentIn(scope)
+    fun rememberIn(scope: String, query: String) = history.rememberIn(scope, query)
+    fun lastIn(scope: String): String = history.lastIn(scope)
+    fun setLastIn(scope: String, query: String) = history.setLastIn(scope, query)
+    fun clearIn(scope: String) = history.clearIn(scope)
+    fun clearHistory() = history.clearHistory()
+    fun forgetProfile(profileId: String) = history.forgetProfile(profileId)
 
     suspend fun search(typed: String, scope: SearchScope = SearchScope(), limit: Int = 60): SearchResults = withContext(Dispatchers.IO) {
         val match = SearchText.matchQuery(typed)
@@ -66,13 +56,13 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
         hits = hits.filter { it.folderId == null || it.folderId !in locked }.filter { scope.folderId == null || it.folderId == scope.folderId }
         val ranked = hits.map { it to maxOf(SearchText.score(it.title, typed), SearchText.fuzzyScore(it.title, typed)) }.filter { it.second > 0 }
             .sortedWith(compareByDescending<Pair<SearchHit, Int>> { it.second }.thenBy { it.first.title.length }.thenBy { it.first.itemId }).map { it.first }
-        // One logical title across combined sources shows once (same normalised title, same kind), keeping the first connection's record.
+        // The same title in two playlists stays two results (each opens its own playlist's version); the same title twice in one playlist shows once.
         val seen = HashSet<String>()
         // Titles with a person of that name come after the titles named like it: a film called "Keanu" still comes before the films with Keanu Reeves.
         val withPerson = if (scope.folderId != null || scope.year != null) emptyList() else
             PeopleIndex.hits(raw, SearchText.tokens(typed), sources, kinds.filter { it == "MOVIE" || it == "SERIES" }, 60)
                 .filter { it.folderId == null || it.folderId !in locked }.filter { h -> ranked.none { it.itemId == h.itemId } }
-        val unique = (ranked + withPerson).filter { seen.add(it.kind + "|" + SearchText.normalize(it.title)) }.take(limit)
+        val unique = (ranked + withPerson).filter { seen.add(it.kind + "|" + SearchText.normalize(it.title) + "|" + it.sourceId) }.take(limit)
         fun ids(kind: ContentKind) = unique.filter { it.kind == kind.name }.map { it.itemId }
         val order = unique.withIndex().associate { it.value.itemId to it.index }
         val c = db.catalog()

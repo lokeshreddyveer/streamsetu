@@ -148,7 +148,7 @@ class SportsRecordingScreenTests {
         val e = event("a", 120, "1"); show(listOf(e)); val id = run { (service.record(e, null, 0, 0) as RecordOutcome.Scheduled).id }
         openDetail("a"); until { has("sports-recording-cancel") }
         rule.onNodeWithTag("sports-recording-cancel").requestFocus(); key(Key.Enter); rule.waitForIdle(); assertEquals("asking is not cancelling", "SCHEDULED", run { db.sports().recording(id)!!.status })
-        rule.runOnUiThread { vm.cancelRecording(id) }; until { run { db.sports().recording(id)!!.status } == "CANCELLED" }; assertTrue(ScheduledRecordings.items.value.isEmpty())
+        rule.runOnUiThread { vm.cancelRecording(id) }; until { run { db.sports().recording(id)!!.status } == "CANCELLED" && ScheduledRecordings.items.value.isEmpty() }       // the row is marked first and the schedule removed right after: wait for both
     }
 
     @Test fun aWaitingForReviewRecordingShowsTheReviewActionAndNeverStarts() {

@@ -163,9 +163,9 @@ class SportsAdapterTests {
         val library = app.streamsetu.core.data.repo.LibraryRepository(db, ctxApp, kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined))
         val s = serviceFor { library.sourceIds.value }
         assertTrue("nothing is open yet", s.events(t0 - h, t0 + 12 * h, parent).isEmpty())
-        library.open(library.entries.first().first { e -> e.id == "src:A" }); kotlinx.coroutines.yield()
+        library.open(library.entries.first { l -> l.any { e -> e.id == "src:A" } }.first { e -> e.id == "src:A" }); kotlinx.coroutines.yield()
         assertEquals(setOf("A"), s.events(t0 - h, t0 + 12 * h, parent).single().sourceIds)
-        library.open(library.entries.first().first { e -> e.id == "src:B" }); kotlinx.coroutines.yield()
+        library.open(library.entries.first { l -> l.any { e -> e.id == "src:B" } }.first { e -> e.id == "src:B" }); kotlinx.coroutines.yield()
         assertEquals(setOf("B"), s.events(t0 - h, t0 + 12 * h, parent).single().sourceIds)
         library.close(); kotlinx.coroutines.yield()
         assertTrue(s.events(t0 - h, t0 + 12 * h, parent).isEmpty())

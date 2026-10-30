@@ -32,7 +32,7 @@ class SportsDiscoveryStaticTests {
         val engines = kotlinFiles("src/main/kotlin").filter { Regex("""class\s+\w*Search\w*\s*[(:{]""").containsMatchIn(it.readText()) }.map { it.name }
         assertFalse("no second search engine is constructed anywhere but the container", kotlinFiles("src/main/kotlin").any { it.name != "StreamSetuApp.kt" && it.name != "AppModule.kt" && it.readText().contains("GlobalSearch(") })
         val content = File("src/main/kotlin/app/streamsetu/tv/ui/screens/search/SearchContent.kt").readText()
-        val library = content.indexOf("results = c.globalSearch.search(")
+        val library = content.indexOf("c.globalSearch.searchProgressive(")
         val sports = content.indexOf("sportsItems = c.sportsSearch.search(")
         assertTrue(library > 0 && sports > 0)
         assertEquals("separate effects: the library is not held up by Sports", 2, Regex("LaunchedEffect\\(").findAll(content.substring(minOf(library, sports) - 600, maxOf(library, sports) + 100)).count().coerceAtLeast(2))

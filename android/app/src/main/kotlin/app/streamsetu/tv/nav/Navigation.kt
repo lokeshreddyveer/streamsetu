@@ -69,12 +69,18 @@ class SearchSession {
     private var key: String? = null
     var query = ""; var type: app.streamsetu.core.model.ContentKind? = null; var typeSet = false
     var scrollIndex = 0; var scrollOffset = 0
+    /** Episodes or TV Guide, chosen as the type to search; null for the others (those use [type]). */
+    var extraTab: app.streamsetu.core.data.repo.SearchTab? = null
     var focusedId: String? = null
     var aiFor: String? = null; var aiFound: List<app.streamsetu.tv.FoundTitle> = emptyList(); var aiNote: String? = null; var aiAsked = false
 
     /** The session for [k]; a different key (another library, profile or scope) throws away what was held. */
     fun open(k: String): SearchSession { if (key != k) { clear(); key = k }; return this }
-    fun clear() { key = null; query = ""; type = null; typeSet = false; scrollIndex = 0; scrollOffset = 0; focusedId = null; aiFor = null; aiFound = emptyList(); aiNote = null; aiAsked = false }
+    fun clear() { key = null; query = ""; type = null; typeSet = false; scrollIndex = 0; scrollOffset = 0; focusedId = null; clearAi() }
+    /** What the AI suggested is tied to who asked: it goes the moment the profile, library or any restriction changes. */
+    fun clearAi() { aiFor = null; aiFound = emptyList(); aiNote = null; aiAsked = false }
+    /** Everything this page held that was found under a context that no longer holds: the words, results position and focus too. */
+    fun forgetContext() { query = ""; scrollIndex = 0; scrollOffset = 0; focusedId = null; clearAi() }
 }
 
 /** How the app-wide sidebar is shown. HIDDEN takes no width and cannot take focus. */

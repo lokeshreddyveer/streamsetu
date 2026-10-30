@@ -39,6 +39,8 @@ fun GlobalResults.exactMatch(query: String): SearchItem? {
 /** Where a search was started: from Home (everything), or from Live TV, Movies or Series (only that kind, shown as tiles). */
 enum class SearchTab(val label: String, val kinds: Set<SearchKind>) {
     ALL("All", SearchKind.entries.toSet()),
+    EPISODES("Episodes", setOf(SearchKind.EPISODE)),
+    GUIDE("TV Guide", setOf(SearchKind.PROGRAMME)),
     LIVE("Live TV", setOf(SearchKind.CHANNEL)),
     MOVIES("Movies", setOf(SearchKind.MOVIE)),
     SERIES("Series", setOf(SearchKind.SERIES)),
@@ -50,7 +52,8 @@ sealed interface SearchTarget {
     data class OpenMovie(val movie: Movie) : SearchTarget
     data class OpenSeries(val series: Series) : SearchTarget
     data class PlayEpisode(val episode: Episode, val series: Series) : SearchTarget
-    data class PlayProgramme(val channel: Channel) : SearchTarget
+    /** A programme in the guide: its channel (already checked against the open library) and when it is on, as stored (before the guide time shift). Choosing it opens that programme in the Guide. */
+    data class PlayProgramme(val channel: Channel, val startMs: Long = 0L, val endMs: Long = 0L) : SearchTarget
     data class OpenFolder(val kind: ContentKind, val folderId: String) : SearchTarget
     data class OpenCollection(val id: String, val kind: ContentKind) : SearchTarget
     /** A Sports event, team, competition or recording. Plain text only: the Sports screens work out what it means (see SportsLink). */
@@ -59,7 +62,8 @@ sealed interface SearchTarget {
 
 data class SearchItem(val id: String, val kind: SearchKind, val title: String, val subtitle: String, val artworkUrl: String?, val target: SearchTarget, val score: Int)
 
-data class GlobalResults(val byKind: Map<SearchKind, List<SearchItem>> = emptyMap(), val correctedTo: String? = null, val understood: List<String> = emptyList()) {
+/** [more]: the groups that have further results beyond what is listed ("Show more"). */
+data class GlobalResults(val byKind: Map<SearchKind, List<SearchItem>> = emptyMap(), val correctedTo: String? = null, val understood: List<String> = emptyList(), val more: Set<SearchKind> = emptySet()) {
     val isEmpty get() = byKind.values.all { it.isEmpty() }
     fun flat(tab: SearchTab): List<SearchItem> = SearchKind.entries.filter { it in tab.kinds }.flatMap { byKind[it].orEmpty() }
 }
@@ -79,7 +83,19 @@ class GlobalSearch(
     private val search: SearchRepository,
     private val sourceName: suspend (String) -> String?,
 ) {
-    suspend fun search(typed: String, tab: SearchTab = SearchTab.ALL, limit: Int = if (tab == SearchTab.ALL) 12 else 60): GlobalResults = withContext(Dispatchers.IO) {
+    suspend fun search(typed: String, tab: SearchTab = SearchTab.ALL, limit: Int = if (tab == SearchTab.ALL) 12 else 60, extra: Map<SearchKind, Int> = emptyMap()): GlobalResults = searchCore(typed, tab, limit, extra) { }
+
+    /**
+     * The same search, shown as it is found: the titles first (movies, series and channels together, from the text index), then episodes, the guide, folders and collections, each added below what
+     * is already there so nothing that was shown moves. Every value is the whole result so far; the last one is the complete result. A slow guide or folder lookup never holds back the titles. Cancelling
+     * the collector stops the work.
+     */
+    fun searchProgressive(typed: String, tab: SearchTab = SearchTab.ALL, limit: Int = if (tab == SearchTab.ALL) 12 else 60, extra: Map<SearchKind, Int> = emptyMap()): kotlinx.coroutines.flow.Flow<GlobalResults> = kotlinx.coroutines.flow.channelFlow {
+        val last = searchCore(typed, tab, limit, extra) { send(it) }
+        send(last)
+    }
+
+    private suspend fun searchCore(typed: String, tab: SearchTab, limit: Int, extra: Map<SearchKind, Int>, partial: suspend (GlobalResults) -> Unit): GlobalResults = withContext(Dispatchers.IO) {
         val q = typed.trim()
         if (SearchText.normalize(q).isBlank()) return@withContext GlobalResults()
         // A sentence ("telugu movies 2024 unwatched") is filters on films and series; when it finds nothing, the words are searched as a title below.
@@ -89,11 +105,11 @@ class GlobalSearch(
             if (!found.isEmpty) return@withContext found.copy(understood = sentence.summary)
         }
         val parsed = SmartQuery.parse(q)
-        val first = run(parsed.text.ifBlank { q }, tab, limit, parsed.year)
+        val first = run(parsed.text.ifBlank { q }, tab, limit, parsed.year, extra, partial)
         if (!first.isEmpty) return@withContext first
         val alt = Spelling.correct(q, vocabulary()) ?: return@withContext first
         val p = SmartQuery.parse(alt)
-        val again = run(p.text.ifBlank { alt }, tab, limit, p.year ?: parsed.year)
+        val again = run(p.text.ifBlank { alt }, tab, limit, p.year ?: parsed.year, extra) { }
         if (again.isEmpty) first else again.copy(correctedTo = alt)
     }
 
@@ -131,7 +147,7 @@ class GlobalSearch(
     /** Prepares the spelling word list in the background, so the first misspelt search is not slow. Call when the search screen opens. */
     suspend fun warmUp() = withContext(Dispatchers.IO) { runCatching { val t = System.currentTimeMillis(); vocabulary(); android.util.Log.i("Search", "spelling words ready in ${System.currentTimeMillis() - t} ms") } }
 
-    private suspend fun run(text: String, tab: SearchTab, limit: Int, year: Int?): GlobalResults {
+    private suspend fun run(text: String, tab: SearchTab, limit: Int, year: Int?, extra: Map<SearchKind, Int> = emptyMap(), partial: suspend (GlobalResults) -> Unit = { }): GlobalResults {
         val sources = library.sourceIds.value
         if (sources.isEmpty()) return GlobalResults()
         val multiple = sources.size > 1
@@ -139,10 +155,12 @@ class GlobalSearch(
         val locked = folders.lockedIdsNow()
         val nq = SearchText.normalize(text)
         val out = LinkedHashMap<SearchKind, List<SearchItem>>()
+        val more = LinkedHashSet<SearchKind>()
+        fun capOf(kind: SearchKind) = limit + (extra[kind] ?: 0)
         fun put(kind: SearchKind, rows: List<SearchItem>) {
             val seen = HashSet<String>()
             val ranked = rows.filter { seen.add(it.id) }.withIndex().sortedWith(compareByDescending<IndexedValue<SearchItem>> { it.value.score }.thenBy { it.index }).map { it.value }
-            if (ranked.isNotEmpty()) out[kind] = ranked.take(limit)
+            if (ranked.isNotEmpty()) { out[kind] = ranked.take(capOf(kind)); if (ranked.size > capOf(kind)) more += kind }
         }
         suspend fun src(id: String) = if (multiple) sourceName(id) else null
 
@@ -155,23 +173,26 @@ class GlobalSearch(
             return cats[id]
         }
         if (SearchKind.CHANNEL in tab.kinds) {
-            val r = search.search(text, SearchScope(kinds = setOf(ContentKind.CHANNEL)), limit + 1).channels
+            val r = search.search(text, SearchScope(kinds = setOf(ContentKind.CHANNEL)), capOf(SearchKind.CHANNEL) + 1).channels
             put(SearchKind.CHANNEL, r.map { ch -> SearchItem("channel:${ch.id}", SearchKind.CHANNEL, ch.name, listOfNotNull(categoryName(ch.categoryId), src(ch.sourceId)).joinToString(" · "), ch.logoUrl, SearchTarget.PlayChannel(ch), SearchText.score(ch.name, text)) })
         }
         if (SearchKind.MOVIE in tab.kinds) {
-            val r = search.search(text, SearchScope(kinds = setOf(ContentKind.MOVIE)), limit * 3 + 1).movies
+            val r = search.search(text, SearchScope(kinds = setOf(ContentKind.MOVIE)), capOf(SearchKind.MOVIE) * 3 + 1).movies
             put(SearchKind.MOVIE, r.map { m -> SearchItem("movie:${m.id}", SearchKind.MOVIE, m.title, listOfNotNull(m.year?.toString(), categoryName(m.categoryId), src(m.sourceId)).joinToString(" · "), m.posterUrl, SearchTarget.OpenMovie(m), SearchText.score(m.title, text)) })
         }
         if (SearchKind.SERIES in tab.kinds) {
-            val r = search.search(text, SearchScope(kinds = setOf(ContentKind.SERIES)), limit * 3 + 1).series
+            val r = search.search(text, SearchScope(kinds = setOf(ContentKind.SERIES)), capOf(SearchKind.SERIES) * 3 + 1).series
             put(SearchKind.SERIES, r.map { s -> SearchItem("series:${s.id}", SearchKind.SERIES, s.title, listOfNotNull(s.year?.toString(), categoryName(s.categoryId), src(s.sourceId)).joinToString(" · "), s.posterUrl, SearchTarget.OpenSeries(s), SearchText.score(s.title, text)) })
         }
+
+        fun soFar(): GlobalResults = GlobalResults(if (year == null) LinkedHashMap(out) else out.mapValues { (_, rows) -> rows.filter { it.title.contains(year.toString()) || it.subtitle.contains(year.toString()) } }.filterValues { it.isNotEmpty() }, more = more.filter { it in out.keys }.toSet())
+        if (out.isNotEmpty()) partial(soFar())                                    // the titles are on screen before the slower sources are asked
 
         // Episodes that are stored (a provider lists them per series, so only series that were opened have them).
         if (SearchKind.EPISODE in tab.kinds) {
             val ph = sources.joinToString(",") { "?" }
             val ids = ArrayList<Pair<String, String?>>()
-            raw.query("SELECT e.id, s.categoryId FROM episodes e JOIN series s ON s.id = e.seriesId WHERE s.sourceId IN ($ph) AND e.title LIKE ? ESCAPE '\\' ORDER BY e.title LIMIT ?", (sources + like(text) + (limit + 1).toString()).toTypedArray()).use { c ->
+            raw.query("SELECT e.id, s.categoryId FROM episodes e JOIN series s ON s.id = e.seriesId WHERE s.sourceId IN ($ph) AND e.title LIKE ? ESCAPE '\\' ORDER BY e.title LIMIT ?", (sources + like(text) + (capOf(SearchKind.EPISODE) + 1).toString()).toTypedArray()).use { c ->
                 while (c.moveToNext()) ids += c.getString(0) to (if (c.isNull(1)) null else c.getString(1))
             }
             val rows = ids.filter { it.second == null || it.second !in locked }.mapNotNull { (id, _) ->
@@ -180,28 +201,36 @@ class GlobalSearch(
                 SearchItem("episode:${e.id}", SearchKind.EPISODE, e.title, listOfNotNull("${s.title} · S${e.season}E${e.number}", src(s.sourceId)).joinToString(" · "), e.imageUrl ?: s.posterUrl, SearchTarget.PlayEpisode(e, s), SearchText.score(e.title, text))
             }
             put(SearchKind.EPISODE, rows)
+            if (rows.isNotEmpty()) partial(soFar())
         }
 
         // Programmes in the guide, from now on.
         if (SearchKind.PROGRAMME in tab.kinds) {
-            val progs = ArrayList<Triple<String, Long, String>>()        // guide id, start, title
-            raw.query("SELECT channelEpgId, startMs, title FROM epg WHERE title LIKE ? ESCAPE '\\' AND endMs > ? ORDER BY startMs LIMIT ?", arrayOf(like(text), System.currentTimeMillis().toString(), ((limit + 1) * 3).toString())).use { c ->
-                while (c.moveToNext()) progs += Triple(app.streamsetu.core.model.EpgIds.raw(c.getString(0)), c.getLong(1), c.getString(2))
+            // Guide ids are stored with the playlist they came from. They stay that way here: a programme belongs to a channel only of the same playlist (or, for a guide stored before ids were scoped,
+            // to the channel carrying that id), so two playlists that happen to use the same guide id never swap programmes.
+            class Prog(val stored: String, val start: Long, val end: Long, val title: String)
+            val progs = ArrayList<Prog>()
+            val inLibrary = sources.toSet()
+            raw.query("SELECT channelEpgId, startMs, endMs, title FROM epg WHERE title LIKE ? ESCAPE '\\' AND endMs > ? ORDER BY startMs LIMIT ?", arrayOf(like(text), System.currentTimeMillis().toString(), ((capOf(SearchKind.PROGRAMME) + 1) * 6).toString())).use { c ->
+                while (c.moveToNext()) { val stored = c.getString(0); val from = app.streamsetu.core.model.EpgIds.source(stored); if (from == null || from in inLibrary) progs += Prog(stored, c.getLong(1), c.getLong(2), c.getString(3)) }
             }
             if (progs.isNotEmpty()) {
-                val epgIds = progs.map { it.first }.distinct()
+                val rawIds = progs.map { app.streamsetu.core.model.EpgIds.raw(it.stored) }.distinct()
                 val ph = sources.joinToString(",") { "?" }
-                val byEpg = HashMap<String, String>()                    // guide id -> channel id
-                epgIds.chunked(400).forEach { chunk ->
-                    raw.query("SELECT epgId, id FROM channels WHERE epgId IN (${chunk.joinToString(",") { "?" }}) AND sourceId IN ($ph)", (chunk + sources).toTypedArray()).use { c -> while (c.moveToNext()) byEpg.putIfAbsent(c.getString(0), c.getString(1)) }
+                val byEpg = HashMap<String, String>()                    // playlist and guide id, together -> channel id
+                rawIds.chunked(400).forEach { chunk ->
+                    raw.query("SELECT sourceId, epgId, id FROM channels WHERE epgId IN (${chunk.joinToString(",") { "?" }}) AND sourceId IN ($ph)", (chunk + sources).toTypedArray()).use { c -> while (c.moveToNext()) byEpg.putIfAbsent(c.getString(0) + "\u0001" + c.getString(1), c.getString(2)) }
                 }
                 val channels = db.catalog().visibleChannelsByIds(byEpg.values.toList()).associate { it.id to it.toModel() }
                 val fmt = SimpleDateFormat("EEE h:mm a", Locale.getDefault())
-                put(SearchKind.PROGRAMME, progs.mapNotNull { (eid, start, title) ->
-                    val ch = byEpg[eid]?.let { channels[it] } ?: return@mapNotNull null
+                put(SearchKind.PROGRAMME, progs.mapNotNull { p ->
+                    val from = app.streamsetu.core.model.EpgIds.source(p.stored)
+                    val channelId = if (from != null) byEpg[from + "\u0001" + app.streamsetu.core.model.EpgIds.raw(p.stored)] else sources.firstNotNullOfOrNull { s -> byEpg[s + "\u0001" + p.stored] }
+                    val ch = channelId?.let { channels[it] } ?: return@mapNotNull null
                     if (ch.categoryId != null && ch.categoryId in locked) return@mapNotNull null
-                    SearchItem("programme:$eid:$start", SearchKind.PROGRAMME, title, "${ch.name} · ${fmt.format(Date(start))}", ch.logoUrl, SearchTarget.PlayProgramme(ch), SearchText.score(title, text))
+                    SearchItem("programme:${ch.id}:${p.start}", SearchKind.PROGRAMME, p.title, "${ch.name} · ${fmt.format(Date(p.start))}", ch.logoUrl, SearchTarget.PlayProgramme(ch, p.start, p.end), SearchText.score(p.title, text))
                 })
+                partial(soFar())
             }
         }
 
@@ -215,6 +244,7 @@ class GlobalSearch(
                 }
             }
             put(SearchKind.FOLDER, rows)
+            if (rows.isNotEmpty()) partial(soFar())
         }
         if (SearchKind.COLLECTION in tab.kinds) {
             val rows = (collections.collections(ContentKind.MOVIE).first() + collections.collections(ContentKind.SERIES).first()).filter { SearchText.normalize(it.name).contains(nq) }
@@ -223,7 +253,7 @@ class GlobalSearch(
         }
         // "hindi movies 2024": only results whose title or subtitle holds the year stay, whatever their kind.
         val kept = if (year == null) out else out.mapValues { (_, rows) -> rows.filter { it.title.contains(year.toString()) || it.subtitle.contains(year.toString()) } }.filterValues { it.isNotEmpty() }
-        return GlobalResults(kept)
+        return GlobalResults(kept, more = more.filter { it in kept.keys }.toSet())
     }
 
     /** `%term%` for a LIKE, with the characters LIKE treats specially made literal. */

@@ -155,6 +155,6 @@ class SportsDisabledTests {
     @Test fun theSharedRecordingAndGuideCodeHasNoSwitchAndIsUnchanged() {
         // Recordings, the Guide, Live TV, Home and Search belong to the app, not to Sports: they take no part in the switch.
         for (f in listOf("record/ScheduledRecordings.kt", "ui/screens/guide/GuideScreen.kt", "ui/screens/live/LiveScreen.kt", "ui/screens/home/HomeScreen.kt")) assertFalse("$f must not read the Sports switch", main(f).contains("SportsFeature"))
-        assertTrue(main("ui/screens/search/SearchContent.kt").contains("c.globalSearch.search(query, tab,"))
+        assertTrue(main("ui/screens/search/SearchContent.kt").contains("c.globalSearch.searchProgressive(query, tab, base)"))
     }
 }

@@ -94,18 +94,19 @@ private fun icon(cmd: SearchCommand): ImageVector = when (cmd) {
 @Composable
 fun rememberSearchActions(c: AppContainer, nav: Navigator, typed: String, session: app.streamsetu.tv.nav.SearchSession? = null, firstAction: androidx.compose.ui.focus.FocusRequester? = null): Pair<LazyListScope.() -> Unit, LazyListScope.() -> Unit> {
     val scope = rememberCoroutineScope()
+    val ctx by c.searchContext.collectAsState(initial = null)          // what the AI suggested belongs to whoever asked: it goes when the context changes
     var message by remember(typed) { mutableStateOf<String?>(null) }
     val commands = remember(typed) { SearchCommands.parse(typed) }
     val kids = c.profiles.profiles.collectAsState().value.firstOrNull { it.id == c.profiles.activeId.value }?.kids == true
     val aiReady = !kids && c.ai.load().isReady
     val looksLikeARequest = typed.trim().split(Regex("\\s+")).size >= 4 || (typed.trim().split(Regex("\\s+")).size >= 3 && app.streamsetu.core.data.repo.MoodVocabulary.understands(typed))
-    var busy by remember(typed) { mutableStateOf(false) }
-    var error by remember(typed) { mutableStateOf<String?>(null) }
+    var busy by remember(typed, ctx) { mutableStateOf(false) }
+    var error by remember(typed, ctx) { mutableStateOf<String?>(null) }
     // What the AI suggested for these very words is put back when the person returns to the page.
-    val kept = session?.takeIf { it.aiFor == typed }
-    var note by remember(typed) { mutableStateOf<String?>(kept?.aiNote) }
-    var found by remember(typed) { mutableStateOf<List<FoundTitle>>(kept?.aiFound.orEmpty()) }
-    var asked by remember(typed) { mutableStateOf(kept?.aiAsked ?: false) }
+    val kept = session?.takeIf { it.aiFor == typed && ctx != null }
+    var note by remember(typed, ctx) { mutableStateOf<String?>(kept?.aiNote) }
+    var found by remember(typed, ctx) { mutableStateOf<List<FoundTitle>>(kept?.aiFound.orEmpty()) }
+    var asked by remember(typed, ctx) { mutableStateOf(kept?.aiAsked ?: false) }
     LaunchedEffect(typed, found, note, asked) { session?.let { if (asked) { it.aiFor = typed; it.aiFound = found; it.aiNote = note; it.aiAsked = true } } }
     val aiName = c.ai.provider.title
     val showAsk = aiReady && looksLikeARequest && commands.isEmpty()
@@ -118,7 +119,7 @@ fun rememberSearchActions(c: AppContainer, nav: Navigator, typed: String, sessio
         }
     }
     val matches = found.distinctBy { listOf(it.title.lowercase(), it.year, it.isSeries) }.take(MAX_AI_MATCHES)
-    var showAll by remember(typed) { mutableStateOf(false) }
+    var showAll by remember(typed, ctx) { mutableStateOf(false) }
     val shownMatches = if (showAll) matches else matches.take(INITIAL_AI_MATCHES)           // the first five; the rest on request
 
     val top: LazyListScope.() -> Unit = {

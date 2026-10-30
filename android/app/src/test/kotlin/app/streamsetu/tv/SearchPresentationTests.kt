@@ -3,8 +3,12 @@ package app.streamsetu.tv.ui.screens.search
 import app.streamsetu.core.data.repo.GlobalResults
 import app.streamsetu.core.data.repo.SearchItem
 import app.streamsetu.core.data.repo.SearchKind
+import app.streamsetu.core.data.repo.SearchResultOrder
+import app.streamsetu.core.data.repo.SportsSearchOrder
+import app.streamsetu.core.data.repo.exactMatch
 import app.streamsetu.core.data.repo.SearchTarget
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -27,8 +31,16 @@ class SearchPresentationTests {
     @Test fun doneGoesToTheExactMatchThenTheFirstResultInGroupOrder() {
         val r = results(item("c1", "News Channel", SearchKind.CHANNEL), item("m1", "News"), item("m2", "News Hour"))
         assertEquals("m1", doneResultId(r, "news"))                                 // the exact title, although a channel is listed first
-        assertEquals(SearchKind.entries.firstNotNullOf { k -> r.byKind[k]?.firstOrNull() }.id, doneResultId(r, "new"))      // no exact title: the first result as shown
+        assertEquals(shownOrder.firstNotNullOf { k -> r.byKind[k]?.firstOrNull() }.id, doneResultId(r, "new"))      // no exact title: the first result as shown
+        assertEquals("m1", doneResultId(r, "new"))                                  // a movie is listed before a channel, so Done goes to it
         assertNull(doneResultId(GlobalResults(), "anything"))
+    }
+    @Test fun bestMatchAndTheDrawnOrderAgree() {
+        val r = results(item("c1", "Inception", SearchKind.CHANNEL), item("m1", "Inception"), item("s1", "Inception", SearchKind.SERIES))
+        assertEquals("the exact movie, not the channel that comes first in the enum", "m1", bestMatchOf(r, "inception")!!.id)
+        assertEquals("m1", r.exactMatch("inception")!!.id); assertEquals("every place that names a first result agrees", bestMatchOf(r, "inception")!!.id, r.exactMatch("inception")!!.id)
+        assertEquals(SearchResultOrder + SportsSearchOrder, shownOrder)
+        assertTrue(SearchKind.entries.all { it in shownOrder })
     }
     @Test fun resultsComeBeforeCommandsAndAskAi() {
         assertEquals(listOf(DoneStep.RESULT, DoneStep.ACTION), doneSteps(hasResult = true))
