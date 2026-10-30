@@ -89,7 +89,7 @@ fun SearchContent(
     }
     // Sports results come from a second, separate lookup. They are added to the list when they arrive and never wait for, replace or reorder what the library found; if the lookup fails or is
     // cancelled, the library's results stay exactly as they are. A change to who may see what drops them at once.
-    val sportsOn = onSports != null && typeFilter == null && tab == SearchTab.ALL
+    val sportsOn = sportsSearchActive(app.streamsetu.tv.sports.SportsFeature.enabled, onSports != null, typeFilter == null, tab == SearchTab.ALL)
     val sportsContext by (if (sportsOn) c.sportsSearchSource.contextFlow else kotlinx.coroutines.flow.flowOf("")).collectAsState("")
     var sportsItems by remember(sportsContext) { mutableStateOf<List<SearchItem>>(emptyList()) }
     LaunchedEffect(query, sportsOn, retryTick, sportsContext) {
@@ -310,7 +310,7 @@ fun SearchScreen(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
             onEpisode = { e, s -> app.streamsetu.tv.play(c, nav, EpisodePlayable(e, s)) },
             onFolder = { k, id -> nav.openFolderTab(k, id) },
             onCollection = { id, k -> nav.openCollection(k, id) },
-            onSports = { t -> nav.openSports(t) },
+            onSports = if (app.streamsetu.tv.sports.SportsFeature.enabled) ({ t -> nav.openSports(t) }) else null,
             session = nav.search, sessionKey = "${c.library.activeId.value}|${c.profiles.activeId.value}|${nav.searchScope.name}",
             initialType = when (nav.searchScope) { app.streamsetu.core.data.repo.SearchTab.LIVE -> ContentKind.CHANNEL; app.streamsetu.core.data.repo.SearchTab.MOVIES -> ContentKind.MOVIE; app.streamsetu.core.data.repo.SearchTab.SERIES -> ContentKind.SERIES; else -> null },
             above = { typed, first -> rememberSearchActions(c, nav, typed, nav.search, first) })

@@ -75,7 +75,7 @@ class MainActivity : ComponentActivity() {
         }
         handle(intent)
         // A little after the first screens are up, start reading who is in the movies (see PeopleIndexer).
-        android.os.Handler(mainLooper).postDelayed({ container.sportsReminders.start(); container.people.start(); app.streamsetu.tv.ui.screens.settings.refreshInsightAlarms(container) }, 20_000)
+        android.os.Handler(mainLooper).postDelayed({ if (app.streamsetu.tv.sports.SportsFeature.enabled) container.sportsReminders.start(); container.people.start(); app.streamsetu.tv.ui.screens.settings.refreshInsightAlarms(container) }, 20_000)
     }
 
     override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); handle(intent) }
@@ -83,7 +83,8 @@ class MainActivity : ComponentActivity() {
     /** `streamsetu://play?kind=channel|movie|series&q=name[&engine=auto|exoplayer|mpv]`: starts something by name (used for testing and voice shortcuts). */
     private fun handle(intent: android.content.Intent?) {
         // A Sports reminder notification carries only the reminder's id; the event is found and checked again inside the app.
-        app.streamsetu.tv.sports.personal.AndroidReminderNotifier.openIdFrom(intent)?.let { id -> nav.pendingSportsReminder = id; if (nav.base == Base.Shell) nav.go(Tab.SPORTS); return }
+        // With Sports off, a Sports link is ignored: nothing is remembered and nothing opens.
+        app.streamsetu.tv.sports.personal.AndroidReminderNotifier.openIdFrom(intent)?.let { id -> if (app.streamsetu.tv.sports.SportsFeature.enabled) { nav.pendingSportsReminder = id; if (nav.base == Base.Shell) nav.go(Tab.SPORTS) }; return }
         val uri = intent?.data ?: return
         if (uri.scheme != "streamsetu" || (uri.host != "play" && uri.host != "watch")) return
         val c = container
@@ -307,7 +308,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                     is Overlay.SeriesDetail -> app.streamsetu.tv.ui.screens.detail.SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
                     is Overlay.Player -> PlayerScreen(c, onClose = { closePlayer(c, nav, embeddedLive = true) }, onMultiView = { openMultiView(c, nav) }, onOpenSeries = { sr -> closePlayer(c, nav); nav.open(Overlay.SeriesDetail(sr)) }, onMinimize = { nav.liveFullscreen = false; nav.close() }, onOpenGuide = { nav.liveFullscreen = false; nav.close(); nav.go(Tab.GUIDE) })
                     is Overlay.MultiView -> app.streamsetu.tv.ui.screens.MultiViewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> nav.close(); play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch), c.queue.ifEmpty { listOf(app.streamsetu.core.model.ChannelPlayable(ch)) }) }, onSports = { nav.close(); nav.open(Overlay.SportsMultiview) })
-                    is Overlay.SportsMultiview -> app.streamsetu.tv.ui.screens.sports.SportsMultiviewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> c.multiviewFullscreenReturn = true; play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch)) })
+                    is Overlay.SportsMultiview -> if (app.streamsetu.tv.sports.SportsFeature.enabled) app.streamsetu.tv.ui.screens.sports.SportsMultiviewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> c.multiviewFullscreenReturn = true; play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch)) })
                     is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                     is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav)
                 }
@@ -315,7 +316,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
             }
         }
         // A Sports reminder while the app is open: above everything, one at a time, and passive while something is playing.
-        if (nav.base == Base.Shell) app.streamsetu.tv.ui.components.SportsReminderBanner(c, nav)
+        if (nav.base == Base.Shell && app.streamsetu.tv.sports.SportsFeature.enabled) app.streamsetu.tv.ui.components.SportsReminderBanner(c, nav)
     }
     }
 }
@@ -371,7 +372,7 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
                 when (page) {
                     Tab.HOME -> app.streamsetu.tv.ui.screens.home.HomeScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.LIVE -> app.streamsetu.tv.ui.screens.live.LiveScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
-                    Tab.SPORTS -> app.streamsetu.tv.ui.screens.sports.SportsScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
+                    Tab.SPORTS -> if (app.streamsetu.tv.sports.SportsFeature.enabled) app.streamsetu.tv.ui.screens.sports.SportsScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.GUIDE -> app.streamsetu.tv.ui.screens.guide.GuideScreen(androidx.hilt.navigation.compose.hiltViewModel(), c, nav)
                     Tab.MOVIES -> app.streamsetu.tv.ui.screens.section.SectionScreen(androidx.hilt.navigation.compose.hiltViewModel<app.streamsetu.tv.ui.screens.section.MoviesSectionViewModel>(), c, nav) { card -> card.movie?.let { nav.open(Overlay.MovieDetail(it)) } }
                     Tab.SERIES -> app.streamsetu.tv.ui.screens.section.SectionScreen(androidx.hilt.navigation.compose.hiltViewModel<app.streamsetu.tv.ui.screens.section.SeriesSectionViewModel>(), c, nav) { card -> card.series?.let { nav.open(Overlay.SeriesDetail(it)) } }
@@ -419,7 +420,7 @@ fun closePlayer(c: AppContainer, nav: Navigator, embeddedLive: Boolean = false) 
     nav.liveFullscreen = false
     nav.close()
     // Back lands where the stream was started: the Sports event it came from (or the Sports panel for a channel whose event is gone), or Live TV.
-    val home = if (c.sportsPlayback.hasOrigin || c.sportsPlayback.isHeld) Tab.SPORTS else Tab.LIVE
+    val home = if (app.streamsetu.tv.sports.SportsFeature.enabled && (c.sportsPlayback.hasOrigin || c.sportsPlayback.isHeld)) Tab.SPORTS else Tab.LIVE
     if (keepLive && nav.tab != home) nav.go(home)
 }
 

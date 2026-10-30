@@ -84,7 +84,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     val item = current
     val live = item?.isLive == true
     // Feeds: only when this stream was started from a Sports event that has more than one currently allowed feed.
-    val sports by c.sportsPlayback.state.collectAsStateWithLifecycle()
+    val sports = if (app.streamsetu.tv.sports.SportsFeature.enabled) c.sportsPlayback.state.collectAsStateWithLifecycle().value else remember { app.streamsetu.tv.sports.SportsPlaybackState() }
     val feedsAvailable = live && item is ChannelPlayable && sports.canSwitch()
     val reduced = LocalReducedMotion.current
     fun ms(n: Int) = if (reduced) 0 else n

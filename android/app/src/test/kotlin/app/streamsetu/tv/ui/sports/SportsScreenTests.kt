@@ -63,8 +63,8 @@ class SportsScreenTests {
     private lateinit var vm: SportsViewModel
     private lateinit var nav: Navigator
     private var guideRefreshes = 0
-    @After fun stop() { scope.cancel() }
-    @Before fun setUp() { deps = FakeSportsDeps(); nav = Navigator(); nav.base = app.streamsetu.tv.nav.Base.Shell; guideRefreshes = 0 }
+    @After fun stop() { scope.cancel(); app.streamsetu.tv.sports.SportsFeature.forTest(null) }
+    @Before fun setUp() { app.streamsetu.tv.sports.SportsFeature.forTest(true); deps = FakeSportsDeps(); nav = Navigator(); nav.base = app.streamsetu.tv.nav.Base.Shell; guideRefreshes = 0 }
 
     private fun feed(ch: String, lang: String? = null, ls: MetadataSource = MetadataSource.UNKNOWN, q: String? = null, qs: MetadataSource = MetadataSource.UNKNOWN) = SportsFeed(ch, "A", "Channel $ch", lang, ls, q, qs, null, ch, 0, false, null)
     private fun event(id: String, startMin: Long, sport: Sport = Sport.FOOTBALL, feeds: List<SportsFeed> = listOf(feed(id)), confidence: Double = 0.95) =

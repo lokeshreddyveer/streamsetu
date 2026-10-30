@@ -117,6 +117,7 @@ class RealReminderDeps(private val context: Context, c: AppContainer) : RealSpor
 /** An alarm went off. The app may have been closed: the event is found afresh and checked again before anything is shown. */
 class SportsReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (!app.streamsetu.tv.sports.SportsFeature.enabled) return                          // Sports is off: an alarm that still arrives does nothing and starts nothing
         val id = AlarmReminderScheduler.idFrom(intent) ?: return                            // only our own alarm, and only the reminder its address names
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch { runCatching { EntryPointAccessors.fromApplication(context.applicationContext, SyncEntryPoint::class.java).container().sportsReminders.fire(id) }; pending.finish() }
@@ -126,6 +127,7 @@ class SportsReminderReceiver : BroadcastReceiver() {
 /** After a restart, an app update or a time zone change the alarms are set again, for the active profile only. */
 class SportsRescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (!app.streamsetu.tv.sports.SportsFeature.enabled) return
         if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED && intent.action != Intent.ACTION_TIMEZONE_CHANGED) return
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch { runCatching { EntryPointAccessors.fromApplication(context.applicationContext, SyncEntryPoint::class.java).container().sportsReminders.rescheduleAll() }; pending.finish() }

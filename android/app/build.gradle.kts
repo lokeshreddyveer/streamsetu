@@ -24,6 +24,10 @@ android {
         // In-app updating from GitHub releases. Turn it off (-PselfUpdate=false) for a build that goes through a store, which updates apps itself.
         buildConfigField("boolean", "SELF_UPDATE", ((project.findProperty("selfUpdate") as String?) != "false").toString())
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }       // Fire TV and Android TV boxes are ARM
+        // Sports is switched off in the app unless a build asks for it with -PsportsEnabled=true. One flag for the code (SportsFeature) and for the two Sports receivers in the manifest.
+        val sportsOn = (project.findProperty("sportsEnabled") as String?) == "true"
+        buildConfigField("boolean", "SPORTS_ENABLED", sportsOn.toString())
+        manifestPlaceholders["sportsReceiversEnabled"] = sportsOn.toString()
     }
     signingConfigs {
         if (keystoreProps.containsKey("storeFile")) create("release") {

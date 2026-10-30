@@ -108,7 +108,7 @@ class Navigator {
 
     /** A Sports event, team or competition chosen in Search. Sports takes it when it appears; Back then returns to the Search result it came from (the Sports screen remembers that it was opened from Search). */
     var pendingSportsTarget: app.streamsetu.core.data.repo.SearchTarget.OpenSports? by mutableStateOf(null)
-    fun openSports(t: app.streamsetu.core.data.repo.SearchTarget.OpenSports) { pendingSportsTarget = t; go(Tab.SPORTS) }
+    fun openSports(t: app.streamsetu.core.data.repo.SearchTarget.OpenSports) { if (!app.streamsetu.tv.sports.SportsFeature.enabled) return; pendingSportsTarget = t; go(Tab.SPORTS) }
     /** Back from Sports to the Search page, whose words and result position are still held by [search]. */
     fun returnToSearch() { go(Tab.SEARCH) }
 
@@ -189,7 +189,7 @@ class Navigator {
     fun close() { if (overlays.isNotEmpty()) { overlays.removeAt(overlays.lastIndex); lastClosedAt = System.currentTimeMillis() } }
 
     /** A section chosen from the rail. Search opened this way searches everything; the Search entry points of Movies, Series and Live TV use [openSearch] with their own scope. */
-    fun go(t: Tab) { if (t == Tab.SEARCH) searchScope = app.streamsetu.core.data.repo.SearchTab.ALL; searchTemporary = false; tab = t; sidebarRevealed = false; sidebarFocused = false; contentFocusTick++ }
+    fun go(t: Tab) { if (t == Tab.SPORTS && !app.streamsetu.tv.sports.SportsFeature.enabled) return; if (t == Tab.SEARCH) searchScope = app.streamsetu.core.data.repo.SearchTab.ALL; searchTemporary = false; tab = t; sidebarRevealed = false; sidebarFocused = false; contentFocusTick++ }
 
     /**
      * The remote moved onto or off the sidebar. Losing focus does not hide the sidebar by itself (focus is lost for an instant while it moves between two entries,

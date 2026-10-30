@@ -108,7 +108,7 @@ class AppContainer @Inject constructor(
         }) { p ->
             parental.setKids(p.kids)
             lan.setEnabled(lan.wanted && profiles.isMainActive)
-            sportsReminders.securityChanged()          // the old profile's banner goes, its alarms are cancelled and the new profile's are set
+            if (app.streamsetu.tv.sports.SportsFeature.enabled) sportsReminders.securityChanged()          // the old profile's banner goes, its alarms are cancelled and the new profile's are set
         }.also { it.reload(); parental.setKids(it.active.kids) }
     }
 
@@ -583,7 +583,7 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             kotlinx.coroutines.delay(1500)
             app.streamsetu.tv.record.ScheduledRecordings.recover(this@StreamSetuApp)
             app.streamsetu.tv.record.ScheduledRecordings.rearm(this@StreamSetuApp)
-            container.sportsRecordings.start(container.appScope)          // the Sports rows follow the recordings
+            if (app.streamsetu.tv.sports.SportsFeature.enabled) container.sportsRecordings.start(container.appScope)          // the Sports rows follow the recordings
             container.lan.startIfEnabled(container.profiles.isMainActive)
             kotlinx.coroutines.delay(5000)
             runCatching { container.globalSearch.warmUp() }

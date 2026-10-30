@@ -64,13 +64,14 @@ class SportsDiscoveryScreenTests {
     private val reports = java.util.Collections.synchronizedList(ArrayList<DiscoveryReport>())
 
     @Before fun setUp() {
+        app.streamsetu.tv.sports.SportsFeature.forTest(true)
         db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java).allowMainThreadQueries().build()
         deps = FakeSportsDeps(); rdeps = FakeReminderDeps(); rdeps.time = now0
         follows = SportsFollowService(db.sports(), rdeps, rdeps.profileFlow, { }) { now0 }
         reminders = SportsReminderService(db.sports(), rdeps, scope, { })
         nav = Navigator(); nav.base = Base.Shell; nav.tab = Tab.SPORTS
     }
-    @After fun stop() { scope.cancel(); db.close() }
+    @After fun stop() { app.streamsetu.tv.sports.SportsFeature.forTest(null); scope.cancel(); db.close() }
 
     private fun event(id: String, startMin: Long, sides: List<String> = listOf("India", "Australia"), sport: Sport = Sport.CRICKET, competition: String? = "Test Series", catchUp: Boolean = false): SportsEvent {
         rdeps.auth.channels["c-$id"] = Channel("c-$id", "A", "cat", "Channel $id", null, null, "ref", null)

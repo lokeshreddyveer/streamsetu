@@ -5,6 +5,9 @@ import app.streamsetu.core.data.repo.SearchItem
 import app.streamsetu.core.data.repo.SearchKind
 import app.streamsetu.core.data.repo.SearchText
 
+/** Whether Sports results are looked up at all: only when the Sports switch is on, the screen can open them, and the whole library is being searched. */
+internal fun sportsSearchActive(enabled: Boolean, canOpen: Boolean, allTypes: Boolean, allTab: Boolean): Boolean = enabled && canOpen && allTypes && allTab
+
 /** The decisions Search makes about what to show first and where the remote goes, kept apart from the screen so they can be tested. */
 
 /** The result whose title is exactly what was typed (ignoring case and accents), looked for in every kind of result. */

@@ -61,12 +61,12 @@ private fun iconOf(t: Tab): ImageVector = when (t) {
 private fun nameOf(t: Tab) = when (t) { Tab.LIBRARIES -> "Libraries"; Tab.GUIDE -> "TV Guide"; else -> t.title }
 
 // The rail in three groups, with their names shown while it is open: what you watch, finding something, and managing the app.
-private val Groups = listOf(
-    "WATCH" to listOf(Tab.HOME, Tab.LIVE, Tab.SPORTS, Tab.GUIDE, Tab.MOVIES, Tab.SERIES),
+private val Groups get() = listOf(
+    "WATCH" to listOf(Tab.HOME, Tab.LIVE, Tab.SPORTS, Tab.GUIDE, Tab.MOVIES, Tab.SERIES).filter { it != Tab.SPORTS || app.streamsetu.tv.sports.SportsFeature.enabled },
     "DISCOVER" to listOf(Tab.SEARCH),
     "MANAGE" to listOf(Tab.LIBRARIES, Tab.SETTINGS),
 )
-private val AllTabs = Groups.flatMap { it.second }
+private val AllTabs get() = Groups.flatMap { it.second }
 
 private val Row get() = (56 * app.streamsetu.tv.ui.theme.UiScale.k).toInt()        // dp, the height of every entry
 private val IconBox get() = (40 * app.streamsetu.tv.ui.theme.UiScale.k).toInt()    // dp, the square the icon is centred in
