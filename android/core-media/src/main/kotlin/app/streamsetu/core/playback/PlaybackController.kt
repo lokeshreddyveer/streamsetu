@@ -233,6 +233,7 @@ class PlaybackController(
     private val strict = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())          // not newKeySet(), which needs Android 7
     private fun isStrict(sourceId: String) = sourceId in strict || appContext.getSharedPreferences("account-formats", Context.MODE_PRIVATE).getInt("max.$sourceId", 0) == 1
     private var switchedEngine = false
+    private val exoRefused = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())          // films ExoPlayer could not play in full: next time they start in MPV
     private var startPositionMs = 0L
     private var job: Job? = null
     private var progressJob: Job? = null
@@ -304,7 +305,13 @@ class PlaybackController(
         val viewing = when { item is app.streamsetu.core.model.CatchUpPlayable -> "CATCHUP"; item.isLive -> "LIVE"; else -> "MOVIES" }
         val preference = settings.engineFor(item.sourceId) ?: settings.engineForKind(viewing) ?: settings.enginePreference.value
         // A file on this device is opened through Android's content system, which only ExoPlayer can do.
-        val kind = forced ?: if (url.startsWith("content://")) EngineKind.EXOPLAYER else EngineSelector.select(container, preference, available)
+        // A film in a Matroska file starts in ExoPlayer on Automatic; one it could not play in full before (or just now) goes straight to MPV.
+        val matroskaTry = preference == EnginePreference.AUTOMATIC && container == StreamContainer.MKV && !item.isLive && !url.startsWith("content://")
+        val kind = forced ?: when {
+            url.startsWith("content://") -> EngineKind.EXOPLAYER
+            matroskaTry && item.id in exoRefused && EngineKind.MPV in available -> EngineKind.MPV
+            else -> EngineSelector.select(container, preference, available, item.isLive)
+        }
         android.util.Log.i("Playback", "start ${if (item.isLive) "live" else "vod"} '${item.title}' container=$container engine=${kind.label} (preference=${preference.label}) host=${runCatching { java.net.URI(url).host }.getOrNull()}")
         val next = engineFor(kind)
         val previous = _engine.value
@@ -317,7 +324,7 @@ class PlaybackController(
         val ua = resolver.userAgent(item.sourceId)
         val extra = resolver.headers(item.sourceId)
         next.load(EngineRequest(url, (if (ua != null) mapOf("User-Agent" to ua) else emptyMap()) + extra, startPositionMs, item.isLive, buffering,
-            EngineOptions(settings.decoderFallback.value, settings.surroundPassthrough.value, _subtitleStyle.value ?: SubtitleStyle(scale, settings.subtitleBackground.value == "DARK", settings.subtitleOutline.value), settings.mpvProxy.takeIf { !app.streamsetu.core.net.Http.isLocal(runCatching { java.net.URI(url).host }.getOrNull().orEmpty()) }, _tuning.value.softwareDecoding, resolver.allowsSelfSignedTls(item.sourceId))))
+            EngineOptions(settings.decoderFallback.value, settings.surroundPassthrough.value, _subtitleStyle.value ?: SubtitleStyle(scale, settings.subtitleBackground.value == "DARK", settings.subtitleOutline.value), settings.mpvProxy.takeIf { !app.streamsetu.core.net.Http.isLocal(runCatching { java.net.URI(url).host }.getOrNull().orEmpty()) }, _tuning.value.softwareDecoding, resolver.allowsSelfSignedTls(item.sourceId), verifyTracks = matroskaTry && kind == EngineKind.EXOPLAYER && EngineKind.MPV in available)))
         applyTuningLater()
         if (!loggedStart) { loggedStart = true; onStarted(item) }
     }
@@ -371,6 +378,8 @@ class PlaybackController(
         // A format the engine cannot play goes to the other engine once, like the Mac app does; so does an engine that keeps failing.
         if (!switchedEngine && e != null && (error.kind == ErrorKind.FORMAT || attempt >= 2)) {
             EngineSelector.other(e.kind, available)?.let { other ->
+                if (e.kind == EngineKind.EXOPLAYER && error.kind == ErrorKind.FORMAT) exoRefused.add(item.id)
+                android.util.Log.i("Playback", "${e.kind.label} -> ${other.label}: ${error.message}")
                 switchedEngine = true; attempt = 0
                 _state.value = PlaybackState.Retrying(0, 1)
                 job?.cancel(); job = scope.launch { startPositionMs = if (item.isLive) 0 else e.positionMs; startNow(item, other) }

@@ -225,7 +225,9 @@ class MpvEngine(context: Context) : PlayerEngine, MPVLib.EventObserver, SurfaceH
             "Video bitrate" to (prop("video-bitrate").toDoubleOrNull()?.takeIf { it > 0 }?.let { "${(it / 1000).toInt()} kbps" } ?: "unknown"),
             "Decoder" to prop("hwdec-current").ifBlank { "software" },
             "Buffered ahead" to (prop("demuxer-cache-duration").toDoubleOrNull()?.let { "%.0f s".format(it) } ?: "unknown"),
-            "Dropped frames" to prop("vo-drop-frame-count").ifBlank { "0" },
+            // The renderer's drops and the decoder's drops together: counting only the renderer's showed 0 while pictures were being lost.
+            "Dropped frames" to ((prop("vo-drop-frame-count").toLongOrNull() ?: 0L) + (prop("decoder-frame-drop-count").toLongOrNull() ?: 0L)).toString(),
+            "Late frames" to prop("vo-delayed-frame-count").ifBlank { "0" },
         )
     }
 

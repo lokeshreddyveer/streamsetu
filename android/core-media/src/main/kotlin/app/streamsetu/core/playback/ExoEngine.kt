@@ -34,6 +34,7 @@ class ExoEngine(context: Context) : PlayerEngine {
     private var dropped = 0L
     private var rebuilds = 0
     private var decoderName = ""
+    private var verifyPending = false          // this load still has to be checked against ExoSupport
     private var viewRef: PlayerView? = null
     private var currentHeaders: Map<String, String> = emptyMap()
 
@@ -92,7 +93,13 @@ class ExoEngine(context: Context) : PlayerEngine {
                 if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) { p.seekToDefaultPosition(); p.prepare(); return }
                 onEvent(EngineEvent.Error(classify(error)))
             }
-            override fun onTracksChanged(tracks: Tracks) { onEvent(EngineEvent.TracksChanged) }
+            override fun onTracksChanged(tracks: Tracks) {
+                if (verifyPending && tracks.groups.isNotEmpty()) {
+                    verifyPending = false
+                    ExoSupport.unplayable(tracks)?.let { what -> onEvent(EngineEvent.Error(PlaybackError(ErrorKind.FORMAT, "ExoPlayer cannot play this file's $what"))); return }
+                }
+                onEvent(EngineEvent.TracksChanged)
+            }
         })
         player = p; builtFor = key
         viewRef?.player = p
@@ -121,6 +128,7 @@ class ExoEngine(context: Context) : PlayerEngine {
 
     override fun load(request: EngineRequest) {
         options = request.options
+        verifyPending = options.verifyTracks
         userAgent = request.headers["User-Agent"]
         currentHeaders = request.headers.filterKeys { !it.equals("User-Agent", true) }
         val p = ensurePlayer(request.buffering)

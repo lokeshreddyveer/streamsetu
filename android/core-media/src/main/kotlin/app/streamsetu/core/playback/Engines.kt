@@ -25,14 +25,18 @@ enum class StreamContainer { HLS, MP4, MPEG_TS, MKV, AVI, RTSP, DASH, UNKNOWN;
     }
 }
 
-/** The Mac's `EngineSelector`: Automatic gives ExoPlayer HLS, MP4, DASH and MPEG-TS, and MPV the formats it handles badly (MKV audio, AVI, RTSP). */
+/**
+ * The Mac's `EngineSelector`: Automatic gives ExoPlayer HLS, MP4, DASH, MPEG-TS and films in Matroska files, and MPV what it handles badly (AVI, RTSP, live Matroska).
+ * A Matroska film is only tried in ExoPlayer: when it cannot play every track of the file ([ExoSupport]), the file moves to MPV.
+ */
 object EngineSelector {
-    fun select(container: StreamContainer, pref: EnginePreference, available: Set<EngineKind>): EngineKind {
+    fun select(container: StreamContainer, pref: EnginePreference, available: Set<EngineKind>, live: Boolean = false): EngineKind {
         val wanted = when (pref) {
             EnginePreference.EXOPLAYER -> EngineKind.EXOPLAYER
             EnginePreference.MPV -> EngineKind.MPV
             EnginePreference.AUTOMATIC -> when (container) {
-                StreamContainer.MKV, StreamContainer.AVI, StreamContainer.RTSP -> EngineKind.MPV
+                StreamContainer.AVI, StreamContainer.RTSP -> EngineKind.MPV
+                StreamContainer.MKV -> if (live) EngineKind.MPV else EngineKind.EXOPLAYER
                 else -> EngineKind.EXOPLAYER
             }
         }
@@ -64,7 +68,9 @@ data class Chapter(val title: String, val startMs: Long)
 /** Choices that need the player to be built a certain way. */
 data class EngineOptions(val decoderFallback: Boolean = true, val passthrough: Boolean = true, val subtitles: SubtitleStyle = SubtitleStyle(), val httpProxy: String? = null, val softwareDecoding: Boolean = false, val allowSelfSigned: Boolean = false,
     /** A cap on the picture the player may choose (0 = none): a quarter-screen Multi-View tile has no use for a 4K stream. */
-    val maxVideoWidth: Int = 0, val maxVideoHeight: Int = 0)
+    val maxVideoWidth: Int = 0, val maxVideoHeight: Int = 0,
+    /** ExoPlayer reports a file it cannot play in full as a format error (so the file moves to MPV) instead of playing it without its picture or sound. */
+    val verifyTracks: Boolean = false)
 
 data class EngineRequest(val url: String, val headers: Map<String, String>, val startMs: Long, val live: Boolean, val buffering: BufferingMode, val options: EngineOptions = EngineOptions())
 
