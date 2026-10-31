@@ -97,7 +97,7 @@ The artwork in these screenshots comes from the provider's own playlist. StreamS
 | **Mac** | [`StreamSetu-2.15.0.dmg`](../../releases/download/2026.10.29/StreamSetu-2.15.0.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
 | **Fire TV and Android TV** | [`streamsetu-tv-0.20.0.apk`](../../releases/download/2026.10.29/streamsetu-tv-0.20.0.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
 | **Android phone and tablet** | [`StreamSetu-Android-0.20.0.apk`](../../releases/download/2026.10.29/StreamSetu-Android-0.20.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
-| **iPhone and iPad** | [Join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 1.1 | Open to the first 100 testers. After that, ask for an invitation at contact@lokeshreddy.dev. |
+| **iPhone and iPad** | [Download on the App Store](https://apps.apple.com/us/app/stream-setu/id6821526110), or [join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ) for early updates | The App Store has the released version. TestFlight gets new builds first (currently 1.1) and is open to the first 100 testers; after that, ask for an invitation at contact@lokeshreddy.dev. |
 | **Windows** | Coming soon | Not released yet. |
 
 The two Android files hold the same build, listed separately so each device has its own download. The app picks the remote or touch layout by itself. Every download has a SHA-256 checksum in its release notes. Verify it with `shasum -a 256 <file>`.

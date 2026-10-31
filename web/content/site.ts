@@ -3,13 +3,14 @@ export const site = {
   tagline: "Your streams. One home.",
   description: "StreamSetu plays the IPTV playlists and media servers you already have, on Mac, iPhone, iPad, Android, Fire TV and Android TV. No account, no ads, no tracking.",
   repo: "https://github.com/lokeshreddyveer/streamsetu",
+  appStore: "https://apps.apple.com/us/app/stream-setu/id6821526110",
   testflight: "https://testflight.apple.com/join/wYZ3vysQ",
   email: "contact@lokeshreddy.dev",
 };
 
 export const platforms = [
   { id: "mac", name: "Mac", detail: "Apple silicon and Intel, macOS 14 or later" },
-  { id: "ios", name: "iPhone and iPad", detail: "iOS 18 or later, through TestFlight for now" },
+  { id: "ios", name: "iPhone and iPad", detail: "iOS 18 or later, on the App Store and through TestFlight" },
   { id: "android", name: "Android phone and tablet", detail: "Android 5.1 or later" },
   { id: "tv", name: "Fire TV and Android TV", detail: "Made for the remote, Android 5.1 or later" },
   { id: "windows", name: "Windows", detail: "Coming soon" },

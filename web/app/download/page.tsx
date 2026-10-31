@@ -19,7 +19,8 @@ export default function Download() {
         </article>
         <article className="dl">
           <h3>iPhone and iPad</h3>
-          <p className="muted">Version {latest.ios}, through TestFlight. Open to the first 100 testers.</p>
+          <p className="muted">On the App Store. TestFlight gets new builds first (version {latest.ios}) and is open to the first 100 testers.</p>
+          <a className="button" href={site.appStore}>Download on the App Store</a>{" "}
           <a className="button" href={site.testflight}>Join the TestFlight</a>
         </article>
         <article className="dl">
