@@ -326,13 +326,13 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
                             // [number] [logo] [name over what is on]: the number has its own narrow column so names line up, and a long name wraps to two lines instead of being cut.
                             Row(Modifier.padding(horizontal = 8.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (showNumbers) Label(ch.number?.toString().orEmpty(), Tokens.caption, if (f || playing) Tokens.goldHighlight else Tokens.textTertiary, FontWeight.SemiBold, modifier = Modifier.width(38.dp), maxLines = 1)
-                                ChannelLogo(ch.logoUrl, ch.name, 28.dp)
+                                if (app.streamsetu.tv.trace.Diag.artwork) Spacer(Modifier.size(28.dp)) else ChannelLogo(ch.logoUrl, ch.name, 28.dp)
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                    Label(ch.name, Tokens.small, if (playing) Tokens.goldHighlight else Tokens.text, if (playing || f) FontWeight.SemiBold else FontWeight.Medium, maxLines = 2)
-                                    epgIds[ch.id]?.let { id -> now[id] }?.let { p -> Label(p.title, Tokens.caption, Tokens.textSecondary) }
+                                    Label(ch.name, Tokens.small, if (playing) Tokens.goldHighlight else Tokens.text, if (playing || f) FontWeight.SemiBold else FontWeight.Medium, maxLines = if (app.streamsetu.tv.trace.Diag.oneLine) 1 else 2)
+                                    if (!app.streamsetu.tv.trace.Diag.meta) epgIds[ch.id]?.let { id -> now[id] }?.let { p -> Label(p.title, Tokens.caption, Tokens.textSecondary) }
                                 }
-                                if (grp.variants.size > 1) Label("+${grp.variants.size - 1}", Tokens.caption, Tokens.textTertiary)
-                                if (ch.id in favs) Image(Icons.Filled.Favorite, null, Modifier.size(12.dp), colorFilter = ColorFilter.tint(Tokens.gold))
+                                if (!app.streamsetu.tv.trace.Diag.meta && grp.variants.size > 1) Label("+${grp.variants.size - 1}", Tokens.caption, Tokens.textTertiary)
+                                if (!app.streamsetu.tv.trace.Diag.meta && ch.id in favs) Image(Icons.Filled.Favorite, null, Modifier.size(12.dp), colorFilter = ColorFilter.tint(Tokens.gold))
                             }
                         }
                     }
@@ -355,7 +355,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
                 Box(Modifier.fillMaxSize())
             }
             }
-            paneChannel?.let { shown -> NowNext(shown, live?.channel?.id == shown.id, vm, c, nav, Modifier.weight(1f), onWatch = { openFullscreen(shown) }, onOptions = { ch -> menuVariants = groups.orEmpty().firstOrNull { g -> g.rep.id == ch.id || g.variants.any { v -> v.id == ch.id } }?.variants.orEmpty(); menuFor = ch }) }
+            paneChannel?.takeIf { !app.streamsetu.tv.trace.Diag.preview }?.let { shown -> NowNext(shown, live?.channel?.id == shown.id, vm, c, nav, Modifier.weight(1f), onWatch = { openFullscreen(shown) }, onOptions = { ch -> menuVariants = groups.orEmpty().firstOrNull { g -> g.rep.id == ch.id || g.variants.any { v -> v.id == ch.id } }?.variants.orEmpty(); menuFor = ch }) }
         }
     }
     }

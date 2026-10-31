@@ -45,6 +45,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        app.streamsetu.tv.trace.Diag.refresh(applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
+        app.streamsetu.tv.trace.SSTrace.refresh()          // before the first screen is built, so the navigation trace (started when the screen is first composed) is on from the start
         // A television keeps the remote layout, sideways. A phone or tablet gets the touch layout and turns with the person.
         val phone = app.streamsetu.tv.ui.phone.isPhoneDevice(this)
         if (phone) androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -75,7 +77,7 @@ class MainActivity : ComponentActivity() {
         }
         handle(intent)
         // A little after the first screens are up, start reading who is in the movies (see PeopleIndexer).
-        android.os.Handler(mainLooper).postDelayed({ if (app.streamsetu.tv.sports.SportsFeature.enabled) container.sportsReminders.start(); container.people.start(); app.streamsetu.tv.ui.screens.settings.refreshInsightAlarms(container) }, 20_000)
+        android.os.Handler(mainLooper).postDelayed({ if (app.streamsetu.tv.sports.SportsFeature.enabled) container.sportsReminders.start(); if (!app.streamsetu.tv.trace.Diag.indexer) container.people.start(); app.streamsetu.tv.ui.screens.settings.refreshInsightAlarms(container) }, 20_000)
     }
 
     override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); handle(intent) }
@@ -140,7 +142,8 @@ class MainActivity : ComponentActivity() {
         if (e.action == android.view.KeyEvent.ACTION_DOWN) app.streamsetu.tv.trace.SSTrace.v { "key ${e.keyCode} ev=${e.eventTime} now=${android.os.SystemClock.uptimeMillis()}" }
         // A held direction is thinned to what the screen can draw, and presses that waited in the queue behind a slow frame are dropped, so the cursor stops when the button is released.
         if (e.action == android.view.KeyEvent.ACTION_DOWN && e.keyCode in android.view.KeyEvent.KEYCODE_DPAD_UP..android.view.KeyEvent.KEYCODE_DPAD_RIGHT && nav.top != Overlay.Player &&
-            !directions.accept(e.keyCode, e.eventTime, android.os.SystemClock.uptimeMillis())) return true
+            !directions.accept(e.keyCode, e.eventTime, android.os.SystemClock.uptimeMillis())) { app.streamsetu.tv.trace.KeyLatency.thinned(); return true }
+        if (e.action == android.view.KeyEvent.ACTION_DOWN) app.streamsetu.tv.trace.KeyLatency.key(e)
         if (e.action == android.view.KeyEvent.ACTION_DOWN && e.keyCode in android.view.KeyEvent.KEYCODE_DPAD_UP..android.view.KeyEvent.KEYCODE_DPAD_RIGHT) app.streamsetu.tv.UISound.noteDpad()
         // While the player is minimized (the sound keeps playing under the browsing screens): Play/Pause pauses it, Menu or Info brings the picture back.
         if (e.action == android.view.KeyEvent.ACTION_DOWN && nav.top != Overlay.Player && container.playback.audioOnly.value && container.playback.current.value != null) {
@@ -168,7 +171,12 @@ class MainActivity : ComponentActivity() {
         app.streamsetu.tv.UISound.resume()
         container.playback.onForeground()
         // In a test build, frame timing is written to the log (adb logcat -s Motion) so smoothness can be measured, not guessed.
-        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) frames.start()
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            frames.onFrame = app.streamsetu.tv.trace.KeyLatency::frame
+            app.streamsetu.tv.trace.StackSampler.startIfSwitchedOn()
+            app.streamsetu.tv.trace.KeyLatency.enable { nav.top?.let { it::class.simpleName } ?: nav.tab.name }
+            frames.start()
+        }
     }
 }
 

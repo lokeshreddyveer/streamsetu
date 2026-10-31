@@ -452,7 +452,7 @@ class AppContainer @Inject constructor(
     suspend fun syncWithGuide(sourceId: String): SyncService.Result {
         val r = sync.sync(sourceId)
         featuredCache = null
-        people.start()
+        if (!app.streamsetu.tv.trace.Diag.indexer) people.start()
         runCatching {
             val src = sources.get(sourceId) ?: return@runCatching
             val fallback = if (src.type == SourceType.XTREAM) {

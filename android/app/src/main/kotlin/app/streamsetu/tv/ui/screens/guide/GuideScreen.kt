@@ -82,7 +82,10 @@ class GuideViewModel @Inject constructor(private val c: AppContainer) : ViewMode
     private val picked: Flow<Picked> = combine(combine(favouritesOnly, query, category) { f, q, cat -> Triple(f, q, cat) }, onlyId) { t, only -> t to only }.flatMapLatest { (t, only) ->
         val (fav, q, cat) = t
         c.browse.channels(cat, SortSpec(SortField.PROVIDER), 40000).conflate().mapLatest { all ->          // a newer channel list replaces an unfinished one; the work runs off the main thread
+            val t0 = android.os.SystemClock.uptimeMillis()
+            app.streamsetu.tv.trace.SSTrace.v { "guide picked start channels=${all.size} now=$t0" }
             val resolved = c.epg.resolve(all)
+            app.streamsetu.tv.trace.SSTrace.v { "guide picked resolved=${resolved.size} in ${android.os.SystemClock.uptimeMillis() - t0} ms" }
             val nq = SearchText.normalize(q)
             val favSet = if (fav) favs.value else emptySet()
             if (only != null) Picked(app.streamsetu.tv.sports.discovery.GuideLink.onlyId(all, only) { it.id }.filter { it.id in resolved }, resolved)
@@ -94,7 +97,10 @@ class GuideViewModel @Inject constructor(private val c: AppContainer) : ViewMode
     val rows: StateFlow<List<GuideRow>?> = combine(picked, windowStart, offsetMin) { p, w, o -> Triple(p, w, o) }.mapLatest { (p, start, off) ->
         val end = start + WINDOW_MIN * 60_000L
         val shift = off * 60_000L
+        val t0 = android.os.SystemClock.uptimeMillis()
+        app.streamsetu.tv.trace.SSTrace.v { "guide rows start channels=${p.channels.size} now=$t0" }
         val data = c.epg.programmesFor(c.db, p.channels, p.guideIds, start, end, shift)          // the same read the Live TV screen's guide uses
+        app.streamsetu.tv.trace.SSTrace.v { "guide rows read programmes in ${android.os.SystemClock.uptimeMillis() - t0} ms" }
         hasGuide.value = c.epg.programmeCount(c.db) > 0
         p.channels.map { ch -> GuideRow(ch, data[ch.id].orEmpty()) }
     }.map<List<GuideRow>, List<GuideRow>?> { it }.onStart { emit(null) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(120_000), null)

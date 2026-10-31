@@ -199,7 +199,7 @@ fun Focusable(
     )
     Box(
         modifier
-            .graphicsLayer { val sc = 1f + ((if (scaleOnFocus in 1.001f..1.2f) 1f + (scaleOnFocus - 1f) * 1.5f else scaleOnFocus) - 1f) * progress.value; scaleX = sc; scaleY = sc }
+            .graphicsLayer { val sc = if (app.streamsetu.tv.trace.Diag.scale) 1f else 1f + ((if (scaleOnFocus in 1.001f..1.2f) 1f + (scaleOnFocus - 1f) * 1.5f else scaleOnFocus) - 1f) * progress.value; scaleX = sc; scaleY = sc }
             .then(if (clipContent) Modifier.clip(shape) else Modifier)
             // A card whose fill is transparent in both states (a poster: the picture is its fill) draws no fill at all, so it is not painted over twice.
             .then(if (container.alpha == 0f && focusedContainer.alpha == 0f) Modifier else Modifier.drawBehind { drawRect(androidx.compose.ui.graphics.lerp(container, focusedContainer, progress.value)) })
@@ -208,7 +208,7 @@ fun Focusable(
                 drawContent()
                 if (hairline) strokeOutline(shape.createOutline(size, layoutDirection, this), Tokens.line, 1.dp.toPx() * 2)
                 val a = progress.value
-                if (a > 0.01f && showRing) {
+                if (a > 0.01f && showRing && !app.streamsetu.tv.trace.Diag.ring) {
                     // Focus is never only a change of size: a ring of at least 3 dp, with a dark band beside it so it stands out on bright artwork and on a poor screen.
                     val c = if (highContrast) Color.White else ringColor
                     val outline = shape.createOutline(size, layoutDirection, this)
@@ -226,6 +226,7 @@ fun Focusable(
             .onFocusChanged {
                 if (!it.isFocused && focused) app.streamsetu.tv.trace.SSTrace.v { traceBounds[0]?.let { b -> "blur l=${b.left.toInt()} t=${b.top.toInt()} r=${b.right.toInt()} b=${b.bottom.toInt()} now=${android.os.SystemClock.uptimeMillis()}" } ?: "blur unknown now=${android.os.SystemClock.uptimeMillis()}" }
                 if (it.isFocused) app.streamsetu.tv.trace.SSTrace.v { traceBounds[0]?.let { b -> "focus l=${b.left.toInt()} t=${b.top.toInt()} r=${b.right.toInt()} b=${b.bottom.toInt()} now=${android.os.SystemClock.uptimeMillis()}" } ?: "focus unknown now=${android.os.SystemClock.uptimeMillis()}" }
+                if (it.isFocused) app.streamsetu.tv.trace.KeyLatency.focus()
                 if (it.isFocused && !focused && focusSound != null) app.streamsetu.tv.UISound.focusMoved(focusSound)
                 focused = it.isFocused
                 if (it.isFocused) FocusMemory.focused = own else if (FocusMemory.focused === own) FocusMemory.focused = null

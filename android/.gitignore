@@ -4,3 +4,8 @@ local.properties
 *.iml
 .idea/
 captures/
+
+# Fire TV UI test tooling: the injector is built from injector/Inj.java by scripts/uitest/build-injector.sh
+scripts/uitest/injector/inj.dex
+scripts/uitest/__pycache__/
+scripts/uitest/results/

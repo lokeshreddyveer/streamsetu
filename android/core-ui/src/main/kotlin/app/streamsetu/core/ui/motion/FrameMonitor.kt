@@ -17,7 +17,11 @@ class FrameMonitor(private val activity: Activity) {
     private var frames = 0; private var slow = 0; private var worstMs = 0.0
     private var windowStart = System.nanoTime()
     private val handler = Handler(Looper.getMainLooper())
+    /** Told, on the main thread, when each frame started (the time its vsync was due) and when it finished, in nanoseconds on the same clock as input events. */
+    var onFrame: ((intendedNs: Long, endNs: Long) -> Unit)? = null
     private val listener = Window.OnFrameMetricsAvailableListener { _, m, _ ->
+        val intended = m.getMetric(FrameMetrics.INTENDED_VSYNC_TIMESTAMP)
+        onFrame?.invoke(intended, intended + m.getMetric(FrameMetrics.TOTAL_DURATION))
         val ms = m.getMetric(FrameMetrics.TOTAL_DURATION) / 1_000_000.0
         frames++; if (ms > 20.0) slow++; if (ms > worstMs) worstMs = ms
         val now = System.nanoTime()

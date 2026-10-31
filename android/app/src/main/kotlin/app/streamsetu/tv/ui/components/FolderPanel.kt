@@ -269,12 +269,12 @@ private fun PanelRow(label: String, icon: ImageVector, count: Int?, selected: Bo
         Row(Modifier.heightIn(min = 56.ui), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.padding(start = 2.dp).width(3.dp).height(20.ui).background(if (selected) Tokens.accent else Color.Transparent, RoundedCornerShape(2.dp)))
             Box(Modifier.width(34.ui), Alignment.Center) {
-                Image(if (reordering) Icons.Filled.SwapVert else icon, null, Modifier.size(22.ui), colorFilter = ColorFilter.tint(if (f || selected) Color.White else Tokens.textSecondary))
+                if (!app.streamsetu.tv.trace.Diag.artwork) Image(if (reordering) Icons.Filled.SwapVert else icon, null, Modifier.size(22.ui), colorFilter = ColorFilter.tint(if (f || selected) Color.White else Tokens.textSecondary))
             }
             val ink = if (dimmed) Tokens.textTertiary else if (f || selected) Color.White else Tokens.textSecondary
             val weight = if (selected) FontWeight.SemiBold else FontWeight.Medium
             // Every row stays one clean line. The row the remote is on slides its whole name sideways (after a short pause), so a long name can be read in full without the list changing shape.
-            if (f) androidx.compose.foundation.text.BasicText(app.streamsetu.tv.ui.i18n.I18n.tr(label), Modifier.weight(1f).padding(start = 8.dp).basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 700, velocity = 40.dp),
+            if (f && !app.streamsetu.tv.trace.Diag.marquee) androidx.compose.foundation.text.BasicText(app.streamsetu.tv.ui.i18n.I18n.tr(label), Modifier.weight(1f).padding(start = 8.dp).basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 700, velocity = 40.dp),
                 style = androidx.compose.ui.text.TextStyle(color = ink, fontSize = 14.sp, fontWeight = weight), maxLines = 1, softWrap = false)
             else Label(label, 14.sp, ink, weight, modifier = Modifier.weight(1f).padding(start = 8.dp))
             Spacer(Modifier.width(8.dp))          // the number of titles is not shown beside the name: the whole width goes to the name
