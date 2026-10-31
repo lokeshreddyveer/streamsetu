@@ -274,6 +274,8 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
 
     // OK on a channel opens it fullscreen at once (no stop in between). Browsing only reads about it; the picture on the right keeps showing what is playing.
     var focusedChannel by remember { mutableStateOf<Channel?>(null) }
+    // The pane beside the list (now and next, the guide) follows the channel the remote has rested on, not every one it passes: building it reads the guide and the player for each channel, which a held key cannot afford. The focus itself still moves at once.
+    val paneChannel = app.streamsetu.tv.ui.components.rememberRested(focusedChannel ?: live?.channel, 150L)
     // OK on a channel plays it in the picture beside the list; OK on the one already playing (or on the picture, or Watch Fullscreen) opens it full screen.
     fun openFullscreen(ch: Channel) {
         if (live?.channel?.id != ch.id) c.play(ChannelPlayable(ch), groups.orEmpty().map { ChannelPlayable(it.rep) })
@@ -353,7 +355,7 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
                 Box(Modifier.fillMaxSize())
             }
             }
-            (focusedChannel ?: live?.channel)?.let { shown -> NowNext(shown, live?.channel?.id == shown.id, vm, c, nav, Modifier.weight(1f), onWatch = { openFullscreen(shown) }, onOptions = { ch -> menuVariants = groups.orEmpty().firstOrNull { g -> g.rep.id == ch.id || g.variants.any { v -> v.id == ch.id } }?.variants.orEmpty(); menuFor = ch }) }
+            paneChannel?.let { shown -> NowNext(shown, live?.channel?.id == shown.id, vm, c, nav, Modifier.weight(1f), onWatch = { openFullscreen(shown) }, onOptions = { ch -> menuVariants = groups.orEmpty().firstOrNull { g -> g.rep.id == ch.id || g.variants.any { v -> v.id == ch.id } }?.variants.orEmpty(); menuFor = ch }) }
         }
     }
     }
