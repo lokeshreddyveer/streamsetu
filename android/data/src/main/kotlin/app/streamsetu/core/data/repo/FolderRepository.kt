@@ -25,7 +25,7 @@ class FolderRepository(private val db: AppDatabase, private val library: Library
     fun isUnlocked(folderId: String): Boolean { expire(); return unlockedAt.containsKey(folderId) }
 
     /** Folders whose content must stay out of lists, search and banners right now: locked and not yet unlocked. */
-    fun lockedIds(kind: ContentKind): Flow<Set<String>> = combine(db.browse().lockedFolders(scopeName(kind)), unlocked, expiryTicks()) { locked, open, _ -> locked.toSet() - open }
+    fun lockedIds(kind: ContentKind): Flow<Set<String>> = lockedFrom(db.browse().lockedFolders(scopeName(kind)), unlocked, expiryTicks())
 
     /** The auto-relock interval is applied by the clock too, not only when something asks: an open screen is told within a few seconds of a folder's time running out. */
     private fun expiryTicks(): Flow<Unit> = kotlinx.coroutines.flow.flow { while (true) { expire(); emit(Unit); kotlinx.coroutines.delay(EXPIRY_CHECK_MS) } }
@@ -83,3 +83,7 @@ class FolderRepository(private val db: AppDatabase, private val library: Library
         db.folders().putAll(kept.map { it.copy(sortIndex = -1, pinned = false) })
     }
 }
+
+/** The locked folders from the saved list, what was unlocked, and a clock that makes the auto-relock noticed. */
+internal fun lockedFrom(locked: Flow<List<String>>, unlocked: Flow<Set<String>>, ticks: Flow<Unit>): Flow<Set<String>> =
+    combine(locked, unlocked, ticks) { l, open, _ -> l.toSet() - open }.distinctUntilChanged()          // the clock ticks every few seconds: only a change in what is locked may make a list read again

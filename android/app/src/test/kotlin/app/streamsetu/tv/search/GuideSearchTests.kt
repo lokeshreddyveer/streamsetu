@@ -7,7 +7,9 @@ import app.streamsetu.core.data.db.*
 import app.streamsetu.core.data.repo.*
 import app.streamsetu.core.model.EpgIds
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
@@ -24,6 +26,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34], application = android.app.Application::class)
 class GuideSearchTests {
     private lateinit var db: AppDatabase
+    private val scope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob())
     private lateinit var library: LibraryRepository
     private lateinit var search: GlobalSearch
     private val ctx get() = ApplicationProvider.getApplicationContext<Context>()
@@ -32,12 +35,12 @@ class GuideSearchTests {
     @Before fun open() {
         db = Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java).allowMainThreadQueries().build()
         SearchIndex.create(db.openHelper.writableDatabase); PeopleIndex.create(db.openHelper.writableDatabase)
-        library = LibraryRepository(db, ctx, CoroutineScope(Dispatchers.Unconfined))
+        library = LibraryRepository(db, ctx, scope)
         val folders = FolderRepository(db, library, ParentalControls(ctx))
         search = GlobalSearch(db, library, folders, CollectionRepository(db), SearchRepository(db, library, folders, ctx)) { it }
         runBlocking { db.sources().upsert(SourceEntity("A", "Playlist A", "M3U", "http://x/a", null, null, true, 1, "OK")); db.sources().upsert(SourceEntity("B", "Playlist B", "M3U", "http://x/b", null, null, true, 1, "OK")) }
     }
-    @After fun close() { db.close() }
+    @After fun close() { scope.cancel(); db.close() }          // the repository keeps collecting from the database: stop it first, or its next read hits a closed database and the error lands in whichever test runs next
 
     private fun channel(id: String, source: String, name: String, epg: String) = runBlocking { db.catalog().putChannels(listOf(ChannelEntity(id, source, null, name, null, null, "ref", epg, 0, 0))) }
     private fun guide(source: String, epg: String, title: String, start: Long) = runBlocking { db.epg().put(listOf(EpgEntity(EpgIds.scope(source, epg), start, start + 2 * h, title, null))) }

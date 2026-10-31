@@ -10,8 +10,10 @@ import app.streamsetu.tv.ui.screens.search.SHOW_MORE_STEP
 import app.streamsetu.tv.ui.screens.search.SearchPhase
 import app.streamsetu.tv.ui.screens.search.searchPhase
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -26,6 +28,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34], application = android.app.Application::class)
 class SearchParityTests {
     private lateinit var db: AppDatabase
+    private val scope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob())
     private lateinit var library: LibraryRepository
     private lateinit var search: GlobalSearch
     private val ctx get() = ApplicationProvider.getApplicationContext<Context>()
@@ -33,12 +36,12 @@ class SearchParityTests {
     @Before fun open() {
         db = Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java).allowMainThreadQueries().build()
         SearchIndex.create(db.openHelper.writableDatabase); PeopleIndex.create(db.openHelper.writableDatabase)
-        library = LibraryRepository(db, ctx, CoroutineScope(Dispatchers.Unconfined))
+        library = LibraryRepository(db, ctx, scope)
         val folders = FolderRepository(db, library, ParentalControls(ctx))
         search = GlobalSearch(db, library, folders, CollectionRepository(db), SearchRepository(db, library, folders, ctx)) { n -> "Playlist $n" }
         runBlocking { for (id in listOf("A", "B")) db.sources().upsert(SourceEntity(id, "Playlist $id", "M3U", "http://x/$id", null, null, true, 1, "OK")) }
     }
-    @After fun close() { db.close() }
+    @After fun close() { scope.cancel(); db.close() }          // the repository keeps collecting from the database: stop it first, or its next read hits a closed database and the error lands in whichever test runs next
 
     private fun movie(id: String, source: String, title: String) = runBlocking {
         db.catalog().putMovies(listOf(MovieEntity(id, source, null, title, null, 2020, null, null, "ref", 0)))
