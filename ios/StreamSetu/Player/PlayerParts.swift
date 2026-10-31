@@ -328,7 +328,7 @@ struct FailureCard: View {
                 if isLive && canZap { Button("Next Channel") { nextChannel() }.buttonStyle(.bordered).tint(.white) }
                 Button("Close") { close() }.buttonStyle(.bordered).tint(.white)
             }
-            Button { sendLog() } label: { Label(logNote ?? "Send My Log", systemImage: "paperplane") }.font(.footnote).tint(.white).disabled(logNote != nil)
+            if DiagnosticsUploader.availableInThisBuild { Button { sendLog() } label: { Label(logNote ?? "Send My Log", systemImage: "paperplane") }.font(.footnote).tint(.white).disabled(logNote != nil) }
         }
         .foregroundStyle(.white).padding(24).frame(maxWidth: 380)
         .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 20, style: .continuous))

@@ -4,10 +4,13 @@ import SwiftUI
 struct LoggingNotice: ViewModifier {
     @State private var show = false
 
+    /// Asked only in a build that can send reports (the App Store build of the iPhone and iPad app cannot, so it never asks) and only once.
+    static func shouldAsk(available: Bool, alreadyShown: Bool) -> Bool { available && !alreadyShown }
+
     func body(content: Content) -> some View {
         content
             .task {
-                guard !DiagnosticsUploader.shared.noticeShown else { return }
+                guard Self.shouldAsk(available: DiagnosticsUploader.availableInThisBuild, alreadyShown: DiagnosticsUploader.shared.noticeShown) else { return }
                 try? await Task.sleep(nanoseconds: 1_500_000_000)           // after the first screen has appeared
                 if !Task.isCancelled { show = true }
             }

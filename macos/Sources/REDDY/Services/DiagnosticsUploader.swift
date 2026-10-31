@@ -61,12 +61,24 @@ final class DiagnosticsUploader: @unchecked Sendable {
             || ["test-runner", "xctest", "swiftpm-testing-helper"].contains { (CommandLine.arguments.first ?? "").contains($0) }
     }()
 
+    /// Whether this build may send reports at all. The App Store build of the iPhone and iPad app sends none for now (its privacy answers say it collects no data); the Mac app is not affected.
+    /// The screens that offer sending check this too, so nothing in that build asks for it.
+    static let availableInThisBuild: Bool = {
+        #if STREAMSETU_APPSTORE
+        return false
+        #else
+        return true
+        #endif
+    }()
+
     private let defaults: UserDefaults
     private let session: URLSession
     private let usesRealServer: Bool
+    private let available: Bool
 
-    init(defaults: UserDefaults = .standard, session: URLSession? = nil) {
+    init(defaults: UserDefaults = .standard, session: URLSession? = nil, available: Bool = DiagnosticsUploader.availableInThisBuild) {
         self.defaults = defaults
+        self.available = available
         self.usesRealServer = session == nil
         let cfg = URLSessionConfiguration.ephemeral
         cfg.timeoutIntervalForRequest = 15; cfg.timeoutIntervalForResource = 30; cfg.waitsForConnectivity = false
@@ -76,8 +88,8 @@ final class DiagnosticsUploader: @unchecked Sendable {
     /// Automatic sharing of the playback log after a failed stream. Off until the person turns it on: the first launch asks, and Settings > Send Feedback has the switch.
     /// A copy that has never been asked counts as "no". This device only, never synced.
     var isEnabled: Bool {
-        get { defaults.object(forKey: Self.consentKey) as? Bool ?? false }
-        set { defaults.set(newValue, forKey: Self.consentKey) }
+        get { available && (defaults.object(forKey: Self.consentKey) as? Bool ?? false) }
+        set { if available { defaults.set(newValue, forKey: Self.consentKey) } }
     }
 
     /// True once the first-launch notice has been shown, so it is shown once.
@@ -113,6 +125,7 @@ final class DiagnosticsUploader: @unchecked Sendable {
     /// Sends the log now. Returns whether the server accepted it.
     @discardableResult
     func send(trigger: String = "manual", note: String = "") async -> Bool {
+        guard available else { return false }
         if Self.underTests && usesRealServer { Self.blockedInTests.withLock { $0 += 1 }; return false }
         guard let body = try? JSONSerialization.data(withJSONObject: payload(trigger: trigger, note: note)) else { return false }
         var req = URLRequest(url: Self.endpoint)

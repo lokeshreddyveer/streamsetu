@@ -86,6 +86,54 @@ import Foundation
         #expect(d.object(forKey: "diagnostics.lastAuto") == nil)      // nothing was sent, so nothing was recorded as sent
     }
 
+    // The App Store build of the iPhone and iPad app sends no reports for now; the Mac app is unchanged.
+
+    @Test func aBuildThatCannotSendAsksForNothingAndSendsNothing() async {
+        let d = UserDefaults(suiteName: "diag-test-\(UUID().uuidString)")!
+        let u = DiagnosticsUploader(defaults: d, available: false)
+        u.isEnabled = true
+        #expect(!u.isEnabled, "the switch cannot be turned on in a build that cannot send")
+        #expect(d.object(forKey: "diagnostics.share") == nil, "and the choice is not even saved")
+        u.playbackFailed()
+        #expect(d.object(forKey: "diagnostics.lastAuto") == nil, "a failed stream sends nothing and records nothing")
+        let attempts = DiagnosticsUploader.blockedInTests.value
+        let sent = await u.send(trigger: "manual", note: "x")
+        #expect(!sent)
+        #expect(DiagnosticsUploader.blockedInTests.value == attempts, "no send was attempted, not even one the test guard had to refuse")
+    }
+
+    @Test func theMacBuildCanStillSend() {
+        #expect(DiagnosticsUploader.availableInThisBuild, "only the App Store build (STREAMSETU_APPSTORE) turns sending off")
+        let d = UserDefaults(suiteName: "diag-test-\(UUID().uuidString)")!
+        let u = DiagnosticsUploader(defaults: d, available: true)
+        u.isEnabled = true
+        #expect(u.isEnabled)
+    }
+
+    @Test func theFirstLaunchQuestionIsNeverAskedInABuildThatCannotSend() {
+        #expect(!LoggingNotice.shouldAsk(available: false, alreadyShown: false), "nothing to ask about when the build sends no reports")
+        #expect(LoggingNotice.shouldAsk(available: true, alreadyShown: false), "the Mac build still asks once")
+        #expect(!LoggingNotice.shouldAsk(available: true, alreadyShown: true), "and only once")
+    }
+
+    @Test func thePrivacyReportOnlyListsTheLogWhereItCanBeSent() {
+        var s = PrivacyReport.State()
+        s.logSendingAvailable = true
+        #expect(PrivacyReport.make(s).sentOut.contains { $0.id == "diag" }, "the Mac report lists the log service")
+        s.logSendingAvailable = false
+        #expect(!PrivacyReport.make(s).sentOut.contains { $0.id == "diag" }, "the App Store build's report must not claim a log service it does not have")
+        #expect(PrivacyReport.make(s).sentOut.contains { $0.id == "provider" }, "the rest of the report is unchanged")
+    }
+
+    @Test func theIPhoneManifestDeclaresNoCollectedData() throws {
+        var url = URL(fileURLWithPath: #filePath)
+        for _ in 0..<5 { url.deleteLastPathComponent() }                         // up to the repository root
+        let data = try Data(contentsOf: url.appendingPathComponent("ios/StreamSetu/PrivacyInfo.xcprivacy"))
+        let plist = try #require(try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
+        #expect((plist["NSPrivacyCollectedDataTypes"] as? [Any])?.isEmpty == true, "the iPhone app sends nothing, so the manifest lists nothing (the App Store answer is Data Not Collected)")
+        #expect(plist["NSPrivacyTracking"] as? Bool == false)
+    }
+
     @Test func aTestRunNeverReachesTheRealServerOrTheRealLog() async {
         let before = DiagnosticsUploader.blockedInTests.value
         let sent = await DiagnosticsUploader().send(trigger: "auto")

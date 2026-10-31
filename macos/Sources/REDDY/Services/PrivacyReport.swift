@@ -6,6 +6,8 @@ struct PrivacyReport: Equatable, Sendable {
     /// What the app can know about this device's current setup.
     struct State: Equatable, Sendable {
         var diagnosticsOn = true
+        /// Whether this build can send the playback log at all. The App Store build of the iPhone and iPad app cannot, so its report does not list it.
+        var logSendingAvailable = DiagnosticsUploader.availableInThisBuild
         var hasTMDBKey = false
         var hasOpenSubtitles = false
         /// An online AI (not the on-device one) is set up for the assistant.
@@ -59,6 +61,7 @@ struct PrivacyReport: Equatable, Sendable {
             Item(id: "icloud", title: "iCloud sync", detail: "Favourites, collections, resume points and when you watched what (for Statistics), in your own iCloud. Not visible to the developer.", status: s.iCloudSync ? .on : .off),
             Item(id: "lan", title: "Wi-Fi sync", detail: "Between your own devices on this network, encrypted and paired with a code. Nothing goes through the internet.", status: s.lanSync ? .on : .off)
         ]
+        if !s.logSendingAvailable { r.sentOut.removeAll { $0.id == "diag" } }
         return r
     }
 

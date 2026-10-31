@@ -27,9 +27,9 @@ Never sent: logins, passwords, playlist names, titles, stream addresses, or any 
 
 ## What the apps declare
 
-- Privacy manifests (iOS and Mac) list **Device ID**, **Other Diagnostic Data** and **Other User Content**, linked to the device's install ID, not used for tracking, purpose App Functionality.
-- App Store Connect's privacy answers must match: Data Linked to You → Identifiers (Device ID), Diagnostics (Other Diagnostic Data), User Content (Other User Content); none used for tracking.
-- The privacy policy (`legal/privacy.md`) says "off until you turn it on" and "deleted after 30 days".
+- **The Mac app** has the log service. Its privacy manifest lists **Device ID**, **Other Diagnostic Data** and **Other User Content**, linked to the device's install ID, not used for tracking, purpose App Functionality.
+- **The iPhone and iPad App Store build sends no reports** (since version 1.1): `DiagnosticsUploader.availableInThisBuild` is false when the build is compiled with `STREAMSETU_APPSTORE`, which hides Send Feedback, the Send My Log buttons and the first-launch question, drops the log from the in-app Privacy Report, and refuses every send. Its privacy manifest lists no collected data and App Store Connect says **Data Not Collected**. Tests: `DiagnosticsUploaderTests` (the gate, the notice, the Privacy Report, the manifest). To bring it back, take the gate away and put the three data types back in the manifest and the App Store answers.
+- The privacy policy (`legal/privacy.md`) says the log service is for the Mac app only, "off until you turn it on", and "deleted after 30 days". That last claim is still unverified (see the server checks below).
 
 ## What the server must do (check these; they have not been verified from the repository)
 

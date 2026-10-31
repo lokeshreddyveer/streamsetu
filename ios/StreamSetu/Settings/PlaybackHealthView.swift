@@ -41,7 +41,7 @@ struct PlaybackHealthView: View {
                 ForEach(problems, id: \.self) { Text($0).font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary) }
             }.listRowBackground(ColorTokens.surface)
             Section {
-                Button { send() } label: { Label(sending ? "Sending…" : "Send My Log", systemImage: "paperplane") }.disabled(sending)
+                if DiagnosticsUploader.availableInThisBuild { Button { send() } label: { Label(sending ? "Sending…" : "Send My Log", systemImage: "paperplane") }.disabled(sending) }
                 Button("Reset These Numbers", role: .destructive) { StartStats.shared.reset(); reload() }
             } footer: { Text("Only counts and times are kept, on this device. No titles or addresses.") }.listRowBackground(ColorTokens.surface)
         }
