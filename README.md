@@ -12,16 +12,25 @@ A native player for the IPTV playlists and media servers you already have. It ru
 
 <table>
   <tr>
-    <td width="25%" valign="top"><img src="docs/screenshots/mac-home.png" alt="StreamSetu on Mac: Home" width="100%"></td>
-    <td width="25%" valign="top"><img src="docs/screenshots/firetv-home-sidebar.png" alt="StreamSetu on Fire TV: Home with the sidebar" width="100%"></td>
-    <td width="25%" valign="top"><img src="docs/screenshots/android-home.png" alt="StreamSetu on an Android phone: Home" width="100%"></td>
-    <td width="25%" valign="top"><img src="docs/screenshots/ios-home.png" alt="StreamSetu on iPhone: Home" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/mac-home.png" alt="StreamSetu on Mac: Home" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/firetv-home-sidebar.png" alt="StreamSetu on Fire TV: Home with the sidebar" width="100%"></td>
   </tr>
   <tr>
     <td align="center"><sub>Mac</sub></td>
-    <td align="center"><sub>Fire TV</sub></td>
-    <td align="center"><sub>Android</sub></td>
+    <td align="center"><sub>Fire TV and Android TV</sub></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td width="28%" valign="top"><img src="docs/screenshots/iphone-home.png" alt="StreamSetu on iPhone: Home" width="100%"></td>
+    <td width="44%" valign="top"><img src="docs/screenshots/ipad-home.png" alt="StreamSetu on iPad: Home with the sidebar" width="100%"></td>
+    <td width="28%" valign="top"><img src="docs/screenshots/android-home.png" alt="StreamSetu on an Android phone: Home" width="100%"></td>
+  </tr>
+  <tr>
     <td align="center"><sub>iPhone</sub></td>
+    <td align="center"><sub>iPad</sub></td>
+    <td align="center"><sub>Android phone</sub></td>
   </tr>
 </table>
 
