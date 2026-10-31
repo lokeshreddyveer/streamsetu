@@ -25,7 +25,7 @@ else
   gh release create "$TAG" "$DMG" "$TV" "$PHONE" --repo "$REPO" --title "$TITLE" --notes-file "$BODY" --latest
 fi
 RELEASE_TAG="$TAG" macos/Scripts/update-appcast.sh "$MAC" "$MAC_BUILD" "$(sed -n 's/^- //p' "$NOTES" | head -1)"
-# The README's download table points at this release, so it is rewritten here; the feature table is edited by hand with the features.
+# The README's download table points at this release, so it is rewritten here; the feature table (docs/FEATURES.md) is edited by hand with the features.
 IOS_VERSION="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' ios/Scripts/generate-project.py | head -1)"
 python3 - "$TAG" "$MAC" "$ANDROID" "$IOS_VERSION" <<'PY'
 import re, sys
