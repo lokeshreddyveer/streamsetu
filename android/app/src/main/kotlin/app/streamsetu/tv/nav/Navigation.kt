@@ -38,7 +38,7 @@ sealed interface Overlay {
     data class MovieDetail(val movie: Movie) : Overlay
     data class ManageLibrary(val entry: LibraryEntry) : Overlay
     /** A full list behind a Home shortcut: "favorites", "later", "recent" or "continue". */
-    data class Collection(val id: String) : Overlay
+    data class Collection(val id: String, val only: String? = null) : Overlay
 }
 
 /**

@@ -298,7 +298,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         splitNames(info.str("cast") ?: info.str("actors")) + splitNames(info.str("director"))
     }
 
-    data class MovieInfo(val plot: String?, val cast: String?, val director: String?, val genre: String?, val duration: String?, val backdrop: String?, val releaseDate: String?)
+    data class MovieInfo(val plot: String?, val cast: String?, val director: String?, val genre: String?, val duration: String?, val backdrop: String?, val releaseDate: String?, val cover: String? = null)
     private val movieInfoCache = java.util.concurrent.ConcurrentHashMap<String, MovieInfo>()
 
     private val shortEpgCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<app.streamsetu.core.model.EpgProgram>>>()
@@ -347,7 +347,31 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         val info = obj["info"] as? JsonObject ?: return@withContext null
         val backdrop = ((info["backdrop_path"] as? kotlinx.serialization.json.JsonArray)?.firstOrNull() as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
         MovieInfo(info.str("plot") ?: info.str("description"), info.str("cast") ?: info.str("actors"), info.str("director"), info.str("genre"),
-            info.str("duration"), backdrop, info.str("releasedate") ?: info.str("release_date")).also { movieInfoCache[movie.id] = it }
+            info.str("duration"), backdrop, info.str("releasedate") ?: info.str("release_date"), info.str("movie_image") ?: info.str("cover_big") ?: info.str("cover")).also { movieInfoCache[movie.id] = it }
+    }
+
+    /**
+     * A title that shows no picture: the provider is asked for that one title's own cover (`get_vod_info` / `get_series_info`) and, when it gives one, it is saved with the title so every screen
+     * shows it. [replace] is for a picture that was there but would not load: it is replaced only when the provider names a different one. Nothing is guessed and no address is built here.
+     */
+    suspend fun fillPoster(id: String, replace: Boolean = false): Boolean = withContext(Dispatchers.IO) {
+        val cat = db.catalog()
+        cat.movie(id)?.let { m ->
+            if (!replace && !m.posterUrl.isNullOrBlank()) return@withContext false
+            val cover = movieInfo(m.toModel())?.cover?.takeIf { it.isNotBlank() && it != m.posterUrl }
+            android.util.Log.i("Artwork", "movie ${m.title.take(30)}: " + (if (cover == null) "the provider has no cover for it" else "cover found"))
+            if (cover == null) return@withContext false
+            cat.setMoviePoster(id, cover); return@withContext true
+        }
+        val s = cat.series(id) ?: return@withContext false
+        if (!replace && !s.posterUrl.isNullOrBlank()) return@withContext false
+        val src = sources.get(s.sourceId) ?: return@withContext false
+        if (src.type != SourceType.XTREAM) return@withContext false
+        val pass = credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()
+        val obj = runCatching { Xtream.parseObject(Http.text(Xtream.api(src.address, src.username.orEmpty(), pass, "get_series_info", "&series_id=${s.providerId}"), xtreamAgent(src))) }.getOrNull() ?: return@withContext false
+        val info = obj["info"] as? JsonObject ?: return@withContext false
+        val cover = (info.str("cover") ?: info.str("cover_big"))?.takeIf { it.isNotBlank() && it != s.posterUrl } ?: return@withContext false
+        cat.setSeriesPoster(id, cover); true
     }
 
     /** Reads the episode lists of series the person has started, one at a time and slowly, to notice new episodes. Never runs while something plays. */

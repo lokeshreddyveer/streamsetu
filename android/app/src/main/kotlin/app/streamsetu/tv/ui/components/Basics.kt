@@ -9,6 +9,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Schedule
@@ -33,7 +34,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.translate
 import app.streamsetu.core.ui.motion.focusScale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.focusGroup
@@ -62,6 +65,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.streamsetu.tv.ui.theme.Tokens
+import app.streamsetu.tv.ui.theme.ui
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
@@ -69,8 +73,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun Label(text: String, size: TextUnit = Tokens.body, color: Color = Tokens.text, weight: FontWeight = FontWeight.Normal,
-          maxLines: Int = 1, modifier: Modifier = Modifier, letterSpacing: TextUnit = TextUnit.Unspecified) {
-    BasicText(app.streamsetu.tv.ui.i18n.I18n.tr(text), modifier, style = TextStyle(color = color, fontSize = size, fontWeight = weight, letterSpacing = letterSpacing), maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+          maxLines: Int = 1, modifier: Modifier = Modifier, letterSpacing: TextUnit = TextUnit.Unspecified, textAlign: androidx.compose.ui.text.style.TextAlign = androidx.compose.ui.text.style.TextAlign.Unspecified) {
+    BasicText(app.streamsetu.tv.ui.i18n.I18n.tr(text), modifier, style = TextStyle(color = color, fontSize = size, fontWeight = weight, letterSpacing = letterSpacing, textAlign = textAlign), maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 }
 
 /** Small spaced capitals, as in the Mac sidebar and banners ("DISCOVER · FROM YOUR LIBRARY"). */
@@ -156,6 +160,13 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.strokeOutline(o: an
     }
 }
 
+/**
+ * How focus is drawn. DENSE is for long lists of rows (Live TV channels, folders, Settings, search results, the Guide): focus shows at once as one fill and one static ring,
+ * with no scale, clip, shadow, band or animation, because a Fire TV Stick has 16.7 ms a frame and two animated cards (the one losing focus and the one gaining it) cost several.
+ * CARD is for posters, shortcut cards and large hero actions: the ring is drawn at once and the small scale follows it; moving the remote never waits for the scale.
+ */
+enum class TvFocusStyle { DENSE, CARD }
+
 @Composable
 fun Focusable(
     onClick: () -> Unit,
@@ -168,7 +179,7 @@ fun Focusable(
     ring: Color = Color.Unspecified,
     ringWidth: androidx.compose.ui.unit.Dp = 2.dp,
     /** The dark band beside the ring that keeps it visible on bright artwork; a button on the plain page does not need it. */
-    ringBand: Boolean = true,
+    ringBand: Boolean = false,
     /** False when focus is shown by the fill alone (the hero buttons turn white): no ring is drawn. */
     showRing: Boolean = true,
     onFocus: (Boolean) -> Unit = {},
@@ -178,8 +189,12 @@ fun Focusable(
     /** The tone when the remote moves onto this, and when it is chosen. null = silent (a caller that plays its own sound). */
     focusSound: app.streamsetu.tv.UISoundEvent? = app.streamsetu.tv.UISoundEvent.FOCUS_MOVE,
     selectSound: app.streamsetu.tv.UISoundEvent? = app.streamsetu.tv.UISoundEvent.SELECT,
+    style: TvFocusStyle = TvFocusStyle.CARD,
+    /** A card of a wall or a rail (a poster, a category): focus is one immediate fill and ring, with no zoom or animation, whatever its style (see Perf.fastFocus). Dialogs and hero controls leave this off. */
+    browse: Boolean = false,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
+    val dense = style == TvFocusStyle.DENSE || browse
     var focused by remember { mutableStateOf(false) }
     val longClick by androidx.compose.runtime.rememberUpdatedState(onLongClick)
     val highContrast = LocalHighContrast.current
@@ -193,21 +208,39 @@ fun Focusable(
     // One number (0 = at rest, 1 = focused) drives the scale, the fill and the ring, so a card costs one animation instead of three. It is read only while drawing, so a focus change
     // redraws this one card and recomposes nothing; a new target while it is moving continues from where it is (nothing queues up).
     val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
-    val progress = androidx.compose.animation.core.animateFloatAsState(
+    // A dense row has no animation at all: focus is on or off in the frame it moves. A card runs one animation (0 = at rest, 1 = focused) that drives the scale, the fill and the ring.
+    val progress = if (dense) null else androidx.compose.animation.core.animateFloatAsState(
         if (focused && enabled) 1f else 0f,
         if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.FOCUS, easing = app.streamsetu.core.ui.motion.Motion.Standard), label = "focus",
     )
-    Box(
-        modifier
-            .graphicsLayer { val sc = if (app.streamsetu.tv.trace.Diag.scale) 1f else 1f + ((if (scaleOnFocus in 1.001f..1.2f) 1f + (scaleOnFocus - 1f) * 1.5f else scaleOnFocus) - 1f) * progress.value; scaleX = sc; scaleY = sc }
+    val look: Modifier = if (dense) {
+        val on = focused && enabled
+        val ringOn = if (highContrast) Color.White else ringColor
+        Modifier
+            .then(if (container.alpha == 0f && focusedContainer.alpha == 0f) Modifier else Modifier.background(if (on) focusedContainer else container, shape))
+            .drawWithCache {
+                val outline = shape.createOutline(size, layoutDirection, this)          // cached until the size or the shape changes
+                // The ring is drawn just inside the edge: its outline is made once here for the smaller size, not on every focused frame.
+                val ringW = 3.dp.toPx(); val inner = ringW / 2
+                val ringOutline = shape.createOutline(androidx.compose.ui.geometry.Size((size.width - ringW).coerceAtLeast(1f), (size.height - ringW).coerceAtLeast(1f)), layoutDirection, this)
+                onDrawWithContent {
+                    drawContent()
+                    if (hairline) strokeOutline(outline, Tokens.line, 1.dp.toPx() * 2)
+                    // One 3 dp ring drawn inside the edge, so no parent can clip it. Read here, so a focus change redraws this one card and keeps the cached outline.
+                    if (focused && enabled && showRing) translate(inner, inner) { strokeOutline(ringOutline, ringOn, ringW) }
+                }
+            }
+    } else {
+        Modifier
+            .graphicsLayer { val sc = if (app.streamsetu.tv.trace.Diag.scale) 1f else 1f + ((if (scaleOnFocus in 1.001f..1.2f) 1f + (scaleOnFocus - 1f) * 1.5f else scaleOnFocus) - 1f) * progress!!.value; scaleX = sc; scaleY = sc }
             .then(if (clipContent) Modifier.clip(shape) else Modifier)
             // A card whose fill is transparent in both states (a poster: the picture is its fill) draws no fill at all, so it is not painted over twice.
-            .then(if (container.alpha == 0f && focusedContainer.alpha == 0f) Modifier else Modifier.drawBehind { drawRect(androidx.compose.ui.graphics.lerp(container, focusedContainer, progress.value)) })
+            .then(if (container.alpha == 0f && focusedContainer.alpha == 0f) Modifier else Modifier.drawBehind { drawRect(androidx.compose.ui.graphics.lerp(container, focusedContainer, progress!!.value)) })
             // The ring is drawn, not added as a layer, so taking and losing focus does not rebuild the modifier chain.
             .drawWithContent {
                 drawContent()
                 if (hairline) strokeOutline(shape.createOutline(size, layoutDirection, this), Tokens.line, 1.dp.toPx() * 2)
-                val a = progress.value
+                val a = if (focused && enabled) 1f else 0f          // the ring is there in the frame focus lands; only the small scale and the fill follow it
                 if (a > 0.01f && showRing && !app.streamsetu.tv.trace.Diag.ring) {
                     // Focus is never only a change of size: a ring of at least 3 dp, with a dark band beside it so it stands out on bright artwork and on a poor screen.
                     val c = if (highContrast) Color.White else ringColor
@@ -218,6 +251,10 @@ fun Focusable(
                     strokeOutline(outline, c.copy(alpha = c.alpha * a), ring.toPx() * k)
                 }
             }
+    }
+    Box(
+        modifier
+            .then(look)
             .then(if (app.streamsetu.tv.trace.SSTrace.on) Modifier.onGloballyPositioned { traceBounds[0] = it.boundsInWindow() } else Modifier)
             .focusRequester(own)
             // A switched-off card can no longer take focus, but a card that HOLDS focus is left able to keep it until the remote has moved on: it is then told that focus left in the normal way (disabling it while it
@@ -243,26 +280,104 @@ fun Focusable(
 
 @Composable
 fun TvButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, primary: Boolean = false, onFocus: (Boolean) -> Unit = {}) {
-    // One clean ring around the button: white on the dark ones, the accent colour on the white one (a white ring would vanish on it). No second band beside it.
-    Focusable(onClick, modifier, onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = if (primary) Color(0xFFE9ECF0) else Tokens.elevated,
-        focusedContainer = if (primary) Color.White else Tokens.focusedSurface, scaleOnFocus = 1.04f, ring = if (primary) Tokens.accent else Color.White, ringBand = false) { _ ->
-        val ink = if (primary) Tokens.onBright else Tokens.text
-        Row(Modifier.padding(horizontal = 18.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (icon != null) Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(ink))
-            Label(text, Tokens.row, ink, FontWeight.SemiBold)
+    // A pill. At rest: a light glass fill (the main action is filled with the accent). Focused: solid white with dark text and a small lift, so focus is the fill, the text and the size together, not a ring drawn around a button that is already bright.
+    Focusable(onClick, modifier, onFocus = onFocus, shape = RoundedCornerShape(50),
+        container = if (primary) Tokens.accent else Color(0x26FFFFFF), focusedContainer = Color.White,
+        scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, hairline = false, showRing = false, ringBand = false) { f ->
+        val ink = if (primary || f) Tokens.onBright else Tokens.text
+        Row(Modifier.padding(horizontal = 13.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (icon != null) Image(icon, null, Modifier.size(13.dp), colorFilter = ColorFilter.tint(ink))
+            Label(text, Tokens.caption, ink, FontWeight.SemiBold)
         }
     }
 }
 
+/**
+ * A category, folder or collection as a card: a coloured icon tile (a different tint for each name, so a row of categories is easy to tell apart at a glance), the name, and a line under it
+ * (what it holds). Focused it turns solid white with dark text and lifts slightly, like the buttons.
+ */
+@Composable
+fun CategoryCard(title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit, onLong: (() -> Unit)? = null, locked: Boolean = false, modifier: Modifier = Modifier) {
+    val hue = remember(title) { ((title.hashCode().toLong() and 0x7fffffff) % 360).toFloat() }
+    Focusable(onClick, modifier.width(236.ui).height(88.ui), shape = RoundedCornerShape(Tokens.radiusLarge), container = Color(0x14FFFFFF), focusedContainer = Color.White,
+        scaleOnFocus = 1.05f, hairline = true, showRing = false, ringBand = false, browse = true, onLongClick = onLong) { f ->
+        Row(Modifier.fillMaxSize().padding(horizontal = 12.ui), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.ui)) {
+            Box(Modifier.size(48.ui).clip(RoundedCornerShape(12.ui)).background(Color.hsv(hue, 0.5f, 0.6f).copy(alpha = if (f) 0.30f else 0.55f)), Alignment.Center) {
+                Image(if (locked) Icons.Filled.Lock else icon, null, Modifier.size(24.ui), colorFilter = ColorFilter.tint(if (f) Tokens.onBright else Color.White))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
+                Label(title, Tokens.row, if (f) Tokens.onBright else Tokens.text, FontWeight.SemiBold, maxLines = 2)
+                if (subtitle.isNotBlank()) Label(subtitle, Tokens.caption, if (f) Color(0xFF3A414B) else Tokens.textSecondary, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** A round icon-only button for the secondary actions of a page (Favorite, Watch Later, Queue, Edit). Light glass at rest, solid white with a dark icon while the remote is on it; [on] tints the icon when the action is active. */
+@Composable
+/** The round icon buttons have no fill until the remote is on them (then a white circle with a dark icon). [plain] only makes the circle a little bigger, for a row over a picture. */
+fun TvIconButton(icon: ImageVector, description: String, onClick: () -> Unit, modifier: Modifier = Modifier, on: Boolean = false, onFocus: (Boolean) -> Unit = {}, plain: Boolean = false) {
+    Focusable(onClick, modifier.size(if (plain) 28.dp else 26.dp), onFocus = onFocus, shape = androidx.compose.foundation.shape.CircleShape, container = Color.Transparent, focusedContainer = Color.White,
+        scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, hairline = false, showRing = false, ringBand = false) { f ->
+        Box(Modifier.fillMaxSize(), Alignment.Center) { Image(icon, description, Modifier.size(if (plain) 15.dp else 14.dp), colorFilter = ColorFilter.tint(if (f) Tokens.onBright else if (on) Tokens.accent else Tokens.text)) }
+    }
+}
+
+/**
+ * The surface of every sidebar (the main menu, the folder panel, Settings): one colour family, a little lighter at the top than at the bottom, so it reads as a layer in front of the page
+ * and not as a flat slab, with a thin line along its right edge. Only the draw phase runs.
+ */
+fun Modifier.sidebarSurface(edge: Boolean = true): Modifier = this.drawBehind {
+    val top = if (Tokens.background == Color.Black) Tokens.card else androidx.compose.ui.graphics.lerp(Tokens.card, Color(0xFF2A3446), 0.10f)          // on pure black nothing is lifted above the card
+    drawRect(Brush.verticalGradient(listOf(top, Tokens.panel)))
+    if (edge) drawLine(Tokens.line, androidx.compose.ui.geometry.Offset(size.width - 0.5f, 0f), androidx.compose.ui.geometry.Offset(size.width - 0.5f, size.height), 1.dp.toPx())
+}
+
+/**
+ * The fill behind a sidebar entry: flat and plain. The entry the remote is on is a light grey lift; the open one is a fainter one. No gradient, no colour, no border, so it sits quietly with the rest of the page.
+ */
+fun Modifier.sidebarRowFill(focused: Boolean, selected: Boolean): Modifier = this.drawBehind {
+    val fill = if (focused) Color(0x26FFFFFF) else if (selected) Color(0x12FFFFFF) else return@drawBehind
+    drawRoundRect(fill, cornerRadius = androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()))
+}
+
+/**
+ * A thin position marker down the right edge of a long list (a few hundred folders): where you are, and how much is left. It shows only when the list is longer than its window, is drawn
+ * over the list, and costs nothing while the list is still (only the draw phase reads the scroll position).
+ */
+fun Modifier.scrollThumb(state: androidx.compose.foundation.lazy.LazyListState): Modifier = this.drawWithContent {
+    drawContent()
+    val info = state.layoutInfo
+    val total = info.totalItemsCount; val shown = info.visibleItemsInfo.size
+    if (total > shown && shown > 0) {
+        val view = size.height; val thumb = (view * shown / total).coerceIn(28.dp.toPx(), view)
+        val first = info.visibleItemsInfo.first(); val progress = ((first.index + (-first.offset).toFloat() / first.size.coerceAtLeast(1)) / (total - shown).coerceAtLeast(1)).coerceIn(0f, 1f)
+        val w = 3.dp.toPx()
+        drawRoundRect(Color(0x55FFFFFF), androidx.compose.ui.geometry.Offset(size.width - w - 1.dp.toPx(), progress * (view - thumb)), androidx.compose.ui.geometry.Size(w, thumb), androidx.compose.ui.geometry.CornerRadius(w / 2))
+    }
+}
+
+/** The page behind everything: the theme's background, a little lighter and cooler at the top, so the screen is not one flat black. */
+fun Modifier.pageBackground(): Modifier = this.drawBehind {
+    // Amoled black stays pure black (a lifted pixel is a lit pixel); every other theme is a little lighter and cooler at the top.
+    if (Tokens.background == Color.Black) drawRect(Color.Black) else drawRect(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.lerp(Tokens.background, Color(0xFF2A3446), 0.16f), Tokens.background)))
+}
+
 /** The quiet tinted card shown while a poster loads or when there is none (same idea as the Mac app: a colour from the title). */
 @Composable
-fun PosterPlaceholder(title: String, modifier: Modifier = Modifier) {
-    var h = 1469598103934665603UL
-    for (b in title.lowercase().toByteArray()) { h = (h xor b.toULong()) * 1099511628211UL }
-    val hue = (h % 360UL).toFloat()
-    fun c(l: Float, s: Float) = Color.hsl(hue, s, l)
-    Box(modifier.background(Brush.linearGradient(listOf(c(0.29f, 0.25f), c(0.08f, 0.28f)))), Alignment.BottomStart) {
-        Label(title.uppercase(), Tokens.row, Tokens.text.copy(alpha = 0.92f), maxLines = 4, modifier = Modifier.padding(12.dp), letterSpacing = 0.7.sp)
+/** [showTitle] false: a plain tinted tile (the TV posters carry their title under the picture, so the tile never adds or removes anything while a list scrolls). */
+fun PosterPlaceholder(title: String, modifier: Modifier = Modifier, showTitle: Boolean = true) {
+    // The tint comes from the title and is worked out once per title, not on every pass.
+    val brush = remember(title) {
+        var h = 1469598103934665603UL
+        for (b in title.lowercase().toByteArray()) { h = (h xor b.toULong()) * 1099511628211UL }
+        val hue = (h % 360UL).toFloat()
+        Brush.linearGradient(listOf(Color.hsl(hue, 0.25f, 0.29f), Color.hsl(hue, 0.28f, 0.08f)))
+    }
+    // While a list is moving fast the tile is drawn without its title (laying out up to four lines of text for every tile that scrolls in is what a text-only grid cannot afford); the title appears when the list rests.
+    val moving = LocalFastScroll.current?.value == true
+    Box(modifier.background(brush), Alignment.BottomStart) {
+        if (showTitle && !moving) Label(remember(title) { title.uppercase() }, Tokens.row, Tokens.text.copy(alpha = 0.92f), maxLines = 4, modifier = Modifier.padding(12.dp), letterSpacing = 0.7.sp)
     }
 }
 
@@ -324,24 +439,59 @@ fun PollWhileShown(everyMs: Long, key: Any? = Unit, block: suspend () -> Unit) {
     }
 }
 
-/** A picture request with the card's corners baked into the decoded bitmap (cached, done once per picture), so no clip is needed while it scrolls. */
+/**
+ * The one request every list card and every prefetch uses, so identical pictures at identical sizes share one cache key (memory and disk).
+ * The size is the card's exact size in pixels, so nothing larger than the card is ever decoded; the corners are baked into the decoded bitmap (done once per picture) so no clip is needed while it scrolls.
+ * Nothing in it depends on focus. No crossfade (a second bitmap alive) and no animated decoder: a list shows still artwork only.
+ * Hardware bitmaps are allowed, but Coil keeps a picture in software memory while a transformation (the baked corners) is applied.
+ */
+fun artworkRequest(context: android.content.Context, url: String, widthPx: Int, heightPx: Int, cornerPx: Float = 0f, memoryOnly: Boolean = false): ImageRequest =
+    ImageRequest.Builder(context).data(url)
+        .size(widthPx, heightPx).precision(coil.size.Precision.INEXACT)
+        .allowHardware(true).crossfade(false)
+        .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+        // While a list is scrolling fast a picture that is not in memory is not read or decoded (that work competes with drawing); it is asked for again when the list rests.
+        .diskCachePolicy(if (memoryOnly) coil.request.CachePolicy.DISABLED else coil.request.CachePolicy.ENABLED)
+        .networkCachePolicy(if (memoryOnly) coil.request.CachePolicy.DISABLED else coil.request.CachePolicy.ENABLED)
+        .apply { if (cornerPx > 0f) transformations(coil.transform.RoundedCornersTransformation(cornerPx)) }
+        .apply { if (app.streamsetu.tv.BuildConfig.FRAME_LOG) listener(onError = { r, e -> android.util.Log.w("Artwork", (r.data.toString().substringAfter("://").substringBefore('/')) + " " + e.throwable.javaClass.simpleName + ": " + e.throwable.message?.take(100)) }) }
+        .build()
+
+/** Asks for the picture of a title that has none (or whose picture failed): provided once at the top of the app. The second argument says the title had a picture that did not load. */
+val LocalArtworkFiller = androidx.compose.runtime.compositionLocalOf<((String, Boolean) -> Unit)?> { null }
+
+/** True while the list the cards are in is scrolling (and for a moment after): cards then only show pictures that are already in memory. Provided by the screen that owns the list. */
+val LocalArtworkPaused = androidx.compose.runtime.compositionLocalOf<State<Boolean>?> { null }
+/** True while a list has been scrolling for a moment (a held key), not for a single step. */
+val LocalFastScroll = androidx.compose.runtime.compositionLocalOf<State<Boolean>?> { null }
+
+/** The request for a card of the given size, built once for that picture and size. */
 @Composable
-private fun roundedPicture(url: String?, radius: Dp): Any? {
+private fun rememberArtwork(url: String?, width: Dp, heightPerWidth: Pair<Int, Int>, corner: Dp): Any? {
     if (url.isNullOrBlank()) return null
     val context = androidx.compose.ui.platform.LocalContext.current
-    val px = with(androidx.compose.ui.platform.LocalDensity.current) { radius.toPx() }
-    return remember(url, px) { ImageRequest.Builder(context).data(url).transformations(coil.transform.RoundedCornersTransformation(px)).build() }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val w = with(density) { width.roundToPx() }; val h = w * heightPerWidth.first / heightPerWidth.second          // the same integer arithmetic a prefetch uses, so both make the same cache key
+    val px = with(density) { corner.toPx() }
+    // One request per picture and size, whatever the list is doing: it is never rebuilt because scrolling started or stopped.
+    return remember(url, w, h, px) { artworkRequest(context, url, w, h, px) }
 }
 
 /** A poster, 150 x 218 on the Mac scaled up: artwork, title and a quiet subtitle under it. A thin bar shows how far you are. */
 @Composable
-fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null, itemId: String? = null, focusRequester: FocusRequester? = null, onFocusChange: (Boolean) -> Unit = {}, onLongClick: (() -> Unit)? = null) {
+fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, width: Dp = Tokens.posterWidth, subtitle: String? = null, badge: String? = null, itemId: String? = null, focusRequester: FocusRequester? = null, onFocusChange: (Boolean) -> Unit = {}, onLongClick: (() -> Unit)? = null,
+               /** For a dense wall of posters on a small TV box: focus is a ring and a fill only (no scale, no clip). */
+               dense: Boolean = false) {
     var cardFocused by remember { mutableStateOf(false) }
     Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(2f / 3f), container = if (imageUrl.isNullOrBlank()) Tokens.card else Color.Transparent, focusedContainer = if (imageUrl.isNullOrBlank()) Tokens.focusedSurface else Color.Transparent,
-            clipContent = imageUrl.isNullOrBlank(), scaleOnFocus = app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE, ringWidth = 2.5.dp, onFocus = { cardFocused = it; onFocusChange(it) }, onLongClick = onLongClick) { _ ->
+            clipContent = imageUrl.isNullOrBlank(), scaleOnFocus = if (dense) 1.0f else app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE, ringWidth = 2.5.dp, style = if (dense) TvFocusStyle.DENSE else TvFocusStyle.CARD, browse = true, onFocus = { cardFocused = it; onFocusChange(it) }, onLongClick = onLongClick, ringBand = true) { _ ->
             // With a picture to come, a flat dark tile is enough underneath (a title gradient only when there is no picture): less to draw and lay out per card.
-            if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else AsyncImage(roundedPicture(imageUrl, Tokens.radius), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = ColorPainter(Tokens.card), error = ColorPainter(Tokens.card))
+            val filler = LocalArtworkFiller.current
+            // No picture: the provider is asked for this title's own cover, and the tile fills in when it is saved.
+            if (imageUrl.isNullOrBlank()) { if (itemId != null) LaunchedEffect(itemId) { filler?.invoke(itemId, false) }; PosterPlaceholder(title, Modifier.fillMaxSize().clip(RoundedCornerShape(Tokens.radius)), showTitle = false) }
+            else AsyncImage(rememberArtwork(imageUrl, width, 3 to 2, Tokens.radius), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = ColorPainter(Tokens.card), error = ColorPainter(Tokens.card),
+                onError = { if (itemId != null) filler?.invoke(itemId, true) })
             val shown = if (progress > 0f) progress else itemId?.let { LocalPartialProgress.current[it] } ?: 0f
             if (shown > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Color(0xB3000000), RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Tokens.text, FontWeight.SemiBold) }
@@ -349,25 +499,22 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
             if (itemId != null && itemId in LocalWatched.current) WatchedTick()
             // The title appears over the picture only for the poster the remote is on, so a wall of posters stays clean (the picture already carries its own title).
             // Composed only while the remote is on this poster (a wall of posters carries no transition objects); it fades in over about 160 ms.
-            if (cardFocused) {
-                val fade = remember { androidx.compose.animation.core.Animatable(0f) }
-                LaunchedEffect(Unit) { fade.animateTo(1f, tween(160)) }
-                Column(Modifier.align(Alignment.BottomStart).graphicsLayer { alpha = fade.value }.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6000000)))).padding(start = 10.dp, end = 10.dp, top = 36.dp, bottom = 10.dp)) {
-                    Label(title, Tokens.small, Tokens.text, FontWeight.Bold, maxLines = 2)
-                    if (subtitle != null) Label(subtitle, Tokens.caption, Tokens.textSecondary, maxLines = 2)          // the reason ("Same genre") is shown whole
-                }
-            }
         }
+        // The title is under the poster all the time, so nothing is drawn, laid out or faded when the remote arrives on it.
+        Label(title, Tokens.caption, if (cardFocused) Color.White else Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))
+        if (subtitle != null) Label(subtitle, Tokens.caption, Tokens.textTertiary, modifier = Modifier.padding(horizontal = 2.dp))
     }
 }
 
 /** A wide 16:9 card (Continue Watching). */
 @Composable
-fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, progress: Float = 0f, width: Dp = Tokens.landscapeWidth, badge: String? = null, onLongClick: (() -> Unit)? = null) {
+fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, progress: Float = 0f, width: Dp = Tokens.landscapeWidth, badge: String? = null, onLongClick: (() -> Unit)? = null, itemId: String? = null) {
     Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f), container = if (imageUrl.isNullOrBlank()) Tokens.card else Color.Transparent, focusedContainer = if (imageUrl.isNullOrBlank()) Tokens.focusedSurface else Color.Transparent, clipContent = imageUrl.isNullOrBlank(), onLongClick = onLongClick) { _ ->
+        Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f), container = if (imageUrl.isNullOrBlank()) Tokens.card else Color.Transparent, focusedContainer = if (imageUrl.isNullOrBlank()) Tokens.focusedSurface else Color.Transparent, clipContent = imageUrl.isNullOrBlank(), onLongClick = onLongClick, ringBand = true, browse = true) { _ ->
             // The picture is the only layer drawn once it is there (its own placeholder is a flat tile); a card with no picture gets the title tile.
-            if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else AsyncImage(roundedPicture(imageUrl, Tokens.radius), title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = ColorPainter(Tokens.card), error = ColorPainter(Tokens.card))
+            val filler = LocalArtworkFiller.current
+            if (imageUrl.isNullOrBlank()) { if (itemId != null) LaunchedEffect(itemId) { filler?.invoke(itemId, false) }; PosterPlaceholder(title, Modifier.fillMaxSize(), showTitle = false) }
+            else AsyncImage(rememberArtwork(imageUrl, width, 9 to 16, Tokens.radius), title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = ColorPainter(Tokens.card), error = ColorPainter(Tokens.card), onError = { if (itemId != null) filler?.invoke(itemId, true) })
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopStart).padding(6.dp).background(Tokens.accent, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Color(0xFF04141A), FontWeight.Bold) }
         }
@@ -380,7 +527,7 @@ fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: 
 fun ChannelLogo(url: String?, name: String, size: Dp = 30.dp) {
     Box(Modifier.size(size).clip(RoundedCornerShape(Tokens.radius)).background(Tokens.elevated), Alignment.Center) {
         if (url.isNullOrBlank()) Label(name.take(2).uppercase(), Tokens.row, Tokens.textTertiary, FontWeight.Bold)
-        else AsyncImage(url, name, Modifier.fillMaxSize().padding(5.dp), contentScale = ContentScale.Fit)
+        else AsyncImage(rememberArtwork(url, size - 10.dp, 1 to 1, 0.dp), name, Modifier.fillMaxSize().padding(5.dp), contentScale = ContentScale.Fit)
     }
 }
 
@@ -409,21 +556,23 @@ fun TvTextField(value: String, onChange: (String) -> Unit, placeholder: String, 
     val rowRequester = remember { androidx.compose.ui.focus.FocusRequester() }
     var gotFocus by remember { mutableStateOf(false) }
     LaunchedEffect(editing) { gotFocus = false; if (editing) { runCatching { requester.requestFocus() }; keyboard?.show() } }
-    Focusable({ editing = true }, modifier.focusRequester(rowRequester), shape = RoundedCornerShape(if (compact) 12.dp else Tokens.radius), container = Tokens.card, focusedContainer = Tokens.elevated, scaleOnFocus = if (compact) 1.0f else 1.02f, hairline = true) { _ ->
-        Row(Modifier.fillMaxWidth().padding(horizontal = if (compact) 9.dp else 18.dp, vertical = if (compact) 6.dp else 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (leadingIcon != null) Image(leadingIcon, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary))
+    // The compact field (the folder search) is a quiet pill: a soft fill, no border, the same look as the sidebar entries; it brightens when the remote is on it and while it is being typed in.
+    Focusable({ editing = true }, modifier.focusRequester(rowRequester), shape = if (compact) RoundedCornerShape(50) else RoundedCornerShape(Tokens.radius), container = if (compact) Color(0x14FFFFFF) else Tokens.card, focusedContainer = if (compact) Color(0x33FFFFFF) else Tokens.elevated, scaleOnFocus = if (compact) 1.0f else 1.02f,
+        hairline = !compact, showRing = !compact, style = if (compact) TvFocusStyle.DENSE else TvFocusStyle.CARD) { fieldFocused ->
+        Row(Modifier.fillMaxWidth().then(if (compact) Modifier.heightIn(min = 40.dp) else Modifier).padding(horizontal = if (compact) 14.dp else 18.dp, vertical = if (compact) 8.dp else 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 10.dp)) {
+            if (leadingIcon != null) Image(leadingIcon, null, Modifier.size(if (compact) 16.dp else 14.dp), colorFilter = ColorFilter.tint(if (compact && (fieldFocused || editing)) Color.White else Tokens.textTertiary))
             Box(Modifier.weight(1f)) {
             if (editing) {
                 BasicTextField(
                     value, onChange, Modifier.fillMaxWidth().focusRequester(requester).onFocusChanged { f -> if (f.isFocused) gotFocus = true else if (gotFocus) { editing = false } },
-                    textStyle = TextStyle(color = Tokens.text, fontSize = Tokens.body), singleLine = true, cursorBrush = SolidColor(Tokens.accent),
+                    textStyle = TextStyle(color = if (compact) Color.White else Tokens.text, fontSize = if (compact) Tokens.row else Tokens.body), singleLine = true, cursorBrush = SolidColor(Tokens.accent),
                     visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
                     keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { editing = false; keyboard?.hide(); runCatching { rowRequester.requestFocus() }; onDone() }),
                 )
             } else {
                 val shown = if (secret && value.isNotEmpty()) "•".repeat(value.length.coerceAtMost(24)) else value
-                if (value.isEmpty()) Label(placeholder, if (compact) Tokens.small else Tokens.body, Tokens.textTertiary) else Label(shown, if (compact) Tokens.small else Tokens.body)
+                if (value.isEmpty()) Label(placeholder, if (compact) Tokens.row else Tokens.body, if (compact && fieldFocused) Color(0xCCFFFFFF) else Tokens.textTertiary) else Label(shown, if (compact) Tokens.row else Tokens.body, if (compact && fieldFocused) Color.White else Tokens.text)
             }
             }
         }
@@ -431,10 +580,16 @@ fun TvTextField(value: String, onChange: (String) -> Unit, placeholder: String, 
 }
 
 @Composable
-fun Spinner(modifier: Modifier = Modifier) {
+fun Spinner(modifier: Modifier = Modifier, size: Dp = 28.dp) {
+    // A thin ring with a short bright arc that turns. The turning is a layer property, so nothing is redrawn or recomposed while it spins.
     val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "spin")
-    val a by t.animateFloat(0.3f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(700), androidx.compose.animation.core.RepeatMode.Reverse), label = "alpha")
-    Box(modifier.size(26.dp).clip(RoundedCornerShape(50)).background(Tokens.accent.copy(alpha = a)))
+    val turn by t.animateFloat(0f, 360f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)), label = "turn")
+    Box(modifier.size(size).graphicsLayer { rotationZ = turn }.drawBehind {
+        val w = 3.dp.toPx(); val inset = w / 2
+        val box = androidx.compose.ui.geometry.Size(this.size.width - w, this.size.height - w)
+        drawArc(Color.White.copy(alpha = 0.22f), 0f, 360f, false, androidx.compose.ui.geometry.Offset(inset, inset), box, style = androidx.compose.ui.graphics.drawscope.Stroke(w))
+        drawArc(Color.White, 0f, 100f, false, androidx.compose.ui.geometry.Offset(inset, inset), box, style = androidx.compose.ui.graphics.drawscope.Stroke(w, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+    })
 }
 
 /** Shown for the moment before a page has its data, instead of a misleading "nothing here". */
@@ -458,7 +613,7 @@ fun FadeIn(key: Any, modifier: Modifier = Modifier, content: @Composable () -> U
  */
 fun Modifier.bleedStart(by: androidx.compose.ui.unit.Dp): Modifier = this.layout { measurable, constraints ->
     val d = by.roundToPx()
-    val p = measurable.measure(if (constraints.hasBoundedWidth) constraints.copy(minWidth = 0, maxWidth = constraints.maxWidth + d) else constraints)
+    val p = measurable.measure(if (constraints.hasBoundedWidth) constraints.copy(minWidth = constraints.maxWidth + d, maxWidth = constraints.maxWidth + d) else constraints)
     layout((p.width - d).coerceAtLeast(0), p.height) { p.place(-d, 0) }
 }
 
@@ -467,10 +622,16 @@ fun Modifier.bleedStart(by: androidx.compose.ui.unit.Dp): Modifier = this.layout
  * remote is where it should be (or no longer should be taken there), and it ends at once when the LaunchedEffect it runs in is replaced by a newer request, so a stale request from an earlier
  * mode can never fire.
  */
+/** Puts the remote on [target] as soon as it can take it: on the frames after it is laid out, until it holds the remote. Used where a screen or a dialog opens, in place of waiting a fixed time. */
+suspend fun requestFocusSoon(target: androidx.compose.ui.focus.FocusRequester, frames: Int = 8) =
+    requestFocusOnFrames(frames, { target.requestFocus() }, { FocusMemory.focused === target })
+
 suspend fun requestFocusOnFrames(frames: Int = 4, request: () -> Unit, done: () -> Boolean) {
+    // Each wait for a frame makes the whole screen draw one (about 20 to 45 ms of GPU on a Fire TV Stick), so the loop asks once per frame and looks at the answer at once; it waits a second frame only when the first ask has not landed.
     repeat(frames) {
         androidx.compose.runtime.withFrameNanos { }
         runCatching { request() }
+        if (done()) return
         androidx.compose.runtime.withFrameNanos { }
         if (done()) return
     }

@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -17,18 +19,36 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
 import app.streamsetu.tv.ui.components.*
 import app.streamsetu.tv.ui.theme.Tokens
 import kotlinx.coroutines.delay
+
+/** The look of Settings, after macOS System Settings: its blue and green, its calm type, inset rounded groups with hairlines between the rows. */
+object Mac {
+    // the selected row, the pills and the switches follow the chosen accent colour; the rest is neutral
+    val blue get() = Tokens.accent; val blueSelected get() = Tokens.accent; val green get() = Tokens.accent
+    val indigo = Color(0xFF5E5CE6); val pink = Color(0xFFFF375F); val gray = Color(0xFF8E8E93); val red = Color(0xFFFF453A)
+    val orange = Color(0xFFFF9F0A); val purple = Color(0xFFBF5AF2); val teal = Color(0xFF40C8E0)
+    val card = Color(0x12FFFFFF); val hairline = Color(0x1AFFFFFF); val focus = Color(0x2EFFFFFF)
+    val rowTitle = 14.sp; val rowDetail = 12.sp; val groupTitle = 12.sp; val pageTitle = 26.sp
+}
+
+/** Rows of one group count themselves, so every row but the first draws a hairline above it. */
+internal val LocalGroupCounter = androidx.compose.runtime.compositionLocalOf<java.util.concurrent.atomic.AtomicInteger?> { null }
 
 /** A titled block of rows. */
 @Composable
 fun SettingGroup(title: String, footer: String? = null, danger: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     // A danger group (erase, reset) is set apart at the bottom of its page, tinted red, so it is never taken for an ordinary section.
-    Column(Modifier.fillMaxWidth().padding(top = if (danger) 24.dp else 8.dp)) {
-        Label(title, Tokens.heading, if (danger) Tokens.danger else Tokens.text, FontWeight.Bold, modifier = Modifier.padding(start = 6.dp, bottom = 10.dp))
-        Column(Modifier.fillMaxWidth().background(if (danger) Tokens.danger.copy(alpha = 0.10f) else Tokens.card, RoundedCornerShape(Tokens.radiusPanel)).then(if (danger) Modifier.border(1.dp, Tokens.danger.copy(alpha = 0.45f), RoundedCornerShape(Tokens.radiusPanel)) else Modifier).padding(vertical = 8.dp, horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp), content = content)
-        if (footer != null) Label(footer, Tokens.caption, Tokens.textTertiary, maxLines = 3, modifier = Modifier.padding(start = 4.dp, top = 6.dp))
+    val counter = remember { java.util.concurrent.atomic.AtomicInteger() }
+    Column(Modifier.fillMaxWidth().padding(top = if (danger) 22.dp else 14.dp)) {
+        Label(title, Mac.groupTitle, if (danger) Mac.red else Tokens.textSecondary, FontWeight.SemiBold, modifier = Modifier.padding(start = 12.dp, bottom = 6.dp))
+        androidx.compose.runtime.CompositionLocalProvider(LocalGroupCounter provides counter) {
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (danger) Mac.red.copy(alpha = 0.10f) else Mac.card, RoundedCornerShape(12.dp)).then(if (danger) Modifier.border(1.dp, Mac.red.copy(alpha = 0.40f), RoundedCornerShape(12.dp)) else Modifier), content = content)
+        }
+        if (footer != null) Label(footer, Mac.rowDetail, Tokens.textTertiary, maxLines = 3, modifier = Modifier.padding(start = 12.dp, top = 6.dp))
     }
 }
 
@@ -37,15 +57,22 @@ fun SettingGroup(title: String, footer: String? = null, danger: Boolean = false,
  * and does nothing when pressed (it never just looks dead).
  */
 @Composable
-fun SettingRow(title: String, detail: String? = null, value: String? = null, enabled: Boolean = true, reason: String? = null, danger: Boolean = false, switch: Boolean? = null, chevron: Boolean = false, onClick: () -> Unit = {}) {
-    Focusable(if (enabled) onClick else ({}), Modifier.fillMaxWidth(), shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.015f) { f ->
-        Row(Modifier.heightIn(min = if (detail != null) 80.ui else 62.ui).padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+fun SettingRow(title: String, detail: String? = null, value: String? = null, enabled: Boolean = true, reason: String? = null, danger: Boolean = false, switch: Boolean? = null, chevron: Boolean = false, button: Boolean = false, onClick: () -> Unit = {}) {
+    val position = LocalGroupCounter.current?.let { remember { it.getAndIncrement() } } ?: 1
+    Focusable(if (enabled) onClick else ({}), Modifier.fillMaxWidth(), shape = RoundedCornerShape(0.dp), container = Color.Transparent, focusedContainer = Mac.focus, scaleOnFocus = 1.0f, showRing = false, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { f ->
+        Row(Modifier.heightIn(min = if (detail != null) 62.ui else 48.ui).drawBehind { if (position > 0) drawLine(Mac.hairline, androidx.compose.ui.geometry.Offset(14.dp.toPx(), 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 1.dp.toPx()) }.padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Label(title, Tokens.row, if (!enabled) Tokens.textTertiary else if (danger) Tokens.danger else Tokens.text, FontWeight.Medium)
-                if (detail != null) Label(detail, Tokens.caption, Tokens.textSecondary, maxLines = 2)
-                if (!enabled && reason != null) Label(reason, Tokens.caption, Tokens.warning, maxLines = 2)
+                Label(title, Mac.rowTitle, if (!enabled) Tokens.textTertiary else if (danger) Mac.red else Tokens.text, FontWeight.Medium)
+                if (detail != null) Label(detail, Mac.rowDetail, Tokens.textSecondary, maxLines = 2)
+                if (!enabled && reason != null) Label(reason, Mac.rowDetail, Tokens.warning, maxLines = 2)
             }
-            if (switch != null) SwitchControl(switch, enabled) else if (value != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { Label(value, Tokens.row, if (!enabled) Tokens.textTertiary else if (f) Tokens.accent else Tokens.textSecondary, FontWeight.Medium, maxLines = 2, modifier = Modifier.widthIn(max = 220.dp)); if (chevron) Image(Icons.Filled.ChevronRight, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary)) }
+            if (switch != null) SwitchControl(switch, enabled)
+            else if (value != null && button) {
+                // An action is a rounded-rectangle button at the right edge, blue while the remote is on its row, as on the Mac.
+                Box(Modifier.background(if (!enabled) Color(0x14FFFFFF) else if (f) Mac.blueSelected else Color(0x26FFFFFF), RoundedCornerShape(8.dp)).padding(horizontal = 14.dp, vertical = 5.dp)) {
+                    Label(value, Mac.rowTitle, if (!enabled) Tokens.textTertiary else if (danger && !f) Mac.red else Color.White, FontWeight.Medium, maxLines = 1)
+                }
+            } else if (value != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { Label(value, Mac.rowTitle, if (!enabled) Tokens.textTertiary else Tokens.textSecondary, FontWeight.Normal, maxLines = 2, modifier = Modifier.widthIn(max = 240.dp)); if (chevron) Image(Icons.Filled.ChevronRight, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary)) }
         }
     }
 }
@@ -55,9 +82,9 @@ fun SettingRow(title: String, detail: String? = null, value: String? = null, ena
 private fun SwitchControl(on: Boolean, enabled: Boolean) {
     val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
     val t = androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.SHORT, easing = app.streamsetu.core.ui.motion.Motion.Standard), label = "switchKnob")
-    val track = androidx.compose.animation.animateColorAsState(if (!enabled) Color(0x14FFFFFF) else if (on) Tokens.accent else Color(0x33FFFFFF), if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.SHORT), label = "switchTrack")
-    Box(Modifier.width(54.dp).height(30.dp).drawBehind { drawRoundRect(track.value, cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2)) }.padding(3.dp)) {
-        Box(Modifier.graphicsLayer { translationX = t.value * 24.dp.toPx() }.size(24.dp).background(if (on) Tokens.onBright else Color.White, androidx.compose.foundation.shape.CircleShape))
+    val track = androidx.compose.animation.animateColorAsState(if (!enabled) Color(0x14FFFFFF) else if (on) Mac.green else Color(0x40FFFFFF), if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.SHORT), label = "switchTrack")
+    Box(Modifier.width(50.dp).height(28.dp).drawBehind { drawRoundRect(track.value, cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2)) }.padding(3.dp)) {
+        Box(Modifier.graphicsLayer { translationX = t.value * 22.dp.toPx() }.size(22.dp).background(Color.White, androidx.compose.foundation.shape.CircleShape))
     }
 }
 
@@ -78,7 +105,7 @@ fun ToggleRow(title: String, detail: String? = null, on: Boolean, enabled: Boole
 fun ActionRow(title: String, detail: String? = null, label: String = "Run", danger: Boolean = false, confirm: Boolean = danger, enabled: Boolean = true, reason: String? = null, onRun: () -> Unit) {
     var armed by remember { mutableStateOf(false) }
     LaunchedEffect(armed) { if (armed) { delay(5000); armed = false } }
-    SettingRow(title, if (armed) "Press again to confirm. Waiting 5 seconds." else detail, if (armed) "Confirm" else label, enabled, reason, danger) {
+    SettingRow(title, if (armed) "Press again to confirm. Waiting 5 seconds." else detail, if (armed) "Confirm" else label, enabled, reason, danger, button = true) {
         if (confirm && !armed) armed = true else { armed = false; onRun() }
     }
 }
@@ -86,12 +113,18 @@ fun ActionRow(title: String, detail: String? = null, label: String = "Run", dang
 /** Information with nothing to do: shown as a plain row, so the remote does not stop on it. */
 @Composable
 fun InfoRow(title: String, value: String, detail: String? = null) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    val position = LocalGroupCounter.current?.let { remember { it.getAndIncrement() } } ?: 1
+    // A line of facts can take the remote (nothing happens on OK), so a page made only of facts can still be scrolled with Up and Down: the remote walks the lines and the page follows it.
+    // It is the cheapest focus target there is (one focus modifier and one fill drawn only while focused): a page has dozens of these and they are all composed at once.
+    var focused by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused }.focusable()
+        .drawBehind { if (focused) drawRect(Mac.focus); if (position > 0) drawLine(Mac.hairline, androidx.compose.ui.geometry.Offset(14.dp.toPx(), 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 1.dp.toPx()) }
+        .padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            Label(title, Tokens.row, Tokens.text, FontWeight.Medium)
-            if (detail != null) Label(detail, Tokens.caption, Tokens.textSecondary, maxLines = 2)
+            Label(title, Mac.rowTitle, Tokens.text, FontWeight.Medium)
+            if (detail != null) Label(detail, Mac.rowDetail, Tokens.textSecondary, maxLines = 2)
         }
-        Label(value, Tokens.row, Tokens.textSecondary, FontWeight.Medium, maxLines = 2, modifier = Modifier.widthIn(max = 220.dp))
+        Label(value, Mac.rowTitle, Tokens.textSecondary, FontWeight.Normal, maxLines = 2, modifier = Modifier.widthIn(max = 240.dp))
     }
 }
 

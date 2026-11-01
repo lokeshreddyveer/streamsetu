@@ -102,11 +102,11 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
             out += ResumeItem(WatchProgress(next.id, ContentKind.EPISODE, sid, 0, 1, flagged.maxOf { it.discoveredAt }, false), EpisodePlayable(next, series), "New episode  ·  S${next.season} E${next.number}", isNew = true)
         }
         out.sortedByDescending { it.progress.updatedAt }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.reuseRows { it.playable.id }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val recentLive: StateFlow<List<LiveItem>> = combine(c.user.recentChannelIds(14), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->
         ids.mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib }.let { chs -> val map = runCatching { c.epg.resolve(chs) }.getOrDefault(emptyMap()); chs.map { ch -> LiveItem(ch, map[ch.id]?.let { e -> runCatching { c.epg.upcoming(c.db, e, 1).firstOrNull()?.title }.getOrNull() }) } }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.reuseRows { it.channel.id }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Tonight: favourite channels with something on now or starting within four hours, soonest first, each with what it is ("Now · Match" or "21:30 · News"). */
     val tonight: StateFlow<List<LiveItem>> = combine(c.user.favouriteIds(UserRepository.FAVOURITES), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->
@@ -119,7 +119,7 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
             val p = runCatching { c.epg.upcoming(c.db, epgId, 2) }.getOrDefault(emptyList()).firstOrNull { it.endMs > now && it.startMs < limit } ?: return@mapNotNull null
             (if (p.isLive(now)) 0L else p.startMs) to LiveItem(ch, (if (p.isLive(now)) "Now" else clock.format(java.util.Date(p.startMs))) + " · " + p.title)
         }.sortedBy { it.first }.map { it.second }.take(14)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.reuseRows { it.channel.id }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val favourites: StateFlow<List<FavItem>> = combine(c.user.favouriteIds(UserRepository.FAVOURITES), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->
         val list = ids.toList()
@@ -128,13 +128,13 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         val sr = c.catalog.seriesByIds(list).filter { it.sourceId in lib }.map { FavItem.Sr(it) }
         val order = list.withIndex().associate { it.value to it.index }
         (ch + mv + sr).sortedBy { order[it.id] }.distinctBy { it.kind() + app.streamsetu.core.data.repo.SearchText.normalize(it.title) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.reuseRows { it.id }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val watchLater: StateFlow<List<FavItem>> = combine(c.user.favouriteIds(UserRepository.WATCH_LATER), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->
         val list = ids.toList(); val order = list.withIndex().associate { it.value to it.index }
         (list.mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib }.map { FavItem.Ch(it) } + c.catalog.moviesByIds(list).filter { it.sourceId in lib }.map { FavItem.Mv(it) } + c.catalog.seriesByIds(list).filter { it.sourceId in lib }.map { FavItem.Sr(it) })
             .sortedBy { order[it.id] }.distinctBy { it.kind() + app.streamsetu.core.data.repo.SearchText.normalize(it.title) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.reuseRows { it.id }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val recentMovies: StateFlow<List<Movie>> = c.browse.movies(Browse.RecentlyAdded, SortSpec(SortField.ADDED), 30).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val recentSeries: StateFlow<List<Series>> = c.browse.series(Browse.RecentlyAdded, SortSpec(SortField.ADDED), 30).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -258,4 +258,14 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     }
 
     companion object { val DEFAULT_ORDER = listOf("continue", "live", "foryou", "movies", "series", "favorites", "later", "categories") }
+}
+
+/** Emits the same instances for rows that did not change, so a row of cards redraws only the cards that really changed (a progress bar, a badge) and not the whole row. */
+private fun <T> Flow<List<T>>.reuseRows(key: (T) -> String): Flow<List<T>> {
+    var previous: Map<String, T> = emptyMap()
+    return map { list ->
+        val out = list.map { n -> previous[key(n)]?.takeIf { it == n } ?: n }
+        previous = HashMap<String, T>(out.size * 2).also { m -> out.forEach { m[key(it)] = it } }
+        out
+    }
 }

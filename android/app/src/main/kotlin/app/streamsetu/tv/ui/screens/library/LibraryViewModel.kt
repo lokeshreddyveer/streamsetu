@@ -52,10 +52,12 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
      * Tests the connection once, by hand: signs in, reads the catalog, and keeps the connection only when it holds something to watch.
      * Nothing retries by itself. A failure leaves the form as it was so the details can be corrected and tested again.
      */
+    private var testJob: kotlinx.coroutines.Job? = null
+
     fun test(type: SourceType, draftId: String?, f: Form) {
         if (testing) return
         testing = true
-        viewModelScope.launch {
+        testJob = viewModelScope.launch {
             _test.value = Test.Running
             val label = f.name.ifBlank { f.address.trim().substringAfter("://").substringBefore('/').substringAfterLast('/').take(30).ifBlank { "My connection" } }
             val saved = c.sources.add(Source(id = draftId.orEmpty(), name = label, type = type, address = f.address.trim(), username = f.user.trim().ifBlank { null }, draft = true, userAgent = f.userAgent.trim().ifBlank { null }), f.password.trim().ifBlank { null })
@@ -65,10 +67,13 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
                     if (r.channels + r.movies + r.series == 0) _test.value = Test.Failed("The sign-in worked but the provider returned nothing to watch. Check that the subscription is active.").also { c.sources.setError(saved.id, "Nothing to watch") }
                     else { _test.value = Test.Passed(saved.id, label, r.channels, r.movies, r.series); app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.SUCCESS) }
                 }
-                .onFailure { app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.ERROR); _test.value = Test.Failed(it.message ?: "The connection could not be read.").also { _ -> c.sources.setError(saved.id, it.message?.take(200)) } }
+                .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it; app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.ERROR); _test.value = Test.Failed(it.message ?: "The connection could not be read.").also { _ -> c.sources.setError(saved.id, it.message?.take(200)) } }
             testing = false
         }
     }
+
+    /** Stops a test that is taking too long. The form is left as it was, ready to be corrected or tested again. */
+    fun cancelTest() { testJob?.cancel(); testJob = null; testing = false; _test.value = Test.Idle }
 
     fun resetTest() { _test.value = Test.Idle }
 

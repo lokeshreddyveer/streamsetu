@@ -208,7 +208,7 @@ fun PhoneSearch(c: AppContainer, nav: Navigator) {
     var recents by remember { mutableStateOf(c.search.recentIn(scopeKey)) }
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    LaunchedEffect(Unit) { delay(150); runCatching { focus.requestFocus() } }
+    LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(focus, 8) }
     LaunchedEffect(Unit) { c.globalSearch.warmUp() }
     LaunchedEffect(q, tab, retry) {
         if (q.trim().isEmpty()) { results = GlobalResults(); searching = false; failed = false; return@LaunchedEffect }

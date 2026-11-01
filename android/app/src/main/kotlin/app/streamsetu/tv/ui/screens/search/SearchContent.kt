@@ -93,6 +93,7 @@ fun SearchContent(
     // A search is not just "results or nothing": the results shown stay while the next ones are looked up (with a small spinner by the field), "No titles found" appears only after a
     // search that worked and found nothing, and a search that failed says so and offers Retry. What went wrong is logged, never shown.
     var searching by remember { mutableStateOf(false) }
+    var typedQuery by remember { mutableStateOf<String?>(null) }
     var failed by remember { mutableStateOf(false) }
     var retryTick by remember { mutableIntStateOf(0) }
     LaunchedEffect(query, tab, retryTick, ctx, asked) {
@@ -100,7 +101,7 @@ fun SearchContent(
         if (restore) c.search.setLastIn(scopeKey, query)
         if (query.isBlank()) { setResults(null, mine); searching = false; failed = false; return@LaunchedEffect }
         searching = true; failed = false
-        delay(150)
+        if (typedQuery != query) { delay(150); typedQuery = query }          // the pause is for typing only: a new tab, a retry or "show more" for the same words starts at once
         try {
             // Titles first, then the slower sources, each added below what is on screen. The remote's row never moves, and a slow guide never holds back a movie.
             val base = if (tab == SearchTab.ALL) 12 else 60
@@ -176,6 +177,8 @@ fun SearchContent(
         settled = true
     }
     val actionRows = if (query.isNotBlank()) above(query, firstAction) else Pair<androidx.compose.foundation.lazy.LazyListScope.() -> Unit, androidx.compose.foundation.lazy.LazyListScope.() -> Unit>({ }, { })
+    var castStale by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { castStale = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { c.people.isStale() } }
     val aboveItems = actionRows.first            // commands and the Ask AI row, before the results
     val belowItems = actionRows.second           // what the AI suggested, after the results: it never comes before or delays what the app itself found
     LazyColumn(modifier, state = listState, contentPadding = PaddingValues(bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -220,11 +223,15 @@ fun SearchContent(
             item(key = "best-match") {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Eyebrow("Best match", Modifier.padding(top = 4.dp))
-                    SearchResultRow(exact, if (exact.id == targetId) Modifier.focusRequester(focusTarget) else Modifier, { if (it) held?.focusedId = exact.id }) { open(exact) }
+                    BestMatchCard(exact, if (exact.id == targetId) Modifier.focusRequester(focusTarget) else Modifier, { if (it) held?.focusedId = exact.id }) { open(exact) }
                 }
             }
         }
         aboveItems()
+        // Cast and director matches come from an index that is updated only on request (Settings) or when idle, so say so when it has not caught up.
+        if (castStale && query.isNotBlank() && (ContentKind.MOVIE in kinds || ContentKind.SERIES in kinds)) item(key = "cast-stale") {
+            Label("Cast results may be incomplete. Update the cast search index in Settings.", Tokens.small, Tokens.textTertiary, maxLines = 2)
+        }
         if (failed && query.isNotBlank()) item(key = "search-failed") {
             TvStatusState("Search could not be completed", detail = "Try again in a moment.", icon = Icons.Filled.ErrorOutline, actionLabel = "Retry", onAction = { retryTick++ })
         }
@@ -234,12 +241,24 @@ fun SearchContent(
             phase == SearchPhase.IDLE -> {
                 if (recent.isNotEmpty()) {
                     item { Eyebrow("Recent searches", Modifier.padding(vertical = 4.dp)) }
-                    items(recent, key = { "r$it" }) { q -> SuggestionRow(q, Icons.Filled.History) { query = q } }
+                    item(key = "recent-chips") { androidx.compose.foundation.lazy.LazyRow(Modifier.bleedStart(14.dp).railOnLeft(), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)) { items(recent.take(8), key = { "r$it" }) { q -> RecentChip(q) { query = q } } } }
                     item { TvButton("Clear history", { c.search.clearIn(scopeKey); recent = emptyList() }, Modifier.padding(top = 6.dp), icon = Icons.Filled.Delete) }
                 } else item {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Label(if (tab == SearchTab.ALL) "Search your library" else "Search " + tab.label.lowercase(), Tokens.title, Tokens.text, FontWeight.SemiBold)
-                        Label(if (tab == SearchTab.ALL) "Channels, movies, series and episodes from every playlist. Works offline." else "Try a title, or something like \u201chindi movies 2024\u201d.", Tokens.body, Tokens.textSecondary, maxLines = 2)
+                    // An empty page says what it can do and offers a few searches to start from, picked with the remote.
+                    Column(Modifier.widthIn(max = 760.dp).padding(top = 28.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                            Box(Modifier.size(64.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Tokens.card), Alignment.Center) { Image(Icons.Filled.Search, null, Modifier.size(30.dp), colorFilter = ColorFilter.tint(Tokens.accent)) }
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Label(if (tab == SearchTab.ALL) "Search your library" else "Search " + tab.label.lowercase(), Tokens.title, Tokens.text, FontWeight.SemiBold)
+                                Label(if (tab == SearchTab.ALL) "Channels, movies, series and episodes from every playlist. Works offline." else "Try a title, or something like \u201chindi movies 2024\u201d.", Tokens.body, Tokens.textSecondary, maxLines = 2)
+                            }
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Eyebrow("Try searching for")
+                            Row(Modifier.railOnLeft(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("hindi movies 2024", "telugu series", "news", "cricket").forEach { q -> TypeChip(q, false) { query = q } }
+                            }
+                        }
                     }
                 }
             }
@@ -255,9 +274,14 @@ fun SearchContent(
                 shownOrder.filter { it !in app.streamsetu.core.data.repo.SportsSearchOrder }.forEach { kind ->
                     val rows = withoutBest(r.byKind[kind].orEmpty(), best)
                     if (rows.isEmpty()) return@forEach
-                    item(key = "t-${kind.name}") { SectionTitle("${kind.title}  ·  ${rows.size}") }
+                    // "12+" when there are more than the group shows: the number is how many are listed here, not how many exist.
+                    item(key = "t-${kind.name}") { SectionTitle("${kind.title}  ·  ${rows.size}" + if (kind in r.more) "+" else "") }
                     // Every kind of result is the same row: artwork, a title, one line about it, and what kind it is.
-                    items(rows, key = { it.id }) { x -> SearchResultRow(x, (if (x.id == targetId) Modifier.focusRequester(focusTarget) else Modifier), { if (it) held?.focusedId = x.id }) { open(x) } }
+                    if (kind == SearchKind.MOVIE || kind == SearchKind.SERIES || kind == SearchKind.CHANNEL) item(key = "r-${kind.name}") {
+                        androidx.compose.foundation.lazy.LazyRow(Modifier.bleedStart(14.dp).railOnLeft(), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(start = 14.dp, end = 24.dp, top = 6.dp, bottom = 10.dp)) {
+                            items(rows, key = { it.id }, contentType = { "tile" }) { x -> SearchTile(x, (if (x.id == targetId) Modifier.focusRequester(focusTarget) else Modifier), { if (it) held?.focusedId = x.id }) { open(x) } }
+                        }
+                    } else items(rows, key = { it.id }) { x -> SearchResultRow(x, (if (x.id == targetId) Modifier.focusRequester(focusTarget) else Modifier), { if (it) held?.focusedId = x.id }) { open(x) } }
                     // More of this group, on request. The row keeps its place in the list while the rows above it grow, so the remote stays on it.
                     if (kind in r.more) item(key = "more-${kind.name}") {
                         val next = (asked[kind] ?: 0) + SHOW_MORE_STEP
@@ -287,9 +311,10 @@ private fun androidx.compose.foundation.lazy.LazyListScope.sportsRows(items: Lis
 /** One search result, whatever it is: 48 dp artwork, a title (two lines at most), one line about it, and its kind on the right. At least 72 dp tall, the same focus frame everywhere. */
 @Composable
 internal fun SearchResultRow(x: SearchItem, extra: Modifier, onFocus: (Boolean) -> Unit, provenance: String? = null, onOpen: () -> Unit) {
-    Focusable(onOpen, extra.fillMaxWidth().widthIn(max = 860.ui).heightIn(min = 90.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = Tokens.card.copy(alpha = 0.55f), scaleOnFocus = 1.02f) { _ ->
+    Focusable(onOpen, extra.fillMaxWidth().widthIn(max = 860.ui).heightIn(min = 90.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = Tokens.card.copy(alpha = 0.55f), scaleOnFocus = 1.02f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { _ ->
         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.size(58.ui).clip(RoundedCornerShape(8.dp)).background(Tokens.elevated), Alignment.Center) {
+                SearchArtworkFill(x)
                 if (!x.artworkUrl.isNullOrBlank()) coil.compose.AsyncImage(x.artworkUrl, null, Modifier.fillMaxSize(), contentScale = if (x.kind == SearchKind.CHANNEL) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
                 else Image(when (x.kind) { SearchKind.CHANNEL -> Icons.Filled.LiveTv; SearchKind.MOVIE -> Icons.Filled.Movie; SearchKind.SERIES -> Icons.Filled.VideoLibrary; SearchKind.EPISODE -> Icons.Filled.PlayCircle; SearchKind.PROGRAMME -> Icons.Filled.CalendarMonth; SearchKind.FOLDER -> Icons.Filled.Folder; SearchKind.COLLECTION -> Icons.Filled.Layers
                         SearchKind.SPORTS_EVENT, SearchKind.SPORTS_RECORDING -> Icons.Filled.SportsScore; SearchKind.SPORTS_TEAM -> Icons.Filled.Groups; SearchKind.SPORTS_COMPETITION -> Icons.Filled.EmojiEvents },
@@ -305,13 +330,59 @@ internal fun SearchResultRow(x: SearchItem, extra: Modifier, onFocus: (Boolean) 
     }
 }
 
+/** A result as a tile: the poster (or the channel logo) with the title and one line under it. Movies, series and channels are laid out as a sideways rail. */
+@Composable
+internal fun SearchTile(x: SearchItem, extra: Modifier, onFocus: (Boolean) -> Unit, onOpen: () -> Unit) {
+    val channel = x.kind == SearchKind.CHANNEL
+    Focusable(onOpen, extra.width(if (channel) 176.ui else 150.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, focusedContainer = Color(0x24FFFFFF), scaleOnFocus = 1.05f, showRing = false, ringBand = false) { _ ->
+        Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(if (channel) 16f / 10f else 2f / 3f).clip(RoundedCornerShape(10.dp)).background(Tokens.elevated), Alignment.Center) {
+                SearchArtworkFill(x)
+                if (!x.artworkUrl.isNullOrBlank()) coil.compose.AsyncImage(x.artworkUrl, null, Modifier.fillMaxSize().then(if (channel) Modifier.padding(14.dp) else Modifier), contentScale = if (channel) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
+                else if (channel) Image(Icons.Filled.LiveTv, null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(Tokens.accent)) else PosterPlaceholder(x.title, Modifier.fillMaxSize())
+            }
+            Label(x.title, Tokens.small, Tokens.text, FontWeight.SemiBold, maxLines = 2)
+            if (x.subtitle.isNotBlank()) Label(x.subtitle, Tokens.caption, Tokens.textSecondary, maxLines = 1)
+        }
+    }
+}
+
+/** The title that matches what was typed best, larger than the rest, with its picture. */
+@Composable
+private fun BestMatchCard(x: SearchItem, extra: Modifier, onFocus: (Boolean) -> Unit, onOpen: () -> Unit) {
+    Focusable(onOpen, extra.fillMaxWidth().widthIn(max = 860.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radiusLarge), container = Color(0x14FFFFFF), focusedContainer = Color(0x2EFFFFFF), scaleOnFocus = 1.02f, hairline = true) { _ ->
+        Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.width(84.ui).aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)).background(Tokens.elevated), Alignment.Center) {
+                SearchArtworkFill(x)
+                if (!x.artworkUrl.isNullOrBlank()) coil.compose.AsyncImage(x.artworkUrl, null, Modifier.fillMaxSize(), contentScale = if (x.kind == SearchKind.CHANNEL) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
+                else PosterPlaceholder(x.title, Modifier.fillMaxSize())
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Label(x.kind.badge(), Tokens.caption, Tokens.accent, FontWeight.Bold)
+                Label(x.title, Tokens.title, Tokens.text, FontWeight.Bold, maxLines = 2)
+                if (x.subtitle.isNotBlank()) Label(x.subtitle, Tokens.small, Tokens.textSecondary, maxLines = 2)
+            }
+            Image(Icons.Filled.PlayArrow, null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(Tokens.text))
+        }
+    }
+}
+
+/** A recent search as a chip: one press runs it again. */
+@Composable
+private fun RecentChip(text: String, onClick: () -> Unit) = Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = Color(0x1FFFFFFF), focusedContainer = Color.White, scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, showRing = false, ringBand = false) { f ->
+    Row(Modifier.padding(horizontal = 14.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        Image(Icons.Filled.History, null, Modifier.size(15.dp), colorFilter = ColorFilter.tint(if (f) Tokens.onBright else Tokens.textSecondary))
+        Label(text, Tokens.small, if (f) Tokens.onBright else Tokens.text, FontWeight.SemiBold)
+    }
+}
+
 @Composable
 private fun TypeChip(label: String, on: Boolean, onClick: () -> Unit) = Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = if (on) Color(0xFFE9ECF0) else Tokens.card, focusedContainer = if (on) Color.White else Tokens.focusedSurface, scaleOnFocus = 1.05f, ringWidth = 0.dp) { _ ->
     Label(label, Tokens.row, if (on) Tokens.onBright else Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp))
 }
 
 @Composable
-private fun SuggestionRow(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) = Focusable(onClick, Modifier.widthIn(max = 420.dp).fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
+private fun SuggestionRow(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) = Focusable(onClick, Modifier.widthIn(max = 420.dp).fillMaxWidth(), scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { _ ->
     Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Image(icon, null, Modifier.size(15.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary)); Label(text, Tokens.row, Tokens.text)
     }
@@ -325,7 +396,7 @@ fun SectionSearch(c: AppContainer, kind: ContentKind, onOpen: (Card) -> Unit, on
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusOnFrames(8, { first.requestFocus() }, { app.streamsetu.tv.ui.components.FocusMemory.focused === first }) }
     TvDialog(onDismissRequest = { c.search.setLastIn(scope, ""); onClose() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Box(Modifier.fillMaxSize().background(Tokens.background).padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical)) {
+        Box(Modifier.fillMaxSize().pageBackground().padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label(if (kind == ContentKind.MOVIE) "Search Movies" else "Search Series", Tokens.display, Tokens.text, FontWeight.Bold)
                 SearchContent(c, setOf(kind), Modifier.fillMaxSize(), entry = first, restore = true,
@@ -339,7 +410,7 @@ fun SectionSearch(c: AppContainer, kind: ContentKind, onOpen: (Card) -> Unit, on
 @Composable
 fun SearchScreen(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
     val entry = app.streamsetu.tv.ui.components.LocalContentEntry.current
-    Column(Modifier.fillMaxSize().padding(start = Tokens.safeHorizontal + 4.dp, end = Tokens.safeHorizontal, top = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize().padding(start = Tokens.safeHorizontal + 4.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Label("Search", Tokens.display, Tokens.text, FontWeight.ExtraBold)
         SearchContent(c, setOf(ContentKind.CHANNEL, ContentKind.MOVIE, ContentKind.SERIES), Modifier.fillMaxSize(), entry = entry,
             onChannel = { ch -> app.streamsetu.tv.play(c, nav, ChannelPlayable(ch)) },
@@ -358,3 +429,11 @@ fun SearchScreen(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
 
 /** How many more rows one press of "Show more" adds to a group. */
 internal const val SHOW_MORE_STEP = 24
+
+
+/** A film or series with no picture asks for its own cover, as a poster does; the tile shows it the next time the results are drawn. */
+@androidx.compose.runtime.Composable
+private fun SearchArtworkFill(x: SearchItem) {
+    val filler = LocalArtworkFiller.current
+    if (x.artworkUrl.isNullOrBlank() && (x.kind == SearchKind.MOVIE || x.kind == SearchKind.SERIES)) androidx.compose.runtime.LaunchedEffect(x.id) { filler?.invoke(x.id, false) }
+}

@@ -1,5 +1,8 @@
 package app.streamsetu.tv
 
+import kotlinx.coroutines.asCoroutineDispatcher
+import androidx.room.withTransaction
+import kotlinx.coroutines.sync.withLock
 import app.streamsetu.core.sync.programmeCount
 import android.app.Application
 import javax.inject.Inject
@@ -59,6 +62,9 @@ class AppContainer @Inject constructor(
     val cast: CastSupport,
     val channelPrefs: app.streamsetu.core.data.repo.ChannelPrefs,
 ) {
+    /** Finds the picture of a title that shows none, one title at a time (see ArtworkFiller). */
+    val artwork: app.streamsetu.core.sync.ArtworkFiller by lazy { app.streamsetu.core.sync.ArtworkFiller(sync, appScope) }
+
     /** Keeps favourites, Watch Later, collections and resume points in step with the person's other devices on the same Wi-Fi. */
     val lan: app.streamsetu.tv.sync.LanSyncService by lazy { app.streamsetu.tv.sync.LanSyncService(context, appScope, db) }
 
@@ -242,7 +248,7 @@ class AppContainer @Inject constructor(
         }
     }
 
-    /** Reads who is in each movie, a little at a time, so people can be searched for (see [app.streamsetu.core.sync.PeopleIndexer]). */
+    /** Reads who is in each movie so people can be searched for. Never started by launch, sync, browsing, Search or playback: only from Settings or an idle pass (see [app.streamsetu.core.sync.PeopleIndexer]). */
     val people = app.streamsetu.core.sync.PeopleIndexer(db, sync) { playback.current.value != null }
 
     /** How much a kids profile may watch (see [app.streamsetu.core.data.repo.ViewingLimits]); what stopped playback is held here until a parent adds time or the time passes. */
@@ -399,7 +405,6 @@ class AppContainer @Inject constructor(
                 }
             }
         }
-        appScope.launch { runCatching { db.catalog().deleteDividers() } }
         appScope.launch { playback.state.collect { if (it == app.streamsetu.core.playback.PlaybackState.Ended) advanceAfterEnd() } }
         appScope.launch { playback.state.collect { if (it == app.streamsetu.core.playback.PlaybackState.Playing) fetchSubtitleIfWanted() } }
         appScope.launch { playback.state.collect { if (it is app.streamsetu.core.playback.PlaybackState.Failed) tryNextCopy() } }
@@ -436,7 +441,7 @@ class AppContainer @Inject constructor(
         }
         lan.boardSink = { nowBoard.ingest(it) }
         appScope.launch { playback.current.collect { lan.nudge() } }
-        appScope.launch { runCatching { PlexTokenCleanup.run(db.openHelper.writableDatabase) } }
+        // (the Plex token cleanup is a database migration now: see AppDatabase.MIGRATION_9_10)
     }
 
     private var featuredCache: List<Playable>? = null
@@ -452,7 +457,6 @@ class AppContainer @Inject constructor(
     suspend fun syncWithGuide(sourceId: String): SyncService.Result {
         val r = sync.sync(sourceId)
         featuredCache = null
-        if (!app.streamsetu.tv.trace.Diag.indexer) people.start()
         runCatching {
             val src = sources.get(sourceId) ?: return@runCatching
             val fallback = if (src.type == SourceType.XTREAM) {
@@ -582,11 +586,16 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
     /** Artwork downloads share the connection with the video, so while something plays only a few run at once. */
     private val images = okhttp3.Dispatcher().apply { maxRequests = 16; maxRequestsPerHost = 6 }
 
+    private val decodeDispatcher = java.util.concurrent.Executors.newFixedThreadPool(2) { r -> Thread { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND); r.run() }.apply { name = "artwork-decode" } }.asCoroutineDispatcher()
+
     override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
         .okHttpClient(okhttp3.OkHttpClient.Builder().dispatcher(images).addNetworkInterceptor(ArtworkAuth(container.sources, container.credentials)).build())          // per hop: a redirect to another host never carries the Plex token
         .diskCache { coil.disk.DiskCache.Builder().directory(java.io.File(cacheDir, "image_cache")).maxSizeBytes(160L * 1024 * 1024).build() }
         .crossfade(if (Perf.lowEnd(this)) 0 else 180)          // artwork fades into its card; on a low-end stick it just appears
         .memoryCache { coil.memory.MemoryCache.Builder(this).maxSizePercent(if (Perf.lowEnd(this)) 0.12 else 0.22).build() }
+        // Pictures are decoded on two threads of low priority, never on every core: a held scroll used to start hundreds of decodes that took the cores from drawing.
+        .decoderDispatcher(decodeDispatcher)
+        .fetcherDispatcher(decodeDispatcher)
         .allowRgb565(true)                  // posters have no transparency: half the memory and decoding work
         .build()
 
@@ -604,15 +613,17 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             app.streamsetu.tv.record.ScheduledRecordings.rearm(this@StreamSetuApp)
             if (app.streamsetu.tv.sports.SportsFeature.enabled) container.sportsRecordings.start(container.appScope)          // the Sports rows follow the recordings
             container.lan.startIfEnabled(container.profiles.isMainActive)
-            kotlinx.coroutines.delay(5000)
-            runCatching { container.globalSearch.warmUp() }
+            // The search word list is warmed when the remote has been still for a while, and never at the same time as another background job (one at a time, so the screen is not starved).
+            InputClock.awaitIdle(5000)
+            MaintenanceGate.lock.withLock { runCatching { container.globalSearch.warmUp() } }
         }
         CrashReporter.install(this, runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?")
         container.appScope.launch {
             // "Refresh on app start": after the screen has settled, each connection is read once, one after another, and never while something plays.
             kotlinx.coroutines.delay(6000)
             if (container.settings.refreshOnStart.value) container.sources.all().filter { !it.draft && it.enabled }.forEach { s ->
-                if (container.playback.current.value == null) runCatching { container.syncWithGuide(s.id) }
+                InputClock.awaitIdle(6000)          // not while the remote is being used, and one job at a time
+                if (container.playback.current.value == null) MaintenanceGate.lock.withLock { runCatching { container.syncWithGuide(s.id) } }
             }
         }
         container.appScope.launch {
@@ -701,3 +712,15 @@ class FoundTitle(val title: String, val year: Int?, val isSeries: Boolean, val m
 
 private fun kotlinx.coroutines.flow.Flow<app.streamsetu.core.net.AppDns.Config>.kotlinx_combineLocal(local: kotlinx.coroutines.flow.Flow<Boolean>) =
     kotlinx.coroutines.flow.combine(this, local) { c, l -> c.copy(localUsesSystem = l) }
+
+
+/** When the remote was last used, kept by the activity for every key; background jobs that are not needed for the screen wait for it to be still. */
+object InputClock {
+    @Volatile private var last = android.os.SystemClock.elapsedRealtime()          // the app has only just started: it is not yet "idle"
+    fun note() { last = android.os.SystemClock.elapsedRealtime() }
+    /** Returns when no key has been pressed for [quietMs] (at once if none has been pressed). */
+    suspend fun awaitIdle(quietMs: Long) { while (android.os.SystemClock.elapsedRealtime() - last < quietMs) kotlinx.coroutines.delay(500) }
+}
+
+/** One background job at a time (the catalog refresh, the search warm-up): they read and write the same database and share four slow cores with the screen. */
+object MaintenanceGate { val lock = kotlinx.coroutines.sync.Mutex() }

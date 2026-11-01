@@ -34,7 +34,7 @@ class StatisticsRepository(private val db: AppDatabase) {
     suspend fun compute(sinceDays: Int, zone: ZoneId = ZoneId.systemDefault(), now: Long = System.currentTimeMillis()): ViewingStatistics {
         val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
         val rows = db.extras().watchTimeSince(if (sinceDays <= 0) 0 else today.toEpochDay() - sinceDays + 1)
-        return aggregate(rows, today)
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { aggregate(rows, today) }          // the sums and sorts are not done on the screen's thread
     }
 
     suspend fun clear() = db.extras().clearWatchTime()

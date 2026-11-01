@@ -20,11 +20,11 @@ fun FranchiseTimeline(films: List<Movie>, currentId: String, onOpen: (Movie) -> 
     if (films.size < 2) return
     Column {
         SectionTitle("Timeline  ·  ${films.size} films" + (films.mapNotNull { it.year }.let { y -> if (y.isEmpty()) "" else "  ·  ${y.min()} – ${y.max()}" }))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(0.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
             items(films.withIndex().toList(), key = { it.value.id }) { (i, m) ->
                 val here = m.id == currentId
                 Column(Modifier.width(Tokens.posterWidth + 14.dp).padding(end = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    PosterCard(m.title, m.posterUrl, { if (!here) onOpen(m) }, subtitle = if (here) "You are here" else null)
+                    PosterCard(m.title, m.posterUrl, { if (!here) onOpen(m) }, subtitle = if (here) "You are here" else null, itemId = m.id)
                     TimelineRail(i, films.size, films.indexOfFirst { it.id == currentId }.coerceAtLeast(0))
                     Label(m.year?.toString() ?: "", Tokens.small, if (here) Tokens.accent else Tokens.text, FontWeight.SemiBold)
                 }

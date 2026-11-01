@@ -88,7 +88,7 @@ fun ContextMenu(title: String, subtitle: String? = null, actions: List<MenuActio
     TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(
             Modifier.fillMaxSize()
-                .drawBehind { drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(0.30f to Color.Transparent, 0.62f to Color(0x8C000000), 1f to Color(0xF2070B10)), alpha = enter) }
+                .drawBehind { drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(0.30f to Color.Transparent, 0.62f to Color(0x8C000000), 1f to Tokens.background.copy(alpha = 0.95f)), alpha = enter) }
                 .onPreviewKeyEvent { e -> SelectKeyGuard.isSelect(e) && guard.swallow(SelectKeyGuard.isDown(e), e.nativeKeyEvent.downTime) },
             Alignment.CenterEnd,
         ) {
@@ -132,7 +132,7 @@ fun PinDialog(create: Boolean, check: (String) -> Boolean, onDone: (String) -> U
     var firstEntry by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) { delay(80); runCatching { first.requestFocus() } }
+    LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(first, 8) }
     fun press(d: String) {
         if (entered.length >= 4) return
         entered += d
@@ -172,7 +172,7 @@ fun PinDialog(create: Boolean, check: (String) -> Boolean, onDone: (String) -> U
 fun SortSheet(kind: ContentKind, current: SortSpec, availability: SortAvailability, onApply: (SortSpec) -> Unit, onClose: () -> Unit) {
     var draft by remember { mutableStateOf(current) }
     val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) { delay(100); runCatching { first.requestFocus() } }
+    LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(first, 8) }
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
     val fields = availability.offers(kind)
@@ -225,7 +225,7 @@ fun SortSheet(kind: ContentKind, current: SortSpec, availability: SortAvailabili
 
 @Composable
 fun ToggleRow(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
-    Focusable({ onChange(!on) }, Modifier.fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
+    Focusable({ onChange(!on) }, Modifier.fillMaxWidth(), scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { _ ->
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Label(label, Tokens.row, Tokens.text, modifier = Modifier.weight(1f))
             Image(if (on) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked, null, Modifier.size(17.dp), colorFilter = ColorFilter.tint(if (on) Tokens.accent else Tokens.textTertiary))
@@ -260,7 +260,7 @@ fun OptionSheet(title: String, options: List<Pair<String, String>>, selectedId: 
     val first = remember { FocusRequester() }
     val start = options.indexOfFirst { it.first == selectedId }.coerceAtLeast(0)
     val state = androidx.compose.foundation.lazy.rememberLazyListState(maxOf(0, start - 3))
-    LaunchedEffect(Unit) { delay(120); runCatching { first.requestFocus() } }
+    LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(first, 8) }
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
     TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {

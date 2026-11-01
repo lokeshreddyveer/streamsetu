@@ -1,8 +1,10 @@
 package app.streamsetu.tv.ui.screens.section
 
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -38,6 +40,7 @@ import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.nav.Navigator
 import app.streamsetu.tv.nav.Overlay
 import app.streamsetu.tv.ui.components.*
+import app.streamsetu.tv.ui.theme.ui
 import app.streamsetu.tv.ui.screens.home.HomeMenuHost
 import app.streamsetu.tv.ui.screens.home.HomeTarget
 import app.streamsetu.tv.ui.screens.home.HomeViewModel
@@ -68,17 +71,34 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val noun = if (kind == ContentKind.MOVIE) "Movies" else "Series"
     val folders by vm.folders.collectAsState()
     val browse by vm.browse.collectAsState()
-    val cards by vm.cards.collectAsState()
+    val cardsRaw by vm.cards.collectAsState()
     val sort by vm.sort.collectAsState()
     val filter by vm.filter.collectAsState()
-    val banner by vm.banner.collectAsState()
+    // The hero's data and the rails are asked for only once the first page of titles is on the screen, so they never queue ahead of it in the database.
+    // They start only when this page is the curated landing page, its first page of titles is for the present library, sort and filter, and that page has been drawn (two frames), so they never queue ahead of it
+    // and are never started for a folder, a filtered list or the plain grid.
+    LaunchedEffect(Unit) { if (app.streamsetu.tv.BuildConfig.FRAME_LOG) android.util.Log.i("Entry", "shell composed ($kind)") }
+    val listKey by vm.listKey.collectAsState()
+    val publishedKey by vm.cardsKey.collectAsState()
+    val primaryReady = cardsRaw != null && publishedKey != null && publishedKey == listKey          // the titles on screen were read for this library, profile, folder and sort (never the previous one's)
+    val cards = if (primaryReady) cardsRaw else null          // a title is drawn only when it was read for this library, profile, restrictions, folder and sort: never one from before a change
+    var drawnKey by remember { mutableStateOf<Any?>(null) }
+    LaunchedEffect(listKey, primaryReady, vm.gridOnly) { if (primaryReady) { androidx.compose.runtime.withFrameNanos { }; androidx.compose.runtime.withFrameNanos { }; drawnKey = listKey } else drawnKey = null }
+    val firstPageDrawn = primaryReady && drawnKey == listKey
+    // Everything beyond the first page (folder counts, favourites, progress, new episodes, collections, filter choices) is read only now, never ahead of it.
+    LaunchedEffect(firstPageDrawn) { if (firstPageDrawn) { if (app.streamsetu.tv.BuildConfig.FRAME_LOG) android.util.Log.i("Entry", "first page drawn ($kind)"); vm.secondary.value = true } }
+    LaunchedEffect(cards != null) { if (cards != null && app.streamsetu.tv.BuildConfig.FRAME_LOG) android.util.Log.i("Entry", "first cards published ($kind)") }
+    LaunchedEffect(publishedKey) { if (publishedKey != null && app.streamsetu.tv.BuildConfig.FRAME_LOG) android.util.Log.i("Entry", "page published ($kind) ${publishedKey?.browse}") }
+    val firstPageShown = browse == Browse.All && !filter.active && !vm.gridOnly && firstPageDrawn
+    val bannerFlow = remember(firstPageShown) { if (firstPageShown) vm.banner else kotlinx.coroutines.flow.flowOf(emptyList()) }
+    val bannerS = bannerFlow.collectAsState(initial = emptyList())          // read only by the hero, never by the page
     val order by vm.shortcutOrder.collectAsState()
-    val favs by vm.favourites.collectAsState()
-    val later by vm.watchLater.collectAsState()
-    val progress by vm.progress.collectAsState()
-    val seriesNote by vm.seriesNote.collectAsState()
-    val latestBySeries = remember(progress) { progress.values.filter { it.seriesId != null && !it.completed && it.fraction > 0f }.groupBy { it.seriesId!! }.mapValues { (_, l) -> l.maxByOrNull { it.updatedAt }!! } }
-    val newSeries by vm.newSeries.collectAsState()
+    // Held as State and read only inside the card that shows them (derivedStateOf), so a favourite or the player writing progress redraws that card, never the page, the hero or the rails.
+    val favs = vm.favourites.collectAsState()
+    val progress = vm.progress.collectAsState()
+    val seriesNote = vm.seriesNote.collectAsState()
+    val latestBySeries = remember { derivedStateOf { progress.value.values.filter { it.seriesId != null && !it.completed && it.fraction > 0f }.groupBy { it.seriesId!! }.mapValues { (_, l) -> l.maxByOrNull { it.updatedAt }!! } } }
+    val newSeries = vm.newSeries.collectAsState()
     val avail by vm.availability.collectAsState()
     val sources by vm.sources.collectAsState()
     val filterOptions by vm.filterOptions.collectAsState()
@@ -87,16 +107,25 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val showMeta by c.ui.showPosterMeta.collectAsState()
     val bannerOn by c.ui.bannerEnabled.collectAsState()
     val showShortcuts by c.ui.showShortcuts.collectAsState()
-    val rails by vm.rails.collectAsState()
+    val railsFlow = remember(firstPageShown) { if (firstPageShown) vm.rails else kotlinx.coroutines.flow.flowOf(emptyList()) }
+    val rails by railsFlow.collectAsState(initial = emptyList())
+    val gridOnly = vm.gridOnly
+    // The curated page (hero, rails, categories) and the plain poster grid are separate: in the grid only the posters, the title bar and the filter and sort buttons are drawn.
+    val landing = browse == Browse.All && !filter.active && !gridOnly
 
     val entry = app.streamsetu.tv.ui.components.LocalContentEntry.current ?: remember { FocusRequester() }
     // Taken whenever something asks for a folder or collection, also when this screen is already open (from the "In folder" button on a title's page).
     LaunchedEffect(nav.pendingCollection) { nav.pendingCollection?.takeIf { it.first == kind }?.let { vm.select(Browse.Collection(it.second)); nav.pendingCollection = null } }
     LaunchedEffect(nav.pendingFolder) { nav.pendingFolder?.takeIf { it.first == kind }?.let { vm.select(Browse.Folder(it.second)); nav.pendingFolder = null } }
     val gridState = rememberLazyGridState(vm.scrollIndex)
+    // Pictures are not decoded while the grid scrolls; a short rest after it stops, they are asked for.
     // Pictures a little way ahead of the visible rows are fetched at the size a poster is drawn, a bounded number, and not at all while something is playing.
     val context = androidx.compose.ui.platform.LocalContext.current
     val density = androidx.compose.ui.platform.LocalDensity.current
+    // The slideshow holds still while the grid scrolls and while the hero is off screen. Asked when it is about to advance; nothing is observed.
+    val bannerPausedWhen = remember(gridState) { { gridState.isScrollInProgress } }
+    // A dense wall of posters on a small TV box shows focus as a ring and a fill only: no scale, no clip.
+    val densePosters = remember { app.streamsetu.tv.Perf.lowEnd(context) }
     val requested = remember(browse) { HashSet<String>() }
     // Only while the grid stands still, and only for what a poster will really show (same size, same rounded corners, so the picture is found again and not decoded twice).
     // Scrolling again cancels what is still waiting: holding a direction would otherwise queue hundreds of pictures nobody will see.
@@ -113,7 +142,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
             if (c.playback.state.value != app.streamsetu.core.playback.PlaybackState.Idle) return@collectLatest
             val from = (last).coerceAtLeast(0); val to = minOf(list.size, from + app.streamsetu.tv.Perf.prefetchAhead(context))
             for (i in from until to) list.getOrNull(i)?.posterUrl?.takeIf { it.isNotBlank() && requested.add(it) }?.let { url ->
-                pending += loader.enqueue(coil.request.ImageRequest.Builder(context).data(url).size(w, h).transformations(coil.transform.RoundedCornersTransformation(radius)).build())
+                pending += loader.enqueue(app.streamsetu.tv.ui.components.artworkRequest(context, url, w, h, radius))          // the same request a card makes, so the card finds it in the cache
             }
         }
     }
@@ -126,17 +155,25 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     // The title the remote was on is remembered by id: coming back from the rail, a detail page or the player puts the remote on it again (or on the nearest title if it is gone).
     val tab = if (kind == ContentKind.MOVIE) app.streamsetu.tv.nav.Tab.MOVIES else app.streamsetu.tv.nav.Tab.SERIES
     val restore = remember { FocusRequester() }
-    val ids = remember(cards) { cards.orEmpty().map { it.id } }
-    val restoreIndex = remember(ids) { nav.memory.target(tab, ids) }
+    // Built once when the list changes, so a focused poster finds its place with a lookup, never a scan of the whole library.
+    val indexById = remember(cards) { HashMap<String, Int>(cards.orEmpty().size * 2).also { m -> cards.orEmpty().forEachIndexed { i, card -> m[card.id] = i } } }
+    val cardById = remember(cards) { cards.orEmpty().associateBy { it.id } }
+    val restoreIndex = remember(indexById) {
+        val spot = nav.memory.recall(tab)
+        if (spot == null || indexById.isEmpty()) null else indexById[spot.id] ?: spot.index.coerceIn(0, indexById.size - 1)          // the remembered title if it is still there, else the nearest place
+    }
+    val shownFolders = remember(folders) { folders.filter { !it.pref.hidden } }
+    val categoryFolders = remember(shownFolders) { shownFolders.take(40) }
     var restored by remember { mutableStateOf(false) }
     LaunchedEffect(restoreIndex) {
-        if (restored || restoreIndex == null || ids.isEmpty()) return@LaunchedEffect
+        if (restored || restoreIndex == null || indexById.isEmpty()) return@LaunchedEffect
         restored = true
-        val railCount = if (browse == Browse.All && !filter.active) rails.size else 0
+        val railCount = if (landing) rails.size else 0
         gridState.scrollToItem(restoreIndex + railCount + 2)
         if (nav.contentRestoreAllowed) app.streamsetu.tv.ui.components.requestFocusOnFrames(6, { restore.requestFocus() }, { nav.contentFocused || !nav.contentRestoreAllowed })
     }
     var sortOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(sortOpen) { if (sortOpen) vm.loadAvailability() }
     var filterOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
     val homeVm: HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
@@ -168,13 +205,15 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val folderNav = remember { app.streamsetu.tv.nav.FolderNav() }
     val foldersOpen = folderNav.open
     var moreOpen by remember { mutableStateOf(false) }
+    var posterOpen by remember { mutableStateOf(false) }
     val headerScope = androidx.compose.runtime.rememberCoroutineScope()
     val panelFocus = remember { FocusRequester() }
     // From the posters, Back (and Left at the edge) goes up one level to this page's folders; Back from the folders reaches the sidebar.
-    DisposableEffect(foldersOpen, browse) {
+    DisposableEffect(foldersOpen, browse, gridOnly) {
         val hook: () -> Boolean = {
             when {
                 foldersOpen -> { folderNav.back(); nav.revealSidebar(); true }
+                vm.gridOnly && browse == Browse.All -> { vm.gridOnly = false; true }          // from the plain grid, Back returns to the featured page
                 browse is Browse.Continue || browse is Browse.Favorites || browse is Browse.WatchLater || browse is Browse.Recent || browse is Browse.RecentlyAdded -> { vm.select(vm.lastFolder); true }
                 else -> { folderNav.show(); true }
             }
@@ -188,31 +227,32 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     SideEffect { nav.holdFolders(folderClaim, foldersOpen || nav.foldersRequested) }
     DisposableEffect(Unit) { onDispose { nav.holdFolders(folderClaim, false) } }
     LaunchedEffect(foldersOpen) { if (!foldersOpen) folderFocused = false }
+    LaunchedEffect(folderFocused) { if (folderFocused && app.streamsetu.tv.BuildConfig.FRAME_LOG) android.util.Log.i("Entry", "folder panel focused ($kind)") }
     LaunchedEffect(nav.foldersRequested) { if (nav.foldersRequested) folderNav.show() }
     // The request is answered (and the claim on the remote released) only when a folder row really holds the remote, or when the folders are closed again.
     LaunchedEffect(folderFocused, foldersOpen, nav.foldersRequested) { if (nav.foldersRequested && (folderFocused || !folderNav.open)) nav.foldersRequested = false }
     // The remote goes to the folders as soon as they can take it: while the column is still opening it has no width yet, so the request is repeated for up to a second.
-    LaunchedEffect(foldersOpen, focusFolders) { if (foldersOpen) app.streamsetu.tv.ui.components.requestFocusOnFrames(90, { panelFocus.requestFocus() }, { folderFocused }) }
+    // (the panel puts the remote on its selected row itself, once, as it opens: see FolderPanel.openFocusTick)
     // A list opened with "See All" (Continue Watching, Favorites...) goes back to the page it was opened from.
     BackHandler(enabled = browse is Browse.Continue || browse is Browse.Favorites || browse is Browse.WatchLater || browse is Browse.Recent || browse is Browse.RecentlyAdded) { vm.select(vm.lastFolder) }
 
+    run {
     Box(Modifier.fillMaxSize()) {
     // While the folders are open (or have been asked for) nothing in the page can take the remote; only the folder column is enabled. The page is enabled again after Right or OK from the folders.
     androidx.compose.runtime.CompositionLocalProvider(LocalFocusEnabled provides !(folderNav.open || nav.foldersRequested)) {
     Row(Modifier.fillMaxSize()) {
         // The folders take their own column beside the page (the page narrows to make room, nothing is covered); Back, Right or choosing a folder slides them away and the page has the whole width again.
-        androidx.compose.animation.AnimatedVisibility(foldersOpen, Modifier.fillMaxHeight(),
-            enter = folderEnter(), exit = androidx.compose.animation.ExitTransition.None) {
+        if (foldersOpen) {          // no fade, no slide, no animated width: the page is split in one pass
             androidx.compose.runtime.CompositionLocalProvider(LocalRailReveal provides null, LocalFocusEnabled provides true) {
-                FolderPanel(noun, shortcuts, folders, browse, { vm.select(it) }, vm, Modifier.onFocusChanged { folderFocused = it.hasFocus }.width(Tokens.folderPanelWidth).drawBehind { drawLine(Tokens.line, androidx.compose.ui.geometry.Offset(size.width - 0.5f, 0f), androidx.compose.ui.geometry.Offset(size.width - 0.5f, size.height), 1.dp.toPx()) }, entry = panelFocus, onRight = { folderNav.hide(); nav.contentFocusTick++; true }, onLeft = { folderNav.left(); nav.revealSidebar() }, selectOnDwell = true, onConfirm = { folderNav.hide(); nav.contentFocusTick++ }, onShortcutMenu = { sc -> collections.firstOrNull { it.id == (sc.browse as? Browse.Collection)?.id }?.let { colMenu = it } })
+                FolderPanel(noun, shortcuts, folders, browse, { vm.select(it) }, vm, Modifier.onFocusChanged { folderFocused = it.hasFocus }.width(Tokens.folderPanelWidth).drawBehind { drawLine(Tokens.line, androidx.compose.ui.geometry.Offset(size.width - 0.5f, 0f), androidx.compose.ui.geometry.Offset(size.width - 0.5f, size.height), 1.dp.toPx()) }, entry = panelFocus, onRight = { folderNav.hide(); nav.contentFocusTick++; true }, onLeft = { folderNav.left(); nav.revealSidebar() }, selectOnDwell = false, onConfirm = { folderNav.hide(); nav.contentFocusTick++ }, openFocusTick = focusFolders, onShortcutMenu = { sc -> collections.firstOrNull { it.id == (sc.browse as? Browse.Collection)?.id }?.let { colMenu = it } })
             }
         }
         BoxWithConstraints(Modifier.weight(1f).fillMaxHeight().onFocusChanged { inContent = it.hasFocus }) {
-            val heroHeight = maxHeight * 0.6f
+            val heroHeight = 300.ui          // the same hero height as Home, so the banner is the same size on every screen
             // Columns come from the room there is: about seven posters across with the folders closed, fewer beside the folder column; the posters share the width, so the page is always full.
             val gridColumns = ((maxWidth - Tokens.safeHorizontal * 2 + Tokens.gutter) / (posterSize.tv + Tokens.gutter)).toInt().coerceIn(3, 9)
             val list = cards
-            val heroReady = bannerOn && banner.isNotEmpty()
+            val heroReady by remember(bannerOn, gridOnly) { derivedStateOf { bannerOn && !gridOnly && bannerS.value.isNotEmpty() } }
             // Until a key is pressed (and unless the remote is being put back on a title it was on), the hero's Play button holds the remote: taken as soon as the hero exists.
             var interacted by remember { mutableStateOf(false) }
             LaunchedEffect(heroReady) { if (heroReady && !interacted && !folderNav.open && !nav.foldersHoldFocus && nav.memory.recall(tab) == null) { app.streamsetu.tv.ui.components.requestFocusOnFrames(5, { if (!interacted) entry.requestFocus() }, { interacted || nav.foldersHoldFocus || nav.contentFocused }); if (!interacted && !nav.foldersHoldFocus) gridState.scrollToItem(0) } }
@@ -220,9 +260,9 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
             // Search and Folders stay in view; Filter, Sort and View are in More (Filter is also a button above the grid).
             BoxWithConstraints(Modifier.fillMaxWidth()) {
             val collapse = true
-            Row(Modifier.fillMaxWidth().railOnLeft().padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Label(title, 26.sp, Tokens.text, FontWeight.Bold)
+            Row(Modifier.fillMaxWidth().railOnLeft().padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = if (heroReady) Tokens.safeVertical else 6.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.weight(1f), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Label(title, 20.sp, Tokens.text, FontWeight.Bold)
                         val n = cards?.size
                         // The whole library or folder is counted, not only the first pages that are loaded so far.
                         val total = when {
@@ -232,117 +272,96 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                             else -> n
                         }?.coerceAtLeast(n ?: 0)
                         val noun = if (kind == ContentKind.MOVIE) "movies" else "series"
-                        Label((if (n == null) "Loading…" else if (total != null && total > n) "%,d of %,d $noun".format(n, total) else "%,d $noun".format(n)) + "  ·  " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources") + (if (sort != SortSpec.defaultFor(kind)) "  ·  Sort: ${sort.field.label}" else "  ·  Newest first".takeIf { sort.field == SortField.ADDED && sort.ascending }.orEmpty()), Tokens.small, Tokens.textSecondary)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ToolButton("Search", Icons.Filled.Search, if (!heroReady) Modifier.focusRequester(entry) else Modifier, compact = true) { searchOpen = true }
-                        ToolButton("Folders", Icons.Filled.Folder) { folderNav.show() }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        // Round icon buttons, the same as on the details pages; the name of the one the remote is on appears beside them.
+                        var hint by remember { mutableStateOf<String?>(null) }
+                        hint?.let { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.padding(end = 4.dp)) }
+                        TvIconButton(Icons.Filled.Search, "Search", { searchOpen = true }, if (!heroReady) Modifier.focusRequester(entry) else Modifier, onFocus = { hint = if (it) "Search" else null }, plain = heroReady)
+                        TvIconButton(Icons.Filled.Folder, "Folders", { folderNav.show() }, onFocus = { hint = if (it) "Folders" else null }, plain = heroReady)
                         // A direct way to the whole library past the rails: the grid's own heading is the target.
-                        if (browse == Browse.All && !filter.active && rails.isNotEmpty() && !cards.isNullOrEmpty()) ToolButton("All", Icons.Filled.GridView, compact = true) { headerScope.launch { gridState.animateScrollToItem(rails.size + 1) } }
+                        if (landing && rails.isNotEmpty() && !cards.isNullOrEmpty()) TvIconButton(Icons.Filled.GridView, "Browse all", { vm.gridOnly = true; headerScope.launch { gridState.scrollToItem(0) } }, onFocus = { hint = if (it) "Browse all" else null }, plain = heroReady)
+                        else if (browse == Browse.All && !filter.active && gridOnly) TvIconButton(Icons.Filled.Star, "Featured", { vm.gridOnly = false; headerScope.launch { gridState.scrollToItem(0) } }, onFocus = { hint = if (it) "Featured" else null }, plain = heroReady)
                         // Filter is on the bar with Search and Folders. Sort, the poster size and the choice of source are under More.
-                        ToolButton(if (filter.active) "Filter · ${filter.count}" else "Filter", Icons.Filled.FilterList, compact = !filter.active) { filterOpen = true }
-                        ToolButton(if (filter.active) "More · ${filter.count}" else "More", Icons.Filled.MoreHoriz, compact = true) { moreOpen = true }
+                        TvIconButton(Icons.Filled.FilterList, if (filter.active) "Filter · ${filter.count}" else "Filter", { filterOpen = true }, on = filter.active, onFocus = { hint = if (it) (if (filter.active) "Filter · ${filter.count}" else "Filter") else null }, plain = heroReady)
+                        TvIconButton(Icons.Filled.MoreHoriz, "More", { moreOpen = true }, on = filter.active, onFocus = { hint = if (it) "More" else null }, plain = heroReady)
                     }
                 }
             }
             }
+            Column(Modifier.fillMaxSize()) {
+            // The hero stays where it is; only what is below it scrolls.
+            // The page's own header (the folder or library name, the count, the buttons) is a row above the hero, so the two never draw over each other.
+            // With a hero, the page's header (the name, the count, the buttons) is drawn on the top of it, exactly where Home puts its own; the title of the slide starts below that row, so the two never touch.
+            if (!heroReady) Box(Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }) { pageHeader() }
+            if (heroReady) { val banner by bannerS; val later by vm.watchLater.collectAsState(); val favs by vm.favourites.collectAsState(); FeaturedBanner(          // the hero collects only its own lists
+                        banner, heroHeight, primaryEntry = entry, startPadding = Tokens.safeHorizontal, topOverlay = { Box(Modifier.align(Alignment.TopStart)) { pageHeader() } },
+                        isFavorite = { b -> b.id in favs }, onToggleFavorite = { b -> vm.toggle(b.id, UserRepository.FAVOURITES) },
+                        onPrimary = { b -> cardById[b.id]?.let { onOpen(it) } },
+                        onDetails = { b -> cardById[b.id]?.let { onOpen(it) } },
+                        isListed = { b -> b.id in later }, onToggleListed = { b -> vm.toggle(b.id, UserRepository.WATCH_LATER) },
+                        intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuFor != null || sortOpen || filterOpen || searchOpen || foldersOpen, pausedWhen = bannerPausedWhen,
+                        modifier = Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen },          // drawn once into a texture; while the grid scrolls underneath it is only copied, not redrawn
+                    ) }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
             LazyVerticalGrid(
                 GridCells.Fixed(gridColumns), state = gridState, modifier = Modifier.fillMaxSize().railOnLeft().onPreviewKeyEvent { interacted = true; false },
                 contentPadding = PaddingValues(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 14.dp, bottom = 40.dp),          // room for a poster to grow (1.06) and for its frame and glow at the top and sides
                 horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), verticalArrangement = Arrangement.spacedBy(Tokens.gutter),
             ) {
-                item(span = { GridItemSpan(maxLineSpan) }, key = "top") {
-                    if (heroReady) FeaturedBanner(
-                        banner, heroHeight, primaryEntry = entry, startPadding = Tokens.safeHorizontal,
-                        topOverlay = { Box(Modifier.align(Alignment.TopStart)) { pageHeader() } },
-                        onPrimary = { b -> list?.firstOrNull { it.id == b.id }?.let { onOpen(it) } },
-                        onDetails = { b -> list?.firstOrNull { it.id == b.id }?.let { onOpen(it) } },
-                        isListed = { b -> b.id in later }, onToggleListed = { b -> vm.toggle(b.id, UserRepository.WATCH_LATER) },
-                        intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuFor != null || sortOpen || filterOpen || searchOpen,
-                        modifier = Modifier.fullBleed(Tokens.safeHorizontal, Tokens.safeHorizontal),
-                    ) else pageHeader()
-                }
-                if (showShortcuts && (browse != Browse.All || filter.active || rails.isEmpty())) item(span = { GridItemSpan(maxLineSpan) }, key = "shortcuts") {
+                if (showShortcuts && (!landing || rails.isEmpty())) item(span = { GridItemSpan(maxLineSpan) }, key = "shortcuts", contentType = "shortcuts") {
                     Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         order.forEach { name ->
                             val s = shortcutOf(name, kind)
-                            ShortcutChip(s.label, s.icon, browse == s.browse, onLong = null, onMoveLeft = { vm.moveShortcut(name, -1) }, onMoveRight = { vm.moveShortcut(name, +1) }) { vm.select(if (browse == s.browse) vm.lastFolder else s.browse) }
+                            ShortcutChip(s.label, s.icon, browse == s.browse, onLong = null, onMoveLeft = { vm.moveShortcut(name, -1) }, onMoveRight = { vm.moveShortcut(name, +1) }) { nav.open(Overlay.Collection(name, if (kind == ContentKind.MOVIE) "m" else "s")) }
                         }
                         Spacer(Modifier.weight(1f))
                         ShortcutChip("Search", Icons.Filled.Search, false, onLong = null, onMoveLeft = {}, onMoveRight = {}) { searchOpen = true }
                     }
                 }
-                if (browse == Browse.All && !filter.active) {
+                if (landing) {
                     rails.forEach { rail ->
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "rail-${rail.key}") {
-                            Column(Modifier.padding(bottom = 4.dp)) {
-                                Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                    Label(rail.title, Tokens.title, Tokens.text, FontWeight.SemiBold)
-                                    if (rail.seeAll) Focusable({ vm.select(rail.browse) }, Modifier, shape = RoundedCornerShape(Tokens.radiusSmall), container = Color.Transparent, scaleOnFocus = 1.04f) { f ->
-                                        Label("See All", Tokens.small, if (f) Color.White else Tokens.textSecondary, FontWeight.Medium, modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp))
-                                    }
-                                }
-                                androidx.compose.foundation.lazy.LazyRow(Modifier.bleedStart(14.dp).railOnLeft(), horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = PaddingValues(start = 14.dp, end = 24.dp, top = 8.dp, bottom = 8.dp)) {
-                                    rowItems(rail.cards, key = { "${rail.key}:${it.id}" }) { card ->
-                                        val p = progress[card.id]
-                                        PosterCard(card.title, card.posterUrl, { onOpen(card) }, width = posterSize.tv, progress = if (p != null && !p.completed) p.fraction else 0f, itemId = card.id,
-                                            subtitle = if (rail.key == "continue" && p != null && !p.completed) "${((p.durationMs - p.positionMs) / 60_000).coerceAtLeast(1)} min left" else if (showMeta) card.year?.toString() else null, badge = if (card.id in newSeries) "NEW" else if (card.id in favs) "♥" else null,
-                                            onFocusChange = { if (it) { vm.focusedId = card.id; nav.memory.remember(tab, card.id, ids.indexOf(card.id)) } }, onLongClick = { menuRail = rail.key; menuFor = card })
-                                    }
-                                }
-                            }
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "rail-${rail.key}", contentType = "rail") {
+                            SectionRail(rail, posterSize.tv, showMeta, progress, newSeries, favs, indexById, tab, vm, nav, onOpen, onLong = { key, card -> menuRail = key; menuFor = card })
                         }
                     }
                     // The library's own folders, to enter one directly (the full list, with its actions, is the Folders button).
-                    val shownFolders = folders.filter { !it.pref.hidden }
-                    if (shownFolders.isNotEmpty()) item(span = { GridItemSpan(maxLineSpan) }, key = "folders-row") {
+                    if (shownFolders.isNotEmpty()) item(span = { GridItemSpan(maxLineSpan) }, key = "folders-row", contentType = "folders-row") {
                         Column(Modifier.padding(bottom = 4.dp)) {
                             Label("Categories", Tokens.title, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
                             androidx.compose.foundation.lazy.LazyRow(Modifier.bleedStart(14.dp).railOnLeft(), horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = PaddingValues(start = 14.dp, end = 24.dp, top = 8.dp, bottom = 8.dp)) {
-                                rowItems(shownFolders.take(40), key = { "folder:${it.id}" }) { f ->
-                                    // One short line: the name, then its count after a divider. Wide enough for the name, never taller than a button.
-                                    Focusable({ if (f.pref.locked && !vm.isUnlocked(f.id)) folderNav.show() else vm.select(Browse.Folder(f.id)) }, Modifier.heightIn(min = 44.dp), shape = RoundedCornerShape(Tokens.radius), container = Tokens.card, hairline = true, scaleOnFocus = 1.05f) { fo ->
-                                        Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            Image(if (f.pref.locked) Icons.Filled.Lock else Icons.Filled.Folder, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(if (fo) Color.White else Tokens.textSecondary))
-                                            Label(f.title, Tokens.small, Tokens.text, FontWeight.SemiBold, maxLines = 1, modifier = Modifier.widthIn(max = 300.dp))
-                                            if (f.count > 0) { Box(Modifier.width(1.dp).height(14.dp).background(Tokens.lineStrong)); Label("%,d".format(f.count), Tokens.small, Tokens.textTertiary, maxLines = 1) }
-                                        }
-                                    }
+                                rowItems(categoryFolders, key = { "folder:${it.id}" }, contentType = { "folder" }) { f ->
+                                    CategoryCard(f.title, if (f.count > 0) "%,d ".format(f.count) + noun.lowercase() else "", Icons.Filled.Folder, { if (f.pref.locked && !vm.isUnlocked(f.id)) folderNav.show() else vm.select(Browse.Folder(f.id)) }, locked = f.pref.locked)
                                 }
-                                if (shownFolders.size > 40) item(key = "all-folders") { Focusable({ folderNav.show() }, Modifier.heightIn(min = 44.dp), shape = RoundedCornerShape(Tokens.radius), container = Tokens.card, hairline = true, scaleOnFocus = 1.05f) { _ -> Label("All ${shownFolders.size} folders", Tokens.small, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) } }
+                                if (shownFolders.size > 40) item(key = "all-folders") { CategoryCard("All ${shownFolders.size} folders", "Browse every category", Icons.Filled.GridView, { folderNav.show() }) }
                             }
                         }
                     }
-                    if (rails.isNotEmpty() && !list.isNullOrEmpty()) item(span = { GridItemSpan(maxLineSpan) }, key = "all-title") { Label("All $noun", Tokens.title, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)) }
-                    // Filter and Sort, immediately above the full grid (the chip shows how many filters are on).
-                    if (list != null) item(span = { GridItemSpan(maxLineSpan) }, key = "grid-tools") {
+                    if (rails.isNotEmpty() && !list.isNullOrEmpty()) item(span = { GridItemSpan(maxLineSpan) }, key = "all-title", contentType = "heading") { Label("All $noun", Tokens.title, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)) }
+                }
+                // Filter and Sort, immediately above the full grid (the chip shows how many filters are on).
+                if (browse == Browse.All && !filter.active && list != null) item(span = { GridItemSpan(maxLineSpan) }, key = "grid-tools", contentType = "tools") {
                         Row(Modifier.railOnLeft().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ToolButton(if (filter.active) "Filter · ${filter.count}" else "Filter", Icons.Filled.FilterList) { filterOpen = true }
                             ToolButton("Sort", Icons.Filled.SwapVert) { sortOpen = true }
                         }
                     }
-                }
                 when {
-                    list == null -> items(18, key = { "sk$it" }) { SkeletonPoster() }
-                    list.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }, key = "empty") {
+                    list == null -> items(18, key = { "sk$it" }, contentType = { "skeleton" }) { SkeletonPoster() }
+                    list.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }, key = "empty", contentType = "empty") {
                         Box(Modifier.fillMaxWidth().height(200.dp), Alignment.Center) { EmptyText(browse, noun, filter.active, entry, onFilter = { filterOpen = true }, onAll = { vm.select(Browse.All) }, onFolders = { folderNav.show() }) }
                     }
                     else -> items(list, key = { it.id }, contentType = { "poster" }) { card ->
-                        val p = progress[card.id] ?: latestBySeries[card.id]          // a series shows the bar of the episode begun last
-                        PosterCard(
-                            card.title, card.posterUrl, { onOpen(card) }, width = posterSize.tv,
-                            progress = if (p != null && !p.completed) p.fraction else 0f,
-                            itemId = card.id,
-                            subtitle = seriesNote[card.id] ?: if (showMeta) card.year?.toString() else null,
-                            badge = if (card.id in newSeries) "NEW" else ratingBadge(card.rating) ?: if (card.id in favs) "♥" else null,          // one badge: new episode, else rating, else favourite
-                            focusRequester = if (card.id == nav.memory.recall(tab)?.id) restore else null,
-                            onFocusChange = { if (it) { vm.focusedId = card.id; nav.memory.remember(tab, card.id, ids.indexOf(card.id)) } },
-                            onLongClick = { menuRail = null; menuFor = card },
-                        )
+                        GridPoster(card, posterSize.tv, showMeta, densePosters, progress, latestBySeries, seriesNote, newSeries, favs, tab, vm, nav, indexById, restore, onOpen, onLong = { menuRail = null; menuFor = card })
                     }
                 }
             }
+            // Rows that have scrolled up under the pinned hero fade out at its edge instead of showing as a cut-off strip.
+            Box(Modifier.align(Alignment.TopStart).fillMaxWidth().height(28.dp).background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Tokens.background, androidx.compose.ui.graphics.Color.Transparent))))
+            }
+            }
         }
+    }
     }
     }
     }
@@ -350,8 +369,11 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     if (moreOpen) ContextMenu(title, null, listOf(
         MenuAction("Sort", Icons.Filled.SwapVert) { sortOpen = true },
         MenuAction("Source: " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources"), Icons.Filled.Dns) { filterOpen = true },
-        MenuAction("Poster size: " + posterSize.name.lowercase().replaceFirstChar { it.uppercase() } + "  (change)", Icons.Filled.GridView) { c.ui.setPosterSize(PosterSize.entries[(posterSize.ordinal + 1) % PosterSize.entries.size]) },
+        MenuAction("Poster size: " + posterSize.name.lowercase().replaceFirstChar { it.uppercase() }, Icons.Filled.GridView) { posterOpen = true },
     ), onClose = { moreOpen = false })
+    if (posterOpen) ContextMenu("Poster size", null, PosterSize.entries.map { sz ->
+        MenuAction(sz.name.lowercase().replaceFirstChar { it.uppercase() } + if (sz == posterSize) "   ✓" else "", Icons.Filled.GridView) { c.ui.setPosterSize(sz) }
+    }, onClose = { posterOpen = false })
     if (sortOpen) SortSheet(kind, sort, avail, onApply = vm::applySort, onClose = { sortOpen = false })
     if (filterOpen) FilterSheet(filter, sources, filterOptions, onApply = { vm.filter.value = it }, onClose = { filterOpen = false })
     // The search steps aside while a title is open and comes back, with the same words and results, when Back leaves it.
@@ -378,6 +400,51 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
 }
 
 
+/** One horizontal rail of the landing page, as an item of its own: it reads progress, favourites and new episodes only inside its own cards. */
+@Composable
+private fun SectionRail(rail: Rail, posterWidth: androidx.compose.ui.unit.Dp, showMeta: Boolean, progress: State<Map<String, WatchProgress>>, newSeries: State<Set<String>>, favs: State<Set<String>>,
+                        indexById: Map<String, Int>, tab: app.streamsetu.tv.nav.Tab, vm: SectionViewModel, nav: Navigator, onOpen: (Card) -> Unit, onLong: (String, Card) -> Unit) {
+    Column(Modifier.padding(bottom = 4.dp)) {
+        Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Label(rail.title, Tokens.title, Tokens.text, FontWeight.SemiBold)
+            if (rail.seeAll) Focusable({ vm.select(rail.browse) }, Modifier, shape = RoundedCornerShape(Tokens.radiusSmall), container = Color.Transparent, scaleOnFocus = 1.04f) { f ->
+                Label("See All", Tokens.small, if (f) Color.White else Tokens.textSecondary, FontWeight.Medium, modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp))
+            }
+        }
+        androidx.compose.foundation.lazy.LazyRow(Modifier.bleedStart(14.dp).railOnLeft(), horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = PaddingValues(start = 14.dp, end = 24.dp, top = 8.dp, bottom = 8.dp)) {
+            rowItems(rail.cards, key = { "${rail.key}:${it.id}" }, contentType = { "rail-poster" }) { card ->
+                val p by remember(card.id) { derivedStateOf { progress.value[card.id] } }
+                val isNew by remember(card.id) { derivedStateOf { card.id in newSeries.value } }
+                val isFav by remember(card.id) { derivedStateOf { card.id in favs.value } }
+                PosterCard(card.title, card.posterUrl, { onOpen(card) }, width = posterWidth, progress = p?.takeIf { !it.completed }?.fraction ?: 0f, itemId = card.id,
+                    subtitle = p?.takeIf { rail.key == "continue" && !it.completed }?.let { "${((it.durationMs - it.positionMs) / 60_000).coerceAtLeast(1)} min left" } ?: if (showMeta) card.year?.toString() else null, badge = if (isNew) "NEW" else if (isFav) "♥" else null,
+                    onFocusChange = { if (it) { vm.focusedId = card.id; nav.memory.remember(tab, card.id, indexById[card.id] ?: 0) } }, onLongClick = { onLong(rail.key, card) })
+            }
+        }
+    }
+}
+
+/** One poster of the full grid. Everything that changes while the person watches (progress, favourites, new episodes) is read here, for this card only. */
+@Composable
+private fun GridPoster(card: Card, posterWidth: androidx.compose.ui.unit.Dp, showMeta: Boolean, dense: Boolean, progress: State<Map<String, WatchProgress>>, latestBySeries: State<Map<String, WatchProgress>>, seriesNote: State<Map<String, String>>,
+                       newSeries: State<Set<String>>, favs: State<Set<String>>, tab: app.streamsetu.tv.nav.Tab, vm: SectionViewModel, nav: Navigator, indexById: Map<String, Int>, restore: FocusRequester, onOpen: (Card) -> Unit, onLong: () -> Unit) {
+    val p by remember(card.id) { derivedStateOf { progress.value[card.id] ?: latestBySeries.value[card.id] } }          // a series shows the bar of the episode begun last
+    val note by remember(card.id) { derivedStateOf { seriesNote.value[card.id] } }
+    val isNew by remember(card.id) { derivedStateOf { card.id in newSeries.value } }
+    val isFav by remember(card.id) { derivedStateOf { card.id in favs.value } }
+    val rating = remember(card.rating) { ratingBadge(card.rating) }
+    PosterCard(
+        card.title, card.posterUrl, { onOpen(card) }, width = posterWidth,
+        progress = p?.takeIf { !it.completed }?.fraction ?: 0f,
+        itemId = card.id,
+        subtitle = note ?: if (showMeta) card.year?.toString() else null,
+        badge = if (isNew) "NEW" else rating ?: if (isFav) "♥" else null,          // one badge: new episode, else rating, else favourite
+        focusRequester = if (card.id == nav.memory.recall(tab)?.id) restore else null,
+        onFocusChange = { if (it) { vm.focusedId = card.id; nav.memory.remember(tab, card.id, indexById[card.id] ?: 0) } },
+        onLongClick = onLong, dense = dense,
+    )
+}
+
 fun ratingBadge(r: String?): String? = r?.toDoubleOrNull()?.takeIf { it > 0 }?.let { "★ %.1f".format(it) }
 
 @Composable
@@ -402,14 +469,12 @@ private fun EmptyText(browse: Browse, noun: String, filtered: Boolean, entry: Fo
 
 @Composable
 private fun ToolButton(label: String, icon: ImageVector, modifier: Modifier = Modifier, compact: Boolean = false, onClick: () -> Unit) {
-    Focusable(onClick, modifier, shape = RoundedCornerShape(Tokens.radius), container = Tokens.card.copy(alpha = 0.85f), scaleOnFocus = 1.05f) { f ->
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(icon, label, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f) Color.White else Tokens.textSecondary))
-            // A compact button is just its icon; the name unfolds beside it while the remote is on it.
-            androidx.compose.animation.AnimatedVisibility(!compact || f, enter = androidx.compose.animation.expandHorizontally(androidx.compose.animation.core.tween(Motion.FOCUS)) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(Motion.FOCUS)),
-                exit = androidx.compose.animation.shrinkHorizontally(androidx.compose.animation.core.tween(Motion.FOCUS)) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(Motion.FOCUS))) {
-                Label(label, Tokens.small, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(start = 8.dp))
-            }
+    // The same pill as every other button: a light glass fill, solid white with dark text while the remote is on it. Every button on the bar carries its name.
+    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color(0x26FFFFFF), focusedContainer = Color.White, scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, hairline = false, showRing = false, ringBand = false) { f ->
+        val ink = if (f) Tokens.onBright else Tokens.text
+        Row(Modifier.padding(horizontal = 13.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Image(icon, label, Modifier.size(13.dp), colorFilter = ColorFilter.tint(ink))
+            Label(label, Tokens.caption, ink, FontWeight.SemiBold)
         }
     }
 }
@@ -424,10 +489,12 @@ private fun Modifier.fullBleed(start: androidx.compose.ui.unit.Dp, end: androidx
 @Composable
 private fun ShortcutChip(label: String, icon: ImageVector, active: Boolean, onLong: (() -> Unit)?, onMoveLeft: () -> Unit, onMoveRight: () -> Unit, onClick: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
-    Focusable(onClick, Modifier, shape = RoundedCornerShape(Tokens.radius), container = if (active) Tokens.elevated else Tokens.card, scaleOnFocus = 1.03f, onLongClick = { menu = true }) { f ->
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Image(icon, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(if (active || f) Tokens.accent else Tokens.textSecondary))
-            Label(label, Tokens.small, if (active) Tokens.text else Tokens.textSecondary, if (active) FontWeight.SemiBold else FontWeight.Medium)
+    // The same pill as Home's shortcuts: frosted at rest, solid white with dark text while the remote is on it. The lists open in the same sheet as on Home.
+    Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = Color(0x26FFFFFF), focusedContainer = Color.White, scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, showRing = false, ringBand = false, onLongClick = { menu = true }) { f ->
+        val ink = if (f) Tokens.onBright else Tokens.text
+        Row(Modifier.padding(horizontal = 13.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Image(icon, null, Modifier.size(13.dp), colorFilter = ColorFilter.tint(if (f) ink else Tokens.textSecondary))
+            Label(label, Tokens.caption, ink, FontWeight.SemiBold)
         }
     }
     if (menu) ContextMenu(label, "Order of these shortcuts", listOf(MenuAction("Move left", Icons.Filled.ArrowBack) { onMoveLeft() }, MenuAction("Move right", Icons.Filled.ArrowForward) { onMoveRight() }), onClose = { menu = false })
@@ -450,7 +517,7 @@ private fun FilterSheet(current: ContentFilter, sources: List<LibraryEntry>, opt
     var draft by remember { mutableStateOf(current) }
     var query by remember { mutableStateOf("") }
     val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) { delay(100); runCatching { first.requestFocus() } }
+    LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(first, 8) }
     val q = query.trim()
     fun shown(label: String) = q.isEmpty() || label.contains(q, ignoreCase = true)
     val connections = if (sources.size > 1) sources.map { it.name to it.id.removePrefix("src:") }.sortedBy { it.first.lowercase() } else emptyList()

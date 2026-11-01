@@ -33,12 +33,12 @@ fun FolderPath(c: AppContainer, kind: ContentKind, categoryId: String?, phone: B
     val folders by remember(kind) { c.folders.folders(kind) }.collectAsState(emptyList())
     val folder = folders.firstOrNull { it.id == categoryId } ?: return
     val label: @Composable () -> Unit = {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = if (phone) 8.dp else 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Image(Icons.Filled.Folder, null, Modifier.size(if (phone) 16.dp else 18.dp), colorFilter = ColorFilter.tint(Tokens.accent))
-            Label("In folder", if (phone) Tokens.caption else Tokens.small, Tokens.textSecondary)
-            Label(folder.title, if (phone) Tokens.small else Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 1)
+        Row(Modifier.padding(horizontal = if (phone) 12.dp else 10.dp, vertical = if (phone) 8.dp else 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (phone) 8.dp else 6.dp)) {
+            Image(Icons.Filled.Folder, null, Modifier.size(if (phone) 16.dp else 13.dp), colorFilter = ColorFilter.tint(Tokens.accent))
+            Label("In folder", Tokens.caption, Tokens.textSecondary, FontWeight.Medium)
+            Label(folder.title, if (phone) Tokens.small else Tokens.caption, Tokens.text, FontWeight.SemiBold, maxLines = 1)
         }
     }
     if (phone) Row(Modifier.clip(RoundedCornerShape(14.dp)).clickable { onOpen(folder.id) }) { label() }
-    else Focusable({ onOpen(folder.id) }, Modifier, shape = RoundedCornerShape(50), container = Tokens.card, scaleOnFocus = 1.03f) { _ -> label() }
+    else Focusable({ onOpen(folder.id) }, Modifier, shape = RoundedCornerShape(Tokens.radiusSmall), container = Tokens.elevated, scaleOnFocus = 1.0f, style = TvFocusStyle.DENSE, showRing = false, focusedContainer = Tokens.focusedSurface) { _ -> label() }
 }

@@ -95,6 +95,8 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     val pokes = remember { kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST) }
     val flashPulse = remember { kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST) }
     var panel by remember { mutableStateOf<PanelKind?>(null) }
+    // While a side menu is open the controls underneath are hidden, so the two never draw over each other.
+    val sidePanelOpen = panel != null && panel != PanelKind.TRACKS
     // True when the control row cannot hold every control: Speed, Picture and Player then move into More (set from the row, which measures its width).
     var searching by remember { mutableStateOf(false) }
     var searchLiveOnly by remember { mutableStateOf(false) }
@@ -300,11 +302,9 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
         // ---- The middle: status, or the pause and skip buttons ----
         val busy = state == PlaybackState.Resolving || state == PlaybackState.Buffering || state is PlaybackState.Retrying
         Box(Modifier.align(Alignment.Center)) {
-            Crossfade(if (state is PlaybackState.Failed) 2 else if (busy && (live || !barVisible)) 1 else 0, animationSpec = tween(ms(160)), label = "status") { which ->
+            Crossfade(if (state is PlaybackState.Failed) 2 else if (busy) 1 else 0, animationSpec = tween(ms(160)), label = "status") { which ->
                 when (which) {
-                    1 -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Spinner(); Label(loadingLabel(state, providerWait), Tokens.small, InkDim)
-                    }
+                    1 -> {}          // loading is shown at the top right, not over the middle of the picture
                     2 -> (state as? PlaybackState.Failed)?.let { st ->
                         Column(Modifier.background(Brush.radialGradient(listOf(Color(0xCC000000), Color(0x66000000), Color.Transparent))).padding(horizontal = 64.dp, vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Label("This stream did not play", Tokens.title, Ink, FontWeight.SemiBold)
@@ -316,19 +316,16 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                             }
                         }
                     }
-                    else -> if (!live && !failedOrEnded) AnimatedVisibility(barVisible, enter = fadeIn(tween(ms(110))), exit = fadeOut(tween(ms(90)))) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(30.dp), verticalAlignment = Alignment.CenterVertically) {
-                            // Previous, back by the skip step, play or pause, forward, next (previous and next only when there is a list to move along).
-                            if (c.queue.size > 1) Transport(Icons.Filled.SkipPrevious, 44)
-                            Transport(Icons.Filled.Replay, 52, "$skip", flash = flashDir < 0)
-                            Box(Modifier.size(76.dp), Alignment.Center) { if (busy) Spinner() else Transport(if (state == PlaybackState.Paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, 76) }
-                            Transport(Icons.Filled.Replay, 52, "$skip", mirror = true, flash = flashDir > 0)
-                            if (c.queue.size > 1) Transport(Icons.Filled.SkipNext, 44)
-                        }
-                    }
+                    else -> {}          // the pause and skip buttons are in the bottom row; the picture stays clear
                 }
             }
             if (state == PlaybackState.Ended) Column(horizontalAlignment = Alignment.CenterHorizontally) { Label("The end", Tokens.title, Ink, FontWeight.SemiBold); if (nextIn > 0) Label("Next episode in $nextIn", Tokens.body, InkDim) }
+        }
+        // Loading sits in the top right corner, on a dark rounded backing: visible on any picture, with nothing drawn over the middle of it.
+        AnimatedVisibility(busy && state !is PlaybackState.Failed, Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 48.dp), enter = fadeIn(tween(ms(120))), exit = fadeOut(tween(ms(120)))) {
+            Row(Modifier.background(Color(0xB3000000), RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Spinner(size = 20.dp); Label(loadingLabel(state, providerWait), Tokens.caption, Ink)
+            }
         }
         if (digits.isNotEmpty()) Label(digits, Tokens.display * 1.6f, Ink, FontWeight.Bold, modifier = Modifier.align(Alignment.TopEnd).padding(40.dp))
         AnimatedVisibility(upNextVisible && item is EpisodePlayable, Modifier.align(Alignment.BottomEnd).padding(end = 48.dp, bottom = 150.dp), enter = fadeIn(tween(ms(220))) + slideInVertically(tween(ms(220))) { it / 3 }, exit = fadeOut(tween(ms(160)))) {
@@ -344,7 +341,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
         }
 
         // ---- Top: the title ----
-        AnimatedVisibility((barVisible && item != null && !live) || pending != null, Modifier.align(Alignment.TopStart), enter = fadeIn(tween(ms(110))), exit = fadeOut(tween(ms(90)))) {
+        AnimatedVisibility(((barVisible && item != null && !live) || pending != null) && !sidePanelOpen, Modifier.align(Alignment.TopStart), enter = fadeIn(tween(ms(110))), exit = fadeOut(tween(ms(90)))) {
             Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xB3000000), Color.Transparent))).padding(start = 48.dp, end = 48.dp, top = 28.dp, bottom = 40.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     val choosing = pending?.takeIf { it.itemId != item?.id }
@@ -360,20 +357,31 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
 
         // ---- Bottom: bar and icons ----
         AnimatedVisibility(
-            barVisible && item != null, Modifier.align(Alignment.BottomStart),
+            barVisible && item != null && !sidePanelOpen, Modifier.align(Alignment.BottomStart),
             enter = fadeIn(tween(ms(110))) + slideInVertically(tween(ms(120))) { it / 5 }, exit = fadeOut(tween(ms(90))) + slideOutVertically(tween(ms(90))) { it / 6 },
         ) {
             Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD9000000)))).padding(start = 48.dp, end = 48.dp, top = 96.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (item is ChannelPlayable) LiveBanner(item.channel, programmes) else SeekBar({ position }, { duration })
                 // One row. Each control says what it is now (the sound and subtitles, the speed, the picture, the player) and opens its choices; the remote moves along it with Left and Right.
                 val chips = rememberStreamChips(c, barVisible)
-                Row(
-                    Modifier.fillMaxWidth().onFocusChanged { controlsFocused = it.hasFocus }.onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp) { toRoot(); true } else false },
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                var row2Focused by remember { mutableStateOf(false) }
+                Column(
+                    Modifier.fillMaxWidth().onFocusChanged { controlsFocused = it.hasFocus }.onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp && (!row2Focused || live)) { toRoot(); true } else false },
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     var first = true
                     fun req(): Modifier = if (first) { first = false; Modifier.focusRequester(controlsFirst) } else Modifier
+                    // First line: what moves the picture. Second line: everything else.
+                    if (!live) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+                        // Previous, back, play or pause, forward (and Next below): the buttons that used to sit over the picture. The remote starts on play or pause.
+                        if (c.queue.size > 1) ControlPill(Icons.Filled.SkipPrevious, "Previous") { c.step(-1) }
+                        ControlPill(Icons.Filled.FastRewind, "-${skip}s") { playback.seekBy(-skip * 1000L); poke() }
+                        ControlPill(if (state == PlaybackState.Paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, if (state == PlaybackState.Paused) "Play" else "Pause", req()) { playback.togglePause(); poke() }
+                        ControlPill(Icons.Filled.FastForward, "+${skip}s") { playback.seekBy(skip * 1000L); poke() }
                     if (hasNextEpisode) ControlPill(Icons.Filled.SkipNext, "Next", req()) { c.step(+1) }
+
+                    }
+                    Row(Modifier.fillMaxWidth().onFocusChanged { row2Focused = it.hasFocus }, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
                     if (item is EpisodePlayable) ControlPill(Icons.AutoMirrored.Filled.List, "Episodes", req()) { panel = PanelKind.EPISODES }
                     if (feedsAvailable) ControlPill(Icons.Filled.SwapHoriz, "Feeds", req()) { c.sportsPlayback.refreshOptions(); panel = PanelKind.FEEDS }
                     if (live && c.queue.size > 1) ControlPill(Icons.AutoMirrored.Filled.FormatListBulleted, "Channels", req()) { panel = PanelKind.CHANNELS }
@@ -381,6 +389,8 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                     if (!live) ControlPill(Icons.Filled.Speed, if (speed == 1f) "Speed" else "${speed}×", req()) { panel = PanelKind.SPEED }
                     ControlPill(Icons.Filled.AspectRatio, chips.quality ?: aspect.label, req()) { panel = PanelKind.PICTURE }
                     ControlPill(Icons.Filled.MoreHoriz, "More", req()) { panel = PanelKind.MORE }
+                
+                    }
                 }
             }
         }
@@ -590,11 +600,12 @@ private fun SeekHud(startOf: () -> Long, posOf: () -> Long, durationOf: () -> Lo
 /** A control of the player: an icon and what it is now ("English · Subs off", "1080p", "ExoPlayer"). White when the remote is on it. */
 @Composable
 private fun ControlPill(icon: ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    // No outline and no white block: dark enough to read on any picture, and the one the remote is on lifts slightly, lightens to charcoal and turns its icon to the accent colour.
-    Focusable(onClick, modifier.height(44.dp), shape = RoundedCornerShape(22.dp), container = Color(0x80000000), focusedContainer = Color(0xEE2B3038), scaleOnFocus = 1.05f, ringBand = false, showRing = false) { f ->
-        Row(Modifier.fillMaxHeight().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Image(icon, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(if (f) Tokens.accent else Ink))
-            Label(label, Tokens.caption, if (f) Color.White else Ink, FontWeight.Medium, maxLines = 1, modifier = Modifier.widthIn(max = 280.dp))
+    // The same small pill as every other button: dark enough to read on any picture, solid white with dark text while the remote is on it.
+    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color(0x73000000), focusedContainer = Color.White, scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, ringBand = false, showRing = false) { f ->
+        val ink = if (f) Tokens.onBright else Ink
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            Image(icon, null, Modifier.size(15.dp), colorFilter = ColorFilter.tint(ink))
+            Label(label, Tokens.caption, ink, FontWeight.SemiBold, maxLines = 1, modifier = Modifier.widthIn(max = 280.dp))
         }
     }
 }
@@ -617,12 +628,12 @@ private fun ExitPrompt(title: String?, onContinue: () -> Unit, onExit: () -> Uni
 /** A plain line of text in a panel: bright when the remote is on it, a small tick when it is the current choice. */
 @Composable
 private fun TextOption(label: String, selected: Boolean, modifier: Modifier, detail: String? = null, onClick: () -> Unit) {
-    Focusable(onClick, modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp), container = Color.Transparent, focusedContainer = Color(0x2EFFFFFF), scaleOnFocus = 1.0f) { f ->
-        Row(Modifier.padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.width(18.dp)) { if (selected) Image(Icons.Filled.Check, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Ink)) }
+    Focusable(onClick, modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), container = Color.Transparent, focusedContainer = Color.White, scaleOnFocus = 1.0f, showRing = false, ringBand = false) { f ->
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.width(18.dp)) { if (selected) Image(Icons.Filled.Check, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(if (f) Tokens.onBright else Ink)) }
             Column {
-                Label(label, Tokens.heading, if (f || selected) Ink else InkDim, if (selected) FontWeight.SemiBold else FontWeight.Normal)
-                if (detail != null) Label(detail, Tokens.caption, InkDim)
+                Label(label, Tokens.row, if (f) Tokens.onBright else if (selected) Ink else InkDim, if (selected) FontWeight.SemiBold else FontWeight.Normal)
+                if (detail != null) Label(detail, Tokens.caption, if (f) Color(0xFF3A414B) else InkDim)
             }
         }
     }

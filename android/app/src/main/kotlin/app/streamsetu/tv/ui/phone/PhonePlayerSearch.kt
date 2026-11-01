@@ -53,7 +53,7 @@ fun PhonePlayerSearch(c: AppContainer, initialTab: SearchTab = SearchTab.ALL, on
     var retry by remember { mutableIntStateOf(0) }
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    LaunchedEffect(Unit) { delay(150); runCatching { focus.requestFocus() } }
+    LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(focus, 8) }
     LaunchedEffect(Unit) { c.globalSearch.warmUp() }
     LaunchedEffect(q, tab, retry) {
         if (q.trim().isEmpty()) { results = GlobalResults(); busy = false; failed = false; return@LaunchedEffect }
@@ -122,7 +122,7 @@ fun PhonePlayerSearch(c: AppContainer, initialTab: SearchTab = SearchTab.ALL, on
 fun PhoneGoToDialog(onGo: (Long) -> Unit, onClose: () -> Unit) {
     var text by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { delay(150); runCatching { focus.requestFocus() } }
+    LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(focus, 8) }
     Dialog(onDismissRequest = onClose) {
         Column(Modifier.clip(RoundedCornerShape(20.dp)).background(Tokens.card).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Label("Go to time", Ph.heading, Tokens.text, FontWeight.Bold)

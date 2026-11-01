@@ -68,7 +68,7 @@ class FolderNavTests {
             assertTrue("$screen uses FolderNav", "FolderNav(" in s)
             assertTrue("$screen: Left from the folders goes to the main sidebar", "onLeft = { folderNav.left(); nav.revealSidebar() }" in s)
             assertTrue("$screen: choosing or Right hides the folders", "folderNav.hide()" in s)
-            assertTrue("$screen: the content follows the folder the remote rests on", "selectOnDwell = true" in s)
+            assertTrue("$screen: moving the remote over a folder only moves focus (it never selects or reloads); OK selects", "selectOnDwell = true" !in s)
         }
     }
 }

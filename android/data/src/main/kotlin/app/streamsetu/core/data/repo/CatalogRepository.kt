@@ -32,6 +32,8 @@ class CatalogRepository(private val db: AppDatabase, private val library: Librar
     suspend fun movie(id: String) = dao.movie(id)?.toModel()
     suspend fun series(id: String) = dao.series(id)?.toModel()
     suspend fun episode(id: String) = dao.episode(id)?.toModel()
+    /** Several episodes in one read (never one read per title). */
+    suspend fun episodesByIds(ids: List<String>): Map<String, Episode> = if (ids.isEmpty()) emptyMap() else dao.episodesByIds(ids).associate { it.id to it.toModel() }
 
     /** The episode after [episode] in the same series (the next one in the season, or the first of the next season). */
     suspend fun episodesOnce(seriesId: String): List<Episode> = dao.episodesOnce(seriesId).map { it.toModel() }

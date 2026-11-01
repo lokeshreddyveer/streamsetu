@@ -105,11 +105,13 @@ fun LibrarySettings(c: AppContainer, nav: Navigator) {
         val deleteAfter = remember { mutableStateOf(c.downloads.deleteWhenWatched) }
         ToggleRow("Delete after watching", "Removes a completed download to free storage.", deleteAfter.value) { c.downloads.deleteWhenWatched = it; deleteAfter.value = it }
     }
-    SettingGroup("Cast and directors", "Builds a searchable cast and director index in the background.") {
+    SettingGroup("Cast and directors", "Searching for an actor or director uses a cast index. It is read only when you ask, or (if switched on) when the TV has been idle for a while. What is already there stays.") {
         var progress by remember { mutableStateOf(c.people.progress()) }
         PollWhileShown(5_000) { progress = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { c.people.progress() } }
         InfoRow("Movies read", "%,d of %,d".format(progress.first, progress.second))
-        if (progress.first < progress.second) ActionRow("Read more now", "Carries on where it stopped.", "Read", confirm = false) { c.people.start() }
+        ActionRow("Update cast search index", "Reads the cast of new titles. It stops when you start watching and carries on next time.", "Update", confirm = false, enabled = progress.first < progress.second, reason = "Everything has been read") { c.people.start() }
+        val auto = remember { mutableStateOf(c.settings.autoCastIndex.value) }
+        ToggleRow("Update when idle", "After 5 minutes without using the remote. Stops as soon as you press a key. Off by default on low-memory TVs.", auto.value) { c.settings.setAutoCastIndex(it); auto.value = it }
     }
     SettingGroup("Libraries") {
         InfoRow("Libraries", libs.size.toString(), libs.joinToString(", ") { it.name }.ifBlank { "none" })

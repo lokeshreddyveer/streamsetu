@@ -60,10 +60,10 @@ private fun iconOf(t: Tab): ImageVector = when (t) {
 /** What each entry is called in the sidebar (the same words as the page titles). */
 private fun nameOf(t: Tab) = when (t) { Tab.LIBRARIES -> "Libraries"; Tab.GUIDE -> "TV Guide"; else -> t.title }
 
-// The rail in three groups, with their names shown while it is open: what you watch, finding something, and managing the app.
-private val Groups get() = listOf(
+// The rail in three groups: Search first, on its own and with no heading, then what you watch, then managing the app. The names of the other two show while it is open.
+internal val Groups get() = listOf(
+    "" to listOf(Tab.SEARCH),
     "WATCH" to listOf(Tab.HOME, Tab.LIVE, Tab.SPORTS, Tab.GUIDE, Tab.MOVIES, Tab.SERIES).filter { it != Tab.SPORTS || app.streamsetu.tv.sports.SportsFeature.enabled },
-    "DISCOVER" to listOf(Tab.SEARCH),
     "MANAGE" to listOf(Tab.LIBRARIES, Tab.SETTINGS),
 )
 private val AllTabs get() = Groups.flatMap { it.second }
@@ -76,7 +76,7 @@ private val IconBox get() = (40 * app.streamsetu.tv.ui.theme.UiScale.k).toInt() 
  * it widens over the page to show the names. The page you are on has a short bar beside its icon; the entry under the remote has a soft fill.
  */
 @Composable
-fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modifier: Modifier = Modifier, expanded: Boolean = false, onFocusChange: (Boolean) -> Unit = {}, onReturn: () -> Unit = {}, livePlaying: Boolean = false) {
+fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modifier: Modifier = Modifier, expanded: Boolean = false, onFocusChange: (Boolean) -> Unit = {}, onReturn: () -> Unit = {}, livePlaying: Boolean = false, liveTitle: String? = null) {
     var hadFocus by remember { mutableStateOf(false) }
     // The entry the remote is on. Right on Movies, Series or Live TV opens that screen's folders (the same as OK); on any other entry it returns to the page.
     var onTab by remember { mutableStateOf<Tab?>(null) }
@@ -97,7 +97,7 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
         modifier.fillMaxHeight().width(width)
             // Right leaves the rail and returns the remote to where it was in the page.
             .onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { val t = onTab; if (t == Tab.MOVIES || t == Tab.SERIES || t == Tab.LIVE) onSelect(t) else onReturn(); true } else false }
-            .background(fill)
+            .then(if (expanded) Modifier.sidebarSurface(edge = false) else Modifier.background(fill))
             .drawBehind { drawLine(Tokens.line, androidx.compose.ui.geometry.Offset(size.width - 0.5f, 0f), androidx.compose.ui.geometry.Offset(size.width - 0.5f, size.height), 1.dp.toPx()) }
             // Moving between two entries can report "no focus" for an instant. Gaining focus is immediate; losing it only counts if it lasts, or the panel would hide itself mid-move.
             .onFocusChanged { st ->
@@ -108,10 +108,7 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
             .padding(vertical = Tokens.safeVertical, horizontal = 8.dp),
     ) {
         // The mark stays where it is as the strip widens; the name fades in beside it.
-        Row(Modifier.heightIn(min = 40.dp).padding(start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(28.dp).clip(RoundedCornerShape(7.dp)))
-            Label("StreamSetu", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(start = 12.dp).graphicsLayer { alpha = labelAlpha.value })
-        }
+        SidebarBrand(iconCentre = (5 + (IconBox - 3) / 2f).dp, labelAlpha = { labelAlpha.value })
         // The entries sit in the middle of the strip; with larger text they can need more room than the screen has, so they scroll (the entry under the remote is kept in view).
         Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
             androidx.compose.runtime.CompositionLocalProvider(LocalInSidebar provides true) {
@@ -119,8 +116,8 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
                     Groups.forEachIndexed { gi, (name, tabs) ->
                         if (gi > 0) Spacer(Modifier.height(10.dp))
                         // The group's name shows while the rail is open; closed, the groups are told apart by the space between them.
-                        Label(name, Tokens.caption, Tokens.textTertiary, FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 10.dp, bottom = 2.dp).graphicsLayer { alpha = labelAlpha.value })
-                        tabs.forEach { SidebarEntry(it, selected, entry, labelAlpha, onSelect, requesters, order, livePlaying && it == Tab.LIVE, onFocusTab = { t -> onTab = t }) }
+                        if (name.isNotEmpty()) Label(name, Tokens.caption, Tokens.textTertiary, FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 10.dp, bottom = 2.dp).graphicsLayer { alpha = labelAlpha.value })
+                        tabs.forEach { SidebarEntry(it, selected, entry, labelAlpha, onSelect, requesters, order, livePlaying && it == Tab.LIVE, liveTitle.takeIf { _ -> it == Tab.LIVE }, onFocusTab = { t -> onTab = t }) }
                     }
                 }
             }
@@ -130,7 +127,7 @@ fun Sidebar(selected: Tab, onSelect: (Tab) -> Unit, entry: FocusRequester, modif
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun SidebarEntry(t: Tab, selected: Tab, entry: FocusRequester, labelAlpha: State<Float>, onSelect: (Tab) -> Unit, requesters: Map<Tab, FocusRequester>, order: List<Tab>, playing: Boolean = false, onFocusTab: (Tab) -> Unit = {}) {
+private fun SidebarEntry(t: Tab, selected: Tab, entry: FocusRequester, labelAlpha: State<Float>, onSelect: (Tab) -> Unit, requesters: Map<Tab, FocusRequester>, order: List<Tab>, playing: Boolean = false, nowTitle: String? = null, onFocusTab: (Tab) -> Unit = {}) {
     val isSel = t == selected
     val i = order.indexOf(t)
     val up = order.getOrNull(i - 1)?.let { requesters.getValue(it) } ?: FocusRequester.Cancel
@@ -140,16 +137,33 @@ private fun SidebarEntry(t: Tab, selected: Tab, entry: FocusRequester, labelAlph
     val bring = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
     val scope = rememberCoroutineScope()
     Focusable({ onSelect(t) }, (if (isSel) Modifier.focusRequester(entry) else Modifier).focusRequester(requesters.getValue(t))
-        .focusProperties { this.up = up; this.down = down; this.left = FocusRequester.Cancel }.testTag("sidebar-${t.name}").fillMaxWidth().heightIn(min = rowMin).bringIntoViewRequester(bring), scaleOnFocus = 1.0f, container = if (isSel) Color(0x1AFFFFFF) else Color.Transparent, focusedContainer = Color(0x40FFFFFF), shape = RoundedCornerShape(Tokens.radius), onFocus = { if (it) { onFocusTab(t); scope.launch { runCatching { bring.bringIntoView() } } } }, focusSound = app.streamsetu.tv.UISoundEvent.SIDEBAR_MOVE, selectSound = app.streamsetu.tv.UISoundEvent.NAVIGATE_FORWARD) { f ->
-        Row(Modifier.heightIn(min = rowMin), verticalAlignment = Alignment.CenterVertically) {
-            // The accent bar sits at the very left; the icon box is the same width in both states, so nothing shifts when the panel widens.
-            Box(Modifier.padding(start = 2.dp).width(3.dp).height(20.dp).background(if (isSel) Tokens.accent else Color.Transparent, RoundedCornerShape(2.dp)))
+        .focusProperties { this.up = up; this.down = down; this.left = FocusRequester.Cancel }.testTag("sidebar-${t.name}").fillMaxWidth().heightIn(min = rowMin).bringIntoViewRequester(bring), scaleOnFocus = 1.0f, container = Color.Transparent, focusedContainer = Color.Transparent, showRing = false, style = TvFocusStyle.DENSE, shape = RoundedCornerShape(Tokens.radius), onFocus = { if (it) { onFocusTab(t); scope.launch { runCatching { bring.bringIntoView() } } } }, focusSound = app.streamsetu.tv.UISoundEvent.SIDEBAR_MOVE, selectSound = app.streamsetu.tv.UISoundEvent.NAVIGATE_FORWARD) { f ->
+        Row(Modifier.fillMaxWidth().sidebarRowFill(f, isSel).heightIn(min = rowMin), verticalAlignment = Alignment.CenterVertically) {
+            // The open entry is shown by its fill; the icon box is the same width in both states, so nothing shifts when the panel widens.
+            Spacer(Modifier.width(5.dp))
             Box(Modifier.width(IconBox.dp - 3.dp), Alignment.Center) {
-                Image(iconOf(t), nameOf(t), Modifier.size(25.ui), colorFilter = ColorFilter.tint(if (isSel || f) Color.White else Tokens.textSecondary))
+                Image(iconOf(t), nameOf(t), Modifier.size(25.ui), colorFilter = ColorFilter.tint(if (f || isSel) Color.White else Tokens.textSecondary))
             }
-            Label(nameOf(t), Tokens.row, if (f || isSel) Color.White else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.padding(start = 10.dp).graphicsLayer { alpha = labelAlpha.value })
+            // While a channel plays, its name is under "Live TV" in the open menu, so it is clear what is on without opening anything.
+            Column(Modifier.padding(start = 10.dp).graphicsLayer { alpha = labelAlpha.value }) {
+                Label(nameOf(t), Tokens.row, if (f || isSel) Color.White else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium)
+                if (playing && !nowTitle.isNullOrBlank()) Label(nowTitle, Tokens.caption, if (f) Color(0xCCFFFFFF) else Tokens.accent, FontWeight.Medium, modifier = Modifier.widthIn(max = 200.dp))
+            }
             // A small dot beside Live TV while a channel is playing.
             if (playing) Box(Modifier.padding(start = 8.dp).size(7.dp).background(Tokens.accent, androidx.compose.foundation.shape.CircleShape))
         }
+    }
+}
+
+
+/** The app's mark and name at the head of the main menu, with a hairline under it. The logo's centre sits over the centre of the menu icons below it. */
+@Composable
+fun SidebarBrand(modifier: Modifier = Modifier, iconCentre: androidx.compose.ui.unit.Dp = 5.dp + 17.ui, labelAlpha: () -> Float = { 1f }) {
+    Column(modifier.padding(bottom = 10.dp)) {
+        Row(Modifier.heightIn(min = 48.dp).padding(start = iconCentre - 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Image(painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)))
+            Label("StreamSetu", Tokens.heading, Tokens.accent, FontWeight.Bold, letterSpacing = 0.3.sp, modifier = Modifier.padding(start = 12.dp).graphicsLayer { alpha = labelAlpha() })
+        }
+        Box(Modifier.padding(top = 8.dp, start = 8.dp, end = 8.dp).fillMaxWidth().height(1.dp).background(Tokens.line))
     }
 }

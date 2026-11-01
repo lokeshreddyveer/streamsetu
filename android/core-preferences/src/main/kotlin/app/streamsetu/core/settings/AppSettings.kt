@@ -141,6 +141,10 @@ class AppSettings(context: Context) {
     private val _chNumbers = flow(prefs.getBoolean("chNumbers", true))
     val showChannelNumbers: StateFlow<Boolean> = _chNumbers
     fun setShowChannelNumbers(v: Boolean) { prefs.edit().putBoolean("chNumbers", v).apply(); _chNumbers.value = v }
+    /** Update the cast search index by itself after several minutes without the remote. Off by default on a low-memory TV (the same test the app uses for its other low-end choices). */
+    private val _autoCast = flow(prefs.getBoolean("autoCastIndex", highEndDevice(context)))
+    val autoCastIndex: StateFlow<Boolean> = _autoCast
+    fun setAutoCastIndex(v: Boolean) { prefs.edit().putBoolean("autoCastIndex", v).apply(); _autoCast.value = v }
     private val _resumeLast = flow(prefs.getBoolean("resumeLastChannel", false))
     val resumeLastChannel: StateFlow<Boolean> = _resumeLast
     fun setResumeLastChannel(v: Boolean) { prefs.edit().putBoolean("resumeLastChannel", v).apply(); _resumeLast.value = v }
@@ -243,4 +247,11 @@ class AppSettings(context: Context) {
         setDefaultAspect("FIT"); setDecoderFallback(true); setSurroundPassthrough(true); setRememberAudioChoice(true); setSubtitleMode("AUTO"); setSubtitleSize("MEDIUM"); setSubtitleBackground("NONE"); setSubtitleOutline(true)
         setAudioLanguage(""); setSubtitleLanguage(""); setPlayNext(true); setRememberPosition(true); setResumeAutomatically(true); setShowStreamInfo(false)
     }
+}
+
+/** False on a low-memory TV box: the same test the app uses for its other low-end choices. */
+private fun highEndDevice(context: Context): Boolean {
+    val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+    val low = am.isLowRamDevice || am.memoryClass <= 192 || Runtime.getRuntime().availableProcessors() <= 4
+    return !low
 }

@@ -46,8 +46,9 @@ interface CatalogDao {
     @Query("SELECT * FROM catalog_fingerprints WHERE sourceId = :id") suspend fun fingerprint(id: String): CatalogFingerprintEntity?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putFingerprint(f: CatalogFingerprintEntity)
     @Query("DELETE FROM catalog_fingerprints WHERE sourceId = :id") suspend fun clearFingerprint(id: String)
+    /** Changes when a source's catalog is written (and only then): what a saved page of titles is checked against. */
+    @Query("SELECT COALESCE(group_concat(sourceId || ':' || fingerprint || ':' || rows), '') FROM catalog_fingerprints") fun catalogRevision(): Flow<String>
     @Query("SELECT (SELECT COUNT(*) FROM channels WHERE sourceId = :id) + (SELECT COUNT(*) FROM movies WHERE sourceId = :id) + (SELECT COUNT(*) FROM series WHERE sourceId = :id) + (SELECT COUNT(*) FROM categories WHERE sourceId = :id)") suspend fun rowsFor(id: String): Int
-    @Query("DELETE FROM channels WHERE name LIKE '%####%' OR name LIKE '%====%' OR name LIKE '%----%' OR name LIKE '%****%' OR TRIM(name) = ''") suspend fun deleteDividers(): Int
     @Query("SELECT * FROM channels WHERE categoryId = :categoryId AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name") fun channelsIn(categoryId: String): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE sourceId IN (:sources) AND id NOT IN (SELECT channelId FROM channel_prefs WHERE hidden = 1) ORDER BY sortOrder, name LIMIT :limit") fun allChannels(limit: Int, sources: List<String>): Flow<List<ChannelEntity>>
     @Query("SELECT * FROM channels WHERE id = :id") suspend fun channel(id: String): ChannelEntity?
@@ -109,6 +110,8 @@ interface CatalogDao {
     @Query("SELECT * FROM movies WHERE id IN (:ids)") suspend fun moviesByIds(ids: List<String>): List<MovieEntity>
     @Query("SELECT * FROM series WHERE id IN (:ids)") suspend fun seriesByIds(ids: List<String>): List<SeriesEntity>
     @Query("SELECT * FROM movies WHERE id = :id") suspend fun movie(id: String): MovieEntity?
+    @Query("UPDATE movies SET posterUrl = :url WHERE id = :id") suspend fun setMoviePoster(id: String, url: String)
+    @Query("UPDATE series SET posterUrl = :url WHERE id = :id") suspend fun setSeriesPoster(id: String, url: String)
     @Query("SELECT * FROM movies WHERE sourceId IN (:sources) AND posterUrl IS NOT NULL AND posterUrl != '' ORDER BY RANDOM() LIMIT :n") suspend fun randomMovies(n: Int, sources: List<String>): List<MovieEntity>
     @Query("SELECT * FROM series WHERE sourceId IN (:sources) AND posterUrl IS NOT NULL AND posterUrl != '' ORDER BY RANDOM() LIMIT :n") suspend fun randomSeries(n: Int, sources: List<String>): List<SeriesEntity>
     @Query("SELECT * FROM movies WHERE sourceId IN (:sources) AND title LIKE '%' || :q || '%' ORDER BY title LIMIT :limit") suspend fun searchMovies(q: String, limit: Int, sources: List<String>): List<MovieEntity>
@@ -134,6 +137,7 @@ interface CatalogDao {
     @Query("SELECT * FROM episodes WHERE seriesId = :seriesId ORDER BY season, number") fun episodes(seriesId: String): Flow<List<EpisodeEntity>>
     @Query("SELECT * FROM episodes WHERE seriesId = :seriesId ORDER BY season, number") suspend fun episodesOnce(seriesId: String): List<EpisodeEntity>
     @Query("SELECT * FROM episodes WHERE id = :id") suspend fun episode(id: String): EpisodeEntity?
+    @Query("SELECT * FROM episodes WHERE id IN (:ids)") suspend fun episodesByIds(ids: List<String>): List<EpisodeEntity>
 }
 
 @Dao
@@ -231,6 +235,15 @@ interface BrowseDao {
     fun movies(q: SupportSQLiteQuery): Flow<List<MovieEntity>>
     @RawQuery(observedEntities = [SeriesEntity::class, FavoriteEntity::class, ProgressEntity::class, WatchLogEntity::class, FolderPrefEntity::class])
     fun series(q: SupportSQLiteQuery): Flow<List<SeriesEntity>>
+    /** The same lists when nothing about the order or the members depends on what the person has watched or saved: only the catalog table is watched, so a progress or favourite change does not read the page again. */
+    /** One read, no watching: the page is asked for explicitly (with the library and restrictions it was asked for), and again only when the catalog changes. */
+    @RawQuery suspend fun moviesOnce(q: SupportSQLiteQuery): List<MovieEntity>
+    @RawQuery suspend fun seriesOnce(q: SupportSQLiteQuery): List<SeriesEntity>
+    @Query("SELECT folderId FROM folder_prefs WHERE scope = :scope AND favorite = 1") suspend fun favoriteFoldersNow(scope: String): List<String>
+    @RawQuery(observedEntities = [MovieEntity::class])
+    fun moviesPlain(q: SupportSQLiteQuery): Flow<List<MovieEntity>>
+    @RawQuery(observedEntities = [SeriesEntity::class])
+    fun seriesPlain(q: SupportSQLiteQuery): Flow<List<SeriesEntity>>
     @RawQuery(observedEntities = [ChannelEntity::class, FavoriteEntity::class, WatchLogEntity::class, FolderPrefEntity::class])
     fun channels(q: SupportSQLiteQuery): Flow<List<ChannelEntity>>
     @RawQuery(observedEntities = [ChannelEntity::class, FavoriteEntity::class, WatchLogEntity::class, FolderPrefEntity::class])
@@ -239,13 +252,13 @@ interface BrowseDao {
     @Query("SELECT folderId FROM folder_prefs WHERE scope = :scope AND locked = 1") fun lockedFolders(scope: String): Flow<List<String>>
     @Query("SELECT folderId FROM folder_prefs WHERE locked = 1") suspend fun lockedFoldersNow(): List<String>
     @Query("SELECT folderId FROM folder_prefs WHERE scope = :scope AND favorite = 1") fun favoriteFolders(scope: String): Flow<List<String>>
-    @Query("SELECT COUNT(*) FROM movies WHERE sourceId IN (:s) AND year IS NOT NULL") suspend fun moviesWithYear(s: List<String>): Int
-    @Query("SELECT COUNT(*) FROM movies WHERE sourceId IN (:s) AND rating IS NOT NULL AND rating != '' AND rating != '0'") suspend fun moviesWithRating(s: List<String>): Int
-    @Query("SELECT COUNT(*) FROM series WHERE sourceId IN (:s) AND year IS NOT NULL") suspend fun seriesWithYear(s: List<String>): Int
-    @Query("SELECT COUNT(*) FROM series WHERE sourceId IN (:s) AND rating IS NOT NULL AND rating != '' AND rating != '0'") suspend fun seriesWithRating(s: List<String>): Int
-    @Query("SELECT COUNT(*) FROM watch_log") suspend fun watchedCount(): Int
-    @Query("SELECT COUNT(*) FROM series WHERE sourceId IN (:s) AND addedAt > 0") suspend fun seriesWithUpdateDate(s: List<String>): Int
-    @Query("SELECT COUNT(*) FROM new_episodes") suspend fun newEpisodeCount(): Int
+    @Query("SELECT EXISTS(SELECT 1 FROM movies WHERE sourceId IN (:s) AND year IS NOT NULL)") suspend fun moviesWithYear(s: List<String>): Int
+    @Query("SELECT EXISTS(SELECT 1 FROM movies WHERE sourceId IN (:s) AND rating IS NOT NULL AND rating != '' AND rating != '0')") suspend fun moviesWithRating(s: List<String>): Int
+    @Query("SELECT EXISTS(SELECT 1 FROM series WHERE sourceId IN (:s) AND year IS NOT NULL)") suspend fun seriesWithYear(s: List<String>): Int
+    @Query("SELECT EXISTS(SELECT 1 FROM series WHERE sourceId IN (:s) AND rating IS NOT NULL AND rating != '' AND rating != '0')") suspend fun seriesWithRating(s: List<String>): Int
+    @Query("SELECT EXISTS(SELECT 1 FROM watch_log)") suspend fun watchedCount(): Int
+    @Query("SELECT EXISTS(SELECT 1 FROM series WHERE sourceId IN (:s) AND addedAt > 0)") suspend fun seriesWithUpdateDate(s: List<String>): Int
+    @Query("SELECT EXISTS(SELECT 1 FROM new_episodes)") suspend fun newEpisodeCount(): Int
     @Query("SELECT COUNT(*) FROM channels WHERE sourceId = :id AND epgId IS NOT NULL AND epgId != ''") suspend fun channelsWithGuideId(id: String): Int
     @Query("SELECT COUNT(*) FROM channels WHERE sourceId = :id AND catchupDays > 0") suspend fun channelsWithCatchUp(id: String): Int
     @Query("SELECT COUNT(*) FROM epg WHERE channelEpgId IN (SELECT epgId FROM channels WHERE sourceId = :id AND epgId IS NOT NULL)") suspend fun programmesFor(id: String): Int

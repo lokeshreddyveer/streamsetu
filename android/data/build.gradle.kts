@@ -14,7 +14,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    testOptions { unitTests.isReturnDefaultValues = true }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+        // Sports is switched off in the app, so its tests are left out of the gate; `-PwithSports` runs them.
+        unitTests.all { t -> if (!project.hasProperty("withSports")) t.filter { excludeTestsMatching("app.streamsetu.core.sports.*") } }
+    }
 }
 
 dependencies {

@@ -15,7 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -137,6 +137,21 @@ private val dpPerMin get() = 4.33f * app.streamsetu.tv.ui.theme.UiScale.k
 /** The height of a guide row at normal text; it grows with larger text so a programme's title and time are never cut off. */
 private val rowH get() = 72.ui
 
+/** The details of the programme the remote has rested on for a moment: a quick run over many programmes shows the old text and does not rebuild it for each stop. */
+@Composable
+private fun GuideFocusBar(focused: androidx.compose.runtime.State<Pair<Channel, EpgProgram>?>, now: Long) {
+    var shown by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
+    val raw = focused.value
+    LaunchedEffect(raw) { if (raw != null) { kotlinx.coroutines.delay(120); shown = raw } }
+    shown?.let { (ch, p) ->
+        Column(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 10.dp).background(Tokens.card, RoundedCornerShape(Tokens.radius)).padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Label(p.title, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 2)
+            Label("${clock(p.startMs)} – ${clock(p.endMs)}  ·  ${ch.name}" + if (p.isLive(now)) "  ·  LIVE" else "", Tokens.small, Tokens.textSecondary, maxLines = 1)
+            p.description?.takeIf { it.isNotBlank() }?.let { Label(it, Tokens.small, Tokens.textTertiary, maxLines = 2) }
+        }
+    }
+}
+
 private fun clock(ms: Long) = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(ms))
 
 /**
@@ -153,18 +168,20 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
     val hasGuide by vm.hasGuide.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
     var details by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
-    var focusedProgramme by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }          // what the remote is on, described in full under the grid
+    val focusedProgramme = remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }          // what the remote is on, described in full under the grid
     val category by vm.category.collectAsStateWithLifecycle()
     val liveFolders by vm.folders.collectAsStateWithLifecycle()
     // The remote goes back to the channel it was on.
     val restore = remember { FocusRequester() }
     val rowIds = remember(rows) { rows.orEmpty().map { it.channel.id } }
+    // Built once per list, so a focused row finds its place with a lookup instead of a scan.
+    val rowIndexById = remember(rowIds) { HashMap<String, Int>(rowIds.size * 2).also { m -> rowIds.forEachIndexed { i, id -> m[id] = i } } }
     var restored by remember { mutableStateOf(false) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     LaunchedEffect(rowIds) {
         if (restored || rowIds.isEmpty()) return@LaunchedEffect
         val at = nav.memory.target(app.streamsetu.tv.nav.Tab.GUIDE, rowIds) ?: return@LaunchedEffect
-        restored = true; listState.scrollToItem((at - 1).coerceAtLeast(0)); delay(500); runCatching { restore.requestFocus() }
+        restored = true; listState.scrollToItem((at - 1).coerceAtLeast(0)); app.streamsetu.tv.ui.components.requestFocusSoon(restore, 30)
     }
     val entry = LocalContentEntry.current ?: remember { FocusRequester() }
     val now by rememberMinute()
@@ -185,8 +202,8 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
             val v = info.visibleItemsInfo.firstOrNull { it.index == index }
             when {
                 v == null -> categoryState.scrollToItem(index)
-                v.offset < info.viewportStartOffset -> categoryState.animateScrollBy((v.offset - info.viewportStartOffset).toFloat())
-                v.offset + v.size > info.viewportEndOffset -> categoryState.animateScrollBy((v.offset + v.size - info.viewportEndOffset).toFloat())
+                v.offset < info.viewportStartOffset -> categoryState.scrollBy((v.offset - info.viewportStartOffset).toFloat())
+                v.offset + v.size > info.viewportEndOffset -> categoryState.scrollBy((v.offset + v.size - info.viewportEndOffset).toFloat())
             }
         }
         LaunchedEffect(selectedIndex, folderList.size) { reveal(selectedIndex) }
@@ -229,6 +246,8 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
         var guideMoving by remember { mutableStateOf(false) }
         val windowEnd = start + GuideViewModel.WINDOW_MIN * 60_000L
         fun shown(p: app.streamsetu.core.model.EpgProgram) = ((minOf(p.endMs, windowEnd) - maxOf(p.startMs, start)) / 60_000f * dpPerMin).dp - 2.dp > 40.dp
+        // The programmes that have a cell in this window, worked out once for each row when the guide or the window changes (a key press only looks them up, and only these are composed).
+        val shownByRow = remember(list, start) { list?.associate { r -> r.channel.id to r.programmes.filter { shown(it) } } }
         fun cellRequester(channelId: String, p: app.streamsetu.core.model.EpgProgram?): FocusRequester =
             if (p != null && channelId == (nav.memory.recall(app.streamsetu.tv.nav.Tab.GUIDE)?.id ?: rowIds.firstOrNull()) && p.isLive(now)) restore
             else cellRequesters.getOrPut("$channelId|${p?.startMs ?: -1}") { FocusRequester() }
@@ -250,7 +269,7 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
             if (target >= all.size || guideMoving) return true  // the last channel stays put; a move still landing swallows repeats
             val tr = all[target]
             val at = from?.let { (maxOf(it.startMs, start) + minOf(it.endMs, windowEnd)) / 2 } ?: ((start + windowEnd) / 2)
-            val candidates = tr.programmes.filter { shown(it) }
+            val candidates = shownByRow?.get(tr.channel.id) ?: tr.programmes.filter { shown(it) }
             val pick = candidates.firstOrNull { it.startMs <= at && it.endMs > at } ?: candidates.minByOrNull { kotlin.math.abs((it.startMs + it.endMs) / 2 - at) }
             val req = cellRequester(tr.channel.id, pick)
             guideMoving = true
@@ -278,15 +297,15 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
                         Box(Modifier.width(totalW).fillMaxHeight()) {
                             // A channel with no guide data is still one stop for the remote (select plays it): a row with nothing to land on makes Down search every row below it before it gives up.
                             if (row.programmes.isEmpty()) Focusable({ play(c, nav, ChannelPlayable(row.channel), rows.orEmpty().map { ChannelPlayable(it.channel) }) }, Modifier.fillMaxSize().focusRequester(cellRequester(row.channel.id, null)).onPreviewKeyEvent { e -> if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) false else when (e.key) { androidx.compose.ui.input.key.Key.DirectionUp -> verticalMove(rowIndex, null, false); androidx.compose.ui.input.key.Key.DirectionDown -> verticalMove(rowIndex, null, true); else -> false } },
-                                onFocus = { if (it) nav.memory.remember(app.streamsetu.tv.nav.Tab.GUIDE, row.channel.id, rowIds.indexOf(row.channel.id)) }, scaleOnFocus = 1.0f, shape = RoundedCornerShape(Tokens.radiusSmall), ringWidth = 2.5.dp, container = Tokens.card.copy(alpha = 0.5f)) { _ ->
+                                onFocus = { if (it) nav.memory.remember(app.streamsetu.tv.nav.Tab.GUIDE, row.channel.id, rowIndexById[row.channel.id] ?: 0) }, scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, shape = RoundedCornerShape(Tokens.radiusSmall), ringWidth = 2.5.dp, container = Tokens.card.copy(alpha = 0.5f)) { _ ->
                                 Box(Modifier.fillMaxSize(), Alignment.CenterStart) { Label("No information", Tokens.caption, Tokens.textTertiary, modifier = Modifier.padding(start = 8.dp)) }
                             }
                             val end = start + GuideViewModel.WINDOW_MIN * 60_000L
-                            row.programmes.forEach { p ->
+                            (shownByRow?.get(row.channel.id) ?: row.programmes).forEach { p ->
                                 val s = maxOf(p.startMs, start); val e = minOf(p.endMs, end)
                                 val w = ((e - s) / 60_000f * dpPerMin).dp - 2.dp
                                 if (w > 40.dp) Focusable({ details = row.channel to p }, Modifier.focusRequester(cellRequester(row.channel.id, p)).onPreviewKeyEvent { e -> if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) false else when (e.key) { androidx.compose.ui.input.key.Key.DirectionUp -> verticalMove(rowIndex, p, false); androidx.compose.ui.input.key.Key.DirectionDown -> verticalMove(rowIndex, p, true); else -> false } }.offset(x = ((s - start) / 60_000f * dpPerMin).dp).width(w).fillMaxHeight(),
-                                    onFocus = { if (it) { nav.memory.remember(app.streamsetu.tv.nav.Tab.GUIDE, row.channel.id, rowIds.indexOf(row.channel.id)); focusedProgramme = row.channel to p } }, scaleOnFocus = 1.0f, shape = RoundedCornerShape(Tokens.radiusSmall), ringWidth = 2.5.dp,
+                                    onFocus = { if (it) { nav.memory.remember(app.streamsetu.tv.nav.Tab.GUIDE, row.channel.id, rowIndexById[row.channel.id] ?: 0); focusedProgramme.value = row.channel to p } }, scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, shape = RoundedCornerShape(Tokens.radiusSmall), ringWidth = 2.5.dp,
                                     container = if (p.isLive(now)) Tokens.elevated else Tokens.card) { _ ->
                                     val past = p.endMs <= now
                                     Column(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalArrangement = Arrangement.Center) {
@@ -302,14 +321,8 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
                 }
             }
         }
-        // The programme under the remote, in full: its whole title, when it is on, which channel, and what it is about.
-        focusedProgramme?.let { (ch, p) ->
-            Column(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 10.dp).background(Tokens.card, RoundedCornerShape(Tokens.radius)).padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Label(p.title, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 2)
-                Label("${clock(p.startMs)} – ${clock(p.endMs)}  ·  ${ch.name}" + if (p.isLive(now)) "  ·  LIVE" else "", Tokens.small, Tokens.textSecondary, maxLines = 1)
-                p.description?.takeIf { it.isNotBlank() }?.let { Label(it, Tokens.small, Tokens.textTertiary, maxLines = 2) }
-            }
-        }
+        // The programme under the remote, in full: read only inside this child, so a move of the remote does not recompose the guide.
+        GuideFocusBar(focusedProgramme, now)
     }
 
     details?.let { (ch, p) ->

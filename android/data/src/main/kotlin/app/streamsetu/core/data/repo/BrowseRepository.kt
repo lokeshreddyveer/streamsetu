@@ -27,16 +27,35 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
     }
     private fun key(kind: ContentKind, folderId: String?) = "${kind.name}/${folderId ?: "*"}"
 
+    /** Both kinds together, for the screens that are not Movies or Series. */
     suspend fun availability(): SortAvailability {
-        val ids = library.sourceIds.value; val d = db.browse()
+        val ids = library.sourceIds.value; val m = availability(ids, ContentKind.MOVIE); val t = availability(ids, ContentKind.SERIES)
+        return SortAvailability(m.year || t.year, m.rating || t.rating, m.duration || t.duration, m.recentlyWatched || t.recentlyWatched, m.seriesUpdated || t.seriesUpdated, m.newEpisodes || t.newEpisodes)
+    }
+
+    /** Which sorts apply to [kind] in exactly the [ids] sources it is asked about (not whatever library is open when the read happens). */
+    suspend fun availability(ids: List<String>, kind: ContentKind = ContentKind.MOVIE): SortAvailability {
+        val d = db.browse(); val movies = kind == ContentKind.MOVIE
         return SortAvailability(
-            year = d.moviesWithYear(ids) + d.seriesWithYear(ids) > 0, rating = d.moviesWithRating(ids) + d.seriesWithRating(ids) > 0,
-            duration = false, recentlyWatched = d.watchedCount() > 0, seriesUpdated = d.seriesWithUpdateDate(ids) > 0, newEpisodes = d.newEpisodeCount() > 0,
+            year = (if (movies) d.moviesWithYear(ids) else d.seriesWithYear(ids)) > 0, rating = (if (movies) d.moviesWithRating(ids) else d.seriesWithRating(ids)) > 0,
+            duration = false, recentlyWatched = d.watchedCount() > 0, seriesUpdated = !movies && d.seriesWithUpdateDate(ids) > 0, newEpisodes = !movies && d.newEpisodeCount() > 0,
         )
     }
 
-    fun movies(browse: Browse, sort: SortSpec, limit: Int = 600, offset: Int = 0): Flow<List<Movie>> = query(ContentKind.MOVIE, browse, sort, limit, offset = offset) { db.browse().movies(it).map { l -> l.map { e -> e.toModel() } } }
-    fun series(browse: Browse, sort: SortSpec, limit: Int = 600, offset: Int = 0): Flow<List<Series>> = query(ContentKind.SERIES, browse, sort, limit, offset = offset) { db.browse().series(it).map { l -> l.map { e -> e.toModel() } } }
+    /** Changes when a catalog was written (see [app.streamsetu.core.data.db.CatalogDao.catalogRevision]). */
+    fun catalogRevision(): Flow<String> = db.catalog().catalogRevision()
+
+    /**
+     * One page of Movies or Series for exactly the library, restrictions and order it is asked for: nothing here looks at the open library or the locks again, so the result belongs to the
+     * request that made it (a page started before a change can never be taken for the page after it).
+     */
+    suspend fun moviesPage(browse: Browse, sort: SortSpec, limit: Int, offset: Int, sources: List<String>, restricted: Set<String>): List<Movie> =
+        db.browse().moviesOnce(build(ContentKind.MOVIE, browse, sort, limit, sources, restricted, db.browse().favoriteFoldersNow(ContentKind.MOVIE.name), false, offset)).map { it.toModel() }
+    suspend fun seriesPage(browse: Browse, sort: SortSpec, limit: Int, offset: Int, sources: List<String>, restricted: Set<String>): List<Series> =
+        db.browse().seriesOnce(build(ContentKind.SERIES, browse, sort, limit, sources, restricted, db.browse().favoriteFoldersNow(ContentKind.SERIES.name), false, offset)).map { it.toModel() }
+
+    fun movies(browse: Browse, sort: SortSpec, limit: Int = 600, offset: Int = 0): Flow<List<Movie>> = query(ContentKind.MOVIE, browse, sort, limit, offset = offset) { (if (orderMoves(browse, sort)) db.browse().movies(it) else db.browse().moviesPlain(it)).map { l -> l.map { e -> e.toModel() } } }
+    fun series(browse: Browse, sort: SortSpec, limit: Int = 600, offset: Int = 0): Flow<List<Series>> = query(ContentKind.SERIES, browse, sort, limit, offset = offset) { (if (orderMoves(browse, sort)) db.browse().series(it) else db.browse().seriesPlain(it)).map { l -> l.map { e -> e.toModel() } } }
     fun channels(browse: Browse, sort: SortSpec, limit: Int = 40000): Flow<List<Channel>> = query(ContentKind.CHANNEL, browse, sort, limit) { db.browse().channels(it).map { l -> l.map { e -> e.toModel() } } }
 
     /** One page of channels from [offset] on, read once (not watched): the next rows of the list the screen already shows. */
@@ -47,7 +66,7 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
     fun channelCount(browse: Browse): Flow<Int> = query(ContentKind.CHANNEL, browse, SortSpec.defaultFor(ContentKind.CHANNEL), -1, wrap = true) { db.browse().channelCount(it) }
 
     private fun <T> query(kind: ContentKind, browse: Browse, sort: SortSpec, limit: Int, wrap: Boolean = false, offset: Int = 0, run: (androidx.sqlite.db.SupportSQLiteQuery) -> Flow<T>): Flow<T> =
-        combine(library.sourceIds, folders.lockedIds(kind), db.browse().favoriteFolders(kind.name)) { ids, locked, favFolders -> Triple(ids, locked, favFolders) }
+        combine(library.sourceIds, folders.restrictedIds(kind), db.browse().favoriteFolders(kind.name)) { ids, locked, favFolders -> Triple(ids, locked, favFolders) }
             .flatMapLatest { (ids, locked, favFolders) -> run(build(kind, browse, sort, limit, ids, locked, favFolders, wrap, offset)) }
 
     private fun build(kind: ContentKind, browse: Browse, sort: SortSpec, limit: Int, sources: List<String>, locked: Set<String>, favFolders: List<String>, count: Boolean = false, offset: Int = 0): SimpleSQLiteQuery {

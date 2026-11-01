@@ -40,7 +40,7 @@ class SidebarFocusTest {
     private val folderClicks = mutableStateListOf<Int>()
     private var returns = 0
 
-    private val order = listOf(Tab.HOME, Tab.LIVE, Tab.GUIDE, Tab.MOVIES, Tab.SERIES, Tab.SEARCH, Tab.LIBRARIES, Tab.SETTINGS)
+    private val order = listOf(Tab.SEARCH, Tab.HOME, Tab.LIVE, Tab.GUIDE, Tab.MOVIES, Tab.SERIES, Tab.LIBRARIES, Tab.SETTINGS)
 
     private fun show(selected: Tab = Tab.MOVIES) {
         rule.setContent {
@@ -55,11 +55,11 @@ class SidebarFocusTest {
     private fun key(k: Key) = rule.onNodeWithTag("sidebar-${Tab.MOVIES.name}").performKeyInput { pressKey(k) }
     private fun focusOn(t: Tab) = rule.onNodeWithTag("sidebar-${t.name}").requestFocus()
 
-    @Test fun downGoesFromMoviesToSeriesAndThenToSearch() {
+    @Test fun downGoesFromMoviesToSeriesAndThenToLibraries() {
         show(); focusOn(Tab.MOVIES)
         key(Key.DirectionDown); rule.waitForIdle(); rule.onNodeWithTag("sidebar-SERIES").assertIsFocused()
         rule.onNodeWithTag("sidebar-SERIES").performKeyInput { pressKey(Key.DirectionDown) }; rule.waitForIdle()
-        rule.onNodeWithTag("sidebar-SEARCH").assertIsFocused()
+        rule.onNodeWithTag("sidebar-LIBRARIES").assertIsFocused()
     }
 
     @Test fun upGoesBackTheSameWay() {
@@ -76,9 +76,9 @@ class SidebarFocusTest {
     }
 
     @Test fun upFromTheFirstEntryStaysInTheSidebar() {
-        show(Tab.HOME); focusOn(Tab.HOME)
-        rule.onNodeWithTag("sidebar-HOME").performKeyInput { pressKey(Key.DirectionUp) }; rule.waitForIdle()
-        rule.onNodeWithTag("sidebar-HOME").assertIsFocused()
+        show(Tab.SEARCH); focusOn(Tab.SEARCH)          // Search is the first entry
+        rule.onNodeWithTag("sidebar-SEARCH").performKeyInput { pressKey(Key.DirectionUp) }; rule.waitForIdle()
+        rule.onNodeWithTag("sidebar-SEARCH").assertIsFocused()
     }
 
     @Test fun leftNeverLeavesTheSidebar() {
@@ -87,8 +87,8 @@ class SidebarFocusTest {
     }
 
     @Test fun rapidDownPressesWalkTheWholeListAndStopAtTheEnd() {
-        show(Tab.HOME); focusOn(Tab.HOME)
-        repeat(30) { rule.onNodeWithTag("sidebar-HOME").performKeyInput { pressKey(Key.DirectionDown) } }
+        show(Tab.SEARCH); focusOn(Tab.SEARCH)
+        repeat(30) { rule.onNodeWithTag("sidebar-SEARCH").performKeyInput { pressKey(Key.DirectionDown) } }
         rule.waitForIdle(); rule.onNodeWithTag("sidebar-SETTINGS").assertIsFocused()
         assertTrue("moving focus chose nothing", chosen.isEmpty())
     }
@@ -103,13 +103,13 @@ class SidebarFocusTest {
         show(); focusOn(Tab.MOVIES)
         key(Key.DirectionDown); key(Key.DirectionDown); rule.waitForIdle()
         assertTrue(chosen.isEmpty())
-        rule.onNodeWithTag("sidebar-SEARCH").performKeyInput { pressKey(Key.DirectionCenter) }; rule.waitForIdle()
-        assertEquals(listOf(Tab.SEARCH), chosen.toList())
+        rule.onNodeWithTag("sidebar-LIBRARIES").performKeyInput { pressKey(Key.DirectionCenter) }; rule.waitForIdle()
+        assertEquals(listOf(Tab.LIBRARIES), chosen.toList())
     }
 
     @Test fun everyEntryCanBeReachedInOrder() {
-        show(Tab.HOME); focusOn(Tab.HOME)
-        var current = Tab.HOME
+        show(Tab.SEARCH); focusOn(Tab.SEARCH)
+        var current = Tab.SEARCH
         order.drop(1).forEach { next ->
             rule.onNodeWithTag("sidebar-${current.name}").performKeyInput { pressKey(Key.DirectionDown) }; rule.waitForIdle()
             rule.onNodeWithTag("sidebar-${next.name}").assertIsFocused(); current = next

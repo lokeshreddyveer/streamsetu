@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -128,8 +128,8 @@ fun TvFilterBar(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, mo
         val v = info.visibleItemsInfo.firstOrNull { it.index == index }
         when {
             v == null -> state.scrollToItem(index)
-            v.offset < info.viewportStartOffset -> state.animateScrollBy((v.offset - info.viewportStartOffset).toFloat())
-            v.offset + v.size > info.viewportEndOffset -> state.animateScrollBy((v.offset + v.size - info.viewportEndOffset).toFloat())
+            v.offset < info.viewportStartOffset -> state.scrollBy((v.offset - info.viewportStartOffset).toFloat())
+            v.offset + v.size > info.viewportEndOffset -> state.scrollBy((v.offset + v.size - info.viewportEndOffset).toFloat())
         }
     }
     LaunchedEffect(selected, labels.size) { if (labels.isNotEmpty()) reveal(selected.coerceIn(0, labels.lastIndex)) }

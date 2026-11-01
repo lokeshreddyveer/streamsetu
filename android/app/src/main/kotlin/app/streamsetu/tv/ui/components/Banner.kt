@@ -88,11 +88,15 @@ fun FeaturedBanner(
     startPadding: Dp = Tokens.screenPadding,
     intervalSeconds: Int = 9,
     paused: Boolean = false,
+    /** Asked each time the slideshow is about to advance (not observed), so a screen can hold it while it scrolls or while the banner is off screen without redrawing the banner. */
+    pausedWhen: () -> Boolean = { false },
     isFavorite: (BannerItem) -> Boolean = { false },
     onToggleFavorite: ((BannerItem) -> Unit)? = null,
     eyebrow: String = "FEATURED",
     /** Drawn over the top of the banner (the page header), above a soft shade that keeps it readable on any picture. */
     topOverlay: (@Composable BoxScope.() -> Unit)? = null,
+    /** While the remote is elsewhere on a heavy screen (the folder list): the same space, only the current picture, with none of the shading, text, buttons or dots (about 25 ms of GPU less per frame on a Fire TV Stick). */
+    still: Boolean = false,
 ) {
     // A slide with no picture at all is left out of the rotation (an empty tint is not a hero); if none has one, they are all kept.
     // A slide whose picture cannot be loaded (a dead link, an empty answer) is left out too: it would show a bare dark hero.
@@ -118,6 +122,11 @@ fun FeaturedBanner(
     val i = index.coerceIn(0, n - 1)
     val item = items[i]
     val context = LocalContext.current
+    // One request size for the hero: the whole screen's width and the banner's height, taken once. When the page narrows (the folder list opens) the same decoded picture is cropped to the new width and
+    // nothing is decoded or uploaded again.
+    val heroDensity = androidx.compose.ui.platform.LocalDensity.current
+    val heroW = with(heroDensity) { androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
+    val heroH = with(heroDensity) { height.roundToPx() }
 
     // Rotate every few seconds, unless a key was pressed on the banner in the last 8 seconds. Reduced motion keeps the rotation but drops the fade (the picture just changes).
     val pausedNow by rememberUpdatedState(paused)
@@ -126,18 +135,25 @@ fun FeaturedBanner(
         if (n < 2) return@LaunchedEffect
         // The loop runs only while the app is on screen: it stops in the background and starts again on return.
         lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-            while (true) { delay(intervalSeconds * 1000L); if (!pausedNow && System.currentTimeMillis() - lastKey > 8000) index = (index + 1) % n }
+            while (true) { delay(intervalSeconds * 1000L); if (!pausedNow && !pausedWhen() && System.currentTimeMillis() - lastKey > 8000) index = (index + 1) % n }
         }
     }
     // The next slide's picture is requested now, so the crossfade never waits on the network.
     LaunchedEffect(i, items) {
+        if (pausedWhen()) return@LaunchedEffect          // no artwork is fetched for the next slide while the page scrolls or the banner is off screen
         items.getOrNull((i + 1) % n)?.imageUrl?.takeIf { it.isNotBlank() }?.let { url ->
             coil.Coil.imageLoader(context).enqueue(ImageRequest.Builder(context).data(url).size(coil.size.Size(64, 64)).memoryCachePolicy(coil.request.CachePolicy.DISABLED).build())          // fills the disk cache only: no full-size decode
         }
     }
 
+    if (still) {
+        // The hero's space and the page's own header, over one plain block: no picture, no shading, no layer. (With the hero drawn, every frame of the folder list opening cost about 20 ms of GPU; without it, about 5.)
+        Box(Modifier.fillMaxWidth().height(height).background(Tokens.card)) { topOverlay?.invoke(this) }
+        return
+    }
     Box(modifier.fillMaxWidth().height(height)) {
-        Crossfade(i, Modifier.fillMaxSize(), animationSpec = if (reduced) tween(0) else tween(Motion.BANNER), label = "bannerImage") { idx ->
+        // One big picture at a time: the next slide replaces the last at once (the text over it still fades). Blending two full-size pictures every frame doubles the work and the texture memory.
+        i.let { idx ->
             val it = items[idx.coerceIn(0, n - 1)]
             val slideId = it.id
             Box(Modifier.fillMaxSize()) {
@@ -145,7 +161,7 @@ fun FeaturedBanner(
                 if (!it.imageUrl.isNullOrBlank()) {
                     if (it.imageIsBackdrop) {
                         // The subject of a wide picture is usually in the upper middle: crop from there, so faces are not cut off.
-                        AsyncImage(it.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -0.45f), onError = { _ -> failed = failed + slideId })
+                        AsyncImage(remember(it.imageUrl, heroW, heroH) { artworkRequest(context, it.imageUrl, heroW, heroH) }, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -0.45f), onError = { _ -> failed = failed + slideId })
                     } else {
                         // Only a portrait poster exists: it is shown at its own shape on the right, over a calm tint of the title's colour, never blown up to fill the banner.
                         Box(Modifier.fillMaxSize().background(Tokens.background.copy(alpha = 0.55f)))
@@ -165,12 +181,12 @@ fun FeaturedBanner(
             AnimatedContent(i, modifier = Modifier.weight(1f, fill = false), contentAlignment = Alignment.BottomStart, transitionSpec = { fadeIn(tween(if (reduced) 0 else Motion.BANNER)) togetherWith fadeOut(tween(if (reduced) 0 else Motion.BANNER)) using SizeTransform(clip = false) { _, _ -> snap() } }, label = "bannerText") { idx ->
                 val it = items[idx.coerceIn(0, n - 1)]
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Label(it.title, 40.sp, Tokens.text, FontWeight.Bold, maxLines = 2)
+                    Label(it.title, 34.sp, Tokens.text, FontWeight.Bold, maxLines = 1)
                     if (it.facts.isNotEmpty()) Label(it.facts.joinToString("   ·   "), Tokens.small, Tokens.textSecondary, FontWeight.Medium, maxLines = 1)
                     if (!it.synopsis.isNullOrBlank()) Label(it.synopsis, Tokens.small, Tokens.textSecondary, maxLines = 2)
                 }
             }
-            Row(Modifier.railOnLeft().padding(top = 6.dp).onPreviewKeyEvent { lastKey = System.currentTimeMillis(); false }, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.railOnLeft().padding(top = 4.dp).onPreviewKeyEvent { lastKey = System.currentTimeMillis(); false }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 HeroButton(item.primaryLabel, { onPrimary(item) }, if (primaryEntry != null) Modifier.focusRequester(primaryEntry) else Modifier, Icons.Filled.PlayArrow)
                 HeroButton("More Info", { onDetails(item) }, Modifier, Icons.Filled.Info)
                 val listed = isListed(item)
@@ -188,11 +204,11 @@ fun FeaturedBanner(
 /** A button on the hero slideshow: a soft translucent pill that turns solid white (dark text) when the remote is on it, so it is always clear which one is chosen and nothing is drawn around it. */
 @Composable
 private fun HeroButton(text: String, onClick: () -> Unit, modifier: Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color.White.copy(alpha = 0.16f), focusedContainer = Color.White, scaleOnFocus = 1.05f, ringBand = false, showRing = false) { f ->
+    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color.White.copy(alpha = 0.16f), focusedContainer = Color.White, scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, ringBand = false, showRing = false) { f ->
         val ink = if (f) Color(0xFF101319) else Color.White
-        Row(Modifier.padding(horizontal = 22.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            androidx.compose.foundation.Image(icon, null, Modifier.size(18.dp), colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(ink))
-            Label(text, Tokens.row, ink, FontWeight.SemiBold)
+        Row(Modifier.padding(horizontal = 13.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            androidx.compose.foundation.Image(icon, null, Modifier.size(13.dp), colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(ink))
+            Label(text, Tokens.caption, ink, FontWeight.SemiBold)
         }
     }
 }

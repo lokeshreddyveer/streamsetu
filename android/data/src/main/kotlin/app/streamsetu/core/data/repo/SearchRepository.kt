@@ -7,6 +7,7 @@ import app.streamsetu.core.data.db.PeopleIndex
 import app.streamsetu.core.data.db.SearchIndex
 import app.streamsetu.core.model.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
@@ -127,7 +128,7 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
             ids.map { id -> async(Dispatchers.IO) { sem.withPermit { byId[id]?.let { m -> kotlinx.coroutines.withTimeoutOrNull(3500) { factsOf(m) }?.let { known[id] = it } } } } }.awaitAll()
         }
         if (known.isNotEmpty()) emit(Similarity.rank(target, facts, items, known).mapNotNull { r -> byId[r.id]?.let { Suggestion(it, r.reason) } })
-    }
+    }.flowOn(Dispatchers.Default)          // the ranking of hundreds of titles is not done on the screen's thread (it held the page for about 400 ms)
 
     /** The same for a series (the provider's facts are not asked for; the franchise, story, language, year, rating and folder are enough to rank). */
     suspend fun similarSeries(series: Series): List<Suggestion<Series>> = withContext(Dispatchers.IO) {

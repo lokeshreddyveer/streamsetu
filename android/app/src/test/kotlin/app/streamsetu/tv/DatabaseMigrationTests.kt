@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
 /** (The text index, search_fts, is a virtual table made outside Room, so dropped-table checking is off.) */
 class DatabaseMigrationTests {
     @get:Rule val helper = MigrationTestHelper(InstrumentationRegistry.getInstrumentation(), AppDatabase::class.java)
-    private val current = 9
+    private val current = 10
 
     private fun SupportSQLiteDatabase.count(table: String) = query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); it.getInt(0) }
 
@@ -31,6 +31,27 @@ class DatabaseMigrationTests {
             helper.createDatabase("from$v", v).close()
             helper.runMigrationsAndValidate("from$v", current, false, *AppDatabase.MIGRATIONS).close()
         }
+    }
+
+    @Test fun versionNineToTenRemovesPlexTokensFromEveryPictureColumnAndTheDividerChannels() {
+        helper.createDatabase("plex", 9).apply {
+            execSQL("INSERT INTO movies (id, sourceId, categoryId, title, posterUrl, streamRef, addedAt) VALUES ('m1','s','c','A','http://plex:32400/library/metadata/1/thumb/9?X-Plex-Token=SECRET','r',1), ('m2','s','c','B','http://img.example/heat.jpg?size=big','r',2), ('m3','s','c','C',NULL,'r',3)")
+            execSQL("INSERT INTO series (id, sourceId, categoryId, title, posterUrl, backdropUrl, providerId, addedAt) VALUES ('s1','s','c','S','http://plex:32400/a?X-Plex-Token=SECRET','http://plex:32400/b?X-Plex-Token=SECRET','p',1), ('s2','s','c','T','http://img.example/s.jpg','http://img.example/b.jpg','p',2)")
+            execSQL("INSERT INTO episodes (id, seriesId, season, number, title, imageUrl, streamRef) VALUES ('e1','s1',1,1,'E','http://plex:32400/c?X-Plex-Token=SECRET','r'), ('e2','s1',1,2,'F','http://img.example/e.jpg','r')")
+            execSQL("INSERT INTO channels (id, sourceId, categoryId, name, streamRef, catchupDays, sortOrder, addedAt, isRadio) VALUES ('c1','s','g','BBC One','r',0,1,1,0), ('c2','s','g','#### SPORTS ####','r',0,2,1,0), ('c3','s','g','  ','r',0,3,1,0), ('c4','s','g','-----','r',0,4,1,0)")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate("plex", 10, false, *AppDatabase.MIGRATIONS)
+        fun one(sql: String) = db.query(sql).use { it.moveToFirst(); it.getString(0) }
+        assertEquals("http://plex:32400/library/metadata/1/thumb/9", one("SELECT posterUrl FROM movies WHERE id='m1'"))
+        assertEquals("http://img.example/heat.jpg?size=big", one("SELECT posterUrl FROM movies WHERE id='m2'"))                  // an address without the token is left as it was
+        assertEquals("http://plex:32400/a", one("SELECT posterUrl FROM series WHERE id='s1'"))
+        assertEquals("http://plex:32400/b", one("SELECT backdropUrl FROM series WHERE id='s1'"))
+        assertEquals("http://img.example/s.jpg", one("SELECT posterUrl FROM series WHERE id='s2'"))
+        assertEquals("http://plex:32400/c", one("SELECT imageUrl FROM episodes WHERE id='e1'"))
+        assertEquals("http://img.example/e.jpg", one("SELECT imageUrl FROM episodes WHERE id='e2'"))
+        assertEquals("1", one("SELECT COUNT(*) FROM channels"))                                                                  // the three dividers are gone, the real channel stays
+        assertEquals("BBC One", one("SELECT name FROM channels"))
     }
 
     @Test fun aLargeLibraryUpgradesWithItsRowsAndGetsTheIndexes() {

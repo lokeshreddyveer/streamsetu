@@ -13,6 +13,6 @@ object Perf {
         val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         (am.isLowRamDevice || am.memoryClass <= 192 || Runtime.getRuntime().availableProcessors() <= 4).also { cached = it }
     }
-    /** How many posters ahead of the visible ones are fetched. */
-    fun prefetchAhead(context: Context) = if (lowEnd(context)) 6 else 14
+    /** How many posters ahead of the visible ones are fetched: a small window, about one row. */
+    fun prefetchAhead(context: Context) = if (lowEnd(context)) 6 else 8
 }

@@ -19,7 +19,8 @@ class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: 
         return h
     }
 
-    suspend fun replace(sourceId: String, cats: List<CategoryEntity>, ch: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>) {
+    suspend fun replace(sourceId: String, cats: List<CategoryEntity>, allChannels: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>) {
+        val ch = allChannels.filter { !ChannelFilter.isDivider(it.name) }          // a heading in the provider's list is not a channel and is never stored (the one definition, shared with the import)
         // The screens already show what is saved. If the provider sent exactly the same catalog, nothing is deleted, nothing is inserted and nothing is announced: no list
         // is rebuilt and no row is handed to the screens as new.
         val d = digest(cats, ch, mv, sr); val expected = cats.size + ch.size + mv.size + sr.size

@@ -38,25 +38,81 @@ fun duration(ms: Long): String {
     return when { min >= 60 -> "${min / 60} h ${min % 60} min"; min >= 1 -> "$min min"; ms > 0 -> "under a minute"; else -> "none" }
 }
 
+/** What the Statistics page shows, prepared before it is drawn: the period, the numbers (worked out in the background) and the text of every line. */
+class StatsUi(val period: Int, val setPeriod: (Int) -> Unit, val stats: ViewingStatistics?, val msg: String?, val clear: () -> Unit)
+
+@Composable
+fun rememberStatsUi(c: AppContainer): StatsUi {
+    var period by rememberSaveable { mutableIntStateOf(30) }
+    var stats by remember { mutableStateOf<ViewingStatistics?>(null) }
+    var msg by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    // The page keeps showing the numbers it has while new ones are worked out.
+    LaunchedEffect(period) { stats = c.stats.compute(period) }
+    return StatsUi(period, { period = it }, stats, msg) { scope.launch { c.stats.clear(); stats = c.stats.compute(period); msg = "Statistics cleared." } }
+}
+
+/** The Statistics page as a lazy list: each group is one item, so only the groups near the screen are built, and each has a stable key and a type. */
+fun androidx.compose.foundation.lazy.LazyListScope.statisticsItems(ui: StatsUi) {
+    item(key = "period", contentType = "group") {
+        SettingGroup("What you have watched", "Time is counted while something is playing, and stays on this device. A stream left on overnight is not counted for more than the time it really played.") {
+            ChoiceRow("Period", options = listOf(7 to "Last 7 days", 30 to "Last 30 days", 365 to "Last year", 0 to "Everything"), value = ui.period) { ui.setPeriod(it) }
+        }
+    }
+    val s = ui.stats
+    if (s == null) { item(key = "loading", contentType = "loading") { Loading(Modifier.height(80.dp)) }; return }
+    if (s.isEmpty) { item(key = "empty", contentType = "group") { SettingGroup("Nothing yet") { InfoRow("No watch time in this period", "", "Play something and come back.") } }; return }
+    item(key = "totals", contentType = "group") {
+        SettingGroup("Totals") {
+            InfoRow("Total", duration(s.totalMs))
+            InfoRow("Live TV", duration(s.liveMs)); InfoRow("Movies", duration(s.movieMs)); InfoRow("Series", duration(s.seriesMs))
+            s.busiestHour?.let { h -> InfoRow("Busiest hour", java.text.SimpleDateFormat("h a", java.util.Locale.getDefault()).format(java.util.Calendar.getInstance().apply { set(java.util.Calendar.HOUR_OF_DAY, h) }.time)) }
+        }
+    }
+    item(key = "days", contentType = "chart") {
+        SettingGroup("Last 14 days") {
+            val max = (s.days.maxOfOrNull { it.second } ?: 0L).coerceAtLeast(1L)
+            Row(Modifier.fillMaxWidth().height(84.dp).padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Bottom) {
+                s.days.forEach { (_, ms) -> Box(Modifier.weight(1f).fillMaxHeight(), Alignment.BottomCenter) { Box(Modifier.fillMaxWidth().fillMaxHeight((ms.toFloat() / max).coerceIn(0.03f, 1f)).background(if (ms > 0) Tokens.accent else Tokens.elevated, RoundedCornerShape(3.dp))) } }
+            }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 8.dp)) {
+                val f = java.text.SimpleDateFormat("d MMM", java.util.Locale.getDefault())
+                Label(f.format(java.util.Date.from(s.days.first().first.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant())), Tokens.caption, Tokens.textTertiary, modifier = Modifier.weight(1f))
+                Label("Today", Tokens.caption, Tokens.textTertiary)
+            }
+        }
+    }
+    listOf("Most watched channels" to s.topChannels, "Most watched movies" to s.topMovies, "Most watched series" to s.topSeries).forEach { (title, top) ->
+        if (top.isNotEmpty()) item(key = "top-$title", contentType = "group") { SettingGroup(title) { top.forEach { InfoRow(it.title, duration(it.ms)) } } }
+    }
+    item(key = "reset", contentType = "group") {
+        SettingGroup("Reset") { ActionRow("Clear statistics", "Removes the watch time kept on this device. Favorites, history and positions are not touched.", "Clear", danger = true) { ui.clear() } }
+        ResultLine(ui.msg)
+    }
+}
+
 @Composable
 fun StatisticsSettings(c: AppContainer) {
     var period by rememberSaveable { mutableIntStateOf(30) }
     var stats by remember { mutableStateOf<ViewingStatistics?>(null) }
     var msg by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(period, msg) { stats = c.stats.compute(period) }
+    LaunchedEffect(period) { stats = c.stats.compute(period) }
     SettingGroup("What you have watched", "Time is counted while something is playing, and stays on this device. A stream left on overnight is not counted for more than the time it really played.") {
         ChoiceRow("Period", options = listOf(7 to "Last 7 days", 30 to "Last 30 days", 365 to "Last year", 0 to "Everything"), value = period) { period = it }
     }
     val s = stats
     if (s == null) { Loading(Modifier.height(80.dp)); return }
     if (s.isEmpty) { SettingGroup("Nothing yet") { InfoRow("No watch time in this period", "", "Play something and come back.") }; return }
+    // The page is built in three steps, one frame apart, so no single frame has to compose all of it (the whole page at once took about 300 to 500 ms on a Fire TV Stick).
+    var stage by remember(s) { mutableIntStateOf(1) }
+    LaunchedEffect(s) { androidx.compose.runtime.withFrameNanos { }; stage = 2; androidx.compose.runtime.withFrameNanos { }; stage = 3 }
     SettingGroup("Totals") {
         InfoRow("Total", duration(s.totalMs))
         InfoRow("Live TV", duration(s.liveMs)); InfoRow("Movies", duration(s.movieMs)); InfoRow("Series", duration(s.seriesMs))
         s.busiestHour?.let { h -> InfoRow("Busiest hour", java.text.SimpleDateFormat("h a", java.util.Locale.getDefault()).format(java.util.Calendar.getInstance().apply { set(java.util.Calendar.HOUR_OF_DAY, h) }.time)) }
     }
-    SettingGroup("Last 14 days") {
+    if (stage >= 2) SettingGroup("Last 14 days") {
         val max = (s.days.maxOfOrNull { it.second } ?: 0L).coerceAtLeast(1L)
         Row(Modifier.fillMaxWidth().height(84.dp).padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Bottom) {
             s.days.forEach { (_, ms) -> Box(Modifier.weight(1f).fillMaxHeight(), Alignment.BottomCenter) { Box(Modifier.fillMaxWidth().fillMaxHeight((ms.toFloat() / max).coerceIn(0.03f, 1f)).background(if (ms > 0) Tokens.accent else Tokens.elevated, RoundedCornerShape(3.dp))) } }
@@ -67,10 +123,10 @@ fun StatisticsSettings(c: AppContainer) {
             Label("Today", Tokens.caption, Tokens.textTertiary)
         }
     }
-    listOf("Most watched channels" to s.topChannels, "Most watched movies" to s.topMovies, "Most watched series" to s.topSeries).forEach { (title, top) ->
+    if (stage >= 3) listOf("Most watched channels" to s.topChannels, "Most watched movies" to s.topMovies, "Most watched series" to s.topSeries).forEach { (title, top) ->
         if (top.isNotEmpty()) SettingGroup(title) { top.forEach { InfoRow(it.title, duration(it.ms)) } }
     }
-    SettingGroup("Reset") { ActionRow("Clear statistics", "Removes the watch time kept on this device. Favorites, history and positions are not touched.", "Clear", danger = true) { scope.launch { c.stats.clear(); msg = "Statistics cleared." } } }
+    SettingGroup("Reset") { ActionRow("Clear statistics", "Removes the watch time kept on this device. Favorites, history and positions are not touched.", "Clear", danger = true) { scope.launch { c.stats.clear(); stats = c.stats.compute(period); msg = "Statistics cleared." } } }
     ResultLine(msg)
 }
 

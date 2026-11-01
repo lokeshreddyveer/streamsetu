@@ -57,8 +57,8 @@ class TvCanvasLayoutTest {
     // ---- the rail ----
     private fun everyRailEntryIsReachable(scale: Float) {
         withText(scale) { Row { Sidebar(Tab.HOME, onSelect = {}, entry = FocusRequester(), expanded = true, onReturn = {}) } }
-        val order = listOf(Tab.HOME, Tab.LIVE, Tab.GUIDE, Tab.MOVIES, Tab.SERIES, Tab.SEARCH, Tab.LIBRARIES, Tab.SETTINGS)
-        rule.onNodeWithTag("sidebar-HOME").requestFocus()
+        val order = listOf(Tab.SEARCH, Tab.HOME, Tab.LIVE, Tab.GUIDE, Tab.MOVIES, Tab.SERIES, Tab.LIBRARIES, Tab.SETTINGS)
+        rule.onNodeWithTag("sidebar-SEARCH").requestFocus()
         order.zipWithNext().forEach { (a, b) -> press("sidebar-${a.name}", Key.DirectionDown); rule.onNodeWithTag("sidebar-${b.name}").assertIsFocused() }
         rule.onNodeWithTag("sidebar-SETTINGS").assertIsDisplayed()
     }

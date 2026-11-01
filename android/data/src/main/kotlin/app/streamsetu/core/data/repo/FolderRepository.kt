@@ -11,7 +11,11 @@ import kotlinx.coroutines.flow.*
  * Only a local table is written; the provider's own folder names and order are never changed.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class FolderRepository(private val db: AppDatabase, private val library: LibraryRepository, private val parental: ParentalControls, private val relockAfterMs: () -> Long = { Long.MAX_VALUE }) {
+class FolderRepository(
+    private val db: AppDatabase, private val library: LibraryRepository, private val parental: ParentalControls,
+    private val scope: kotlinx.coroutines.CoroutineScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default),
+    private val relockAfterMs: () -> Long = { Long.MAX_VALUE },
+) {
     private fun scopeName(kind: ContentKind) = kind.name
     private companion object { const val EXPIRY_CHECK_MS = 3_000L }
 
@@ -29,16 +33,39 @@ class FolderRepository(private val db: AppDatabase, private val library: Library
 
     /** The auto-relock interval is applied by the clock too, not only when something asks: an open screen is told within a few seconds of a folder's time running out. */
     private fun expiryTicks(): Flow<Unit> = kotlinx.coroutines.flow.flow { while (true) { expire(); emit(Unit); kotlinx.coroutines.delay(EXPIRY_CHECK_MS) } }
+    /**
+     * The folder names and the person's arrangement of them for the open library, read once and shared: the folder list, the locked set and the restricted set all come from this one
+     * subscription (they used to each read the same two tables again). No counts here: those are a separate, later read.
+     */
+    private val shells = HashMap<ContentKind, Flow<Pair<List<app.streamsetu.core.data.db.CategoryEntity>, List<FolderPrefEntity>>>>()
+    private fun shell(kind: ContentKind): Flow<Pair<List<app.streamsetu.core.data.db.CategoryEntity>, List<FolderPrefEntity>>> = synchronized(shells) {
+        shells.getOrPut(kind) {
+            library.sourceIds.flatMapLatest { ids -> combine(db.catalog().categories(kind.name, ids), db.folders().observe(scopeName(kind))) { cats, prefs -> cats to prefs } }
+                .shareIn(scope, SharingStarted.WhileSubscribed(5000), replay = 1)
+        }
+    }
+
+    /** Folders whose titles must stay out of every list, rail, banner and badge: locked ones, and (while adult content is hidden, always for a kids profile) the adult categories. */
+    fun restrictedIds(kind: ContentKind): Flow<Set<String>> =
+        combine(lockedFrom(shell(kind).map { (_, prefs) -> prefs.filter { it.locked }.map { it.folderId } }, unlocked, expiryTicks()), parental.hideAdult, shell(kind).map { it.first }) { locked, hideAdult, cats ->
+            if (!hideAdult) locked else locked + cats.filter { ParentalControls.isAdultName(it.name) }.map { it.id }
+        }.distinctUntilChanged()
+    suspend fun restrictedIdsNow(kind: ContentKind): Set<String> {
+        val locked = lockedIdsNow()
+        if (!parental.hideAdult.value) return locked
+        return locked + db.catalog().categories(kind.name, library.sourceIds.value).first().filter { ParentalControls.isAdultName(it.name) }.map { it.id }
+    }
     suspend fun lockedIdsNow(): Set<String> { expire(); return db.browse().lockedFoldersNow().toSet() - unlockedAt.keys }
 
     /** Every folder of [kind] in the open library, in the person's order (pinned first, then arranged order, then the provider's order). Hidden ones are included, flagged. */
-    fun folders(kind: ContentKind): Flow<List<Folder>> = library.sourceIds.flatMapLatest { ids ->
-        val counts = when (kind) {
+    fun folders(kind: ContentKind, withCounts: Boolean = true): Flow<List<Folder>> = library.sourceIds.flatMapLatest { ids ->
+        // The names and the person's arrangement come first; how many titles each holds (a grouped count over the whole catalog) is asked for separately and later.
+        val counts = if (!withCounts) kotlinx.coroutines.flow.flowOf(emptyList()) else when (kind) {
             ContentKind.MOVIE -> db.catalog().movieFolderCounts(ids)
             ContentKind.SERIES -> db.catalog().seriesFolderCounts(ids)
             else -> db.catalog().channelFolderCounts(ids)
         }
-        combine(db.catalog().categories(kind.name, ids), db.folders().observe(scopeName(kind)), counts, parental.hideAdult) { cats, prefs, cnt, hideAdult ->
+        combine(shell(kind), counts, parental.hideAdult) { (cats, prefs), cnt, hideAdult ->
             val byId = prefs.associateBy { it.folderId }
             val n = cnt.associate { it.folderId to it.n }
             cats.filter { !hideAdult || !ParentalControls.isAdultName(it.name) }.mapIndexed { i, c ->

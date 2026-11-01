@@ -13,7 +13,7 @@ The app must be a debuggable build with the key recorder (KeyLatency) and the tr
 import json, os, re, statistics, subprocess, sys, threading, time
 
 KEY = dict(UP=19, DOWN=20, LEFT=21, RIGHT=22, OK=23, BACK=4, HOME=3)
-PKG = "app.streamsetu.tv"
+PKG = os.environ.get("PKG", "app.streamsetu.tv")
 ADB = os.environ.get("ADB", os.path.expanduser("~/Library/Android/sdk/platform-tools/adb"))
 
 
@@ -151,12 +151,13 @@ class Device:
                     p95=g(r"95th percentile: (\d+)ms"), p99=g(r"99th percentile: (\d+)ms"), missed_vsync=g(r"Number Missed Vsync: (\d+)"), slow_ui=g(r"Number Slow UI thread: (\d+)"))
 
     def cpu_mem(self):
-        pid = self.pid()
-        top = self.sh(f"top -b -n 1 -d 1 -p {pid}")
+        """CPU and memory of the app in one trip to the TV (the four reads used to be four)."""
+        out = self.sh(f"P=$(pidof {PKG}); echo PID $P; top -b -n 1 -d 1 -p $P; echo ==MEM; dumpsys meminfo $P; echo ==AVAIL; grep MemAvailable /proc/meminfo")
+        pid = (re.search(r"^PID\s+(\d+)", out, re.M) or [None, ""])[1]
+        top, _, rest = out.partition("==MEM"); mem, _, avail_s = rest.partition("==AVAIL")
         cpu = re.search(r"^\s*\d+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S\s+(\d+(?:\.\d+)?)", top, re.M)
-        mem = self.sh(f"dumpsys meminfo {pid}")
         pss = re.search(r"TOTAL PSS:\s+(\d+)", mem); gfx = re.search(r"Graphics:\s+(\d+)", mem); java = re.search(r"Java Heap:\s+(\d+)", mem); nat = re.search(r"Native Heap:\s+(\d+)", mem)
-        avail = re.search(r"MemAvailable:\s+(\d+)", self.sh("cat /proc/meminfo"))
+        avail = re.search(r"MemAvailable:\s+(\d+)", avail_s)
         return dict(pid=pid, cpu_pct=float(cpu[1]) if cpu else None, pss_kb=int(pss[1]) if pss else None, graphics_kb=int(gfx[1]) if gfx else None,
                     java_kb=int(java[1]) if java else None, native_kb=int(nat[1]) if nat else None, mem_available_kb=int(avail[1]) if avail else None)
 
@@ -193,6 +194,6 @@ def foreground(d): return PKG in d.sh("dumpsys window | grep mCurrentFocus")
 
 def launch(d, timeout=60):
     """Brings the app to the front (starting it when it is not running) and waits until something on screen has focus."""
-    if not foreground(d): d.sh(f"am start -n {PKG}/.MainActivity")
+    if not foreground(d): d.sh(f"am start -n {PKG}/app.streamsetu.tv.MainActivity")
     d.wait_for(lambda: foreground(d), timeout)
     return d.wait_for(lambda: len(d.focused) >= 1, timeout)

@@ -23,6 +23,7 @@ android {
         versionName = (project.findProperty("appVersionName") as String?) ?: "0.2.0"
         // In-app updating from GitHub releases. Turn it off (-PselfUpdate=false) for a build that goes through a store, which updates apps itself.
         buildConfigField("boolean", "SELF_UPDATE", ((project.findProperty("selfUpdate") as String?) != "false").toString())
+        buildConfigField("boolean", "FRAME_LOG", "false")          // frame timing and key latency in the log; on for the benchmark build
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }       // Fire TV and Android TV boxes are ARM
         // Sports is switched off in the app unless a build asks for it with -PsportsEnabled=true. One flag for the code (SportsFeature) and for the two Sports receivers in the manifest.
         val sportsOn = (project.findProperty("sportsEnabled") as String?) == "true"
@@ -43,6 +44,19 @@ android {
             isDebuggable = true; isMinifyEnabled = false; isShrinkResources = false
             matchingFallbacks += "release"
         }
+        // For measuring speed and memory the way the shipped app runs: not debuggable, R8 and resource shrinking, the release Compose settings, its own package id so it
+        // sits beside the real app, signed with the debug key, no updater, and frame timing written to the log (adb logcat -s Motion). Profileable from the manifest, so
+        // Perfetto and the profiler can see it. Never distributed. A debug build is for diagnostics only: its lazy lists are much slower than the shipped ones.
+        create("benchmark") {
+            initWith(getByName("release"))
+            isDebuggable = false; isMinifyEnabled = !project.hasProperty("noMinify"); isShrinkResources = !project.hasProperty("noMinify")          // -PnoMinify keeps the names, so a stack sample says which function it is
+            applicationIdSuffix = ".benchmark"; versionNameSuffix = "-benchmark"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+            buildConfigField("boolean", "SELF_UPDATE", "false")
+            buildConfigField("boolean", "FRAME_LOG", "true")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
         release {
             // Signed with the release key. Without keystore.properties there is none, and the build stops (see the check below) instead of quietly using the debug key.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
@@ -60,7 +74,13 @@ android {
     kotlinOptions { jvmTarget = "17"; freeCompilerArgs += "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi" }
     buildFeatures { compose = true; buildConfig = true }
     sourceSets.getByName("debug").assets.srcDir("$rootDir/core-database/schemas")          // the saved database layouts of every version, for the upgrade tests
-    testOptions { unitTests { isIncludeAndroidResources = true; isReturnDefaultValues = true } }       // the Compose UI tests run on the JVM with Robolectric
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true; isReturnDefaultValues = true
+            // Sports is switched off (BuildConfig.SPORTS_ENABLED), so its tests are not part of the gate; `-PwithSports` runs them. SportsDisabledTests (the proof that it is off) always runs.
+            all { t -> if (!project.hasProperty("withSports") && (project.findProperty("sportsEnabled") as String?) != "true") t.filter { excludeTestsMatching("*.sports.*"); excludeTestsMatching("*Sports*Tests") } }
+        }
+    }       // the Compose UI tests run on the JVM with Robolectric
 }
 
 dependencies {

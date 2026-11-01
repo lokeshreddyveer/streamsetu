@@ -40,7 +40,7 @@ fun ProfilePickerOverlay(c: AppContainer, onDone: () -> Unit) {
     val profiles by c.profiles.profiles.collectAsState()
     var choosing by remember { mutableStateOf<Profile?>(null) }
     val first = remember { androidx.compose.ui.focus.FocusRequester() }
-    LaunchedEffect(Unit) { kotlinx.coroutines.delay(150); runCatching { first.requestFocus() } }
+    LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(first, 8) }
     Box(Modifier.fillMaxSize().background(Tokens.background), Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(36.dp)) {
             Label("Who's watching?", Tokens.display, Tokens.text, FontWeight.Bold)

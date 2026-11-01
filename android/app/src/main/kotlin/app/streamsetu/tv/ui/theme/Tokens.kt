@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.sp
 
 /** The page and card colours of one theme. */
 enum class Theme(val label: String, val background: Color, val panel: Color, val card: Color, val elevated: Color, val focused: Color) {
-    /** The default: a neutral cinematic charcoal. Colour comes from artwork; the interface stays out of the way. */
+    /** A neutral cinematic charcoal. Colour comes from artwork; the interface stays out of the way. */
     CINEMA("Cinema", Color(0xFF0B0D10), Color(0xFF101317), Color(0xFF14171B), Color(0xFF20242A), Color(0xFF303740)),
     CINEMATIC("Cinematic", Color(0xFF07080C), Color(0xFF0D0F15), Color(0xFF13161F), Color(0xFF1B1F2B), Color(0xFF282D3D)),
     OBSIDIAN("Obsidian", Color(0xFF050505), Color(0xFF0A0A0A), Color(0xFF151515), Color(0xFF1E1E1E), Color(0xFF2A2A2A)),
@@ -17,13 +17,13 @@ enum class Theme(val label: String, val background: Color, val panel: Color, val
     MIDNIGHT("Midnight", Color(0xFF060912), Color(0xFF0A0E1A), Color(0xFF111827), Color(0xFF1B2438), Color(0xFF26324A)),
     SLATE("Slate", Color(0xFF0D1014), Color(0xFF12161C), Color(0xFF1B2028), Color(0xFF252B35), Color(0xFF313845)),
     FOREST("Forest", Color(0xFF060C09), Color(0xFF0A120E), Color(0xFF111C16), Color(0xFF1A2A21), Color(0xFF253A2E));
-    companion object { fun of(name: String?) = entries.firstOrNull { it.name == name } ?: CINEMA }
+    companion object { fun of(name: String?) = entries.firstOrNull { it.name == name } ?: AMOLED }
 }
 
 /** A highlight colour. */
 enum class Accent(val label: String, val color: Color) {
     EMBER("Ember", Color(0xFFFF6B3D)), CYAN("Cyan", Color(0xFF4CC9D8)), GOLD("Gold", Color(0xFFF5AD42)), VIOLET("Violet", Color(0xFFA48BFF)), GREEN("Green", Color(0xFF3DDCA8)), ROSE("Rose", Color(0xFFFF6B8A)), BLUE("Blue", Color(0xFF4DA3FF));
-    companion object { fun of(name: String?) = entries.firstOrNull { it.name == name } ?: CYAN }
+    companion object { fun of(name: String?) = entries.firstOrNull { it.name == name } ?: BLUE }
 }
 
 /**
@@ -32,8 +32,8 @@ enum class Accent(val label: String, val color: Color) {
  */
 object Tokens {
 
-    private var themeState by mutableStateOf(Theme.CINEMA)
-    private var accentState by mutableStateOf(Accent.CYAN)
+    private var themeState by mutableStateOf(Theme.AMOLED)
+    private var accentState by mutableStateOf(Accent.BLUE)
     fun apply(theme: Theme, accent: Accent) { themeState = theme; accentState = accent }
 
     val background get() = themeState.background
@@ -80,20 +80,20 @@ object Tokens {
     val safeVertical get() = (UiScale.heightDp * 0.04f).coerceIn(18f, 30f).dp
     /** The main sidebar takes no width while it is closed; open, it floats over the page. */
     val sidebarCompact = 0.dp
-    val sidebarExpanded get() = (UiScale.widthDp * 0.19f).coerceIn(180f, 240f).dp
+    val sidebarExpanded get() = (UiScale.widthDp * 0.23f).coerceIn(200f, 280f).dp
     /** The folder column is narrower than the main sidebar (about 19 % of the screen), so the page keeps most of the width. */
-    val folderPanelWidth get() = (UiScale.widthDp * (184f / 960f)).coerceIn(160f, 230f).dp          // 184 dp on a 960 dp wide television
+    val folderPanelWidth get() = (UiScale.widthDp * (250f / 960f)).coerceIn(200f, 320f).dp          // 250 dp on a 960 dp wide television: wide enough for most folder names on one or two lines
 
     /** Hero title 40; screen title 32; section title 23; card title 17; navigation 17; metadata 14; badge 13. */
-    val hero = 40.sp; val display = 32.sp; val pageTitle = 32.sp; val title = 23.sp; val heading = 17.sp
-    val nav = 17.sp; val body = 17.sp; val row = 17.sp; val small = 14.sp; val caption = 13.sp; val eyebrow = 12.sp
+    val hero = 34.sp; val display = 28.sp; val pageTitle = 28.sp; val title = 20.sp; val heading = 16.sp
+    val nav = 15.sp; val body = 15.sp; val row = 15.sp; val small = 13.sp; val caption = 12.sp; val eyebrow = 11.sp
 }
 
 /** Poster widths for a 1280 dp wide screen, scaled by the real width (the phone layout keeps its own sizes). */
 val app.streamsetu.core.settings.PosterSize.tv: androidx.compose.ui.unit.Dp get() = when (this) {
     app.streamsetu.core.settings.PosterSize.COMPACT -> 140.ui
-    app.streamsetu.core.settings.PosterSize.STANDARD -> 154.ui
-    app.streamsetu.core.settings.PosterSize.LARGE -> 168.ui
+    app.streamsetu.core.settings.PosterSize.STANDARD -> 172.ui
+    app.streamsetu.core.settings.PosterSize.LARGE -> 208.ui
 }
 
 /**

@@ -131,7 +131,7 @@ fun ViewingBlockOverlay(c: AppContainer) {
     val b = block ?: return
     var asking by remember { mutableStateOf(false) }
     val first = remember { FocusRequester() }
-    LaunchedEffect(b) { kotlinx.coroutines.delay(150); runCatching { first.requestFocus() } }
+    LaunchedEffect(b) { app.streamsetu.tv.ui.components.requestFocusSoon(first, 8) }
     Box(Modifier.fillMaxSize().background(Tokens.background), Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Label(if (b is ViewingBlock.Bedtime) "It's time to rest" else "That's enough for today", Tokens.display, Tokens.text, FontWeight.Bold)

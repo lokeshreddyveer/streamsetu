@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         LibraryEntity::class, LibraryMemberEntity::class, FolderPrefEntity::class,
         NewEpisodeEntity::class, CatalogFingerprintEntity::class, CollectionEntity::class, CollectionItemEntity::class, OverrideEntity::class, EpgChannelEntity::class,
         WatchTimeEntity::class, ChannelPrefEntity::class, ReminderEntity::class, SportsFollowEntity::class, SportsReminderEntity::class, SportsRecordingEntity::class],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,7 +28,21 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         /** Adds drafts and cached counts to playlists, combined libraries, and folder arrangements. Nothing existing is touched. */
         /** Every step from the first version to the current one, in order. There is no destructive fallback: a database that cannot be upgraded is never emptied. */
-        val MIGRATIONS: Array<androidx.room.migration.Migration> get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+        val MIGRATIONS: Array<androidx.room.migration.Migration> get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+
+        /**
+         * Plex pictures used to be saved with the access token in their address, always in the form `...?X-Plex-Token=...` (the `&X-Plex-Token` form only ever existed in playback addresses, which are
+         * never stored). The token is taken out of what an earlier version stored, once, here, so nothing has to scan every address at each start. Addresses without it are not touched; no structure changes.
+         */
+        val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                SearchIndex.create(db); PeopleIndex.create(db); LanLog.create(db); Profiles.create(db)          // the tables that used to be made at every open (all "if not exists": a database that has them keeps them)
+                for ((table, column) in listOf("movies" to "posterUrl", "series" to "posterUrl", "series" to "backdropUrl", "episodes" to "imageUrl"))
+                    db.execSQL("UPDATE $table SET $column = substr($column, 1, instr($column, '?X-Plex-Token=') - 1) WHERE $column LIKE '%?X-Plex-Token=%'")
+                // Divider rows ("#### SPORTS ####") that older imports kept as channels are removed once here (the common marks only); new imports never store them (see CatalogStore and ChannelFilter).
+                db.execSQL("DELETE FROM channels WHERE name LIKE '%####%' OR name LIKE '%====%' OR name LIKE '%----%' OR name LIKE '%****%' OR TRIM(name) = ''")
+            }
+        }
 
         /** Recordings asked for from Sports events: one new, empty table. Nothing existing is touched. */
         val MIGRATION_8_9 = object : androidx.room.migration.Migration(8, 9) {
@@ -129,11 +143,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        fun open(context: Context): AppDatabase =
+        /** [queryThreads]: how many reads may run at once (two on a small TV box); every write transaction goes through one thread, so catalog writes and reads do not fight each other for four. */
+        fun open(context: Context, logQueries: Boolean = false, queryThreads: Int = 4): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "streamsetu.db").addMigrations(*MIGRATIONS)
+                .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(queryThreads) { r -> Thread(r, "room-query").apply { isDaemon = true } })
+                .setTransactionExecutor(java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "room-tx").apply { isDaemon = true } })
+                .apply { if (logQueries) setQueryCallback({ sql, _ -> android.util.Log.i("SQL", sql.replace('\n', ' ').take(110)) }, java.util.concurrent.Executors.newSingleThreadExecutor()) }
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db); PeopleIndex.create(db); LanLog.create(db); Profiles.create(db) }
-                    override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db); PeopleIndex.create(db); LanLog.create(db); Profiles.create(db) }
+                    // Opening a database runs no schema statements: the text index, people index, LAN log and profile tables are made when the database is created, and by the 9 to 10 step for one that already exists.
                 })
                 .build()
     }

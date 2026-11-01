@@ -1,14 +1,15 @@
 package app.streamsetu.tv.ui.components
 
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.ui.unit.sp
 import app.streamsetu.tv.ui.theme.ui
 import androidx.compose.ui.platform.testTag
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -81,6 +82,8 @@ fun FolderPanel(
     onShortcutMenu: (Shortcut) -> Unit = {},
     /** Called after OK on a row (the row was chosen, not only passed over). */
     onConfirm: () -> Unit = {},
+    /** Changes each time the folder list is opened or asked for the remote: the panel then puts the remote on its selected row, once, when that row exists. -1: the caller does it. */
+    openFocusTick: Int = -1,
 ) {
     var query by remember { mutableStateOf("") }
     var manage by remember { mutableStateOf(false) }
@@ -110,7 +113,7 @@ fun FolderPanel(
         val info = listState.layoutInfo
         val row = info.visibleItemsInfo.firstOrNull { it.index == focusedIdx }
         val inView = row != null && row.offset >= info.viewportStartOffset && row.offset + row.size <= info.viewportEndOffset
-        if (!inView) runCatching { listState.animateScrollToItem((focusedIdx - 2).coerceAtLeast(0)) }
+        if (!inView) runCatching { listState.scrollToItem((focusedIdx - 2).coerceAtLeast(0)) }
     }
     // One stable focus requester per folder or shortcut (by its id), so Up and Down can name the next row exactly instead of leaving it to a search of the list.
     val rowRequesters = remember { HashMap<Any, FocusRequester>() }
@@ -119,6 +122,19 @@ fun FolderPanel(
     fun keyOf(r: Any): Any = if (r is Shortcut) "s:${r.label}" else "f:${(r as Folder).id}"
     fun requesterOf(r: Any): FocusRequester { val own = rowRequesters.getOrPut(keyOf(r)) { FocusRequester() }; return own }
     BackHandler(enabled = reordering != null) { reordering = null }
+    // The remote is handed to the open folder's row in one deterministic step: the row is made to exist, one frame lets it be laid out, then it is asked once (and once more only if that did not land).
+    var panelHasFocus by remember { mutableStateOf(false) }
+    if (openFocusTick >= 0) LaunchedEffect(openFocusTick, rows.isNotEmpty()) {
+        if (rows.isEmpty()) return@LaunchedEffect
+        val target = rows.indexOfFirst { (it is Shortcut && "s:${it.label}" == selectedKey) || (it is Folder && "f:${it.id}" == selectedKey) }.coerceAtLeast(0)
+        if (listState.layoutInfo.visibleItemsInfo.none { it.index == target }) listState.scrollToItem((target - 2).coerceAtLeast(0))
+        androidx.compose.runtime.snapshotFlow { listState.layoutInfo.visibleItemsInfo.any { it.index == target } }.first { it }
+        val requester = entry ?: requesterOf(rows[target])
+        androidx.compose.runtime.withFrameNanos { }
+        runCatching { requester.requestFocus() }
+        androidx.compose.runtime.withFrameNanos { }; androidx.compose.runtime.withFrameNanos { }
+        if (!panelHasFocus) runCatching { requester.requestFocus() }          // the one retry
+    }
     // The open folder's row must exist for the remote to land on it: bring it into view when the panel appears or the selection changes.
     LaunchedEffect(selectedKey) { val i = rows.indexOfFirst { (it is Shortcut && "s:${it.label}" == selectedKey) || (it is Folder && "f:${it.id}" == selectedKey) }; if (i > 3) runCatching { listState.scrollToItem(i - 2) } }
 
@@ -128,7 +144,7 @@ fun FolderPanel(
     }
 
     Column(
-        modifier.fillMaxHeight().background(Tokens.card).padding(vertical = Tokens.safeVertical, horizontal = 8.dp)
+        modifier.fillMaxHeight().sidebarSurface().padding(vertical = Tokens.safeVertical, horizontal = 8.dp).onFocusChanged { panelHasFocus = it.hasFocus }
             .onPreviewKeyEvent { e ->
                 val id = reordering
                 if (id != null && e.type == KeyEventType.KeyDown) {
@@ -142,17 +158,20 @@ fun FolderPanel(
                 } else if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) onRight() else if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionLeft && onLeft != null) { onLeft(); true } else false
             },
     ) {
-        Column(Modifier.padding(start = 14.dp, end = 8.dp, bottom = 6.dp)) {
-            Label(title, 22.sp, Tokens.text, FontWeight.Bold)
-            Label(if (folders.isEmpty()) "No folders" else "%,d folders".format(folders.count { !it.pref.hidden }), 15.sp, Tokens.textTertiary, modifier = Modifier.padding(top = 1.dp))
+        // The name of the list, how many folders it has, and on the same line two small round buttons: New folder and Edit folders. The one the remote is on is named where the count is.
+        var actionHint by remember { mutableStateOf<String?>(null) }
+        Row(Modifier.padding(start = 14.dp, end = 4.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Label(title, Tokens.heading, Tokens.text, FontWeight.SemiBold)
+                Label(actionHint ?: if (folders.isEmpty()) "No folders" else "%,d folders".format(folders.count { !it.pref.hidden }), Tokens.small, if (actionHint != null) Tokens.accent else Tokens.textTertiary, modifier = Modifier.padding(top = 1.dp))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                TvIconButton(Icons.Filled.CreateNewFolder, "New folder", { creating = true }, plain = true, onFocus = { actionHint = if (it) "New folder" else null })
+                TvIconButton(if (manage) Icons.Filled.Check else Icons.Filled.Tune, if (manage) "Done" else "Edit folders", { manage = !manage }, on = manage, plain = true, onFocus = { actionHint = if (it) (if (manage) "Done editing" else "Edit folders") else null })
+            }
         }
         // The folder search field is only on screens with a very long list of folders (Live TV); Movies and Series have the Search chip on the page.
-        if (showSearch) TvTextField(query, { query = it }, "Search folders", Modifier.padding(horizontal = 8.dp).fillMaxWidth(), compact = true, leadingIcon = Icons.Filled.Search)
-        // New folder and Manage folders sit up here, one press from the search field, so they are reached without scrolling through every folder.
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            PanelAction("New", Icons.Filled.CreateNewFolder, Modifier.weight(1f)) { creating = true }
-            PanelAction(if (manage) "Done" else "Edit", Icons.Filled.Tune, Modifier.weight(1f), highlighted = manage) { manage = !manage }
-        }
+        if (showSearch) TvTextField(query, { query = it }, "Search folders", Modifier.padding(horizontal = 8.dp, vertical = 4.dp).fillMaxWidth(), compact = true, leadingIcon = Icons.Filled.Search)
 
         // Holding Up runs the highlight to the top of the folders and stops there; it does not carry on into the buttons above. A fresh press does.
         Box(Modifier.weight(1f).fillMaxWidth().onPreviewKeyEvent { e ->
@@ -175,10 +194,10 @@ fun FolderPanel(
             }
             true
         }) {
-            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            LazyColumn(Modifier.fillMaxSize().scrollThumb(listState), state = listState, contentPadding = PaddingValues(vertical = 2.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 itemsIndexed(rows, key = { _, r -> if (r is Shortcut) "s:${r.label}" else "f:${(r as Folder).id}" }) { idx, r ->
                     // A small heading where the shortcuts end and the provider's folders begin.
-                    if (r is Folder && (idx == 0 || rows[idx - 1] is Shortcut) && visible.isNotEmpty()) Label("FOLDERS", 11.sp, Tokens.textTertiary, FontWeight.Bold, modifier = Modifier.padding(start = 10.dp, top = if (idx == 0) 2.dp else 8.dp, bottom = 2.dp), letterSpacing = androidx.compose.ui.unit.TextUnit(1.4f, androidx.compose.ui.unit.TextUnitType.Sp))
+                    if (r is Folder && (idx == 0 || rows[idx - 1] is Shortcut) && visible.isNotEmpty()) Label("FOLDERS", Tokens.caption, Tokens.textTertiary, FontWeight.Bold, modifier = Modifier.padding(start = 10.dp, top = if (idx == 0) 2.dp else 8.dp, bottom = 2.dp), letterSpacing = 1.sp)
                     if (r is Shortcut) {
                         PanelRow(r.label, r.icon, null, r.browse == selected, false, if (r.browse == selected && entry != null) Modifier.focusRequester(entry) else Modifier.focusRequester(requesterOf(r)), onFocusDwell = { if (selectOnDwell) onSelect(r.browse) }, onRowFocus = { focusedIdx = idx }, onLongClick = if (r.browse is Browse.Collection) ({ onShortcutMenu(r) }) else null, onClick = { onSelect(r.browse); onConfirm() })
                     } else {
@@ -246,17 +265,6 @@ fun FolderPanel(
     }
 }
 
-/** A small button in the folder panel's header. */
-@Composable
-private fun PanelAction(label: String, icon: ImageVector, modifier: Modifier, highlighted: Boolean = false, onClick: () -> Unit) {
-    Focusable(onClick, modifier.height(44.ui), scaleOnFocus = 1.0f, container = if (highlighted) Tokens.accent.copy(alpha = 0.18f) else Color(0x1AFFFFFF), focusedContainer = Color(0x40FFFFFF), shape = RoundedCornerShape(Tokens.radius)) { f ->
-        Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
-            Image(icon, null, Modifier.size(20.ui), colorFilter = ColorFilter.tint(if (f || highlighted) Color.White else Tokens.textSecondary))
-            Label(label, 15.sp, if (f || highlighted) Color.White else Tokens.textSecondary, FontWeight.Medium)
-        }
-    }
-}
-
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun PanelRow(label: String, icon: ImageVector, count: Int?, selected: Boolean, dimmed: Boolean, extra: Modifier, onFocusDwell: () -> Unit = {}, onRowFocus: () -> Unit = {}, onLongClick: (() -> Unit)? = null, reordering: Boolean = false, onClick: () -> Unit) {
@@ -265,19 +273,19 @@ private fun PanelRow(label: String, icon: ImageVector, count: Int?, selected: Bo
     // Moving the remote over folders opens one only after a short pause, so scrolling through many folders stays light.
     LaunchedEffect(dwellKey, focused) { if (focused) { kotlinx.coroutines.delay(250); onFocusDwell() } }
     // The same entry as the main sidebar (56 high, a 3-wide accent bar for the open folder, a soft fill for the open one and a stronger one where the remote is); the names are set smaller.
-    Focusable(onClick, extra.testTag("panel-row-$label").fillMaxWidth().heightIn(min = 56.ui), scaleOnFocus = 1.0f, container = if (selected) Color(0x1AFFFFFF) else Color.Transparent, focusedContainer = Color(0x40FFFFFF), shape = RoundedCornerShape(Tokens.radius), onFocus = { focused = it; dwellKey++; if (it) onRowFocus() }, onLongClick = onLongClick) { f ->
-        Row(Modifier.heightIn(min = 56.ui), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.padding(start = 2.dp).width(3.dp).height(20.ui).background(if (selected) Tokens.accent else Color.Transparent, RoundedCornerShape(2.dp)))
+    Focusable(onClick, extra.testTag("panel-row-$label").fillMaxWidth().heightIn(min = 56.ui), scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, container = Color.Transparent, focusedContainer = Color.Transparent, showRing = false, shape = RoundedCornerShape(Tokens.radius), onFocus = { focused = it; dwellKey++; if (it) onRowFocus() }, onLongClick = onLongClick) { f ->
+        Row(Modifier.fillMaxWidth().sidebarRowFill(f, selected).heightIn(min = 56.ui), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.width(5.dp))
             Box(Modifier.width(34.ui), Alignment.Center) {
-                if (!app.streamsetu.tv.trace.Diag.artwork) Image(if (reordering) Icons.Filled.SwapVert else icon, null, Modifier.size(22.ui), colorFilter = ColorFilter.tint(if (f || selected) Color.White else Tokens.textSecondary))
+                if (!app.streamsetu.tv.trace.Diag.artwork) Image(if (reordering) Icons.Filled.SwapVert else icon, null, Modifier.size(25.ui), colorFilter = ColorFilter.tint(if (f || selected) Color.White else Tokens.textSecondary))
             }
-            val ink = if (dimmed) Tokens.textTertiary else if (f || selected) Color.White else Tokens.textSecondary
+            val ink = if (f) Color.White else if (dimmed) Tokens.textTertiary else if (selected) Color.White else Tokens.textSecondary
             val weight = if (selected) FontWeight.SemiBold else FontWeight.Medium
-            // Every row stays one clean line. The row the remote is on slides its whole name sideways (after a short pause), so a long name can be read in full without the list changing shape.
-            if (f && !app.streamsetu.tv.trace.Diag.marquee) androidx.compose.foundation.text.BasicText(app.streamsetu.tv.ui.i18n.I18n.tr(label), Modifier.weight(1f).padding(start = 8.dp).basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 700, velocity = 40.dp),
-                style = androidx.compose.ui.text.TextStyle(color = ink, fontSize = 14.sp, fontWeight = weight), maxLines = 1, softWrap = false)
-            else Label(label, 14.sp, ink, weight, modifier = Modifier.weight(1f).padding(start = 8.dp))
-            Spacer(Modifier.width(8.dp))          // the number of titles is not shown beside the name: the whole width goes to the name
+            // A name takes up to two lines, so folders that begin alike can still be told apart; the full name of the open folder is in the content header.
+            Label(label, Tokens.row, ink, weight, maxLines = 2, modifier = Modifier.weight(1f).padding(start = 10.dp, top = 4.dp, bottom = 4.dp))
+            // The number of titles is shown only on the open folder and the one the remote is on, so the names of the rest keep the whole width.
+            if (count != null && (f || selected)) Label("%,d".format(count), Tokens.caption, if (f) Color(0xB3FFFFFF) else Tokens.textTertiary, FontWeight.Medium, modifier = Modifier.padding(start = 6.dp))
+            Spacer(Modifier.width(8.dp))
         }
     }
 }

@@ -3,7 +3,7 @@ package app.streamsetu.tv.ui.screens.settings
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -18,6 +18,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -30,38 +31,42 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.streamsetu.core.model.*
 import app.streamsetu.core.playback.*
 import androidx.compose.ui.draw.clip
 import app.streamsetu.tv.AppContainer
 import app.streamsetu.tv.nav.Navigator
 import app.streamsetu.tv.ui.components.*
+import app.streamsetu.tv.ui.components.scrollThumb
+import app.streamsetu.tv.ui.components.sidebarRowFill
 import app.streamsetu.tv.ui.theme.Tokens
+import app.streamsetu.tv.ui.theme.ui
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** The categories, most used first; the technical ones are at the bottom. */
-enum class Category(val title: String, val subtitle: String, val icon: ImageVector) {
-    PLAYBACK("Playback", "Engine, buffering, resume and recovery", Icons.Filled.PlayArrow),
-    VIDEO("Video & Display", "Picture size, decoding and screen", Icons.Filled.Tv),
-    AUDIO("Audio", "Language, surround and track memory", Icons.Filled.VolumeUp),
-    SUBTITLES("Subtitles & Accessibility", "Subtitle style, motion and contrast", Icons.Filled.Subtitles),
-    LIVE("Live TV", "Channel keys, numbers and guide time", Icons.Filled.LiveTv),
-    CHANNELS("Channel Manager", "Hide, rename and check channels", Icons.Filled.Tune),
-    DEVICE("On Your Device", "Videos and pictures stored here", Icons.Filled.PhoneAndroid),
-    STATISTICS("Statistics", "What you have watched", Icons.Filled.BarChart),
-    LIBRARIES("Libraries & Folders", "Connections, combined libraries, folders", Icons.Filled.Layers),
-    SEARCH("Search & Catalog", "Sorting, search history and the index", Icons.Filled.Search),
-    FAVOURITES("Favorites & History", "Lists, history and Home rows", Icons.Filled.Favorite),
-    APPEARANCE("Appearance & Sounds", "Posters, banner, animation, interface sounds", Icons.Filled.Palette),
-    PRIVACY("Privacy & Security", "Folder PIN, relock, clearing data", Icons.Filled.Lock),
-    PODCASTS("Podcasts", "Follow shows and play episodes", Icons.Filled.Mic),
-    INTEGRATIONS("AI, Trakt and Debrid", "Ask for what to watch, watch tracking and link unlocking, with your own keys", Icons.Filled.Link),
-    PROFILES("Profiles", "Who is watching, kids profiles and PINs", Icons.Filled.People),
-    SYNC("Sync on this network", "Share favourites and progress over Wi-Fi", Icons.Filled.Sync),
-    STORAGE("Storage & Backup", "Cache, backup and reset", Icons.Filled.Storage),
-    DIAGNOSTICS("Diagnostics", "Playback facts and a safe report", Icons.Filled.Troubleshoot),
-    ABOUT("About StreamSetu", "Version, licenses and support", Icons.Filled.Info),
+enum class Category(val title: String, val subtitle: String, val icon: ImageVector, val tint: Color, val section: Int) {
+    PLAYBACK("Playback", "Engine, buffering, resume and recovery", Icons.Filled.PlayArrow, Mac.blue, 0),
+    VIDEO("Video & Display", "Picture size, decoding and screen", Icons.Filled.Tv, Mac.indigo, 0),
+    AUDIO("Audio", "Language, surround and track memory", Icons.Filled.VolumeUp, Mac.pink, 0),
+    SUBTITLES("Subtitles & Accessibility", "Subtitle style, motion and contrast", Icons.Filled.Subtitles, Mac.gray, 0),
+    LIVE("Live TV", "Channel keys, numbers and guide time", Icons.Filled.LiveTv, Mac.red, 1),
+    CHANNELS("Channel Manager", "Hide, rename and check channels", Icons.Filled.Tune, Mac.orange, 1),
+    DEVICE("On Your Device", "Videos and pictures stored here", Icons.Filled.PhoneAndroid, Mac.teal, 1),
+    STATISTICS("Statistics", "What you have watched", Icons.Filled.BarChart, Mac.green, 1),
+    LIBRARIES("Libraries & Folders", "Connections, combined libraries, folders", Icons.Filled.Layers, Mac.blue, 2),
+    SEARCH("Search & Catalog", "Sorting, search history and the index", Icons.Filled.Search, Mac.gray, 2),
+    FAVOURITES("Favorites & History", "Lists, history and Home rows", Icons.Filled.Favorite, Mac.pink, 2),
+    APPEARANCE("Appearance & Sounds", "Posters, banner, animation, interface sounds", Icons.Filled.Palette, Mac.purple, 2),
+    PRIVACY("Privacy & Security", "Folder PIN, relock, clearing data", Icons.Filled.Lock, Mac.blue, 3),
+    PODCASTS("Podcasts", "Follow shows and play episodes", Icons.Filled.Mic, Mac.orange, 3),
+    INTEGRATIONS("AI, Trakt and Debrid", "Ask for what to watch, watch tracking and link unlocking, with your own keys", Icons.Filled.Link, Mac.indigo, 3),
+    PROFILES("Profiles", "Who is watching, kids profiles and PINs", Icons.Filled.People, Mac.green, 3),
+    SYNC("Sync on this network", "Share favourites and progress over Wi-Fi", Icons.Filled.Sync, Mac.teal, 3),
+    STORAGE("Storage & Backup", "Cache, backup and reset", Icons.Filled.Storage, Mac.gray, 4),
+    DIAGNOSTICS("Diagnostics", "Playback facts and a safe report", Icons.Filled.Troubleshoot, Mac.orange, 4),
+    ABOUT("About StreamSetu", "Version, licenses and support", Icons.Filled.Info, Mac.gray, 4),
 }
 
 /**
@@ -98,8 +103,8 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
         val v = info.visibleItemsInfo.firstOrNull { it.index == index }
         when {
             v == null -> categoryState.scrollToItem(index)
-            v.offset < info.viewportStartOffset -> categoryState.animateScrollBy((v.offset - info.viewportStartOffset).toFloat())
-            v.offset + v.size > info.viewportEndOffset -> categoryState.animateScrollBy((v.offset + v.size - info.viewportEndOffset).toFloat())
+            v.offset < info.viewportStartOffset -> categoryState.scrollBy((v.offset - info.viewportStartOffset).toFloat())
+            v.offset + v.size > info.viewportEndOffset -> categoryState.scrollBy((v.offset + v.size - info.viewportEndOffset).toFloat())
         }
     }
     // The chosen category is always on screen, so Left from the controls (and Back) can find it.
@@ -115,42 +120,58 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
 
     Row(Modifier.fillMaxSize()) {
         // Left: the categories, each with an icon tile and a line saying what is inside.
-        Column(Modifier.weight(0.25f).fillMaxHeight().railOnLeft().background(Tokens.panel).padding(horizontal = 12.dp, vertical = Tokens.safeVertical)) {
-            Row(Modifier.padding(start = 8.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.brand_logo), null, Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)))
-                Column { Label("Settings", Tokens.pageTitle, Tokens.text, FontWeight.Bold); Label("StreamSetu " + app.streamsetu.tv.BuildConfig.VERSION_NAME, Tokens.caption, Tokens.textTertiary) }
-            }
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = categoryState, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.weight(0.25f).fillMaxHeight().railOnLeft().sidebarSurface().padding(horizontal = 12.dp, vertical = Tokens.safeVertical)) {
+            Label("Settings", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(start = 10.dp, bottom = 8.dp))
+            LazyColumn(Modifier.weight(1f).fillMaxWidth().scrollThumb(categoryState), state = categoryState, verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 itemsIndexed(Category.entries, key = { _, cat -> cat.name }) { index, cat ->
                     val isSel = cat == current
                     var dwell by remember { mutableStateOf(false) }
-                    LaunchedEffect(dwell) { if (dwell) { delay(60); selected = cat.name } }          // the panel follows the remote at once (60 ms only folds a held key into one change)
-                    Focusable({ selected = cat.name; runCatching { panelEntry.requestFocus() }.isSuccess },
+                    LaunchedEffect(dwell) { if (dwell) { delay(350); selected = cat.name } }          // the page on the right follows the remote once it rests on a category: moving down the list does not build every page it passes
+                    Column {
+                        if (index > 0 && Category.entries[index - 1].section != cat.section) Spacer(Modifier.height(10.dp))
+                                        Focusable({ selected = cat.name; runCatching { panelEntry.requestFocus() }.isSuccess },
                         (if (isSel) Modifier.focusRequester(listEntry) else Modifier).then(Modifier.focusRequester(rows.getValue(cat))).fillMaxWidth()
+                            // Up and Down go to the neighbouring category by name, never by where it happens to be on screen; at either end the remote stays put, and it never leaves sideways but through Right.
+                            .focusProperties {
+                                up = Category.entries.getOrNull(index - 1)?.let { rows.getValue(it) } ?: FocusRequester.Cancel
+                                down = Category.entries.getOrNull(index + 1)?.let { rows.getValue(it) } ?: FocusRequester.Cancel
+                                left = FocusRequester.Cancel
+                            }
                             .onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { selected = cat.name; runCatching { panelEntry.requestFocus() }.isSuccess } else false },
-                        shape = RoundedCornerShape(14.dp), container = if (isSel) Tokens.elevated else Color.Transparent, focusedContainer = Tokens.focusedSurface, scaleOnFocus = 1.0f, onFocus = { dwell = it; if (it) scope.launch { reveal(index) } }) { f ->
-                        Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(if (isSel || f) Tokens.accent.copy(alpha = 0.22f) else Color(0x14FFFFFF)), Alignment.Center) {
-                                androidx.compose.foundation.Image(cat.icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (isSel || f) Tokens.accent else Tokens.textSecondary))
+                        shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, focusedContainer = Color.Transparent, scaleOnFocus = 1.0f, showRing = false, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, onFocus = { dwell = it; if (it) scope.launch { reveal(index) } }) { f ->
+                        // The same entry as the main menu: a soft fill for the open one, the icon, then the name; the line saying what is inside stays on the page's own header.
+                        Row(Modifier.fillMaxWidth().sidebarRowFill(f, isSel).heightIn(min = 44.ui), verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.width(5.dp))
+                            Box(Modifier.width(34.ui), Alignment.Center) {
+                                androidx.compose.foundation.Image(cat.icon, null, Modifier.size(22.ui), colorFilter = ColorFilter.tint(if (f || isSel) Color.White else Tokens.textSecondary))
                             }
-                            Column(Modifier.weight(1f)) {
-                                Label(cat.title, Tokens.row, if (isSel || f) Tokens.text else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium)
-                                Label(cat.subtitle, Tokens.caption, Tokens.textTertiary)
-                            }
-                            statusOf(cat)?.let { st -> Label(st, Tokens.caption, Tokens.accent, FontWeight.SemiBold, modifier = Modifier.widthIn(max = 90.dp)) }
+                            Label(cat.title, Tokens.row, if (f || isSel) Color.White else Tokens.textSecondary, if (isSel) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.weight(1f).padding(start = 8.dp), maxLines = 1)
+                            statusOf(cat)?.let { st -> Label(st, Mac.rowDetail, if (isSel) Color(0xCCFFFFFF) else Tokens.textTertiary, FontWeight.Medium, modifier = Modifier.widthIn(max = 90.dp).padding(end = 6.dp)) }
                         }
+                    }
                     }
                 }
             }
-        }
-        // Right: a header for the category, then its groups.
-        Column(Modifier.weight(0.75f).fillMaxHeight().focusRequester(panelEntry).leftGoesTo(rows.getValue(current)).onFocusChanged { inPanel = it.hasFocus }.verticalScroll(rememberScrollState()).padding(start = 26.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Box(Modifier.size(52.dp).clip(RoundedCornerShape(15.dp)).background(Tokens.accent.copy(alpha = 0.20f)), Alignment.Center) {
-                    androidx.compose.foundation.Image(current.icon, null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(Tokens.accent))
+            // The person who is watching sits at the bottom, out of the way: their initial in a blue circle, their name and the app's version.
+            Row(Modifier.padding(start = 6.dp, end = 6.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                val who = profileList.firstOrNull { it.id == activeProfile }?.name ?: "StreamSetu"
+                Box(Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape).background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Mac.blue, Mac.indigo))), Alignment.Center) {
+                    Label(who.take(1).uppercase(), 14.sp, Color.White, FontWeight.SemiBold)
                 }
-                Column { Label(current.title, Tokens.display, Tokens.text, FontWeight.Bold); Label(current.subtitle, Tokens.small, Tokens.textSecondary) }
+                Column { Label(who, Mac.rowTitle, Tokens.text, FontWeight.SemiBold); Label("Version " + app.streamsetu.tv.BuildConfig.VERSION_NAME.substringBefore("-"), Mac.rowDetail, Tokens.textTertiary) }
             }
+        }
+        // Right: a header for the category, then its groups. Statistics is a lazy list (only the groups near the screen are built); the other pages are still one column.
+        val panelMod = Modifier.weight(0.75f).fillMaxHeight().focusRequester(panelEntry).leftGoesTo(rows.getValue(current)).onFocusChanged { inPanel = it.hasFocus }
+        val header: @Composable () -> Unit = { Column(Modifier.padding(start = 12.dp, bottom = 2.dp)) { Label(current.title, Mac.pageTitle, Tokens.text, FontWeight.Bold); Label(current.subtitle, Mac.rowDetail, Tokens.textSecondary) } }
+        if (current == Category.STATISTICS) {
+            val statsUi = rememberStatsUi(c)
+            androidx.compose.foundation.lazy.LazyColumn(panelMod, contentPadding = PaddingValues(start = 26.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                item(key = "header", contentType = "header") { header() }
+                statisticsItems(statsUi)
+            }
+        } else Column(panelMod.verticalScroll(rememberScrollState()).padding(start = 26.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            header()
             SettingsPanel(current, c, nav)
         }
     }
