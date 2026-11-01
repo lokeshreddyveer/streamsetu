@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.11.01",
+      "title": "1 November 2026",
+      "summary": "**Fire TV and Android TV 0.21.0.** Movies and Series open with fewer database reads, and returning to a screen you just left reuses what it showed. Focus on a poster or folder is now a single immediate change, with nothing animated underneath.",
+      "date": "2026-11-01",
+      "mac": "2.15.0",
+      "android": "0.21.0",
+      "ios": "1.1"
+    },
+    {
       "tag": "2026.10.29",
       "title": "29 October 2026",
       "summary": "**App DNS** on every app: choose an encrypted DNS provider (Cloudflare, Google, Quad9, AdGuard, Control D or your own) so a router or ISP that blocks your provider's or CDN's name does not stop StreamSetu. It works inside StreamSetu only. It is not a VPN and changes nothing else on the device.",
