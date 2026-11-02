@@ -98,7 +98,10 @@ public class Inj {
             StringBuilder sb = new StringBuilder("<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation=\"0\">");
             if (root != null) write(root, sb, 0);
             return sb.append("</hierarchy>").toString();
-        } catch (Throwable e) { return "dump-failed " + e.getClass().getSimpleName() + ": " + String.valueOf(e.getMessage()).replace('\n', ' '); }
+        } catch (Throwable e) {
+            Throwable c = e; while (c.getCause() != null) c = c.getCause();
+            return "dump-failed " + c.getClass().getSimpleName() + ": " + String.valueOf(c.getMessage()).replace('\n', ' ');
+        }
     }
 
     private static void write(AccessibilityNodeInfo n, StringBuilder sb, int index) {

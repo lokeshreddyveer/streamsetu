@@ -322,6 +322,16 @@ class Suite:
         if page in ("Movies", "Series"): self.detail(page); self.toolbar_and_sheet(page)
         self.crashes(page)
 
+    def resting_focus(self, bounds, quiet=0.4, timeout=4.0):
+        """The focused item's bounds once they have stopped changing. A focus scroll ends in a long, slow tail (a poster on the bottom row keeps drifting for about 0.75 s), so a reading taken when
+        the keys have settled can be a few pixels off the place the item comes to rest, and the page restores the resting place."""
+        end = time.time() + timeout; last = bounds; since = time.time()
+        while time.time() < end:
+            scr = self.dump(); b = scr["focus"][0]["b"] if scr["focus"] else None
+            if b != last: last = b; since = time.time()
+            elif time.time() - since >= quiet: break
+        return last
+
     def detail(self, page):
         """OK on a poster opens its page, Back returns to the same poster; the OK and Back transitions are measured apart from movement."""
         d = self.d
@@ -334,7 +344,7 @@ class Suite:
             if f and 150 < f["b"][2] - f["b"][0] < 320 and f["b"][3] - f["b"][1] > 200: break
             m = d.mark(); d.seq(["DOWN"] * (3 if n == 0 else 2), 120); d.settle(m, quiet=0.2, timeout=5)
         else: self.check(page, "reaches a poster", False); return
-        before = f["b"]
+        before = self.resting_focus(f["b"])
         r = self.phase(page, "OK on a poster", keys=["OK"], settled=True)
         ok, scr = self.wait_screen(["Watch Later", "More Information", "Favorite", "Season", "Play", "Resume"], 15)
         self.check(page, "OK opens the item's page", ok, " | ".join(scr["texts"])[:80])

@@ -116,6 +116,14 @@ enum AssistantOutcome: Equatable {
             }
             try? await Task.sleep(nanoseconds: probe.pause)
         }
+        // One last look at the player: a stream that started (or failed) in the gap before the deadline is reported as it is, not as a timeout.
+        if sawRequest {
+            switch probe.state() {
+            case .playing: return .done(nil)
+            case .failed(let e): return .failed(e.message + " " + e.advice)
+            default: break
+            }
+        }
         if let e = probe.lastError(), Date().timeIntervalSince(e.at) < limit + 2, probe.state() != .playing { return .failed(e.error.message + " " + e.error.advice) }
         if !sawRequest { return .failed("It did not start: that title or channel could not be opened.") }
         return .failed("It has not started playing after \(Int(limit)) seconds (the player is \(Self.describe(probe.state()))), so I can’t say it worked. You can wait a little longer or try another.")

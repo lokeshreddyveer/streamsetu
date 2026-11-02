@@ -84,6 +84,8 @@ class Device:
     def start_injector(self):
         dex = os.path.join(os.path.dirname(__file__), "injector", "inj.dex")
         self.adb("push", dex, "/data/local/tmp/inj.dex")
+        # An injector left behind by an earlier run keeps the one accessibility connection the system allows, and the new one is refused: stop any first.
+        self.sh("pkill -f 'app_process /system/bin Inj'")
         self.inj = subprocess.Popen([ADB, "-s", self.serial, "shell", "CLASSPATH=/data/local/tmp/inj.dex app_process /system/bin Inj"],
                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
         self._inj_lines = []; self._inj_cv = threading.Condition()
