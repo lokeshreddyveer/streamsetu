@@ -388,7 +388,6 @@ class SportsViewModel internal constructor(private val deps: SportsDeps, scope: 
     }
     /** Playing a Sports stream and a Multiview cannot share the decoders: the stream is released before the Multiview opens. */
     fun beforeMultiview() { playback?.end() }
-    fun dismissPlaybackMessage() { playback?.dismissMessage() }
     /** The person chose Refresh (or Retry): the old content stays until the new is ready. */
     fun refresh() { if (currentScope != null) startLoad(clear = false) }
     /** The screen was entered again; the events are refreshed in the background only if they are old. */

@@ -18,13 +18,6 @@ struct GuideScreen: View {
         default: .withGuide
         }
     }
-    private var scopeTitle: String {
-        switch scope { case .withGuide: "All channels with a guide"; case .favorites: "Favorites"; case .category(let id): state.folderName(id) ?? "Group" }
-    }
-    private var zoneNote: String {
-        let tz = TimeZone.current
-        return "Times in \(tz.identifier) (\(tz.abbreviation(for: vm.windowStart) ?? tz.identifier))"
-    }
 
     var body: some View {
         VStack(spacing: 0) {

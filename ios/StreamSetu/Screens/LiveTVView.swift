@@ -245,7 +245,7 @@ struct LiveTVView: View {
             Group {
                 if tiles { tileGrid } else if sizeClass == .regular { grid } else { list }
             }
-            .navigationTitle("Live TV").themed("Live TV")
+            .navigationTitle("Live TV").themed("Live TV", tabRoot: true)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { SyncIndicator() }
                 TrailingPills {

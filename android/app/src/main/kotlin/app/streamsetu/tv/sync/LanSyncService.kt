@@ -91,7 +91,6 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
     val trusted: StateFlow<List<LanPeer>> = _trusted.asStateFlow()
     val prompt: StateFlow<Prompt?> = _prompt.asStateFlow()
     val status: StateFlow<String> = _status.asStateFlow()
-    val pairingOpen: StateFlow<Boolean> = _pairingOpen.asStateFlow()
     val message: StateFlow<String?> = _message.asStateFlow()
 
     private val deviceName: String = (Build.MODEL ?: "Android").let { m -> if (Build.MANUFACTURER.isNullOrBlank() || m.startsWith(Build.MANUFACTURER, true)) m else "${Build.MANUFACTURER} $m" }

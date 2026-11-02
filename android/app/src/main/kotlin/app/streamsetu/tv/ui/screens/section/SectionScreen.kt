@@ -4,11 +4,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items as rowItems
@@ -19,9 +17,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import app.streamsetu.core.ui.motion.Motion
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -48,8 +44,6 @@ import app.streamsetu.tv.ui.screens.home.RowKind
 import app.streamsetu.tv.ui.screens.search.SectionSearch
 import app.streamsetu.tv.ui.theme.Tokens
 import app.streamsetu.tv.ui.theme.tv
-import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
@@ -509,13 +503,6 @@ private fun ToolButton(label: String, icon: ImageVector, modifier: Modifier = Mo
             Label(label, Tokens.caption, ink, FontWeight.SemiBold)
         }
     }
-}
-
-/** Lets a child use the whole width of its parent, past the parent's side padding (a full-bleed picture inside a padded list). */
-private fun Modifier.fullBleed(start: androidx.compose.ui.unit.Dp, end: androidx.compose.ui.unit.Dp): Modifier = layout { measurable, c ->
-    val s = start.roundToPx(); val e = end.roundToPx()
-    val p = measurable.measure(c.copy(minWidth = c.maxWidth + s + e, maxWidth = c.maxWidth + s + e))
-    layout(c.maxWidth, p.height) { p.place(-s, 0) }
 }
 
 @Composable

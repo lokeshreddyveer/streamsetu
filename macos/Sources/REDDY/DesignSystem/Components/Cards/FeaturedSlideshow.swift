@@ -55,7 +55,6 @@ final class SlideshowController {
         index = i
     }
 
-    func finishedCrossfade() { previousIndex = nil }
     func togglePause() { userPaused.toggle() }
 }
 

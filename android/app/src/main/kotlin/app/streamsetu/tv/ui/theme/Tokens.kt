@@ -130,9 +130,7 @@ object Tokens {
 
     // Older names used by the screens.
     val muted get() = textSecondary
-    val surfaceHigh get() = elevated
     val border get() = line
-    val accent2 get() = accent
 
     // Radii, spacing and television-safe margins. The sizes were designed on a 1280 dp wide screen; they are scaled by the real width of the screen (see [UiScale]) so the same proportions
     // fill a 960 dp or a 1280 dp television without any scaling of the whole picture. Text sizes are in sp and follow the television's own density.

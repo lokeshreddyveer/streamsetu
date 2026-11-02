@@ -161,7 +161,7 @@ struct LibraryView: View {
                 .padding(16)
                 if model.loading { ProgressView().padding() }
             }
-            .navigationTitle(kind == .movie ? "Movies" : "Series").themed(kind == .movie ? "Movies" : "Series")
+            .navigationTitle(kind == .movie ? "Movies" : "Series").themed(kind == .movie ? "Movies" : "Series", tabRoot: true)
             .navigationDestination(for: LibraryItem.self) { DetailView(item: $0) }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { SyncIndicator() }

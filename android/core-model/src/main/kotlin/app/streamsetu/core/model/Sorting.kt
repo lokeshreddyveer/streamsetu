@@ -10,7 +10,6 @@ enum class SortField(val label: String) {
  * so items in a combined library do not jump around between refreshes.
  */
 data class SortSpec(val field: SortField = SortField.PROVIDER, val ascending: Boolean = true, val favoritesFirst: Boolean = false, val unwatchedFirst: Boolean = false) {
-    val isDefault get() = this == SortSpec()
     fun encode() = "${field.name}|$ascending|$favoritesFirst|$unwatchedFirst"
     companion object {
         /** What a list is ordered by until the person chooses otherwise: most recently added first, everywhere. All the other orders stay available. */

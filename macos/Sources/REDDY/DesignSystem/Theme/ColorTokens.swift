@@ -30,7 +30,6 @@ enum ColorTokens {
     static var lineStrong: Color { Color.white.opacity(contrast ? 0.55 : 0.14) }
     static var borderStrong: Color { lineStrong }
     static let glassEdge = Color(hex: 0xE3E8F0, opacity: 0.17)
-    static let glassShine = Color.white.opacity(0.10)
 
     /// Strength of the top-lit sheen, and of the bright top-edge hairline, for the current theme.
     static var glassy: Bool { p.glassy }

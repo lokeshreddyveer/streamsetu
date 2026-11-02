@@ -116,7 +116,6 @@ class Navigator {
     val overlays = mutableStateListOf<Overlay>()
     /** Set when something elsewhere (a Home tile) wants a section opened on one folder; the section takes it when it appears. */
     var pendingFolder: Pair<app.streamsetu.core.model.ContentKind, String>? by mutableStateOf(null)
-    fun openFolder(kind: app.streamsetu.core.model.ContentKind, folderId: String) { pendingFolder = kind to folderId; go(if (kind == app.streamsetu.core.model.ContentKind.MOVIE) Tab.MOVIES else Tab.SERIES) }
 
     fun openFolderTab(kind: app.streamsetu.core.model.ContentKind, folderId: String) { pendingFolder = kind to folderId; go(when (kind) { app.streamsetu.core.model.ContentKind.MOVIE -> Tab.MOVIES; app.streamsetu.core.model.ContentKind.SERIES -> Tab.SERIES; else -> Tab.LIVE }) }
 

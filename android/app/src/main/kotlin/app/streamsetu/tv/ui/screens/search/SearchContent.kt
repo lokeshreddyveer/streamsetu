@@ -3,7 +3,6 @@ package app.streamsetu.tv.ui.screens.search
 import app.streamsetu.tv.ui.theme.ui
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -24,13 +23,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.streamsetu.core.data.repo.GlobalResults
 import app.streamsetu.core.data.repo.SearchItem
 import app.streamsetu.core.data.repo.SearchKind
 import app.streamsetu.core.data.repo.badge
-import app.streamsetu.core.data.repo.SearchResultOrder
 import app.streamsetu.core.data.repo.SearchTab
 import app.streamsetu.core.data.repo.SearchTarget
 import app.streamsetu.core.model.*
@@ -379,13 +376,6 @@ private fun RecentChip(text: String, onClick: () -> Unit) = Focusable(onClick, M
 @Composable
 private fun TypeChip(label: String, on: Boolean, onClick: () -> Unit) = Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = if (on) Color(0xFFE9ECF0) else Tokens.card, focusedContainer = if (on) Color.White else Tokens.focusedSurface, scaleOnFocus = 1.05f, ringWidth = 0.dp) { _ ->
     Label(label, Tokens.row, if (on) Tokens.onBright else Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp))
-}
-
-@Composable
-private fun SuggestionRow(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) = Focusable(onClick, Modifier.widthIn(max = 420.dp).fillMaxWidth(), scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { _ ->
-    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Image(icon, null, Modifier.size(15.dp), colorFilter = ColorFilter.tint(Tokens.textTertiary)); Label(text, Tokens.row, Tokens.text)
-    }
 }
 
 

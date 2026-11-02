@@ -184,7 +184,6 @@ interface UserDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putProgress(p: ProgressEntity)
     @Query("SELECT * FROM progress WHERE itemId = :id") suspend fun progress(id: String): ProgressEntity?
     @Query("SELECT * FROM progress WHERE completed = 0 AND positionMs > 30000 AND kind IN ('MOVIE','EPISODE') ORDER BY updatedAt DESC LIMIT :limit") fun continueWatching(limit: Int): Flow<List<ProgressEntity>>
-    @Query("SELECT * FROM progress WHERE seriesId = :seriesId") suspend fun progressForSeries(seriesId: String): List<ProgressEntity>
     @Query("SELECT * FROM progress") fun allProgress(): Flow<List<ProgressEntity>>
     /** Movies watched to the end, and series whose episodes were all watched (the Watched tick on a poster). */
     @Query("SELECT itemId FROM progress WHERE completed = 1 AND kind = 'MOVIE' UNION SELECT e.seriesId FROM episodes e LEFT JOIN progress p ON p.itemId = e.id AND p.completed = 1 GROUP BY e.seriesId HAVING COUNT(p.itemId) = COUNT(*)")
@@ -202,11 +201,7 @@ interface UserDao {
     @Query("DELETE FROM watch_log WHERE itemId = :id") suspend fun deleteLogFor(id: String)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putLog(l: List<WatchLogEntity>)
     @Query("DELETE FROM watch_log WHERE id NOT IN (SELECT id FROM watch_log ORDER BY playedAt DESC LIMIT 500)") suspend fun trimLog()
-    @Query("SELECT itemId, COUNT(*) AS plays FROM watch_log WHERE kind = 'CHANNEL' AND playedAt > :since GROUP BY itemId HAVING plays >= 2 ORDER BY plays DESC LIMIT :limit")
-    fun mostWatched(since: Long, limit: Int): Flow<List<PlayCount>>
 }
-
-data class PlayCount(val itemId: String, val plays: Int)
 
 data class FolderCount(val folderId: String?, val n: Int)
 
@@ -278,10 +273,8 @@ interface ExtrasDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun putNewEpisodes(list: List<NewEpisodeEntity>)
     @Query("SELECT * FROM new_episodes ORDER BY discoveredAt DESC") fun newEpisodes(): Flow<List<NewEpisodeEntity>>
     @Query("DELETE FROM new_episodes WHERE episodeId = :id") suspend fun clearNewEpisode(id: String)
-    @Query("DELETE FROM new_episodes WHERE seriesId = :id") suspend fun clearNewForSeries(id: String)
     @Query("SELECT id FROM episodes WHERE seriesId = :seriesId") suspend fun episodeIds(seriesId: String): List<String>
     @Query("SELECT DISTINCT seriesId FROM progress WHERE seriesId IS NOT NULL") suspend fun seriesWithProgress(): List<String>
-    @Query("DELETE FROM episodes WHERE seriesId = :seriesId AND id NOT IN (:keep)") suspend fun dropOtherEpisodes(seriesId: String, keep: List<String>)
 
     // Collections
     @Query("SELECT * FROM collections WHERE scope = :scope ORDER BY name") fun collections(scope: String): Flow<List<CollectionEntity>>
@@ -330,7 +323,6 @@ interface ExtrasDao {
     // Guide channel names
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putEpgChannels(list: List<EpgChannelEntity>)
     @Query("SELECT * FROM epg_channels") suspend fun epgChannels(): List<EpgChannelEntity>
-    @Query("DELETE FROM epg_channels") suspend fun clearEpgChannels()
     @Query("SELECT DISTINCT channelEpgId FROM epg") suspend fun epgIdsWithProgrammes(): List<String>
 }
 
@@ -358,7 +350,6 @@ abstract class SportsDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) abstract suspend fun insertReminder(r: SportsReminderEntity): Long
     @Update abstract suspend fun updateReminders(list: List<SportsReminderEntity>)
     @Query("DELETE FROM sports_reminders WHERE id = :id") abstract suspend fun deleteReminder(id: String): Int
-    @Query("DELETE FROM sports_reminders WHERE profileId = :profile") abstract suspend fun clearReminders(profile: String): Int
     @Query("SELECT COUNT(*) FROM sports_reminders") abstract suspend fun reminderCount(): Int
 
     // Recordings (the Sports side: identity, matching, state; the executor is the scheduled-recording service)
@@ -378,7 +369,6 @@ abstract class SportsDao {
     @Transaction open suspend fun replaceClosedRecording(r: SportsRecordingEntity): Long { deleteClosedRecordings(r.profileId, r.sport, r.identity, r.slot); return insertRecording(r) }
     @Update abstract suspend fun updateRecordings(list: List<SportsRecordingEntity>)
     @Query("DELETE FROM sports_recordings WHERE id = :id") abstract suspend fun deleteRecording(id: String): Int
-    @Query("DELETE FROM sports_recordings WHERE profileId = :profile") abstract suspend fun clearRecordings(profile: String): Int
 
     /** Moves a recording from one of [from] to [to] in one statement: it applies only if it is still in one of those states, so a repeated or late call changes nothing. Returns how many rows changed. */
     @Query("UPDATE sports_recordings SET status = :to, failure = :failure, updatedAt = :now WHERE id = :id AND status IN (:from)")

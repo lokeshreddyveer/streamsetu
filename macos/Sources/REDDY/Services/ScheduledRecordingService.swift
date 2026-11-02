@@ -110,8 +110,6 @@ final class ScheduledRecordingService {
 
     func waitForRecordings() async { for t in Array(running.values) { await t.value } }
 
-    func clearFinished() { items.removeAll { [.done, .failed, .missed].contains($0.state) }; save() }
-
     /// Looks at what is due. The timer calls it every 15 seconds; tests call it directly.
     func check() async {
         let now = Date()

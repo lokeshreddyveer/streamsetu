@@ -32,17 +32,3 @@ struct LoadingView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-
-struct PosterSkeletonGrid: View {
-    var count = 12
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: LayoutTokens.posterSize.width), spacing: Spacing.xl)], spacing: Spacing.xl) {
-            ForEach(0..<count, id: \.self) { _ in
-                VStack(alignment: .leading, spacing: 8) {
-                    SkeletonBlock(height: LayoutTokens.posterSize.height, radius: LayoutTokens.radius)
-                    SkeletonBlock(width: 120, height: 12)
-                }
-            }
-        }
-    }
-}

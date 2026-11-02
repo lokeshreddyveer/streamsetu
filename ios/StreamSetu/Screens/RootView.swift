@@ -9,6 +9,8 @@ struct RootView: View {
     @State private var visited: Set<IOSRouter.Tab> = []
     /// How tall the floating bar (and the mini player above it) is right now, so every scrolling page can leave that much room at its end.
     @State private var barHeight: CGFloat = 0
+    /// What the scrolling page tells the bars (the bottom one shrinks to a pill, the top buttons fold into the title). iPhone only.
+    @State private var chrome = ScrollChrome()
 
     /// iPhone: five screens, so Movies and Series stay on the bar instead of falling into "More". The system tab bar is not used at
     /// all (it keeps a grey strip behind a custom bar); this switches between the screens itself and draws the floating bar.
@@ -28,14 +30,15 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.18), value: router.tab)
         .onAppear { visited.insert(router.tab) }
-        .onChange(of: router.tab) { _, t in visited.insert(t) }
+        .onChange(of: router.tab) { _, t in visited.insert(t); chrome.reset() }
         // Pages pushed from a tab (Settings and its sub-pages, details) do not inherit a safe-area inset placed around the tabs, so their last
         // row slid under the bar. A bottom margin on every scrolling page does reach them, and follows the bar as the mini player comes and goes.
         .contentMargins(.bottom, barHeight, for: .scrollContent)
         .overlay(alignment: .bottom) {
             VStack(spacing: 6) { MiniPlayerBar(); CompactTabBar(selection: $router.tab) }
-                .onGeometryChange(for: CGFloat.self) { $0.size.height + 6 } action: { barHeight = $0 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height + 6 } action: { if !chrome.barCollapsed { barHeight = $0 } }          // the room pages leave is for the full bar; it must not change while the bar is a pill
         }
+        .environment(chrome)          // after the overlay, so the bar reaches it too
     }
 
     /// The name of the screen, for the assistant.
@@ -174,7 +177,7 @@ struct MoreTab: View {
                     NavigationLink(value: IOSRouter.MoreRoute.settings) { Label("Settings", systemImage: "gearshape") }
                 }.listRowBackground(ColorTokens.surface)
             }
-            .navigationTitle("More").themed("More")
+            .navigationTitle("More").themed("More", tabRoot: true)
             .miniPlayerInset()
             .navigationDestination(for: IOSRouter.MoreRoute.self) { route in
                 switch route {
@@ -189,9 +192,11 @@ struct MoreTab: View {
     }
 }
 
-/// The iPhone's bottom bar: a slim floating pill, shorter than the system's, in the theme's colours.
+/// The iPhone's bottom bar: a slim floating pill, shorter than the system's, in the theme's colours. While the page scrolls down it gives way to a
+/// small pill at the right, under the thumb, like Safari's: the current tab's icon and name. Tapping the pill brings the whole bar back.
 struct CompactTabBar: View {
     @Binding var selection: IOSRouter.Tab
+    @Environment(ScrollChrome.self) private var chrome: ScrollChrome?
     @Namespace private var slide
     private let items: [(tab: IOSRouter.Tab, title: String, symbol: String)] = [
         (.home, "Home", "house"), (.live, "Live TV", "dot.radiowaves.left.and.right"),
@@ -199,6 +204,38 @@ struct CompactTabBar: View {
     ]
 
     var body: some View {
+        let small = chrome?.barCollapsed ?? false
+        ZStack(alignment: .trailing) {
+            if small {
+                pill.transition(.scale(scale: 0.5, anchor: .trailing).combined(with: .opacity))
+            } else {
+                fullBar.transition(.scale(scale: 0.6, anchor: .trailing).combined(with: .opacity))
+            }
+        }
+        .padding(.horizontal, 20).padding(.bottom, 2)
+        .frame(maxWidth: .infinity, alignment: small ? .trailing : .center)
+        .sensoryFeedback(.selection, trigger: selection)
+    }
+
+    private var pill: some View {
+        let current = items.first { $0.tab == selection } ?? items[0]
+        return Button { chrome?.reset() } label: {
+            HStack(spacing: 6) {
+                Image(systemName: current.symbol).font(.system(size: 15, weight: .medium))
+                Text(current.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
+            }
+            .foregroundStyle(ColorTokens.accentDefault)
+            .padding(.horizontal, 14).frame(height: 34)
+            .background(ColorTokens.card, in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(0.08)))
+            .shadow(color: .black.opacity(0.3), radius: 8, y: 3)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.press)
+        .accessibilityLabel("Show the tab bar, \(current.title) is open")
+    }
+
+    private var fullBar: some View {
         HStack(spacing: 0) {
             ForEach(items, id: \.tab) { item in
                 let on = selection == item.tab
@@ -224,8 +261,5 @@ struct CompactTabBar: View {
         .overlay(Capsule().strokeBorder(.white.opacity(0.08)))
         .shadow(color: .black.opacity(0.3), radius: 8, y: 3)
         .frame(maxWidth: 520)
-        .padding(.horizontal, 20).padding(.bottom, 2)
-        .frame(maxWidth: .infinity)
-        .sensoryFeedback(.selection, trigger: selection)
     }
 }

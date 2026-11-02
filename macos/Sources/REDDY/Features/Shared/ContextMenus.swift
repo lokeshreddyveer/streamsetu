@@ -62,45 +62,6 @@ struct ChannelContextMenu: View {
     }
 }
 
-struct MovieContextMenu: View {
-    let movie: Movie
-    @Environment(\.container) private var container
-    @Environment(AppState.self) private var state
-    @Environment(AppRouter.self) private var router
-    var body: some View {
-        Button("Play") { container?.playback.play(movie: movie) }
-        Button("Watch Privately", systemImage: "eye.slash") { container?.playback.play(movie: movie, privately: true) }
-        Button("Details") { router.open(movie: movie) }
-        Button(state.isFavorite(movie.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(movie.id, kind: .movie) }
-        Button(state.isWatchLater(movie.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(movie.id, kind: .movie) }
-        QueueMenu(item: .movie(movie))
-        FavoriteOrderMenu(item: .movie(movie))
-        CollectionMenu(itemID: movie.id, kind: .movie)
-        ShareLinkButton(link: DeepLink.link(movie: movie.title), name: movie.title)
-        Divider()
-        Button("Hide") { try? container?.favoritesRepo.hide(movie.id, kind: "movie"); state.catalogVersion += 1 }
-    }
-}
-
-struct SeriesContextMenu: View {
-    let series: Series
-    @Environment(\.container) private var container
-    @Environment(AppState.self) private var state
-    @Environment(AppRouter.self) private var router
-    var body: some View {
-        Button("Watch Privately", systemImage: "eye.slash") { if let c = container { PlayActions(container: c, toasts: state.toasts).playSeries(series, privately: true) } }
-        Button("Details") { router.open(series: series) }
-        Button(state.isFavorite(series.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(series.id, kind: .series) }
-        Button(state.isWatchLater(series.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(series.id, kind: .series) }
-        QueueMenu(item: .series(series))
-        FavoriteOrderMenu(item: .series(series))
-        CollectionMenu(itemID: series.id, kind: .series)
-        ShareLinkButton(link: DeepLink.link(series: series.title), name: series.title)
-        Divider()
-        Button("Hide") { try? container?.favoritesRepo.hide(series.id, kind: "series"); state.catalogVersion += 1 }
-    }
-}
-
 /// "Play Next" and "Add to Queue" (or "Remove from Queue") for a title, in its context menu.
 struct QueueMenu: View {
     let item: LibraryItem

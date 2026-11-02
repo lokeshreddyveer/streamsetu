@@ -8,7 +8,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.border
@@ -30,7 +29,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -89,10 +87,8 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
     val preview = list?.firstOrNull { it.id == previewId } ?: list?.firstOrNull()
     val initial = remember(list) { list?.let { l -> l.firstOrNull { it.id == vm.lastUsedId && it.usable } ?: l.firstOrNull { it.usable } ?: l.firstOrNull() }?.id }
     val initialFocus = remember { FocusRequester() }
-    val enterButton = remember { FocusRequester() }
     val emptyAdd = remember { FocusRequester() }          // the one button of the empty screen
     LaunchedEffect(list?.isEmpty()) { if (list != null && list.isEmpty()) { app.streamsetu.tv.ui.components.requestFocusSoon(emptyAdd, 8) } }
-    val listFocus = remember { FocusRequester() }       // the library row the remote last stood on: Left from the details goes back to it
     var focused by remember { mutableStateOf(false) }
     var addMenu by remember { mutableStateOf(false) }
     LaunchedEffect(initial) { if (initial != null && !focused) { app.streamsetu.tv.ui.components.requestFocusSoon(initialFocus, 40) } }
@@ -720,13 +716,6 @@ private fun QrCode(text: String, modifier: Modifier) {
     }
 }
 
-
-@Composable
-private fun UtilityButton(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Focusable(onClick, Modifier, shape = CircleShape, container = Color(0x1AFFFFFF), focusedContainer = Color(0x33FFFFFF), ring = Gold, hairline = true, scaleOnFocus = 1.08f) { f ->
-        Image(icon, label, Modifier.padding(13.dp).size(22.dp), colorFilter = ColorFilter.tint(if (f) Amber else Color(0xFFF5F7FA)))
-    }
-}
 
 /** A dark mountain horizon under a warm sunset, drawn here so it needs no picture file. */
 @Composable

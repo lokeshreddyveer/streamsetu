@@ -129,21 +129,6 @@ struct StatusDot: View {
     var body: some View { Circle().fill(color).frame(width: 7, height: 7).accessibilityHidden(true) }
 }
 
-struct CapabilityChip: View {
-    let title: String
-    let on: Bool
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: on ? "checkmark" : "minus").font(.system(size: 8, weight: .bold))
-            Text(title.loc).font(Typography.caption)
-        }
-        .padding(.horizontal, 7).padding(.vertical, 3)
-        .foregroundStyle(on ? ColorTokens.textPrimary : ColorTokens.textTertiary)
-        .background(Color.white.opacity(on ? 0.08 : 0.03), in: Capsule())
-        .accessibilityElement(children: .combine).accessibilityLabel("\(title): \(on ? "supported" : "not supported")")
-    }
-}
-
 
 /// A group whose rows stay folded until asked for, for settings most people never change. The header is a plain button, so a
 /// click anywhere on it opens or closes the group.

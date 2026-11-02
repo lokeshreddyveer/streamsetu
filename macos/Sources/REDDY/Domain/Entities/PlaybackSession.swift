@@ -17,10 +17,3 @@ struct PlaybackRequest: Hashable, Sendable {
     /// Headers this playlist needs (a User-Agent, a Referer…). Empty unless the person set some.
     var headers: [String: String] = [:]
 }
-
-struct PlaybackSession: Sendable {
-    let id: Int64
-    let itemID: String
-    let startedAt: Date
-    var engine: String
-}

@@ -24,18 +24,12 @@ import androidx.compose.runtime.*
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.foundation.focusGroup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import app.streamsetu.core.playback.PlaybackState
 import app.streamsetu.tv.nav.Navigator
 import app.streamsetu.tv.nav.Base
 import app.streamsetu.core.model.LibraryEntry
@@ -225,7 +219,6 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     val playbackState by c.playback.state.collectAsStateWithLifecycle()
     val sidebarEntry = remember { androidx.compose.ui.focus.FocusRequester() }
     val contentEntry = remember { androidx.compose.ui.focus.FocusRequester() }
-    val baseFocus = remember { androidx.compose.ui.focus.FocusRequester() }
 
     // No working library at all: the first-time welcome replaces the chooser.
     val noLibrary = entries.none { it.usable }

@@ -413,11 +413,4 @@ final class SourceManager: @unchecked Sendable {
 
     // MARK: backup (non-sensitive configuration only)
 
-    struct ExportedSource: Codable { var name: String; var type: String; var address: String; var guide: String? }
-
-    func exportConfiguration() throws -> Data {
-        let items = try catalog.sources().map { ExportedSource(name: $0.name, type: $0.type.rawValue, address: $0.baseURL, guide: $0.epgURL) }
-        let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try enc.encode(items)
-    }
 }

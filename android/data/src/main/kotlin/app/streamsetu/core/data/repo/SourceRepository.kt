@@ -44,7 +44,6 @@ class SourceRepository(private val db: AppDatabase, private val credentials: Cre
     suspend fun rename(id: String, name: String) = db.sources().rename(id, name)
     /** The guide (XMLTV) address chosen by the person; empty goes back to the one the provider gives. */
     suspend fun setGuide(id: String, url: String?) = db.sources().setGuide(id, url?.trim()?.takeIf { it.isNotEmpty() })
-    suspend fun markOpened(id: String) = db.sources().touch(id, System.currentTimeMillis())
 
     /** The saved password, for a connection being edited or tested again (never logged or shown). */
     suspend fun password(id: String): String? = credentials.load(credentialRef(id))

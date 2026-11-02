@@ -22,16 +22,6 @@ struct QualityBadge: View {
     }
 }
 
-struct CountBadge: View {
-    let count: Int
-    var body: some View {
-        Text(count.formatted()).font(Typography.captionMedium)
-            .padding(.horizontal, 7).padding(.vertical, 1)
-            .background(Color.white.opacity(0.08), in: Capsule())
-            .foregroundStyle(ColorTokens.textSecondary)
-    }
-}
-
 struct ProgressBar: View {
     let fraction: Double
     var height: CGFloat = 3

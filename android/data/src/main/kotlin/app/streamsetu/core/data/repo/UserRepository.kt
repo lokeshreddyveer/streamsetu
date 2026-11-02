@@ -3,7 +3,6 @@ package app.streamsetu.core.data.repo
 import app.streamsetu.core.data.db.*
 import app.streamsetu.core.model.*
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 /** What the person does: favourites, watch later, resume positions and what was watched. */
@@ -60,10 +59,6 @@ class UserRepository(private val db: AppDatabase) {
 
     /** Channels in the order last watched, each once. */
     fun recentChannelIds(limit: Int = 20): Flow<List<String>> = dao.recentChannelLog(200).map { l -> l.map { it.itemId }.distinct().take(limit) }
-
-    /** Channels watched at least twice in the last 30 days, most plays first. */
-    fun mostWatchedChannelIds(limit: Int = 12): Flow<List<String>> =
-        dao.mostWatched(System.currentTimeMillis() - 30L * 24 * 3600 * 1000, limit).map { l -> l.map { it.itemId } }
 
     companion object { const val FAVOURITES = "favourites"; const val WATCH_LATER = "watch-later" }
 }

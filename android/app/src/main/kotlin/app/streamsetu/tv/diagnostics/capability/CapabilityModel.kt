@@ -82,8 +82,3 @@ object DiagnosticFormats {
     fun byId(id: String) = all.firstOrNull { it.id == id }
     const val DOLBY_VISION_MIME = "video/dolby-vision"
 }
-
-/** The audio fixtures asked of the current route on Android 13 and later. */
-object AudioFixtures {
-    val all = listOf("PCM 5.1", "AC-3", "E-AC-3", "E-AC-3 JOC", "DTS", "DTS-HD", "TrueHD")
-}

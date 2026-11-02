@@ -3,7 +3,6 @@ package app.streamsetu.core.ui.motion
 import android.content.Context
 import android.provider.Settings
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -25,7 +24,6 @@ object Motion {
     const val SCREEN = 120                // moving between screens
     const val DETAIL = 140                // poster to fullscreen detail
     const val BANNER = 800                // featured slideshow crossfade (700 to 900)
-    const val HIGHLIGHT = 100             // the folder highlight sliding to the next row
 
     // ---- Curves ----
     /** Quick start, soft landing: the default for anything that moves. */
@@ -36,12 +34,9 @@ object Motion {
     // ---- Focus ----
     const val POSTER_FOCUS_SCALE = 1.04f
     const val CARD_FOCUS_SCALE = 1.03f
-    const val ROW_FOCUS_SCALE = 1.0f      // list rows do not grow; a highlight moves behind them
-    val FOCUS_ELEVATION: Dp = 8.dp
 
     // ---- Distances ----
     val RISE: Dp = 14.dp                  // a page or panel rising into place
-    val SLIDE: Dp = 24.dp                 // a panel sliding in from its edge
 
     /** Opacity of content that is present but not the focus of attention. */
     const val DIMMED = 0.55f
@@ -61,11 +56,6 @@ fun reducedMotion(context: Context): Boolean = runCatching {
 }.getOrDefault(false)
 
 val LocalReducedMotion = compositionLocalOf { false }
-
-/** A tween that becomes an instant change when reduced motion is on. */
-@Composable
-fun <T> motionSpec(durationMs: Int = Motion.SCREEN, easing: Easing = Motion.Standard): FiniteAnimationSpec<T> =
-    if (LocalReducedMotion.current) snap() else tween(durationMs, easing = easing)
 
 /**
  * Scales [Modifier] with focus. Reads the animated value inside graphicsLayer, so a focus change redraws one layer and never re-measures or re-composes the card.

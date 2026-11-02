@@ -1,6 +1,5 @@
 package app.streamsetu.core.sync
 
-import androidx.room.withTransaction
 import app.streamsetu.core.data.repo.toModel
 import app.streamsetu.core.data.db.*
 import app.streamsetu.core.data.repo.toEntity
@@ -175,7 +174,6 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
     // ---- Stalker / Ministra: live TV ---------------------------------------------------------------------------
 
     private val stalker = app.streamsetu.core.net.StalkerClient()
-    val stalkerClient get() = stalker
 
     private suspend fun syncStalker(s: Source): Result {
         if (s.username.isNullOrBlank()) error("A Stalker portal needs the MAC address of the box it should act as.")

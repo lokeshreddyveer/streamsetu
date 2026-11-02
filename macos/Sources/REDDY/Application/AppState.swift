@@ -68,7 +68,6 @@ final class AppState {
 
     var needsOnboarding: Bool { loaded && sources.isEmpty }
     var isSyncing: Bool { syncProgress.values.contains { $0.state.isBusy } }
-    var hasContent: Bool { counts.channels + counts.movies + counts.series > 0 }
 
     func start() async {
         reload()

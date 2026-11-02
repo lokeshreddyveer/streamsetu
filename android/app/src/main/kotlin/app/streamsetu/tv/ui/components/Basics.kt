@@ -18,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,7 +36,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.translate
-import app.streamsetu.core.ui.motion.focusScale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusRequester
@@ -45,7 +43,6 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Brush
@@ -69,7 +66,6 @@ import app.streamsetu.tv.ui.theme.ui
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun Label(text: String, size: TextUnit = Tokens.body, color: Color = Tokens.text, weight: FontWeight = FontWeight.Normal,
@@ -471,8 +467,6 @@ fun artworkRequest(context: android.content.Context, url: String, widthPx: Int, 
 /** Asks for the picture of a title that has none (or whose picture failed): provided once at the top of the app. The second argument says the title had a picture that did not load. */
 val LocalArtworkFiller = androidx.compose.runtime.compositionLocalOf<((String, Boolean) -> Unit)?> { null }
 
-/** True while the list the cards are in is scrolling (and for a moment after): cards then only show pictures that are already in memory. Provided by the screen that owns the list. */
-val LocalArtworkPaused = androidx.compose.runtime.compositionLocalOf<State<Boolean>?> { null }
 /** True while a list has been scrolling for a moment (a held key), not for a single step. */
 val LocalFastScroll = androidx.compose.runtime.compositionLocalOf<State<Boolean>?> { null }
 

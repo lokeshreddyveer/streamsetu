@@ -21,9 +21,7 @@ class ProfileService(private val db: AppDatabase, private val pinPrefs: android.
     val activeId: StateFlow<String> = _active.asStateFlow()
 
     val active: Profile get() = _profiles.value.firstOrNull { it.id == _active.value } ?: Profile(Profiles.MAIN, "Me", false, false, 0)
-    val isShared: Boolean get() = _profiles.value.size > 1
     val isMainActive: Boolean get() = _active.value == Profiles.MAIN
-    val leavingNeedsPin: Boolean get() = active.kids
 
     fun reload() {
         Profiles.create(raw)

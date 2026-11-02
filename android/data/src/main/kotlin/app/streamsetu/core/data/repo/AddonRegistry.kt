@@ -144,5 +144,4 @@ class AddonRegistry(context: Context, private val db: AppDatabase, private val s
         }.getOrNull()
     }
 
-    fun rowsOf(sourceId: String, catalog: AddonCatalog) = AddonSync.toRows(sourceId, catalog)
 }

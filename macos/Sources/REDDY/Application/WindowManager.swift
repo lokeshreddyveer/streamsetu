@@ -4,9 +4,6 @@ import AppKit
 @MainActor
 enum WindowManager {
     static func toggleFullScreen() { NSApp.keyWindow?.toggleFullScreen(nil) }
-    static var isFullScreen: Bool { NSApp.keyWindow?.styleMask.contains(.fullScreen) ?? false }
-
-    static func exitFullScreen() { if isFullScreen { NSApp.keyWindow?.toggleFullScreen(nil) } }
 
     static func revealInFinder(_ url: URL) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
 

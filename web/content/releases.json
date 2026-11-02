@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.11.02",
+      "title": "2 November 2026",
+      "summary": "**Fire TV and Android TV 0.23.0, and the Android phone app.** Smart collections, better subtitle matching, Settings search, Projector mode, add-ons and a clean-up from a full review.",
+      "date": "2026-11-02",
+      "mac": "2.15.1",
+      "android": "0.23.0",
+      "ios": "1.1"
+    },
+    {
       "tag": "2026.11.01",
       "title": "1 November 2026",
       "summary": "**Fire TV and Android TV 0.21.0.** Movies and Series open with fewer database reads, and returning to a screen you just left reuses what it showed. Focus on a poster or folder is now a single immediate change, with nothing animated underneath.",

@@ -70,9 +70,6 @@ class IdentityIndex private constructor(
     /** The identities whose classifier key is [legacyKey]: what an old follow could mean. */
     fun legacyCandidates(kind: FollowKind, sport: Sport, legacyKey: String): List<String> = legacy["${kind.name}:${sport.name}:$legacyKey"].orEmpty()
 
-    /** True when the identity [key] names more than one thing (for a note on its page). */
-    fun hasSiblings(key: String) = SportsIdentity.isScoped(key)
-
     companion object {
         val EMPTY = IdentityIndex(emptyMap(), emptyMap(), emptySet(), emptyMap(), emptyMap())
 

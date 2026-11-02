@@ -16,10 +16,6 @@ class AppSettings(context: Context) {
     val enginePreference: StateFlow<EnginePreference> = _engine
     fun setEngine(v: EnginePreference) { prefs.edit().putString("engine", v.name).apply(); _engine.value = v }
 
-    private val _buffering = flow(BufferingMode.from(prefs.getString("buffering", null)))
-    val bufferingMode: StateFlow<BufferingMode> = _buffering
-    fun setBuffering(v: BufferingMode) { prefs.edit().putString("buffering", v.name).apply(); _buffering.value = v }
-
     private val _audioLang = flow(prefs.getString("audioLang", "") ?: "")
     val audioLanguage: StateFlow<String> = _audioLang
     fun setAudioLanguage(v: String) { prefs.edit().putString("audioLang", v).apply(); _audioLang.value = v }
@@ -27,10 +23,6 @@ class AppSettings(context: Context) {
     private val _subLang = flow(prefs.getString("subLang", "") ?: "")
     val subtitleLanguage: StateFlow<String> = _subLang
     fun setSubtitleLanguage(v: String) { prefs.edit().putString("subLang", v).apply(); _subLang.value = v }
-
-    private val _subsDefault = flow(prefs.getBoolean("subsDefault", false))
-    val subtitlesByDefault: StateFlow<Boolean> = _subsDefault
-    fun setSubtitlesByDefault(v: Boolean) { prefs.edit().putBoolean("subsDefault", v).apply(); _subsDefault.value = v }
 
     private val _bestFirst = flow(prefs.getBoolean("bestVersionFirst", true))
     /** A film that exists in several qualities or folders starts with the best copy; if it does not play, the next best is tried. */

@@ -91,7 +91,7 @@ struct HomeView: View {
                 .padding(.vertical, 12)
             }
             .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, v in scrollY = v }
-            .navigationTitle("Home").themed("Home")
+            .navigationTitle("Home").themed("Home", tabRoot: true)
             .navigationDestination(for: LibraryItem.self) { DetailView(item: $0) }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { SyncIndicator() }

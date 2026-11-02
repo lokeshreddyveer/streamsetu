@@ -5,7 +5,6 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.os.Handler
 import android.os.Looper
-import android.view.View
 import app.streamsetu.core.model.Playable
 import app.streamsetu.core.settings.AppSettings
 import kotlinx.coroutines.CoroutineScope
@@ -125,10 +124,6 @@ class PlaybackController(
     var rememberPerTitle: Boolean
         get() = memory.getBoolean("enabled", true)
         set(v) { memory.edit().putBoolean("enabled", v).apply() }
-    /** Move on to the next episode by itself when one ends (after a short countdown). */
-    var autoPlayNext: Boolean
-        get() = memory.getBoolean("autonext", true)
-        set(v) { memory.edit().putBoolean("autonext", v).apply() }
     private fun memoryKey(item: Playable) = "m." + item.id
 
     private fun applyTuningLater() { main.postDelayed({ _engine.value?.let { it.applyTuning(_tuning.value) } }, 800) }

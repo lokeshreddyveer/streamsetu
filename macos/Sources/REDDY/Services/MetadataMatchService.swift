@@ -189,8 +189,6 @@ final class MetadataMatchService: Sendable {
         } catch { return cached }
     }
 
-    func forgetMatches() throws { try db.write { try $0.execute("DELETE FROM metadata_matches") } }
-
     // MARK: network
 
     private func get(_ path: String, query: [URLQueryItem]) async throws -> Data {

@@ -109,13 +109,7 @@ Domain/Protocols/SearchRepository.swift
 Domain/Protocols/SourceProvider.swift
 Domain/Protocols/UserDataRepositories.swift
 Domain/Protocols/VideoPreferencesRepository.swift
-Domain/UseCases/BrowseCatalogUseCase.swift
-Domain/UseCases/LoadEPGUseCase.swift
-Domain/UseCases/ResumePlaybackUseCase.swift
-Domain/UseCases/SearchCatalogUseCase.swift
 Domain/UseCases/SourceUseCases.swift
-Domain/UseCases/StartPlaybackUseCase.swift
-Domain/UseCases/ToggleFavoriteUseCase.swift
 Features/CommandCenter/ViewModels/CommandCenterViewModel.swift
 Features/Home/Models/DiscoverFilter.swift
 Features/LiveTV/Models/ChannelSwitcherModel.swift

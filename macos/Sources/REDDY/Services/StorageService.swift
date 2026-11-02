@@ -20,7 +20,6 @@ final class StorageService: Sendable {
     static var importedPlaylists: URL { ensure(applicationSupport.appendingPathComponent("Sources", isDirectory: true)) }
     static var backups: URL { ensure(applicationSupport.appendingPathComponent("Backups", isDirectory: true)) }
     static var metadata: URL { ensure(applicationSupport.appendingPathComponent("Metadata", isDirectory: true)) }
-    static func cacheDirectory(_ name: String) -> URL { ensure(caches.appendingPathComponent(name, isDirectory: true)) }
 
     @discardableResult
     static func ensure(_ url: URL) -> URL {

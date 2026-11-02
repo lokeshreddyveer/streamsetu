@@ -255,6 +255,9 @@ struct OptionalStack<Content: View>: View {
 /// the top of the screen (no blur); the screen's name floats over the content as a small pill.
 struct Themed: ViewModifier {
     var title: String?
+    /// One of the five main tab screens on iPhone: the bottom bar already says where you are, so the name is not drawn at the top (it is still the page's heading for VoiceOver).
+    var tabRoot = false
+    @Environment(ScrollChrome.self) private var chrome: ScrollChrome?
     /// Put the title pill in the left corner of the top bar instead of the system's centre slot (which squeezes it when there are many buttons).
     var corner = false
     func body(content: Content) -> some View {
@@ -264,12 +267,13 @@ struct Themed: ViewModifier {
             .background(ColorTokens.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .clearTopBar()
+            .modifier(DrivesChrome())
             .toolbar {
                 if let title {
                     if corner {
-                        if #available(iOS 26.0, *) { ToolbarItem(placement: .topBarLeading) { TitlePill(text: title) }.sharedBackgroundVisibility(.hidden) }
-                        else { ToolbarItem(placement: .topBarLeading) { TitlePill(text: title) } }
-                    } else { ToolbarItem(placement: .principal) { TitlePill(text: title) } }
+                        if #available(iOS 26.0, *) { ToolbarItem(placement: .topBarLeading) { TitlePill(text: title, hidden: tabRoot && chrome != nil) }.sharedBackgroundVisibility(.hidden) }
+                        else { ToolbarItem(placement: .topBarLeading) { TitlePill(text: title, hidden: tabRoot && chrome != nil) } }
+                    } else { ToolbarItem(placement: .principal) { TitlePill(text: title, hidden: tabRoot && chrome != nil) } }
                 }
             }
     }
@@ -290,13 +294,16 @@ struct PressStyle: ButtonStyle {
 
 extension ButtonStyle where Self == PressStyle {
     static var press: PressStyle { PressStyle() }
-    static var pressSubtle: PressStyle { PressStyle(scale: 0.985) }
 }
 
 /// A screen's name, floating like a button.
 struct TitlePill: View {
     let text: String
+    var hidden = false
+    /// The name of the screen goes too while the page moves, leaving only the small pill at the right.
+    @Environment(ScrollChrome.self) private var chrome: ScrollChrome?
     var body: some View {
+        let folded = chrome?.topMerged ?? false
         Text(text).font(.system(size: 14, weight: .semibold)).lineLimit(1)
             .foregroundStyle(ColorTokens.textPrimary)
             .padding(.horizontal, 16).frame(height: 32)
@@ -304,6 +311,7 @@ struct TitlePill: View {
             .overlay(Capsule().strokeBorder(.white.opacity(0.1)))
             .shadow(color: .black.opacity(0.25), radius: 6, y: 2)
             .accessibilityAddTraits(.isHeader)
+            .scaleEffect(folded ? 0.6 : 1).opacity(folded || hidden ? 0 : 1)
     }
 }
 
@@ -314,9 +322,7 @@ extension View {
     @ViewBuilder func noScrollEdgeEffect() -> some View {
         if #available(iOS 26.0, *) { self.scrollEdgeEffectHidden(true, for: .all) } else { self }
     }
-    /// Hides the system tab bar for this screen (the iPhone draws its own).
-    func withoutSystemTabBar() -> some View { toolbarVisibility(.hidden, for: .tabBar) }
-    func themed(_ title: String? = nil, corner: Bool = false) -> some View { modifier(Themed(title: title, corner: corner)) }
+    func themed(_ title: String? = nil, corner: Bool = false, tabRoot: Bool = false) -> some View { modifier(Themed(title: title, tabRoot: tabRoot, corner: corner)) }
 }
 
 /// A banner for the top of a scrolling page. The picture is taller than its frame, so as the page scrolls up it can slip down at
@@ -356,9 +362,9 @@ struct TrailingPills<Content: View>: ToolbarContent {
     @ViewBuilder var content: Content
     var body: some ToolbarContent {
         if #available(iOS 26.0, *) {
-            ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { content }.buttonStyle(.press) }.sharedBackgroundVisibility(.hidden)
+            ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { content }.buttonStyle(.press).modifier(ChromeFold()) }.sharedBackgroundVisibility(.hidden)
         } else {
-            ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { content }.buttonStyle(.press) }
+            ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { content }.buttonStyle(.press).modifier(ChromeFold()) }
         }
     }
 }

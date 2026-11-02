@@ -101,9 +101,6 @@ final class ProfileService {
         return true
     }
 
-    /// Seconds until a PIN try is allowed again for this profile, or nil.
-    func pinLockedFor(_ id: String) -> TimeInterval? { PINThrottle(name: "profile." + id, defaults: defaults).lockedFor() }
-
     func checkPIN(_ id: String, _ pin: String) -> Bool {
         PINThrottle(name: "profile." + id, defaults: defaults).attempt { rawCheckPIN(id, pin) } == .right
     }

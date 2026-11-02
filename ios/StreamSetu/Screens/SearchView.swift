@@ -120,17 +120,25 @@ struct SearchView: View {
         guard !Task.isCancelled else { return }
         let tab = tab, limit = tab == .all ? 12 : 60
         // "hindi movies 2024": the year narrows the results, and "movies" is not part of the title.
-        func search(_ text: String) async throws -> GlobalSearchResults {
+        // The answer arrives in stages (titles, then episodes, folders and collections, then the guide). Each stage is shown as it comes, replacing the list with everything found so far; rows
+        // already shown keep their place. The results of the previous query stay on screen until the first stage has something to show, so the list never goes blank while typing.
+        func search(_ text: String, publishing: Bool = true) async throws -> GlobalSearchResults {
             let parsed = SmartQueryParser.parse(text)
-            var found = try await c.globalSearch.search(parsed.text.isEmpty ? text : parsed.text, tab: tab, limit: limit * (parsed.year == nil ? 1 : 3))
-            if let y = parsed.year { found = found.keeping { $0.title.contains(String(y)) || $0.subtitle.contains(String(y)) } }
-            return found
+            var last = GlobalSearchResults()
+            for try await update in c.globalSearch.updates(parsed.text.isEmpty ? text : parsed.text, tab: tab, limit: limit * (parsed.year == nil ? 1 : 3)) {
+                var found = update.results
+                if let y = parsed.year { found = found.keeping { $0.title.contains(String(y)) || $0.subtitle.contains(String(y)) } }
+                last = found
+                if publishing, !update.isFinal, !found.isEmpty, !Task.isCancelled { results = found }
+            }
+            try Task.checkCancellation()          // a cancelled stream ends quietly: a newer query replaced this one, and what was gathered is not a complete answer
+            return last
         }
         do {
             var found = try await search(q)
             var fixed: String?
             if found.isEmpty, let alt = await Task.detached(operation: { c.spelling.correct(q) }).value {
-                let again = try await search(alt)
+                let again = try await search(alt, publishing: false)
                 if !again.isEmpty { found = again; fixed = alt }
             }
             if !Task.isCancelled { results = found; correctedTo = fixed; phase = SearchPhase.finish(found) }

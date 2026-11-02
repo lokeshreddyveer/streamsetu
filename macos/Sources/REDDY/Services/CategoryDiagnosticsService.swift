@@ -21,8 +21,6 @@ struct CategoryDiagnosticRow: Identifiable, Sendable, Equatable {
 
     var title: String { switch kind { case .channel: "Live TV"; case .movie: "Movies"; case .series: "Series"; case .episode: "Episodes" } }
 
-    /// Folders the provider defined that the app is not showing, other than ones hidden by the user or empty by choice.
-    var unexplainedGap: Int? { provider.map { max(0, $0 - rejected - stored) } }
 }
 
 /// Compares the pipeline stage by stage so a missing folder can be traced to the stage that lost it.

@@ -93,22 +93,6 @@ struct DebridPanel: View {
 }
 
 #if os(iOS)
-/// iPhone and iPad: ask the AI what to watch.
-struct AskAIScreen: View {
-    @Environment(\.container) private var container
-    var body: some View {
-        if let container {
-            ScrollView {
-                AskAIView(container: container, open: { item in
-                    switch item {
-                    case .movie(let m): Play.movie(m, container)
-                    case .series(let s): Task { await Play.series(s, container, privately: false) }
-                    }
-                }, search: nil)
-            }.navigationTitle("Ask AI").themed("Ask AI")
-        }
-    }
-}
 
 /// iPhone and iPad: both in one settings page.
 struct IntegrationsScreen: View {

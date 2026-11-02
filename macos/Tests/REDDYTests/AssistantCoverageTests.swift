@@ -56,7 +56,8 @@ import Foundation
 
     @Test func everyFeatureFolderAndContextMenuIsListed() throws {
         let folders = Set(try FileManager.default.contentsOfDirectory(atPath: Self.sources.appendingPathComponent("Features").path).filter { !$0.hasPrefix(".") })
-        #expect(folders == Set(AssistantCoverage.features.keys), "feature folders: \(folders.symmetricDifference(Set(AssistantCoverage.features.keys)).sorted())")
+        // Every folder must be listed. The table may also describe features that live inside another folder (Favorites, Collections, Continue Watching and Recently Watched are part of Home and Library).
+        #expect(folders.isSubset(of: Set(AssistantCoverage.features.keys)), "feature folders with no coverage entry: \(folders.subtracting(Set(AssistantCoverage.features.keys)).sorted())")
         var withMenus = Set<String>()
         let e = FileManager.default.enumerator(at: Self.sources, includingPropertiesForKeys: nil)
         while let next = e?.nextObject() {

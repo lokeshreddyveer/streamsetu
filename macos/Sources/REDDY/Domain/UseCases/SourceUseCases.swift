@@ -56,8 +56,3 @@ struct AddSourceUseCase: Sendable {
         return s
     }
 }
-
-struct RefreshSourceUseCase: Sendable {
-    let sync: CatalogSyncService
-    func callAsFunction(_ id: UUID, forceGuide: Bool = false) async { await sync.start(sourceID: id, forceGuide: forceGuide) }
-}

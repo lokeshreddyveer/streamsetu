@@ -82,13 +82,6 @@ final class DownloadService: NSObject, URLSessionDownloadDelegate {
 
     func record(for itemID: String) -> DownloadRecord? { records.first { $0.itemID == itemID } }
 
-    /// The saved file of a finished download, or nil.
-    func localURL(for itemID: String) -> URL? {
-        guard let r = record(for: itemID), r.state == .done, let name = r.fileName else { return nil }
-        let url = Self.folder.appendingPathComponent(name)
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
-    }
-
     /// The file for a finished download, from outside the main actor (the stream resolver asks from wherever playback starts).
     nonisolated static func savedFile(for itemID: String, in db: DatabaseManager) -> URL? {
         let row = try? db.read { c in try c.queryOne("SELECT file_name FROM downloads WHERE item_id=? AND state='done'", [itemID]) { $0.optString(0) } }

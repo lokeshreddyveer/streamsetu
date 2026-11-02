@@ -27,8 +27,6 @@ class ParentalControls(context: Context) {
     }
     fun clearPin() { prefs.edit().remove("pin_salt").remove("pin_hash").apply() }
     private val throttle = app.streamsetu.core.model.PinThrottle("folders", { prefs.getString(it, null) }, { k, v -> prefs.edit().apply { if (v == null) remove(k) else putString(k, v) }.apply() })
-    /** Seconds until a try is allowed again, or null. Every screen that asks for this PIN shares one count of wrong tries. */
-    fun lockedForSeconds(): Int? = throttle.lockedForMs()?.let { ((it + 999) / 1000).toInt() }
     fun checkPin(pin: String): Boolean {
         if (_kids.value) return false
         return throttle.attempt {
