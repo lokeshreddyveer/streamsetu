@@ -68,6 +68,6 @@ private fun DownloadCard(st: UpdateState) {
         else -> null
     } ?: return
     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = 90.dp), Alignment.BottomCenter) {
-        Label(text, 13.sp, Tokens.text, FontWeight.Medium, maxLines = 3, modifier = Modifier.background(Color(0xE6101216), RoundedCornerShape(14.dp)).padding(horizontal = 16.dp, vertical = 10.dp).widthIn(max = 420.dp))
+        Label(text, 13.sp, Tokens.text, FontWeight.Medium, maxLines = 3, modifier = Modifier.background(Tokens.pick(Color(0xE6101216), Tokens.playerControlsScrimStrong), RoundedCornerShape(14.dp)).padding(horizontal = 16.dp, vertical = 10.dp).widthIn(max = 420.dp))
     }
 }

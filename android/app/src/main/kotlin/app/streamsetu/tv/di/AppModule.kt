@@ -30,7 +30,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
     @Provides @Singleton fun appScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    @Provides @Singleton fun database(@ApplicationContext c: Context): AppDatabase = AppDatabase.open(c, logQueries = app.streamsetu.tv.BuildConfig.FRAME_LOG, queryThreads = if (app.streamsetu.tv.Perf.lowEnd(c)) 2 else 4)
+    @Provides @Singleton fun database(@ApplicationContext c: Context): AppDatabase = AppDatabase.open(c, logQueries = app.streamsetu.tv.trace.TestHooks.on, queryThreads = if (app.streamsetu.tv.Perf.lowEnd(c)) 2 else 4)
     @Provides @Singleton fun credentials(@ApplicationContext c: Context): CredentialStore = KeystoreCredentialStore(c)
     @Provides @Singleton fun sources(db: AppDatabase, credentials: CredentialStore) = SourceRepository(db, credentials)
     @Provides @Singleton fun library(db: AppDatabase, @ApplicationContext c: Context, scope: CoroutineScope) = app.streamsetu.core.data.repo.LibraryRepository(db, c, scope)
@@ -46,13 +46,16 @@ object AppModule {
     @Provides @Singleton fun statistics(db: AppDatabase) = app.streamsetu.core.data.repo.StatisticsRepository(db)
     @Provides @Singleton fun channelPrefs(db: AppDatabase) = app.streamsetu.core.data.repo.ChannelPrefs(db)
     @Provides @Singleton fun collections(db: AppDatabase) = app.streamsetu.core.data.repo.CollectionRepository(db)
+    @Provides @Singleton fun smartCollections(@ApplicationContext c: Context) = app.streamsetu.core.data.repo.SmartCollectionStore(c)
     @Provides @Singleton fun uiPrefs(@ApplicationContext c: Context) = app.streamsetu.core.settings.UiPrefs(c)
     @Provides @Singleton fun settings(@ApplicationContext c: Context) = AppSettings(c)
-    @Provides @Singleton fun resolver(sources: SourceRepository, credentials: CredentialStore, @ApplicationContext c: Context) = StreamResolver(sources, credentials, c)
-    @Provides @Singleton fun sync(db: AppDatabase, sources: SourceRepository, credentials: CredentialStore, resolver: StreamResolver, @ApplicationContext c: Context) =
+    @Provides @Singleton fun addons(@ApplicationContext c: Context, db: AppDatabase, sources: SourceRepository, credentials: CredentialStore) = app.streamsetu.core.data.repo.AddonRegistry(c, db, sources, credentials)
+    @Provides @Singleton fun resolver(sources: SourceRepository, credentials: CredentialStore, addons: app.streamsetu.core.data.repo.AddonRegistry, @ApplicationContext c: Context) =
+        StreamResolver(sources, credentials, c).also { it.addonStreams = { sourceId, itemId -> addons.resolveStream(sourceId, itemId) } }
+    @Provides @Singleton fun sync(db: AppDatabase, sources: SourceRepository, credentials: CredentialStore, resolver: StreamResolver, addons: app.streamsetu.core.data.repo.AddonRegistry, @ApplicationContext c: Context) =
         SyncService(db, sources, credentials, resolver,
             openLocal = { uri -> c.contentResolver.openInputStream(android.net.Uri.parse(uri)) ?: error("That file could not be opened.") },
-            listFolder = { tree -> app.streamsetu.tv.LocalFolder.list(c, tree) })
+            listFolder = { tree -> app.streamsetu.tv.LocalFolder.list(c, tree) }).also { it.addons = addons }
 
     @Provides @Singleton fun globalSearch(db: AppDatabase, library: app.streamsetu.core.data.repo.LibraryRepository, folders: app.streamsetu.core.data.repo.FolderRepository, collections: app.streamsetu.core.data.repo.CollectionRepository, search: app.streamsetu.core.data.repo.SearchRepository, sources: SourceRepository) =
         app.streamsetu.core.data.repo.GlobalSearch(db, library, folders, collections, search) { id -> sources.get(id)?.name }

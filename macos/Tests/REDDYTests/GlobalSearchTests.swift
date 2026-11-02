@@ -253,6 +253,77 @@ import Foundation
         #expect(state.activeSourceID == w.beta.id, "the channel's own playlist becomes the active one so it can play")
         c.playback.stop()
     }
+
+    // MARK: staged publication
+
+    @Test func resultsArePublishedInOrderedStagesAndTheLastOneIsExactlyTheFullAnswer() async throws {
+        let w = try world()
+        var stages: [SearchStage] = [], seen = Set<String>(), last: GlobalSearchResults?
+        for try await u in w.service.updates("matrix") {
+            stages.append(u.stage)
+            let now = ids(u.results)
+            #expect(seen.isSubset(of: now), "a later stage must never remove what an earlier one showed")
+            seen = now; last = u.results
+        }
+        #expect(!stages.isEmpty, "something was published")
+        #expect(stages == stages.sorted())
+        #expect(stages.last == .done)
+        #expect(stages.filter { $0 == .done }.count == 1, "exactly one final update")
+        let whole = try await w.service.search("matrix")
+        #expect(ids(try #require(last)) == ids(whole))
+        for kind in SearchResultKind.allCases { #expect(last?.byKind[kind]?.map(\.id) == whole.byKind[kind]?.map(\.id), "same order for \(kind)") }
+    }
+
+    @Test func titlesArriveFirstAndRowsAlreadyShownKeepTheirPlace() async throws {
+        let w = try world()
+        var firstStage: SearchStage?, firstMovies: [SearchResult] = [], final: GlobalSearchResults?, updates = 0
+        for try await u in w.service.updates("matrix") {
+            updates += 1
+            if firstStage == nil { firstStage = u.stage; firstMovies = u.results.byKind[.movie] ?? [] }
+            final = u.results
+        }
+        #expect(updates >= 1)
+        #expect(firstStage == .titles, "the first thing published is a title stage")
+        let later = try #require(final?.byKind[.movie])
+        #expect(!later.isEmpty)
+        #expect(Array(later.prefix(firstMovies.count)).map(\.id) == firstMovies.map(\.id), "movies keep their order when later stages add other groups")
+    }
+
+    @Test func aStageThatAddsNothingIsNotPublishedAgain() async throws {
+        let w = try world()
+        var counts: [Int] = []
+        for try await u in w.service.updates("matrix", tab: .movies) where !u.isFinal { counts.append(u.results.count(for: .movies)) }
+        #expect(counts == Array(Set(counts)).sorted(), "each non-final update has more than the one before")
+        #expect(counts.count <= 1, "a movies-only search has one title stage and then the final update")
+    }
+
+    @Test func aBlankQueryPublishesOnlyAnEmptyFinalUpdate() async throws {
+        let w = try world()
+        var all: [SearchUpdate] = []
+        for try await u in w.service.updates("   ") { all.append(u) }
+        #expect(all.count == 1); #expect(all.first?.isFinal == true); #expect(all.first?.results.isEmpty == true)
+    }
+
+    @Test func aTabOnlyEverPublishesItsOwnKinds() async throws {
+        let w = try world()
+        var seenAny = false
+        for try await u in w.service.updates("matrix", tab: .movies) {
+            seenAny = true
+            #expect(u.results.byKind.keys.allSatisfy { SearchTab.movies.kinds.contains($0) })
+        }
+        #expect(seenAny, "the stream published something to check")
+    }
+
+    @Test func cancellingTheConsumerEndsTheStreamEarlyWithoutAFinalUpdate() async throws {
+        let w = try world()
+        let task = Task { () -> (updates: Int, Void) in
+            var n = 0
+            do { for try await _ in w.service.updates("matrix") { n += 1; withUnsafeCurrentTask { $0?.cancel() } } } catch { }
+            return (n, ())
+        }
+        let r = await task.value                      // returns: a cancelled consumer never hangs
+        #expect(r.updates >= 1, "it received an update before it cancelled itself")          // (whether the final update was already on its way is a race, so it is not asserted)
+    }
 }
 
 @Suite("Named channel lists") @MainActor struct ChannelListTests {

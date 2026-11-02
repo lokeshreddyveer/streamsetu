@@ -119,7 +119,7 @@ fun StreamInfoPill(c: AppContainer, controlsShown: Boolean, modifier: Modifier =
     LaunchedEffect(enabled, item?.id, state == PlaybackState.Playing) { if (enabled && state == PlaybackState.Playing) { delay(5000); expired = true } }
     val line = rememberStreamChips(c, enabled && !expired && !controlsShown).line
     AnimatedVisibility(enabled && !expired && !controlsShown && line.isNotBlank() && state == PlaybackState.Playing, modifier, enter = fadeIn(tween(200)), exit = fadeOut(tween(300))) {
-        Label(line, Tokens.caption, Color.White.copy(alpha = 0.8f), FontWeight.Medium, maxLines = 1, modifier = Modifier.background(Color(0x59000000), RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 5.dp))
+        Label(line, Tokens.caption, Color.White.copy(alpha = 0.8f), FontWeight.Medium, maxLines = 1, modifier = Modifier.background(Tokens.playerChip, RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 5.dp))
     }
 }
 
@@ -133,7 +133,7 @@ fun TvMiniPlayer(c: AppContainer) {
     if (!audioOnly) return
     val paused = state == PlaybackState.Paused
     Box(Modifier.fillMaxSize().padding(end = 32.dp, bottom = 24.dp), contentAlignment = androidx.compose.ui.Alignment.BottomEnd) {
-        Column(Modifier.widthIn(max = 380.dp).background(Color(0xE6101418), RoundedCornerShape(14.dp)).padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.widthIn(max = 380.dp).background(Tokens.pick(Color(0xE6101418), Tokens.playerControlsScrimStrong), RoundedCornerShape(14.dp)).padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Label((if (paused) "Paused  ·  " else "Playing  ·  ") + (if (shown is app.streamsetu.core.model.EpisodePlayable) shown.series.title else shown.title), Tokens.small, Color.White, FontWeight.SemiBold, maxLines = 1)
             Label("Menu or Info: back to the picture   ·   Play/Pause: " + if (paused) "resume" else "pause", Tokens.caption, Tokens.textSecondary, maxLines = 1)
         }

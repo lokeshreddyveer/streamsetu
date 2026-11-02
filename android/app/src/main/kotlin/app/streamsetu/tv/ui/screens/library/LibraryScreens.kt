@@ -262,14 +262,14 @@ private fun StatTile(icon: ImageVector, title: String, n: Int, modifier: Modifie
 private fun BigPill(text: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
     Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color(0xFFDDE3EA), focusedContainer = Color.White, ring = Gold, scaleOnFocus = 1.03f) { _ ->
         Row(Modifier.fillMaxWidth().padding(vertical = 13.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Image(icon, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Color.Black)); Spacer(Modifier.width(10.dp)); Label(text, Tokens.title, Color.Black, FontWeight.Bold)
+            Image(icon, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Tokens.onBright)); Spacer(Modifier.width(10.dp)); Label(text, Tokens.title, Tokens.onBright, FontWeight.Bold)
         }
     }
 }
 
 @Composable
 private fun GhostPill(text: String, icon: ImageVector, onClick: () -> Unit) {
-    Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = Color(0x66101011), focusedContainer = Color(0xFF222224), ring = Gold, hairline = true, scaleOnFocus = 1.04f) { f ->
+    Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = Tokens.pick(Color(0x66101011), Tokens.card), focusedContainer = Tokens.pick(Color(0xFF222224), Tokens.focusedSurface), ring = Gold, hairline = true, scaleOnFocus = 1.04f) { f ->
         Row(Modifier.padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f) Gold else Tokens.text)); Label(text, Tokens.row, Tokens.text, FontWeight.Medium)
         }
@@ -278,7 +278,7 @@ private fun GhostPill(text: String, icon: ImageVector, onClick: () -> Unit) {
 
 @Composable
 private fun QuickTile(title: String, sub: String, icon: ImageVector, bg: Color, tint: Color, modifier: Modifier, onClick: () -> Unit) {
-    Focusable(onClick, modifier, shape = RoundedCornerShape(14.dp), container = Color(0xFF121213), ring = Gold, hairline = true, scaleOnFocus = 1.03f) { _ ->
+    Focusable(onClick, modifier, shape = RoundedCornerShape(14.dp), container = Tokens.pick(Color(0xFF121213), Tokens.card), focusedContainer = Tokens.pick(Tokens.focusedSurface, Tokens.focusedSurface), ring = Gold, hairline = true, scaleOnFocus = 1.03f) { _ ->
         Row(Modifier.padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             IconTile(icon, bg, tint, 38)
             Column { Label(title, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 1); Label(sub, Tokens.caption, Tokens.textSecondary, maxLines = 1) }
@@ -300,7 +300,7 @@ private fun LibraryTile(e: LibraryEntry, isInitial: Boolean, initialFocus: Focus
     Focusable(
         onClick = { if (e.kind == LibraryEntry.Kind.UNFINISHED) nav.base = Base.Setup(typeOf(e), e.sourceIds.first()) else vm.open(e) { nav.enterLibrary() } },
         modifier = (if (isInitial) Modifier.focusRequester(initialFocus) else Modifier).width(240.dp).height(190.dp),
-        scaleOnFocus = 1.06f, container = Color(0xFF0E1218), focusedContainer = Color(0xFF1A1F27), ring = Gold, shape = RoundedCornerShape(22.dp), hairline = true,
+        scaleOnFocus = 1.06f, container = Tokens.pick(Color(0xFF0E1218), Tokens.card), focusedContainer = Tokens.pick(Color(0xFF1A1F27), Tokens.focusedSurface), ring = Gold, shape = RoundedCornerShape(22.dp), hairline = true,
         onFocus = { if (it) { onPreview(); onFocused() } },
         onLongClick = { nav.open(Overlay.ManageLibrary(e)) },
     ) { _ ->
@@ -323,7 +323,7 @@ fun WelcomeScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(first, 8) }
     // The page takes the wordmark art's own backdrop colour, so the logo sits on it without an edge.
-    Column(Modifier.fillMaxSize().background(Color(0xFF070808)).padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+    Column(Modifier.fillMaxSize().background(Tokens.pick(Color(0xFF070808), Tokens.background)).padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Label("Everything you watch, in one place", Tokens.display, Tokens.text, FontWeight.Bold)
         AnimatedWordmark(Modifier.height(150.dp), app.streamsetu.core.ui.motion.LocalReducedMotion.current, repeatEvery = 7000L)
         Label("Add your own playlist or login to get started.", Tokens.body, Tokens.textSecondary)
@@ -494,6 +494,7 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
                 TvTextField(form.user, { form = form.copy(user = it) }, "MAC address (00:1A:79:xx:xx:xx)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
                 Label("Live TV is read from the portal. Movies and series from portals are not supported yet.", Tokens.small, Tokens.textTertiary, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp))
             }
+            SourceType.ADDON -> Label("An add-on is managed in Settings, Add-ons.", Tokens.body, Tokens.textSecondary, maxLines = 2, modifier = Modifier.widthIn(max = 640.dp))
             SourceType.M3U -> TvTextField(form.address, { form = form.copy(address = it) }, "Playlist link (http://…/playlist.m3u)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
             SourceType.LOCAL_FILE -> {
                 Label(if (form.address.isBlank()) "No file chosen" else "Chosen: ${Uri.parse(form.address).lastPathSegment?.substringAfterLast('/') ?: form.address}", Tokens.body, Tokens.textSecondary)
@@ -760,7 +761,7 @@ fun LogoReveal(reduced: Boolean, onDone: () -> Unit) {
         a.animateTo(0f, androidx.compose.animation.core.tween(if (reduced) 0 else 280))
         onDone()
     }
-    Box(Modifier.fillMaxSize().background(Color(0xFF070808)).focusRequester(root).focusable().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) { onDone(); true } else false }, Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(Tokens.pick(Color(0xFF070808), Tokens.background)).focusRequester(root).focusable().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) { onDone(); true } else false }, Alignment.Center) {
         AnimatedWordmark(Modifier.height(300.dp).graphicsLayer { alpha = a.value }, reduced)
     }
 }

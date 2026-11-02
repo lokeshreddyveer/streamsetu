@@ -53,6 +53,12 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Search that works offline | ✓ | ✓ | ✓ | ✓ | ✓ |
 | New-episode badge on series you watch | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Smart lists: Unwatched, Unwatched favorites, Added in 30 days | ✓ | ✓ | ✓ | – | – |
+| Smart collections of your own: a saved rule (language, years, rating, added, unwatched, favourites, connection, words) | – | – | – | – | ✓ |
+| Subtitle results ranked by how likely each is to match, each with the reason; automatic subtitles load only a confident match | – | – | – | ✓ | ✓ |
+| Settings search, and an Essential or Advanced list of settings | – | – | – | – | ✓ |
+| Projector mode: brighter pages, text and focus frame for projectors (video is not changed) | – | – | – | – | ✓ |
+| Add-ons: extra connections described by a small file that can only reach the servers it names | – | – | – | – | ✓ |
+| Playback capabilities: what the device reports about decoders, HDR and audio (read only) | – | – | – | – | ✓ |
 | Search by actor or director, read from your playlists one movie at a time | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Queue: Play Next and Add to Queue | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Favorites in your own order | ✓ | ✓ | ✓ | ✓ | ✓ |

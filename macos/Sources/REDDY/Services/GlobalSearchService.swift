@@ -83,6 +83,25 @@ struct SearchResult: Identifiable, Hashable, Sendable {
     let score: Double
 }
 
+/// The stages a search publishes, in order. Each update carries everything found so far, so a screen replaces its list with it and a row that is already shown never moves or
+/// disappears when a later stage arrives (the groups have a fixed order and each group is ranked on its own). A stage that would add nothing is not published again.
+enum SearchStage: Int, Sendable, Comparable {
+    /// Channels, movies and series from the title index.
+    case titles = 1
+    /// Downloaded episodes, folders and collections.
+    case episodesFoldersCollections = 2
+    /// Everything, the guide included. The guide is the last and slowest lookup, so its results arrive with this final update.
+    case done = 3
+    static func < (a: SearchStage, b: SearchStage) -> Bool { a.rawValue < b.rawValue }
+}
+
+/// One published step of a search.
+struct SearchUpdate: Sendable {
+    let results: GlobalSearchResults
+    let stage: SearchStage
+    var isFinal: Bool { stage == .done }
+}
+
 struct GlobalSearchResults: Sendable {
     var query = ""
     /// Per kind, best first, at most the requested limit.
@@ -129,6 +148,25 @@ final class GlobalSearchService: Sendable {
         try await Task.detached(priority: .userInitiated) { [self] in try run(query, kinds: tab.kinds, limit: limit) }.value
     }
 
+    /// The same search, published in stages: the titles (each of channels, movies and series as soon as it is ready), then episodes, folders and collections, then the final update with the
+    /// guide. Every update holds all results so far; the last one has `isFinal` set and is exactly what `search` returns. A failure in a late stage after something was found does not discard
+    /// what was found: the final update carries it. Cancelling the consuming task (a new query) stops the work between stages and ends the stream without a final update, so a consumer that
+    /// needs a complete answer must check `Task.checkCancellation()` after the loop. Nothing here calls a provider.
+    func updates(_ query: String, tab: SearchTab = .all, limit: Int = pageSize) -> AsyncThrowingStream<SearchUpdate, Error> {
+        AsyncThrowingStream { continuation in
+            let work = Task.detached(priority: .userInitiated) { [self] in
+                do {
+                    let final = try run(query, kinds: tab.kinds, limit: limit) { stage, partial in
+                        if !partial.isEmpty { continuation.yield(SearchUpdate(results: partial, stage: stage)) }
+                    }
+                    continuation.yield(SearchUpdate(results: final, stage: .done))
+                    continuation.finish()
+                } catch { continuation.finish(throwing: error) }
+            }
+            continuation.onTermination = { _ in work.cancel() }
+        }
+    }
+
     // MARK: ranking
 
     /// 1000 exact title · 800 title starts with the query · 600 a title word starts with it · 400 the title contains it ·
@@ -148,7 +186,7 @@ final class GlobalSearchService: Sendable {
 
     // MARK: query
 
-    private func run(_ rawQuery: String, kinds: Set<SearchResultKind>, limit: Int) throws -> GlobalSearchResults {
+    private func run(_ rawQuery: String, kinds: Set<SearchResultKind>, limit: Int, publish: (SearchStage, GlobalSearchResults) -> Void = { _, _ in }) throws -> GlobalSearchResults {
         var out = GlobalSearchResults(query: rawQuery)
         let q = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !MetadataNormalizer.normalize(q).isEmpty else { return out }
@@ -157,6 +195,16 @@ final class GlobalSearchService: Sendable {
         let multipleSources = allSources.filter(\.enabled).count > 1
         func sourceName(_ id: UUID?) -> String? { id.flatMap { sources[$0] } }
         let over = limit + 1                                     // one extra row tells us whether there is another page
+        // A stage is published only when it added results, and never as an empty list.
+        var published = 0
+        func emit(_ stage: SearchStage) {
+            let n = out.byKind.values.reduce(0) { $0 + $1.count }
+            if n != published { published = n; publish(stage, out) }
+        }
+        // The late stages (episodes, folders, collections, guide) may fail without discarding titles that were already found; with nothing found a failure is still an error.
+        func late(_ body: () throws -> Void) throws {
+            do { try body() } catch is CancellationError { throw CancellationError() } catch { if out.isEmpty { throw error } }
+        }
 
         // Catalog titles (FTS5): channels, movies, series
         let ftsKinds = Set(kinds.compactMap { k -> ContentKind? in k == .channel ? .channel : k == .movie ? .movie : k == .series ? .series : nil })
@@ -168,8 +216,6 @@ final class GlobalSearchService: Sendable {
                 return try searchRepo.search(term: q, filters: SearchFilters(kinds: [k], sourceID: nil), limit: over)
             }
             let ch = try take(.channel); try Task.checkCancellation()
-            let mv = try take(.movie); try Task.checkCancellation()
-            let sr = try take(.series)
             if !ch.isEmpty {
                 let by = Dictionary(try catalog.channels(ChannelQuery(collapseVariants: false, ids: ch.map(\.itemID))).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
                 add(.channel, ch.enumerated().compactMap { i, h in by[h.itemID].map { c in
@@ -178,7 +224,9 @@ final class GlobalSearchService: Sendable {
                                  score: Self.score(title: c.name, query: q, position: i))
                 } }, to: &out, limit: limit)
             }
+            emit(.titles)
             try Task.checkCancellation()
+            let mv = try take(.movie); try Task.checkCancellation()
             if !mv.isEmpty {
                 let by = Dictionary(try catalog.movies(VODQuery(ids: mv.map(\.itemID))).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
                 add(.movie, mv.enumerated().compactMap { i, h in by[h.itemID].map { m in
@@ -187,6 +235,9 @@ final class GlobalSearchService: Sendable {
                                  score: Self.score(title: m.title, query: q, position: i))
                 } }, to: &out, limit: limit)
             }
+            emit(.titles)
+            try Task.checkCancellation()
+            let sr = try take(.series)
             if !sr.isEmpty {
                 let by = Dictionary(try catalog.series(VODQuery(ids: sr.map(\.itemID))).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
                 add(.series, sr.enumerated().compactMap { i, h in by[h.itemID].map { s in
@@ -197,9 +248,10 @@ final class GlobalSearchService: Sendable {
             }
         }
         try Task.checkCancellation()
+        emit(.titles)
 
         // Episodes that have been downloaded (providers list them per series, so only series that were opened have them)
-        if kinds.contains(.episode) {
+        if kinds.contains(.episode) { try late {
             let eps = try catalog.searchEpisodes(term: q, sourceID: nil, limit: over)
             var rows: [SearchResult] = []
             for (i, e) in eps.enumerated() {
@@ -209,38 +261,39 @@ final class GlobalSearchService: Sendable {
                                          score: Self.score(title: e.title, query: q, position: i)))
             }
             add(.episode, rows, to: &out, limit: limit)
-        }
-        try Task.checkCancellation()
-
-        // Programme guide
-        if kinds.contains(.programme) {
-            let progs = try epg.searchPrograms(term: q, sourceID: nil, from: Date(), limit: over)
-            add(.programme, progs.enumerated().map { i, p in
-                SearchResult(id: "programme:\(p.program.id)", kind: .programme, title: p.program.title,
-                             subtitle: "\(p.channelName) · \(TimeFormatter.dayAndTime(p.program.start))", sourceID: p.program.sourceID, sourceName: sourceName(p.program.sourceID),
-                             artworkURL: p.program.imageURL, destination: .programme(channelID: p.channelID), score: Self.score(title: p.program.title, query: q, position: i))
-            }, to: &out, limit: limit)
-        }
+        } }
         try Task.checkCancellation()
 
         // Folders and collections
-        if kinds.contains(.folder) {
+        if kinds.contains(.folder) { try late {
             let cats = try catalog.searchCategories(term: q, limit: over)
             add(.folder, cats.enumerated().map { i, c in
                 SearchResult(id: "folder:\(c.id)", kind: .folder, title: c.name,
                              subtitle: [c.kind == .channel ? "Live TV folder" : c.kind == .movie ? "Movies folder" : "Series folder", multipleSources ? sourceName(c.sourceID) : nil].compactMap { $0 }.joined(separator: " · "),
                              sourceID: c.sourceID, sourceName: sourceName(c.sourceID), artworkURL: nil, destination: .folder(categoryID: c.id, kind: c.kind), score: Self.score(title: c.name, query: q, position: i))
             }, to: &out, limit: limit)
-        }
-        if kinds.contains(.collection) {
+        } }
+        if kinds.contains(.collection) { try late {
             let nq = MetadataNormalizer.normalize(q)
             let cols = ((try? favorites.collections()) ?? []).filter { MetadataNormalizer.normalize($0.name).contains(nq) }
             add(.collection, cols.enumerated().map { i, c in
                 SearchResult(id: "collection:\(c.id)", kind: .collection, title: c.name, subtitle: "\(c.itemCount) item\(c.itemCount == 1 ? "" : "s")", sourceID: nil, sourceName: nil, artworkURL: nil,
                              destination: .collection(id: c.id), score: Self.score(title: c.name, query: q, position: i))
             }, to: &out, limit: limit)
-        }
-        return out
+        } }
+        try Task.checkCancellation()
+        emit(.episodesFoldersCollections)
+
+        // Programme guide
+        if kinds.contains(.programme) { try late {
+            let progs = try epg.searchPrograms(term: q, sourceID: nil, from: Date(), limit: over)
+            add(.programme, progs.enumerated().map { i, p in
+                SearchResult(id: "programme:\(p.program.id)", kind: .programme, title: p.program.title,
+                             subtitle: "\(p.channelName) · \(TimeFormatter.dayAndTime(p.program.start))", sourceID: p.program.sourceID, sourceName: sourceName(p.program.sourceID),
+                             artworkURL: p.program.imageURL, destination: .programme(channelID: p.channelID), score: Self.score(title: p.program.title, query: q, position: i))
+            }, to: &out, limit: limit)
+        } }
+        return out          // the guide's results are in the final update that `updates` publishes
     }
 
     /// Dedupes by stable identity, ranks by score (then the index's order), and trims to the page. An extra row beyond the

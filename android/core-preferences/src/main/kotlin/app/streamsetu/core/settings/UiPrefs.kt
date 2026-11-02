@@ -26,6 +26,17 @@ class UiPrefs(context: Context) {
     private val _redesigned3 = prefs.getBoolean("design3", false).also { done ->
         if (!done) prefs.edit().putString("theme", "AMOLED").putString("accent", "BLUE").putBoolean("design3", true).apply()
     }
+    // Projector Mode: pages, cards, text and the focus frame are drawn for a projector (weak blacks, ambient light). It describes the screen this device is connected to, so it is kept on
+    // this device only: it is not part of a profile, a backup, the LAN sync or any other sync (see UiPrefs.DEVICE_ONLY).
+    private val _projectorMode = flow(prefs.getBoolean("projectorMode", false))
+    val projectorMode: StateFlow<Boolean> = _projectorMode
+    fun setProjectorMode(enabled: Boolean) { prefs.edit().putBoolean("projectorMode", enabled).apply(); _projectorMode.value = enabled }
+
+    companion object {
+        /** Preference keys that describe this device's screen or output, and so are never exported or synchronised. */
+        val DEVICE_ONLY = setOf("projectorMode")
+    }
+
     private val _theme = flow(prefs.getString("theme", "AMOLED") ?: "AMOLED")
     /** CINEMATIC, OBSIDIAN, AMOLED, MIDNIGHT, SLATE or FOREST: the page and card colours. */
     val theme: StateFlow<String> = _theme
@@ -101,6 +112,17 @@ class UiPrefs(context: Context) {
     fun setHomeRowHidden(id: String, hidden: Boolean) { val n = if (hidden) _homeHidden.value + id else _homeHidden.value - id; prefs.edit().putString("homeHidden", n.joinToString(",")).apply(); _homeHidden.value = n }
 
     // ---- Interface sounds ----
+    /** Which Settings pages are listed: all of them (Advanced) or only the everyday ones (Essential, the start for a new install). Nothing is reset or hidden from the app itself. */
+    // A new install starts on Essential; an app that was installed earlier and has only been updated stays on Advanced, so nobody loses a page they had. Decided once, then kept.
+    private val _advancedSettings = flow(run {
+        if (!prefs.contains("advancedSettings")) {
+            val fresh = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).let { it.lastUpdateTime - it.firstInstallTime < 120_000L } }.getOrDefault(false)
+            prefs.edit().putBoolean("advancedSettings", !fresh).apply()
+        }
+        prefs.getBoolean("advancedSettings", true)
+    })
+    val advancedSettings: StateFlow<Boolean> = _advancedSettings
+    fun setAdvancedSettings(v: Boolean) { prefs.edit().putBoolean("advancedSettings", v).apply(); _advancedSettings.value = v }
     private val _soundsOn = flow(prefs.getBoolean("soundsOn", false))
     val soundsEnabled: StateFlow<Boolean> = _soundsOn
     fun setSoundsEnabled(v: Boolean) { prefs.edit().putBoolean("soundsOn", v).apply(); _soundsOn.value = v }

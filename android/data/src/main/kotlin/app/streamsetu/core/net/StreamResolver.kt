@@ -65,7 +65,11 @@ class StreamResolver(private val sources: SourceRepository, private val credenti
         return RecordableFormat.UNKNOWN
     }
 
+    /** Set once at start-up: asks an add-on for the play address of a title it listed without one. */
+    var addonStreams: (suspend (sourceId: String, itemId: String) -> String?)? = null
+
     private suspend fun resolveInternal(sourceId: String, streamRef: String, preferTs: Boolean): String? {
+        if (streamRef.startsWith(app.streamsetu.core.sync.AddonSync.LAZY_PREFIX)) return addonStreams?.invoke(sourceId, streamRef.removePrefix(app.streamsetu.core.sync.AddonSync.LAZY_PREFIX))
         if (streamRef.startsWith("stalker:")) {
             val src = sources.get(sourceId) ?: return null
             return withContext(Dispatchers.IO) { runCatching { stalker.link(src, streamRef.removePrefix("stalker:")) }.getOrNull() }

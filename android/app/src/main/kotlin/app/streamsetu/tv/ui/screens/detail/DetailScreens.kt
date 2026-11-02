@@ -316,7 +316,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
         val sheetFirst = remember { FocusRequester() }
         LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(if (restoreEpisodeId != null) episodeTarget else sheetFirst, 12) }
         app.streamsetu.tv.ui.components.TvDialog(onDismissRequest = { episodesOpen = false }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
-            Box(Modifier.fillMaxSize().drawBehind { drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(0.35f to Color.Transparent, 0.7f to Color(0x99000000), 1f to Tokens.background.copy(alpha = 0.95f)), alpha = panelIn) }, Alignment.CenterEnd) {
+            Box(Modifier.fillMaxSize().drawBehind { drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(0.35f to Color.Transparent, 0.7f to Tokens.sheetScrimMidStrong, 1f to Tokens.background.copy(alpha = 0.95f)), alpha = panelIn) }, Alignment.CenterEnd) {
                 Column(Modifier.fillMaxHeight().width(520.ui).graphicsLayer { alpha = panelIn; translationX = (1f - panelIn) * 60.dp.toPx() }.padding(end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Label("Season " + (season ?: ""), Tokens.pageTitle, Tokens.text, FontWeight.Bold)
                     Label("${sheetEps.size} episodes", Tokens.small, Tokens.textSecondary)
@@ -330,7 +330,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                             if (!e.imageUrl.isNullOrBlank()) AsyncImage(e.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) else Label("E${e.number}", Tokens.title, Tokens.textTertiary, modifier = Modifier.align(Alignment.Center))
                             // NEW is an episode that arrived after the series was read and has not been started.
                             if (e.id in newIds && p == null) Label("NEW", Tokens.caption, Tokens.onBright, FontWeight.Bold, modifier = Modifier.align(Alignment.TopStart).padding(4.dp).background(Tokens.accent, RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 1.dp))
-                            if (p != null && !p.completed && p.fraction > 0) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(p.fraction).fillMaxHeight().background(Tokens.accent)) }
+                            if (p != null && !p.completed && p.fraction > 0) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Tokens.progressTrack)) { Box(Modifier.fillMaxWidth(p.fraction).fillMaxHeight().background(Tokens.accent)) }
                         }
                                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         Label("${e.number}. ${e.title}", Tokens.small, Tokens.text, FontWeight.SemiBold, maxLines = 2)

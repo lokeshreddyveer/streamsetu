@@ -52,6 +52,7 @@ class AppContainer @Inject constructor(
     val settings: AppSettings,
     val ui: app.streamsetu.core.settings.UiPrefs,
     val collections: app.streamsetu.core.data.repo.CollectionRepository,
+    val smartCollections: app.streamsetu.core.data.repo.SmartCollectionStore,
     val maintenance: app.streamsetu.core.data.repo.MaintenanceService,
     val resolver: StreamResolver,
     val sync: SyncService,
@@ -61,6 +62,7 @@ class AppContainer @Inject constructor(
     val stats: app.streamsetu.core.data.repo.StatisticsRepository,
     val cast: CastSupport,
     val channelPrefs: app.streamsetu.core.data.repo.ChannelPrefs,
+    val addons: app.streamsetu.core.data.repo.AddonRegistry,
 ) {
     /** Finds the picture of a title that shows none, one title at a time (see ArtworkFiller). */
     val artwork: app.streamsetu.core.sync.ArtworkFiller by lazy { app.streamsetu.core.sync.ArtworkFiller(sync, appScope) }
@@ -215,13 +217,14 @@ class AppContainer @Inject constructor(
             kotlinx.coroutines.delay(6_000)
             if (playback.current.value?.id != item.id) return@launch
             if (playback.subtitleTracks.value.any { it.language?.startsWith(language, true) == true }) return@launch
-            val hit = runCatching {
-                when (item) {
-                    is EpisodePlayable -> online.search(item.series.title, null, language, item.episode.season, item.episode.number)
-                    is MoviePlayable -> online.search(item.movie.title, item.movie.year, language)
-                    else -> emptyList()
-                }.firstOrNull()
-            }.getOrNull() ?: return@launch
+            // Ranked by how likely each is to belong to this video. Only a result that is sure enough is loaded by itself: low confidence, a machine translation or a subtitle for another
+            // episode is never applied without the person choosing it from the list.
+            val want = when (item) {
+                is EpisodePlayable -> app.streamsetu.core.subtitles.SubtitleWanted(item.series.title, null, item.episode.season, item.episode.number, language, runtimeMinutes = playback.durationMs.takeIf { it > 0 }?.let { (it / 60_000).toInt() })
+                is MoviePlayable -> app.streamsetu.core.subtitles.SubtitleWanted(item.movie.title, item.movie.year, null, null, language, runtimeMinutes = playback.durationMs.takeIf { it > 0 }?.let { (it / 60_000).toInt() })
+                else -> return@launch
+            }
+            val hit = runCatching { online.search(want).firstOrNull { it.safeToApplyAutomatically } }.getOrNull() ?: return@launch
             val file = runCatching { online.download(hit) }.getOrNull() ?: return@launch
             if (playback.current.value?.id == item.id) playback.addSubtitle(file, "$language (automatic)")
         }
@@ -640,14 +643,19 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
                 container.downloads.sweepWatched(watched)
             }
         }
+        if (app.streamsetu.tv.trace.TestHooks.on) {          // test hooks only (see TestHooks): `adb shell am broadcast -a app.streamsetu.tv.test.PROJECTOR -p app.streamsetu.tv --ez on true` turns Projector Mode on or off, so the same remote workload can be run in both modes
+            val flip = object : android.content.BroadcastReceiver() { override fun onReceive(c: android.content.Context, i: android.content.Intent) { container.ui.setProjectorMode(i.getBooleanExtra("on", false)) } }
+            androidx.core.content.ContextCompat.registerReceiver(this, flip, android.content.IntentFilter("app.streamsetu.tv.test.PROJECTOR"), androidx.core.content.ContextCompat.RECEIVER_EXPORTED)
+        }
         container.appScope.launch {
             // The language chosen in Settings (Appearance), now and whenever it changes.
             container.ui.language.collect { setting -> kotlinx.coroutines.withContext(Dispatchers.Main) { app.streamsetu.tv.ui.i18n.I18n.apply(this@StreamSetuApp, setting) } }
         }
         container.appScope.launch {
             // The theme and accent chosen in Settings (Appearance) apply to every screen, now and whenever they change.
-            kotlinx.coroutines.flow.combine(container.ui.theme, container.ui.accent) { t, a -> app.streamsetu.tv.ui.theme.Theme.of(t) to app.streamsetu.tv.ui.theme.Accent.of(a) }
-                .collect { (t, a) -> kotlinx.coroutines.withContext(Dispatchers.Main) { app.streamsetu.tv.ui.theme.Tokens.apply(t, a) } }
+            // (Projector Mode is applied with them: the root of the television app also applies all three before its first frame, see MainActivity.)
+            kotlinx.coroutines.flow.combine(container.ui.theme, container.ui.accent, container.ui.projectorMode) { t, a, p -> Triple(app.streamsetu.tv.ui.theme.Theme.of(t), app.streamsetu.tv.ui.theme.Accent.of(a), p) }
+                .collect { (t, a, p) -> kotlinx.coroutines.withContext(Dispatchers.Main) { app.streamsetu.tv.ui.theme.Tokens.apply(t, a, p) } }
         }
         container.appScope.launch {
             // App DNS: the resolver chosen in Settings applies to every request from the shared client, now and whenever it changes.

@@ -41,6 +41,7 @@ import app.streamsetu.tv.ui.components.*
 import app.streamsetu.tv.ui.components.scrollThumb
 import app.streamsetu.tv.ui.components.sidebarRowFill
 import app.streamsetu.tv.ui.theme.Tokens
+import androidx.compose.ui.platform.testTag
 import app.streamsetu.tv.ui.theme.ui
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -64,6 +65,7 @@ enum class Category(val title: String, val subtitle: String, val icon: ImageVect
     INTEGRATIONS("AI, Trakt and Debrid", "Ask for what to watch, watch tracking and link unlocking, with your own keys", Icons.Filled.Link, Mac.indigo, 3),
     PROFILES("Profiles", "Who is watching, kids profiles and PINs", Icons.Filled.People, Mac.green, 3),
     SYNC("Sync on this network", "Share favourites and progress over Wi-Fi", Icons.Filled.Sync, Mac.teal, 3),
+    ADDONS("Add-ons", "Extra connections described by a small file", Icons.Filled.Extension, Mac.indigo, 3),
     STORAGE("Storage & Backup", "Cache, backup and reset", Icons.Filled.Storage, Mac.gray, 4),
     DIAGNOSTICS("Diagnostics", "Playback facts and a safe report", Icons.Filled.Troubleshoot, Mac.orange, 4),
     ABOUT("About StreamSetu", "Version, licenses and support", Icons.Filled.Info, Mac.gray, 4),
@@ -75,10 +77,23 @@ enum class Category(val title: String, val subtitle: String, val icon: ImageVect
  */
 @Composable
 fun SettingsScreen(c: AppContainer, nav: Navigator) {
-    var selected by rememberSaveable { mutableStateOf(Category.PLAYBACK.name) }
+    var selected by remember { mutableStateOf(nav.settings.category ?: Category.PLAYBACK.name) }
+    LaunchedEffect(selected) { nav.settings.category = selected }
     // Something elsewhere asked for one category (the Sports Hub's "Open Guide Settings"): open on it once.
     LaunchedEffect(nav.pendingSettings) { nav.pendingSettings?.let { name -> categoryFromRequest(name)?.let { selected = it.name }; nav.pendingSettings = null } }
     val current = Category.valueOf(selected)
+    val advanced by c.ui.advancedSettings.collectAsState()
+    // Settings search: what was typed, whether the technical settings are included, whether the open page was reached from a result, and the control the remote should land on.
+    var searching by remember { mutableStateOf(nav.settings.searching) }
+    var query by remember { mutableStateOf(nav.settings.query) }
+    var includeAdvanced by remember { mutableStateOf(nav.settings.includeAdvanced) }
+    var fromSearch by remember { mutableStateOf(false) }
+    var lastResult by remember { mutableStateOf(nav.settings.lastResult) }
+    LaunchedEffect(searching, query, includeAdvanced, lastResult) { nav.settings.searching = searching; nav.settings.query = query; nav.settings.includeAdvanced = includeAdvanced; nav.settings.lastResult = lastResult }
+    var restoreId by remember { mutableStateOf<String?>(null) }          // set when Back returns to the results: the result to put the remote on again
+    var focusTitle by remember { mutableStateOf<String?>(null) }
+    val searchRow = remember { FocusRequester() }
+    val fieldFocus = remember { FocusRequester() }
     val listEntry = LocalContentEntry.current ?: remember { FocusRequester() }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     // The panel is a focus group: asking it for focus goes to its first control, so Right and OK never pick whichever control is nearest.
@@ -88,6 +103,16 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
     // A short status beside a category where there is one to give: who is watching, whether sync is on, how many libraries.
     val profileList by c.profiles.profiles.collectAsStateWithLifecycle(); val activeProfile by c.profiles.activeId.collectAsStateWithLifecycle()
     val lanOn by c.lan.enabled.collectAsStateWithLifecycle(); val libraryEntries by c.library.entries.collectAsState(initial = emptyList())
+    // Essential never hides a page that is in use or that a current problem needs: sync while it is on, Add-ons while one is installed, Diagnostics while a connection has failed.
+    val allSources by c.sources.sources.collectAsState(initial = emptyList())
+    val inUse = remember(lanOn, allSources) {
+        buildSet {
+            if (lanOn) add(Category.SYNC)
+            if (allSources.any { it.type == app.streamsetu.core.model.SourceType.ADDON }) add(Category.ADDONS)
+            if (allSources.any { it.status == app.streamsetu.core.model.SyncStatus.FAILED }) add(Category.DIAGNOSTICS)
+        }
+    }
+    val shown = remember(advanced, current, inUse) { Category.entries.filter { advanced || it !in SettingsRegistry.advancedCategories || it == current || it in inUse } }
     fun statusOf(cat: Category): String? = when (cat) {
         Category.PROFILES -> profileList.firstOrNull { it.id == activeProfile }?.name
         Category.SYNC -> if (lanOn) "On" else "Off"
@@ -108,33 +133,53 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
         }
     }
     // The chosen category is always on screen, so Left from the controls (and Back) can find it.
-    LaunchedEffect(selected) { reveal(Category.entries.indexOf(current)) }
+    LaunchedEffect(selected) { reveal(shown.indexOf(current)) }
 
     BackHandler(enabled = inPanel) {
         scope.launch {
-            reveal(Category.entries.indexOf(current))          // into view first,
+            reveal(shown.indexOf(current))          // into view first,
             androidx.compose.runtime.withFrameNanos { }        // then wait for the layout it caused,
             runCatching { rows[current]?.requestFocus() }      // then the remote goes there
         }
     }
+    // Back from a page that a search result opened returns to the results (the words typed and the result chosen are still there); Back from the results returns to the list on the search entry.
+    BackHandler(enabled = inPanel && fromSearch && !searching) { restoreId = lastResult; fromSearch = false; searching = true }
+    BackHandler(enabled = inPanel && searching) { searching = false; restoreId = null; scope.launch { androidx.compose.runtime.withFrameNanos { }; runCatching { searchRow.requestFocus() } } }
+    // Choosing a category by hand ends the search; a category opened by a result keeps it.
+    var lastSelected by remember { mutableStateOf(selected) }
+    LaunchedEffect(selected) { if (selected != lastSelected) { lastSelected = selected; if (focusTitle == null) { fromSearch = false; searching = false } } }          // not on the first composition: that would undo the search state that was just restored
+    // A result whose control is not on the page (a collapsed group) must not leave the remote nowhere: after a moment it goes to the page.
+    LaunchedEffect(focusTitle) { if (focusTitle != null) { kotlinx.coroutines.delay(1500); if (focusTitle != null) { focusTitle = null; runCatching { panelEntry.requestFocus() } } } }
 
     Row(Modifier.fillMaxSize()) {
         // Left: the categories, each with an icon tile and a line saying what is inside.
         Column(Modifier.weight(0.25f).fillMaxHeight().railOnLeft().sidebarSurface().padding(horizontal = 12.dp, vertical = Tokens.safeVertical)) {
             Label("Settings", Tokens.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.padding(start = 10.dp, bottom = 8.dp))
+            // The first entry of the list searches every setting.
+            Focusable({ searching = true; scope.launch { androidx.compose.runtime.withFrameNanos { }; runCatching { panelEntry.requestFocus() } } },
+                Modifier.focusRequester(searchRow).fillMaxWidth().testTag("settings-search-row").focusProperties { up = FocusRequester.Cancel; left = FocusRequester.Cancel; down = shown.firstOrNull()?.let { rows.getValue(it) } ?: FocusRequester.Cancel }
+                    .onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { searching = true; scope.launch { androidx.compose.runtime.withFrameNanos { }; runCatching { panelEntry.requestFocus() } }; true } else false },
+                shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, focusedContainer = Color.Transparent, scaleOnFocus = 1.0f, showRing = false, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { f ->
+                Row(Modifier.fillMaxWidth().sidebarRowFill(f, searching).heightIn(min = 44.ui), verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.width(5.dp))
+                    Box(Modifier.width(34.ui), Alignment.Center) { androidx.compose.foundation.Image(Icons.Filled.Search, null, Modifier.size(22.ui), colorFilter = ColorFilter.tint(if (f || searching) Color.White else Tokens.textSecondary)) }
+                    Label("Search settings", Tokens.row, if (f || searching) Color.White else Tokens.textSecondary, if (searching) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.weight(1f).padding(start = 8.dp))
+                }
+            }
+            Spacer(Modifier.height(6.dp))
             LazyColumn(Modifier.weight(1f).fillMaxWidth().scrollThumb(categoryState), state = categoryState, verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                itemsIndexed(Category.entries, key = { _, cat -> cat.name }) { index, cat ->
+                itemsIndexed(shown, key = { _, cat -> cat.name }) { index, cat ->
                     val isSel = cat == current
                     var dwell by remember { mutableStateOf(false) }
                     LaunchedEffect(dwell) { if (dwell) { delay(350); selected = cat.name } }          // the page on the right follows the remote once it rests on a category: moving down the list does not build every page it passes
                     Column {
-                        if (index > 0 && Category.entries[index - 1].section != cat.section) Spacer(Modifier.height(10.dp))
+                        if (index > 0 && shown[index - 1].section != cat.section) Spacer(Modifier.height(10.dp))
                                         Focusable({ selected = cat.name; runCatching { panelEntry.requestFocus() }.isSuccess },
                         (if (isSel) Modifier.focusRequester(listEntry) else Modifier).then(Modifier.focusRequester(rows.getValue(cat))).fillMaxWidth()
                             // Up and Down go to the neighbouring category by name, never by where it happens to be on screen; at either end the remote stays put, and it never leaves sideways but through Right.
                             .focusProperties {
-                                up = Category.entries.getOrNull(index - 1)?.let { rows.getValue(it) } ?: FocusRequester.Cancel
-                                down = Category.entries.getOrNull(index + 1)?.let { rows.getValue(it) } ?: FocusRequester.Cancel
+                                up = shown.getOrNull(index - 1)?.let { rows.getValue(it) } ?: (if (index == 0) searchRow else FocusRequester.Cancel)
+                                down = shown.getOrNull(index + 1)?.let { rows.getValue(it) } ?: FocusRequester.Cancel
                                 left = FocusRequester.Cancel
                             }
                             .onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { selected = cat.name; runCatching { panelEntry.requestFocus() }.isSuccess } else false },
@@ -164,15 +209,26 @@ fun SettingsScreen(c: AppContainer, nav: Navigator) {
         // Right: a header for the category, then its groups. Statistics is a lazy list (only the groups near the screen are built); the other pages are still one column.
         val panelMod = Modifier.weight(0.75f).fillMaxHeight().focusRequester(panelEntry).leftGoesTo(rows.getValue(current)).onFocusChanged { inPanel = it.hasFocus }
         val header: @Composable () -> Unit = { Column(Modifier.padding(start = 12.dp, bottom = 2.dp)) { Label(current.title, Mac.pageTitle, Tokens.text, FontWeight.Bold); Label(current.subtitle, Mac.rowDetail, Tokens.textSecondary) } }
-        if (current == Category.STATISTICS) {
+        if (searching) {
+            SettingsSearchPanel(query, { query = it }, advanced, includeAdvanced, { includeAdvanced = it }, fieldFocus, restoreId, { d ->
+                lastResult = d.id; fromSearch = true; restoreId = null; focusTitle = d.focusTargetId; selected = d.category.name; searching = false
+            }, panelMod)
+            LaunchedEffect(Unit) { if (restoreId == null) { androidx.compose.runtime.withFrameNanos { }; runCatching { fieldFocus.requestFocus() } } }
+        } else if (current == Category.STATISTICS) {
             val statsUi = rememberStatsUi(c)
-            androidx.compose.foundation.lazy.LazyColumn(panelMod, contentPadding = PaddingValues(start = 26.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            val statsState = androidx.compose.foundation.lazy.rememberLazyListState()
+            val statsTarget = remember(focusTitle) { focusTitle?.let { t -> SettingFocusTarget(t, FocusRequester()) { focusTitle = null } } }
+            SweepToSettingTarget(statsState, statsTarget) { focusTitle = null; runCatching { panelEntry.requestFocus() } }          // the control is not on the page: the remote goes to the page
+            androidx.compose.runtime.CompositionLocalProvider(LocalSettingFocus provides statsTarget) {
+            androidx.compose.foundation.lazy.LazyColumn(panelMod, state = statsState, contentPadding = PaddingValues(start = 26.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item(key = "header", contentType = "header") { header() }
                 statisticsItems(statsUi)
             }
+            }
         } else Column(panelMod.verticalScroll(rememberScrollState()).padding(start = 26.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             header()
-            SettingsPanel(current, c, nav)
+            val target = remember(focusTitle) { focusTitle?.let { t -> SettingFocusTarget(t, FocusRequester()) { focusTitle = null } } }
+            androidx.compose.runtime.CompositionLocalProvider(LocalSettingFocus provides target) { SettingsPanel(current, c, nav) }
         }
     }
 }
@@ -199,6 +255,7 @@ fun SettingsPanel(current: Category, c: AppContainer, nav: Navigator) {
         Category.INTEGRATIONS -> IntegrationsSettings(c, nav)
         Category.PROFILES -> ProfileSettings(c)
         Category.SYNC -> SyncSettings(c)
+        Category.ADDONS -> AddonsSettings(c)
         Category.STORAGE -> StorageSettings(c)
         Category.DIAGNOSTICS -> DiagnosticsSettings(c)
         Category.ABOUT -> AboutSettings(c)
@@ -211,6 +268,13 @@ private val languages = listOf("" to "Any", "en" to "English", "hi" to "Hindi", 
 
 @Composable
 private fun connections(c: AppContainer): List<Source> = c.sources.sources.collectAsState(initial = emptyList()).value.filter { !it.draft }
+
+/** A group of settings that only the Advanced view lists. What it holds keeps its value and keeps working while it is not listed. */
+@Composable
+internal fun AdvancedGroup(c: AppContainer, title: String, footer: String? = null, danger: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    val advanced by c.ui.advancedSettings.collectAsState()
+    if (advanced) SettingGroup(title, footer, danger, content)
+}
 
 @Composable
 private fun AdvancedToggle(content: @Composable ColumnScope.() -> Unit) {
@@ -232,7 +296,7 @@ fun PlaybackSettings(c: AppContainer) {
     val conns = connections(c)
     var tick by remember { mutableIntStateOf(0) }; tick.let { }
 
-    SettingGroup("Player engine", "Automatic chooses the best player for each stream.") {
+    AdvancedGroup(c, "Player engine", "Automatic chooses the best player for each stream.") {
         ChoiceRow("Default engine", options = listOf(EnginePreference.AUTOMATIC to "Automatic", EnginePreference.EXOPLAYER to "Media3 ExoPlayer", EnginePreference.MPV to if (mpv) "MPV" else "MPV (not available)"), value = engine) { if (it != EnginePreference.MPV || mpv) s.setEngine(it) }
         if (!mpv) InfoRow("MPV", "Not available", "MPV needs Android 8 or later.")
         listOf("LIVE" to "Live TV", "MOVIES" to "Movies and series", "CATCHUP" to "Past programmes").forEach { (kind, label) ->
@@ -255,8 +319,9 @@ fun PlaybackSettings(c: AppContainer) {
             if (conns.size > 1) ChoiceRow("Live buffer for ${src.name}", "Overrides the global Live TV buffer for this connection.", listOf<Pair<BufferingMode?, String>>(null to "Use global default", BufferingMode.LOW_LATENCY to "Low latency", BufferingMode.AUTOMATIC to "Balanced", BufferingMode.LARGE to "Stable"), s.liveBufferFor(src.id)) { s.setLiveBufferFor(src.id, it); tick++ }
         }
     }
-    AppDnsGroup(s)
-    SettingGroup("Network proxy", "Sends internet streams and playlists through your proxy. Local devices connect directly.") {
+    val dnsAdvanced by c.ui.advancedSettings.collectAsState()
+    if (dnsAdvanced) AppDnsGroup(s)          // App DNS is a technical setting: Essential does not list it (it stays on and keeps working)
+    AdvancedGroup(c, "Network proxy", "Sends internet streams and playlists through your proxy. Local devices connect directly.") {
         val pk by s.proxyKind.collectAsStateWithLifecycle(); val ph by s.proxyHost.collectAsStateWithLifecycle(); val pp by s.proxyPort.collectAsStateWithLifecycle()
         ChoiceRow("Proxy", options = listOf("NONE" to "None", "HTTP" to "HTTP", "SOCKS" to "SOCKS"), value = pk) { s.setProxyKind(it) }
         if (pk != "NONE") {
@@ -281,7 +346,8 @@ fun PlaybackSettings(c: AppContainer) {
         ChoiceRow("How long to wait for a stream to load", "Past this, loading counts as a failure.", listOf("SHORT" to "Short (10 s live)", "NORMAL" to "Normal (18 s live)", "LONG" to "Long (30 s live)"), patience) { s.setStallPatience(it) }
     }
     val dec by s.decoderFallback.collectAsStateWithLifecycle()
-    AdvancedToggle {
+    val showAdvanced by c.ui.advancedSettings.collectAsState()
+    if (showAdvanced) AdvancedToggle {
         ToggleRow("Decoder fallback", "Tries another decoder when the first cannot play the stream.", dec) { s.setDecoderFallback(it) }
         ActionRow("Reset player settings", "Puts every setting on the Playback, Audio and Subtitles pages back to its default.", "Reset", danger = true) { s.resetPlayerPreferences() }
     }
@@ -303,9 +369,8 @@ fun VideoSettings(c: AppContainer) {
     SettingGroup("This screen") {
         InfoRow("Resolution", mode?.let { "${it.physicalWidth}×${it.physicalHeight} at ${"%.0f".format(it.refreshRate)} Hz" } ?: "unknown")
         InfoRow("HDR formats the TV accepts", hdr.joinToString(", ").ifBlank { "none reported" }, "Played only when the TV, the decoder and the stream all support it.")
-        SettingRow("Match the display's refresh rate to the video", "Switches the TV's refresh rate to the video's frame rate.", "Not available", enabled = false, reason = "Needs Android 11 or later and a display that allows mode switching. Not offered in this version.")
     }
-    SettingGroup("Decoders on this device", "Hardware decoding is used whenever the device has it.") {
+    AdvancedGroup(c, "Decoders on this device", "Hardware decoding is used whenever the device has it.") {
         InfoRow("Hardware video decoders", c.maintenance.hardwareDecoders().joinToString(", ").ifBlank { "none found" })
     }
 }

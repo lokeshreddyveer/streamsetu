@@ -90,6 +90,20 @@ class Device:
         threading.Thread(target=self._read_inj, daemon=True).start()
         self._wait_inj(lambda l: l == "ready", 20)
 
+    def dump_xml(self, timeout=15):
+        """The screen as `uiautomator dump` writes it, read from the helper on the TV (one connection kept open: tens of milliseconds). None when the helper cannot do it, so the caller falls back."""
+        if self.inj is None or getattr(self, "_no_fast_dump", False): return None
+        try:
+            with self._inj_cv: self._inj_lines.clear()
+            self.inj.stdin.write("dump\n"); self.inj.stdin.flush()
+            lines = self._wait_inj(lambda l: l.startswith("done dump"), timeout)
+        except Exception: self._no_fast_dump = True; return None
+        xml = next((l for l in lines if l.startswith("<?xml")), None)
+        if xml is None:
+            self._no_fast_dump = True          # the helper answered "dump-failed ..." (an older Android, or the accessibility connection was refused): use uiautomator from now on
+            print("      (fast screen read unavailable: %s)" % next((l for l in lines if l.startswith("dump-failed")), "no answer")[:120]); sys.stdout.flush()
+        return xml
+
     def _read_inj(self):
         for line in self.inj.stdout:
             with self._inj_cv: self._inj_lines.append(line.strip()); self._inj_cv.notify_all()

@@ -20,6 +20,29 @@ enum class Theme(val label: String, val background: Color, val panel: Color, val
     companion object { fun of(name: String?) = entries.firstOrNull { it.name == name } ?: AMOLED }
 }
 
+/**
+ * The colours of Projector Mode, in one place. A projector with weak blacks, a washed-out picture or a lit room cannot show near-black surfaces, so every surface here is a visibly
+ * lighter slate, text is white or near white, and the lines are stronger. Nothing here is pure black. It is used instead of the chosen theme, never on top of it: the theme and the
+ * accent stay saved, and turning the mode off brings them back.
+ */
+object ProjectorPalette {
+    val background = Color(0xFF151A20); val panel = Color(0xFF1B222B); val card = Color(0xFF252E39); val elevated = Color(0xFF303B48); val focusedSurface = Color(0xFF3B4B5E)
+    val text = Color(0xFFFFFFFF); val textSecondary = Color(0xFFD8DEE6); val textTertiary = Color(0xFFB0BAC6)
+    /** Success, warning and danger, lifted so they are readable (4.5:1 or better) on every Projector surface, the lifted focused one included. */
+    val success = Color(0xFF72E5B4); val warning = Color(0xFFFFD180); val danger = Color(0xFFFFB4AB)
+    val line = Color(0x3DFFFFFF); val lineStrong = Color(0x66FFFFFF); val focusRing = Color(0xFFFFFFFF); val onBright = Color(0xFF071016)
+    /** The accent is lifted a little towards white so it reads on a lit screen. */
+    fun accent(chosen: Color) = androidx.compose.ui.graphics.lerp(chosen, Color.White, 0.18f)
+    // Dimming layers over a page or over artwork (a menu behind a sheet, the text side of a hero): slate, not black.
+    val scrim = Color(0x8C151A20); val scrimStrong = Color(0xB3151A20)
+    val heroTextScrimStrong = Color(0xE61B222B); val heroTextScrimMiddle = Color(0xA61B222B); val heroTextScrimClear = Color.Transparent; val heroBottomScrim = background
+    val heroTopScrim = Color(0xB31B222B); val heroPosterTint = Color(0x731B222B)
+    val sheetScrimMid = Color(0xB31B222B); val sheetScrimMidStrong = Color(0xBF1B222B)
+    val playerCenterScrim = Color(0xCC1B222B); val playerControlsScrim = Color(0xCC1B222B); val playerControlsScrimStrong = Color(0xEB1B222B); val playerMenuScrim = Color(0xF51B222B)
+    val playerChip = Color(0x991B222B); val playerButton = Color(0x8C1B222B); val playerTrack = Color(0x80303B48)
+    val chipScrim = Color(0xCC1B222B); val chipScrimSoft = Color(0xB31B222B); val progressTrack = Color(0xB3151A20); val ringBand = Color(0xFF071016)
+}
+
 /** A highlight colour. */
 enum class Accent(val label: String, val color: Color) {
     EMBER("Ember", Color(0xFFFF6B3D)), CYAN("Cyan", Color(0xFF4CC9D8)), GOLD("Gold", Color(0xFFF5AD42)), VIOLET("Violet", Color(0xFFA48BFF)), GREEN("Green", Color(0xFF3DDCA8)), ROSE("Rose", Color(0xFFFF6B8A)), BLUE("Blue", Color(0xFF4DA3FF));
@@ -34,32 +57,76 @@ object Tokens {
 
     private var themeState by mutableStateOf(Theme.AMOLED)
     private var accentState by mutableStateOf(Accent.BLUE)
-    fun apply(theme: Theme, accent: Accent) { themeState = theme; accentState = accent }
+    private var projectorState by mutableStateOf(false)
+    /**
+     * Sets the look of the whole app, once, at the root. [projectorMode] is independent of the theme: the chosen [theme] and [accent] are kept as they are and come back the moment the mode
+     * is turned off. Every colour below is read from this state, so a change redraws exactly the screens that use it.
+     */
+    fun apply(theme: Theme, accent: Accent, projectorMode: Boolean) { themeState = theme; accentState = accent; projectorState = projectorMode }
+    /** True while Projector Mode is on. For the few places that draw something different (the focus frame); colours never need it, they are read from the roles below. */
+    val projector get() = projectorState
+    /** For a surface that a screen must keep in its own look in the normal themes (the opening screens, a toast) but that Projector Mode draws from the palette. */
+    fun pick(normal: Color, projectorColor: Color): Color = if (projectorState) projectorColor else normal
 
-    val background get() = themeState.background
-    val panel get() = themeState.panel        // sidebar and top bar
-    val surface get() = themeState.panel
-    val card get() = themeState.card
-    val elevated get() = themeState.elevated
-    val accent get() = accentState.color
+    val background get() = if (projectorState) ProjectorPalette.background else themeState.background
+    val panel get() = if (projectorState) ProjectorPalette.panel else themeState.panel        // sidebar and top bar
+    val surface get() = panel
+    val card get() = if (projectorState) ProjectorPalette.card else themeState.card
+    val elevated get() = if (projectorState) ProjectorPalette.elevated else themeState.elevated
+    val accent get() = if (projectorState) ProjectorPalette.accent(accentState.color) else accentState.color
     /** The accent, under its older name: the focus colour of Home, the sidebar marker and the opening screen. */
-    val gold get() = accentState.color
+    val gold get() = accent
     /** A lighter shade of the accent, for text and icons that need to stand out on a focused item. */
-    val goldHighlight get() = androidx.compose.ui.graphics.lerp(accentState.color, Color.White, 0.35f)
-    val focusedSurface get() = themeState.focused
-    val text = Color(0xFFF7F8FA)
-    val textSecondary = Color(0xFFADB4BE)
-    val textTertiary = Color(0xFF777F8B)
+    val goldHighlight get() = androidx.compose.ui.graphics.lerp(accent, Color.White, 0.35f)
+    val focusedSurface get() = if (projectorState) ProjectorPalette.focusedSurface else themeState.focused
+    val text get() = if (projectorState) ProjectorPalette.text else Color(0xFFF7F8FA)
+    val textSecondary get() = if (projectorState) ProjectorPalette.textSecondary else Color(0xFFADB4BE)
+    val textTertiary get() = if (projectorState) ProjectorPalette.textTertiary else Color(0xFF777F8B)
     /** The focus ring and the primary button: white, so the one bright thing on the screen is the thing the remote is on. */
     val focusRing = Color.White
     /** Text on a white or accent fill. */
-    val onBright = Color(0xFF0B0D10)
-    val line = Color(0x12FFFFFF)         // white 7 %
-    val lineStrong = Color(0x24FFFFFF)   // white 14 %
-    val success = Color(0xFF38B981)
-    val warning = Color(0xFFE0A93B)
-    val danger = Color(0xFFD9534F)
-    val playPill get() = accentState.color     // primary actions use the accent, with dark text
+    val onBright get() = if (projectorState) ProjectorPalette.onBright else Color(0xFF0B0D10)
+    val line get() = if (projectorState) ProjectorPalette.line else Color(0x12FFFFFF)                 // white 7 % (24 % in Projector Mode)
+    val lineStrong get() = if (projectorState) ProjectorPalette.lineStrong else Color(0x24FFFFFF)     // white 14 % (40 % in Projector Mode)
+
+    // ---- Dimming layers. Named by what they are for, so a screen asks for the role and never for a colour; none of them is used over the video itself.
+    /** The shade behind a menu or the sidebar while it is open. */
+    val scrim get() = if (projectorState) ProjectorPalette.scrim else Color(0x73000000)
+    /** The shade behind a dialog. */
+    val scrimStrong get() = if (projectorState) ProjectorPalette.scrimStrong else Color(0x8C000000)
+    /** A hero or banner: the side the title and the buttons are on, fading to clear across the picture. */
+    val heroTextScrimStrong get() = if (projectorState) ProjectorPalette.heroTextScrimStrong else themeState.background.copy(alpha = 0.92f)
+    val heroTextScrimMiddle get() = if (projectorState) ProjectorPalette.heroTextScrimMiddle else themeState.background.copy(alpha = 0.4f)
+    val heroTextScrimClear get() = Color.Transparent
+    /** Where the middle and the clear end of that fade are (as a share of the width): in Projector Mode the fade is shorter, so the picture itself stays visible on the right. */
+    val heroScrimMiddleStop get() = if (projectorState) 0.38f else 0.5f
+    val heroScrimClearStop get() = if (projectorState) 0.72f else 0.85f
+    val heroTopScrim get() = if (projectorState) ProjectorPalette.heroTopScrim else themeState.background.copy(alpha = 0.75f)
+    val heroBottomScrim get() = background
+    /** The tint under a portrait poster shown on a hero that only has a portrait picture. */
+    val heroPosterTint get() = if (projectorState) ProjectorPalette.heroPosterTint else themeState.background.copy(alpha = 0.55f)
+    /** The side of a sheet that holds text, over the page. */
+    val sheetScrimMid get() = if (projectorState) ProjectorPalette.sheetScrimMid else Color(0x8C000000)
+    val sheetScrimMidStrong get() = if (projectorState) ProjectorPalette.sheetScrimMidStrong else Color(0x99000000)
+    /** The player's own controls: the top and bottom bars, a menu over the picture, a chip, a round button and the track of a progress bar. The picture itself is never touched. */
+    val playerCenterScrim get() = if (projectorState) ProjectorPalette.playerCenterScrim else Color(0xCC000000)
+    val playerControlsScrim get() = if (projectorState) ProjectorPalette.playerControlsScrim else Color(0xB3000000)
+    val playerControlsScrimStrong get() = if (projectorState) ProjectorPalette.playerControlsScrimStrong else Color(0xD9000000)
+    val playerControlsScrimBottom get() = if (projectorState) ProjectorPalette.playerControlsScrimStrong else Color(0xE6000000)
+    val playerMenuScrim get() = if (projectorState) ProjectorPalette.playerMenuScrim else Color(0xF2000000)
+    val playerChip get() = if (projectorState) ProjectorPalette.playerChip else Color(0x59000000)
+    val playerButton get() = if (projectorState) ProjectorPalette.playerButton else Color(0x73000000)
+    val playerTrack get() = if (projectorState) ProjectorPalette.playerTrack else Color(0x66000000)
+    /** A small label or round badge over artwork (the year, the lock, the new-episode mark), and the unfilled part of a progress bar over artwork. */
+    val chipScrim get() = if (projectorState) ProjectorPalette.chipScrim else Color(0xB3000000)
+    val chipScrimSoft get() = if (projectorState) ProjectorPalette.chipScrimSoft else Color(0xA6000000)
+    val progressTrack get() = if (projectorState) ProjectorPalette.progressTrack else Color(0x66000000)
+    /** The dark edge beside a focus ring that keeps it visible on bright artwork. */
+    val ringBand get() = if (projectorState) ProjectorPalette.ringBand else Color.Black
+    val success get() = if (projectorState) ProjectorPalette.success else Color(0xFF38B981)
+    val warning get() = if (projectorState) ProjectorPalette.warning else Color(0xFFE0A93B)
+    val danger get() = if (projectorState) ProjectorPalette.danger else Color(0xFFD9534F)
+    val playPill get() = accent     // primary actions use the accent (the lifted one in Projector Mode), with dark text
 
     // Older names used by the screens.
     val muted get() = textSecondary

@@ -47,7 +47,8 @@ class Suite:
         return r
 
     def _dump_once(self):
-        raw = subprocess.run([T.ADB, "-s", self.d.serial, "exec-out", "uiautomator dump /dev/tty"], capture_output=True, text=True, timeout=90).stdout
+        raw = self.d.dump_xml()          # from the helper on the TV, over a connection kept open
+        if raw is None: raw = subprocess.run([T.ADB, "-s", self.d.serial, "exec-out", "uiautomator dump /dev/tty"], capture_output=True, text=True, timeout=90).stdout
         i, j = raw.find("<?xml"), raw.rfind("</hierarchy>")
         try: root = ET.fromstring(raw[i:j + 12])
         except Exception: return dict(texts=[], focus=[], nodes=[], xml=raw)
@@ -151,10 +152,16 @@ class Suite:
     def enter_library(self):
         scr = self.dump()
         txt = " ".join(scr["texts"])
-        if "Enter Library" in txt or "Choose a library" in txt:          # the library picker (cards since the redesign): OK on the card the remote starts on opens it
-            self.d.key("OK")
-        # inside the library when the rail is showing or a Home page's own texts are
-        ok, scr = self.wait_screen(EXPECT["Home"] + ["TV Guide"], 30)
+        # The library picker (cards since the redesign): OK on the card the remote starts on opens it. The picker can still be getting ready when the first OK arrives (screens are read
+        # in milliseconds now), so OK is sent again while the picker is still showing.
+        ok = False
+        for attempt in range(6):
+            if "Enter Library" in txt or "Choose a library" in txt: self.d.key("OK")
+            # inside the library when the rail is showing or a Home page's own texts are
+            ok, scr = self.wait_screen(EXPECT["Home"] + ["TV Guide"], 8 if attempt < 5 else 30)
+            if ok: return True
+            txt = " ".join(self.dump()["texts"])
+            if not ("Enter Library" in txt or "Choose a library" in txt): break
         return ok
 
     def open_rail(self):
@@ -163,6 +170,12 @@ class Suite:
             s = self.dump()
             if "TV Guide" in " ".join(s["texts"]) and "StreamSetu" in " ".join(s["texts"]): return True
             self.d.key("BACK"); self.d.settle(self.d.mark(), quiet=0.2, timeout=5)
+            # The menu takes a moment to open. Another Back before it has shown would close it (or, from Home, ask whether to stop watching), so it is waited for first.
+            end = time.time() + 1.5
+            while time.time() < end:
+                t = " ".join(self.dump()["texts"])
+                if "TV Guide" in t and "StreamSetu" in t: return True
+                time.sleep(0.05)
         return False
 
     def rail_order(self, scr=None):
@@ -278,6 +291,7 @@ class Suite:
         self.d.wait_for(lambda: len(self.d.focused) >= 1, 6)
         scr = self.one_owner(page, "opening")
         self.check(page, "tab in the trace matches", self.d.state.get("tab") in (TAB_NAME[page], None) or True)
+        m0 = self.d.mark(); self.d.settle(m0, quiet=0.4, timeout=4); scr = self.dump()          # the layout of the screen once it has stopped moving, not of its first frame
         shot = self.evidence(f"{page}_start"); issues = self.layout_issues(scr)
         self.check(page, "no off-screen or overlapping focusable items at 1080p", not issues, str(issues[:3]))
         # settled, one key at a time
@@ -459,6 +473,8 @@ class Suite:
     # ---- the run ----------------------------------------------------------------------------------------------------------------
     def run(self, pages, runs):
         d = self.d; d.start_log(); d.start_injector(); d.sh("setprop log.tag.SSTRACE VERBOSE")
+        # The hooks are in the real app and off until the device says so; the app reads that once when it starts, so it is restarted the first time they are switched on.
+        if "VERBOSE" not in d.sh("getprop log.tag.SSHOOKS"): d.sh("setprop log.tag.SSHOOKS VERBOSE"); d.sh(f"am force-stop {T.PKG}")
         for r in range(1, runs + 1):
             print(f"\n######## run {r}/{runs}"); self.d_run = r
             self.ensure_app(); ok = self.enter_library(); self.check("setup", "starts and enters the library", ok)

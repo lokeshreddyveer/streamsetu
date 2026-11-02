@@ -56,8 +56,8 @@ class MaintenanceService(private val context: Context, private val db: AppDataba
         root.put("history", JSONArray().also { a -> db.user().logNow().forEach { a.put(JSONObject().put("itemId", it.itemId).put("kind", it.kind).put("title", it.title).put("playedAt", it.playedAt)) } })
         root.put("collections", JSONArray().also { a -> db.extras().allCollections().forEach { a.put(JSONObject().put("id", it.id).put("name", it.name).put("scope", it.scope)) } })
         root.put("collectionItems", JSONArray().also { a -> db.extras().allCollectionItems().forEach { a.put(JSONObject().put("collectionId", it.collectionId).put("itemId", it.itemId).put("addedAt", it.addedAt)) } })
-        val prefs = JSONObject()
-        prefFiles.forEach { f -> val o = JSONObject(); context.getSharedPreferences(f, Context.MODE_PRIVATE).all.forEach { (k, v) -> if (v != null) o.put(k, v) }; prefs.put(f, o) }
+        val prefs = JSONObject()          // what describes this device's screen (Projector Mode) is left out: it stays on this device
+        prefFiles.forEach { f -> val o = JSONObject(); context.getSharedPreferences(f, Context.MODE_PRIVATE).all.forEach { (k, v) -> if (v != null && !(f == "ui" && k in app.streamsetu.core.settings.UiPrefs.DEVICE_ONLY)) o.put(k, v) }; prefs.put(f, o) }
         root.put("preferences", prefs)
         root.toString(2)
     }
@@ -117,6 +117,7 @@ class MaintenanceService(private val context: Context, private val db: AppDataba
         o.optJSONObject("preferences")?.let { p -> prefFiles.forEach { f -> p.optJSONObject(f)?.let { vals ->
             if (vals.length() > 500) error("The backup's $f settings are too many to be real ones.")
             vals.keys().forEach { k -> val v = vals.get(k); if (k.length > 120 || (v is String && v.length > 20_000) || !(v is Boolean || v is Int || v is Long || v is Double || v is String)) error("The backup's $f settings contain something that is not a setting.") }
+            if (f == "ui") app.streamsetu.core.settings.UiPrefs.DEVICE_ONLY.forEach { vals.remove(it) }          // a backup never sets what describes this device's screen, even one made by a different build
             prefOps += f to vals } } }
 
         db.withTransaction {

@@ -306,7 +306,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                 when (which) {
                     1 -> {}          // loading is shown at the top right, not over the middle of the picture
                     2 -> (state as? PlaybackState.Failed)?.let { st ->
-                        Column(Modifier.background(Brush.radialGradient(listOf(Color(0xCC000000), Color(0x66000000), Color.Transparent))).padding(horizontal = 64.dp, vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(Modifier.background(Brush.radialGradient(listOf(Tokens.playerCenterScrim, Tokens.playerTrack, Color.Transparent))).padding(horizontal = 64.dp, vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Label("This stream did not play", Tokens.title, Ink, FontWeight.SemiBold)
                             Label(st.error.message, Tokens.small, InkDim, maxLines = 3, modifier = Modifier.widthIn(max = 520.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -323,14 +323,14 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
         }
         // Loading sits in the top right corner, on a dark rounded backing: visible on any picture, with nothing drawn over the middle of it.
         AnimatedVisibility(busy && state !is PlaybackState.Failed, Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 48.dp), enter = fadeIn(tween(ms(120))), exit = fadeOut(tween(ms(120)))) {
-            Row(Modifier.background(Color(0xB3000000), RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.background(Tokens.playerControlsScrim, RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Spinner(size = 20.dp); Label(loadingLabel(state, providerWait), Tokens.caption, Ink)
             }
         }
         if (digits.isNotEmpty()) Label(digits, Tokens.display * 1.6f, Ink, FontWeight.Bold, modifier = Modifier.align(Alignment.TopEnd).padding(40.dp))
         AnimatedVisibility(upNextVisible && item is EpisodePlayable, Modifier.align(Alignment.BottomEnd).padding(end = 48.dp, bottom = 150.dp), enter = fadeIn(tween(ms(220))) + slideInVertically(tween(ms(220))) { it / 3 }, exit = fadeOut(tween(ms(160)))) {
             val next = c.queue.getOrNull(c.queue.indexOfFirst { it.id == item?.id } + 1)
-            if (next != null) Column(Modifier.background(Color(0xE60A0A0A), RoundedCornerShape(14.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            if (next != null) Column(Modifier.background(Tokens.pick(Color(0xE60A0A0A), Tokens.playerControlsScrimStrong), RoundedCornerShape(14.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Label("Up next", Tokens.caption, InkDim); Label(next.title, Tokens.row, Ink, FontWeight.SemiBold, modifier = Modifier.widthIn(max = 260.dp)); Label("Press OK to play now", Tokens.caption, InkDim)
             }
         }
@@ -342,7 +342,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
 
         // ---- Top: the title ----
         AnimatedVisibility(((barVisible && item != null && !live) || pending != null) && !sidePanelOpen, Modifier.align(Alignment.TopStart), enter = fadeIn(tween(ms(110))), exit = fadeOut(tween(ms(90)))) {
-            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xB3000000), Color.Transparent))).padding(start = 48.dp, end = 48.dp, top = 28.dp, bottom = 40.dp)) {
+            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Tokens.playerControlsScrim, Color.Transparent))).padding(start = 48.dp, end = 48.dp, top = 28.dp, bottom = 40.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     val choosing = pending?.takeIf { it.itemId != item?.id }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -360,7 +360,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
             barVisible && item != null && !sidePanelOpen, Modifier.align(Alignment.BottomStart),
             enter = fadeIn(tween(ms(110))) + slideInVertically(tween(ms(120))) { it / 5 }, exit = fadeOut(tween(ms(90))) + slideOutVertically(tween(ms(90))) { it / 6 },
         ) {
-            Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD9000000)))).padding(start = 48.dp, end = 48.dp, top = 96.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Tokens.playerControlsScrimStrong))).padding(start = 48.dp, end = 48.dp, top = 96.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (item is ChannelPlayable) LiveBanner(item.channel, programmes) else SeekBar({ position }, { duration })
                 // One row. Each control says what it is now (the sound and subtitles, the speed, the picture, the player) and opens its choices; the remote moves along it with Left and Right.
                 val chips = rememberStreamChips(c, barVisible)
@@ -400,7 +400,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
             val first = remember { FocusRequester() }
             LaunchedEffect(Unit) { repeat(8) { androidx.compose.runtime.withFrameNanos { }; if (runCatching { first.requestFocus() }.isSuccess) return@LaunchedEffect } }          // the first frame after it is laid out, not a fixed wait
             fun done() { searching = false; searchLiveOnly = false; toRoot() }
-            Box(Modifier.fillMaxSize().background(Color(0xF2000000)).padding(horizontal = 56.dp, vertical = 40.dp)) {
+            Box(Modifier.fillMaxSize().background(Tokens.playerMenuScrim).padding(horizontal = 56.dp, vertical = 40.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Label("Search", Tokens.pageTitle, Ink, FontWeight.Bold)
                     app.streamsetu.tv.ui.screens.search.SearchContent(c, if (searchLiveOnly) setOf(ContentKind.CHANNEL) else setOf(ContentKind.CHANNEL, ContentKind.MOVIE, ContentKind.SERIES), Modifier.fillMaxSize(), entry = first, dropdown = true,
@@ -414,7 +414,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
 
         if (gotoOpen) TvDialog(onDismissRequest = { gotoOpen = false }) {
             var text by remember { mutableStateOf("") }
-            Column(Modifier.width(420.dp).background(Color(0xFF111111), RoundedCornerShape(16.dp)).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.width(420.dp).background(Tokens.pick(Color(0xFF111111), Tokens.elevated), RoundedCornerShape(16.dp)).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Label("Go to time", Tokens.title, Ink, FontWeight.SemiBold)
                 Label("Hours:minutes:seconds, for example 1:23:45, or just minutes:seconds.", Tokens.caption, InkDim, maxLines = 2)
                 TvTextField(text, { text = it }, "1:23:45", Modifier.fillMaxWidth(), onDone = { PlayerMenus.parseTime(text)?.let { playback.goTo(it); gotoOpen = false; closePanel() } })
@@ -433,7 +433,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
             val subs by playback.subtitleTracks.collectAsStateWithLifecycle()
             val firstReq = remember { FocusRequester() }
             LaunchedEffect(Unit) { repeat(8) { androidx.compose.runtime.withFrameNanos { }; if (runCatching { firstReq.requestFocus() }.isSuccess) return@LaunchedEffect } }
-            Row(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xF2000000), Color(0xF2000000)))).padding(start = 96.dp, end = 96.dp, top = 56.dp, bottom = 40.dp), horizontalArrangement = Arrangement.spacedBy(64.dp)) {
+            Row(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Tokens.playerMenuScrim, Tokens.playerMenuScrim))).padding(start = 96.dp, end = 96.dp, top = 56.dp, bottom = 40.dp), horizontalArrangement = Arrangement.spacedBy(64.dp)) {
                 Column(Modifier.weight(1f)) {
                     Label("Audio", Tokens.heading, InkDim, FontWeight.Medium, modifier = Modifier.padding(bottom = 6.dp))
                     LazyColumn(Modifier.heightIn(max = 230.dp)) {
@@ -461,7 +461,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
             val recording by playback.recording.collectAsStateWithLifecycle()
             val selectedReq = remember(kind) { FocusRequester() }
             LaunchedEffect(kind) { repeat(8) { androidx.compose.runtime.withFrameNanos { }; if (runCatching { selectedReq.requestFocus() }.isSuccess) return@LaunchedEffect } }
-            Column(Modifier.fillMaxHeight().width(420.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, Color(0xF2000000), Color(0xF2000000)))).padding(start = 72.dp, end = 40.dp, top = 40.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.fillMaxHeight().width(420.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, Tokens.playerMenuScrim, Tokens.playerMenuScrim))).padding(start = 72.dp, end = 40.dp, top = 40.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Label(kind.title, Tokens.title, Ink, FontWeight.Medium, modifier = Modifier.padding(bottom = 6.dp))
                 LazyColumn {
                     when (kind) {
@@ -587,7 +587,7 @@ private fun SeekHud(startOf: () -> Long, posOf: () -> Long, durationOf: () -> Lo
     val pos = posOf(); val dur = durationOf()
     val delta = (pos - startOf().coerceAtLeast(0L)) / 1000
     val frac = if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f
-    Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xB3000000)))).padding(start = 48.dp, end = 48.dp, top = 56.dp, bottom = 34.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Tokens.playerControlsScrim))).padding(start = 48.dp, end = 48.dp, top = 56.dp, bottom = 34.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Label((if (delta >= 0) "+" else "−") + kotlin.math.abs(delta) + "s", Tokens.display, Ink, FontWeight.Bold)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Label(clock(pos), Tokens.small, Ink, modifier = Modifier.widthIn(min = 50.dp))
@@ -601,7 +601,7 @@ private fun SeekHud(startOf: () -> Long, posOf: () -> Long, durationOf: () -> Lo
 @Composable
 private fun ControlPill(icon: ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     // The same small pill as every other button: dark enough to read on any picture, solid white with dark text while the remote is on it.
-    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color(0x73000000), focusedContainer = Color.White, scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, ringBand = false, showRing = false) { f ->
+    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Tokens.playerButton, focusedContainer = Color.White, scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, ringBand = false, showRing = false) { f ->
         val ink = if (f) Tokens.onBright else Ink
         Row(Modifier.padding(horizontal = 14.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             Image(icon, null, Modifier.size(15.dp), colorFilter = ColorFilter.tint(ink))
@@ -615,7 +615,7 @@ private fun ControlPill(icon: ImageVector, label: String, modifier: Modifier = M
 private fun ExitPrompt(title: String?, onContinue: () -> Unit, onExit: () -> Unit, modifier: Modifier = Modifier) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { repeat(6) { androidx.compose.runtime.withFrameNanos { }; if (runCatching { first.requestFocus() }.isSuccess) return@LaunchedEffect } }
-    Column(modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6000000)))).padding(start = 48.dp, end = 48.dp, top = 72.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Tokens.playerControlsScrimBottom))).padding(start = 48.dp, end = 48.dp, top = 72.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Label("Stop watching?", Tokens.title, Ink, FontWeight.SemiBold)
         if (!title.isNullOrBlank()) Label(title, Tokens.small, InkDim, maxLines = 1)
         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -659,7 +659,7 @@ private fun SeekBar(positionOf: () -> Long, durationOf: () -> Long) {
 @Composable
 private fun Transport(icon: ImageVector, size: Int, label: String? = null, mirror: Boolean = false, flash: Boolean = false) {
     val scale by animateFloatAsState(if (flash) 1.18f else 1f, tween(Motion.FOCUS), label = "transport")
-    Box(Modifier.size(size.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(CircleShape).background(Color(0x66000000)), Alignment.Center) {
+    Box(Modifier.size(size.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(CircleShape).background(Tokens.playerTrack), Alignment.Center) {
         Image(icon, null, Modifier.size((size * 0.62f).dp).graphicsLayer { if (mirror) scaleX = -1f }, colorFilter = ColorFilter.tint(Color.White))
         if (label != null) Label(label, Tokens.small, Color.White, FontWeight.Bold)
     }
@@ -699,20 +699,25 @@ private fun clock(ms: Long): String {
 /** Subtitles from OpenSubtitles for what is playing: a list to pick from, or a sentence about what is missing. */
 @Composable
 private fun OnlineSubtitlesPanel(client: OnlineSubtitles, playback: app.streamsetu.core.playback.PlaybackController, item: Playable?, language: String, onDone: () -> Unit) {
-    var hits by remember { mutableStateOf<List<OnlineSubtitles.Hit>?>(null) }
+    var hits by remember { mutableStateOf<List<app.streamsetu.core.subtitles.RankedSubtitle>?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val title = (item as? EpisodePlayable)?.series?.title ?: item?.title.orEmpty()
     val year = (item as? MoviePlayable)?.movie?.year
+    val want = remember(item?.id, language) {
+        val ep = item as? EpisodePlayable
+        app.streamsetu.core.subtitles.SubtitleWanted(title, year, ep?.episode?.season, ep?.episode?.number, language.ifBlank { "en" }, runtimeMinutes = playback.durationMs.takeIf { it > 0 }?.let { (it / 60_000).toInt() })
+    }
     LaunchedEffect(item?.id) {
         if (!client.configured) { message = "Add your free OpenSubtitles key, account name and password in Settings, Subtitles & Accessibility."; return@LaunchedEffect }
-        runCatching { client.search(title, year, language) }.onSuccess { hits = it; if (it.isEmpty()) message = "No subtitles found for this title." }.onFailure { message = it.message ?: "The search did not work." }
+        client.cached(want)?.let { hits = it }          // what was found last time is shown at once; the provider is asked after the panel is on screen
+        runCatching { client.search(want) }.onSuccess { hits = it; message = if (it.isEmpty()) "No subtitles found for this title." else null }.onFailure { if (hits == null) message = it.message ?: "The search did not work." }
     }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         message?.let { Label(it, Tokens.body, InkDim, maxLines = 5) }
         if (message == null && hits == null) Label("Searching…", Tokens.body, InkDim)
         hits?.forEach { h ->
-            TextOption(h.label, false, Modifier) {
+            TextOption(h.candidate.release.ifBlank { h.candidate.fileName }.ifBlank { "Subtitle ${h.candidate.fileId}" }, false, Modifier, detail = h.detail) {
                 scope.launch { message = "Downloading…"; runCatching { client.download(h) }.onSuccess { playback.addSubtitle(it, "Online"); onDone() }.onFailure { message = it.message ?: "That did not work." } }
             }
         }

@@ -164,16 +164,16 @@ fun FeaturedBanner(
                         AsyncImage(remember(it.imageUrl, heroW, heroH) { artworkRequest(context, it.imageUrl, heroW, heroH) }, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -0.45f), onError = { _ -> failed = failed + slideId })
                     } else {
                         // Only a portrait poster exists: it is shown at its own shape on the right, over a calm tint of the title's colour, never blown up to fill the banner.
-                        Box(Modifier.fillMaxSize().background(Tokens.background.copy(alpha = 0.55f)))
+                        Box(Modifier.fillMaxSize().background(Tokens.heroPosterTint))
                         AsyncImage(it.imageUrl, null, Modifier.align(Alignment.CenterEnd).padding(top = 72.dp, bottom = 30.dp, end = 150.dp).fillMaxHeight().aspectRatio(2f / 3f, matchHeightConstraintsFirst = true).clip(RoundedCornerShape(Tokens.radius)), contentScale = ContentScale.Crop, onError = { _ -> failed = failed + slideId })
                     }
                 }
             }
         }
         // One shade for the text on the left, one for the page header on top, and the bottom edge melts into the page.
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Tokens.background.copy(alpha = 0.92f), 0.5f to Tokens.background.copy(alpha = 0.4f), 0.85f to Color.Transparent)))
-        if (topOverlay != null) Box(Modifier.fillMaxWidth().height(120.dp).background(Brush.verticalGradient(0f to Tokens.background.copy(alpha = 0.75f), 1f to Color.Transparent)))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.62f to Color.Transparent, 1f to Tokens.background)))
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Tokens.heroTextScrimStrong, Tokens.heroScrimMiddleStop to Tokens.heroTextScrimMiddle, Tokens.heroScrimClearStop to Tokens.heroTextScrimClear)))
+        if (topOverlay != null) Box(Modifier.fillMaxWidth().height(120.dp).background(Brush.verticalGradient(0f to Tokens.heroTopScrim, 1f to Color.Transparent)))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.62f to Color.Transparent, 1f to Tokens.heroBottomScrim)))
 
         // Title, facts, story and the buttons sit at the bottom left; the column is sized so it never reaches the page header.
         Column(Modifier.align(Alignment.BottomStart).padding(start = startPadding, bottom = 30.dp).widthIn(max = 600.dp).heightIn(max = height - 64.dp), verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom)) {

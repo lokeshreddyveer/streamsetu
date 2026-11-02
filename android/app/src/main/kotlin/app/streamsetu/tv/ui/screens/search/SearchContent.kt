@@ -276,8 +276,8 @@ fun SearchContent(
                     if (rows.isEmpty()) return@forEach
                     // "12+" when there are more than the group shows: the number is how many are listed here, not how many exist.
                     item(key = "t-${kind.name}") { SectionTitle("${kind.title}  ·  ${rows.size}" + if (kind in r.more) "+" else "") }
-                    // Every kind of result is the same row: artwork, a title, one line about it, and what kind it is.
-                    if (kind == SearchKind.MOVIE || kind == SearchKind.SERIES || kind == SearchKind.CHANNEL) item(key = "r-${kind.name}") {
+                    // Every kind of result is the same row (artwork, a title, one line about it, and what kind it is) in one vertical list. Only a search of a single kind (from Live TV, Movies or Series) shows tiles.
+                    if (tab != SearchTab.ALL && (kind == SearchKind.MOVIE || kind == SearchKind.SERIES || kind == SearchKind.CHANNEL)) item(key = "r-${kind.name}") {
                         androidx.compose.foundation.lazy.LazyRow(Modifier.bleedStart(14.dp).railOnLeft(), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(start = 14.dp, end = 24.dp, top = 6.dp, bottom = 10.dp)) {
                             items(rows, key = { it.id }, contentType = { "tile" }) { x -> SearchTile(x, (if (x.id == targetId) Modifier.focusRequester(focusTarget) else Modifier), { if (it) held?.focusedId = x.id }) { open(x) } }
                         }
@@ -311,11 +311,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.sportsRows(items: Lis
 /** One search result, whatever it is: 48 dp artwork, a title (two lines at most), one line about it, and its kind on the right. At least 72 dp tall, the same focus frame everywhere. */
 @Composable
 internal fun SearchResultRow(x: SearchItem, extra: Modifier, onFocus: (Boolean) -> Unit, provenance: String? = null, onOpen: () -> Unit) {
-    Focusable(onOpen, extra.fillMaxWidth().widthIn(max = 860.ui).heightIn(min = 90.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = Tokens.card.copy(alpha = 0.55f), scaleOnFocus = 1.02f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { _ ->
+    Focusable(onOpen, extra.fillMaxWidth().widthIn(max = 860.ui).heightIn(min = 90.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = Tokens.card.copy(alpha = 0.55f), scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { _ ->          // no scale on focus in a list of results
         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.size(58.ui).clip(RoundedCornerShape(8.dp)).background(Tokens.elevated), Alignment.Center) {
                 SearchArtworkFill(x)
-                if (!x.artworkUrl.isNullOrBlank()) coil.compose.AsyncImage(x.artworkUrl, null, Modifier.fillMaxSize(), contentScale = if (x.kind == SearchKind.CHANNEL) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
+                if (!x.artworkUrl.isNullOrBlank()) coil.compose.AsyncImage(coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current).data(x.artworkUrl).crossfade(false).build(), null, Modifier.fillMaxSize(), contentScale = if (x.kind == SearchKind.CHANNEL) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)          // no fade: a result is there when it is drawn
                 else Image(when (x.kind) { SearchKind.CHANNEL -> Icons.Filled.LiveTv; SearchKind.MOVIE -> Icons.Filled.Movie; SearchKind.SERIES -> Icons.Filled.VideoLibrary; SearchKind.EPISODE -> Icons.Filled.PlayCircle; SearchKind.PROGRAMME -> Icons.Filled.CalendarMonth; SearchKind.FOLDER -> Icons.Filled.Folder; SearchKind.COLLECTION -> Icons.Filled.Layers
                         SearchKind.SPORTS_EVENT, SearchKind.SPORTS_RECORDING -> Icons.Filled.SportsScore; SearchKind.SPORTS_TEAM -> Icons.Filled.Groups; SearchKind.SPORTS_COMPETITION -> Icons.Filled.EmojiEvents },
                     null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Tokens.accent))

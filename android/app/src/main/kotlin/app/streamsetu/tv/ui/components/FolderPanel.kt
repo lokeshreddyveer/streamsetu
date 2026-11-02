@@ -199,7 +199,7 @@ fun FolderPanel(
                     // A small heading where the shortcuts end and the provider's folders begin.
                     if (r is Folder && (idx == 0 || rows[idx - 1] is Shortcut) && visible.isNotEmpty()) Label("FOLDERS", Tokens.caption, Tokens.textTertiary, FontWeight.Bold, modifier = Modifier.padding(start = 10.dp, top = if (idx == 0) 2.dp else 8.dp, bottom = 2.dp), letterSpacing = 1.sp)
                     if (r is Shortcut) {
-                        PanelRow(r.label, r.icon, null, r.browse == selected, false, if (r.browse == selected && entry != null) Modifier.focusRequester(entry) else Modifier.focusRequester(requesterOf(r)), onFocusDwell = { if (selectOnDwell) onSelect(r.browse) }, onRowFocus = { focusedIdx = idx }, onLongClick = if (r.browse is Browse.Collection) ({ onShortcutMenu(r) }) else null, onClick = { onSelect(r.browse); onConfirm() })
+                        PanelRow(r.label, r.icon, null, r.browse == selected, false, if (r.browse == selected && entry != null) Modifier.focusRequester(entry) else Modifier.focusRequester(requesterOf(r)), onFocusDwell = { if (selectOnDwell) onSelect(r.browse) }, onRowFocus = { focusedIdx = idx }, onLongClick = if (r.browse is Browse.Collection || r.browse is Browse.Rule) ({ onShortcutMenu(r) }) else null, onClick = { onSelect(r.browse); onConfirm() })
                     } else {
                         val f = r as Folder
                         val isSel = selected == Browse.Folder(f.id)

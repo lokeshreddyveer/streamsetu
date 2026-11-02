@@ -5,6 +5,9 @@ import app.streamsetu.core.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -157,7 +160,7 @@ class GlobalSearch(
         val out = LinkedHashMap<SearchKind, List<SearchItem>>()
         val more = LinkedHashSet<SearchKind>()
         fun capOf(kind: SearchKind) = limit + (extra[kind] ?: 0)
-        fun put(kind: SearchKind, rows: List<SearchItem>) {
+        fun put(kind: SearchKind, rows: List<SearchItem>) = synchronized(out) {          // the three title searches below run side by side
             val seen = HashSet<String>()
             val ranked = rows.filter { seen.add(it.id) }.withIndex().sortedWith(compareByDescending<IndexedValue<SearchItem>> { it.value.score }.thenBy { it.index }).map { it.value }
             if (ranked.isNotEmpty()) { out[kind] = ranked.take(capOf(kind)); if (ranked.size > capOf(kind)) more += kind }
@@ -165,28 +168,44 @@ class GlobalSearch(
         suspend fun src(id: String) = if (multiple) sourceName(id) else null
 
         // Titles from the text index: one query per kind, so a huge catalog (movies) cannot crowd out the others.
-        val cats = HashMap<String, String>()
+        val cats = java.util.concurrent.ConcurrentHashMap<String, String>()
         suspend fun categoryName(id: String?): String? {
             if (id == null) return null
             cats[id]?.let { return it }
             raw.query("SELECT name FROM categories WHERE id = ?", arrayOf(id)).use { c -> if (c.moveToFirst()) cats[id] = c.getString(0) }
             return cats[id]
         }
-        if (SearchKind.CHANNEL in tab.kinds) {
-            val r = search.search(text, SearchScope(kinds = setOf(ContentKind.CHANNEL)), capOf(SearchKind.CHANNEL) + 1).channels
-            put(SearchKind.CHANNEL, r.map { ch -> SearchItem("channel:${ch.id}", SearchKind.CHANNEL, ch.name, listOfNotNull(categoryName(ch.categoryId), src(ch.sourceId)).joinToString(" · "), ch.logoUrl, SearchTarget.PlayChannel(ch), SearchText.score(ch.name, text)) })
-        }
-        if (SearchKind.MOVIE in tab.kinds) {
-            val r = search.search(text, SearchScope(kinds = setOf(ContentKind.MOVIE)), capOf(SearchKind.MOVIE) * 3 + 1).movies
-            put(SearchKind.MOVIE, r.map { m -> SearchItem("movie:${m.id}", SearchKind.MOVIE, m.title, listOfNotNull(m.year?.toString(), categoryName(m.categoryId), src(m.sourceId)).joinToString(" · "), m.posterUrl, SearchTarget.OpenMovie(m), SearchText.score(m.title, text)) })
-        }
-        if (SearchKind.SERIES in tab.kinds) {
-            val r = search.search(text, SearchScope(kinds = setOf(ContentKind.SERIES)), capOf(SearchKind.SERIES) * 3 + 1).series
-            put(SearchKind.SERIES, r.map { s -> SearchItem("series:${s.id}", SearchKind.SERIES, s.title, listOfNotNull(s.year?.toString(), categoryName(s.categoryId), src(s.sourceId)).joinToString(" · "), s.posterUrl, SearchTarget.OpenSeries(s), SearchText.score(s.title, text)) })
-        }
-
+        // Titles are asked for side by side, two at a time (a huge movie catalog does not hold the channels and series back), and each kind is shown the moment it is ready. The groups are
+        // always listed in the same order on screen (SearchResultOrder), so a kind that arrives later never moves what is already shown.
         fun soFar(): GlobalResults = GlobalResults(if (year == null) LinkedHashMap(out) else out.mapValues { (_, rows) -> rows.filter { it.title.contains(year.toString()) || it.subtitle.contains(year.toString()) } }.filterValues { it.isNotEmpty() }, more = more.filter { it in out.keys }.toSet())
-        if (out.isNotEmpty()) partial(soFar())                                    // the titles are on screen before the slower sources are asked
+        val publishLock = kotlinx.coroutines.sync.Mutex()
+        suspend fun publish() = publishLock.withLock { val snapshot = synchronized(out) { soFar() }; if (!snapshot.isEmpty) partial(snapshot) }
+        val gate = kotlinx.coroutines.sync.Semaphore(2)
+        kotlinx.coroutines.coroutineScope {
+            val jobs = ArrayList<kotlinx.coroutines.Deferred<Unit>>()
+            if (SearchKind.CHANNEL in tab.kinds) jobs += async {
+                gate.withPermit {
+                    val r = search.search(text, SearchScope(kinds = setOf(ContentKind.CHANNEL)), capOf(SearchKind.CHANNEL) + 1).channels
+                    put(SearchKind.CHANNEL, r.map { ch -> SearchItem("channel:${ch.id}", SearchKind.CHANNEL, ch.name, listOfNotNull(categoryName(ch.categoryId), src(ch.sourceId)).joinToString(" · "), ch.logoUrl, SearchTarget.PlayChannel(ch), SearchText.score(ch.name, text)) })
+                    publish()
+                }
+            }
+            if (SearchKind.MOVIE in tab.kinds) jobs += async {
+                gate.withPermit {
+                    val r = search.search(text, SearchScope(kinds = setOf(ContentKind.MOVIE)), capOf(SearchKind.MOVIE) * 3 + 1).movies
+                    put(SearchKind.MOVIE, r.map { m -> SearchItem("movie:${m.id}", SearchKind.MOVIE, m.title, listOfNotNull(m.year?.toString(), categoryName(m.categoryId), src(m.sourceId)).joinToString(" · "), m.posterUrl, SearchTarget.OpenMovie(m), SearchText.score(m.title, text)) })
+                    publish()
+                }
+            }
+            if (SearchKind.SERIES in tab.kinds) jobs += async {
+                gate.withPermit {
+                    val r = search.search(text, SearchScope(kinds = setOf(ContentKind.SERIES)), capOf(SearchKind.SERIES) * 3 + 1).series
+                    put(SearchKind.SERIES, r.map { s -> SearchItem("series:${s.id}", SearchKind.SERIES, s.title, listOfNotNull(s.year?.toString(), categoryName(s.categoryId), src(s.sourceId)).joinToString(" · "), s.posterUrl, SearchTarget.OpenSeries(s), SearchText.score(s.title, text)) })
+                    publish()
+                }
+            }
+            jobs.forEach { it.await() }
+        }
 
         // Episodes that are stored (a provider lists them per series, so only series that were opened have them).
         if (SearchKind.EPISODE in tab.kinds) {

@@ -70,7 +70,7 @@ fun SportsReminderBannerContent(b: ReminderBanner, interactive: Boolean, nowMs: 
     }
     BackHandler(enabled = interactive && focused) { actions.dismiss() }
     Box(Modifier.padding(top = Tokens.safeVertical, start = Tokens.safeHorizontal, end = Tokens.safeHorizontal), Alignment.TopCenter) {
-        Column(Modifier.widthIn(max = 640.dp).onFocusChanged { focused = it.hasFocus }.background(Color(0xF2101418), RoundedCornerShape(14.dp)).padding(horizontal = 18.dp, vertical = 12.dp).testTag("sports-reminder-banner"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.widthIn(max = 640.dp).onFocusChanged { focused = it.hasFocus }.background(Tokens.pick(Color(0xF2101418), Tokens.playerControlsScrimStrong), RoundedCornerShape(14.dp)).padding(horizontal = 18.dp, vertical = 12.dp).testTag("sports-reminder-banner"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Label(text, Tokens.body, Color.White, FontWeight.SemiBold, maxLines = 2, modifier = Modifier.testTag("sports-banner-text"))
             if (interactive) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TvButton("Open Event", actions.open, Modifier.testTag("sports-banner-open"), primary = true)

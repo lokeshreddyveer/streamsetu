@@ -68,29 +68,32 @@ private fun shortcutOf(name: String, kind: ContentKind): Shortcut = when (name) 
 @Composable
 fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen: (Card) -> Unit) {
     val kind = vm.kind
+    val dlg = remember { SectionDialogs() }          // which sheet or menu is open: read only by SectionDialogHost, so opening or closing one redraws that, never the page
     val noun = if (kind == ContentKind.MOVIE) "Movies" else "Series"
     val folders by vm.folders.collectAsState()
     val browse by vm.browse.collectAsState()
-    val cardsRaw by vm.cards.collectAsState()
+    val page by vm.page.collectAsState()          // the titles and the key they were read for, as one value
     val sort by vm.sort.collectAsState()
     val filter by vm.filter.collectAsState()
     // The hero's data and the rails are asked for only once the first page of titles is on the screen, so they never queue ahead of it in the database.
     // They start only when this page is the curated landing page, its first page of titles is for the present library, sort and filter, and that page has been drawn (two frames), so they never queue ahead of it
     // and are never started for a folder, a filtered list or the plain grid.
-    LaunchedEffect(Unit) { if (app.streamsetu.tv.BuildConfig.FRAME_LOG) android.util.Log.i("Entry", "shell composed ($kind)") }
+    LaunchedEffect(Unit) { if (app.streamsetu.tv.trace.TestHooks.on) android.util.Log.i("Entry", "shell composed ($kind)") }
     val listKey by vm.listKey.collectAsState()
-    val publishedKey by vm.cardsKey.collectAsState()
-    val primaryReady = cardsRaw != null && publishedKey != null && publishedKey == listKey          // the titles on screen were read for this library, profile, folder and sort (never the previous one's)
+    val publishedKey = page?.key; val cardsRaw = page?.cards
+    val primaryReady = cardsRaw != null && publishedKey == listKey          // the titles on screen were read for this library, profile, folder and sort (never the previous one's)
     val cards = if (primaryReady) cardsRaw else null          // a title is drawn only when it was read for this library, profile, restrictions, folder and sort: never one from before a change
     var drawnKey by remember { mutableStateOf<Any?>(null) }
     LaunchedEffect(listKey, primaryReady, vm.gridOnly) { if (primaryReady) { androidx.compose.runtime.withFrameNanos { }; androidx.compose.runtime.withFrameNanos { }; drawnKey = listKey } else drawnKey = null }
     val firstPageDrawn = primaryReady && drawnKey == listKey
     // Everything beyond the first page (folder counts, favourites, progress, new episodes, collections, filter choices) is read only now, never ahead of it.
-    LaunchedEffect(firstPageDrawn) { if (firstPageDrawn) { if (app.streamsetu.tv.BuildConfig.FRAME_LOG) android.util.Log.i("Entry", "first page drawn ($kind)"); vm.secondary.value = true } }
-    LaunchedEffect(cards != null) { if (cards != null && app.streamsetu.tv.BuildConfig.FRAME_LOG) android.util.Log.i("Entry", "first cards published ($kind)") }
-    LaunchedEffect(publishedKey) { if (publishedKey != null && app.streamsetu.tv.BuildConfig.FRAME_LOG) android.util.Log.i("Entry", "page published ($kind) ${publishedKey?.browse}") }
+    LaunchedEffect(firstPageDrawn) { if (firstPageDrawn) { if (app.streamsetu.tv.trace.TestHooks.on) android.util.Log.i("Entry", "first page drawn ($kind)"); vm.secondary.value = true } }
+    LaunchedEffect(cards != null) { if (cards != null && app.streamsetu.tv.trace.TestHooks.on) android.util.Log.i("Entry", "first cards published ($kind)") }
+    LaunchedEffect(publishedKey) { if (publishedKey != null && app.streamsetu.tv.trace.TestHooks.on) android.util.Log.i("Entry", "page published ($kind) ${publishedKey?.browse}") }
     val firstPageShown = browse == Browse.All && !filter.active && !vm.gridOnly && firstPageDrawn
-    val bannerFlow = remember(firstPageShown) { if (firstPageShown) vm.banner else kotlinx.coroutines.flow.flowOf(emptyList()) }
+    // The hero is on every folder as well as on the main page, made from the titles of the list that is open (a filtered list or the plain grid has none). The rails stay on the main page only.
+    val heroPage = (browse == Browse.All || browse is Browse.Folder) && !filter.active && !vm.gridOnly && firstPageDrawn
+    val bannerFlow = remember(heroPage) { if (heroPage) vm.banner else kotlinx.coroutines.flow.flowOf(emptyList()) }
     val bannerS = bannerFlow.collectAsState(initial = emptyList())          // read only by the hero, never by the page
     val order by vm.shortcutOrder.collectAsState()
     // Held as State and read only inside the card that shows them (derivedStateOf), so a favourite or the player writing progress redraws that card, never the page, the hero or the rails.
@@ -99,10 +102,9 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val seriesNote = vm.seriesNote.collectAsState()
     val latestBySeries = remember { derivedStateOf { progress.value.values.filter { it.seriesId != null && !it.completed && it.fraction > 0f }.groupBy { it.seriesId!! }.mapValues { (_, l) -> l.maxByOrNull { it.updatedAt }!! } } }
     val newSeries = vm.newSeries.collectAsState()
-    val avail by vm.availability.collectAsState()
     val sources by vm.sources.collectAsState()
-    val filterOptions by vm.filterOptions.collectAsState()
     val collections by vm.collections.collectAsState()
+    val smartList by vm.smart.collectAsState()
     val posterSize by c.ui.posterSize.collectAsState()
     val showMeta by c.ui.showPosterMeta.collectAsState()
     val bannerOn by c.ui.bannerEnabled.collectAsState()
@@ -117,7 +119,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     // Taken whenever something asks for a folder or collection, also when this screen is already open (from the "In folder" button on a title's page).
     LaunchedEffect(nav.pendingCollection) { nav.pendingCollection?.takeIf { it.first == kind }?.let { vm.select(Browse.Collection(it.second)); nav.pendingCollection = null } }
     LaunchedEffect(nav.pendingFolder) { nav.pendingFolder?.takeIf { it.first == kind }?.let { vm.select(Browse.Folder(it.second)); nav.pendingFolder = null } }
-    val gridState = rememberLazyGridState(vm.scrollIndex)
+    val gridState = rememberLazyGridState(vm.scrollIndex, vm.scrollOffset)
     // Pictures are not decoded while the grid scrolls; a short rest after it stops, they are asked for.
     // Pictures a little way ahead of the visible rows are fetched at the size a poster is drawn, a bounded number, and not at all while something is playing.
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -146,9 +148,9 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
             }
         }
     }
-    LaunchedEffect(gridState) { snapshotFlow { gridState.firstVisibleItemIndex }.collect { vm.scrollIndex = it } }
-    // Near the end of what is loaded, the next page is asked for.
-    LaunchedEffect(gridState) { snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }.collect { last -> if (last >= (vm.cards.value?.size ?: 0) - 24) vm.loadMore() } }
+    LaunchedEffect(gridState) { snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }.collect { (i, o) -> vm.scrollIndex = i; vm.scrollOffset = o } }
+    // Near the end of what is loaded, the next page is asked for. The size is that of the list the screen shows: vm.cards has no subscriber here, so its value is always null.
+    LaunchedEffect(gridState) { snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }.collect { last -> if (last >= (page?.cards?.size ?: 0) - 24) vm.loadMore() } }
     // A different folder starts at its top, so the grid does not keep an offset from the previous one.
     var shownBrowse by remember { mutableStateOf(browse) }
     LaunchedEffect(browse, cards) { if (shownBrowse != browse && cards != null) { shownBrowse = browse; gridState.scrollToItem(0) } }
@@ -169,23 +171,12 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
         if (restored || restoreIndex == null || indexById.isEmpty()) return@LaunchedEffect
         restored = true
         val railCount = if (landing) rails.size else 0
-        gridState.scrollToItem(restoreIndex + railCount + 2)
+        // The page comes back exactly where it was left (row and offset, restored with the grid). Only when the title is not on screen is it scrolled to.
+        val target = restoreIndex + railCount + 2
+        androidx.compose.runtime.withFrameNanos { }
+        if (gridState.layoutInfo.visibleItemsInfo.none { it.index == target }) gridState.scrollToItem(target)
         if (nav.contentRestoreAllowed) app.streamsetu.tv.ui.components.requestFocusOnFrames(6, { restore.requestFocus() }, { nav.contentFocused || !nav.contentRestoreAllowed })
     }
-    var sortOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(sortOpen) { if (sortOpen) vm.loadAvailability() }
-    var filterOpen by remember { mutableStateOf(false) }
-    var searchOpen by remember { mutableStateOf(false) }
-    val homeVm: HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
-    var menuFor by remember { mutableStateOf<Card?>(null) }
-    var menuRail by remember { mutableStateOf<String?>(null) }          // the row the long press was in, so its menu can offer "remove from this row"
-    val libraryName = c.library.active.collectAsState().value?.name.orEmpty()
-    var colMenu by remember { mutableStateOf<UserCollection?>(null) }
-    var deleteCol by remember { mutableStateOf<UserCollection?>(null) }
-    var newCollectionFor by remember { mutableStateOf<Card?>(null) }
-    var addTo by remember { mutableStateOf<Card?>(null) }
-    var renameCol by remember { mutableStateOf<UserCollection?>(null) }
-    var inContent by remember { mutableStateOf(false) }
 
     val folderTitle = (browse as? Browse.Folder)?.let { b -> folders.firstOrNull { it.id == b.id }?.title }
     val title = when (browse) {
@@ -193,19 +184,19 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
         Browse.Recent -> "Recently Watched"; Browse.RecentlyAdded -> "Recently Added"; Browse.FavoriteFolders -> "Favorite Folders"; is Browse.Folder -> folderTitle ?: noun
         is Browse.Collection -> collections.firstOrNull { it.id == (browse as Browse.Collection).id }?.name ?: "Collection"
         is Browse.Smart -> (browse as Browse.Smart).rule.label
+        is Browse.Rule -> smartList.firstOrNull { it.id == (browse as Browse.Rule).id }?.name ?: "Smart collection"
     }
     // The folder panel has only All, the provider's folders and the person's own folders. Favorites, Watch Later, Recently Watched and Continue Watching are the chips under the banner.
     val shortcuts = buildList {
         add(Shortcut(Browse.All, "All $noun", Icons.Filled.GridView))
         collections.forEach { add(Shortcut(Browse.Collection(it.id), it.name, Icons.Filled.CollectionsBookmark)) }
+        smartList.forEach { add(Shortcut(Browse.Rule(it.id, it.rule), it.name, Icons.Filled.AutoAwesome)) }
     }
 
     // Back from the posters shows the folders; Back from the folders opens the main sidebar (see FolderNav).
     // The folders are a column beside the page (opened with the Folders button or by choosing the page in the sidebar); the page narrows to make room and nothing is covered.
     val folderNav = remember { app.streamsetu.tv.nav.FolderNav() }
     val foldersOpen = folderNav.open
-    var moreOpen by remember { mutableStateOf(false) }
-    var posterOpen by remember { mutableStateOf(false) }
     val headerScope = androidx.compose.runtime.rememberCoroutineScope()
     val panelFocus = remember { FocusRequester() }
     // From the posters, Back (and Left at the edge) goes up one level to this page's folders; Back from the folders reaches the sidebar.
@@ -227,7 +218,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     SideEffect { nav.holdFolders(folderClaim, foldersOpen || nav.foldersRequested) }
     DisposableEffect(Unit) { onDispose { nav.holdFolders(folderClaim, false) } }
     LaunchedEffect(foldersOpen) { if (!foldersOpen) folderFocused = false }
-    LaunchedEffect(folderFocused) { if (folderFocused && app.streamsetu.tv.BuildConfig.FRAME_LOG) android.util.Log.i("Entry", "folder panel focused ($kind)") }
+    LaunchedEffect(folderFocused) { if (folderFocused && app.streamsetu.tv.trace.TestHooks.on) android.util.Log.i("Entry", "folder panel focused ($kind)") }
     LaunchedEffect(nav.foldersRequested) { if (nav.foldersRequested) folderNav.show() }
     // The request is answered (and the claim on the remote released) only when a folder row really holds the remote, or when the folders are closed again.
     LaunchedEffect(folderFocused, foldersOpen, nav.foldersRequested) { if (nav.foldersRequested && (folderFocused || !folderNav.open)) nav.foldersRequested = false }
@@ -244,10 +235,10 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
         // The folders take their own column beside the page (the page narrows to make room, nothing is covered); Back, Right or choosing a folder slides them away and the page has the whole width again.
         if (foldersOpen) {          // no fade, no slide, no animated width: the page is split in one pass
             androidx.compose.runtime.CompositionLocalProvider(LocalRailReveal provides null, LocalFocusEnabled provides true) {
-                FolderPanel(noun, shortcuts, folders, browse, { vm.select(it) }, vm, Modifier.onFocusChanged { folderFocused = it.hasFocus }.width(Tokens.folderPanelWidth).drawBehind { drawLine(Tokens.line, androidx.compose.ui.geometry.Offset(size.width - 0.5f, 0f), androidx.compose.ui.geometry.Offset(size.width - 0.5f, size.height), 1.dp.toPx()) }, entry = panelFocus, onRight = { folderNav.hide(); nav.contentFocusTick++; true }, onLeft = { folderNav.left(); nav.revealSidebar() }, selectOnDwell = false, onConfirm = { folderNav.hide(); nav.contentFocusTick++ }, openFocusTick = focusFolders, onShortcutMenu = { sc -> collections.firstOrNull { it.id == (sc.browse as? Browse.Collection)?.id }?.let { colMenu = it } })
+                FolderPanel(noun, shortcuts, folders, browse, { vm.select(it) }, vm, Modifier.onFocusChanged { folderFocused = it.hasFocus }.width(Tokens.folderPanelWidth).drawBehind { drawLine(Tokens.line, androidx.compose.ui.geometry.Offset(size.width - 0.5f, 0f), androidx.compose.ui.geometry.Offset(size.width - 0.5f, size.height), 1.dp.toPx()) }, entry = panelFocus, onRight = { folderNav.hide(); nav.contentFocusTick++; true }, onLeft = { folderNav.left(); nav.revealSidebar() }, selectOnDwell = false, onConfirm = { folderNav.hide(); nav.contentFocusTick++ }, openFocusTick = focusFolders, onShortcutMenu = { sc -> collections.firstOrNull { it.id == (sc.browse as? Browse.Collection)?.id }?.let { dlg.colMenu = it }; (sc.browse as? Browse.Rule)?.let { r -> smartList.firstOrNull { it.id == r.id }?.let { dlg.smartMenu = it } } })
             }
         }
-        BoxWithConstraints(Modifier.weight(1f).fillMaxHeight().onFocusChanged { inContent = it.hasFocus }) {
+        BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
             val heroHeight = 300.ui          // the same hero height as Home, so the banner is the same size on every screen
             // Columns come from the room there is: about seven posters across with the folders closed, fewer beside the folder column; the posters share the width, so the page is always full.
             val gridColumns = ((maxWidth - Tokens.safeHorizontal * 2 + Tokens.gutter) / (posterSize.tv + Tokens.gutter)).toInt().coerceIn(3, 9)
@@ -277,14 +268,14 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                         // Round icon buttons, the same as on the details pages; the name of the one the remote is on appears beside them.
                         var hint by remember { mutableStateOf<String?>(null) }
                         hint?.let { Label(it, Tokens.small, Tokens.textSecondary, modifier = Modifier.padding(end = 4.dp)) }
-                        TvIconButton(Icons.Filled.Search, "Search", { searchOpen = true }, if (!heroReady) Modifier.focusRequester(entry) else Modifier, onFocus = { hint = if (it) "Search" else null }, plain = heroReady)
+                        TvIconButton(Icons.Filled.Search, "Search", { dlg.searchOpen = true }, if (!heroReady) Modifier.focusRequester(entry) else Modifier, onFocus = { hint = if (it) "Search" else null }, plain = heroReady)
                         TvIconButton(Icons.Filled.Folder, "Folders", { folderNav.show() }, onFocus = { hint = if (it) "Folders" else null }, plain = heroReady)
                         // A direct way to the whole library past the rails: the grid's own heading is the target.
                         if (landing && rails.isNotEmpty() && !cards.isNullOrEmpty()) TvIconButton(Icons.Filled.GridView, "Browse all", { vm.gridOnly = true; headerScope.launch { gridState.scrollToItem(0) } }, onFocus = { hint = if (it) "Browse all" else null }, plain = heroReady)
                         else if (browse == Browse.All && !filter.active && gridOnly) TvIconButton(Icons.Filled.Star, "Featured", { vm.gridOnly = false; headerScope.launch { gridState.scrollToItem(0) } }, onFocus = { hint = if (it) "Featured" else null }, plain = heroReady)
                         // Filter is on the bar with Search and Folders. Sort, the poster size and the choice of source are under More.
-                        TvIconButton(Icons.Filled.FilterList, if (filter.active) "Filter · ${filter.count}" else "Filter", { filterOpen = true }, on = filter.active, onFocus = { hint = if (it) (if (filter.active) "Filter · ${filter.count}" else "Filter") else null }, plain = heroReady)
-                        TvIconButton(Icons.Filled.MoreHoriz, "More", { moreOpen = true }, on = filter.active, onFocus = { hint = if (it) "More" else null }, plain = heroReady)
+                        TvIconButton(Icons.Filled.FilterList, if (filter.active) "Filter · ${filter.count}" else "Filter", { dlg.filterOpen = true }, on = filter.active, onFocus = { hint = if (it) (if (filter.active) "Filter · ${filter.count}" else "Filter") else null }, plain = heroReady)
+                        TvIconButton(Icons.Filled.MoreHoriz, "More", { dlg.moreOpen = true }, on = filter.active, onFocus = { hint = if (it) "More" else null }, plain = heroReady)
                     }
                 }
             }
@@ -294,15 +285,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
             // The page's own header (the folder or library name, the count, the buttons) is a row above the hero, so the two never draw over each other.
             // With a hero, the page's header (the name, the count, the buttons) is drawn on the top of it, exactly where Home puts its own; the title of the slide starts below that row, so the two never touch.
             if (!heroReady) Box(Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }) { pageHeader() }
-            if (heroReady) { val banner by bannerS; val later by vm.watchLater.collectAsState(); val favs by vm.favourites.collectAsState(); FeaturedBanner(          // the hero collects only its own lists
-                        banner, heroHeight, primaryEntry = entry, startPadding = Tokens.safeHorizontal, topOverlay = { Box(Modifier.align(Alignment.TopStart)) { pageHeader() } },
-                        isFavorite = { b -> b.id in favs }, onToggleFavorite = { b -> vm.toggle(b.id, UserRepository.FAVOURITES) },
-                        onPrimary = { b -> cardById[b.id]?.let { onOpen(it) } },
-                        onDetails = { b -> cardById[b.id]?.let { onOpen(it) } },
-                        isListed = { b -> b.id in later }, onToggleListed = { b -> vm.toggle(b.id, UserRepository.WATCH_LATER) },
-                        intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = menuFor != null || sortOpen || filterOpen || searchOpen || foldersOpen, pausedWhen = bannerPausedWhen,
-                        modifier = Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen },          // drawn once into a texture; while the grid scrolls underneath it is only copied, not redrawn
-                    ) }
+            if (heroReady) SectionHero(bannerS, vm, c, heroHeight, entry, cardById, onOpen, foldersOpen, dlg, bannerPausedWhen) { pageHeader() }
             Box(Modifier.weight(1f).fillMaxWidth()) {
             LazyVerticalGrid(
                 GridCells.Fixed(gridColumns), state = gridState, modifier = Modifier.fillMaxSize().railOnLeft().onPreviewKeyEvent { interacted = true; false },
@@ -315,14 +298,12 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                             val s = shortcutOf(name, kind)
                             ShortcutChip(s.label, s.icon, browse == s.browse, onLong = null, onMoveLeft = { vm.moveShortcut(name, -1) }, onMoveRight = { vm.moveShortcut(name, +1) }) { nav.open(Overlay.Collection(name, if (kind == ContentKind.MOVIE) "m" else "s")) }
                         }
-                        Spacer(Modifier.weight(1f))
-                        ShortcutChip("Search", Icons.Filled.Search, false, onLong = null, onMoveLeft = {}, onMoveRight = {}) { searchOpen = true }
                     }
                 }
                 if (landing) {
                     rails.forEach { rail ->
                         item(span = { GridItemSpan(maxLineSpan) }, key = "rail-${rail.key}", contentType = "rail") {
-                            SectionRail(rail, posterSize.tv, showMeta, progress, newSeries, favs, indexById, tab, vm, nav, onOpen, onLong = { key, card -> menuRail = key; menuFor = card })
+                            SectionRail(rail, posterSize.tv, showMeta, progress, newSeries, favs, indexById, tab, vm, nav, onOpen, onLong = { key, card -> dlg.menuRail = key; dlg.menuFor = card })
                         }
                     }
                     // The library's own folders, to enter one directly (the full list, with its actions, is the Folders button).
@@ -342,17 +323,17 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                 // Filter and Sort, immediately above the full grid (the chip shows how many filters are on).
                 if (browse == Browse.All && !filter.active && list != null) item(span = { GridItemSpan(maxLineSpan) }, key = "grid-tools", contentType = "tools") {
                         Row(Modifier.railOnLeft().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ToolButton(if (filter.active) "Filter · ${filter.count}" else "Filter", Icons.Filled.FilterList) { filterOpen = true }
-                            ToolButton("Sort", Icons.Filled.SwapVert) { sortOpen = true }
+                            ToolButton(if (filter.active) "Filter · ${filter.count}" else "Filter", Icons.Filled.FilterList) { dlg.filterOpen = true }
+                            ToolButton("Sort", Icons.Filled.SwapVert) { dlg.sortOpen = true }
                         }
                     }
                 when {
                     list == null -> items(18, key = { "sk$it" }, contentType = { "skeleton" }) { SkeletonPoster() }
                     list.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }, key = "empty", contentType = "empty") {
-                        Box(Modifier.fillMaxWidth().height(200.dp), Alignment.Center) { EmptyText(browse, noun, filter.active, entry, onFilter = { filterOpen = true }, onAll = { vm.select(Browse.All) }, onFolders = { folderNav.show() }) }
+                        Box(Modifier.fillMaxWidth().height(200.dp), Alignment.Center) { EmptyText(browse, noun, filter.active, entry, onFilter = { dlg.filterOpen = true }, onAll = { vm.select(Browse.All) }, onFolders = { folderNav.show() }) }
                     }
                     else -> items(list, key = { it.id }, contentType = { "poster" }) { card ->
-                        GridPoster(card, posterSize.tv, showMeta, densePosters, progress, latestBySeries, seriesNote, newSeries, favs, tab, vm, nav, indexById, restore, onOpen, onLong = { menuRail = null; menuFor = card })
+                        GridPoster(card, posterSize.tv, showMeta, densePosters, progress, latestBySeries, seriesNote, newSeries, favs, tab, vm, nav, indexById, restore, onOpen, onLong = { dlg.menuRail = null; dlg.menuFor = card })
                     }
                 }
             }
@@ -365,27 +346,75 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     }
     }
     }
+    SectionDialogHost(dlg, title, vm, c, nav, onOpen)
+}
 
-    if (moreOpen) ContextMenu(title, null, listOf(
-        MenuAction("Sort", Icons.Filled.SwapVert) { sortOpen = true },
-        MenuAction("Source: " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources"), Icons.Filled.Dns) { filterOpen = true },
-        MenuAction("Poster size: " + posterSize.name.lowercase().replaceFirstChar { it.uppercase() }, Icons.Filled.GridView) { posterOpen = true },
-    ), onClose = { moreOpen = false })
-    if (posterOpen) ContextMenu("Poster size", null, PosterSize.entries.map { sz ->
+
+/** The featured banner of the landing page. It collects its own lists (the slides, favourites, Watch Later, the slide time) and the open-sheet flags, so none of them redraws the page around it. */
+@Composable
+private fun SectionHero(banner: State<List<BannerItem>>, vm: SectionViewModel, c: AppContainer, height: androidx.compose.ui.unit.Dp, entry: FocusRequester, cardById: Map<String, Card>, onOpen: (Card) -> Unit,
+                        foldersOpen: Boolean, dlg: SectionDialogs, pausedWhen: () -> Boolean, header: @Composable () -> Unit) {
+    val items by banner; val later by vm.watchLater.collectAsState(); val favs by vm.favourites.collectAsState()
+    FeaturedBanner(
+        items, height, primaryEntry = entry, startPadding = Tokens.safeHorizontal, topOverlay = { Box(Modifier.align(Alignment.TopStart)) { header() } },
+        isFavorite = { b -> b.id in favs }, onToggleFavorite = { b -> vm.toggle(b.id, UserRepository.FAVOURITES) },
+        onPrimary = { b -> cardById[b.id]?.let { onOpen(it) } },
+        onDetails = { b -> cardById[b.id]?.let { onOpen(it) } },
+        isListed = { b -> b.id in later }, onToggleListed = { b -> vm.toggle(b.id, UserRepository.WATCH_LATER) },
+        intervalSeconds = c.ui.bannerSeconds.collectAsState().value, paused = dlg.anyOpen || foldersOpen, pausedWhen = pausedWhen,
+        modifier = Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen },          // drawn once into a texture; while the grid scrolls underneath it is only copied, not redrawn
+    )
+}
+
+/** Which sheet or menu of Movies and Series is open. Plain state holders: the page only writes them; SectionDialogHost reads them. */
+internal class SectionDialogs {
+    var sortOpen by mutableStateOf(false); var filterOpen by mutableStateOf(false); var searchOpen by mutableStateOf(false)
+    var moreOpen by mutableStateOf(false); var posterOpen by mutableStateOf(false)
+    var colMenu by mutableStateOf<UserCollection?>(null)          // set from the folder column
+    var smartMenu by mutableStateOf<app.streamsetu.core.model.SmartCollection?>(null)
+    var smartEditor by mutableStateOf<Pair<app.streamsetu.core.model.SmartCollection?, Boolean>?>(null)          // (the collection being edited or null for a new one, open)
+    var deleteSmart by mutableStateOf<app.streamsetu.core.model.SmartCollection?>(null)
+    var menuFor by mutableStateOf<Card?>(null)
+    var menuRail by mutableStateOf<String?>(null)          // the row the long press was in, so its menu can offer "remove from this row"
+    val anyOpen get() = menuFor != null || sortOpen || filterOpen || searchOpen
+}
+
+/** Every sheet, menu and dialog of the page. It collects what they show itself, so a change to any of it redraws only these, never the grid or the hero. */
+@Composable
+internal fun SectionDialogHost(dlg: SectionDialogs, title: String, vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen: (Card) -> Unit) {
+    val kind = vm.kind
+    val browse by vm.browse.collectAsState(); val sort by vm.sort.collectAsState(); val filter by vm.filter.collectAsState()
+    val avail = vm.availability.collectAsState(); val sources by vm.sources.collectAsState(); val filterOptions = vm.filterOptions.collectAsState()
+    val collections by vm.collections.collectAsState(); val posterSize by c.ui.posterSize.collectAsState()
+    val homeVm: HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val smartAll by vm.smart.collectAsState()
+    var deleteCol by remember { mutableStateOf<UserCollection?>(null) }
+    var newCollectionFor by remember { mutableStateOf<Card?>(null) }
+    var addTo by remember { mutableStateOf<Card?>(null) }
+    var renameCol by remember { mutableStateOf<UserCollection?>(null) }
+    LaunchedEffect(dlg.sortOpen) { if (dlg.sortOpen) vm.loadAvailability() }
+    if (dlg.moreOpen) ContextMenu(title, null, listOf(
+        MenuAction("Sort", Icons.Filled.SwapVert) { dlg.sortOpen = true },
+        MenuAction("New smart collection\u2026", Icons.Filled.AutoAwesome) { dlg.smartEditor = null to true },
+        *((browse as? Browse.Rule)?.let { r -> smartAll.firstOrNull { it.id == r.id }?.let { sc -> arrayOf(MenuAction("Edit this smart collection\u2026", Icons.Filled.Edit) { dlg.smartEditor = sc to true }) } } ?: emptyArray()),
+        MenuAction("Source: " + (filter.sourceId?.let { id -> sources.firstOrNull { it.id == "src:$id" }?.name } ?: "All sources"), Icons.Filled.Dns) { dlg.filterOpen = true },
+        MenuAction("Poster size: " + posterSize.name.lowercase().replaceFirstChar { it.uppercase() }, Icons.Filled.GridView) { dlg.posterOpen = true },
+    ), onClose = { dlg.moreOpen = false })
+    if (dlg.posterOpen) ContextMenu("Poster size", null, PosterSize.entries.map { sz ->
         MenuAction(sz.name.lowercase().replaceFirstChar { it.uppercase() } + if (sz == posterSize) "   ✓" else "", Icons.Filled.GridView) { c.ui.setPosterSize(sz) }
-    }, onClose = { posterOpen = false })
-    if (sortOpen) SortSheet(kind, sort, avail, onApply = vm::applySort, onClose = { sortOpen = false })
-    if (filterOpen) FilterSheet(filter, sources, filterOptions, onApply = { vm.filter.value = it }, onClose = { filterOpen = false })
+    }, onClose = { dlg.posterOpen = false })
+    if (dlg.sortOpen) SortSheet(kind, sort, avail.value, onApply = vm::applySort, onClose = { dlg.sortOpen = false })
+    if (dlg.filterOpen) FilterSheet(filter, sources, filterOptions.value, onApply = { vm.filter.value = it }, onClose = { dlg.filterOpen = false })
     // The search steps aside while a title is open and comes back, with the same words and results, when Back leaves it.
-    if (searchOpen && nav.top == null) SectionSearch(c, kind, onOpen = onOpen, onClose = { searchOpen = false })
-    menuFor?.let { card ->
+    if (dlg.searchOpen && nav.top == null) SectionSearch(c, kind, onOpen = onOpen, onClose = { dlg.searchOpen = false })
+    dlg.menuFor?.let { card ->
         val target: HomeTarget? = card.movie?.let { HomeTarget.Film(it) } ?: card.series?.let { HomeTarget.Show(it) }
-        val rowKind = when (menuRail) { "continue" -> RowKind.CONTINUE; "favorites" -> RowKind.FAVORITES; "later" -> RowKind.WATCH_LATER; "recent" -> RowKind.OTHER; null -> when (browse) { Browse.Continue -> RowKind.CONTINUE; Browse.Favorites -> RowKind.FAVORITES; Browse.WatchLater -> RowKind.WATCH_LATER; else -> RowKind.OTHER }; else -> RowKind.OTHER }
+        val rowKind = when (dlg.menuRail) { "continue" -> RowKind.CONTINUE; "favorites" -> RowKind.FAVORITES; "later" -> RowKind.WATCH_LATER; "recent" -> RowKind.OTHER; null -> when (browse) { Browse.Continue -> RowKind.CONTINUE; Browse.Favorites -> RowKind.FAVORITES; Browse.WatchLater -> RowKind.WATCH_LATER; else -> RowKind.OTHER }; else -> RowKind.OTHER }
         val extra = buildList {
             add(MenuAction("Add to a collection…", Icons.Filled.CollectionsBookmark) { addTo = card })
             (browse as? Browse.Collection)?.let { b -> add(MenuAction("Remove from this collection", Icons.Filled.RemoveCircleOutline, danger = true) { vm.removeFromCollection(b.id, card.id) }) }
         }
-        HomeMenuHost(target, rowKind, homeVm, c, nav, extra) { menuFor = null; menuRail = null }
+        HomeMenuHost(target, rowKind, homeVm, c, nav, extra) { dlg.menuFor = null; dlg.menuRail = null }
     }
     addTo?.let { card ->
         var inCols by remember(card.id) { mutableStateOf<Set<String>?>(null) }
@@ -393,12 +422,14 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
         ContextMenu("Add to a collection", card.title, collections.map { col -> MenuAction(col.name + if (inCols?.contains(col.id) == true) "   ✓" else "", Icons.Filled.CollectionsBookmark) { if (inCols?.contains(col.id) == true) vm.removeFromCollection(col.id, card.id) else vm.addToCollection(col.id, card.id) } } + MenuAction("New collection…", Icons.Filled.Add) { newCollectionFor = card }, onClose = { addTo = null })
     }
     newCollectionFor?.let { card -> RenameDialog("", onSave = { n -> vm.createCollection(n) { id -> vm.addToCollection(id, card.id) }; newCollectionFor = null }, onReset = { newCollectionFor = null }, onClose = { newCollectionFor = null }, title = "New collection", hint = "Name your collection", resetLabel = "Cancel") }
-    colMenu?.let { col -> ContextMenu(col.name, "Your collection", listOf(MenuAction("Rename", Icons.Filled.Edit) { renameCol = col }, MenuAction("Delete collection", Icons.Filled.Delete, danger = true) { deleteCol = col }), onClose = { colMenu = null }) }
+    dlg.smartMenu?.let { sc -> ContextMenu(sc.name, sc.rule.describe(), listOf(MenuAction("Edit rule", Icons.Filled.Edit) { dlg.smartEditor = sc to true }, MenuAction("Delete smart collection", Icons.Filled.Delete, danger = true) { dlg.deleteSmart = sc }), onClose = { dlg.smartMenu = null }) }
+    dlg.deleteSmart?.let { sc -> ContextMenu("Delete \u201c${sc.name}\u201d?", "Only the rule is removed. The titles stay in your library.", listOf(MenuAction("Cancel", Icons.Filled.Close) {}, MenuAction("Delete \u201c${sc.name}\u201d", Icons.Filled.Delete, danger = true) { vm.deleteSmart(sc.id) }), onClose = { dlg.deleteSmart = null }) }
+    dlg.smartEditor?.let { (existing, _) -> SmartCollectionEditor(c, kind, existing, onSaved = { id -> dlg.smartEditor = null; vm.select(Browse.Rule(id, c.smartCollections.get(id)!!.rule)) }, onClose = { dlg.smartEditor = null }) }
+    dlg.colMenu?.let { col -> ContextMenu(col.name, "Your collection", listOf(MenuAction("Rename", Icons.Filled.Edit) { renameCol = col }, MenuAction("Delete collection", Icons.Filled.Delete, danger = true) { deleteCol = col }), onClose = { dlg.colMenu = null }) }
     // Deleting names exactly what is deleted, and the cursor starts on Cancel.
     deleteCol?.let { col -> ContextMenu("Delete “${col.name}”?", "The collection is removed. The titles in it stay in your library.", listOf(MenuAction("Cancel", Icons.Filled.Close) {}, MenuAction("Delete “${col.name}”", Icons.Filled.Delete, danger = true) { vm.deleteCollection(col) }), onClose = { deleteCol = null }) }
     renameCol?.let { col -> RenameDialog(col.name, onSave = { vm.renameCollection(col, it); renameCol = null }, onReset = { renameCol = null }, onClose = { renameCol = null }, title = "Rename collection", hint = "Name", resetLabel = "Cancel") }
 }
-
 
 /** One horizontal rail of the landing page, as an item of its own: it reads progress, favourites and new episodes only inside its own cards. */
 @Composable
@@ -457,6 +488,7 @@ private fun EmptyText(browse: Browse, noun: String, filtered: Boolean, entry: Fo
         browse == Browse.Recent -> "Nothing watched yet" to "What you watch appears here."
         browse == Browse.FavoriteFolders -> "No favorite folders" to "Hold OK on a folder and choose Add to favorite folders."
         browse is Browse.Collection -> "This collection is empty" to "Hold OK on a poster and choose Add to a collection."
+        browse is Browse.Rule -> "Nothing matches yet" to "This smart collection fills itself from what is in your library. Change its rule from the More menu, or add more titles."
         browse is Browse.Smart -> "Nothing matches yet" to "This list fills itself from what you watch and what is added."
         else -> "Nothing here" to "This folder has no ${noun.lowercase()} in your library."
     }

@@ -61,6 +61,9 @@ class MainActivity : ComponentActivity() {
         // The notification permission is asked for only when the first Sports reminder is made (Android 13 and later); nothing asks at launch.
         val askNotifications = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
         container.askNotificationPermission = { if (android.os.Build.VERSION.SDK_INT >= 33) runCatching { askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS) } }
+        // The look (theme, accent and Projector Mode) is set here, from what is saved, before the first frame is composed: the opening screen, the profile chooser and the library chooser are
+        // drawn in it from the start, and so is the screen that comes back from the player. (The app then keeps it up to date; see StreamSetuApp.)
+        container.ui.let { ui -> app.streamsetu.tv.ui.theme.Tokens.apply(app.streamsetu.tv.ui.theme.Theme.of(ui.theme.value), app.streamsetu.tv.ui.theme.Accent.of(ui.accent.value), ui.projectorMode.value) }
         setContent {
             val watched by container.watchedTitles.collectAsStateWithLifecycle()
             val partial by container.partialTitles.collectAsStateWithLifecycle()
@@ -181,7 +184,7 @@ class MainActivity : ComponentActivity() {
         app.streamsetu.tv.UISound.resume()
         container.playback.onForeground()
         // In a test build, frame timing is written to the log (adb logcat -s Motion) so smoothness can be measured, not guessed.
-        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0 || BuildConfig.FRAME_LOG) {
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0 || app.streamsetu.tv.trace.TestHooks.on) {
             frames.onFrame = app.streamsetu.tv.trace.KeyLatency::frame
             app.streamsetu.tv.trace.StackSampler.startIfSwitchedOn()
             app.streamsetu.tv.trace.KeyLatency.enable { nav.top?.let { it::class.simpleName } ?: nav.tab.name }
@@ -212,7 +215,9 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     val systemReduced = app.streamsetu.core.ui.motion.rememberReducedMotion()
     val animation by c.ui.animation.collectAsStateWithLifecycle()
     val reduced = systemReduced || animation != app.streamsetu.core.settings.AnimationLevel.FULL
-    val contrast by c.ui.highContrastFocus.collectAsStateWithLifecycle()
+    val highContrastFocus by c.ui.highContrastFocus.collectAsStateWithLifecycle()
+    val projectorMode by c.ui.projectorMode.collectAsStateWithLifecycle()
+    val contrast = effectiveHighContrast(highContrastFocus, projectorMode)          // Projector Mode gets the stronger focus frame without changing the saved choice
     val textScale by c.settings.textScalePercent.collectAsStateWithLifecycle()
     val entries by c.library.entries.collectAsState(initial = emptyList())
     val relock by c.settings.relockPolicy.collectAsStateWithLifecycle()
@@ -426,7 +431,7 @@ private fun Shell(c: AppContainer, nav: Navigator, sidebarEntry: androidx.compos
         exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduced) 0 else 200, delayMillis = if (reduced) 0 else 40)),
     ) {
         // The main sidebar floats over the page: a 45 % scrim behind it, and the page never moves.
-        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0x73000000)))
+        Box(Modifier.fillMaxSize().background(app.streamsetu.tv.ui.theme.Tokens.scrim))
     }
     androidx.compose.animation.AnimatedVisibility(
         mode != app.streamsetu.tv.nav.SidebarMode.HIDDEN, Modifier.align(androidx.compose.ui.Alignment.TopStart),
@@ -472,3 +477,6 @@ fun play(c: AppContainer, nav: Navigator, item: app.streamsetu.core.model.Playab
     c.play(item, queue, privately = privately)
     if (nav.top != Overlay.Player) nav.open(Overlay.Player)
 }
+
+/** The stronger white focus frame is used when the person chose it, and always in Projector Mode. Neither saved choice is changed by the other. */
+internal fun effectiveHighContrast(highContrastFocus: Boolean, projectorMode: Boolean) = highContrastFocus || projectorMode

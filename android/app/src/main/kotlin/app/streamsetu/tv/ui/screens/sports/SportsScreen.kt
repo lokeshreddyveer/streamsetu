@@ -538,7 +538,7 @@ private fun SportsDetailPanel(d: SportsEventDetail, actions: SportsActions, retu
         runCatching { target.requestFocus() }
     }
     Row(Modifier.fillMaxSize().testTag("sports-detail")) {
-        Box(Modifier.weight(1f).fillMaxHeight().background(androidx.compose.ui.graphics.Color(0x99000000)), Alignment.Center) {
+        Box(Modifier.weight(1f).fillMaxHeight().background(app.streamsetu.tv.ui.theme.Tokens.pick(androidx.compose.ui.graphics.Color(0x99000000), app.streamsetu.tv.ui.theme.Tokens.scrimStrong)), Alignment.Center) {
             if (showPreview) SportsPreview(actions)
         }
         Column(Modifier.width(560.ui).fillMaxHeight().background(Tokens.panel).padding(horizontal = 28.dp, vertical = Tokens.safeVertical).focusGroup(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -698,7 +698,7 @@ private fun SportsManagePanel(m: ManageUi, actions: SportsActions) {
     var confirm by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { requestFocusOnFrames(8, { first.requestFocus() }, { false }) }
     Row(Modifier.fillMaxSize().testTag("sports-manage-panel")) {
-        Spacer(Modifier.weight(1f).fillMaxHeight().background(androidx.compose.ui.graphics.Color(0x99000000)))
+        Spacer(Modifier.weight(1f).fillMaxHeight().background(app.streamsetu.tv.ui.theme.Tokens.pick(androidx.compose.ui.graphics.Color(0x99000000), app.streamsetu.tv.ui.theme.Tokens.scrimStrong)))
         Column(Modifier.width(560.ui).fillMaxHeight().background(Tokens.panel).padding(horizontal = 28.dp, vertical = Tokens.safeVertical).focusGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Label("Manage My Sports", Tokens.title, Tokens.text, FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -795,7 +795,7 @@ private fun SportsRecordPanel(p: RecordPanelUi, actions: SportsActions) {
     var feedMenu by remember { mutableStateOf(false) }
     LaunchedEffect(p.eventId) { requestFocusOnFrames(8, { first.requestFocus() }, { false }) }
     Row(Modifier.fillMaxSize().testTag("sports-record-panel")) {
-        Spacer(Modifier.weight(1f).fillMaxHeight().background(androidx.compose.ui.graphics.Color(0x99000000)))
+        Spacer(Modifier.weight(1f).fillMaxHeight().background(app.streamsetu.tv.ui.theme.Tokens.pick(androidx.compose.ui.graphics.Color(0x99000000), app.streamsetu.tv.ui.theme.Tokens.scrimStrong)))
         Column(Modifier.width(560.ui).fillMaxHeight().background(Tokens.panel).padding(horizontal = 28.dp, vertical = Tokens.safeVertical).focusGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Label(if (p.recordNow) "Record now" else "Record this event", Tokens.title, Tokens.text, FontWeight.Bold)
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {

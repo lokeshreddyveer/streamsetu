@@ -319,7 +319,7 @@ private fun TileView(t: TileUi, viewFor: (Long, android.content.Context) -> andr
         // The picture stays mounted: its view is the player's own, moved with the tile and never rebuilt.
         AndroidView(factory = { c -> android.widget.FrameLayout(c).also { f -> viewFor(t.id, c)?.let { v -> (v.parent as? android.view.ViewGroup)?.removeView(v); f.addView(v) } } }, modifier = Modifier.fillMaxSize())
         Focusable({ actions.open(t) }, Modifier.fillMaxSize().testTag("mv-focus-${t.channelId}").then(if (broken) Modifier else Modifier.focusRequester(req)), shape = RoundedCornerShape(8.dp), container = Color.Transparent, focusedContainer = Color.Transparent, scaleOnFocus = 1.0f, ringWidth = 3.dp, focusSound = null) {
-            Row(Modifier.align(Alignment.TopStart).padding(8.dp).background(Color(0x99000000), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.align(Alignment.TopStart).padding(8.dp).background(Tokens.pick(Color(0x99000000), Tokens.chipScrim), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 androidx.compose.foundation.Image(if (t.audio) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff, if (t.audio) "Sound" else "Muted", Modifier.size(16.dp).testTag(if (t.audio) "mv-audio" else "mv-muted"), colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(if (t.audio) Tokens.accent else Tokens.textSecondary))
                 Label(t.eventTitle ?: t.feedLabel, Tokens.small, Tokens.text, FontWeight.Medium, maxLines = 1)
             }

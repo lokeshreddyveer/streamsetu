@@ -5,7 +5,7 @@ enum class ContentKind { CHANNEL, MOVIE, SERIES, EPISODE }
 
 enum class SourceType(val label: String) {
     M3U("M3U URL"), XTREAM("Xtream Codes"), LOCAL_FILE("Local M3U file"), STALKER("Stalker portal"),
-    HDHOMERUN("HDHomeRun"), TVHEADEND("TVHeadend"), ENIGMA2("Enigma2 receiver"), JELLYFIN("Jellyfin"), EMBY("Emby"), PLEX("Plex"), WEBDAV("WebDAV"), LOCAL_FOLDER("Folder on this device");
+    HDHOMERUN("HDHomeRun"), TVHEADEND("TVHeadend"), ENIGMA2("Enigma2 receiver"), JELLYFIN("Jellyfin"), EMBY("Emby"), PLEX("Plex"), WEBDAV("WebDAV"), LOCAL_FOLDER("Folder on this device"), ADDON("Add-on");
 
     /** Needs a user name and password (Plex needs only a token, kept as the password). */
     val usesLogin: Boolean get() = this == XTREAM || this == TVHEADEND || this == ENIGMA2 || this == JELLYFIN || this == EMBY || this == PLEX || this == WEBDAV

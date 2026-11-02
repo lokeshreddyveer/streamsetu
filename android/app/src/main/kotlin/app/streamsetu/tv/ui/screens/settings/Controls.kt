@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Alignment
@@ -29,9 +30,13 @@ import kotlinx.coroutines.delay
 object Mac {
     // the selected row, the pills and the switches follow the chosen accent colour; the rest is neutral
     val blue get() = Tokens.accent; val blueSelected get() = Tokens.accent; val green get() = Tokens.accent
-    val indigo = Color(0xFF5E5CE6); val pink = Color(0xFFFF375F); val gray = Color(0xFF8E8E93); val red = Color(0xFFFF453A)
+    val indigo = Color(0xFF5E5CE6); val pink = Color(0xFFFF375F); val gray = Color(0xFF8E8E93)
+    val red get() = if (Tokens.projector) Tokens.danger else Color(0xFFFF453A)
     val orange = Color(0xFFFF9F0A); val purple = Color(0xFFBF5AF2); val teal = Color(0xFF40C8E0)
-    val card = Color(0x12FFFFFF); val hairline = Color(0x1AFFFFFF); val focus = Color(0x2EFFFFFF)
+    // The grey-on-page layers of Settings: a lighter tint in Projector Mode, so a group stays a visible block on the page and the row the remote is on shows as one.
+    val card get() = if (Tokens.projector) Color(0x2BFFFFFF) else Color(0x12FFFFFF)
+    val hairline get() = if (Tokens.projector) Color(0x3DFFFFFF) else Color(0x1AFFFFFF)
+    val focus get() = if (Tokens.projector) Color(0x52FFFFFF) else Color(0x2EFFFFFF)
     val rowTitle = 14.sp; val rowDetail = 12.sp; val groupTitle = 12.sp; val pageTitle = 26.sp
 }
 
@@ -52,14 +57,51 @@ fun SettingGroup(title: String, footer: String? = null, danger: Boolean = false,
     }
 }
 
+/** Asks one row of a Settings page, found by its title, to take the remote when it appears (Settings search opens a page this way). [done] is called once the row has it. */
+class SettingFocusTarget(val title: String, val requester: androidx.compose.ui.focus.FocusRequester, val done: () -> Unit) {
+    /** Set only when the row reports that it really has the focus. */
+    @Volatile var landed = false
+}
+internal const val MAX_FOCUS_TRIES = 60          // about a second of frames; SettingsScreen then moves the remote to the page instead
+/**
+ * A lazy page builds only the rows near the screen, so a row far down does not exist to take the remote. This moves down the page a screenful at a time until the row has been built and says
+ * it has the focus. The whole search is bounded (about a second of frames); when the row is not on the page at all, [onMissing] is called so the remote goes to the page instead.
+ */
+@Composable
+fun SweepToSettingTarget(state: androidx.compose.foundation.lazy.LazyListState, target: SettingFocusTarget?, onMissing: () -> Unit = {}) {
+    if (target == null) return
+    LaunchedEffect(target) {
+        var next = 0; var frames = 0
+        while (!target.landed && frames < MAX_FOCUS_TRIES) {
+            androidx.compose.runtime.withFrameNanos { }; frames++          // a row that is already on screen gets its own chance first
+            if (target.landed) break
+            val info = state.layoutInfo
+            if (info.totalItemsCount == 0) continue
+            if (next >= info.totalItemsCount) break
+            state.scrollToItem(next); next += maxOf(1, info.visibleItemsInfo.size)
+            androidx.compose.runtime.withFrameNanos { }; frames++          // the row that has just been built asks for the remote in this frame
+        }
+        if (!target.landed) onMissing()
+    }
+}
+
+val LocalSettingFocus = androidx.compose.runtime.compositionLocalOf<SettingFocusTarget?> { null }
+
 /**
  * The base of every row: title, explanation, a value on the right. A row that cannot be used says why, right under its title,
  * and does nothing when pressed (it never just looks dead).
  */
 @Composable
-fun SettingRow(title: String, detail: String? = null, value: String? = null, enabled: Boolean = true, reason: String? = null, danger: Boolean = false, switch: Boolean? = null, chevron: Boolean = false, button: Boolean = false, onClick: () -> Unit = {}) {
+fun SettingRow(title: String, detail: String? = null, value: String? = null, enabled: Boolean = true, reason: String? = null, danger: Boolean = false, switch: Boolean? = null, chevron: Boolean = false, button: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
+    val target = LocalSettingFocus.current?.takeIf { it.title == title }
+    // The request is repeated, a frame at a time, until the row itself says it has the focus (it may not be laid out, or scrolled into view, yet); only then is the target let go.
+    if (target != null) LaunchedEffect(target) {
+        var tries = 0
+        while (!target.landed && tries++ < MAX_FOCUS_TRIES) { runCatching { target.requester.requestFocus() }; androidx.compose.runtime.withFrameNanos { } }
+        if (target.landed) target.done()
+    }
     val position = LocalGroupCounter.current?.let { remember { it.getAndIncrement() } } ?: 1
-    Focusable(if (enabled) onClick else ({}), Modifier.fillMaxWidth(), shape = RoundedCornerShape(0.dp), container = Color.Transparent, focusedContainer = Mac.focus, scaleOnFocus = 1.0f, showRing = false, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { f ->
+    Focusable(if (enabled) onClick else ({}), modifier.fillMaxWidth().then(if (target != null) Modifier.focusRequester(target.requester) else Modifier), onFocus = { if (it && target != null) target.landed = true }, shape = RoundedCornerShape(0.dp), container = Color.Transparent, focusedContainer = Mac.focus, scaleOnFocus = 1.0f, showRing = false, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { f ->
         Row(Modifier.heightIn(min = if (detail != null) 62.ui else 48.ui).drawBehind { if (position > 0) drawLine(Mac.hairline, androidx.compose.ui.geometry.Offset(14.dp.toPx(), 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 1.dp.toPx()) }.padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Label(title, Mac.rowTitle, if (!enabled) Tokens.textTertiary else if (danger) Mac.red else Tokens.text, FontWeight.Medium)

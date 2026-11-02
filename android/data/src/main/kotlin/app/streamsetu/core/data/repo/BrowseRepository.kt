@@ -93,6 +93,7 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
                     SmartRule.NEW_30D -> "x.addedAt >= CAST(strftime('%s','now','-30 days') AS INTEGER)"
                 }
             }
+            is Browse.Rule -> { val q = CollectionRuleSql.of(kind, browse.rule); where.addAll(q.conditions); args.addAll(q.args) }
             Browse.Favorites -> where += inList(UserRepository.FAVOURITES)
             Browse.WatchLater -> where += inList(UserRepository.WATCH_LATER)
             Browse.Continue -> where += when (kind) {
@@ -141,4 +142,4 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
  * and the person's own lists). Pages loaded earlier cannot be trusted after such a change, so a list in one of these starts again from its first page.
  */
 fun orderMoves(b: Browse, s: SortSpec) = s.favoritesFirst || s.unwatchedFirst || s.field == SortField.RECENTLY_WATCHED || s.field == SortField.NEW_EPISODES ||
-    b is Browse.Favorites || b is Browse.WatchLater || b is Browse.Recent || b is Browse.Continue || b is Browse.FavoriteFolders || b is Browse.Collection || b is Browse.Smart
+    b is Browse.Favorites || b is Browse.WatchLater || b is Browse.Recent || b is Browse.Continue || b is Browse.FavoriteFolders || b is Browse.Collection || b is Browse.Smart || b is Browse.Rule

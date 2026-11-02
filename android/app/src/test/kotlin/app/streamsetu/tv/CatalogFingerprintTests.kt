@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.streamsetu.core.data.db.*
 import app.streamsetu.core.sync.CatalogStore
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -61,13 +62,39 @@ class CatalogFingerprintTests {
         assertEquals(false, tampered())
         db.openHelper.writableDatabase.query("SELECT COUNT(*) FROM channels").use { it.moveToFirst(); assertEquals(50, it.getInt(0)) }
     }
-    @Test fun aFailedWriteKeepsTheOldRowsAndTheOldFingerprint() {
+    @Test fun aRefreshThatIsCutShortKeepsTheOldRowsAndLeavesNoFingerprintSoItIsDoneAgain() {
         write(CatalogStore(db), channels())
-        val before = runBlocking { db.catalog().fingerprint("s") }
-        db.openHelper.writableDatabase.execSQL("DROP TABLE ${SearchIndex.TABLE}")             // the write fails part-way through its transaction
+        db.openHelper.writableDatabase.execSQL("DROP TABLE ${SearchIndex.TABLE}")             // the write fails part-way through
         try { write(CatalogStore(db), channels(60)); throw AssertionError("the write should have failed") } catch (_: AssertionError) { throw AssertionError("the write should have failed") } catch (_: Exception) {}
-        db.openHelper.writableDatabase.query("SELECT COUNT(*) FROM channels").use { it.moveToFirst(); assertEquals(50, it.getInt(0)) }
-        assertEquals(before, runBlocking { db.catalog().fingerprint("s") })
+        db.openHelper.writableDatabase.query("SELECT COUNT(*) FROM channels").use { it.moveToFirst(); assertEquals("the old rows are still there", 50, it.getInt(0)) }
+        assertNull("no fingerprint stands over a half-written catalog", runBlocking { db.catalog().fingerprint("s") })
+    }
+    @Test fun aProviderThatGoesBackToItsOldContentAfterACutShortRefreshIsWrittenAgain() {
+        write(CatalogStore(db), channels()); db.openHelper.writableDatabase.execSQL("DROP TABLE ${SearchIndex.TABLE}")
+        try { write(CatalogStore(db), channels(60)) } catch (_: Exception) {}
+        db.openHelper.writableDatabase.execSQL(SearchIndex.CREATE); tamper()
+        write(CatalogStore(db), channels())                  // the old content again: nothing may call it "unchanged"
+        assertEquals(false, tampered())
+    }
+    @Test fun twoRefreshesOfOneSourceNeverRunAtTheSameTime() = runBlocking {
+        val big = (1..4_000).map { channel(it) }
+        val running = java.util.concurrent.atomic.AtomicInteger(0); var overlap = false
+        val store = CatalogStore(db)
+        val a = kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) { if (running.incrementAndGet() > 1) overlap = true; store.replace("s", cats, big, emptyList(), emptyList()); running.decrementAndGet() }
+        val b = kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) { store.replace("s", cats, big.reversed(), emptyList(), emptyList()) }
+        a.join(); b.join()
+        db.openHelper.writableDatabase.query("SELECT COUNT(*) FROM channels WHERE sourceId = 's'").use { it.moveToFirst(); assertEquals(4_000, it.getInt(0)) }
+        db.openHelper.writableDatabase.query("SELECT COUNT(*) FROM ${SearchIndex.TABLE}").use { it.moveToFirst(); assertEquals("each channel is in the index once", 4_000, it.getInt(0)) }
+    }
+    @Test fun aRebuiltIndexAndALaterRefreshHoldEveryItemExactlyOnce() {
+        val raw = db.openHelper.writableDatabase
+        runBlocking { db.catalog().putCategories(cats); db.catalog().putChannels(channels()); db.catalog().putMovies(listOf(movie(1), movie(2))) }
+        raw.execSQL("DELETE FROM ${SearchIndex.TABLE}"); SearchIndex.backfill(raw)
+        raw.query("SELECT COUNT(*) FROM ${SearchIndex.TABLE}").use { it.moveToFirst(); assertEquals(52, it.getInt(0)) }
+        write(CatalogStore(db), channels(), listOf(movie(1), movie(2)))
+        raw.query("SELECT COUNT(*) FROM ${SearchIndex.TABLE}").use { it.moveToFirst(); assertEquals("a refresh after a rebuild does not index anything twice", 52, it.getInt(0)) }
+        write(CatalogStore(db), channels(49), listOf(movie(1)))
+        raw.query("SELECT COUNT(*) FROM ${SearchIndex.TABLE}").use { it.moveToFirst(); assertEquals("items the provider dropped leave the index too", 50, it.getInt(0)) }
     }
     @Test fun removingASourceRemovesItsFingerprint() {
         write(CatalogStore(db), channels())
@@ -86,5 +113,35 @@ class CatalogFingerprintTests {
         val big = (1..30_000).map { channel(it) }
         val t = System.currentTimeMillis(); write(CatalogStore(db), big); println("write of 30k channels took ${System.currentTimeMillis() - t} ms")
         val t2 = System.currentTimeMillis(); write(CatalogStore(db), big); println("identical 30k catalog skipped in ${System.currentTimeMillis() - t2} ms")
+    }
+
+    private fun indexed(word: String) = runBlocking { SearchIndex.query(db.openHelper.writableDatabase, "$word*", listOf("s"), listOf("CHANNEL", "MOVIE"), 50).map { it.itemId }.toSet() }
+
+    @Test fun aRefreshRemovesWhatTheProviderDroppedFromTheRowsAndTheIndex() {
+        write(CatalogStore(db), channels(), listOf(movie(1), movie(2)))
+        write(CatalogStore(db), channels().filter { it.id != "s:c3" } + channel(60, name = "Brand new"), listOf(movie(2)))
+        db.openHelper.writableDatabase.query("SELECT COUNT(*) FROM channels").use { it.moveToFirst(); assertEquals(50, it.getInt(0)) }
+        db.openHelper.writableDatabase.query("SELECT COUNT(*) FROM movies").use { it.moveToFirst(); assertEquals(1, it.getInt(0)) }
+        assertEquals(setOf("s:c60"), indexed("Brand"))
+        assertEquals(false, "s:c3" in indexed("Channel")); assertEquals(true, "s:c4" in indexed("Channel"))
+        assertEquals(false, "s:m1" in indexed("Movie")); assertEquals(true, "s:m2" in indexed("Movie"))
+    }
+
+    @Test fun aRenamedItemIsFoundByItsNewNameOnly() {
+        write(CatalogStore(db), channels())
+        write(CatalogStore(db), channels().map { if (it.id == "s:c5") it.copy(name = "Zebra") else it })
+        assertEquals(setOf("s:c5"), indexed("Zebra")); assertEquals(false, "s:c5" in indexed("Channel"))
+    }
+
+    @Test fun aPersonsOwnWriteGetsInBetweenTheStepsOfALargeRefresh() = runBlocking {
+        write(CatalogStore(db), channels())
+        val big = (1..6_000).map { channel(it) } + (1..6_000).map { channel(10_000 + it) }
+        var waited = 0L
+        val refresh = kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) { CatalogStore(db).replace("s", cats, big, emptyList(), emptyList()) }
+        kotlinx.coroutines.delay(20)
+        val t = System.nanoTime(); db.extras().setChannelName("s:c1", "Mine"); waited = (System.nanoTime() - t) / 1_000_000
+        refresh.join()
+        println("a person's write waited $waited ms while 12000 channels were written")
+        assertEquals("a write must wait for one step, not for the whole refresh", true, waited < 1_500)
     }
 }

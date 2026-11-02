@@ -105,4 +105,18 @@ class GuideSearchTests {
         val first = search.searchProgressive("derby live").first()
         assertTrue(first.byKind.isNotEmpty())
     }
+
+    @Test fun titlesAreShownKindByKindAsTheyAreFoundAndNothingShownIsLost() = runBlocking {
+        val cat = listOf(CategoryEntity("g", "A", "MOVIE", "Drama", 0))
+        app.streamsetu.core.sync.CatalogStore(db).replace("A", cat,
+            listOf(ChannelEntity("A:c1", "A", null, "Mahesh Channel", null, null, "ref", null, 0, 0)),
+            listOf(MovieEntity("A:m1", "A", "g", "Mahesh Movie", null, 2020, null, null, "r", 1)),
+            listOf(SeriesEntity("A:s1", "A", "g", "Mahesh Series", null, null, 2020, null, null, "p1", 1)))
+        openLibrary("A")
+        val updates = search.searchProgressive("mahesh").toList()
+        assertTrue("the first update already holds something", updates.first().byKind.isNotEmpty())
+        updates.zipWithNext().forEach { (a, b) -> assertTrue("a later update never loses a group that was shown", b.byKind.keys.containsAll(a.byKind.keys)) }
+        assertEquals(setOf(SearchKind.CHANNEL, SearchKind.MOVIE, SearchKind.SERIES), updates.last().byKind.keys)
+        assertEquals("the last update is the whole answer", search.search("mahesh").byKind.mapValues { (_, v) -> v.map { it.id } }, updates.last().byKind.mapValues { (_, v) -> v.map { it.id } })
+    }
 }

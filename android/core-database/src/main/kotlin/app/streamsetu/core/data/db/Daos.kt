@@ -38,11 +38,15 @@ interface CatalogDao {
     @Query("SELECT * FROM categories WHERE kind = :kind AND sourceId IN (:sources) ORDER BY sortOrder, name") fun categories(kind: String, sources: List<String>): Flow<List<CategoryEntity>>
     @Query("SELECT * FROM categories WHERE sourceId = :sourceId AND kind = :kind ORDER BY sortOrder, name") fun categories(sourceId: String, kind: String): Flow<List<CategoryEntity>>
     @Query("DELETE FROM categories WHERE sourceId = :sourceId") suspend fun clearCategories(sourceId: String)
+    @Query("SELECT id FROM categories WHERE sourceId = :sourceId") suspend fun categoryIds(sourceId: String): List<String>
+    @Query("DELETE FROM categories WHERE id IN (:ids)") suspend fun deleteCategories(ids: List<String>)
     @Query("SELECT name FROM categories WHERE id = :id") suspend fun categoryName(id: String): String?
 
     // Channels
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putChannels(list: List<ChannelEntity>)
     @Query("DELETE FROM channels WHERE sourceId = :sourceId") suspend fun clearChannels(sourceId: String)
+    @Query("SELECT id FROM channels WHERE sourceId = :sourceId") suspend fun channelIds(sourceId: String): List<String>
+    @Query("DELETE FROM channels WHERE id IN (:ids)") suspend fun deleteChannels(ids: List<String>)
     @Query("SELECT * FROM catalog_fingerprints WHERE sourceId = :id") suspend fun fingerprint(id: String): CatalogFingerprintEntity?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putFingerprint(f: CatalogFingerprintEntity)
     @Query("DELETE FROM catalog_fingerprints WHERE sourceId = :id") suspend fun clearFingerprint(id: String)
@@ -104,6 +108,8 @@ interface CatalogDao {
     // Movies
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putMovies(list: List<MovieEntity>)
     @Query("DELETE FROM movies WHERE sourceId = :sourceId") suspend fun clearMovies(sourceId: String)
+    @Query("SELECT id FROM movies WHERE sourceId = :sourceId") suspend fun movieIds(sourceId: String): List<String>
+    @Query("DELETE FROM movies WHERE id IN (:ids)") suspend fun deleteMovies(ids: List<String>)
     @Query("SELECT * FROM movies WHERE categoryId = :categoryId ORDER BY title LIMIT :limit") fun moviesIn(categoryId: String, limit: Int): Flow<List<MovieEntity>>
     @Query("SELECT * FROM movies WHERE sourceId IN (:sources) ORDER BY addedAt DESC LIMIT :limit") fun latestMovies(limit: Int, sources: List<String>): Flow<List<MovieEntity>>
     @Query("SELECT * FROM movies WHERE sourceId IN (:sources) ORDER BY title LIMIT :limit") fun allMovies(limit: Int, sources: List<String>): Flow<List<MovieEntity>>
@@ -119,6 +125,8 @@ interface CatalogDao {
     // Series
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putSeries(list: List<SeriesEntity>)
     @Query("DELETE FROM series WHERE sourceId = :sourceId") suspend fun clearSeries(sourceId: String)
+    @Query("SELECT id FROM series WHERE sourceId = :sourceId") suspend fun seriesIds(sourceId: String): List<String>
+    @Query("DELETE FROM series WHERE id IN (:ids)") suspend fun deleteSeries(ids: List<String>)
     @Query("DELETE FROM episodes WHERE seriesId NOT IN (SELECT id FROM series)") suspend fun deleteOrphanEpisodes(): Int
     @Query("SELECT COUNT(*) FROM channels") suspend fun channelTotal(): Int
     @Query("SELECT COUNT(*) FROM movies") suspend fun movieTotal(): Int

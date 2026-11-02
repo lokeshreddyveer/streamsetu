@@ -39,7 +39,7 @@ fun Modifier.dialogScrim(): Modifier {
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
     val a = androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0f, if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(Motion.SHORT), label = "scrim")
-    return this.drawBehind { drawRect(Color.Black.copy(alpha = 0.55f * a.value)) }
+    return this.drawBehind { drawRect(Tokens.scrimStrong.copy(alpha = Tokens.scrimStrong.alpha * a.value)) }
 }
 
 /** A dialog's card rises a little and fades in. */
@@ -88,7 +88,7 @@ fun ContextMenu(title: String, subtitle: String? = null, actions: List<MenuActio
     TvDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(
             Modifier.fillMaxSize()
-                .drawBehind { drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(0.30f to Color.Transparent, 0.62f to Color(0x8C000000), 1f to Tokens.background.copy(alpha = 0.95f)), alpha = enter) }
+                .drawBehind { drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(0.30f to Color.Transparent, 0.62f to Tokens.sheetScrimMid, 1f to Tokens.background.copy(alpha = 0.95f)), alpha = enter) }
                 .onPreviewKeyEvent { e -> SelectKeyGuard.isSelect(e) && guard.swallow(SelectKeyGuard.isDown(e), e.nativeKeyEvent.downTime) },
             Alignment.CenterEnd,
         ) {

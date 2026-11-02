@@ -201,11 +201,17 @@ fun AppearanceSettings(c: AppContainer) {
     val ui = c.ui; val s = c.settings
     val poster by ui.posterSize.collectAsState(); val meta by ui.showPosterMeta.collectAsState(); val banner by ui.bannerEnabled.collectAsState(); val secs by ui.bannerSeconds.collectAsState()
     val shortcuts by ui.showShortcuts.collectAsState(); val anim by ui.animation.collectAsState(); val dwell by s.foldersOpenOnFocus.collectAsState(); val contrast by ui.highContrastFocus.collectAsState()
+    SettingGroup("Settings") {
+        val advancedOn by ui.advancedSettings.collectAsState()
+        ChoiceRow("Settings pages", "Essential lists the everyday pages. Advanced adds channel management, statistics, sync, add-ons, storage, diagnostics and the rest. Nothing is turned off or reset by switching, and a page that is in use or that a problem needs stays listed.", listOf(false to "Essential", true to "Advanced"), advancedOn) { ui.setAdvancedSettings(it) }
+    }
     SettingGroup("Look") {
         val themeName by ui.theme.collectAsState(); val accentName by ui.accent.collectAsState()
         val languageName by ui.language.collectAsState()
         ChoiceRow("Language", "The language of the app's own text. Titles and descriptions come from your provider and stay as they are. Some text is still in English.", app.streamsetu.tv.ui.i18n.I18n.languages, languageName) { ui.setLanguage(it) }
         ChoiceRow("Theme", "The colour of pages and cards.", app.streamsetu.tv.ui.theme.Theme.entries.map { it.name to it.label }, themeName) { ui.setTheme(it) }
+        val projectorOn by ui.projectorMode.collectAsState()
+        ToggleRow("Projector mode", "Makes pages, cards, text and focus controls easier to see on projectors. It does not change video brightness or HDR.", projectorOn) { ui.setProjectorMode(it) }
         ChoiceRow("Accent colour", "Highlights, selected items and primary buttons.", app.streamsetu.tv.ui.theme.Accent.entries.map { it.name to it.label }, accentName) { ui.setAccent(it) }
         ChoiceRow("Poster size", options = PosterSize.entries.map { it to it.label }, value = poster) { ui.setPosterSize(it) }
         ToggleRow("Show the year under posters", on = meta) { ui.setShowPosterMeta(it) }
@@ -341,6 +347,7 @@ fun DiagnosticsSettings(c: AppContainer) {
         sources.forEach { s -> InfoRow(s.name, if (s.draft) "Unfinished" else s.status.name.lowercase(), s.lastError?.let { app.streamsetu.core.data.repo.MaintenanceService.redact(it) }) }
         InfoRow("Search index", if (indexRows == catalogRows) "Healthy" else "Out of date", "%,d indexed of %,d catalog entries".format(indexRows, catalogRows))
     }
+    PlaybackCapabilitiesGroup(c)
     SettingGroup("Report", "A report has the stream format, error kinds, app version and device facts. Provider addresses, user names, passwords and tokens are removed.") {
         ActionRow("Export a diagnostic report", "Includes app, device and playback details without logins or provider addresses.", "Export", confirm = false) { scope.launch {
             val text = c.maintenance.diagnosticsReport(c.playback.diagnostics(), c.playback.recentErrors(), "StreamSetu $version")

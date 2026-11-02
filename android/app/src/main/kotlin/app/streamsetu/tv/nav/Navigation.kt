@@ -65,6 +65,15 @@ class TabFocusMemory {
  * What the Search page held when the person left it (to open a title, or to visit another screen): the words, the type chosen, where the list was scrolled, which result had the
  * remote and what the AI had suggested. Kept for as long as the person stays in the same library, as the same profile and in the same search scope; anything else starts empty.
  */
+/**
+ * What Settings keeps while another page is open: the page that was chosen, and the Settings search (the words, whether the technical settings are included, the result last opened).
+ * It is a plain holder with no connection to any value a setting has, so returning to Settings shows the same page without reading anything again.
+ */
+class SettingsSession {
+    var category: String? = null
+    var query = ""; var includeAdvanced = false; var searching = false; var lastResult: String? = null
+}
+
 class SearchSession {
     private var key: String? = null
     var query = ""; var type: app.streamsetu.core.model.ContentKind? = null; var typeSet = false
@@ -94,6 +103,8 @@ enum class SidebarMode { HIDDEN, EXPANDED }
  */
 @Stable
 class Navigator {
+    /** Settings remembers its page and search while the person is on another page. */
+    val settings = SettingsSession()
     var base: Base by mutableStateOf(Base.ChooseLibrary)
     var tab by mutableStateOf(Tab.HOME)
     /** What the open search covers, and the screen it was opened from (Back returns there). */

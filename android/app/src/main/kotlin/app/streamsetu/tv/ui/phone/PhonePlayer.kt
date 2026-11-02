@@ -117,7 +117,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
     val lined by c.watchQueue.items.collectAsStateWithLifecycle()
     val recording by playback.recording.collectAsStateWithLifecycle()
     val onlineSubs = remember { app.streamsetu.tv.ui.screens.OnlineSubtitles(context, c.credentials) }
-    var subHits by remember { mutableStateOf<List<app.streamsetu.tv.ui.screens.OnlineSubtitles.Hit>?>(null) }
+    var subHits by remember { mutableStateOf<List<app.streamsetu.core.subtitles.RankedSubtitle>?>(null) }
     var subMessage by remember { mutableStateOf<String?>(null) }
     val subScope = rememberCoroutineScope()
     var epgNext by remember { mutableStateOf<app.streamsetu.core.model.EpgProgram?>(null) }
@@ -367,10 +367,14 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
                 subHits = null; subMessage = null
                 if (!onlineSubs.configured) { subMessage = "Add your free OpenSubtitles key, account name and password in Settings, Subtitles."; return@LaunchedEffect }
                 val title = (item as? EpisodePlayable)?.series?.title ?: item?.title.orEmpty()
-                runCatching { onlineSubs.search(title, (item as? app.streamsetu.core.model.MoviePlayable)?.movie?.year, c.settings.subtitleLanguage.value) }
+                val ep = item as? EpisodePlayable
+                val want = app.streamsetu.core.subtitles.SubtitleWanted(title, (item as? app.streamsetu.core.model.MoviePlayable)?.movie?.year, ep?.episode?.season, ep?.episode?.number, c.settings.subtitleLanguage.value.ifBlank { "en" },
+                    runtimeMinutes = playback.durationMs.takeIf { it > 0 }?.let { (it / 60_000).toInt() })
+                onlineSubs.cached(want)?.let { subHits = it }
+                runCatching { onlineSubs.search(want) }
                     .onSuccess { subHits = it; if (it.isEmpty()) subMessage = "No subtitles found for this title." }.onFailure { subMessage = it.message ?: "The search did not work." }
             }
-            Sheet("Subtitles online", (subHits ?: emptyList()).map { h -> SheetItem(h.label, Icons.Filled.Subtitles) {
+            Sheet("Subtitles online", (subHits ?: emptyList()).map { h -> SheetItem(h.candidate.release.ifBlank { h.candidate.fileName }.ifBlank { "Subtitle ${h.candidate.fileId}" }, Icons.Filled.Subtitles, false, h.detail) {
                 subScope.launch { runCatching { onlineSubs.download(h) }.onSuccess { playback.addSubtitle(it, "Online") }.onFailure { android.widget.Toast.makeText(context, it.message ?: "That did not work.", android.widget.Toast.LENGTH_LONG).show() } }
             } }.ifEmpty { listOf(SheetItem(subMessage ?: "Searching…", null, false) {}) }, close)
         }

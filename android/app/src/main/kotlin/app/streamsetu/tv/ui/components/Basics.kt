@@ -198,6 +198,10 @@ fun Focusable(
     var focused by remember { mutableStateOf(false) }
     val longClick by androidx.compose.runtime.rememberUpdatedState(onLongClick)
     val highContrast = LocalHighContrast.current
+    // Projector Mode: a flat white frame 4 dp wide, drawn inside the component's own edge (so no grid, rail or clip can cut it off), with no glow, blur or extra layer. It is also drawn on rows
+    // whose focus is otherwise only a fill, unless that fill is already white.
+    val projector = Tokens.projector
+    val projectorFrame = projector && focusedContainer != Color.White
     val ringColor = if (ring != Color.Unspecified) ring else LocalFocusRing.current.takeIf { it != Color.Unspecified } ?: Tokens.focusRing
     val enabled = LocalFocusEnabled.current
     val own = remember { FocusRequester() }
@@ -221,13 +225,13 @@ fun Focusable(
             .drawWithCache {
                 val outline = shape.createOutline(size, layoutDirection, this)          // cached until the size or the shape changes
                 // The ring is drawn just inside the edge: its outline is made once here for the smaller size, not on every focused frame.
-                val ringW = 3.dp.toPx(); val inner = ringW / 2
+                val ringW = (if (projector) 4.dp else 3.dp).toPx(); val inner = ringW / 2
                 val ringOutline = shape.createOutline(androidx.compose.ui.geometry.Size((size.width - ringW).coerceAtLeast(1f), (size.height - ringW).coerceAtLeast(1f)), layoutDirection, this)
                 onDrawWithContent {
                     drawContent()
                     if (hairline) strokeOutline(outline, Tokens.line, 1.dp.toPx() * 2)
                     // One 3 dp ring drawn inside the edge, so no parent can clip it. Read here, so a focus change redraws this one card and keeps the cached outline.
-                    if (focused && enabled && showRing) translate(inner, inner) { strokeOutline(ringOutline, ringOn, ringW) }
+                    if (focused && enabled && (showRing || projectorFrame)) translate(inner, inner) { strokeOutline(ringOutline, ringOn, ringW) }
                 }
             }
     } else {
@@ -241,13 +245,20 @@ fun Focusable(
                 drawContent()
                 if (hairline) strokeOutline(shape.createOutline(size, layoutDirection, this), Tokens.line, 1.dp.toPx() * 2)
                 val a = if (focused && enabled) 1f else 0f          // the ring is there in the frame focus lands; only the small scale and the fill follow it
-                if (a > 0.01f && showRing && !app.streamsetu.tv.trace.Diag.ring) {
+                if (a > 0.01f && (showRing || projectorFrame) && !app.streamsetu.tv.trace.Diag.ring) {
                     // Focus is never only a change of size: a ring of at least 3 dp, with a dark band beside it so it stands out on bright artwork and on a poor screen.
                     val c = if (highContrast) Color.White else ringColor
+                    if (projector) {
+                        // Inside the edge: the outline is made for the smaller size and moved in by half the width, so the whole 4 dp frame lies within this component.
+                        val w = 4.dp.toPx()
+                        val inside = shape.createOutline(androidx.compose.ui.geometry.Size((size.width - w).coerceAtLeast(1f), (size.height - w).coerceAtLeast(1f)), layoutDirection, this)
+                        translate(w / 2, w / 2) { strokeOutline(inside, Color.White, w) }
+                        return@drawWithContent
+                    }
                     val outline = shape.createOutline(size, layoutDirection, this)
                     val ring = maxOf(ringWidth, 3.dp)
                     val k = if (clipContent) 2 else 1
-                    if (ringBand) strokeOutline(outline, Color.Black.copy(alpha = 0.55f * a), (ring + 3.dp).toPx() * k)
+                    if (ringBand) strokeOutline(outline, Tokens.ringBand.copy(alpha = 0.55f * a), (ring + 3.dp).toPx() * k)
                     strokeOutline(outline, c.copy(alpha = c.alpha * a), ring.toPx() * k)
                 }
             }
@@ -393,7 +404,7 @@ val LocalDownloadStatus = androidx.compose.runtime.compositionLocalOf<Map<String
 /** A small round badge at the bottom left of a poster for a title that is saved or being saved; the ring fills as it downloads. */
 @Composable
 fun BoxScope.DownloadBadge(state: app.streamsetu.core.data.repo.SaveState, fraction: Float, size: Dp = 22.dp) {
-    Box(Modifier.align(Alignment.BottomStart).padding(start = 6.dp, bottom = 10.dp).size(size).background(Color(0xA6000000), CircleShape), Alignment.Center) {
+    Box(Modifier.align(Alignment.BottomStart).padding(start = 6.dp, bottom = 10.dp).size(size).background(Tokens.chipScrimSoft, CircleShape), Alignment.Center) {
         if (state == app.streamsetu.core.data.repo.SaveState.DOWNLOADING) androidx.compose.foundation.Canvas(Modifier.fillMaxSize().padding(1.dp)) {
             val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
             drawArc(Color(0x40FFFFFF), 0f, 360f, false, style = stroke)
@@ -454,7 +465,7 @@ fun artworkRequest(context: android.content.Context, url: String, widthPx: Int, 
         .diskCachePolicy(if (memoryOnly) coil.request.CachePolicy.DISABLED else coil.request.CachePolicy.ENABLED)
         .networkCachePolicy(if (memoryOnly) coil.request.CachePolicy.DISABLED else coil.request.CachePolicy.ENABLED)
         .apply { if (cornerPx > 0f) transformations(coil.transform.RoundedCornersTransformation(cornerPx)) }
-        .apply { if (app.streamsetu.tv.BuildConfig.FRAME_LOG) listener(onError = { r, e -> android.util.Log.w("Artwork", (r.data.toString().substringAfter("://").substringBefore('/')) + " " + e.throwable.javaClass.simpleName + ": " + e.throwable.message?.take(100)) }) }
+        .apply { if (app.streamsetu.tv.trace.TestHooks.on) listener(onError = { r, e -> android.util.Log.w("Artwork", (r.data.toString().substringAfter("://").substringBefore('/')) + " " + e.throwable.javaClass.simpleName + ": " + e.throwable.message?.take(100)) }) }
         .build()
 
 /** Asks for the picture of a title that has none (or whose picture failed): provided once at the top of the app. The second argument says the title had a picture that did not load. */
@@ -493,8 +504,8 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
             else AsyncImage(rememberArtwork(imageUrl, width, 3 to 2, Tokens.radius), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = ColorPainter(Tokens.card), error = ColorPainter(Tokens.card),
                 onError = { if (itemId != null) filler?.invoke(itemId, true) })
             val shown = if (progress > 0f) progress else itemId?.let { LocalPartialProgress.current[it] } ?: 0f
-            if (shown > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(Tokens.accent)) }
-            if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Color(0xB3000000), RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Tokens.text, FontWeight.SemiBold) }
+            if (shown > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Tokens.progressTrack)) { Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(Tokens.accent)) }
+            if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Tokens.chipScrim, RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Tokens.text, FontWeight.SemiBold) }
             if (itemId != null) LocalDownloadStatus.current[itemId]?.let { (st, f) -> DownloadBadge(st, f) }
             if (itemId != null && itemId in LocalWatched.current) WatchedTick()
             // The title appears over the picture only for the poster the remote is on, so a wall of posters stays clean (the picture already carries its own title).
@@ -515,7 +526,7 @@ fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: 
             val filler = LocalArtworkFiller.current
             if (imageUrl.isNullOrBlank()) { if (itemId != null) LaunchedEffect(itemId) { filler?.invoke(itemId, false) }; PosterPlaceholder(title, Modifier.fillMaxSize(), showTitle = false) }
             else AsyncImage(rememberArtwork(imageUrl, width, 9 to 16, Tokens.radius), title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = ColorPainter(Tokens.card), error = ColorPainter(Tokens.card), onError = { if (itemId != null) filler?.invoke(itemId, true) })
-            if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
+            if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Tokens.progressTrack)) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopStart).padding(6.dp).background(Tokens.accent, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Color(0xFF04141A), FontWeight.Bold) }
         }
         Label(title, Tokens.row, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))

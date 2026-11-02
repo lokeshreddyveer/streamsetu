@@ -38,6 +38,7 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
                 SourceType.PLEX -> syncPlex(source)
                 SourceType.WEBDAV -> syncWebDav(source)
                 SourceType.LOCAL_FOLDER -> syncFolder(source)
+                SourceType.ADDON -> syncAddon(source)
             }
             sources.setStatus(sourceId, SyncStatus.OK)
             sources.setCounts(sourceId, r.channels, r.movies, r.series)
@@ -48,6 +49,23 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             sources.setError(sourceId, e.message?.take(200))
             throw e
         }
+    }
+
+    // ---- Add-ons ---------------------------------------------------------------------------------------------
+
+    /** Set once at start-up: the registry that knows each add-on's description and sign-in. */
+    var addons: app.streamsetu.core.data.repo.AddonRegistry? = null
+
+    /** An add-on's catalog is read through its own limits (see AddonClient) and replaces what was saved only when it was read completely and passed every check. */
+    private suspend fun syncAddon(s: Source): Result {
+        val registry = addons ?: error("Add-ons are not available.")
+        val catalog = try { registry.catalog(s.id) } catch (e: app.streamsetu.core.addon.AddonException) { throw IllegalStateException(e.message) }
+        val rows = AddonSync.toRows(s.id, catalog)
+        store.replace(s.id, rows.categories, rows.channels, rows.movies, rows.series)
+        // Episodes come with the catalog. They are written after the series they belong to, in steps, and the ones of a series that is gone are removed.
+        rows.episodes.chunked(500).forEach { db.catalog().putEpisodes(it) }
+        db.catalog().deleteOrphanEpisodes()
+        return Result(rows.channels.size, rows.movies.size, rows.series.size)
     }
 
     // ---- M3U -------------------------------------------------------------------------------------------------

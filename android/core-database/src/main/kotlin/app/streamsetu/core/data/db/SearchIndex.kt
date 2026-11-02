@@ -18,10 +18,19 @@ object SearchIndex {
 
     /** Fills the index from catalog rows already stored (after an upgrade). */
     fun backfill(db: SupportSQLiteDatabase) {
-        db.execSQL("INSERT INTO $TABLE(kind, itemId, sourceId, folderId, title) SELECT 'CHANNEL', id, sourceId, categoryId, name FROM channels")
-        db.execSQL("INSERT INTO $TABLE(kind, itemId, sourceId, folderId, title) SELECT 'MOVIE', id, sourceId, categoryId, title FROM movies")
-        db.execSQL("INSERT INTO $TABLE(kind, itemId, sourceId, folderId, title) SELECT 'SERIES', id, sourceId, categoryId, title FROM series")
+        // Every row gets its fixed number (see [docid]), the same one a catalog refresh writes and deletes by, so an item is in the index once however it got there.
+        for ((kind, table, titleColumn) in listOf(Triple("CHANNEL", "channels", "name"), Triple("MOVIE", "movies", "title"), Triple("SERIES", "series", "title"))) {
+            val batch = ArrayList<SearchHit>(BACKFILL_BATCH)
+            db.query("SELECT id, sourceId, categoryId, $titleColumn FROM $table").use { c ->
+                while (c.moveToNext()) {
+                    batch += SearchHit(kind, c.getString(0), c.getString(1), if (c.isNull(2)) null else c.getString(2), c.getString(3).orEmpty())
+                    if (batch.size >= BACKFILL_BATCH) { upsert(db, batch); batch.clear() }
+                }
+            }
+            if (batch.isNotEmpty()) upsert(db, batch)
+        }
     }
+    private const val BACKFILL_BATCH = 2000
 
     fun clear(db: SupportSQLiteDatabase, sourceId: String) { db.execSQL("DELETE FROM $TABLE WHERE sourceId = ?", arrayOf(sourceId)) }
 
@@ -36,6 +45,34 @@ object SearchIndex {
                 st.executeInsert()
             }
         } finally { st.close() }
+    }
+
+    /** The row number an item has in the index: the same item always has the same one, so writing it again replaces it, and a removed item is deleted without scanning the index. */
+    fun docid(kind: String, itemId: String): Long {
+        var h = -3750763034362895579L          // FNV-1a, 64 bit
+        for (c in kind) h = (h xor c.code.toLong()) * 1099511628211L
+        h = (h xor 0L) * 1099511628211L
+        for (c in itemId) h = (h xor c.code.toLong()) * 1099511628211L
+        return h
+    }
+
+    /** Adds or replaces these items (one item is one row, whatever was there before). */
+    fun upsert(db: SupportSQLiteDatabase, rows: List<SearchHit>) {
+        val st = db.compileStatement("INSERT OR REPLACE INTO $TABLE(docid, kind, itemId, sourceId, folderId, title) VALUES (?, ?, ?, ?, ?, ?)")
+        try {
+            for (r in rows) {
+                st.clearBindings()
+                st.bindLong(1, docid(r.kind, r.itemId)); st.bindString(2, r.kind); st.bindString(3, r.itemId); st.bindString(4, r.sourceId)
+                if (r.folderId != null) st.bindString(5, r.folderId) else st.bindNull(5)
+                st.bindString(6, r.title)
+                st.executeInsert()
+            }
+        } finally { st.close() }
+    }
+
+    fun delete(db: SupportSQLiteDatabase, kind: String, itemIds: List<String>) {
+        val st = db.compileStatement("DELETE FROM $TABLE WHERE docid = ?")
+        try { for (id in itemIds) { st.clearBindings(); st.bindLong(1, docid(kind, id)); st.executeUpdateDelete() } } finally { st.close() }
     }
 
     /** [match] is an FTS query such as `bat* man*`; the caller builds it from user text (see SearchRepository). */

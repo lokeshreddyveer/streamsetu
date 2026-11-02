@@ -49,6 +49,8 @@ sealed interface Browse {
     data object FavoriteFolders : Browse
     data class Collection(val id: String) : Browse
     data class Smart(val rule: SmartRule) : Browse
+    /** A saved smart collection of the person's own: the rule travels with it, so a page is read for exactly this rule. */
+    data class Rule(val id: String, val rule: CollectionRule) : Browse
 }
 
 /**
