@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.11.02.1",
+      "title": "2 November 2026 (2)",
+      "summary": "**Fire TV and Android TV 0.23.1: the player menus work with the remote.** Audio and subtitles, Picture tuning, Sound, Subtitle look, Quality, Chapters, Up next, Folders, Programme and Technical information now open with the first entry selected, so the arrow keys and OK work at once. In Audio and subtitles, Right moves to the subtitle column and Down stays in the list; before, the keys went to the buttons behind the panel.",
+      "date": "2026-11-02",
+      "mac": "2.15.1",
+      "android": "0.23.1",
+      "ios": "1.1"
+    },
+    {
       "tag": "2026.11.02",
       "title": "2 November 2026",
       "summary": "**Fire TV and Android TV 0.23.0, and the Android phone app.** Smart collections, better subtitle matching, Settings search, Projector mode, add-ons and a clean-up from a full review.",
