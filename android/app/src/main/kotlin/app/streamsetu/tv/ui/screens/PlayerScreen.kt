@@ -20,6 +20,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -366,7 +368,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                 val chips = rememberStreamChips(c, barVisible)
                 var row2Focused by remember { mutableStateOf(false) }
                 Column(
-                    Modifier.fillMaxWidth().onFocusChanged { controlsFocused = it.hasFocus }.onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp && (!row2Focused || live)) { toRoot(); true } else false },
+                    Modifier.fillMaxWidth().focusProperties { canFocus = panel == null }.onFocusChanged { controlsFocused = it.hasFocus }.onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp && (!row2Focused || live)) { toRoot(); true } else false },
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     var first = true
@@ -444,7 +446,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                 Column(Modifier.weight(1f)) {
                     Label("Subtitles", Tokens.heading, InkDim, FontWeight.Medium, modifier = Modifier.padding(bottom = 6.dp))
                     LazyColumn(Modifier.heightIn(max = 230.dp)) {
-                        item { TextOption("Off", subs.none { it.selected }, Modifier) { playback.selectSubtitle(null); closePanel() } }
+                        item { TextOption("Off", subs.none { it.selected }, if (audio.isEmpty()) Modifier.focusRequester(firstReq) else Modifier) { playback.selectSubtitle(null); closePanel() } }
                         items(subs, key = { "s" + it.id }) { t -> TextOption(t.label, t.selected, Modifier) { playback.selectSubtitle(t.id); closePanel() } }
                     }
                 }
@@ -531,15 +533,15 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                             if (item != null) item { TextOption("Play in another app", false, Modifier, "VLC, MX Player and others") { closePanel(); scope.launch { ExternalPlayer.open(c, context, item) } } }
                             item { TextOption("Close player", false, Modifier) { playback.stop(); onClose() } }          // stopping on purpose always clears the stream
                         }
-                        PanelKind.TUNE_PICTURE -> items(PlayerMenus.picture(playback, tuning)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
-                        PanelKind.SOUND -> items(PlayerMenus.sound(playback, tuning)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
-                        PanelKind.SUBLOOK -> items(PlayerMenus.subtitleStyle(playback, styleNow ?: playback.currentSubtitleStyle())) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
-                        PanelKind.QUALITY -> items(PlayerMenus.quality(playback, qualities)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
+                        PanelKind.TUNE_PICTURE -> itemsIndexed(PlayerMenus.picture(playback, tuning)) { i, e -> TextOption(e.title, e.selected, if (i == 0) Modifier.focusRequester(selectedReq) else Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
+                        PanelKind.SOUND -> itemsIndexed(PlayerMenus.sound(playback, tuning)) { i, e -> TextOption(e.title, e.selected, if (i == 0) Modifier.focusRequester(selectedReq) else Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
+                        PanelKind.SUBLOOK -> itemsIndexed(PlayerMenus.subtitleStyle(playback, styleNow ?: playback.currentSubtitleStyle())) { i, e -> TextOption(e.title, e.selected, if (i == 0) Modifier.focusRequester(selectedReq) else Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
+                        PanelKind.QUALITY -> itemsIndexed(PlayerMenus.quality(playback, qualities)) { i, e -> TextOption(e.title, e.selected, if (i == 0) Modifier.focusRequester(selectedReq) else Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
                         PanelKind.QUEUE -> {
-                            items(lined) { t -> TextOption(t.title, false, Modifier, "Press OK to take it out of the queue") { c.watchQueue.remove(t.id) } }
-                            item { TextOption("Clear the queue", false, Modifier) { c.watchQueue.clear(); closePanel() } }
+                            itemsIndexed(lined) { i, t -> TextOption(t.title, false, if (i == 0) Modifier.focusRequester(selectedReq) else Modifier, "Press OK to take it out of the queue") { c.watchQueue.remove(t.id) } }
+                            item { TextOption("Clear the queue", false, if (lined.isEmpty()) Modifier.focusRequester(selectedReq) else Modifier) { c.watchQueue.clear(); closePanel() } }
                         }
-                        PanelKind.CHAPTERS -> items(PlayerMenus.chapters(playback, chapters)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
+                        PanelKind.CHAPTERS -> itemsIndexed(PlayerMenus.chapters(playback, chapters)) { i, e -> TextOption(e.title, e.selected, if (i == 0) Modifier.focusRequester(selectedReq) else Modifier, e.detail) { e.action(); if (!e.keepOpen) closePanel() } }
                         PanelKind.JUMPTO -> {
                             item { TextOption("Type a time…", false, Modifier.focusRequester(selectedReq), "For example 1:23:45") { gotoOpen = true } }
                             items(PlayerMenus.jumpToPoints(playback)) { e -> TextOption(e.title, e.selected, Modifier, e.detail) { e.action(); closePanel() } }
@@ -562,16 +564,16 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                             item { TextOption("Reset both", false, Modifier) { playback.setSubtitleDelay(0); playback.setAudioDelay(0) } }
                         }
                         PanelKind.GROUPS -> {
-                            item { TextOption("Channels in this list", false, Modifier) { panel = PanelKind.CHANNELS } }
+                            item { TextOption("Channels in this list", false, Modifier.focusRequester(selectedReq)) { panel = PanelKind.CHANNELS } }
                             items(groups, key = { "g" + it.id }) { g -> TextOption(g.title, false, Modifier, "%,d channels".format(g.count)) {
                                 scope.launch { val chans = runCatching { c.db.catalog().channelsIn(g.id).first().map { ChannelPlayable(it.toModel()) } }.getOrDefault(emptyList()); if (chans.isNotEmpty()) { c.queue = chans; panel = PanelKind.CHANNELS } }
                             } }
                         }
                         PanelKind.PROGRAMME -> {
-                            if (programmes.isEmpty()) item { TextOption("No programme information for this channel", false, Modifier) {} }
-                            items(programmes, key = { "pg" + it.startMs }) { p -> TextOption(p.title, false, Modifier, clock(p.startMs) + " – " + clock(p.endMs) + (p.description?.takeIf { it.isNotBlank() }?.let { "  ·  $it" } ?: "")) {} }
+                            if (programmes.isEmpty()) item { TextOption("No programme information for this channel", false, Modifier.focusRequester(selectedReq)) {} }
+                            itemsIndexed(programmes, key = { _, p -> "pg" + p.startMs }) { i, p -> TextOption(p.title, false, if (i == 0) Modifier.focusRequester(selectedReq) else Modifier, clock(p.startMs) + " – " + clock(p.endMs) + (p.description?.takeIf { it.isNotBlank() }?.let { "  ·  $it" } ?: "")) {} }
                         }
-                        PanelKind.INFO -> items(playback.diagnostics().entries.toList(), key = { "i" + it.key }) { en -> TextOption(en.key, false, Modifier, en.value) {} }
+                        PanelKind.INFO -> itemsIndexed(playback.diagnostics().entries.toList(), key = { _, en -> "i" + en.key }) { i, en -> TextOption(en.key, false, if (i == 0) Modifier.focusRequester(selectedReq) else Modifier, en.value) {} }
                         PanelKind.TRACKS -> {}
                     }
                 }
