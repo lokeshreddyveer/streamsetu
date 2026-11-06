@@ -68,6 +68,10 @@ final class IOSCoordinator {
             let c = try AppContainer()
             mark("library opened")
             container = c
+            // The cover goes up before the first screen: at a cold launch the app is locked from the start (`AppLock` begins locked when it is on), and nothing else would raise the cover until
+            // the app had been in the background once.
+            lockWindow.afterUnlock = { [weak self] in if let held = self?.container?.appLock.takeHeldLink() { self?.open(held) } }
+            lockWindow.show(c.appLock.enabled && c.appLock.isLocked, lock: c.appLock)
             let s = AppState(container: c)
             state = s
             c.parental.onChange = { [weak s] in s?.reloadFolders(); s?.catalogVersion += 1 }
@@ -142,6 +146,13 @@ final class IOSCoordinator {
     /// `streamsetu://add?url=…` opens the Add Playlist form (it never adds anything by itself); a playlist file opened from
     /// Files does the same; `streamsetu://search?q=…` opens Search.
     func open(_ url: URL) {
+        if let lock = container?.appLock {          // nothing a link or a file asks for happens behind the lock
+            switch lock.disposition(for: url) {
+            case .runNow: break
+            case .holdUntilUnlocked: lock.hold(url); return
+            case .drop: return
+            }
+        }
         if url.isFileURL, LocalMedia.isVideo(url.lastPathComponent) { FilesPlayer.open(url, container: container); return }
         if url.isFileURL { router.pendingAdd = .file(url); router.presentAdd = true; return }
         switch DeepLink.parse(url) {
@@ -258,12 +269,15 @@ private struct FailureView: View {
 /// The lock cover lives in a window of its own, above everything: sheets and the full-screen player included.
 @MainActor final class LockWindow {
     private var window: UIWindow?
+    /// Runs once the cover has gone because the person unlocked (a link opened while locked is handled then).
+    var afterUnlock: () -> Void = {}
     func show(_ on: Bool, lock: AppLock) {
         if on {
             guard window == nil, let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first else { return }
             let w = UIWindow(windowScene: scene)
             w.windowLevel = .alert + 1
-            w.rootViewController = UIHostingController(rootView: LockScreen(lock: lock, onUnlock: { [weak self] in self?.show(false, lock: lock) }))
+            w.rootViewController = UIHostingController(rootView: LockScreen(lock: lock, onUnlock: { [weak self] in self?.show(false, lock: lock); self?.afterUnlock() }))
+            w.rootViewController?.view.accessibilityViewIsModal = true          // VoiceOver stays on the lock screen, not on what is under it
             w.isHidden = false
             window = w
         } else {

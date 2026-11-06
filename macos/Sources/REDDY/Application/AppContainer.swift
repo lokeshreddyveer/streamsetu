@@ -183,6 +183,7 @@ final class AppContainer {
         })
         #endif
         nowPlaying = NowPlayingService(playback: playback, artwork: artwork)
+        nowPlaying.isLocked = { [appLock] in appLock.isLocked }
         autoBackup = AutoBackupService(backup: backup, settings: settings, channelPrefs: playback.channelPrefs)
         cloud = CloudSyncCoordinator(db: db, defaults: settings.defaultsStore) { [weak self] result in
             Task { @MainActor in self?.cloudApplied(result) }
@@ -267,6 +268,7 @@ final class AppContainer {
 
     /// Begins syncing when the person has switched it on. Call once the app has started.
     func startCloudIfEnabled() async {
+        if ProcessInfo.processInfo.environment["STREAMSETU_SELFTEST_MEDIA"] != nil { return }          // a release smoke test never starts iCloud sync
         alerts.start()
         Task { try? await Task.sleep(nanoseconds: 8_000_000_000); await accounts.refresh(); refreshWeeklyDigest(); refreshUsualEvening() }          // when each subscription ends, a little after the first screens are up
         #if os(macOS)

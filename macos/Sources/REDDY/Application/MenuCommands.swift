@@ -5,6 +5,9 @@ struct MenuCommands: Commands {
     let router: AppRouter
     let playback: PlaybackCoordinator?
     let state: AppState?
+    /// While the app is locked no command acts (nothing is opened, navigated to or controlled); only the system's own items (About, Quit, updates) stay.
+    let lock: AppLock?
+    private var locked: Bool { lock?.isLocked == true }
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
@@ -12,42 +15,42 @@ struct MenuCommands: Commands {
             Button("Check for Updates…") { AppUpdater.shared.checkForUpdates() }.disabled(!AppUpdater.shared.isAvailable)
         }
         CommandGroup(replacing: .newItem) {
-            Button("Add Playlist…") { router.modal = .addPlaylist }.keyboardShortcut("n")
-            Button("Open Video File…") { openVideoFile() }.keyboardShortcut("o")
-            Button("Files and Servers…") { openWindow(id: "files") }
-            Button("Refresh All Playlists") { state?.syncAll() }.keyboardShortcut("r")
+            Button("Add Playlist…") { router.modal = .addPlaylist }.keyboardShortcut("n").disabled(locked)
+            Button("Open Video File…") { openVideoFile() }.keyboardShortcut("o").disabled(locked)
+            Button("Files and Servers…") { openWindow(id: "files") }.disabled(locked)
+            Button("Refresh All Playlists") { state?.syncAll() }.keyboardShortcut("r").disabled(locked)
         }
         CommandGroup(replacing: .help) {
-            Button("Send Feedback…") { openWindow(id: "feedback") }
-            Button("Keyboard Shortcuts") { openWindow(id: "shortcuts") }.keyboardShortcut("/", modifiers: .command)
+            Button("Send Feedback…") { openWindow(id: "feedback") }.disabled(locked)
+            Button("Keyboard Shortcuts") { openWindow(id: "shortcuts") }.keyboardShortcut("/", modifiers: .command).disabled(locked)
         }
         CommandMenu("Navigate") {
             ForEach(Array(AppTab.allCases.enumerated()), id: \.offset) { i, tab in
-                Button(tab.title) { router.navigate(tab) }.keyboardShortcut(KeyEquivalent(Character("\(i + 1)")))
+                Button(tab.title) { router.navigate(tab) }.keyboardShortcut(KeyEquivalent(Character("\(i + 1)"))).disabled(locked)
             }
             Divider()
-            Button("Search") { router.focusTopSearch() }.keyboardShortcut("k")
-            Button("Search in This Screen") { router.focusCurrentScreenSearch() }.keyboardShortcut("f")
+            Button("Search") { router.focusTopSearch() }.keyboardShortcut("k").disabled(locked)
+            Button("Search in This Screen") { router.focusCurrentScreenSearch() }.keyboardShortcut("f").disabled(locked)
         }
         CommandMenu("Playback") {
-            Button("Open Multi-View") { openWindow(id: "multiview") }.keyboardShortcut("m", modifiers: [.command, .shift])
-            Button("Open Player in New Window") { openWindow(id: "player") }.keyboardShortcut("p", modifiers: [.command, .shift]).disabled(playback?.current == nil)
-            Button("Play / Pause") { playback?.togglePause() }.disabled(playback?.isActive != true)
-            Button("Next Channel") { playback?.nextChannel() }.keyboardShortcut("]").disabled(playback?.isLive != true)
-            Button("Previous Channel") { playback?.previousChannelInList() }.keyboardShortcut("[").disabled(playback?.isLive != true)
-            Button("Last Channel") { playback?.lastChannel() }.keyboardShortcut("l").disabled(playback?.isLive != true)
+            Button("Open Multi-View") { openWindow(id: "multiview") }.keyboardShortcut("m", modifiers: [.command, .shift]).disabled(locked)
+            Button("Open Player in New Window") { openWindow(id: "player") }.keyboardShortcut("p", modifiers: [.command, .shift]).disabled(locked || (playback?.current == nil))
+            Button("Play / Pause") { playback?.togglePause() }.disabled(locked || (playback?.isActive != true))
+            Button("Next Channel") { playback?.nextChannel() }.keyboardShortcut("]").disabled(locked || (playback?.isLive != true))
+            Button("Previous Channel") { playback?.previousChannelInList() }.keyboardShortcut("[").disabled(locked || (playback?.isLive != true))
+            Button("Last Channel") { playback?.lastChannel() }.keyboardShortcut("l").disabled(locked || (playback?.isLive != true))
             Divider()
-            Button("Skip Forward 10 Seconds") { playback?.seek(by: 10) }.keyboardShortcut(.rightArrow, modifiers: .command)
-            Button("Skip Back 10 Seconds") { playback?.seek(by: -10) }.keyboardShortcut(.leftArrow, modifiers: .command)
-            Button("Next Episode") { playback?.playNextEpisode() }.keyboardShortcut("e").disabled(playback?.upNext == nil)
+            Button("Skip Forward 10 Seconds") { playback?.seek(by: 10) }.keyboardShortcut(.rightArrow, modifiers: .command).disabled(locked)
+            Button("Skip Back 10 Seconds") { playback?.seek(by: -10) }.keyboardShortcut(.leftArrow, modifiers: .command).disabled(locked)
+            Button("Next Episode") { playback?.playNextEpisode() }.keyboardShortcut("e").disabled(locked || (playback?.upNext == nil))
             Divider()
             Menu("Sleep Timer") {
                 ForEach(SleepTimer.presets, id: \.self) { m in Button("Stop after \(m) minutes") { playback?.startSleepTimer(minutes: m) } }
                 Button("Stop at the End of This Episode or Movie") { playback?.startSleepTimerAtEndOfItem() }.disabled(playback?.isLive != false || playback?.duration == nil)
                 if playback?.sleepTimer != nil { Divider(); Button("Cancel Sleep Timer") { playback?.cancelSleepTimer() } }
-            }.disabled(playback?.isActive != true)
+            }.disabled(locked || playback?.isActive != true)
             Divider()
-            Button("Stop") { playback?.stop() }.keyboardShortcut(".").disabled(playback?.isActive != true)
+            Button("Stop") { playback?.stop() }.keyboardShortcut(".").disabled(locked || (playback?.isActive != true))
         }
     }
 

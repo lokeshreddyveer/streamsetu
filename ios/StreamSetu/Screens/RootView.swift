@@ -77,7 +77,11 @@ struct RootView: View {
                 if usesSidebar { IPadShell(barHeight: $barHeight) } else { compactTabs }
             }
         }
-        .onChange(of: usesSidebar, initial: true) { _, v in router.sidebar = v }
+        .onChange(of: usesSidebar, initial: true) { _, v in
+            router.sidebar = v
+            // A window that narrows (Split View, Slide Over, Stage Manager) loses the sidebar: a screen that only the sidebar had (Search, Guide, Library) has no tab in the compact layout and would be blank. More leads to all of them.
+            if !v, !compactOrder.contains(router.tab) { router.tab = .more }
+        }
         .loggingNotice()
         .background(ColorTokens.background)
         .overlay {

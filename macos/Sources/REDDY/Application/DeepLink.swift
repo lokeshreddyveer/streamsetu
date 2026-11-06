@@ -14,6 +14,9 @@ enum DeepLink: Equatable {
 
     enum RemoteCommand: String, Equatable { case pause, resume, stop, next, previous, last }
 
+    /// A command for what is playing (pause, stop, next, sleep timer) rather than a request to open something.
+    var isCommand: Bool { switch self { case .remote, .sleep: true; default: false } }
+
     static let scheme = "streamsetu"
 
     /// streamsetu://add?url=…&name=…   play?channel=…   watch?movie=…   watch?series=…   open?tab=live   search?q=…   sleep?minutes=45   pause | resume | stop | next | previous | last

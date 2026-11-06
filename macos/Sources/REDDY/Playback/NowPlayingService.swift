@@ -60,6 +60,9 @@ final class NowPlayingService {
     private var artworkFor: String?
     private var targets: [(MPRemoteCommand, Any)] = []
 
+    /// True while App Lock covers the app: the title and picture are hidden, as for a private watch, and the media keys and the system's playback controls do nothing.
+    var isLocked: () -> Bool = { false }
+
     init(playback: PlaybackCoordinator, artwork: ArtworkService?) {
         self.playback = playback; self.artwork = artwork
         registerCommands()
@@ -77,9 +80,10 @@ final class NowPlayingService {
     func snapshot() -> NowPlayingSnapshot? {
         guard let p = playback, p.current != nil, p.state.isActive else { return nil }
         // A private watch shows no title or picture on the lock screen, in Control Centre or on a paired device.
-        return NowPlayingSnapshot(title: p.isPrivate ? "Private viewing" : p.title, subtitle: p.isPrivate ? nil : (p.subtitle ?? p.currentChannel?.categoryName), isLive: p.isLive, isPlaying: p.state == .playing,
+        let hidden = p.isPrivate || isLocked()
+        return NowPlayingSnapshot(title: hidden ? "Private viewing" : p.title, subtitle: hidden ? nil : (p.subtitle ?? p.currentChannel?.categoryName), isLive: p.isLive, isPlaying: p.state == .playing,
                                   position: p.position, duration: p.duration, rate: p.rate, hasQueue: p.queue.count > 1,
-                                  hasNextEpisode: p.upNext != nil, artworkURL: p.isPrivate ? nil : p.current?.artworkURL)
+                                  hasNextEpisode: p.upNext != nil, artworkURL: hidden ? nil : p.current?.artworkURL)
     }
 
     /// Publishes changes only; the system extrapolates the elapsed time between updates.
@@ -149,6 +153,7 @@ final class NowPlayingService {
         func add(_ cmd: MPRemoteCommand, _ handler: @escaping @MainActor (PlaybackCoordinator, MPRemoteCommandEvent) -> Void) {
             let t = cmd.addTarget { [weak self] event in
                 guard let p = self?.playback, p.current != nil else { return .noActionableNowPlayingItem }
+                if MainActor.assumeIsolated({ self?.isLocked() == true }) { return .commandFailed }          // locked: media keys and the system's controls do nothing
                 MainActor.assumeIsolated { handler(p, event) }
                 return .success
             }

@@ -79,6 +79,31 @@ final class AppLock {
     }
     func lockNow() { if enabled { isLocked = true } }
 
+    // MARK: what the system hands to a locked app
+
+    /// What to do with a link or a file the system opens in the app.
+    enum LinkDisposition: Equatable { case runNow, holdUntilUnlocked, drop }
+
+    /// The newest link opened while locked; handed back once, after unlocking.
+    private(set) var heldLink: URL?
+
+    /// While locked nothing a link asks for may happen behind the lock. A link that opens something waits for the person to unlock; a command for what is playing
+    /// (pause, stop, next, a sleep timer) is dropped, because it would be stale, and surprising, by then.
+    func disposition(for url: URL) -> LinkDisposition {
+        guard isLocked else { return .runNow }
+        if let link = DeepLink.parse(url), link.isCommand { return .drop }
+        return .holdUntilUnlocked
+    }
+
+    func hold(_ url: URL) { heldLink = url }
+
+    /// The held link, once and only when unlocked.
+    func takeHeldLink() -> URL? {
+        guard !isLocked, let url = heldLink else { return nil }
+        heldLink = nil
+        return url
+    }
+
     func unlock() async {
         guard isLocked, !isAuthenticating else { return }
         isAuthenticating = true

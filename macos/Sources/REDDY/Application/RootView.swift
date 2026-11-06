@@ -156,6 +156,7 @@ struct MainShell: View {
         .onChange(of: router.selection) { _, _ in router.clearSearch(); search.clear() }
         .onChange(of: state.activeSourceID) { _, _ in folderQuery = ""; router.closeDetail(); router.clearSearch(); search.clear() }
         .onOpenURL { handleOpen($0) }
+        .onChange(of: container.appLock.isLocked) { _, locked in if !locked, let url = container.appLock.takeHeldLink() { handleOpen(url) } }          // what was opened while locked runs now
         .onDrop(of: [.fileURL, .url, .plainText], isTargeted: $dropTargeted) { providers in handleDrop(providers) }
         .overlay { if dropTargeted { dropHint.allowsHitTesting(false).transition(.opacity).zIndex(20) } }
         .animation(AnimationTokens.standard, value: dropTargeted)
@@ -195,6 +196,7 @@ struct MainShell: View {
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        if container.appLock.isLocked { return false }
         var handled = false
         for provider in providers {
             if provider.canLoadObject(ofClass: URL.self) {
@@ -223,6 +225,11 @@ struct MainShell: View {
 
     /// `streamsetu://…` links (also reachable from Shortcuts' "Open URL") and playlist files opened with StreamSetu.
     private func handleOpen(_ url: URL) {
+        switch container.appLock.disposition(for: url) {        // nothing a link or a file asks for happens behind the lock
+        case .runNow: break
+        case .holdUntilUnlocked: container.appLock.hold(url); return
+        case .drop: return
+        }
         if url.isFileURL, LocalMedia.isVideo(url.lastPathComponent) { FilesPlayer.open(url, container: container); return }
         if url.isFileURL {
             if let p = PendingAdd.fromFile(url) { present(p) } else { state.toasts.show("StreamSetu can't open that kind of file.", symbol: "exclamationmark.triangle", kind: .warning) }
@@ -421,6 +428,7 @@ struct MainShell: View {
 
     /// Plain-key shortcuts. Only called when the user is not typing in a text field (see PlayerKeyMonitor).
     private func handleKey(_ event: NSEvent, _ playback: PlaybackCoordinator) -> Bool {
+        if container.appLock.isLocked { return false }          // locked: the keys do nothing (and are not swallowed)
         if event.keyCode == 53 {                               // Esc closes the topmost layer first
             if router.isSearching { router.clearSearch(); search.clear(); return true }
             if router.modal != nil { router.modal = nil; return true }
