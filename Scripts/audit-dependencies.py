@@ -6,6 +6,8 @@
   Scripts/audit-dependencies.py --report FILE          also write the result as JSON (kept with the release)
   Scripts/audit-dependencies.py --scope mac|ios|android  only what that product ships (the bundled Mac libraries are checked for "mac" and when no scope is given)
   Scripts/audit-dependencies.py --sbom FILE            also write a CycloneDX SBOM of the Mac app's bundled libraries
+  Scripts/audit-dependencies.py --android-sbom FILE    also write a CycloneDX SBOM of the Android release's libraries
+  Scripts/audit-dependencies.py --update-lock          rewrite android/dependency-lock.txt (the reviewed list of Android libraries) from what Gradle resolves now
 
 Three outcomes are kept apart: clean (0), vulnerable (1) and unknown (2: offline, a lookup failed, or something could not be identified).
 
@@ -16,7 +18,7 @@ recorded. A library is "unknown" (blocks a strict run) when it is missing from t
 Overrides: a finding can be accepted only through Scripts/risk-acceptances.json, signed (ssh-keygen -Y sign, namespace "streamsetu-risk") by a key listed in Scripts/allowed_signers,
 each entry with an owner, a reason and an expiry at most 90 days after it was accepted. Anything else is not an override. See docs/RELEASE-SECURITY.md.
 """
-import datetime, hashlib, json, pathlib, re, subprocess, sys, tempfile, urllib.request
+import datetime, hashlib, json, os, pathlib, re, subprocess, sys, tempfile, urllib.request
 
 repo = pathlib.Path(__file__).resolve().parent.parent
 problems = 0
@@ -88,9 +90,10 @@ def count_vuln(label, ids):
     problems += len(left)
     return left
 
+scope = arg("--scope") or "all"
 print("Swift packages")
 pins = []
-for f in repo.glob("**/Package.resolved"):
+for f in (repo.glob("**/Package.resolved") if scope in ("all", "mac", "ios") else []):
     if "node_modules" in f.parts or ".build" in f.parts: continue
     for p in json.loads(f.read_text()).get("pins", []):
         pins.append((p["location"].removesuffix(".git").removeprefix("https://"), p["state"].get("version") or p["state"].get("revision", "")[:12]))
@@ -109,7 +112,7 @@ if not pins: print("  (none found)")
 
 print("Website packages (npm audit)")
 web = repo / "web"
-if (web / "package-lock.json").exists():
+if scope == "all" and (web / "package-lock.json").exists():
     r = subprocess.run(["npm", "audit", "--omit=dev", "--json"], cwd=web, capture_output=True, text=True)
     try:
         t = json.loads(r.stdout)["metadata"]["vulnerabilities"]
@@ -129,7 +132,6 @@ def mac_libraries():
         libs.append({"file": f.name, "version": m.group(1) if m else None, "sha256": hashlib.sha256(f.read_bytes()).hexdigest()})
     return libs
 
-scope = arg("--scope") or "all"
 print("Mac bundled libraries")
 libs = mac_libraries() if scope in ("all", "mac") else []
 manifest_path = repo / "macos/release/libmpv-components.json"
@@ -164,6 +166,91 @@ debt = results.get("debt", [])
 if debt: print(f"  Tracked supply-chain debt: {len(debt)} libraries have no exact upstream revision recorded. Pin an upstream tag and artifact checksum at the next dependency refresh.")
 if not libs: print("  (none for this scope)")
 else: print(f"  {sum(1 for e in results['mac'] if not e['problem'])} of {len(libs)} libraries checked and clean")
+
+def parse_gradle_tree(text):
+    """The libraries in the output of `gradlew :app:dependencies`, as sorted "group:artifact:version" (the version Gradle resolved, after any `->`).
+    Project modules, constraint lines (c) and lines that only point at an earlier entry are not libraries of their own and are skipped; a library shown twice counts once."""
+    found = set()
+    for line in text.splitlines():
+        s = re.sub(r"^[|+\\ \-]+", "", line).strip()
+        if not s or s.startswith("project ") or s.endswith("(c)") or s.endswith("(n)"): continue
+        s = re.sub(r"\s+\((\*|c|n)\)$", "", s)
+        m = re.match(r"^([\w.\-]+):([\w.\-]+):([^\s]+)(?: -> ([^\s]+))?$", s) or re.match(r"^([\w.\-]+):([\w.\-]+)()(?: -> ([^\s]+))$", s)
+        if not m: continue
+        group, artifact, declared, resolved = m.groups()
+        version = (resolved or declared or "").strip("{}")
+        if re.match(r"^[\w.\-+]+$", version) and not any(ch in version for ch in "[](),"): found.add(f"{group}:{artifact}:{version}")
+    return sorted(found)
+
+def gradle_dependencies():
+    """What the Android release APK is built from. `--gradle-deps-file FILE` reads a saved listing instead of running Gradle (the tests use it)."""
+    saved = arg("--gradle-deps-file")
+    if saved: return parse_gradle_tree(pathlib.Path(saved).read_text())
+    env = dict(os.environ); env.setdefault("JAVA_HOME", "/opt/homebrew/opt/openjdk@17")
+    r = subprocess.run(["./gradlew", "-q", ":app:dependencies", "--configuration", "releaseRuntimeClasspath"], cwd=repo / "android", capture_output=True, text=True, env=env, timeout=900)
+    if r.returncode != 0: raise RuntimeError("gradle could not list the dependencies: " + (r.stderr.strip().splitlines() or ["?"])[0])
+    return parse_gradle_tree(r.stdout)
+
+def osv_maven(coords):
+    """One list of vulnerability ids per "group:artifact:version", in order, from the public OSV database (Maven ecosystem). AUDIT_OSV_FIXTURE=file replaces the network in tests."""
+    fixture = os.environ.get("AUDIT_OSV_FIXTURE")
+    if fixture:
+        data = json.loads(pathlib.Path(fixture).read_text())
+        if data.get("unreachable"): raise OSError("OSV unreachable (fixture)")
+        return [data.get("vulns", {}).get(c, []) for c in coords]
+    out = []
+    for i in range(0, len(coords), 500):
+        chunk = coords[i:i + 500]
+        queries = [{"package": {"name": c.rsplit(":", 1)[0], "ecosystem": "Maven"}, "version": c.rsplit(":", 1)[1]} for c in chunk]
+        req = urllib.request.Request("https://api.osv.dev/v1/querybatch", json.dumps({"queries": queries}).encode(), {"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            results_ = json.load(r).get("results", [])
+        if len(results_) != len(chunk): raise OSError("OSV answered for a different number of libraries than asked")
+        out += [[v["id"] for v in (x.get("vulns") or [])] for x in results_]
+    return out
+
+print("Android libraries (Gradle, release runtime)")
+android = []
+if scope in ("all", "android"):
+    lock_path = pathlib.Path(arg("--lock-file") or repo / "android/dependency-lock.txt")
+    try:
+        android = gradle_dependencies()
+    except Exception as e:
+        unknown += 1; print(f"  ? the Android libraries could not be listed ({e})")
+    else:
+        if not android:
+            unknown += 1; print("  ? no Android libraries were found: a check of nothing proves nothing")
+        else:
+            if "--update-lock" in sys.argv:
+                lock_path.write_text("\n".join(android) + "\n"); print(f"  lock written: {lock_path.name} ({len(android)} libraries)")
+            reviewed = lock_path.read_text().split() if lock_path.exists() else None
+            if reviewed is None:
+                unknown += 1; print(f"  ? {lock_path.name} does not exist: the reviewed list of libraries is missing (run with --update-lock and review the result)")
+            elif reviewed != android:
+                unknown += 1
+                for c in sorted(set(android) - set(reviewed)): print(f"  ? new or changed: {c}")
+                for c in sorted(set(reviewed) - set(android)): print(f"  ? gone or changed: {c}")
+                print(f"  ? the libraries differ from {lock_path.name}: review the change, then run with --update-lock")
+            try:
+                found = osv_maven(android)
+            except Exception as e:
+                unknown += 1; found = None; print(f"  ? could not look the libraries up ({e.__class__.__name__}); are you online?")
+            if found is not None:
+                bad_libs = 0
+                for coord, ids in zip(android, found):
+                    left = count_vuln(coord, ids)
+                    results.setdefault("android", []).append({"library": coord, "vulnerabilities": ids, "unaccepted": left})
+                    if left: bad_libs += 1; print(f"  ✘ {coord}: " + ", ".join(left))
+                print(f"  {len(android) - bad_libs} of {len(android)} libraries checked and clean" if not bad_libs else f"  {bad_libs} of {len(android)} libraries have reported vulnerabilities")
+else:
+    print("  (none for this scope)")
+
+android_sbom = arg("--android-sbom")
+if android_sbom and android:
+    def purl(c): g, a, v = c.split(":"); return f"pkg:maven/{g}/{a}@{v}"
+    comps = [{"type": "library", "group": c.split(":")[0], "name": c.split(":")[1], "version": c.split(":")[2], "purl": purl(c)} for c in android]
+    pathlib.Path(android_sbom).write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "metadata": {"timestamp": results["generated"], "component": {"type": "application", "name": "StreamSetu Android"}}, "components": comps}, indent=2))
+    print("Android SBOM written:", android_sbom)
 
 sbom = arg("--sbom")
 if sbom:

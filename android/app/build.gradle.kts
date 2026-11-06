@@ -84,6 +84,10 @@ android {
 }
 
 dependencies {
+    // Guava comes in through media3 (ExoPlayer) at 33.3.1-android, which has a reported vulnerability (GHSA-xxph-c9ww-hj94: reading an untrusted Java-serialized Guava collection can allocate
+    // gigabytes). The app never deserializes Java streams into Guava collections, but the release check (Scripts/audit-dependencies.py) rightly stops for it. 33.7.2-android is the first fixed version,
+    // the same major version, so it is API compatible; remove this when media3 itself asks for 33.7.2 or later.
+    constraints { implementation("com.google.guava:guava:33.7.2-android") { because("GHSA-xxph-c9ww-hj94") } }
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation(project(":data"))
     implementation(project(":core-ui"))
