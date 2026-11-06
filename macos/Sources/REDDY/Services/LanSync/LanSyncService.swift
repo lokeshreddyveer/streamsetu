@@ -66,7 +66,10 @@ final class LanSyncService {
     private var timer: Task<Void, Never>?
     private var busy: Set<String> = []
     private let deviceName: String
+    /// The identity key before it became device-local: saved like any login, so with iCloud Keychain sync on it was copied to the person's other devices, which then all had one key and one
+    /// device id and never saw each other. Only read here to be moved (Mac) or left for the Mac to move (iPhone and iPad).
     private static let identityRef = "lan.identity"
+    private static let localIdentityRef = "lan.identity.device"
 
     init(credentials: CredentialStore, defaults: UserDefaults, data: LanData, deviceName: String, onApplied: @escaping @MainActor (Int) -> Void) {
         self.credentials = credentials; self.trust = LanTrustStore(defaults: defaults); self.data = data; self.deviceName = deviceName; self.onApplied = onApplied
@@ -75,15 +78,25 @@ final class LanSyncService {
 
     /// Makes the service match the switch in Settings.
     func setEnabled(_ on: Bool) {
+        if ProcessInfo.processInfo.environment["STREAMSETU_SELFTEST_MEDIA"] != nil { return }          // a release smoke test never starts Wi-Fi sync
         guard on != enabled else { return }
         enabled = on
         if on { start() } else { stop() }
     }
 
     private func loadIdentity() -> LanCrypto.Identity {
-        if let saved = (try? credentials.load(ref: Self.identityRef))?.password, let raw = Data(base64Encoded: saved), let id = try? LanCrypto.Identity(raw: raw) { return id }
+        func identity(_ c: Credentials?) -> LanCrypto.Identity? { c?.password.flatMap { Data(base64Encoded: $0) }.flatMap { try? LanCrypto.Identity(raw: $0) } }
+        if let id = identity(try? credentials.loadLocal(ref: Self.localIdentityRef)) { return id }
+        #if os(macOS)
+        // The Mac keeps the identity it already had, so the devices it is paired with stay paired. It is saved on this device only, and the iCloud copy is removed only once that has worked.
+        if let old = try? credentials.load(ref: Self.identityRef), let id = identity(old) {
+            if (try? credentials.saveLocal(old, ref: Self.localIdentityRef)) != nil { try? credentials.delete(ref: Self.identityRef) }
+            return id
+        }
+        #endif
+        // iPhone and iPad get a new identity of their own (the old synced one is left for the Mac to move, then remove). They pair again once.
         let fresh = LanCrypto.Identity.make()
-        try? credentials.save(Credentials(username: "sync", password: fresh.raw.base64EncodedString(), url: nil), ref: Self.identityRef)
+        try? credentials.saveLocal(Credentials(username: "sync", password: fresh.raw.base64EncodedString(), url: nil), ref: Self.localIdentityRef)
         return fresh
     }
 

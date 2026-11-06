@@ -97,6 +97,41 @@ final class KeychainManager: KeychainStore, @unchecked Sendable {
         guard status == errSecSuccess else { throw KeychainError(status: status) }
     }
 
+    // MARK: this device only
+
+    /// Saved in this device's own Keychain even while iCloud Keychain sync is on.
+    func saveLocal(_ credentials: Credentials, ref: String) throws {
+        let data = try JSONEncoder().encode(credentials)
+        var q = baseQuery(ref, exact: false)
+        var status = SecItemUpdate(q as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if status == errSecItemNotFound {
+            q[kSecValueData as String] = data
+            #if os(iOS)
+            q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            #else
+            if openAccess, !synchronizable, let access = appAccess() { q[kSecAttrAccess as String] = access }
+            #endif
+            status = SecItemAdd(q as CFDictionary, nil)
+        }
+        guard status == errSecSuccess else { throw KeychainError(status: status) }
+    }
+
+    func loadLocal(ref: String) throws -> Credentials? {
+        var q = baseQuery(ref, exact: false)
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        let status = SecItemCopyMatching(q as CFDictionary, &out)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data = out as? Data else { throw KeychainError(status: status) }
+        return try JSONDecoder().decode(Credentials.self, from: data)
+    }
+
+    func deleteLocal(ref: String) throws {
+        let status = SecItemDelete(baseQuery(ref, exact: false) as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw KeychainError(status: status) }
+    }
+
     func load(ref: String) throws -> Credentials? { try load(ref: ref, migrating: true) }
 
     func load(ref: String, migrating: Bool) throws -> Credentials? {
