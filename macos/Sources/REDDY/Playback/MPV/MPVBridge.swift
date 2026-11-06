@@ -45,20 +45,32 @@ final class MPVLibrary: @unchecked Sendable {
     /// Why loading failed (for diagnostics), or nil when libmpv is loaded / simply not installed.
     private(set) var loadError: String?
     private var handle: UnsafeMutableRawPointer?
-    private(set) var create: Create?, initialize: Initialize?, terminateDestroy: Destroy?
-    private(set) var setOption: SetString?, setProperty: SetString?, command: Command?
-    private(set) var getProperty: GetProperty?, getPropertyString: GetPropertyString?, free: FreeFn?
-    private(set) var wakeup: (@convention(c) (OpaquePointer?) -> Void)?
-    private(set) var waitEvent: WaitEvent?, errorString: ErrorString?, requestLog: RequestLog?
-    private(set) var renderCreate: RenderCreate?, renderRender: RenderRender?, renderFree: RenderFree?
-    private(set) var renderSetCallback: RenderSetCallback?, renderUpdate: RenderUpdate?
+    // Set when the library is loaded, and by tests that stand in for libmpv (see `init(testing:)`); nothing else changes them.
+    var create: Create?, initialize: Initialize?, terminateDestroy: Destroy?
+    var setOption: SetString?, setProperty: SetString?, command: Command?
+    var getProperty: GetProperty?, getPropertyString: GetPropertyString?, free: FreeFn?
+    var wakeup: (@convention(c) (OpaquePointer?) -> Void)?
+    var waitEvent: WaitEvent?, errorString: ErrorString?, requestLog: RequestLog?
+    var renderCreate: RenderCreate?, renderRender: RenderRender?, renderFree: RenderFree?
+    var renderSetCallback: RenderSetCallback?, renderUpdate: RenderUpdate?
+
+    /// A library with nothing loaded. A test fills in the functions it needs, so the engine can be driven without libmpv.
+    init(testing: Void) { path = nil }
 
     var isAvailable: Bool { create != nil && renderCreate != nil && waitEvent != nil }
 
-    static func searchPaths() -> [String] {
+    /// Where libmpv may be loaded from.
+    ///
+    /// A build signed by a team (the one that ships) loads ONLY the library bundled inside the app, which is signed with the app's own identity. The environment variable and the Homebrew folders are
+    /// ignored there, however they are set: this app is allowed to load a library signed by another identity (the entitlement it ships with), so a library planted in a folder the user can write to, or
+    /// named by an environment variable (`launchctl setenv`), would otherwise be loaded into a notarized app that holds the user's Photos access and Keychain items.
+    /// An unsigned or ad-hoc build (a developer's own build, the test runs) may also use `REDDY_LIBMPV` and a Homebrew install: an explicit developer mode that cannot be the shipped app.
+    static func searchPaths(signedBuild: Bool = StandardCredentialStore.hasStableIdentity(), environment: [String: String] = ProcessInfo.processInfo.environment,
+                            frameworks: String? = Bundle.main.privateFrameworksURL?.path) -> [String] {
         var p: [String] = []
-        if let fw = Bundle.main.privateFrameworksURL?.path { p += ["\(fw)/libmpv.2.dylib", "\(fw)/libmpv.dylib"] }
-        if let override = ProcessInfo.processInfo.environment["REDDY_LIBMPV"] { p.insert(override, at: 0) }
+        if let fw = frameworks { p += ["\(fw)/libmpv.2.dylib", "\(fw)/libmpv.dylib"] }
+        guard !signedBuild else { return p }
+        if let override = environment["REDDY_LIBMPV"] { p.insert(override, at: 0) }
         p += ["/opt/homebrew/lib/libmpv.dylib", "/opt/homebrew/opt/mpv/lib/libmpv.dylib", "/usr/local/lib/libmpv.dylib", "/usr/local/opt/mpv/lib/libmpv.dylib"]
         return p
     }

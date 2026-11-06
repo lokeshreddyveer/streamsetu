@@ -34,8 +34,24 @@ final class MPVPlayerEngine: PlaybackEngine {
     private var machine = PlaybackStateMachine()
     var state: PlaybackState { machine.state }
 
-    private let lib = MPVLibrary.shared
+    private let lib: MPVLibrary
+    private let steps: LoadSteps
+
+    /// The parts of a load that wait for something else. A test supplies slow ones, so the order in which loads finish can be chosen.
+    @MainActor struct LoadSteps {
+        var rotationDegrees: (URL) async -> Int = { await LocalMedia.rotationDegrees(of: $0) }
+        var shouldRelay: (PlaybackRequest) -> Bool = { MPVPlayerEngine.shouldRelay($0) }
+        /// Starts the local relay for a live web stream; nil when it could not start.
+        var startRelay: (PlaybackRequest) async -> (relay: TSBridge, local: URL)? = { request in
+            let r = TSBridge(source: request.url, headers: request.headers, mode: .raw)
+            if let local = try? await r.start() { return (r, local) }
+            r.stop(); return nil
+        }
+    }
     private var core: Core?
+    /// Counts loads, stops and teardowns. A load is still the newest only while this has not moved since it began: after anything that makes it wait it checks, and one that was overtaken or stopped
+    /// does nothing more (it must not set options on, or start playing in, a context somebody else already destroyed).
+    private var loadGeneration = 0
     private var request: PlaybackRequest?
     private var workers: [Task<Void, Never>] = []
     private var userPaused = false
@@ -60,10 +76,13 @@ final class MPVPlayerEngine: PlaybackEngine {
         /// Signalled when the event thread has left `mpv_wait_event` for good. The context may only be destroyed after that.
         let eventThreadDone = DispatchSemaphore(value: 0)
         var eventThreadRunning = false
+        /// The retain the render callback holds on this object (see createRenderContext). It is given back in teardown, once the callback can no longer be called.
+        nonisolated(unsafe) var callbackBox: Unmanaged<Core>?
         init(ctx: OpaquePointer) { self.ctx = ctx }
     }
 
-    init() {
+    init(library: MPVLibrary = .shared, steps: LoadSteps = LoadSteps()) {
+        lib = library; self.steps = steps
         (stateUpdates, continuation) = AsyncStream.makeStream(of: PlaybackState.self, bufferingPolicy: .bufferingNewest(8))
         displayLayer.videoGravity = .resizeAspect
         displayLayer.backgroundColor = CGColor(red: 0, green: 0, blue: 0, alpha: 1)
@@ -82,6 +101,7 @@ final class MPVPlayerEngine: PlaybackEngine {
     func load(_ request: PlaybackRequest) async throws {
         guard lib.isAvailable else { let e = PlaybackError(.engineUnavailable); send(.startResolving); send(.failed(e)); throw e }
         teardown()
+        let generation = loadGeneration
         self.request = request
         lastHTTPStatus = nil; userPaused = false; lastConnectFailure = nil; loadBegan = Date()
         send(.startResolving); send(.resolved)
@@ -89,13 +109,16 @@ final class MPVPlayerEngine: PlaybackEngine {
         loadedLive = request.isLive; steppedUp = false
         buffering.reset()
 
+        // Nothing of this load exists yet while it waits here, so a load that is overtaken (or a stop) has nothing of it to take down; it finds out on the way back.
+        let rotationFilter: String? = request.url.isFileURL ? LocalMedia.rotationFilter(await steps.rotationDegrees(request.url)) : nil
+        guard generation == loadGeneration else { throw CancellationError() }
+
         guard let create = lib.create, let ctx = create() else { throw fail(PlaybackError(.engineUnavailable)) }
         let core = Core(ctx: ctx)
         core.layer = displayLayer
         core.renderer = displayLayer.sampleBufferRenderer
         core.surface = surfaceLayer
         self.core = core
-        let rotationFilter: String? = request.url.isFileURL ? LocalMedia.rotationFilter(await LocalMedia.rotationDegrees(of: request.url)) : nil
         var cfg = configuration
         cfg.lowLatency = bufferingMode == .lowLatency
         cfg.isLive = request.isLive
@@ -113,11 +136,13 @@ final class MPVPlayerEngine: PlaybackEngine {
         startEventLoop(core)
 
         var target = request.url
-        if Self.shouldRelay(request) {
+        if steps.shouldRelay(request) {
             // The system's network stack fetches the stream; MPV reads it from this device. A failure to start falls back to MPV's own connection.
-            let r = TSBridge(source: request.url, headers: request.headers, mode: .raw)
-            if let local = try? await r.start() { relay = r; target = local; Trace.log("relay on for \(Trace.describe(request.url)) -> \(local.absoluteString)") }
-            else { r.stop(); Trace.log("relay could not start; MPV connects directly") }
+            let started = await steps.startRelay(request)
+            // Overtaken or stopped while the relay started: the newer load (or the stop) already took this one's context down. The relay it started is not kept.
+            guard generation == loadGeneration, self.core === core else { started?.relay.stop(); throw CancellationError() }
+            if let started { relay = started.relay; target = started.local; Trace.log("relay on for \(Trace.describe(request.url)) -> \(started.local.absoluteString)") }
+            else { Trace.log("relay could not start; MPV connects directly") }
         }
         var args: [String] = ["loadfile", target.absoluteString, "replace"]
         if request.startPosition > 5, !request.isLive { args += ["-1", "start=\(Int(request.startPosition))"] }
@@ -146,6 +171,7 @@ final class MPVPlayerEngine: PlaybackEngine {
     private func fail(_ e: PlaybackError) -> PlaybackError { send(.failed(e)); return e }
 
     private func run(_ args: [String], core: Core) throws {
+        guard !core.stopped else { throw CancellationError() }          // its context is already gone
         var cStrings: [UnsafePointer<CChar>?] = args.map { UnsafePointer(strdup($0)) } + [nil]
         defer { for p in cStrings { free(UnsafeMutableRawPointer(mutating: p)) } }
         let rc = cStrings.withUnsafeMutableBufferPointer { lib.command?(core.ctx, $0.baseAddress) } ?? -1
@@ -187,6 +213,7 @@ final class MPVPlayerEngine: PlaybackEngine {
     func setRate(_ r: Double) { if let c = core { _ = lib.setProperty?(c.ctx, "speed", String(r)) } }
 
     private func teardown() {
+        loadGeneration &+= 1          // whatever load is still waiting is now out of date
         relay?.stop(); relay = nil
         workers.forEach { $0.cancel() }; workers = []
         guard let core else { return }
@@ -201,7 +228,12 @@ final class MPVPlayerEngine: PlaybackEngine {
             }
         }
         core.renderQueue.sync {
-            if let r = core.render { lib.renderSetCallback?(r, nil, nil); lib.renderFree?(r); core.render = nil }
+            if let r = core.render {
+                lib.renderSetCallback?(r, nil, nil); lib.renderFree?(r); core.render = nil
+                // libmpv calls the update callback while holding the lock that clearing it takes, so once it is cleared no call is running or will come. The retain it held is given back here: without this every
+                // channel load kept its Core and the last frame (about 8 MB at 1080p) for the life of the app.
+                core.callbackBox?.release(); core.callbackBox = nil
+            }
         }
         lib.terminateDestroy?(core.ctx)
         self.core = nil
@@ -220,7 +252,8 @@ final class MPVPlayerEngine: PlaybackEngine {
         guard status == 0, let rc else { throw fail(PlaybackError(.engineUnavailable, detail: lib.errorMessage(status))) }
         core.render = rc
         let box = Unmanaged.passRetained(core)
-        MPVLibrary.shared.renderSetCallback?(rc, { ptr in
+        core.callbackBox = box
+        lib.renderSetCallback?(rc, { ptr in
             guard let ptr else { return }
             let core = Unmanaged<Core>.fromOpaque(ptr).takeUnretainedValue()
             core.renderQueue.async { MPVPlayerEngine.renderFrame(core) }

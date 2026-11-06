@@ -820,6 +820,7 @@ final class PlaybackCoordinator {
             if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)); guard !Task.isCancelled, gen == self.generation else { return } }
             do { try await self.engine.load(request) }
             catch {
+                if error is CancellationError { return }          // the engine was overtaken by a newer load or stopped: that is not a failure of this play
                 guard gen == self.generation else { return }
                 self.handleFailure(PlaybackError.classify(error, httpStatus: self.engine.lastHTTPStatus))
             }
