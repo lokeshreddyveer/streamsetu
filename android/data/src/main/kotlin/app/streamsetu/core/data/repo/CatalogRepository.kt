@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.map
 
 /** Everything the screens read: categories, channels, movies, series, episodes and search. */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+/** Ids per query: under SQLite's limit of 999 variables on Android 5 to 7. */
+private const val ID_CHUNK = 500
+
 class CatalogRepository(private val db: AppDatabase, private val library: LibraryRepository, private val folders: FolderRepository) {
     private val dao get() = db.catalog()
     private val ids get() = library.sourceIds.value
@@ -19,8 +22,8 @@ class CatalogRepository(private val db: AppDatabase, private val library: Librar
     fun movies(categoryId: String, limit: Int = 300): Flow<List<Movie>> = dao.moviesIn(categoryId, limit).map { l -> l.map { it.toModel() } }
     fun latestMovies(limit: Int = 40): Flow<List<Movie>> = scoped { s -> dao.latestMovies(limit, s).map { l -> l.map { it.toModel() } } }
     fun allMovies(limit: Int = 600): Flow<List<Movie>> = scoped { s -> dao.allMovies(limit, s).map { l -> l.map { it.toModel() } } }
-    suspend fun moviesByIds(ids: List<String>): List<Movie> = if (ids.isEmpty()) emptyList() else dao.moviesByIds(ids).map { it.toModel() }
-    suspend fun seriesByIds(ids: List<String>): List<Series> = if (ids.isEmpty()) emptyList() else dao.seriesByIds(ids).map { it.toModel() }
+    suspend fun moviesByIds(ids: List<String>): List<Movie> = ids.chunked(ID_CHUNK).flatMap { dao.moviesByIds(it) }.map { it.toModel() }          // in groups: SQLite on Android 5 to 7 allows 999 variables in one query, and a long favourites list used to crash Home
+    suspend fun seriesByIds(ids: List<String>): List<Series> = ids.chunked(ID_CHUNK).flatMap { dao.seriesByIds(it) }.map { it.toModel() }
     fun seriesIn(categoryId: String, limit: Int = 300): Flow<List<Series>> = dao.seriesIn(categoryId, limit).map { l -> l.map { it.toModel() } }
     fun allSeries(limit: Int = 40): Flow<List<Series>> = scoped { s -> dao.allSeries(limit, s).map { l -> l.map { it.toModel() } } }
     fun latestSeries(limit: Int = 40): Flow<List<Series>> = scoped { s -> dao.latestSeries(limit, s).map { l -> l.map { it.toModel() } } }
@@ -33,7 +36,7 @@ class CatalogRepository(private val db: AppDatabase, private val library: Librar
     suspend fun series(id: String) = dao.series(id)?.toModel()
     suspend fun episode(id: String) = dao.episode(id)?.toModel()
     /** Several episodes in one read (never one read per title). */
-    suspend fun episodesByIds(ids: List<String>): Map<String, Episode> = if (ids.isEmpty()) emptyMap() else dao.episodesByIds(ids).associate { it.id to it.toModel() }
+    suspend fun episodesByIds(ids: List<String>): Map<String, Episode> = ids.chunked(ID_CHUNK).flatMap { dao.episodesByIds(it) }.associate { it.id to it.toModel() }
 
     /** The episode after [episode] in the same series (the next one in the season, or the first of the next season). */
     suspend fun episodesOnce(seriesId: String): List<Episode> = dao.episodesOnce(seriesId).map { it.toModel() }

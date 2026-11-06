@@ -205,7 +205,7 @@ class Navigator {
     fun close() { if (overlays.isNotEmpty()) { overlays.removeAt(overlays.lastIndex); lastClosedAt = System.currentTimeMillis() } }
 
     /** A section chosen from the rail. Search opened this way searches everything; the Search entry points of Movies, Series and Live TV use [openSearch] with their own scope. */
-    fun go(t: Tab) { if (t == Tab.SPORTS && !app.streamsetu.tv.sports.SportsFeature.enabled) return; if (t == Tab.SEARCH) searchScope = app.streamsetu.core.data.repo.SearchTab.ALL; searchTemporary = false; tab = t; sidebarRevealed = false; sidebarFocused = false; contentFocusTick++ }
+    fun go(t: Tab) { if (app.streamsetu.tv.KidsLock.on && (t == Tab.SETTINGS || t == Tab.LIBRARIES)) return; if (t == Tab.SPORTS && !app.streamsetu.tv.sports.SportsFeature.enabled) return; if (t == Tab.SEARCH) searchScope = app.streamsetu.core.data.repo.SearchTab.ALL; searchTemporary = false; tab = t; sidebarRevealed = false; sidebarFocused = false; contentFocusTick++ }
 
     /**
      * The remote moved onto or off the sidebar. Losing focus does not hide the sidebar by itself (focus is lost for an instant while it moves between two entries,
@@ -224,7 +224,7 @@ class Navigator {
 
     /** True while Settings was opened from the library chooser: Back returns there. */
     var settingsFromChooser = false
-    fun openSettingsFromChooser() { settingsFromChooser = true; base = Base.Shell; tab = Tab.SETTINGS; sidebarRevealed = false }
+    fun openSettingsFromChooser() { if (app.streamsetu.tv.KidsLock.on) return; settingsFromChooser = true; base = Base.Shell; tab = Tab.SETTINGS; sidebarRevealed = false }
 
     /** Another library was opened while a page is showing: stay on the page, drop what pointed into the old library (open titles, remembered items). */
     fun switchLibrary() { overlays.clear(); memory.clear(); search.clear(); seriesView.clear(); sidebarRevealed = false; sidebarFocused = false; contentFocusTick++ }

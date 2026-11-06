@@ -43,9 +43,16 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
             sources.setCounts(sourceId, r.channels, r.movies, r.series)
             r
         } catch (e: Throwable) {
-            android.util.Log.w("Sync", "sync of ${source.name} failed: ${e.javaClass.simpleName}: ${e.message?.take(160)}")
-            sources.setStatus(sourceId, SyncStatus.FAILED, source.lastSyncAt)
-            sources.setError(sourceId, e.message?.take(200))
+            if (e is app.streamsetu.core.data.repo.SourceRemovedException) throw e          // the connection is gone: nothing to record
+            // Recorded even when the refresh was cancelled (the person left the screen): a cancelled coroutine cannot call the database, so this runs outside it. A cancelled refresh is not a failure, it goes back to what it was.
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                if (e is kotlinx.coroutines.CancellationException) sources.setStatus(sourceId, if (source.status == SyncStatus.SYNCING) SyncStatus.NEVER else source.status, source.lastSyncAt)
+                else {
+                    android.util.Log.w("Sync", "sync of ${source.name} failed: ${e.javaClass.simpleName}: ${e.message?.take(160)}")
+                    sources.setStatus(sourceId, SyncStatus.FAILED, source.lastSyncAt)
+                    sources.setError(sourceId, e.message?.take(200))
+                }
+            }
             throw e
         }
     }

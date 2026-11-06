@@ -87,8 +87,8 @@ class UpdateManager(private val context: Context, private val settings: AppSetti
         scope.launch(Dispatchers.IO) {
             val result = runCatching { fetch() }
             android.util.Log.i("Update", "check manual=$manual installed=${installedVersion()} result=${result.map { r -> UpdateLogic.latest(r)?.version }.getOrElse { "error: ${it.message}" }}")
-            settings.lastUpdateCheckAt = System.currentTimeMillis()
             result.onSuccess { releases ->
+                settings.lastUpdateCheckAt = System.currentTimeMillis()          // only a check that worked counts, so a failed one (the box started before Wi-Fi) is tried again at the next start
                 val newest = UpdateLogic.latest(releases)
                 val asset = newest?.takeIf { UpdateLogic.isNewer(it.version, installedVersion()) }?.let { UpdateLogic.pickAsset(it, television) }
                 if (newest != null && asset != null) {
@@ -131,8 +131,11 @@ class UpdateManager(private val context: Context, private val settings: AppSetti
     private fun download(offer: UpdateState.Available): File {
         val expected = UpdateLogic.checksumFor(offer.release.notes, offer.asset.name) ?: error("This release has no checksum in its notes, so it was not installed.")
         if (!offer.asset.url.startsWith("https://")) error("The download address is not secure, so it was not installed.")
+        // The name comes from the release feed and becomes a path: only a plain file name is accepted, never one that reaches out of the download folder.
+        val name = offer.asset.name
+        if (name.isBlank() || name == "." || name == ".." || File(name).name != name || '\\' in name) error("The file name in this release is not valid, so it was not installed.")
         dir.deleteRecursively(); dir.mkdirs()
-        val file = File(dir, offer.asset.name)
+        val file = File(dir, name)
         val digest = MessageDigest.getInstance("SHA-256")
         val c = URL(offer.asset.url).openConnection() as HttpURLConnection
         try {

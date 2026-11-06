@@ -235,6 +235,8 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
         }
     }
 
+    // Switching to a Kids profile from Settings: Settings is left at once (a Kids profile cannot manage the app).
+    LaunchedEffect(app.streamsetu.tv.KidsLock.on, nav.tab) { if (app.streamsetu.tv.KidsLock.on && (nav.tab == Tab.SETTINGS || nav.tab == Tab.LIBRARIES)) nav.tab = Tab.HOME }
     // The page the person is on is remembered for the "last screen" start.
     LaunchedEffect(nav.tab, nav.base) { if (nav.base == Base.Shell && nav.tab != Tab.LIBRARIES) c.ui.setLastTab(nav.tab.name) }
     // Start-up: straight into the last library, and from there to Home, the last page, Live TV, the Guide, or playing the last channel. Not done when the app was opened by a link, which has its own destination.

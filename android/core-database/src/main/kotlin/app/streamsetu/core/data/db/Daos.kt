@@ -185,11 +185,11 @@ interface UserDao {
     @Query("SELECT * FROM progress WHERE itemId = :id") suspend fun progress(id: String): ProgressEntity?
     @Query("SELECT * FROM progress WHERE completed = 0 AND positionMs > 30000 AND kind IN ('MOVIE','EPISODE') ORDER BY updatedAt DESC LIMIT :limit") fun continueWatching(limit: Int): Flow<List<ProgressEntity>>
     @Query("SELECT * FROM progress") fun allProgress(): Flow<List<ProgressEntity>>
-    /** Movies watched to the end, and series whose episodes were all watched (the Watched tick on a poster). */
-    @Query("SELECT itemId FROM progress WHERE completed = 1 AND kind = 'MOVIE' UNION SELECT e.seriesId FROM episodes e LEFT JOIN progress p ON p.itemId = e.id AND p.completed = 1 GROUP BY e.seriesId HAVING COUNT(p.itemId) = COUNT(*)")
+    /** Movies watched to the end, and series whose episodes were all watched (the Watched tick on a poster). Only series with some progress are looked at: this runs again at every progress save (every 10 s while playing), and a series nothing was watched in can never qualify, so a library of tens of thousands of series is not scanned each time. */
+    @Query("SELECT itemId FROM progress WHERE completed = 1 AND kind = 'MOVIE' UNION SELECT e.seriesId FROM episodes e LEFT JOIN progress p ON p.itemId = e.id AND p.completed = 1 WHERE e.seriesId IN (SELECT e2.seriesId FROM episodes e2 JOIN progress p2 ON p2.itemId = e2.id) GROUP BY e.seriesId HAVING COUNT(p.itemId) = COUNT(*)")
     fun watchedTitles(): Flow<List<String>>
     /** Started but not finished: a movie by its position, a series by its episodes watched (the bar along the bottom of a poster). */
-    @Query("SELECT itemId AS id, CAST(positionMs AS REAL) / durationMs AS fraction FROM progress WHERE kind = 'MOVIE' AND completed = 0 AND positionMs > 30000 AND durationMs > 0 UNION ALL SELECT e.seriesId AS id, SUM(CASE WHEN p.completed = 1 THEN 1.0 WHEN p.durationMs > 0 THEN CAST(p.positionMs AS REAL) / p.durationMs ELSE 0 END) / COUNT(*) AS fraction FROM episodes e LEFT JOIN progress p ON p.itemId = e.id GROUP BY e.seriesId HAVING fraction > 0 AND fraction < 1")
+    @Query("SELECT itemId AS id, CAST(positionMs AS REAL) / durationMs AS fraction FROM progress WHERE kind = 'MOVIE' AND completed = 0 AND positionMs > 30000 AND durationMs > 0 UNION ALL SELECT e.seriesId AS id, SUM(CASE WHEN p.completed = 1 THEN 1.0 WHEN p.durationMs > 0 THEN CAST(p.positionMs AS REAL) / p.durationMs ELSE 0 END) / COUNT(*) AS fraction FROM episodes e LEFT JOIN progress p ON p.itemId = e.id WHERE e.seriesId IN (SELECT e2.seriesId FROM episodes e2 JOIN progress p2 ON p2.itemId = e2.id) GROUP BY e.seriesId HAVING fraction > 0 AND fraction < 1")
     fun partialTitles(): Flow<List<PartialRow>>
     @Query("DELETE FROM progress WHERE itemId = :id") suspend fun clearProgress(id: String)
     @Query("DELETE FROM progress") suspend fun clearAllProgress()

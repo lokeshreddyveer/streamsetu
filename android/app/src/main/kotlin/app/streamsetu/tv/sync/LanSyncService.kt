@@ -36,14 +36,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** A TCP socket that sends and receives whole frames: 4 bytes (big endian) with the length, then the body, at most 8 MiB, as in docs/WIFI-SYNC.md. */
-class SocketLink(private val socket: Socket) : LanLink {
+class SocketLink(private val socket: Socket, private val timeoutAfterFirstFrameMs: Int? = null) : LanLink {
+    private var firstFrameSeen = false
     private val input = DataInputStream(socket.getInputStream().buffered())
     private val output = DataOutputStream(socket.getOutputStream().buffered())
     override fun send(frame: ByteArray) { require(frame.size <= MAX); output.writeInt(frame.size); output.write(frame); output.flush() }
     override fun receive(): ByteArray {
         val n = input.readInt()
         require(n in 0..MAX) { "frame too large" }
-        return ByteArray(n).also { input.readFully(it) }
+        // Grown as the bytes arrive, never reserved up front: a connection that announces a big frame and then sends nothing holds no memory.
+        val chunk = ByteArray(minOf(n, 64 shl 10).coerceAtLeast(1)); val out = java.io.ByteArrayOutputStream(chunk.size); var left = n
+        while (left > 0) { val r = input.read(chunk, 0, minOf(left, chunk.size)); if (r < 0) throw java.io.EOFException(); out.write(chunk, 0, r); left -= r }
+        if (!firstFrameSeen) { firstFrameSeen = true; timeoutAfterFirstFrameMs?.let { runCatching { socket.soTimeout = it } } }
+        return out.toByteArray()
     }
     fun close() = runCatching { socket.close() }
     companion object { const val MAX = 8 shl 20 }
@@ -148,7 +153,9 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
         scope.launch(Dispatchers.IO) {
             while (isActive && !s.isClosed) {
                 val client = runCatching { s.accept() }.getOrNull() ?: break
-                launch(Dispatchers.IO) { respond(client) }
+                // A few devices at a time is all that ever syncs; more is something else on the network holding connections open, and each one would hold a thread.
+                if (!responders.tryAcquire()) { runCatching { client.close() }; continue }
+                launch(Dispatchers.IO) { try { respond(client) } finally { responders.release() } }
             }
         }
         val info = NsdServiceInfo().apply {
@@ -237,11 +244,13 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
         } finally { busy.remove(f.id) }
     }
 
+    private val responders = java.util.concurrent.Semaphore(6)
+
     private fun respond(socket: Socket) {
-        val link = SocketLink(socket)
+        val link = SocketLink(socket, timeoutAfterFirstFrameMs = 300_000)
         openSockets += socket
         try {
-            socket.soTimeout = 300_000
+            socket.soTimeout = 15_000          // the first message must arrive quickly; only a device that has started talking gets the long wait
             val outcome = protocol().runResponder(link)
             if (_enabled.value) finish(outcome, null)
         } catch (e: Exception) { /* the other device went away */ } finally { openSockets -= socket; link.close() }

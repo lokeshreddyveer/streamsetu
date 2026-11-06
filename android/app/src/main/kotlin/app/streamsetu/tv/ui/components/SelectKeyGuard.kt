@@ -12,7 +12,7 @@ import androidx.compose.ui.input.key.type
  * the release would choose the first item and close the menu. Until OK has been let go of once (or has not been held for a moment), the menu ignores OK.
  * The menu's being open never depends on whether the finger stays on the button.
  */
-class SelectKeyGuard(private val now: () -> Long = { System.currentTimeMillis() }, private val quietMs: Long = 400, private val opening: () -> Long = { OpeningPress.downTime }) {
+class SelectKeyGuard(private val now: () -> Long = { clock() }, private val quietMs: Long = 400, private val opening: () -> Long = { OpeningPress.downTime }) {
     var armed = false; private set
     private var lastDown = now()
 
@@ -36,6 +36,8 @@ class SelectKeyGuard(private val now: () -> Long = { System.currentTimeMillis() 
     fun tick() { if (!armed && opening() == 0L && now() - lastDown > quietMs) armed = true }
 
     companion object {
+        /** The time the guard reads. Only a test changes it: with the real clock, a slow machine let the 400 ms pass before the test's first press and the guard armed itself. */
+        @androidx.annotation.VisibleForTesting internal var clock: () -> Long = { System.currentTimeMillis() }
         fun isSelect(e: KeyEvent) = e.key == Key.DirectionCenter || e.key == Key.Enter || e.key == Key.NumPadEnter
         fun isDown(e: KeyEvent) = e.type == KeyEventType.KeyDown
     }

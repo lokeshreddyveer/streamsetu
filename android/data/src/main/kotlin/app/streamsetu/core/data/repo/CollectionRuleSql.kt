@@ -11,6 +11,8 @@ class RuleSql(val conditions: List<String>, val args: List<Any>)
  * uses columns that are indexed or small tables (the progress and favourites tables, the categories of one connection), so a list is read the same way a folder is.
  */
 object CollectionRuleSql {
+    /** When a title was added, in seconds. Xtream stores seconds; Plex, Jellyfin and add-ons store milliseconds (anything above 10^11); M3U stores only its list position, which is never a date and so never counts as recent. */
+    const val ADDED_AT_SECONDS = "(CASE WHEN x.addedAt > 100000000000 THEN x.addedAt / 1000 ELSE x.addedAt END)"
     private fun esc(text: String) = text.trim().lowercase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     private fun like(text: String) = "%" + esc(text) + "%"
 
@@ -27,7 +29,7 @@ object CollectionRuleSql {
         }
         if (r.unwatched) c += if (kind == ContentKind.SERIES) "NOT EXISTS (SELECT 1 FROM progress p WHERE p.seriesId = x.id)" else "NOT EXISTS (SELECT 1 FROM progress p WHERE p.itemId = x.id)"
         if (r.favoritesOnly) c += "EXISTS (SELECT 1 FROM favorites f WHERE f.itemId = x.id AND f.listId = 'favourites')"
-        r.addedWithinDays?.let { c += "x.addedAt >= CAST(strftime('%s','now', ?) AS INTEGER)"; a += "-$it days" }
+        r.addedWithinDays?.let { c += "$ADDED_AT_SECONDS >= CAST(strftime('%s','now', ?) AS INTEGER)"; a += "-$it days" }
         r.titleContains?.takeIf { it.isNotBlank() }?.let { c += "LOWER(x.title) LIKE ? ESCAPE '\\'"; a += like(it) }
         r.folderContains?.takeIf { it.isNotBlank() }?.let { c += "x.categoryId IN (SELECT id FROM categories WHERE LOWER(name) LIKE ? ESCAPE '\\')"; a += like(it) }
         return RuleSql(c, a)

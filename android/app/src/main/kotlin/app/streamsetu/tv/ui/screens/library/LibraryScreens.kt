@@ -120,11 +120,11 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 // OK on a card opens it, so there is no separate button for that; this line says so, and where the rest is.
                 Label("OK opens the library  ·  hold OK for actions", Tokens.small, Tokens.textTertiary, modifier = Modifier.weight(1f))
-                if (preview != null) {
+                if (preview != null && !app.streamsetu.tv.KidsLock.on) {
                     if (preview.kind != LibraryEntry.Kind.UNFINISHED) TvButton("Edit", { if (preview.kind == LibraryEntry.Kind.COMBINED) nav.base = Base.Combined(preview) else nav.base = Base.Setup(typeOf(preview), preview.sourceIds.first()) }, icon = Icons.Filled.Edit)
                     TvButton("Actions", { nav.open(Overlay.ManageLibrary(preview)) }, icon = Icons.Filled.Tune)
                 }
-                TvButton("Settings", { nav.openSettingsFromChooser() }, icon = Icons.Filled.Settings)
+                if (!app.streamsetu.tv.KidsLock.on) TvButton("Settings", { nav.openSettingsFromChooser() }, icon = Icons.Filled.Settings)
             }
         }
     }
@@ -369,7 +369,7 @@ private val WordmarkKnockout = androidx.compose.ui.graphics.ColorMatrix(floatArr
 @Composable
 fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
     var form by remember { mutableStateOf(LibraryViewModel.Form()) }
-    var id by remember { mutableStateOf(draftId) }
+    var id by remember { mutableStateOf(draftId ?: vm.newSetupId()) }          // one id for this whole setup: every Test, Save as Draft and the connection it becomes use it
     var message by remember { mutableStateOf<String?>(null) }
     val test by vm.test.collectAsState()
     val first = remember { FocusRequester() }

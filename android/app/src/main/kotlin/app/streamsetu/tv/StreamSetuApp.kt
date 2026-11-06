@@ -132,10 +132,10 @@ class AppContainer @Inject constructor(
             kotlinx.coroutines.runBlocking { kotlinx.coroutines.withTimeoutOrNull(2_000) { playback.stop(); playback.drainProgress() } }
             lan.setEnabled(false); folders.lockAgain()
         }) { p ->
-            parental.setKids(p.kids)
+            parental.setKids(p.kids); KidsLock.on = p.kids
             lan.setEnabled(lan.wanted && profiles.isMainActive)
             if (app.streamsetu.tv.sports.SportsFeature.enabled) sportsReminders.securityChanged()          // the old profile's banner goes, its alarms are cancelled and the new profile's are set
-        }.also { it.reload(); parental.setKids(it.active.kids) }
+        }.also { it.reload(); parental.setKids(it.active.kids); KidsLock.on = it.active.kids }
     }
 
     /** What the player plays next: the channels of the list it was started from, or the episodes of a series. */
@@ -464,7 +464,7 @@ class AppContainer @Inject constructor(
             val src = sources.get(sourceId) ?: return@runCatching
             val fallback = if (src.type == SourceType.XTREAM) {
                 val pass = credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()
-                "${app.streamsetu.core.parse.Xtream.normalizeHost(src.address)}/xmltv.php?username=${src.username.orEmpty()}&password=$pass"
+                "${app.streamsetu.core.parse.Xtream.normalizeHost(src.address)}/xmltv.php?username=${urlPart(src.username.orEmpty())}&password=${urlPart(pass)}"
             } else null
             epg.refresh(src, fallback, resolver.headers(src.id))
         }
@@ -484,7 +484,7 @@ class AppContainer @Inject constructor(
                 val empty = runCatching { epg.programmeCount(db) == 0 }.getOrDefault(true)
                 if (!force && !empty && (guideAt == 0L || System.currentTimeMillis() - guideAt < 6 * 3600_000L)) { if (guideAt == 0L) guideAt = System.currentTimeMillis(); return@launch }
                 val src = sources.get(id) ?: return@launch
-                val fallback = if (src.type == SourceType.XTREAM) "${app.streamsetu.core.parse.Xtream.normalizeHost(src.address)}/xmltv.php?username=${src.username.orEmpty()}&password=${credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()}" else null
+                val fallback = if (src.type == SourceType.XTREAM) "${app.streamsetu.core.parse.Xtream.normalizeHost(src.address)}/xmltv.php?username=${urlPart(src.username.orEmpty())}&password=${urlPart(credentials.load(SourceRepository.credentialRef(src.id)).orEmpty())}" else null
                 runCatching { epg.refresh(src, fallback, resolver.headers(src.id)) }
                 guideAt = System.currentTimeMillis()
             } finally { guideBusy = false }
@@ -495,7 +495,7 @@ class AppContainer @Inject constructor(
     suspend fun setGuideAddress(sourceId: String, url: String?): Int {
         sources.setGuide(sourceId, url)
         val src = sources.get(sourceId) ?: return 0
-        val fallback = if (src.type == SourceType.XTREAM) "${app.streamsetu.core.parse.Xtream.normalizeHost(src.address)}/xmltv.php?username=${src.username.orEmpty()}&password=${credentials.load(SourceRepository.credentialRef(src.id)).orEmpty()}" else null
+        val fallback = if (src.type == SourceType.XTREAM) "${app.streamsetu.core.parse.Xtream.normalizeHost(src.address)}/xmltv.php?username=${urlPart(src.username.orEmpty())}&password=${urlPart(credentials.load(SourceRepository.credentialRef(src.id)).orEmpty())}" else null
         return runCatching { epg.refresh(src, fallback, resolver.headers(src.id)) }.getOrDefault(-1)
     }
 
@@ -530,8 +530,12 @@ class AppContainer @Inject constructor(
     }
 
     /** A live channel just started: the same channel in the person's other connections is kept as the last resort if this one stops working. */
+    private var copiesJob: kotlinx.coroutines.Job? = null
+    /** A user name or password as one part of a web address: a `&`, `#`, `+`, `%` or space in it no longer cuts or changes the query. */
+    private fun urlPart(s: String) = java.net.URLEncoder.encode(s, "UTF-8")
     private fun rememberChannelCopies(item: ChannelPlayable) {
-        appScope.launch {
+        copiesJob?.cancel()          // zapping through channels: only the one you stopped on is looked up (the lookup reads every channel, and a cancelled one is interrupted)
+        copiesJob = appScope.launch {
             val copies = runCatching { catalog.channelCopiesElsewhere(item.channel) }.getOrDefault(emptyList()).map { ChannelPlayable(it) }
             kotlinx.coroutines.withContext(Dispatchers.Main) { if (playback.current.value?.id == item.id) fallbackCopies = copies }
         }
@@ -541,7 +545,8 @@ class AppContainer @Inject constructor(
         val next = fallbackCopies.firstOrNull() ?: return
         fallbackCopies = fallbackCopies.drop(1)
         val what = if (next is ChannelPlayable) "That channel did not play. Trying it on another playlist." else "That copy did not play. Trying another."
-        android.widget.Toast.makeText(context, what, android.widget.Toast.LENGTH_SHORT).show()
+        // This runs on a worker thread (the failure is collected on the app scope); a toast can only be shown from the main thread, and one shown from here crashed the app.
+        android.os.Handler(android.os.Looper.getMainLooper()).post { android.widget.Toast.makeText(context, what, android.widget.Toast.LENGTH_SHORT).show() }
         play(next, listOf(next), keepCopies = true)
     }
 

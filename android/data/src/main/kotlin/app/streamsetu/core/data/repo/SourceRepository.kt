@@ -25,6 +25,12 @@ class SourceRepository(private val db: AppDatabase, private val credentials: Cre
 
     /** Removes a connection and everything read from it, as one step: all of it goes or none of it does. Its saved login is deleted only after that has happened. */
     suspend fun remove(id: String) {
+        // Waits for a refresh of this connection to stop (it checks between its steps), so no rows are written for it after it is gone.
+        SourceLocks.removing(id) { removeLocked(id) }
+        credentials.delete(credentialRef(id))
+    }
+
+    private suspend fun removeLocked(id: String) {
         db.withTransaction {
             val c = db.catalog()
             c.clearChannels(id); c.clearMovies(id); c.clearSeries(id); c.clearCategories(id); c.clearFingerprint(id)
@@ -33,7 +39,6 @@ class SourceRepository(private val db: AppDatabase, private val credentials: Cre
             val raw = db.openHelper.writableDatabase          // on this transaction's own thread, so these are part of it
             app.streamsetu.core.data.db.SearchIndex.clear(raw, id); app.streamsetu.core.data.db.PeopleIndex.clear(raw, id)
         }
-        credentials.delete(credentialRef(id))
     }
 
     suspend fun setStatus(id: String, status: SyncStatus, at: Long = System.currentTimeMillis()) = db.sources().setStatus(id, status.name, at)

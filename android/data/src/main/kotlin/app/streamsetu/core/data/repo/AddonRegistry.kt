@@ -121,7 +121,8 @@ class AddonRegistry(context: Context, private val db: AppDatabase, private val s
 
     /** Forgets what was read from the add-on (it is read again at the next refresh); the add-on, its settings and its sign-in stay. */
     suspend fun clearCache(addonId: String) {
-        CatalogStore(db).replace(sourceId(addonId), emptyList(), emptyList(), emptyList(), emptyList())
+        CatalogStore(db).replace(sourceId(addonId), emptyList(), emptyList(), emptyList(), emptyList())          // takes the connection's own lock, so it waits for a refresh instead of running through it
+        db.catalog().deleteOrphanEpisodes()          // the episodes of the series that were just removed
         sources.setCounts(sourceId(addonId), 0, 0, 0); sources.setStatus(sourceId(addonId), SyncStatus.NEVER, 0)
     }
 

@@ -335,7 +335,7 @@ private fun HomeHeader(library: String, ok: Boolean, c: AppContainer, nav: Navig
         if (!ok) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Box(Modifier.size(7.dp).background(Tokens.warning, CircleShape)); Label("Offline: showing what is saved", Tokens.small, Tokens.warning) }
         Spacer(Modifier.weight(1f))
         TopIcon(Icons.Filled.Search, "Search") { nav.go(Tab.SEARCH) }
-        TopIcon(Icons.Filled.Settings, "Settings") { nav.go(Tab.SETTINGS) }
+        if (!app.streamsetu.tv.KidsLock.on) TopIcon(Icons.Filled.Settings, "Settings") { nav.go(Tab.SETTINGS) }
         Label(java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(now)), Tokens.row, Tokens.textSecondary, FontWeight.Medium, modifier = Modifier.padding(start = 8.dp))
     }
 }

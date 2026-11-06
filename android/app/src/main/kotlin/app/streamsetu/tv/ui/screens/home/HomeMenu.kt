@@ -31,8 +31,11 @@ enum class RowKind { CONTINUE, RECENT_LIVE, FAVORITES, WATCH_LATER, EPISODES, OT
  * the same detail screens and the same lists as the rest of the app.
  */
 @Composable
-fun HomeMenuHost(target: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppContainer, nav: Navigator, extra: List<MenuAction> = emptyList(), onClose: () -> Unit) {
-    if (target == null) return
+fun HomeMenuHost(tapped: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppContainer, nav: Navigator, extra: List<MenuAction> = emptyList(), onClose: () -> Unit) {
+    // Information, Choose source and Mark series open a second dialog after the menu. The caller clears its target the moment a choice is made, which used to drop this
+    // function (and the dialog's state with it) before the dialog could show; the title is kept here until that dialog closes.
+    var kept by remember { mutableStateOf<HomeTarget?>(null) }
+    val target: HomeTarget = tapped ?: kept ?: return
     val scope = rememberCoroutineScope()
     val favs by vm.favouriteIds.collectAsState()
     val later by vm.watchLaterIds.collectAsState()
@@ -106,15 +109,15 @@ fun HomeMenuHost(target: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppCon
             HomeAction.MARK_UNWATCHED -> vm.setWatched(itemId, if (target is HomeTarget.Episode) ContentKind.EPISODE else ContentKind.MOVIE, (target as? HomeTarget.Episode)?.series?.id, false)
             HomeAction.FAVORITE -> vm.setFavorite(favId, contentKind, true); HomeAction.UNFAVORITE -> vm.setFavorite(favId, contentKind, false)
             HomeAction.WATCH_LATER -> vm.setWatchLater(favId, contentKind, true); HomeAction.REMOVE_WATCH_LATER -> vm.setWatchLater(favId, contentKind, false)
-            HomeAction.CHOOSE_SOURCE -> chooser = true
-            HomeAction.INFO -> info = true
+            HomeAction.CHOOSE_SOURCE -> { kept = target; chooser = true }
+            HomeAction.INFO -> { kept = target; info = true }
             HomeAction.WATCH_CHANNEL -> (target as? HomeTarget.Live)?.let { play(c, nav, ChannelPlayable(it.channel)) }
             HomeAction.OPEN_GUIDE -> nav.go(Tab.GUIDE)
             HomeAction.OPEN_CHANNEL_FOLDER -> (target as? HomeTarget.Live)?.channel?.categoryId?.let { nav.openFolderTab(ContentKind.CHANNEL, it) }
             HomeAction.REMOVE_FROM_RECENT -> vm.removeFromRecent(itemId)
             HomeAction.PLAY_NEXT_EPISODE -> nextEpisode?.let { play(c, nav, it, seriesQueue) }
-            HomeAction.MARK_SERIES_WATCHED -> confirmSeries = true
-            HomeAction.MARK_SERIES_UNWATCHED -> confirmSeries = false
+            HomeAction.MARK_SERIES_WATCHED -> { kept = target; confirmSeries = true }
+            HomeAction.MARK_SERIES_UNWATCHED -> { kept = target; confirmSeries = false }
         }
     }
 
@@ -129,13 +132,13 @@ fun HomeMenuHost(target: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppCon
     val orderActions = if (favId in favs) listOf(
         MenuAction("Move to front of favorites", Icons.Filled.ArrowUpward) { vm.moveFavorite(favId, contentKind, true) },
         MenuAction("Move to end of favorites", Icons.Filled.ArrowDownward) { vm.moveFavorite(favId, contentKind, false) }) else emptyList()
-    if (!chooser && !info && confirmSeries == null) ContextMenu(title, null, actionsFor(st).map { a -> MenuAction(label(a), icon(a)) { run(a) } } + queueActions + orderActions + extra, onClose = onClose)
-    confirmSeries?.let { watched -> ContextMenu(if (watched) "Mark every episode watched?" else "Mark every episode unwatched?", "This changes all episodes of ${title}.", listOf(MenuAction(if (watched) "Mark all watched" else "Mark all unwatched", Icons.Filled.Check) { (target as? HomeTarget.Show)?.let { vm.setSeriesWatched(it.series, watched) } }, MenuAction("Cancel", Icons.Filled.Close) {}), onClose = { confirmSeries = null; onClose() }) }
+    if (tapped != null && !chooser && !info && confirmSeries == null) ContextMenu(title, null, actionsFor(st).map { a -> MenuAction(label(a), icon(a)) { run(a) } } + queueActions + orderActions + extra, onClose = onClose)
+    confirmSeries?.let { watched -> ContextMenu(if (watched) "Mark every episode watched?" else "Mark every episode unwatched?", "This changes all episodes of ${title}.", listOf(MenuAction(if (watched) "Mark all watched" else "Mark all unwatched", Icons.Filled.Check) { (target as? HomeTarget.Show)?.let { vm.setSeriesWatched(it.series, watched) } }, MenuAction("Cancel", Icons.Filled.Close) {}), onClose = { confirmSeries = null; kept = null; onClose() }) }
     if (chooser) ContextMenu("Choose source", "Opens only this play. Your default is unchanged.", variants.map { v ->
         MenuAction((entries.firstOrNull { it.id == "src:${v.sourceId}" }?.name ?: "Connection") + if (v.id == itemId) "  (current)" else "", Icons.Filled.SwapHoriz) {
             when (v) { is MoviePlayable -> play(c, nav, v); is SeriesFeature -> nav.open(Overlay.SeriesDetail(v.series)); else -> {} }
         }
-    }, onClose = { chooser = false; onClose() })
+    }, onClose = { chooser = false; kept = null; onClose() })
     if (info) {
         val lines = when (target) {
             is HomeTarget.Film -> listOfNotNull(target.movie.year?.toString(), target.movie.rating?.takeIf { it.isNotBlank() && it != "0" }?.let { "Rating $it" }, target.movie.plot)
@@ -143,6 +146,6 @@ fun HomeMenuHost(target: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppCon
             is HomeTarget.Episode -> listOfNotNull(target.series.title, target.episode.title)
             is HomeTarget.Live -> listOfNotNull(target.channel.number?.let { "Channel $it" }, if (guide) "Guide data available" else "No guide data")
         }
-        ContextMenu(title, lines.joinToString("\n").ifBlank { "The provider sent no further details." }, listOf(MenuAction("Close", Icons.Filled.Close) {}), onClose = { info = false; onClose() })
+        ContextMenu(title, lines.joinToString("\n").ifBlank { "The provider sent no further details." }, listOf(MenuAction("Close", Icons.Filled.Close) {}), onClose = { info = false; kept = null; onClose() })
     }
 }

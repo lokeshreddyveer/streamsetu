@@ -64,8 +64,8 @@ private fun nameOf(t: Tab) = when (t) { Tab.LIBRARIES -> "Libraries"; Tab.GUIDE 
 internal val Groups get() = listOf(
     "" to listOf(Tab.SEARCH),
     "WATCH" to listOf(Tab.HOME, Tab.LIVE, Tab.SPORTS, Tab.GUIDE, Tab.MOVIES, Tab.SERIES).filter { it != Tab.SPORTS || app.streamsetu.tv.sports.SportsFeature.enabled },
-    "MANAGE" to listOf(Tab.LIBRARIES, Tab.SETTINGS),
-)
+    "MANAGE" to listOf(Tab.LIBRARIES, Tab.SETTINGS).filter { !app.streamsetu.tv.KidsLock.on },          // a Kids profile cannot manage the app
+).filter { it.second.isNotEmpty() }
 private val AllTabs get() = Groups.flatMap { it.second }
 
 private val Row get() = (56 * app.streamsetu.tv.ui.theme.UiScale.k).toInt()        // dp, the height of every entry

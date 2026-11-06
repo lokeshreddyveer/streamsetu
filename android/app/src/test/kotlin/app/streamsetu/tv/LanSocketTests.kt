@@ -32,7 +32,8 @@ class LanSocketTests {
 
     /** A real TCP connection on this computer: the framing, the hello, pairing and one exchange all work over it. */
     @Test fun twoDevicesPairAndSyncOverTcp() {
-        val server = ServerSocket(0)
+        // Loopback only: a listener on every interface is reachable from the network while the test runs, and a firewall that blocks incoming connections (macOS does by default) makes the connect below time out.
+        val server = ServerSocket(0, 50, java.net.InetAddress.getLoopbackAddress())
         val a = Mem(listOf(rec("one", 10))); val b = Mem(listOf(rec("two", 20)))
         val pa = LanProtocol(LanCrypto.newIdentity(), "A", Trust(), a, { false }, { _, _ -> true })
         val pb = LanProtocol(LanCrypto.newIdentity(), "B", Trust(), b, { true }, { _, _ -> true })

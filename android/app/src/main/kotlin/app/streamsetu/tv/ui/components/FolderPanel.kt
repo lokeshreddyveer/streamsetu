@@ -96,6 +96,7 @@ fun FolderPanel(
     var creating by remember { mutableStateOf(false) }
     var resetFor by remember { mutableStateOf<Folder?>(null) }
     var unlockingToRemove by remember { mutableStateOf(false) }
+    var resettingAfterPin by remember { mutableStateOf(false) }          // a locked folder is reset (which removes its lock) only after the PIN, like Unlock
     var lockAfterCreate by remember { mutableStateOf(false) }
     val reduced = LocalReducedMotion.current
     val listState = rememberLazyListState()
@@ -236,7 +237,7 @@ fun FolderPanel(
             add(MenuAction("Rename display name…", Icons.Filled.Edit) { renameFor = f })
             add(MenuAction("Folder information", Icons.Filled.Info) { infoFor = f })
             if (f.pref.sortIndex >= 0) add(MenuAction("Reset folder position", Icons.Filled.Restore) { actions.resetPosition(f) })
-            if (f.pref != app.streamsetu.core.model.FolderPref()) add(MenuAction("Reset folder customization…", Icons.Filled.RestartAlt) { resetFor = f })
+            if (f.pref != app.streamsetu.core.model.FolderPref()) add(MenuAction("Reset folder customization…", Icons.Filled.RestartAlt) { if (f.pref.locked && actions.hasPin) { resettingAfterPin = true; pinFor = f } else resetFor = f })
         }, onClose = { menuFor = null })
     }
     infoFor?.let { f ->
@@ -251,8 +252,9 @@ fun FolderPanel(
     pinFor?.let { f ->
         PinDialog(create = false, check = actions::checkPin, onDone = {
             pinFor = null
-            if (unlockingToRemove) { unlockingToRemove = false; actions.toggleLocked(f) } else { actions.unlock(f.id); onSelect(Browse.Folder(f.id)) }
-        }, onClose = { pinFor = null; unlockingToRemove = false })
+            if (resettingAfterPin) { resettingAfterPin = false; resetFor = f }
+            else if (unlockingToRemove) { unlockingToRemove = false; actions.toggleLocked(f) } else { actions.unlock(f.id); onSelect(Browse.Folder(f.id)) }
+        }, onClose = { pinFor = null; unlockingToRemove = false; resettingAfterPin = false })
     }
     creatingPinFor?.let { f ->
         PinDialog(create = true, check = { true }, onDone = { pin ->

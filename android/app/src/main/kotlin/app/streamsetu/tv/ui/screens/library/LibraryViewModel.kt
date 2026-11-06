@@ -53,21 +53,33 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
      */
     private var testJob: kotlinx.coroutines.Job? = null
 
+    private val tester = app.streamsetu.core.data.repo.ConnectionTester(
+        object : app.streamsetu.core.data.repo.ConnectionTester.Store {
+            override suspend fun get(id: String) = c.sources.get(id)
+            override suspend fun add(source: Source, password: String?) = c.sources.add(source, password)
+            override suspend fun remove(id: String) = c.sources.remove(id)
+            override suspend fun setError(id: String, message: String?) = c.sources.setError(id, message)
+        },
+        read = { id -> c.syncWithGuide(id).let { app.streamsetu.core.data.repo.ConnectionTester.Counts(it.channels, it.movies, it.series) } },
+    )
+
+    /** The id a new connection keeps from its first Test to the connection it becomes (the setup screen asks for it once). */
+    fun newSetupId(): String = java.util.UUID.randomUUID().toString()
+
     fun test(type: SourceType, draftId: String?, f: Form) {
         if (testing) return
         testing = true
         testJob = viewModelScope.launch {
             _test.value = Test.Running
             val label = f.name.ifBlank { f.address.trim().substringAfter("://").substringBefore('/').substringAfterLast('/').take(30).ifBlank { "My connection" } }
-            val saved = c.sources.add(Source(id = draftId.orEmpty(), name = label, type = type, address = f.address.trim(), username = f.user.trim().ifBlank { null }, draft = true, userAgent = f.userAgent.trim().ifBlank { null }), f.password.trim().ifBlank { null })
-            c.resolver.setCustomHeaders(saved.id, f.headers); c.resolver.setAllowsSelfSignedTls(saved.id, f.trustCertificate)
-            runCatching { c.syncWithGuide(saved.id) }
-                .onSuccess { r ->
-                    if (r.channels + r.movies + r.series == 0) _test.value = Test.Failed("The sign-in worked but the provider returned nothing to watch. Check that the subscription is active.").also { c.sources.setError(saved.id, "Nothing to watch") }
-                    else { _test.value = Test.Passed(saved.id, label, r.channels, r.movies, r.series); app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.SUCCESS) }
+            val id = draftId?.takeIf { it.isNotBlank() } ?: newSetupId()
+            val typed = Source(id = id, name = label, type = type, address = f.address.trim(), username = f.user.trim().ifBlank { null }, draft = true, userAgent = f.userAgent.trim().ifBlank { null })
+            try {
+                when (val r = tester.test(id, typed, f.password.trim().ifBlank { null }) { sid -> c.resolver.setCustomHeaders(sid, f.headers); c.resolver.setAllowsSelfSignedTls(sid, f.trustCertificate) }) {
+                    is app.streamsetu.core.data.repo.ConnectionTester.Result.Passed -> { _test.value = Test.Passed(r.sourceId, label, r.counts.channels, r.counts.movies, r.counts.series); app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.SUCCESS) }
+                    is app.streamsetu.core.data.repo.ConnectionTester.Result.Failed -> { app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.ERROR); _test.value = Test.Failed(r.message) }
                 }
-                .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it; app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.ERROR); _test.value = Test.Failed(it.message ?: "The connection could not be read.").also { _ -> c.sources.setError(saved.id, it.message?.take(200)) } }
-            testing = false
+            } finally { testing = false }
         }
     }
 

@@ -90,7 +90,7 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
                 where += when (browse.rule) {
                     SmartRule.UNWATCHED -> unwatched
                     SmartRule.UNWATCHED_FAVORITES -> "$unwatched AND ${inList(UserRepository.FAVOURITES)}"
-                    SmartRule.NEW_30D -> "x.addedAt >= CAST(strftime('%s','now','-30 days') AS INTEGER)"
+                    SmartRule.NEW_30D -> "${CollectionRuleSql.ADDED_AT_SECONDS} >= CAST(strftime('%s','now','-30 days') AS INTEGER)"
                 }
             }
             is Browse.Rule -> { val q = CollectionRuleSql.of(kind, browse.rule); where.addAll(q.conditions); args.addAll(q.args) }

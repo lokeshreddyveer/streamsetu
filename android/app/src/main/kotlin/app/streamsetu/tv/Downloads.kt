@@ -169,7 +169,8 @@ class Downloads(private val context: Context, private val resolver: app.streamse
             finalFile.delete()
             if (part.renameTo(finalFile)) change(id) { it.copy(state = SaveState.DONE, bytesDone = finalFile.length(), bytesTotal = finalFile.length(), fileName = name, error = null) }
             else fail(id, "The file could not be saved on this device.", false)
-        } catch (e: IOException) {
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+        } catch (e: Exception) {          // an IOException, and also an address OkHttp refuses (rtsp://, an empty host): a failed save, never a crash that repeats at every launch
             val message = (e.message ?: "The connection was lost.").replace(Regex("https?://\\S+"), "the connection")
             if (item(id) != null) fail(id, message, part.exists() && part.length() > 0)
         }

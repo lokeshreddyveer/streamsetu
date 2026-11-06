@@ -22,7 +22,9 @@ import app.streamsetu.tv.ui.components.ContextMenu
 import app.streamsetu.tv.ui.components.Focusable
 import app.streamsetu.tv.ui.components.Label
 import app.streamsetu.tv.ui.components.MenuAction
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,6 +40,10 @@ import org.robolectric.annotation.Config
 @androidx.compose.ui.test.ExperimentalTestApi
 class ContextMenuTest {
     @get:Rule val rule = createComposeRule()
+
+    /** The guard tells "the press that opened the menu is over" by real time (400 ms). Frozen here, so how busy the machine is cannot change what the test sees. */
+    @Before fun freezeGuardClock() { app.streamsetu.tv.ui.components.SelectKeyGuard.clock = { 0L } }
+    @After fun restoreGuardClock() { app.streamsetu.tv.ui.components.SelectKeyGuard.clock = { System.currentTimeMillis() } }
     private var open by mutableStateOf(false)
     private var chosen by mutableIntStateOf(0)
     private var cardClicks by mutableIntStateOf(0)

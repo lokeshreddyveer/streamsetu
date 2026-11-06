@@ -42,7 +42,8 @@ object ChannelHealthCheck {
     fun check(url: String, headers: Map<String, String> = emptyMap(), userAgent: String? = null, timeoutSeconds: Long = 10): Health {
         val started = System.nanoTime()
         val client = Http.client.newBuilder().callTimeout(timeoutSeconds + 5, TimeUnit.SECONDS).readTimeout(timeoutSeconds, TimeUnit.SECONDS).build()
-        val req = Request.Builder().url(url).apply { headers.forEach { (k, v) -> header(k, v) }; if (!userAgent.isNullOrBlank()) header("User-Agent", userAgent) }.build()
+        // A udp://, rtmp:// or rtsp:// address (or a header that cannot be sent) cannot be asked over the web: that is "no answer", never a crash and never proof the channel is dead.
+        val req = try { Request.Builder().url(url).apply { headers.forEach { (k, v) -> header(k, v) }; if (!userAgent.isNullOrBlank()) header("User-Agent", userAgent) }.build() } catch (e: IllegalArgumentException) { return Health.Silent }
         return try {
             client.newCall(req).execute().use { r ->
                 val buf = ByteArray(4096)

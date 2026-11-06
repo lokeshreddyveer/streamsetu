@@ -1,6 +1,8 @@
 package app.streamsetu.core.sync
 
 import androidx.room.withTransaction
+import app.streamsetu.core.data.repo.SourceLocks
+import app.streamsetu.core.data.repo.SourceRemovedException
 import kotlinx.coroutines.sync.withLock
 import app.streamsetu.core.data.db.*
 
@@ -10,9 +12,6 @@ import app.streamsetu.core.data.db.*
  * then out of date and the catalogs are written again once.
  */
 class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: Int = 2) {
-    /** One refresh of a source at a time: two that overlapped would write and delete against different snapshots and leave rows that belong to neither. */
-    private val locks = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.sync.Mutex>()
-
     internal fun digest(cats: List<CategoryEntity>, ch: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>): Long {
         var h = 1125899906842597L
         fun mix(x: Int) { h = 31 * h + x }
@@ -24,7 +23,8 @@ class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: 
     }
 
     suspend fun replace(sourceId: String, cats: List<CategoryEntity>, allChannels: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>) =
-        locks.getOrPut(sourceId) { kotlinx.coroutines.sync.Mutex() }.withLock { replaceLocked(sourceId, cats, allChannels, mv, sr) }
+        // One writer of a source's catalog at a time (a refresh, removing it, clearing an add-on): two that overlapped would write and delete against different snapshots and leave rows that belong to neither.
+        SourceLocks.of(sourceId).withLock { replaceLocked(sourceId, cats, allChannels, mv, sr) }
 
     private suspend fun replaceLocked(sourceId: String, cats: List<CategoryEntity>, allChannels: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>) {
         val ch = allChannels.filter { !ChannelFilter.isDivider(it.name) }          // a heading in the provider's list is not a channel and is never stored (the one definition, shared with the import)
@@ -43,7 +43,10 @@ class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: 
         if (was == null || was.version != fingerprintVersion) db.withTransaction { app.streamsetu.core.data.db.SearchIndex.clear(raw, sourceId) }          // an index from before rows had fixed numbers is rebuilt, once
         val prefs = db.extras().channelPrefsNow().associateBy { it.channelId }
         suspend fun <T> step(rows: List<T>, write: suspend (List<T>) -> Unit) {
-            rows.chunked(STEP).forEach { part -> db.withTransaction { write(part) }; kotlinx.coroutines.delay(PAUSE_MS) }
+            rows.chunked(STEP).forEach { part ->
+                if (SourceLocks.isRemoving(sourceId)) throw SourceRemovedException(sourceId)          // the connection is being removed: stop writing rows for it
+                db.withTransaction { write(part) }; kotlinx.coroutines.delay(PAUSE_MS)
+            }
         }
         step(cats) { c.putCategories(it) }
         step(ch) { part ->
