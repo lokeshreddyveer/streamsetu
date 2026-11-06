@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -97,6 +98,8 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     val pokes = remember { kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST) }
     val flashPulse = remember { kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST) }
     var panel by remember { mutableStateOf<PanelKind?>(null) }
+    // True when an open panel could not take the remote's focus at all (an empty list, an entry that is not there): the control bar is then given back, so the remote is never left with nothing to press.
+    var panelStuck by remember(panel) { mutableStateOf(false) }
     // While a side menu is open the controls underneath are hidden, so the two never draw over each other.
     val sidePanelOpen = panel != null && panel != PanelKind.TRACKS
     // True when the control row cannot hold every control: Speed, Picture and Player then move into More (set from the row, which measures its width).
@@ -368,7 +371,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                 val chips = rememberStreamChips(c, barVisible)
                 var row2Focused by remember { mutableStateOf(false) }
                 Column(
-                    Modifier.fillMaxWidth().focusProperties { canFocus = panel == null }.onFocusChanged { controlsFocused = it.hasFocus }.onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp && (!row2Focused || live)) { toRoot(); true } else false },
+                    Modifier.fillMaxWidth().focusProperties { canFocus = panel == null || panelStuck }.onFocusChanged { controlsFocused = it.hasFocus }.onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp && (!row2Focused || live)) { toRoot(); true } else false },
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     var first = true
@@ -434,8 +437,15 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
             val audio by playback.audioTracks.collectAsStateWithLifecycle()          // read only while this panel is open
             val subs by playback.subtitleTracks.collectAsStateWithLifecycle()
             val firstReq = remember { FocusRequester() }
-            LaunchedEffect(Unit) { repeat(8) { androidx.compose.runtime.withFrameNanos { }; if (runCatching { firstReq.requestFocus() }.isSuccess) return@LaunchedEffect } }
-            Row(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Tokens.playerMenuScrim, Tokens.playerMenuScrim))).padding(start = 96.dp, end = 96.dp, top = 56.dp, bottom = 40.dp), horizontalArrangement = Arrangement.spacedBy(64.dp)) {
+            val groupReq = remember { FocusRequester() }
+            var inPanel by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                // Asking is not the same as getting: wait until focus is really inside the panel, then fall back to its first entry, and last of all give the bar back.
+                repeat(8) { runCatching { firstReq.requestFocus() }; androidx.compose.runtime.withFrameNanos { }; if (inPanel) return@LaunchedEffect }
+                runCatching { groupReq.requestFocus() }; androidx.compose.runtime.withFrameNanos { }
+                if (!inPanel) panelStuck = true
+            }
+            Row(Modifier.focusRequester(groupReq).focusGroup().onFocusChanged { inPanel = it.hasFocus }.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Tokens.playerMenuScrim, Tokens.playerMenuScrim))).padding(start = 96.dp, end = 96.dp, top = 56.dp, bottom = 40.dp), horizontalArrangement = Arrangement.spacedBy(64.dp)) {
                 Column(Modifier.weight(1f)) {
                     Label("Audio", Tokens.heading, InkDim, FontWeight.Medium, modifier = Modifier.padding(bottom = 6.dp))
                     LazyColumn(Modifier.heightIn(max = 230.dp)) {
@@ -462,8 +472,15 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
             val lined by c.watchQueue.items.collectAsStateWithLifecycle()
             val recording by playback.recording.collectAsStateWithLifecycle()
             val selectedReq = remember(kind) { FocusRequester() }
-            LaunchedEffect(kind) { repeat(8) { androidx.compose.runtime.withFrameNanos { }; if (runCatching { selectedReq.requestFocus() }.isSuccess) return@LaunchedEffect } }
-            Column(Modifier.fillMaxHeight().width(420.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, Tokens.playerMenuScrim, Tokens.playerMenuScrim))).padding(start = 72.dp, end = 40.dp, top = 40.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val groupReq = remember(kind) { FocusRequester() }
+            var inPanel by remember(kind) { mutableStateOf(false) }
+            LaunchedEffect(kind) {
+                // Asking is not the same as getting: wait until focus is really inside the panel, then fall back to its first entry, and last of all give the bar back.
+                repeat(8) { runCatching { selectedReq.requestFocus() }; androidx.compose.runtime.withFrameNanos { }; if (inPanel) return@LaunchedEffect }
+                runCatching { groupReq.requestFocus() }; androidx.compose.runtime.withFrameNanos { }
+                if (!inPanel) panelStuck = true
+            }
+            Column(Modifier.focusRequester(groupReq).focusGroup().onFocusChanged { inPanel = it.hasFocus }.fillMaxHeight().width(420.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, Tokens.playerMenuScrim, Tokens.playerMenuScrim))).padding(start = 72.dp, end = 40.dp, top = 40.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Label(kind.title, Tokens.title, Ink, FontWeight.Medium, modifier = Modifier.padding(bottom = 6.dp))
                 LazyColumn {
                     when (kind) {

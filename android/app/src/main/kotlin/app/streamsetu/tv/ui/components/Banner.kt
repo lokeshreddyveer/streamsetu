@@ -181,7 +181,7 @@ fun FeaturedBanner(
             AnimatedContent(i, modifier = Modifier.weight(1f, fill = false), contentAlignment = Alignment.BottomStart, transitionSpec = { fadeIn(tween(if (reduced) 0 else Motion.BANNER)) togetherWith fadeOut(tween(if (reduced) 0 else Motion.BANNER)) using SizeTransform(clip = false) { _, _ -> snap() } }, label = "bannerText") { idx ->
                 val it = items[idx.coerceIn(0, n - 1)]
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Label(it.title, 34.sp, Tokens.text, FontWeight.Bold, maxLines = 1)
+                    Label(it.title, 34.sp, Tokens.text, FontWeight.Bold, maxLines = 2)
                     if (it.facts.isNotEmpty()) Label(it.facts.joinToString("   ·   "), Tokens.small, Tokens.textSecondary, FontWeight.Medium, maxLines = 1)
                     if (!it.synopsis.isNullOrBlank()) Label(it.synopsis, Tokens.small, Tokens.textSecondary, maxLines = 2)
                 }

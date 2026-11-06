@@ -1,5 +1,9 @@
 package app.streamsetu.tv.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewResponder
+import androidx.compose.foundation.relocation.bringIntoViewResponder
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.layout
@@ -488,7 +492,7 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
                /** For a dense wall of posters on a small TV box: focus is a ring and a fill only (no scale, no clip). */
                dense: Boolean = false) {
     var cardFocused by remember { mutableStateOf(false) }
-    Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+    Column(modifier.width(width).captionInView(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(2f / 3f), container = if (imageUrl.isNullOrBlank()) Tokens.card else Color.Transparent, focusedContainer = if (imageUrl.isNullOrBlank()) Tokens.focusedSurface else Color.Transparent,
             clipContent = imageUrl.isNullOrBlank(), scaleOnFocus = if (dense) 1.0f else app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE, ringWidth = 2.5.dp, style = if (dense) TvFocusStyle.DENSE else TvFocusStyle.CARD, browse = true, onFocus = { cardFocused = it; onFocusChange(it) }, onLongClick = onLongClick, ringBand = true) { _ ->
             // With a picture to come, a flat dark tile is enough underneath (a title gradient only when there is no picture): less to draw and lay out per card.
@@ -506,15 +510,29 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
             // Composed only while the remote is on this poster (a wall of posters carries no transition objects); it fades in over about 160 ms.
         }
         // The title is under the poster all the time, so nothing is drawn, laid out or faded when the remote arrives on it.
-        Label(title, Tokens.caption, if (cardFocused) Color.White else Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))
+        Label(title, Tokens.caption, if (cardFocused) Color.White else Tokens.text, FontWeight.Medium, maxLines = 2, modifier = Modifier.padding(horizontal = 2.dp))
         if (subtitle != null) Label(subtitle, Tokens.caption, Tokens.textTertiary, modifier = Modifier.padding(horizontal = 2.dp))
     }
+}
+
+/** A card's title hangs under its picture, but the scroll that follows the remote brings only the focused picture into view, so on the bottom row the title ran off the screen. This makes that scroll include the title. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun Modifier.captionInView(): Modifier {
+    val px = with(androidx.compose.ui.platform.LocalDensity.current) { 56.dp.toPx() }
+    val responder = remember(px) {
+        object : BringIntoViewResponder {
+            override fun calculateRectForParent(localRect: Rect) = localRect.copy(bottom = localRect.bottom + px)
+            override suspend fun bringChildIntoView(localRect: () -> Rect?) {}
+        }
+    }
+    return this.bringIntoViewResponder(responder)
 }
 
 /** A wide 16:9 card (Continue Watching). */
 @Composable
 fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, progress: Float = 0f, width: Dp = Tokens.landscapeWidth, badge: String? = null, onLongClick: (() -> Unit)? = null, itemId: String? = null) {
-    Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.width(width).captionInView(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f), container = if (imageUrl.isNullOrBlank()) Tokens.card else Color.Transparent, focusedContainer = if (imageUrl.isNullOrBlank()) Tokens.focusedSurface else Color.Transparent, clipContent = imageUrl.isNullOrBlank(), onLongClick = onLongClick, ringBand = true, browse = true) { _ ->
             // The picture is the only layer drawn once it is there (its own placeholder is a flat tile); a card with no picture gets the title tile.
             val filler = LocalArtworkFiller.current
@@ -523,7 +541,7 @@ fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: 
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Tokens.progressTrack)) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopStart).padding(6.dp).background(Tokens.accent, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Color(0xFF04141A), FontWeight.Bold) }
         }
-        Label(title, Tokens.row, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))
+        Label(title, Tokens.row, Tokens.text, FontWeight.Medium, maxLines = 2, modifier = Modifier.padding(horizontal = 2.dp))
         if (subtitle != null) Label(subtitle, Tokens.caption, Tokens.textTertiary, modifier = Modifier.padding(horizontal = 2.dp))
     }
 }
