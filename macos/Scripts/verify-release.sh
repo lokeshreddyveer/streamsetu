@@ -21,6 +21,14 @@ if [ -f "$PRIV" ] && plutil -lint "$PRIV" >/dev/null; then
   if [ "$(norm "$PRIV")" = "$(norm Configuration/PrivacyInfo.xcprivacy)" ]; then ok "privacy manifest matches Configuration/PrivacyInfo.xcprivacy"; else bad "privacy manifest differs from Configuration/PrivacyInfo.xcprivacy (repackage from current source)"; fi
   for t in DeviceID OtherDiagnosticData OtherUserContent; do plutil -extract NSPrivacyCollectedDataTypes json -o - "$PRIV" | grep -q "NSPrivacyCollectedDataType$t" || bad "privacy manifest does not declare $t"; done
 else bad "privacy manifest"; fi
+# The bundled libmpv and its libraries must be signed by the app's own team: that is what lets the app load only its own library (see MPVLibrary.searchPaths) and is the condition for ever dropping the
+# library-validation entitlement.
+APP_TEAM="$(codesign -dv "$APP" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+for lib in "$APP"/Contents/Frameworks/*.dylib; do
+  [ -e "$lib" ] || continue
+  LIB_TEAM="$(codesign -dv "$lib" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+  [ -n "$APP_TEAM" ] && [ "$LIB_TEAM" = "$APP_TEAM" ] || bad "$(basename "$lib") is not signed by the app's team ($LIB_TEAM, the app: $APP_TEAM)"
+done
 vtool -show-build "$APP/Contents/MacOS/StreamSetu" 2>/dev/null | grep -q "minos 14" && ok "minimum macOS 14" || echo "  – could not confirm minimum macOS"
 if [ -n "${REDDY_FORBIDDEN_PATTERN:-}" ]; then
   if strings -a "$APP/Contents/MacOS/StreamSetu" | grep -qiE "$REDDY_FORBIDDEN_PATTERN"; then bad "binary contains a forbidden string"; else ok "no forbidden strings in binary"; fi

@@ -14,4 +14,5 @@ OUT="dist/$VERSION"; mkdir -p "$OUT"
 cp app/build/outputs/apk/release/app-release.apk "$OUT/streamsetu-tv-$VERSION.apk"
 cp app/build/outputs/apk/release/app-release.apk "$OUT/StreamSetu-Android-$VERSION.apk"
 ( cd "$OUT" && shasum -a 256 streamsetu-tv-$VERSION.apk StreamSetu-Android-$VERSION.apk > SHA256SUMS-$VERSION.txt )
+git -C .. rev-parse HEAD > "$OUT/BUILD-COMMIT.txt"          # the commit these files were built from; the release checks that it is the one being released
 echo "✔ built: $OUT (publish with Scripts/release.sh from the top of the repository)"

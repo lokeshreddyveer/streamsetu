@@ -10,7 +10,8 @@ BIN="$APP/Contents/MacOS/StreamSetu"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 swiftc -O -o "$WORK/make-media" Scripts/make-test-media.swift 2>/dev/null || { echo "could not build the media generator"; exit 2; }
 "$WORK/make-media" "$WORK/test.mp4" >/dev/null || { echo "could not generate the test video"; exit 2; }
-STREAMSETU_SELFTEST_MEDIA="$WORK/test.mp4" "$BIN" > "$WORK/out.txt" 2>&1 &
+# The packaged app is started on a database and a data folder of its own (STREAMSETU_TESTING also keeps it from sending reports and from starting iCloud or Wi-Fi sync), never on the data of whoever runs this.
+STREAMSETU_TESTING=1 REDDY_DB="$WORK/smoke.sqlite" STREAMSETU_SELFTEST_MEDIA="$WORK/test.mp4" "$BIN" > "$WORK/out.txt" 2>&1 &
 PID=$!
 for _ in $(seq 1 90); do kill -0 $PID 2>/dev/null || break; sleep 1; done
 if kill -0 $PID 2>/dev/null; then kill -9 $PID 2>/dev/null; echo "✘ smoke test timed out"; cat "$WORK/out.txt"; exit 1; fi

@@ -48,4 +48,5 @@ Scripts/create-dmg.sh                       # signs the DMG too, because SIGN_ID
 Scripts/notarize-dmg.sh "dist/StreamSetu-$VERSION.dmg"
 Scripts/verify-release.sh
 spctl --assess --type open --context context:primary-signature -v "dist/StreamSetu-$VERSION.dmg" 2>&1 | tail -1
+git -C .. rev-parse HEAD > "dist/StreamSetu-$VERSION.commit"          # the commit this DMG was built from; the release checks that it is the one being released
 echo "✔ dist/StreamSetu-$VERSION.dmg is signed, notarized and stapled"
