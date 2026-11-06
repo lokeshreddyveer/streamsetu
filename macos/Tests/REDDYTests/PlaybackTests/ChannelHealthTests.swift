@@ -10,7 +10,7 @@ final class LocalTestServer: @unchecked Sendable {
     private(set) var port: UInt16 = 0
 
     init() throws {
-        listener = try NWListener(using: .tcp, on: .any)
+        listener = try loopbackListener()
         let ready = DispatchSemaphore(value: 0)
         listener.stateUpdateHandler = { if case .ready = $0 { ready.signal() } }
         listener.newConnectionHandler = { [weak self] conn in self?.handle(conn) }

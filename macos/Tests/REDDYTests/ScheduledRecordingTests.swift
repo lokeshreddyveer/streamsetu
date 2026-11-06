@@ -9,7 +9,7 @@ private final class StreamServer: @unchecked Sendable {
     private(set) var port: UInt16 = 0
     private var open: [NWConnection] = []
     private let queue = DispatchQueue(label: "test.stream")
-    init() throws { listener = try NWListener(using: .tcp, on: .any) }
+    init() throws { listener = try loopbackListener() }
     func start() async {
         let ready = AsyncStream<UInt16>.makeStream()
         listener.newConnectionHandler = { [weak self] c in

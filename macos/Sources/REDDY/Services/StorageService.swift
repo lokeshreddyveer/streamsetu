@@ -8,6 +8,11 @@ final class StorageService: Sendable {
     static let shared = StorageService()
 
     static var applicationSupport: URL {
+        // Under test (Scripts/run-tests.sh sets this) the folders are throwaway ones: tests that import playlists used to write into the real ~/Library/Application Support/REDDY.
+        // The name starts with "reddy-" so the runner's cleanup removes it.
+        if ProcessInfo.processInfo.environment["STREAMSETU_TESTING"] != nil {
+            return FileManager.default.temporaryDirectory.appendingPathComponent("reddy-appsupport-\(ProcessInfo.processInfo.processIdentifier)", isDirectory: true)
+        }
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("REDDY", isDirectory: true)
     }

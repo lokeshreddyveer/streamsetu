@@ -17,7 +17,7 @@ private func rec(_ id: String, _ ts: Int64) -> LanRecord { LanRecord(kind: "fav"
 @Suite struct LanTransportTests {
     /// A real TCP connection on this computer: framing, the hello, pairing and one exchange all work over it.
     @Test func twoDevicesPairAndSyncOverTCP() async throws {
-        let listener = try NWListener(using: .tcp, on: .any)
+        let listener = try loopbackListener()
         let accepted = AsyncStream<NWConnection>.makeStream()
         listener.newConnectionHandler = { accepted.continuation.yield($0) }
         let ready = AsyncStream<UInt16>.makeStream()
