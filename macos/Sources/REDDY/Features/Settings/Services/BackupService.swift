@@ -259,7 +259,7 @@ final class BackupService: @unchecked Sendable {
         }
         // The database is committed; now the parts that cannot fail.
         if let prefs = b.preferences { result.preferences = settings.apply(snapshot: prefs) }
-        if let o = b.organisation { channelPrefs?.merge(Dictionary(uniqueKeysWithValues: o.channelSettings.map { (Self.remap($0.key, idMap), $0.value) })) }
+        if let o = b.organisation { channelPrefs?.merge(Dictionary(o.channelSettings.map { (Self.remap($0.key, idMap), $0.value) }, uniquingKeysWith: { _, last in last })) }          // two saved settings that map to one channel: the later wins, never a crash after the database was committed
         return result
     }
 }

@@ -9,13 +9,13 @@ struct Flex: Decodable, Sendable, Hashable {
         if c.decodeNil() { string = nil }
         else if let s = try? c.decode(String.self) { string = s }
         else if let i = try? c.decode(Int.self) { string = String(i) }
-        else if let d = try? c.decode(Double.self) { string = d == d.rounded() ? String(Int(d)) : String(d) }
+        else if let d = try? c.decode(Double.self) { string = d == d.rounded() ? (Int(exactly: d).map(String.init) ?? String(d)) : String(d) }          // Int(d) would trap on 1e30 or infinity
         else if let b = try? c.decode(Bool.self) { string = b ? "1" : "0" }
         else { string = nil }
     }
 
     var nonEmpty: String? { string.nilIfEmpty }
-    var int: Int? { string.flatMap { Int($0) ?? Double($0).map(Int.init) } }
+    var int: Int? { string.flatMap { Int($0) ?? Double($0).flatMap { Int(exactly: $0.rounded(.towardZero)) } } }          // nil, not a trap, for a number that does not fit
     var double: Double? { string.flatMap(Double.init) }
 }
 

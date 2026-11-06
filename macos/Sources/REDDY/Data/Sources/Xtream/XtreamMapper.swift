@@ -129,7 +129,7 @@ struct XtreamMapper: Sendable {
             }
         }
         for sdto in dto.seasons ?? [] { if let n = sdto.season_number?.int { seasonNumbers.insert(n) } }
-        let names = Dictionary(uniqueKeysWithValues: (dto.seasons ?? []).compactMap { d in d.season_number?.int.map { ($0, d.name?.nonEmpty) } })
+        let names = Dictionary((dto.seasons ?? []).compactMap { d in d.season_number?.int.map { ($0, d.name?.nonEmpty) } }, uniquingKeysWith: { first, _ in first })          // a provider that lists a season twice is not a crash
         let seasons = seasonNumbers.sorted().map {
             Season(id: seasonID(series.id, $0), seriesID: series.id, number: $0, name: names[$0] ?? nil)
         }

@@ -493,7 +493,7 @@ import Foundation
         let p = container.playback
         guard p.current != nil else { return "Nothing is playing." }
         let m = p.metrics
-        func t(_ s: TimeInterval) -> String { let x = Int(s); return String(format: "%d:%02d:%02d", x / 3600, (x % 3600) / 60, x % 60) }
+        func t(_ s: TimeInterval) -> String { let x = Int(exactly: s.rounded(.towardZero)) ?? 0; return String(format: "%d:%02d:%02d", x / 3600, (x % 3600) / 60, x % 60) }
         var o = ["Title: \(p.isPrivate ? "Private viewing (hidden)" : p.title)", p.isLive ? "Live TV" : "Video on demand", "State: \(p.state)"]
         if !p.isPrivate, let ch = p.currentChannel, p.isLive, let nn = (try? container.epgRepo.nowNext(channelIDs: [ch.id], at: Date()))?[ch.id], let now = nn.first {
             o.append("Programme now: \(now.title)" + (nn.count > 1 ? ", next: \(nn[1].title)" : ""))

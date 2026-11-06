@@ -129,7 +129,7 @@ enum JudgeAdvisor {
               let data = String(answer[start...end]).data(using: .utf8), let rows = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] else { return [] }
         var seen = Set<Int>(), out: [(Int, String)] = []
         for r in rows {
-            guard let n = (r["n"] as? Int) ?? (r["n"] as? Double).map(Int.init), valid.contains(n), seen.insert(n).inserted else { continue }
+            guard let n = (r["n"] as? Int) ?? (r["n"] as? Double).flatMap({ Int(exactly: $0) }), valid.contains(n), seen.insert(n).inserted else { continue }
             out.append((n, ((r["why"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)))
         }
         return Array(out.prefix(8))
@@ -155,7 +155,7 @@ enum KnownForAdvisor {
               let data = String(answer[a...b]).data(using: .utf8), let rows = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] else { return nil }
         let credits: [(title: String, year: Int?, isShow: Bool)] = rows.compactMap { r in
             guard let t = (r["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty else { return nil }
-            let y = (r["year"] as? Int) ?? (r["year"] as? Double).map(Int.init)
+            let y = (r["year"] as? Int) ?? (r["year"] as? Double).flatMap({ Int(exactly: $0) })
             return (t, y.flatMap { (1900...2100).contains($0) ? $0 : nil }, (r["show"] as? Bool) ?? false)
         }
         return credits.isEmpty ? nil : AskLibrary.TMDBFilmography(name: name, credits: Array(credits.prefix(40)))

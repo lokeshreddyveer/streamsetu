@@ -326,7 +326,7 @@ enum DoHOverAddress {
                 let size = Int(String(decoding: rest[..<eol.lowerBound], as: UTF8.self).split(separator: ";").first.map(String.init) ?? "", radix: 16) ?? 0
                 if size == 0 { break }
                 let start = eol.upperBound
-                guard rest.count >= start - rest.startIndex + size else { return .failure(Failure(reason: "short answer")) }
+                guard size > 0, size <= rest.endIndex - start - 2 else { return .failure(Failure(reason: "short answer")) }          // size and the CRLF after the chunk must both be there: a cut-off or absurd chunk is a failed test, not a crash
                 out.append(rest[start..<(start + size)]); rest = rest[(start + size + 2)...]
             }
             body = out

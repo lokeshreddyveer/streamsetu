@@ -26,7 +26,7 @@ enum LanValue: Codable, Equatable, Sendable {
 
     var string: String? { if case .string(let s) = self { s } else { nil } }
     var number: Double? { switch self { case .int(let i): Double(i); case .double(let d): d; default: nil } }
-    var integer: Int64? { switch self { case .int(let i): i; case .double(let d): Int64(d); default: nil } }
+    var integer: Int64? { switch self { case .int(let i): i; case .double(let d): Int64(exactly: d.rounded(.towardZero)); default: nil } }          // nil, not a trap, for a number from another device that does not fit
     var flag: Bool? { if case .bool(let b) = self { b } else { nil } }
 }
 

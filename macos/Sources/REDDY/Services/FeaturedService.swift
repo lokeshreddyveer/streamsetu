@@ -34,7 +34,7 @@ enum FeaturedPolicy {
         switch item {
         case .movie(let m):
             if let r = m.rating, let v = Double(r), v > 0 { rating = String(format: "%.1f", v) }
-            if let d = m.durationSeconds, d > 60 { minutes = Int((d / 60).rounded()) }
+            if let d = m.durationSeconds, d > 60, let mins = Int(exactly: (d / 60).rounded()) { minutes = mins }
         case .series(let s):
             if let r = s.rating, let v = Double(r), v > 0 { rating = String(format: "%.1f", v) }
         }

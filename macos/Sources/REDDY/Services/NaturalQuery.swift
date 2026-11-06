@@ -118,8 +118,9 @@ struct NaturalQuery: Equatable, Sendable {
         guard i < t.count else { return nil }
         let w = t[i]
         let units: [(String, Double)] = [("hours", 60), ("hour", 60), ("hrs", 60), ("hr", 60), ("h", 60), ("minutes", 1), ("minute", 1), ("mins", 1), ("min", 1), ("m", 1)]
-        if let u = units.first(where: { w.hasSuffix($0.0) && Double(w.dropLast($0.0.count)) != nil }) { return (Int(Double(w.dropLast(u.0.count))! * u.1), 1) }
-        if let n = Double(w), i + 1 < t.count, let u = units.first(where: { $0.0 == t[i + 1] }) { return (Int(n * u.1), 2) }
+        // Int(exactly:) and not Int(_:): typing "under 1e30 hours" or "inf" must give no duration, never a crash.
+        if let u = units.first(where: { w.hasSuffix($0.0) && Double(w.dropLast($0.0.count)) != nil }), let m = Int(exactly: (Double(w.dropLast(u.0.count))! * u.1).rounded(.towardZero)) { return (m, 1) }
+        if let n = Double(w), i + 1 < t.count, let u = units.first(where: { $0.0 == t[i + 1] }), let m = Int(exactly: (n * u.1).rounded(.towardZero)) { return (m, 2) }
         return nil
     }
 }
