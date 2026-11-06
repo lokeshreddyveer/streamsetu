@@ -75,6 +75,7 @@ final class CloudKitSync: CKSyncEngineDelegate, @unchecked Sendable {
         default: status.state = .unavailable("iCloud isn't available right now."); return
         }
         do { try core.enqueueEverything() } catch { status.state = .failed("Couldn't prepare your data for iCloud."); return }
+        _ = try? core.apply([])          // changes from other devices that could not be applied before (an older version of the app) get another try
         var config = CKSyncEngine.Configuration(database: container.privateCloudDatabase, stateSerialization: savedState(), delegate: self)
         config.automaticallySync = true
         let e = CKSyncEngine(config)
@@ -163,9 +164,18 @@ final class CloudKitSync: CKSyncEngineDelegate, @unchecked Sendable {
                 return out
             }
             guard !rows.isEmpty else { return }
-            if let result = try? core.apply(rows) {
+            do {
+                let result = try core.apply(rows)
                 onApplied(result)
-                await MainActor.run { self.status.lastSync = Date() }
+                let waiting = core.quarantinedCount()
+                await MainActor.run {
+                    self.status.lastSync = Date()
+                    self.status.summary = waiting > 0 ? "\(waiting) change\(waiting == 1 ? "" : "s") from another device could not be applied yet. They are kept and tried again; an update of this app may be needed." : nil
+                }
+            } catch {
+                // The batch could not be written at all. CloudKit will not send it again, so it is kept here and applied with the next one; and the person is told.
+                core.holdForRetry(rows, reason: String(describing: error))
+                await MainActor.run { self.status.summary = "Changes from your other devices could not be saved here yet. They are kept and tried again." }
             }
         case .sentRecordZoneChanges(let e):
             let delivered: [SyncRow] = lock.withLock {

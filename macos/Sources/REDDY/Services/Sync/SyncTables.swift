@@ -16,6 +16,9 @@ struct SyncTable: Sendable {
     var watched: [String]?
     /// There is no unique index on the key, so rows are matched by it instead of upserted (the watch log).
     var naturalKey = false
+    /// The column that says when the row was made or last changed (seconds since 1970), if the table has one. A row that has never been synced and was never queued by the change log
+    /// (it is older than the log) is sent with this time, so it cannot beat a newer change made on another device.
+    var timeColumn: String?
 
     func key(_ prefix: String) -> String { "json_array(" + keyExprs.map { $0.replacingOccurrences(of: "{r}", with: prefix) }.joined(separator: ", ") + ")" }
     var whereClause: String { keyExprs.enumerated().map { "\($1.replacingOccurrences(of: "{r}.", with: "")) = json_extract(?1, '$[\($0)]')" }.joined(separator: " AND ") }
@@ -43,6 +46,8 @@ struct SyncTable: Sendable {
     ].map { t in
         var t = t
         if t.name == "sources" { t.watched = ["name", "type", "base_url", "credential_ref", "epg_url", "enabled", "sort_order"] }   // not last_sync / sync_status
+        t.timeColumn = ["sources": "created_at", "favorites": "created_at", "collections": "created_at", "collection_items": "added_at", "watch_progress": "updated_at",
+                        "recently_watched": "last_played", "hidden_items": "hidden_at"][t.name]
         return t
     }
 
