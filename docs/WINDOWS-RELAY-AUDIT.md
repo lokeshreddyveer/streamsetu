@@ -39,6 +39,10 @@ Nothing below is built. It is the list of what must exist, with tests, before a 
 6. **Tests that fail first.** A request with no token, a wrong token, a foreign `Origin`, a wrong `Host`, a loopback or LAN target not in the allowlist, a redirect to such a target, and the connection cap must each be refused, and the playlist rewriting must keep the token prefix. The existing tests (stream passes through, playlist rewritten, `file://` refused) must still pass.
 7. **Release gate.** The Windows build is not offered until those tests are part of the release checks (`Scripts/verify-release-artifacts.sh`).
 
+## Status, 7 November 2026
+
+Items 1 to 4 and 6 of the bar are built and tested in `windows/core` (`policy.rs`, `proxy.rs`: 18 Rust tests; each rule has a test that fails without it). The Tauri shell in `windows/src-tauri` was not updated to the new relay and does not compile against it, because the Windows app is being rebuilt as a native app (WinUI 3 with libmpv), which plays streams directly and needs no relay. The address rules in `policy.rs` still apply to anything the native app fetches.
+
 ## Decision
 
 Windows stays out of scope for now: no relay change, no Windows release. If it returns, start from the list above.

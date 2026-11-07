@@ -10,6 +10,8 @@ ureq = { version = "2", default-features = false, features = ["tls", "gzip"] }
 tiny_http = "0.12"
 percent-encoding = "2"
 url = "2"
+# The per-run secret comes from the operating system's random generator.
+getrandom = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", default-features = false, features = ["windows-native"] }
