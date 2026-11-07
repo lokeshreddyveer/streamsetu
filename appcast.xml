@@ -3,6 +3,15 @@
   <channel>
     <title>StreamSetu</title>
     <item>
+      <title>StreamSetu 2.16.0</title>
+      <pubDate>Sat, 07 Nov 2026 21:08:12 -0000</pubDate>
+      <sparkle:version>314</sparkle:version>
+      <sparkle:shortVersionString>2.16.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[**StreamSetu for Windows 0.1.0 is here, Mac 2.16.0, Fire TV and Android TV 0.24.0, the Android phone app, and a new iPhone and iPad build on TestFlight.** Windows is a native app that plays with the same mpv engine as the Mac; the other apps get fixes to sync, App Lock, saved logins, playback and the way titles are shown.]]></description>
+      <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/2026.11.07/StreamSetu-2.16.0.dmg" type="application/octet-stream" sparkle:edSignature="RrK7q3wHuVPQnn4RKO6+9L68VkSfkGFZPXmoWI4cl/NJ2FrsXOQbMCgn8bNwQGatGv1oUfYWCyHzjTpTza2qCA==" length="69441006"/>
+    </item>
+    <item>
       <title>StreamSetu 2.15.1</title>
       <pubDate>Tue, 03 Nov 2026 01:24:56 -0000</pubDate>
       <sparkle:version>2151</sparkle:version>
@@ -155,5 +164,5 @@
       <description><![CDATA[Updates now come from the one StreamSetu repository. If you have an older copy, download this one once; it updates itself from then on.]]></description>
       <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/mac-v2.3.1/StreamSetu-2.3.1.dmg" type="application/octet-stream" sparkle:edSignature="C6eMDAYgR8nLbI0cQYXeeDf/ZITqwbIqLWvhz++8pB6E8Tq9U1ITGr10mGAIOMsW4pkgqoWbtKb2Me6cLZcOAg==" length="64424077"/>
     </item>
-                                  </channel>
+                                    </channel>
 </rss>
