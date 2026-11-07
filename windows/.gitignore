@@ -2,3 +2,7 @@ node_modules/
 target/
 dist/
 *.exe
+native/**/bin/
+native/**/obj/
+native/StreamSetu.App/libmpv/
+native/dist/
