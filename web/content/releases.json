@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.11.07",
+      "title": "7 November 2026",
+      "summary": "**StreamSetu for Windows 0.1.0 is here, Mac 2.16.0, Fire TV and Android TV 0.24.0, the Android phone app, and a new iPhone and iPad build on TestFlight.** Windows is a native app that plays with the same mpv engine as the Mac; the other apps get fixes to sync, App Lock, saved logins, playback and the way titles are shown.",
+      "date": "2026-11-07",
+      "mac": "2.16.0",
+      "android": "0.24.0",
+      "ios": "1.2"
+    },
+    {
       "tag": "2026.11.02.1",
       "title": "2 November 2026 (2)",
       "summary": "**Fire TV and Android TV 0.23.1: the player menus work with the remote.** Audio and subtitles, Picture tuning, Sound, Subtitle look, Quality, Chapters, Up next, Folders, Programme and Technical information now open with the first entry selected, so the arrow keys and OK work at once. In Audio and subtitles, Right moves to the subtitle column and Down stays in the list; before, the keys went to the buttons behind the panel.",
