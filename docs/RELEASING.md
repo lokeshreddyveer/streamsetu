@@ -8,7 +8,8 @@ One release holds every app, named by date (for example `2026.10.14`). Its files
 2. Android and Fire TV: `android/build-release.sh <version> <code>` (tests, signs; the APKs land in `android/dist/<version>/`).
 3. iPhone and iPad: `ios/Scripts/testflight.sh`.
 4. Write `docs/releases/<tag>.md`: one section per app.
-5. `MAC=<v> MAC_BUILD=<b> ANDROID=<v> Scripts/release.sh <tag> docs/releases/<tag>.md` uploads everything and adds the Mac DMG to the update feed.
+5. Windows (optional): the build runs in a private repository on GitHub's Windows machines; download its zip to `windows/native/dist/StreamSetu-Windows-<version>.zip`.
+6. `MAC=<v> MAC_BUILD=<b> ANDROID=<v> [WINDOWS=<v>] Scripts/release.sh <tag> docs/releases/<tag>.md` uploads everything (the Windows zip too, when `WINDOWS` is set) and adds the Mac DMG to the update feed.
 
 The same script refreshes the website in `web/` (version numbers and What's new) and restarts it on this Mac at http://localhost:4300 with `web/host.sh`. New features also need a line in `web/content/site.ts`, so the Features page and the home page stay true.
 

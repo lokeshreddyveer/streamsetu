@@ -13,7 +13,7 @@ export const platforms = [
   { id: "ios", name: "iPhone and iPad", detail: "iOS 18 or later, on the App Store and through TestFlight" },
   { id: "android", name: "Android phone and tablet", detail: "Android 5.1 or later" },
   { id: "tv", name: "Fire TV and Android TV", detail: "Made for the remote, Android 5.1 or later" },
-  { id: "windows", name: "Windows", detail: "Coming soon" },
+  { id: "windows", name: "Windows", detail: "Windows 10 or later, 64-bit" },
 ];
 
 export const highlights = [
@@ -74,6 +74,6 @@ export const faq = [
   },
   {
     q: "Is there a Windows version?",
-    a: "Not yet. It is coming.",
+    a: "Yes. Download the zip from the Releases page, unzip it and run StreamSetu.exe. It needs Windows 10 (version 1809) or later, 64-bit.",
   },
 ];

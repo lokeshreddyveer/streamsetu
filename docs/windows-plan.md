@@ -1,6 +1,6 @@
 # StreamSetu for Windows: architecture plan
 
-Status: plan only. Nothing is built yet. Decision made: a fully native Windows app.
+Status: built. The Windows app is native, as decided below; what it does is described in windows/native/README.md.
 
 ## Decision
 

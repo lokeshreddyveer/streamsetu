@@ -6,7 +6,7 @@
 
 **Your streams. One home.**
 
-A native player for the IPTV playlists and media servers you already have. It runs on **Mac, iPhone and iPad, Android phones and tablets, Fire TV and Android TV** (Windows is coming), keeps everything on your own device, and needs no account.
+A native player for the IPTV playlists and media servers you already have. It runs on **Mac, iPhone and iPad, Android phones and tablets, Fire TV and Android TV** and Windows, keeps everything on your own device, and needs no account.
 
 > StreamSetu is a player only. It provides **no channels, movies, series or subscriptions** and does not ship or link to any content. You bring your own legally obtained playlist or login.
 
@@ -44,11 +44,11 @@ More pictures: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
 | **Mac** | [`StreamSetu-2.15.1.dmg`](../../releases/download/2026.11.02.1/StreamSetu-2.15.1.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
 | **Fire TV and Android TV** | [`streamsetu-tv-0.23.1.apk`](../../releases/download/2026.11.02.1/streamsetu-tv-0.23.1.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
 | **Android phone and tablet** | [`StreamSetu-Android-0.23.1.apk`](../../releases/download/2026.11.02.1/StreamSetu-Android-0.23.1.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
-| **Windows** | Coming soon | Not released yet. |
+| **Windows** | [`StreamSetu-Windows-0.1.0.zip`](../../releases/download/2026.11.07/StreamSetu-Windows-0.1.0.zip) | Unzip and run `StreamSetu.exe`. Windows 10 (version 1809) or later, 64-bit. |
 
-Every download is on the [Releases](../../releases) page with its SHA-256 checksum (`shasum -a 256 <file>`). Needs macOS 14, iOS 18, or Android 5.1 (the mpv player needs Android 8). How a release is made: [docs/RELEASING.md](docs/RELEASING.md).
+Every download is on the [Releases](../../releases) page with its SHA-256 checksum (`shasum -a 256 <file>`). Needs macOS 14, iOS 18, Windows 10 or Android 5.1 (the mpv player needs Android 8). How a release is made: [docs/RELEASING.md](docs/RELEASING.md).
 
-**Fire TV:** in **Settings → My Fire TV → Developer options** turn on **Install unknown apps** for Downloader, open Downloader and enter the code **7315299** (or open **aftv.news/7315299** in a browser), install, then open StreamSetu from **Your Apps & Channels**. If you installed a test build older than 0.5.0, uninstall it first; it was signed with a different key.
+**Fire TV:** in **Settings → My Fire TV → Developer options** turn on **Install unknown apps** for Downloader, open Downloader and enter the code **7315299** (or open **aftv.news/7315299** in a browser), install, then open StreamSetu from **Your Apps & Channels**. If you installed a build older than 0.5.0, uninstall it first; it was signed with a different key.
 
 **Android phone or tablet:** download the APK on the phone, open it, allow installs from your browser or files app when asked, then open StreamSetu.
 
