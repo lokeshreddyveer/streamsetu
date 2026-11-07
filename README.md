@@ -40,10 +40,10 @@ More pictures: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
 
 | Platform | What to get | Notes |
 |---|---|---|
-| **iPhone and iPad** | [Download on the App Store](https://apps.apple.com/us/app/stream-setu/id6821526110), or [join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 1.1 | The App Store has the released version. TestFlight gets new builds first and is open to the first 100 testers; after that, ask for an invitation at contact@lokeshreddy.dev. |
-| **Mac** | [`StreamSetu-2.15.1.dmg`](../../releases/download/2026.11.02.1/StreamSetu-2.15.1.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
-| **Fire TV and Android TV** | [`streamsetu-tv-0.23.1.apk`](../../releases/download/2026.11.02.1/streamsetu-tv-0.23.1.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
-| **Android phone and tablet** | [`StreamSetu-Android-0.23.1.apk`](../../releases/download/2026.11.02.1/StreamSetu-Android-0.23.1.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
+| **iPhone and iPad** | [Download on the App Store](https://apps.apple.com/us/app/stream-setu/id6821526110), or [join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 1.2 | The App Store has the released version. TestFlight gets new builds first and is open to the first 100 testers; after that, ask for an invitation at contact@lokeshreddy.dev. |
+| **Mac** | [`StreamSetu-2.16.0.dmg`](../../releases/download/2026.11.07/StreamSetu-2.16.0.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
+| **Fire TV and Android TV** | [`streamsetu-tv-0.24.0.apk`](../../releases/download/2026.11.07/streamsetu-tv-0.24.0.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
+| **Android phone and tablet** | [`StreamSetu-Android-0.24.0.apk`](../../releases/download/2026.11.07/StreamSetu-Android-0.24.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
 | **Windows** | [`StreamSetu-Windows-0.1.0.zip`](../../releases/download/2026.11.07/StreamSetu-Windows-0.1.0.zip) | Unzip and run `StreamSetu.exe`. Windows 10 (version 1809) or later, 64-bit. |
 
 Every download is on the [Releases](../../releases) page with its SHA-256 checksum (`shasum -a 256 <file>`). Needs macOS 14, iOS 18, Windows 10 or Android 5.1 (the mpv player needs Android 8). How a release is made: [docs/RELEASING.md](docs/RELEASING.md).
