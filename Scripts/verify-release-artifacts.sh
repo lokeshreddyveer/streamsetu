@@ -50,7 +50,9 @@ if [ -f "$DMG" ]; then
     APP="$(ls -d "$MNT"/*.app 2>/dev/null | head -1)"
     if [ -n "$APP" ]; then
       "$CODESIGN" --verify --strict --deep "$APP" >/dev/null 2>&1 && ok "app signature is valid" || bad "app signature is not valid"
-      "$CODESIGN" -dv "$APP" 2>&1 | grep -q "flags=.*runtime" && ok "Hardened Runtime is on" || bad "Hardened Runtime is off"
+      # Read the whole output first: with pipefail, grep -q can stop early and make codesign fail on a closed pipe, which reported a false "off".
+      SIGN_INFO="$("$CODESIGN" -dv "$APP" 2>&1)"
+      grep -q "flags=.*runtime" <<<"$SIGN_INFO" && ok "Hardened Runtime is on" || bad "Hardened Runtime is off"
       "$SPCTL" --assess --type execute "$APP" >/dev/null 2>&1 && ok "Gatekeeper accepts the app" || bad "Gatekeeper does not accept the app"
       V="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist" 2>/dev/null)"; B="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$APP/Contents/Info.plist" 2>/dev/null)"
       [ "$V" = "$MAC" ] && [ "$B" = "$MAC_BUILD" ] && ok "app is version $V build $B" || bad "the app inside is version '$V' build '$B', not $MAC build $MAC_BUILD"
@@ -87,7 +89,7 @@ if "$PYTHON3" Scripts/audit-dependencies.py --strict >/dev/null 2>&1; then ok "d
 
 echo "Notes and tag"
 if [ -f "$NOTES" ]; then
-  head -1 "$NOTES" | grep -q '^# ' && ok "notes have a title" || bad "the notes' first line must be a '# title'"
+  grep -q '^# ' <<<"$(head -1 "$NOTES")" && ok "notes have a title" || bad "the notes' first line must be a '# title'"
   grep -q "$MAC" "$NOTES" && ok "notes name the Mac version" || bad "the notes do not mention Mac $MAC"
   grep -q "$ANDROID" "$NOTES" && ok "notes name the Android version" || bad "the notes do not mention Android $ANDROID"
 fi
