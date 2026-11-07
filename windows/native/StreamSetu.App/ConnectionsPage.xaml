@@ -1,0 +1,60 @@
+<Page
+    x:Class="StreamSetu.App.ConnectionsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:core="using:StreamSetu.Core">
+    <ScrollViewer>
+        <StackPanel Padding="32" Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
+            <TextBlock Text="Connections" Style="{StaticResource TitleTextBlockStyle}" />
+
+            <ListView x:Name="SavedList" SelectionMode="None">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="core:Playlist">
+                        <Grid ColumnSpacing="12" Padding="0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{x:Bind Name}" />
+                                <TextBlock Text="{x:Bind Address}" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Remove" Tag="{x:Bind Id}" Click="OnRemove" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <TextBlock x:Name="EmptyNote" Text="No connections yet. Add your provider below." Opacity="0.7" />
+
+            <TextBlock Text="Add a connection" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,12,0,0" />
+            <TextBox x:Name="NameBox" Header="Name" PlaceholderText="My provider" />
+            <ComboBox x:Name="KindBox" Header="Type" SelectedIndex="0" SelectionChanged="OnKindChanged" MinWidth="360">
+                <ComboBoxItem Content="Xtream Codes (server, user name, password)" />
+                <ComboBoxItem Content="M3U link" />
+                <ComboBoxItem Content="M3U file on this computer" />
+                <ComboBoxItem Content="HDHomeRun" />
+                <ComboBoxItem Content="TVHeadend" />
+                <ComboBoxItem Content="Enigma2 receiver" />
+                <ComboBoxItem Content="Jellyfin" />
+                <ComboBoxItem Content="Emby" />
+                <ComboBoxItem Content="Plex" />
+                <ComboBoxItem Content="WebDAV server" />
+                <ComboBoxItem Content="Folder of video files on this computer" />
+                <ComboBoxItem Content="Stalker / Ministra portal (MAC address)" />
+            </ComboBox>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox x:Name="AddressBox" Header="Address" PlaceholderText="http://server.example:8080" Width="520" />
+                <Button x:Name="BrowseButton" Content="Choose…" VerticalAlignment="Bottom" Click="OnBrowse" Visibility="Collapsed" />
+            </StackPanel>
+            <TextBox x:Name="UserBox" Header="User name" />
+            <PasswordBox x:Name="PassBox" Header="Password" />
+            <TextBlock x:Name="Hint" Opacity="0.7" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button x:Name="TestButton" Content="Test" Click="OnTest" />
+                <Button x:Name="SaveButton" Content="Save" Style="{StaticResource AccentButtonStyle}" Click="OnSave" />
+                <ProgressRing x:Name="Busy" IsActive="False" Width="24" Height="24" />
+            </StackPanel>
+            <InfoBar x:Name="Message" IsOpen="False" IsClosable="True" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

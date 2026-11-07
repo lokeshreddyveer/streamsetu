@@ -1,0 +1,35 @@
+<Page
+    x:Class="StreamSetu.App.MultiViewPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="16" RowSpacing="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Text="Multi-View" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" />
+            <ProgressRing x:Name="Busy" IsActive="False" Width="24" Height="24" />
+        </StackPanel>
+        <InfoBar x:Name="Message" Grid.Row="1" IsOpen="True" IsClosable="True" Severity="Informational"
+                 Message="Up to four channels at once. Sound comes from one of them. Many providers allow one stream at a time, so extra channels may not play." />
+
+        <!-- The pictures are separate windows placed over this area. -->
+        <Border x:Name="TilesArea" Grid.Row="2" Background="Black" SizeChanged="OnAreaChanged" />
+
+        <Grid Grid.Row="3" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ListView x:Name="TileList" MaxHeight="120" SelectionMode="Single" />
+            <StackPanel Grid.Column="1" Spacing="6">
+                <Button Content="Add a channel…" Click="OnAdd" HorizontalAlignment="Stretch" />
+                <Button Content="Sound from this one" Click="OnAudio" HorizontalAlignment="Stretch" />
+                <Button Content="Remove this one" Click="OnRemove" HorizontalAlignment="Stretch" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Page>

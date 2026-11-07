@@ -1,0 +1,83 @@
+<Page
+    x:Class="StreamSetu.App.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:core="using:StreamSetu.Core">
+    <ScrollViewer>
+        <StackPanel Padding="32" Spacing="14" MaxWidth="720" HorizontalAlignment="Left">
+            <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" />
+            <InfoBar x:Name="Message" IsOpen="False" IsClosable="True" />
+
+            <TextBlock Text="Profiles" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,8,0,0" />
+            <TextBlock Text="Up to four people, each with their own favorites, history, collections and folders. A Kids profile cannot open Settings or Connections and never sees locked folders." TextWrapping="Wrap" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+            <ListView x:Name="ProfileList" SelectionMode="Single" MaxHeight="180" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Switch to…" Click="OnSwitch" />
+                <Button Content="Add" Click="OnAddProfile" />
+                <Button Content="Set or change PIN…" Click="OnSetPin" />
+                <Button Content="Remove PIN" Click="OnRemovePin" />
+                <Button Content="Kids on/off" Click="OnToggleKids" />
+                <Button Content="Remove" Click="OnRemoveProfile" />
+            </StackPanel>
+
+            <TextBlock Text="Encrypted DNS" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
+            <TextBlock Text="Looks up server names through an encrypted DNS service, for StreamSetu only (no VPN, nothing else on the computer changes). Playback by the player still uses the system's DNS." TextWrapping="Wrap" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+            <ComboBox x:Name="DnsBox" MinWidth="260" SelectionChanged="OnDnsChanged">
+                <ComboBoxItem Content="System (default)" />
+                <ComboBoxItem Content="Cloudflare" />
+                <ComboBoxItem Content="Google" />
+                <ComboBoxItem Content="Quad9" />
+                <ComboBoxItem Content="My own server…" />
+            </ComboBox>
+            <TextBox x:Name="DnsUrl" Header="DNS-over-HTTPS address" PlaceholderText="https://dns.example/dns-query" Visibility="Collapsed" LostFocus="OnDnsUrl" />
+
+            <TextBlock Text="Subtitles" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
+            <TextBlock Text="From OpenSubtitles with your own free account and key (opensubtitles.com, API consumers). They are kept in Windows Credential Manager." TextWrapping="Wrap" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+            <TextBox x:Name="LanguageBox" Header="Language code" PlaceholderText="en" MaxLength="5" Width="120" />
+            <CheckBox x:Name="AutoBox" Content="Load a subtitle by itself when a title has none (only a confident match)" />
+            <TextBox x:Name="OsUser" Header="OpenSubtitles user name" />
+            <PasswordBox x:Name="OsPass" Header="OpenSubtitles password" />
+            <PasswordBox x:Name="OsKey" Header="OpenSubtitles API key" />
+            <Button Content="Save subtitle settings" Click="OnSaveSubtitles" />
+
+            <TextBlock Text="TV guide" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
+            <TextBlock Text="Xtream connections give their own guide. For any other connection, paste an XMLTV address (it may end in .xml or .xml.gz)." TextWrapping="Wrap" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+            <ComboBox x:Name="GuidePlaylist" DisplayMemberPath="Name" MinWidth="260" Header="Connection" SelectionChanged="OnGuidePlaylist" />
+            <TextBox x:Name="GuideUrl" Header="XMLTV address" PlaceholderText="https://example.com/guide.xml.gz" />
+            <TextBox x:Name="AlertBox" Header="Alert words (separated by commas)" PlaceholderText="cricket, news at ten" />
+            <Button Content="Save guide settings" Click="OnSaveGuide" />
+
+            <TextBlock Text="Sync on this network" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
+            <TextBlock Text="Devices on the same Wi-Fi keep favorites, resume points and collections in step: Mac, iPhone, iPad, Android and Windows. No server and no account; the devices talk to each other directly, and a new device is paired once by comparing six digits." TextWrapping="Wrap" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+            <ToggleSwitch x:Name="LanSwitch" Header="Sync with my other devices" Toggled="OnLanToggled" />
+            <TextBlock x:Name="LanStatus" TextWrapping="Wrap" />
+            <TextBlock Text="Paired devices" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+            <ListView x:Name="PairedList" SelectionMode="Single" MaxHeight="120" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="AddDeviceButton" Content="Add a device" Click="OnAddDevice" />
+                <Button Content="Sync now" Click="OnSyncNow" />
+                <Button Content="Forget the selected device" Click="OnForgetDevice" />
+            </StackPanel>
+            <StackPanel x:Name="PairPanel" Spacing="8" Visibility="Collapsed">
+                <TextBlock TextWrapping="Wrap" Text="Open Add a device on the other device as well, then choose it here. Both screens will show the same six digits; only say they match if they do." />
+                <ListView x:Name="FoundList" SelectionMode="Single" MaxHeight="140" />
+                <Button Content="Connect to the selected device" Click="OnConnectDevice" />
+            </StackPanel>
+
+            <TextBlock Text="Updates" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
+            <TextBlock x:Name="VersionText" Opacity="0.7" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Check for updates" Click="OnCheckUpdates" />
+                <Button x:Name="InstallButton" Content="Download and install" Click="OnInstallUpdate" Visibility="Collapsed" Style="{StaticResource AccentButtonStyle}" />
+            </StackPanel>
+            <TextBlock x:Name="UpdateStatus" TextWrapping="Wrap" />
+
+            <TextBlock Text="Backup" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
+            <TextBlock Text="Saves connections, profiles, favorites, history and settings to one file. Passwords are not in it: they stay in Windows Credential Manager on this computer." TextWrapping="Wrap" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Save a backup…" Click="OnExport" />
+                <Button Content="Restore a backup…" Click="OnRestore" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

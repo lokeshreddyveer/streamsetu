@@ -1,0 +1,27 @@
+<Window
+    x:Class="StreamSetu.App.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="StreamSetu">
+    <NavigationView x:Name="Nav" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed" IsSettingsVisible="False" OpenPaneLength="230" SelectionChanged="OnSelectionChanged" Loaded="OnLoaded">
+        <NavigationView.MenuItems>
+            <NavigationViewItem Content="Live TV" Tag="live" Icon="Video" />
+            <NavigationViewItem Content="TV Guide" Tag="guide" Icon="CalendarDay" />
+            <NavigationViewItem Content="Multi-View" Tag="multiview" Icon="ViewAll" />
+            <NavigationViewItem Content="Movies" Tag="movie" Icon="Play" />
+            <NavigationViewItem Content="Series" Tag="series" Icon="Library" />
+            <NavigationViewItemSeparator />
+            <NavigationViewItem Content="Favorites" Tag="favorites" Icon="Favorite" />
+            <NavigationViewItem Content="Continue Watching" Tag="continue" Icon="Clock" />
+            <NavigationViewItem Content="Unwatched" Tag="unwatched" Icon="View" />
+            <NavigationViewItem Content="New" Tag="added" Icon="NewFolder" />
+            <NavigationViewItem Content="Collections" Tag="collections" Icon="List" />
+            <NavigationViewItem Content="Recordings" Tag="recordings" Icon="Record" />
+        </NavigationView.MenuItems>
+        <NavigationView.FooterMenuItems>
+            <NavigationViewItem x:Name="ConnectionsItem" Content="Connections" Tag="connections" Icon="Add" />
+            <NavigationViewItem x:Name="SettingsItem" Content="Settings" Tag="settings" Icon="Setting" />
+        </NavigationView.FooterMenuItems>
+        <Frame x:Name="ContentFrame" />
+    </NavigationView>
+</Window>
