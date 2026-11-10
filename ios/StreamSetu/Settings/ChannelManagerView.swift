@@ -27,7 +27,7 @@ struct ChannelManagerView: View {
 
     var body: some View {
         List {
-            Section { Picker("Show", selection: $filter) { ForEach(Filter.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).listRowBackground(Color.clear) }.listRowBackground(ColorTokens.surface)
+            Section { Picker("Show", selection: $filter) { ForEach(Filter.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).listRowBackground(Color.clear) }.glossRow()
             ForEach(shown.prefix(400)) { c in
                 Button { editing = c } label: {
                     HStack(spacing: 12) {
@@ -91,7 +91,7 @@ private struct ChannelEditSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Name") { TextField(channel.name, text: $name) }.listRowBackground(ColorTokens.surface)
+                Section("Name") { TextField(channel.name, text: $name) }.glossRow()
                 Section {
                     LabeledContent("Guide entry", value: epgID.isEmpty ? "Automatic" : epgID)
                     TextField("Search the guide", text: $search).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -99,11 +99,11 @@ private struct ChannelEditSheet: View {
                         Button { epgID = g.id } label: { HStack { VStack(alignment: .leading) { Text(g.name); Text(g.id).font(.caption).foregroundStyle(.secondary) }; Spacer(); if epgID == g.id { Image(systemName: "checkmark") } } }.buttonStyle(.press)
                     }
                     if !epgID.isEmpty { Button("Use Automatic Matching") { epgID = "" } }
-                } header: { Text("Programme guide") } footer: { Text("Pick the guide entry that belongs to this channel when automatic matching got it wrong. Applies after the next guide refresh.") }.listRowBackground(ColorTokens.surface)
+                } header: { Text("Programme guide") } footer: { Text("Pick the guide entry that belongs to this channel when automatic matching got it wrong. Applies after the next guide refresh.") }.glossRow()
                 Section { Button("Reset Changes", role: .destructive) {
                     do { try container?.favoritesRepo.clearOverride(itemID: channel.id); changed(); state.catalogVersion += 1; dismiss() }
                     catch { state.toasts.show("Could not reset the channel: \(error.localizedDescription)", symbol: "exclamationmark.triangle") }
-                } }.listRowBackground(ColorTokens.surface)
+                } }.glossRow()
             }
             .navigationTitle(channel.name).themed(channel.name).navigationBarTitleDisplayMode(.inline)
             .toolbar {

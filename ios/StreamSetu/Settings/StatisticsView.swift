@@ -18,7 +18,7 @@ struct StatisticsView: View {
     var body: some View {
         List {
             if let container { Section { WeeklyDigestCard(container: container) }.listRowBackground(Color.clear).listRowInsets(EdgeInsets()) }
-            Section { Picker("Range", selection: $range) { ForEach(Range.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).listRowBackground(Color.clear) }.listRowBackground(ColorTokens.surface)
+            Section { Picker("Range", selection: $range) { ForEach(Range.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).listRowBackground(Color.clear) }.glossRow()
             if let s = stats {
                 if s.isEmpty {
                     EmptyState(symbol: "chart.bar", title: "Nothing to show yet", message: "Watch something and your viewing time appears here. It stays on this device.").listRowBackground(Color.clear)
@@ -29,18 +29,18 @@ struct StatisticsView: View {
                         LabeledContent("Average session", value: Self.duration(s.averageSession))
                         LabeledContent("Longest session", value: Self.duration(s.longestSession))
                         if let h = s.busiestHour { LabeledContent("Busiest hour", value: String(format: "%02d:00", h)) }
-                    }.listRowBackground(ColorTokens.surface)
+                    }.glossRow()
                     Section("Last 14 days") {
                         Chart(s.days, id: \.date) { d in BarMark(x: .value("Day", d.date, unit: .day), y: .value("Minutes", d.seconds / 60)).foregroundStyle(ColorTokens.accentDefault) }
                             .chartYAxisLabel("minutes").frame(height: 150)
-                    }.listRowBackground(ColorTokens.surface)
+                    }.glossRow()
                     Section("By type") {
                         LabeledContent("Live TV", value: Self.duration(s.liveSeconds))
                         LabeledContent("Movies", value: Self.duration(s.movieSeconds))
                         LabeledContent("Series", value: Self.duration(s.seriesSeconds))
-                    }.listRowBackground(ColorTokens.surface)
+                    }.glossRow()
                     top("Top channels", s.topChannels); top("Top movies", s.topMovies); top("Top series", s.topSeries)
-                    Section { Button("Reset Statistics", role: .destructive) { confirmReset = true } }.listRowBackground(ColorTokens.surface)
+                    Section { Button("Reset Statistics", role: .destructive) { confirmReset = true } }.glossRow()
                 }
             } else { ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear) }
         }
@@ -56,7 +56,7 @@ struct StatisticsView: View {
 
     @ViewBuilder private func top(_ title: String, _ items: [ViewingStatistics.Top]) -> some View {
         if !items.isEmpty {
-            Section(title) { ForEach(Array(items.enumerated()), id: \.element.id) { i, t in LabeledContent("\(i + 1). \(t.title)", value: Self.duration(t.seconds)) } }.listRowBackground(ColorTokens.surface)
+            Section(title) { ForEach(Array(items.enumerated()), id: \.element.id) { i, t in LabeledContent("\(i + 1). \(t.title)", value: Self.duration(t.seconds)) } }.glossRow()
         }
     }
 

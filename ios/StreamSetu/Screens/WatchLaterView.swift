@@ -93,7 +93,7 @@ struct QueueButton: View {
                     Button("Add to Queue", systemImage: "text.badge.plus") { q.add(item) }
                 }
             } label: { Image(systemName: q.contains(item.id) ? "text.badge.checkmark" : "text.badge.plus").frame(width: 24, height: 24) }
-                .buttonStyle(.bordered).controlSize(.large).tint(q.contains(item.id) ? .blue : nil).accessibilityLabel("Queue")
+                .buttonStyle(ActionCircleStyle(tint: q.contains(item.id) ? Color.accentColor : nil)).accessibilityLabel("Queue")
         }
     }
 }

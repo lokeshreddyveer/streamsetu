@@ -13,8 +13,8 @@ struct TonightView: View {
                 if plan.isEmpty {
                     EmptyState(symbol: "moon.stars", title: "Nothing lined up yet", message: "Favourite a few channels with a guide, follow a series, or add a guide alert, and tonight fills in.").listRowBackground(Color.clear)
                 }
-                if !plan.onNow.isEmpty { Section("On now") { ForEach(plan.onNow) { s in show(s, live: true) } }.listRowBackground(ColorTokens.surface) }
-                if !plan.later.isEmpty { Section("Coming up") { ForEach(plan.later) { s in show(s, live: false) } }.listRowBackground(ColorTokens.surface) }
+                if !plan.onNow.isEmpty { Section("On now") { ForEach(plan.onNow) { s in show(s, live: true) } }.glossRow() }
+                if !plan.later.isEmpty { Section("Coming up") { ForEach(plan.later) { s in show(s, live: false) } }.glossRow() }
                 if !plan.upNext.isEmpty {
                     Section("Next episode") {
                         ForEach(plan.upNext) { u in
@@ -22,9 +22,9 @@ struct TonightView: View {
                                 VStack(alignment: .leading) { Text(u.series.title); Text("S\(u.episode.seasonNumber) E\(u.episode.episodeNumber) · \(u.episode.title)").font(.caption).foregroundStyle(.secondary) }
                             }
                         }
-                    }.listRowBackground(ColorTokens.surface)
+                    }.glossRow()
                 }
-                if !plan.alerts.isEmpty { Section("From your guide alerts") { ForEach(plan.alerts, id: \.self) { Text($0) } }.listRowBackground(ColorTokens.surface) }
+                if !plan.alerts.isEmpty { Section("From your guide alerts") { ForEach(plan.alerts, id: \.self) { Text($0) } }.glossRow() }
             } else { ProgressView() }
         }
         .navigationTitle("Tonight").themed("Tonight")

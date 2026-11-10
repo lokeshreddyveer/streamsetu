@@ -25,14 +25,14 @@ struct CrashReportsView: View {
                 Toggle("Keep crash reports on this device", isOn: $keep)
             } footer: {
                 Text("Off by default. When on, if StreamSetu ever crashes, the system's report is saved here. Nothing is sent anywhere; you decide whether to share one.")
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             Section("Saved reports") {
                 if reports.isEmpty { Text("None").foregroundStyle(.secondary) }
                 ForEach(reports) { r in
                     ShareLink(item: r.url) { Label(r.date.formatted(date: .abbreviated, time: .shortened), systemImage: "square.and.arrow.up") }
                 }
                 if !reports.isEmpty { Button("Delete All", role: .destructive) { CrashReports.removeAll(); reports = CrashReports.list() } }
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
         }
         .navigationTitle("Crash Reports").themed("Crash Reports")
         .onAppear { reports = CrashReports.list() }

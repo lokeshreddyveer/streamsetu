@@ -24,7 +24,7 @@ struct UnlockSheet: View {
                 Section {
                     PINField(title: "PIN", text: $pin)
                     if let error { Label(error, systemImage: "lock.trianglebadge.exclamationmark").foregroundStyle(.orange).font(.callout) }
-                } footer: { Text("Locked folders show for \(container?.parental.unlockMinutes ?? 15) minutes, then lock again by themselves, or when you leave the app.") }.listRowBackground(ColorTokens.surface)
+                } footer: { Text("Locked folders show for \(container?.parental.unlockMinutes ?? 15) minutes, then lock again by themselves, or when you leave the app.") }.glossRow()
             }
             .navigationTitle("Unlock Folders").themed("Unlock Folders").navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -62,7 +62,7 @@ struct ParentalView: View {
                     Toggle("Require \(lock.method)", isOn: Binding(get: { lock.enabled }, set: { v in Task { await lock.setEnabled(v) } })).disabled(!lock.canEnable && !lock.enabled)
                 } header: { Text("App Lock") } footer: {
                     Text(lock.canEnable ? "Locks StreamSetu when you leave it for more than 30 seconds. A stream that is playing keeps playing." : "Set a passcode on this device to use App Lock.")
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
             Section {
                 if p?.hasPIN == true {
@@ -73,23 +73,23 @@ struct ParentalView: View {
                 }
             } header: { Text("PIN") } footer: {
                 Text("Four to eight digits, stored on this device as a salted hash. It keeps casual viewers out of locked folders; it isn't protection against someone who can open this device's files.")
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             if let p, p.hasPIN {
                 Section("Right now") {
                     LabeledContent("Locked folders", value: p.isUnlocked ? "Visible" : "Hidden")
                     if p.isUnlocked { Button("Lock Now") { p.lockNow(); tick += 1 } } else { Button("Unlock…") { showUnlock = true } }
                     Stepper("Unlock lasts \(p.unlockMinutes) min", value: Binding(get: { p.unlockMinutes }, set: { p.unlockMinutes = $0; tick += 1 }), in: 1...240, step: 5)
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
                 if p.isUnlocked {
                     ForEach(folders, id: \.kind) { group in
                         Section(title(group.kind)) {
                             ForEach(group.items) { c in
                                 Toggle(c.name, isOn: Binding(get: { p.isLocked(c.id) }, set: { _ = p.setFolder(c.id, locked: $0); tick += 1 }))
                             }
-                        }.listRowBackground(ColorTokens.surface)
+                        }.glossRow()
                     }
                 } else {
-                    Section { Text("Unlock to choose which folders are locked.").font(.callout).foregroundStyle(.secondary) }.listRowBackground(ColorTokens.surface)
+                    Section { Text("Unlock to choose which folders are locked.").font(.callout).foregroundStyle(.secondary) }.glossRow()
                 }
             }
         }
@@ -131,7 +131,7 @@ private struct SetPINSheet: View {
                     PINField(title: "New PIN (4–8 digits)", text: $new)
                     PINField(title: "Repeat new PIN", text: $again)
                     if let error { Text(error).foregroundStyle(.orange).font(.callout) }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
             .navigationTitle(changing ? "Change PIN" : "Set PIN").themed(changing ? "Change PIN" : "Set PIN").navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -162,7 +162,7 @@ private struct RemovePINSheet: View {
                 Section {
                     PINField(title: "PIN", text: $pin)
                     if let error { Text(error).foregroundStyle(.orange).font(.callout) }
-                } footer: { Text("Folder locks are kept, but nothing is hidden without a PIN.") }.listRowBackground(ColorTokens.surface)
+                } footer: { Text("Folder locks are kept, but nothing is hidden without a PIN.") }.glossRow()
             }
             .navigationTitle("Remove PIN").themed("Remove PIN").navigationBarTitleDisplayMode(.inline)
             .toolbar {

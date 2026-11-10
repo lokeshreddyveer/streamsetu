@@ -13,6 +13,8 @@ struct ArtworkImage: View {
     let kind: ArtworkKind
     var contentMode: ContentMode = .fill
     var symbol = "photo"
+    /// Where a picture that is cropped to fill sits in its frame. `.top` keeps heads in view on tall banners.
+    var alignment: Alignment = .center
     /// Cards draw their own placeholder underneath, so the image view stays transparent until the picture arrives.
     var showsPlaceholder = true
     @Environment(\.artwork) private var artwork
@@ -23,7 +25,8 @@ struct ArtworkImage: View {
         ZStack {
             if showsPlaceholder { LinearGradient(colors: [ColorTokens.elevated, ColorTokens.card], startPoint: .topLeading, endPoint: .bottomTrailing) }
             if let image {
-                Image(decorative: image, scale: 1).resizable().aspectRatio(contentMode: contentMode).transition(.opacity)
+                if alignment == .center { Image(decorative: image, scale: 1).resizable().aspectRatio(contentMode: contentMode).transition(.opacity) }
+                else { Image(decorative: image, scale: 1).resizable().aspectRatio(contentMode: contentMode).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment).transition(.opacity) }
             } else if showsPlaceholder {
                 Image(systemName: symbol).font(.system(size: 22, weight: .light)).foregroundStyle(ColorTokens.textTertiary)
                     .opacity(failed || url == nil ? 1 : 0.4)

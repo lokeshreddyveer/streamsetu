@@ -19,8 +19,8 @@ struct MoreView: View {
                     NavigationLink { IntegrationsScreen() } label: { LibraryRow(symbol: "link.badge.plus", tint: .purple, title: "Trakt, Debrid and AI", count: nil) }
                     NavigationLink { OnYourDeviceView() } label: { LibraryRow(symbol: "iphone", tint: .teal, title: "On Your Device", count: nil) }
                     NavigationLink { FilesView() } label: { LibraryRow(symbol: "externaldrive.fill", tint: .gray, title: "Files and Servers", count: nil) }
-                }.listRowBackground(ColorTokens.surface)
-                Section { NavigationLink { StatisticsView() } label: { LibraryRow(symbol: "chart.bar.fill", tint: .green, title: "Statistics", count: nil) } }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
+                Section { NavigationLink { StatisticsView() } label: { LibraryRow(symbol: "chart.bar.fill", tint: .green, title: "Statistics", count: nil) } }.glossRow()
             }
             .navigationTitle("Library").themed("Library")
             .miniPlayerInset()
@@ -172,13 +172,13 @@ struct PlaybackSettingsView: View {
             Section("Buffering") {
                 Picker("Mode", selection: $s.bufferingMode) { ForEach(BufferingMode.allCases) { Text($0.rawValue).tag($0) } }
                 Text("A larger buffer gives a steadier picture on weak connections, with a little more delay on live channels.").font(.caption).foregroundStyle(.secondary)
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             Section("Resuming") {
                 Toggle("Resume movies and episodes where I stopped", isOn: $s.resumeAutomatically)
                 Toggle("Play the best version of a film first", isOn: $s.bestVersionFirst)
                 Toggle("Remember my position", isOn: $s.rememberPosition)
                 Toggle("Play the next episode automatically", isOn: $s.autoPlayNextEpisode)
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             if AppEngineChoice.available {
                 Section {
                     Picker("Player", selection: Binding(get: { settings.enginePreference },
@@ -193,31 +193,31 @@ struct PlaybackSettingsView: View {
                     }
                 } header: { Text("Player engine") } footer: {
                     Text("Automatic uses Apple's player for movies, episodes and HLS, and MPV for live TV and for formats Apple's player can't open (MKV, RTSP, AVI). MPV doesn't support Picture in Picture or AirPlay.")
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
             Section("Picture quality") {
                 Picker("Streams with several qualities", selection: $s.videoQuality) { ForEach(VideoQualityPreference.allCases) { Text($0.rawValue).tag($0) } }
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             Section("Language") {
                 TextField("Preferred audio language (e.g. en)", text: $s.preferredAudioLanguage).textInputAutocapitalization(.never).autocorrectionDisabled()
                 TextField("Preferred subtitle language (e.g. en)", text: $s.preferredSubtitleLanguage).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Toggle("Show subtitles by default", isOn: $s.subtitlesByDefault)
                 Toggle("Fetch subtitles automatically", isOn: $s.autoSubtitles)
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             Section {
                 OpenSubtitlesFields()
             } header: { Text("Subtitles online") } footer: { Text("From OpenSubtitles, using your own free account and API key (opensubtitles.com). They stay in the Keychain on this device and are sent only to OpenSubtitles when you ask for subtitles in the player.") }
-            .listRowBackground(ColorTokens.surface)
+            .glossRow()
             Section {
                 Toggle("Remember settings for each title", isOn: Binding(get: { ItemMemory().enabled }, set: { ItemMemory().enabled = $0 }))
             } footer: { Text("Audio language, subtitles, speed and timing come back the next time you play the same title or channel.") }
-            .listRowBackground(ColorTokens.surface)
+            .glossRow()
             Section("Subtitle style") {
                 VStack(alignment: .leading) { Text("Size \(Int(s.subtitleSize))%").font(.subheadline); Slider(value: $s.subtitleSize, in: 60...200, step: 10) }
                 VStack(alignment: .leading) { Text("Background \(Int(s.subtitleBackground * 100))%").font(.subheadline); Slider(value: $s.subtitleBackground, in: 0...1) }
                 Picker("Colour", selection: $s.subtitleColor) { ForEach(SubtitleColor.allCases) { Text($0.rawValue).tag($0) } }
                 Toggle("Outline", isOn: $s.subtitleOutline)
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
         }
         .navigationTitle("Playback").themed("Playback")
         .alert("Switch to MPV?", isPresented: $confirmMPV) {
@@ -240,24 +240,24 @@ struct AboutView: View {
                         Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0")").font(.caption).foregroundStyle(.secondary)
                     }
                 }
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             Section {
                 Text("StreamSetu plays playlists and Xtream accounts you add yourself. It includes no channels or content, has no accounts, and keeps everything on this device.").font(.callout)
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             Section {
                 if DiagnosticsUploader.availableInThisBuild { NavigationLink { FeedbackView() } label: { Label("Send Feedback", systemImage: "envelope") } }
                 NavigationLink { CrashReportsView() } label: { Label("Crash Reports", systemImage: "ladybug") }
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             if let t = UserDefaults.standard.dictionary(forKey: "startup.timings") as? [String: Int], !t.isEmpty {
                 Section("Last launch") {
                     ForEach(["library opened", "library read", "ready"], id: \.self) { k in if let ms = t[k] { LabeledContent(k.capitalized, value: String(format: "%.2f s", Double(ms) / 1000)) } }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
             Section("Legal") {
                 ForEach(LegalPage.allCases) { page in
                     NavigationLink { LegalView(page: page).navigationTitle(page.title).navigationBarTitleDisplayMode(.inline) } label: { Text(page.title) }
                 }
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
         }
         .navigationTitle("About").themed("About")
     }
@@ -309,7 +309,7 @@ struct SettingsView: View {
                 ForEach(Array(SettingsPage.groups.enumerated()), id: \.offset) { _, group in
                     Section(group.title ?? "") {
                         ForEach(group.pages) { page in NavigationLink { page.destination } label: { Label(page.title, systemImage: page.symbol) } }
-                    }.listRowBackground(ColorTokens.surface)
+                    }.glossRow()
                 }
             }
             .navigationTitle("Settings").themed("Settings")
@@ -396,7 +396,7 @@ struct PlaylistsView: View {
                     }
                     Button { router.presentAdd = true } label: { Label("Add Playlist", systemImage: "plus") }
                     if !state.sources.isEmpty { Button { state.syncAll() } label: { Label(state.isSyncing ? "Refreshing…" : "Refresh All", systemImage: "arrow.clockwise") }.disabled(state.isSyncing) }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
             .navigationTitle("Playlists").themed("Playlists")
             .miniPlayerInset()

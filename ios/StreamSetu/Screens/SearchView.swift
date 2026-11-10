@@ -59,7 +59,7 @@ struct SearchView: View {
                 ForEach(SearchCommands.parse(router.query)) { cmd in
                     Button { SearchCommandRunner.run(cmd, container: container, router: router, state: state) } label: {
                         Label(cmd.title, systemImage: cmd.symbol).appFont(15, .medium).frame(maxWidth: .infinity, alignment: .leading)
-                    }.buttonStyle(.press).listRowBackground(ColorTokens.surface)
+                    }.buttonStyle(.press).glossRow()
                 }
             }
             if !isBlank, let container { SmartPicksCard(container: container, query: router.query, open: { opened = $0 }).listRowBackground(Color.clear).listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)) }
@@ -78,14 +78,14 @@ struct SearchView: View {
                 CorrectedNote(original: router.query, corrected: fixed).listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
             if !isBlank, let top = results.exactMatch(for: router.query) {
-                Section("Top Match") { Button { activate(top) } label: { row(top, showKind: true) }.buttonStyle(.press) }.listRowBackground(ColorTokens.surface)
+                Section("Top Match") { Button { activate(top) } label: { row(top, showKind: true) }.buttonStyle(.press) }.glossRow()
             }
             ForEach(SearchResultKind.allCases.filter { tab.kinds.contains($0) && !(results.byKind[$0] ?? []).isEmpty }, id: \.self) { kind in
                 Section(kind.groupTitle) {
                     ForEach(results.byKind[kind] ?? []) { r in
                         Button { activate(r) } label: { row(r) }.buttonStyle(.press)
                     }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
         }
         .listStyle(.insetGrouped)

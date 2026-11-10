@@ -145,7 +145,7 @@ struct GuideView: View {
                         }
                     }
                 } header: { Text(c.name) }
-                .listRowBackground(ColorTokens.surface)
+                .glossRow()
                 .onAppear { vm.rowAppeared(c.id) }.onDisappear { vm.rowDisappeared(c.id) }
             }
         }
@@ -205,7 +205,7 @@ private struct ProgrammeSheet: View {
                         Text("\(c.name) · \(p.start.formatted(.dateTime.weekday(.abbreviated).hour().minute())) – \(p.end.formatted(date: .omitted, time: .shortened))").font(.subheadline).foregroundStyle(.secondary)
                         if let d = p.description, !d.isEmpty { Text(d).font(.callout).padding(.top, 4) }
                     }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
                 Section {
                     if p.isLive() {
                         Button { play() } label: { Label("Watch Now", systemImage: "play.fill") }
@@ -216,7 +216,7 @@ private struct ProgrammeSheet: View {
                         Button { toggleReminder() } label: { Label(reminder ? "Cancel Reminder" : "Remind Me", systemImage: reminder ? "bell.slash" : "bell") }
                     }
                     if let note { Text(note).font(.callout).foregroundStyle(.secondary) }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
             .navigationTitle("Programme").themed("Programme").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }

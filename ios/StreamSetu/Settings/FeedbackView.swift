@@ -22,14 +22,14 @@ struct FeedbackView: View {
             Section {
                 Picker("Type", selection: $kind) { ForEach(FeedbackKind.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
                 TextEditor(text: $text).frame(minHeight: 150)
-            } footer: { Text(kind == .problem ? "What went wrong, and what were you doing? The more detail, the easier it is to fix." : "What would you like StreamSetu to do?") }.listRowBackground(ColorTokens.surface)
+            } footer: { Text(kind == .problem ? "What went wrong, and what were you doing? The more detail, the easier it is to fix." : "What would you like StreamSetu to do?") }.glossRow()
             if kind == .problem {
                 Section {
                     Toggle("Include diagnostics", isOn: $includeDiagnostics)
                     if includeDiagnostics, let diagnostics {
                         DisclosureGroup("See what is included") { Text(diagnostics).font(.system(size: 11, design: .monospaced)).textSelection(.enabled) }
                     }
-                } footer: { Text("Version, device, playlist hosts, counts and recent playback errors. Never logins, passwords or full stream addresses.") }.listRowBackground(ColorTokens.surface)
+                } footer: { Text("Version, device, playlist hosts, counts and recent playback errors. Never logins, passwords or full stream addresses.") }.glossRow()
             }
             Section {
                 Toggle("Share playback logs automatically", isOn: $shareAutomatically)
@@ -41,12 +41,12 @@ struct FeedbackView: View {
                 }
             } header: { Text("Help fix playback problems") } footer: {
                 Text("Off until you turn it on. When it is on and a stream fails for good, StreamSetu sends the recent playback log to the developer: what was tried, which player, error codes, your app and iOS version and device model. Server names are replaced with server-1, server-2… Never logins, passwords, playlist names, titles or stream addresses. Kept for 30 days. You can turn it off here any time; you can also send one log by hand.")
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             Section {
                 Button { send() } label: { Label("Send by Email", systemImage: "envelope") }
                 ShareLink(item: message.fullText) { Label("Share or Copy Instead", systemImage: "square.and.arrow.up") }
                 Button("Clear Playback Log", role: .destructive) { PlaybackLog.shared.clear(); Task { await loadDiagnostics() } }
-            } footer: { Text("This opens your mail app with the message ready, addressed to \(FeedbackMessage.address). Nothing is sent until you press Send there.") }.listRowBackground(ColorTokens.surface)
+            } footer: { Text("This opens your mail app with the message ready, addressed to \(FeedbackMessage.address). Nothing is sent until you press Send there.") }.glossRow()
         }
         .navigationTitle("Send Feedback").themed("Send Feedback")
         .task { await loadDiagnostics(); loadSharedPreview() }

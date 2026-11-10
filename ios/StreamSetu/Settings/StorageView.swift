@@ -21,21 +21,21 @@ struct StorageView: View {
                 LabeledContent("Total", value: bytes(storage.total))
                 Button("Clear Artwork Cache") { run { await container?.artwork.clear(); return "Artwork cache cleared." } }
                 Button("Clear Temporary Files") { run { let r = container?.maintenance.clearTemporaryFiles(); return "Removed \(r?.files ?? 0) temporary files." } }
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             Section("Library maintenance") {
                 Button("Optimize Database") { run { try container?.maintenance.optimizeDatabase().summary ?? "" } }
                 Button("Check Database Integrity") { run { let r = try container?.maintenance.verifyDatabase(); return r?.ok == true ? "The database is healthy (schema v\(r?.schemaVersion ?? 0))." : "Problems found: \(r?.problems.joined(separator: "; ") ?? "")" } }
                 Button("Rebuild Search Index") { run { try container?.maintenance.rebuildSearchIndex(); state.catalogVersion += 1; return "Search index rebuilt." } }
-            }.listRowBackground(ColorTokens.surface)
-            if let message { Section { Text(message).font(.callout) }.listRowBackground(ColorTokens.surface) }
+            }.glossRow()
+            if let message { Section { Text(message).font(.callout) }.glossRow() }
             Section {
                 Button("Create Diagnostic Report") { makeReport() }
                 if let report { ShareLink(item: report) { Label("Share Report", systemImage: "square.and.arrow.up") } }
-            } header: { Text("Diagnostics") } footer: { Text("Passwords, tokens and stream addresses are removed from the report.") }.listRowBackground(ColorTokens.surface)
+            } header: { Text("Diagnostics") } footer: { Text("Passwords, tokens and stream addresses are removed from the report.") }.glossRow()
             Section("Reset") {
                 Button("Clear Watch History…", role: .destructive) { confirm = .history }
                 Button("Remove Everything…", role: .destructive) { confirm = .everything }
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
         }
         .overlay { if working { ProgressView().controlSize(.large) } }
         .navigationTitle("Storage and Maintenance").themed("Storage and Maintenance")

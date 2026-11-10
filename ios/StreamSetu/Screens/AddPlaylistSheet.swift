@@ -22,10 +22,10 @@ struct AddPlaylistSheet: View {
                             .onChange(of: pasted) { _, v in vm.paste(v) }
                         Button { if let t = UIPasteboard.general.string { pasted = t } } label: { Image(systemName: "doc.on.clipboard") }.buttonStyle(.borderless).accessibilityLabel("Paste")
                     }
-                } footer: { Text(vm.detectionNote ?? "Paste a playlist link, an Xtream or media server address, or a single stream, and the form fills itself in.") }.listRowBackground(ColorTokens.surface)
+                } footer: { Text(vm.detectionNote ?? "Paste a playlist link, an Xtream or media server address, or a single stream, and the form fills itself in.") }.glossRow()
                 Section {
                     Picker("Type", selection: $vm.kind) { ForEach(AddSourceKind.offered) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
                 Section {
                     TextField("Name (optional)", text: $vm.name).textInputAutocapitalization(.words)
                     switch vm.kind {
@@ -54,8 +54,8 @@ struct AddPlaylistSheet: View {
                     }
                 } footer: {
                     Text("Only add playlists and accounts you are allowed to use. Logins are kept in the device Keychain.")
-                }.listRowBackground(ColorTokens.surface)
-                if let error = vm.error { Section { Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.callout) }.listRowBackground(ColorTokens.surface) }
+                }.glossRow()
+                if let error = vm.error { Section { Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.callout) }.glossRow() }
             }
             .navigationTitle("Add Playlist").themed("Add Playlist")
             .navigationBarTitleDisplayMode(.inline).clearTopBar()

@@ -17,14 +17,16 @@ struct HomeView: View {
     @State private var loaded = false
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var wide: Bool { sizeClass == .regular }
+    /// About half the screen, plus the status bar it runs under, so the first shelf peeks in below.
+    private var heroHeight: CGFloat { HeroMetrics.height(wide: wide, share: 0.6) }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    if !featured.isEmpty { FeaturedBanner(items: featured, height: heroHeight, scrollY: scrollY, immersive: true) }
                     if let container { OfflineHomeBanner(container: container).padding(.horizontal, 16) }
                     if let container { NowPlayingStrip(container: container).padding(.horizontal, 16) }
-                    if !featured.isEmpty { FeaturedBanner(items: featured, height: wide ? 340 : 260, scrollY: scrollY) }
                     if !resume.isEmpty {
                         Shelf(title: "Continue Watching") {
                             ForEach(resume) { r in
@@ -88,8 +90,9 @@ struct HomeView: View {
                                    message: state.isSyncing ? "Movies and series appear as soon as the playlist has been read." : "This playlist has no movies or series. Live channels are in the Live TV tab.")
                     }
                 }
-                .padding(.vertical, 12)
+                .padding(.top, featured.isEmpty ? UIScreen.safeTop + 12 : 0).padding(.bottom, 12)
             }
+            .ignoresSafeArea(edges: .top)          // the featured artwork runs up under the status bar
             .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, v in scrollY = v }
             .navigationTitle("Home").themed("Home", tabRoot: true)
             .navigationDestination(for: LibraryItem.self) { DetailView(item: $0) }

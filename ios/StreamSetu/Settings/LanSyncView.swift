@@ -14,7 +14,7 @@ struct LanSyncView: View {
                 Toggle("Sync on this network", isOn: $s.lanSync).onChange(of: s.lanSync) { _, on in container?.lan.setEnabled(on) }
             } footer: {
                 Text("Devices on the same Wi-Fi share favourites, Watch Later, collections and resume points directly with each other. No account and no server; nothing leaves your network. Pair each device once.")
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             if s.lanSync, let lan {
                 Section("Devices") {
                     LabeledContent("Status", value: lan.status)
@@ -24,7 +24,7 @@ struct LanSyncView: View {
                     }
                     Button("Add a Device…") { adding = true }
                     Button("Sync Now") { Task { await lan.syncNow() } }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
         }
         .navigationTitle("Sync on this network").themed("Sync on this network")

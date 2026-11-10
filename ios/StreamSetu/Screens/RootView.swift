@@ -5,7 +5,6 @@ struct RootView: View {
     @Environment(AppState.self) private var state
     @Environment(IOSRouter.self) private var router
     @Environment(\.container) private var container
-    @Environment(\.colorSchemeContrast) private var contrast
     @State private var visited: Set<IOSRouter.Tab> = []
     /// How tall the floating bar (and the mini player above it) is right now, so every scrolling page can leave that much room at its end.
     @State private var barHeight: CGFloat = 0
@@ -21,6 +20,7 @@ struct RootView: View {
             ForEach(compactOrder, id: \.self) { tab in
                 if visited.contains(tab) || router.tab == tab {
                     compactScreen(tab)
+                        .id(router.rootResets[tab, default: 0])          // a second tap on its own tab rebuilds it, which closes whatever was opened inside
                         .environment(\.tabActive, router.tab == tab)          // a hidden tab keeps its state but stops its timers, slideshows and polling
                         .opacity(router.tab == tab ? 1 : 0)
                         .allowsHitTesting(router.tab == tab)
@@ -84,28 +84,25 @@ struct RootView: View {
         }
         .loggingNotice()
         .background(ColorTokens.background)
-        .overlay {
-            if let container, !state.needsOnboarding {
-                AssistantBubble(container: container, bottomInset: barHeight + 10,
-                                open: { item in router.pendingAssistantItem = item },
-                                look: { (screen: iosScreenName, item: nil, search: router.query) },
-                                perform: { p in
-                                    switch p.kind {
-                                    case .command, .playItem, .toggleList: return await SearchCommandRunner.execute(p.kind, container: container, router: router, state: state)
-                                    default: return await container.perform(p, state: state)
-                                    }
-                                })
-            }
-        }
+        // The AI assistant button is unplugged for now (AssistantBubble is not shown); its code is left in place.
         .overlay { if let container { ViewingBlockOverlay(container: container) } }
         .animation(.easeInOut(duration: 0.3), value: container?.playback.viewingBlock)
         .overlay { if let container, !picked, container.profiles.isShared { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { picked = true } } } }
         .overlay { if opening { OpeningAnimation { BrandMark() } onDone: { opening = false } } }
-        .onChange(of: contrast, initial: true) { _, c in ThemeStore.state.systemContrast = c == .increased }
+        .modifier(ThemeSync())
         .sheet(isPresented: $router.presentAdd) { AddPlaylistSheet() }
         .sheet(item: $router.pendingAssistantItem) { item in NavigationStack { DetailView(item: item) }.presentationDetents([.large]) }
         .fullScreenCover(isPresented: $router.showMultiView) { if let container { MultiViewScreen(model: container.multiView) } }
         .modifier(PlayerCover(active: true))
+    }
+}
+
+/// Keeps the theme's state in step with the system: Increase Contrast. Kept apart from RootView.body, which the compiler cannot type-check in reasonable time with more on it.
+struct ThemeSync: ViewModifier {
+    @Environment(\.colorSchemeContrast) private var contrast
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: contrast, initial: true) { _, c in ThemeStore.state.systemContrast = c == .increased }
     }
 }
 
@@ -179,7 +176,7 @@ struct MoreTab: View {
                     NavigationLink(value: IOSRouter.MoreRoute.library) { Label("Library", systemImage: "books.vertical") }
                     NavigationLink(value: IOSRouter.MoreRoute.playlists) { Label("Playlists", systemImage: "list.bullet.rectangle") }
                     NavigationLink(value: IOSRouter.MoreRoute.settings) { Label("Settings", systemImage: "gearshape") }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
             .navigationTitle("More").themed("More", tabRoot: true)
             .miniPlayerInset()
@@ -200,6 +197,7 @@ struct MoreTab: View {
 /// small pill at the right, under the thumb, like Safari's: the current tab's icon and name. Tapping the pill brings the whole bar back.
 struct CompactTabBar: View {
     @Binding var selection: IOSRouter.Tab
+    @Environment(IOSRouter.self) private var router
     @Environment(ScrollChrome.self) private var chrome: ScrollChrome?
     @Namespace private var slide
     private let items: [(tab: IOSRouter.Tab, title: String, symbol: String)] = [
@@ -224,16 +222,13 @@ struct CompactTabBar: View {
     private var pill: some View {
         let current = items.first { $0.tab == selection } ?? items[0]
         return Button { chrome?.reset() } label: {
-            HStack(spacing: 6) {
-                Image(systemName: current.symbol).font(.system(size: 15, weight: .medium))
-                Text(current.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
-            }
-            .foregroundStyle(ColorTokens.accentDefault)
-            .padding(.horizontal, 14).frame(height: 34)
-            .background(ColorTokens.card, in: Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(0.08)))
-            .shadow(color: .black.opacity(0.3), radius: 8, y: 3)
-            .contentShape(Capsule())
+            Image(systemName: current.symbol).font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(ColorTokens.accentDefault)
+                .frame(width: 50, height: 50)
+                .background(ColorTokens.card, in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.1)))
+                .shadow(color: .black.opacity(0.3), radius: 8, y: 3)
+                .contentShape(Circle())
         }
         .buttonStyle(.press)
         .accessibilityLabel("Show the tab bar, \(current.title) is open")
@@ -243,7 +238,10 @@ struct CompactTabBar: View {
         HStack(spacing: 0) {
             ForEach(items, id: \.tab) { item in
                 let on = selection == item.tab
-                Button { withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) { selection = item.tab } } label: {
+                Button {
+                    if selection == item.tab { router.reselect(item.tab); chrome?.reset() }
+                    else { withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) { selection = item.tab } }
+                } label: {
                     VStack(spacing: 1) {
                         Image(systemName: item.symbol).font(.system(size: 17, weight: .medium)).frame(height: 20)
                             .symbolEffect(.bounce, value: on)

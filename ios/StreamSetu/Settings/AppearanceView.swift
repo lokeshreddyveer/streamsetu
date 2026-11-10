@@ -10,13 +10,13 @@ struct AppearanceView: View {
         Form {
             Section {
                 ThemePreview(palette: s.theme == .custom ? draft.palette : s.theme.palette).frame(height: 120).listRowInsets(EdgeInsets())
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             Section {
                 Picker("Language", selection: $s.language) { ForEach(AppLanguage.allCases) { Text($0.label).tag($0) } }
-            } footer: { Text("The language of the app's own wording. Titles and descriptions come from your playlists and stay as they are. Some text is still in English.") }.listRowBackground(ColorTokens.surface)
+            } footer: { Text("The language of the app's own wording. Titles and descriptions come from your playlists and stay as they are. Some text is still in English.") }.glossRow()
             Section {
                 Toggle("Increase contrast", isOn: $s.highContrast)
-            } footer: { Text("Brighter text and stronger outlines. Also follows Settings > Accessibility > Display > Increase Contrast.") }.listRowBackground(ColorTokens.surface)
+            } footer: { Text("Brighter text and stronger outlines. Also follows Settings > Accessibility > Display > Increase Contrast.") }.glossRow()
             Section("Theme") {
                 ForEach(AppTheme.Group.allCases, id: \.self) { group in
                     let themes = AppTheme.allCases.filter { $0.group == group }
@@ -39,7 +39,7 @@ struct AppearanceView: View {
                         }
                     }
                 }
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             if s.theme == .custom {
                 Section("Custom theme") {
                     ColorPicker("Background", selection: binding(\.background), supportsOpacity: false)
@@ -55,7 +55,7 @@ struct AppearanceView: View {
                     }
                     Button("Apply") { s.customTheme = draft }.disabled(draft == s.customTheme)
                     Button("Start Again", role: .destructive) { draft = .standard; s.customTheme = .standard }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
             Section("Accent colour") {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 44), spacing: 10)], spacing: 10) {
@@ -66,7 +66,7 @@ struct AppearanceView: View {
                         }.buttonStyle(.press).accessibilityLabel(a.title).accessibilityAddTraits(s.accent == a ? .isSelected : [])
                     }
                 }.padding(.vertical, 4)
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
         }
         .navigationTitle("Appearance").themed("Appearance")
         .onAppear { draft = settings.customTheme }

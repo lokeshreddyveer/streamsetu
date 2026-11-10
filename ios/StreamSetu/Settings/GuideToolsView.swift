@@ -17,7 +17,7 @@ struct GuideToolsView: View {
                     }
                     Button(accounts.checking ? "Checking…" : "Check Now") { Task { await accounts.refresh(force: true); load(accounts) } }
                 } header: { Text("Subscriptions") } footer: { Text("Asked of each provider that reports it (Xtream), at most twice a day. You are warned from a week before one ends.") }
-                .listRowBackground(ColorTokens.surface)
+                .glossRow()
                 .task { load(accounts); await accounts.refresh(); load(accounts) }
             }
             if let alerts = container?.alerts {
@@ -28,7 +28,7 @@ struct GuideToolsView: View {
                     ForEach(alerts.lastFound.prefix(5), id: \.self) { Text($0).font(.caption) }
                     Button("Look Now") { Task { let n = await alerts.scan(); message = n == 0 ? "Nothing new coming up." : "\(n) reminder\(n == 1 ? "" : "s") set." } }
                 } header: { Text("Guide alerts") } footer: { Text("Add a word, such as a sport, a team or a show. When a programme with that word is coming up in the next day and a half, you get a reminder a minute before it starts, once. Needs Programme reminders to be on.") }
-                .listRowBackground(ColorTokens.surface)
+                .glossRow()
             }
         }
         .navigationTitle("Subscriptions and Alerts").themed("Subscriptions and Alerts")

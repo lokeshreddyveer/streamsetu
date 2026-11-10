@@ -121,6 +121,7 @@ struct LibraryView: View {
     /// The search text the last load used, so a new load knows whether the text changed (and should wait for a pause) or something else did.
     @State private var loadedQuery = ""
     @State private var featured: [LibraryItem] = []
+    @State private var scrollY: CGFloat = 0
 
     @Environment(\.folderColumn) private var folderColumn
     /// On iPad the folder column beside the screen owns the model too, so a folder chosen there changes this list.
@@ -129,6 +130,7 @@ struct LibraryView: View {
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var posterWidth: CGFloat { sizeClass == .regular ? 150 : 110 }
+    private var showsHero: Bool { !featured.isEmpty && model.query.isEmpty && model.categoryID == nil && model.shelf == .all }
     private var columns: [GridItem] { [GridItem(.adaptive(minimum: posterWidth, maximum: posterWidth + 40), spacing: 14, alignment: .top)] }
 
     var body: some View {
@@ -139,7 +141,8 @@ struct LibraryView: View {
                                message: model.query.isEmpty ? (state.isSyncing ? "Titles appear when the playlist has been read." : "This playlist has no \(kind == .movie ? "movies" : "series") in this folder.") : nil)
                 }
                 // The same slideshow as Home, only of movies (or only of series); hidden while searching or inside one folder.
-                if !featured.isEmpty, model.query.isEmpty, model.categoryID == nil, model.shelf == .all { FeaturedBanner(items: featured, height: sizeClass == .regular ? 300 : 220).padding(.top, 4) }
+                if showsHero { FeaturedBanner(items: featured, height: HeroMetrics.height(wide: sizeClass == .regular, share: 0.46), scrollY: scrollY, immersive: true) }
+                else { Color.clear.frame(height: UIScreen.safeTop + 52) }          // the top bar's room, since the page now runs up under it
                 ShelfChips(selection: $model.shelf, kind: kind)
                 if !model.understood.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -161,6 +164,8 @@ struct LibraryView: View {
                 .padding(16)
                 if model.loading { ProgressView().padding() }
             }
+            .ignoresSafeArea(edges: .top)
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, v in scrollY = v }
             .navigationTitle(kind == .movie ? "Movies" : "Series").themed(kind == .movie ? "Movies" : "Series", tabRoot: true)
             .navigationDestination(for: LibraryItem.self) { DetailView(item: $0) }
             .toolbar {

@@ -35,13 +35,13 @@ struct PlaylistDetailView: View {
                     Toggle("Enabled", isOn: Binding(get: { s.enabled }, set: { on in try? container?.sources.setEnabled(sourceID, on); state.reload() }))
                     if state.activeSourceID != sourceID, s.enabled { Button("Make This the Active Playlist") { state.switchPlaylist(sourceID) } }
                     if s.type != .m3uLocal { Button("Change Login or Address…") { showLogin = true } }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
                 Section("Status") {
                     LabeledContent("Last update", value: s.lastSync.map { $0.formatted(.relative(presentation: .named)) } ?? "Never")
                     if let p = state.syncProgress[sourceID], p.state.isBusy { Label(p.state.label, systemImage: "arrow.triangle.2.circlepath") }
                     else if case .failed(let m)? = state.syncProgress[sourceID]?.state { Label(m, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.callout) }
                     Button("Refresh Now") { state.sync(sourceID, forceGuide: true) }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
                 Section {
                     TextField("Guide (XMLTV) address", text: $guideURL).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().onSubmit { saveGuide() }
                     Button { pickGuide = true } label: { Label("Use a Guide File…", systemImage: "doc") }
@@ -49,7 +49,7 @@ struct PlaylistDetailView: View {
                         .onChange(of: shift) { _, v in settings.setGuideShiftMinutes(v, for: sourceID) }
                 } header: { Text("Guide") } footer: {
                     Text("If programmes appear an hour early or late, shift the guide. It applies from the next guide download.")
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
                 Section {
                     Stepper(value: $clock, in: -720...720, step: 15) { Text("Catch-up clock: \(shiftLabel(clock))") }
                         .onChange(of: clock) { _, v in settings.setCatchupOffsetMinutes(v, for: sourceID) }
@@ -67,7 +67,7 @@ struct PlaylistDetailView: View {
                     .onChange(of: buffering) { _, v in settings.setBufferingOverride(v, for: sourceID) }
                 } header: { Text("Playback for this playlist") } footer: {
                     Text("Catch-up clock: if archive programmes start at the wrong point, correct the difference between the provider's clock and yours.")
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
                 Section {
                     TextField("User-Agent", text: $userAgent).textInputAutocapitalization(.never).autocorrectionDisabled()
                     Menu("Use a Common One") { ForEach(SourceHeaders.presets, id: \.name) { p in Button(p.name) { userAgent = p.value } } }
@@ -76,10 +76,10 @@ struct PlaylistDetailView: View {
                     Button("Save Headers") { saveHeaders() }
                 } header: { Text("Connection headers") } footer: {
                     Text("Only needed when a provider answers certain players. One header per line (Name: value). Logins and cookies can't be set here.")
-                }.listRowBackground(ColorTokens.surface)
-                Section { NavigationLink("Check Channels") { PlaylistHealthView(sourceID: sourceID) } }.listRowBackground(ColorTokens.surface)
-                Section { Button("Delete Playlist…", role: .destructive) { confirmDelete = true } }.listRowBackground(ColorTokens.surface)
-                if let message { Section { Text(message).font(.callout).foregroundStyle(.secondary) }.listRowBackground(ColorTokens.surface) }
+                }.glossRow()
+                Section { NavigationLink("Check Channels") { PlaylistHealthView(sourceID: sourceID) } }.glossRow()
+                Section { Button("Delete Playlist…", role: .destructive) { confirmDelete = true } }.glossRow()
+                if let message { Section { Text(message).font(.callout).foregroundStyle(.secondary) }.glossRow() }
             } else { Text("This playlist no longer exists.") }
         }
         .fileImporter(isPresented: $pickGuide, allowedContentTypes: [.xml, .gzip, .data]) { result in
@@ -147,16 +147,16 @@ private struct EditLoginSheet: View {
                     Section {
                         if source.type != .plex { TextField(source.type == .stalker ? "MAC address" : "Username", text: $username).textInputAutocapitalization(.never).autocorrectionDisabled() }
                         SecureField(source.type == .plex ? "Access token" : "Password", text: $password)
-                    }.listRowBackground(ColorTokens.surface)
+                    }.glossRow()
                 } else {
-                    Section { TextField("Playlist address", text: $address).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled() }.listRowBackground(ColorTokens.surface)
+                    Section { TextField("Playlist address", text: $address).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled() }.glossRow()
                     Section {
                         Picker("Sign-in", selection: $authKind) { ForEach(HTTPAuthKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
                         if authKind == .basic { TextField("Username", text: $authUser).textInputAutocapitalization(.never).autocorrectionDisabled() }
                         if authKind != .none { SecureField(authKind == .basic ? "Password" : "Token", text: $authSecret) }
-                    } header: { Text("Link sign-in") } footer: { Text("Sent with every request to this link, and kept encrypted with its address. Leave the password or token blank to keep the saved one.") }.listRowBackground(ColorTokens.surface)
+                    } header: { Text("Link sign-in") } footer: { Text("Sent with every request to this link, and kept encrypted with its address. Leave the password or token blank to keep the saved one.") }.glossRow()
                 }
-                if let error { Section { Text(error).foregroundStyle(.orange).font(.callout) }.listRowBackground(ColorTokens.surface) }
+                if let error { Section { Text(error).foregroundStyle(.orange).font(.callout) }.glossRow() }
             }
             .navigationTitle("Change Login").themed("Change Login").navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -198,7 +198,7 @@ struct PlaylistHealthView: View {
         List {
             Section {
                 Button { run() } label: { HStack { if running { ProgressView() }; Text(running ? "Checking \(done) of \(total)…" : "Check \(sample) Channels") } }.disabled(running)
-            } footer: { Text("Asks each channel for its first few kilobytes. A channel that stays silent isn't necessarily dead: some providers start slowly or allow one stream at a time.") }.listRowBackground(ColorTokens.surface)
+            } footer: { Text("Asks each channel for its first few kilobytes. A channel that stays silent isn't necessarily dead: some providers start slowly or allow one stream at a time.") }.glossRow()
             if !results.isEmpty {
                 let dead = results.filter { $0.health.isDead }
                 Section("Summary") {
@@ -208,7 +208,7 @@ struct PlaylistHealthView: View {
                     LabeledContent("Dead", value: "\(dead.count)")
                     if !dead.isEmpty { Button("Hide \(dead.count) Dead Channel\(dead.count == 1 ? "" : "s")", role: .destructive) { hide(dead) } }
                     if hidden > 0 { Label("Hid \(hidden) channels.", systemImage: "checkmark.circle").foregroundStyle(.green) }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
                 Section("Dead channels") {
                     ForEach(dead) { r in
                         VStack(alignment: .leading, spacing: 2) {
@@ -216,7 +216,7 @@ struct PlaylistHealthView: View {
                             if case .dead(let why) = r.health { Text(why).font(.caption).foregroundStyle(.secondary) }
                         }
                     }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
         }
         .navigationTitle("Check Channels").themed("Check Channels")

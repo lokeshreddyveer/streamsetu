@@ -7,7 +7,7 @@ struct DownloadsView: View {
 
     var body: some View {
         List {
-            Section { DownloadsList() }.listRowBackground(ColorTokens.surface)
+            Section { DownloadsList() }.glossRow()
             if let d = container?.downloads {
                 Section {
                     Toggle("Only on Wi-Fi", isOn: Binding(get: { d.wifiOnly }, set: { d.wifiOnly = $0 }))
@@ -15,7 +15,7 @@ struct DownloadsView: View {
                     if !d.records.isEmpty { Button("Remove All Downloads", role: .destructive) { confirmRemoveAll = true } }
                 } footer: {
                     Text("Downloads are kept out of your device backup, pause while something is playing, and carry on from where they stopped.")
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
         }
         .navigationTitle("Downloads").themed("Downloads")

@@ -21,47 +21,55 @@ struct DetailView: View {
     @State private var tmdbTrailer: String?
     @State private var previewClip: URL?
     @State private var showClip = false
+    @State private var overviewOpen = false
+    @State private var tmdb: TitleDetails?
+    @State private var loadedExtras = false
+    @State private var hasTMDBKey = true
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// A tall picture, under half the screen, with the title low on it, so the rating, credits and story are in view without scrolling.
+    private var heroHeight: CGFloat { HeroMetrics.height(wide: sizeClass == .regular, share: 0.45) }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 ZStack(alignment: .bottomLeading) {
-                    ParallaxBanner(height: sizeClass == .regular ? 360 : 230, scrollY: scrollY) {
-                        ArtworkImage(url: (movie?.backdropURL ?? item.backdropURL) ?? item.posterURL, kind: .backdrop, contentMode: .fill, symbol: "film")
+                    ParallaxBanner(height: heroHeight, scrollY: scrollY) {
+                        ArtworkImage(url: (movie?.backdropURL ?? item.backdropURL) ?? item.posterURL, kind: .backdrop, contentMode: .fill, symbol: "film", alignment: .top)
                     }
-                    LinearGradient(colors: [.clear, ColorTokens.background.opacity(0.6), ColorTokens.background], startPoint: .center, endPoint: .bottom)
+                    LinearGradient(colors: [.black.opacity(0.5), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.2))          // keeps the clock and the buttons readable
+                    LinearGradient(stops: [.init(color: .clear, location: 0.42), .init(color: ColorTokens.background.opacity(0.55), location: 0.66),
+                                           .init(color: ColorTokens.background.opacity(0.92), location: 0.88), .init(color: ColorTokens.background, location: 1)], startPoint: .top, endPoint: .bottom)
+                    Text(item.cleanTitle).appFont(28, .heavy).lineLimit(3).minimumScaleFactor(0.7).foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.5), radius: 12, y: 2)
+                        .padding(.horizontal, 20).padding(.bottom, 12)
                 }
                 .zIndex(0)
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(item.title).appFont(26, .bold)
-                    Text(meta).appFont(13).foregroundStyle(.secondary)
-                    QualityBadgeRow(texts: [item.title, item.genre])
-                    FolderPathButton(name: item.categoryName) { if let id = item.categoryID { dismiss(); router.pendingFolder = (item.kind, id); router.go(item.isSeries ? .series : .movies) } }
-                    HStack(spacing: 10) {
-                        if item.isSeries {
-                            Button { playSeries() } label: { Label(resumeEpisode == nil ? "Play" : "Resume", systemImage: "play.fill").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large)
-                                .disabled(detail == nil)
-                        } else {
-                            Button { if let container, let m = movie ?? asMovie { Play.movie(m, container) } } label: { Label("Play", systemImage: "play.fill").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large)
-                        }
+                VStack(alignment: .leading, spacing: 14) {
+                    chipRow
+                    genreRow
+                    credits
+                    overviewBlock
+                    missingNote
+                    Button { if item.isSeries { playSeries() } else if let container, let m = movie ?? asMovie { Play.movie(m, container) } } label: {
+                        Label(item.isSeries && resumeEpisode != nil ? "Resume" : "Play", systemImage: "play.fill").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SolidPlayStyle()).disabled(item.isSeries && detail == nil)
+                    HStack(spacing: 14) {
                         Button { state.toggleFavorite(item.id, kind: item.kind) } label: { Image(systemName: state.isFavorite(item.id) ? "heart.fill" : "heart").frame(width: 24, height: 24).symbolEffect(.bounce, value: state.isFavorite(item.id)) }
-                            .buttonStyle(.bordered).controlSize(.large).tint(state.isFavorite(item.id) ? .pink : nil).accessibilityLabel(state.isFavorite(item.id) ? "Remove from favourites" : "Add to favourites")
+                            .buttonStyle(ActionCircleStyle(tint: state.isFavorite(item.id) ? .pink : nil)).accessibilityLabel(state.isFavorite(item.id) ? "Remove from favourites" : "Add to favourites")
                         Button { state.toggleWatchLater(item.id, kind: item.kind) } label: { Image(systemName: state.isWatchLater(item.id) ? "bookmark.fill" : "bookmark").frame(width: 24, height: 24).symbolEffect(.bounce, value: state.isWatchLater(item.id)) }
-                            .buttonStyle(.bordered).controlSize(.large).tint(state.isWatchLater(item.id) ? .orange : nil).accessibilityLabel(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later")
+                            .buttonStyle(ActionCircleStyle(tint: state.isWatchLater(item.id) ? .orange : nil)).accessibilityLabel(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later")
                         QueueButton(item: item)
-                        if case .movie(let m) = item { DownloadButton(itemID: m.id, compact: true) { $0.enqueue(movie: m) }.buttonStyle(.bordered).controlSize(.large) }
-                    }
-                    if let overview = (movie?.overview ?? detail?.series.overview ?? item.overview), !overview.isEmpty {
-                        Text(overview).appFont(14).foregroundStyle(.white.opacity(0.85))
-                    }
-                    trailerButton
+                        if case .movie(let m) = item { DownloadButton(itemID: m.id, compact: true) { $0.enqueue(movie: m) }.buttonStyle(ActionCircleStyle()) }
+                        trailerButton
+                    }.frame(maxWidth: .infinity)
+                    FolderPathButton(name: item.categoryName) { if let id = item.categoryID { dismiss(); router.pendingFolder = (item.kind, id); router.go(item.isSeries ? .series : .movies) } }
                     facts
                     if let error { Label(error, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange) }
                     if item.isSeries { episodes }
                     if case .movie(let m) = item { FranchiseTimeline(currentID: m.id, movie: m, useLinks: true) }
                     SimilarRow(item: item, extras: extras)
-                }.padding(.horizontal, 16).frame(maxWidth: 820, alignment: .leading)
+                }.padding(.top, -20).padding(.horizontal, 16).frame(maxWidth: 820, alignment: .leading)
                     .frame(maxWidth: .infinity).background(ColorTokens.background).zIndex(1)      // slides over the banner as it recedes
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -97,10 +105,10 @@ struct DetailView: View {
         Button {
             if trailerKey != nil { showTrailer = true } else if previewClip != nil { showClip = true } else { showSearch = true }
         } label: {
-            Label(hasTrailer ? "Watch Trailer" : "Find Trailer on YouTube", systemImage: hasTrailer ? "play.rectangle.fill" : "magnifyingglass")
-                .frame(maxWidth: .infinity)
+            Image(systemName: hasTrailer ? "play.rectangle.fill" : "magnifyingglass").frame(width: 24, height: 24)
         }
-        .buttonStyle(.bordered).controlSize(.large)
+        .buttonStyle(ActionCircleStyle())
+        .accessibilityLabel(hasTrailer ? "Watch Trailer" : "Find Trailer on YouTube")
         .fullScreenCover(isPresented: $showTrailer) { if let k = trailerKey { TrailerSheet(key: k, title: item.title) } }
         .fullScreenCover(isPresented: $showClip) { if let u = previewClip { ClipSheet(url: u) } }
         .sheet(isPresented: $showSearch) { if let u = searchURL { SafariView(url: u).ignoresSafeArea() } }
@@ -112,14 +120,128 @@ struct DetailView: View {
         return c?.url
     }
 
-    /// What the playlist provider says about the title: age rating, country, director and cast.
+    // What the provider did not send is filled in from the movie database (TMDB, when a key is set in Settings, or its saved copy).
+    private var castNames: [String] {
+        if let c = extras?.cast, !c.isEmpty { return c }
+        return tmdb?.cast.map { $0.name } ?? []
+    }
+    private var makerNames: [String] {
+        if let d = extras?.directors, !d.isEmpty { return d }
+        return tmdb?.makers ?? []
+    }
+    private var runtimeSeconds: Double? {
+        if let d = movie?.durationSeconds ?? item.durationSeconds, d > 0 { return d }
+        if let m = tmdb?.runtimeMinutes, m > 0 { return Double(m) * 60 }
+        return nil
+    }
+    private var ageText: String? {
+        if let a = extras?.ageRating, !a.isEmpty { return a }
+        if let c = tmdb?.certification, !c.isEmpty { return c }
+        return nil
+    }
+    private var yearValue: Int? { movie?.releaseYear ?? item.year ?? tmdb?.year }
+    private var storyText: String? {
+        let own = movie?.overview ?? detail?.series.overview ?? item.overview
+        if let own, !own.isEmpty { return own }
+        return tmdb?.overview.flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// The whole cast, when there is more than the credits row shows.
     @ViewBuilder private var facts: some View {
-        if let e = extras {
-            VStack(alignment: .leading, spacing: 8) {
-                let line = [e.ageRating, e.country].compactMap { $0 }.joined(separator: " · ")
-                if !line.isEmpty { Text(line).appFont(13).foregroundStyle(.secondary) }
-                if !e.directors.isEmpty { fact(item.isSeries ? "Creator" : "Director", e.directors.joined(separator: ", ")) }
-                if !e.cast.isEmpty { fact("Cast", e.cast.prefix(12).joined(separator: ", ")) }
+        if castNames.count > 2 { fact("Cast", castNames.prefix(12).joined(separator: ", ")) }
+    }
+
+    private var ratingText: String? {
+        let own = (movie?.rating ?? detail?.series.rating).flatMap { Double($0) } ?? item.ratingValue
+        guard let v = own ?? tmdb?.rating, v > 0 else { return nil }
+        return String(format: "%.1f", v)
+    }
+
+    /// Rating, age rating, year, length and the picture quality, in one row. The year is always shown (the title no longer carries it).
+    private var chipRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                if let r = ratingText {
+                    Label(r, systemImage: "star.fill").labelStyle(.titleAndIcon).foregroundStyle(.yellow).appFont(13, .bold)
+                        .padding(.horizontal, 10).frame(height: 28).background(FlatChipBackground())
+                }
+                if let a = ageText {
+                    Text(a).appFont(12, .bold).foregroundStyle(ColorTokens.textPrimary).padding(.horizontal, 8).frame(height: 24)
+                        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(ColorTokens.lineStrong))
+                }
+                if let y = yearValue { Text(String(y)).appFont(14, .medium).foregroundStyle(ColorTokens.textSecondary) }
+                if let d = runtimeSeconds { Text(DurationFormatter.short(d)).appFont(14, .medium).foregroundStyle(ColorTokens.textSecondary) }
+                QualityBadgeRow(texts: [item.title, item.genre])
+            }
+        }
+    }
+
+    /// The genres, as small capsules.
+    @ViewBuilder private var genreRow: some View {
+        let own = ProviderExtras.names(movie?.genre ?? item.genre)
+        let genres = own.isEmpty ? (tmdb?.genres ?? []) : own
+        if !genres.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(genres, id: \.self) { g in
+                        Text(g).appFont(13, .medium).foregroundStyle(ColorTokens.textPrimary).padding(.horizontal, 12).frame(height: 30)
+                            .background(FlatChipBackground())
+                    }
+                }
+            }
+        }
+    }
+
+    private struct CreditColumn { let label: String; let value: String; let sub: String? }
+    private var creditColumns: [CreditColumn] {
+        var out: [CreditColumn] = []
+        if !makerNames.isEmpty { out.append(CreditColumn(label: item.isSeries ? "Creator" : "Directed by", value: makerNames.prefix(2).joined(separator: ", "), sub: nil)) }
+        if !castNames.isEmpty { out.append(CreditColumn(label: "Starring", value: castNames.prefix(2).joined(separator: ", "), sub: castNames.count > 2 ? castNames.dropFirst(2).prefix(2).joined(separator: ", ") : nil)) }
+        if let c = extras?.country { out.append(CreditColumn(label: "Country", value: c, sub: nil)) }
+        return out
+    }
+
+    /// Director, the main cast and the country, as columns with thin dividers.
+    @ViewBuilder private var credits: some View {
+        let cols = creditColumns
+        if !cols.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 0) {
+                    ForEach(Array(cols.enumerated()), id: \.offset) { i, c in
+                        if i > 0 { Rectangle().fill(ColorTokens.line).frame(width: 1, height: 46).padding(.horizontal, 16) }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(c.label.uppercased()).appFont(10, .semibold).tracking(1.2).foregroundStyle(ColorTokens.textTertiary)
+                            Text(c.value).appFont(14, .semibold).lineLimit(2).foregroundStyle(ColorTokens.textPrimary)
+                            if let sub = c.sub { Text(sub).appFont(12).foregroundStyle(ColorTokens.textSecondary).lineLimit(1) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Said plainly when neither the provider nor the movie database has a summary or a cast for the title.
+    @ViewBuilder private var missingNote: some View {
+        if loadedExtras, storyText == nil, castNames.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(hasTMDBKey ? "No summary or cast is available for this title." : "Your provider sent no summary or cast for this title. Add a TMDB key in Settings, under Artwork and Details, to fill them in.")
+                    .appFont(13).foregroundStyle(ColorTokens.textSecondary)
+                if !hasTMDBKey {
+                    Button("Open Settings") { dismiss(); router.go(.settings) }.appFont(13, .semibold).foregroundStyle(Color.accentColor)
+                }
+            }
+        }
+    }
+
+    /// The story, three lines to start with and the rest under "More".
+    @ViewBuilder private var overviewBlock: some View {
+        if let overview = storyText {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(overview).appFont(14).lineSpacing(3).foregroundStyle(ColorTokens.textPrimary.opacity(0.85)).lineLimit(overviewOpen ? nil : 3)
+                if overview.count > 140 {
+                    Button(overviewOpen ? "Less" : "More") { withAnimation(.smooth(duration: 0.25)) { overviewOpen.toggle() } }
+                        .appFont(13, .semibold).foregroundStyle(ColorTokens.accentDefault)
+                }
             }
         }
     }
@@ -198,9 +320,13 @@ struct DetailView: View {
                 if let r = try? container.history.resumeTarget(seriesID: s.id) { season = r.seasonNumber }
                 if let e = d.extras { extras = e } else { extras = await container.details.extras(series: s.id) }
             }
+            let c = MetadataMatchService.Candidate(id: item.id, isSeries: item.isSeries, title: item.title, year: item.year)
+            let more = await container.metadata.details(for: c)
+            tmdb = more
+            hasTMDBKey = container.metadata.hasKey
+            loadedExtras = true
             if extras?.trailerKey == nil {
-                let c = MetadataMatchService.Candidate(id: item.id, isSeries: item.isSeries, title: item.title, year: item.year)
-                tmdbTrailer = await container.metadata.details(for: c)?.bestTrailer?.key
+                tmdbTrailer = more?.bestTrailer?.key
                 if tmdbTrailer == nil { previewClip = await TrailerLookup.find(title: item.title, year: item.year, isSeries: item.isSeries) }
             }
         } catch {

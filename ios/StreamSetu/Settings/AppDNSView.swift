@@ -22,7 +22,7 @@ struct AppDNSView: View {
                 LabeledContent("Status") { Text(AppDNSStatus.line(s.appDNS, mpvInUse: false)).multilineTextAlignment(.trailing).foregroundStyle(.secondary) }
             } footer: {
                 Text("Looks up server names through the DNS provider you choose, inside StreamSetu only. It is not a VPN and changes nothing else on this device. It can fix DNS blocking; it cannot get past IP blocking, routing problems or geographic limits. \(s.appDNS.provider.summary).")
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
 
             if s.appDNS.provider == .custom {
                 Section("Custom DNS") {
@@ -31,13 +31,13 @@ struct AppDNSView: View {
                     TextField("Bootstrap IP addresses (optional, comma separated)", text: $bootstrapText).textInputAutocapitalization(.never).autocorrectionDisabled()
                         .onChange(of: bootstrapText) { _, v in s.appDNS.customBootstrap = v.split(whereSeparator: { ",; ".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) } }
                     if let customProblem { Text(customProblem).font(.footnote).foregroundStyle(.red) }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
 
             Section {
                 Button { Task { await runTest() } } label: { HStack { Text("Test App DNS"); if testing { Spacer(); ProgressView() } } }.disabled(testing)
                 Button("Clear DNS Cache") { AppDNSController.clearCache(); container?.http.setProxy(settings.proxy.isActive ? settings.proxy : nil); state.toasts.show("DNS cache cleared", symbol: "checkmark.circle") }
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
 
             if let r = result {
                 Section {
@@ -47,7 +47,7 @@ struct AppDNSView: View {
                     if let n = r.deviceNote { Text(n).font(.footnote).foregroundStyle(.orange) }
                     if let c = r.comparison { Text(c).font(.footnote) }
                     if !r.advice.isEmpty { Text(r.advice).font(.footnote) }
-                }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
             }
 
             Section {

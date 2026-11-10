@@ -224,6 +224,13 @@ final class IOSRouter {
     /// On iPhone, Search, Guide, Library and Settings live inside the More tab so Movies and Series stay on the bar.
     typealias MoreRoute = PhoneMoreRoute
     var morePath: [MoreRoute] = []
+    /// Bumped when the tab already on show is tapped again: that tab's screen is rebuilt, so any page opened inside it (a title, a folder) closes and it is back at its start, at the top.
+    var rootResets: [Tab: Int] = [:]
+    /// Tapping the tab that is already open goes back to that tab's start screen, as in every iPhone app.
+    func reselect(_ t: Tab) {
+        rootResets[t, default: 0] += 1
+        if t == .more { morePath.removeAll() }
+    }
     var compact = true
     /// True while the iPad sidebar is on screen (set by the root view); then every destination is a screen of its own.
     var sidebar = false

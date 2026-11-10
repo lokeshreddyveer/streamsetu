@@ -40,7 +40,7 @@ More pictures: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
 
 | Platform | What to get | Notes |
 |---|---|---|
-| **iPhone and iPad** | [Download on the App Store](https://apps.apple.com/us/app/stream-setu/id6821526110), or [join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 1.2 | The App Store has the released version. TestFlight gets new builds first and is open to the first 100 testers; after that, ask for an invitation at contact@lokeshreddy.dev. |
+| **iPhone and iPad** | [Download on the App Store](https://apps.apple.com/us/app/stream-setu/id6821526110), or [join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 1.2 (build 77) | The App Store has the released version. TestFlight gets new builds first and is open to the first 100 testers; after that, ask for an invitation at contact@lokeshreddy.dev. |
 | **Mac** | [`StreamSetu-2.16.0.dmg`](../../releases/download/2026.11.07/StreamSetu-2.16.0.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
 | **Fire TV and Android TV** | [`streamsetu-tv-0.24.0.apk`](../../releases/download/2026.11.07/streamsetu-tv-0.24.0.apk) | Signed with the StreamSetu release key. Remote layout. Android 5.1 or later. |
 | **Android phone and tablet** | [`StreamSetu-Android-0.24.0.apk`](../../releases/download/2026.11.07/StreamSetu-Android-0.24.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |

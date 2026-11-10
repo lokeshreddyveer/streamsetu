@@ -15,7 +15,7 @@ struct PlaybackHealthView: View {
         List {
             if rows.isEmpty {
                 Section { Text("Nothing measured yet. Play a few movies, episodes and channels, then come back.").foregroundStyle(.secondary) }
-                    .listRowBackground(ColorTokens.surface)
+                    .glossRow()
             }
             ForEach(sources) { s in
                 let mine = rows.filter { $0.source == s.id }
@@ -32,18 +32,18 @@ struct PlaybackHealthView: View {
                                 if hint.engine == .mpv { Text("MPV has no Picture in Picture or AirPlay.").font(.footnote).foregroundStyle(.secondary) }
                             }.padding(.vertical, 4)
                         }
-                    }.listRowBackground(ColorTokens.surface)
+                    }.glossRow()
                 }
             }
-            if let note { Section { Label(note, systemImage: "checkmark.circle.fill").foregroundStyle(.green) }.listRowBackground(ColorTokens.surface) }
+            if let note { Section { Label(note, systemImage: "checkmark.circle.fill").foregroundStyle(.green) }.glossRow() }
             Section("Recent problems") {
                 if problems.isEmpty { Text("None lately.").foregroundStyle(.secondary) }
                 ForEach(problems, id: \.self) { Text($0).font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary) }
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             Section {
                 if DiagnosticsUploader.availableInThisBuild { Button { send() } label: { Label(sending ? "Sending…" : "Send My Log", systemImage: "paperplane") }.disabled(sending) }
                 Button("Reset These Numbers", role: .destructive) { StartStats.shared.reset(); reload() }
-            } footer: { Text("Only counts and times are kept, on this device. No titles or addresses.") }.listRowBackground(ColorTokens.surface)
+            } footer: { Text("Only counts and times are kept, on this device. No titles or addresses.") }.glossRow()
         }
         .navigationTitle("Playback Health").themed("Playback Health")
         .task { reload() }

@@ -15,14 +15,14 @@ struct CloudSyncView: View {
                 Toggle("Sync logins", isOn: $s.syncLogins).disabled(!s.iCloudSync).onChange(of: s.syncLogins) { _, _ in Task { await container?.updateCloudSync() } }
             } footer: {
                 Text("Playlists, favourites, collections, watch history and resume positions, folder organisation and settings follow you to your other devices through your own private iCloud. Logins travel in iCloud Keychain, end-to-end encrypted by Apple; turn that off to enter them on each device. The channels, movies and series are downloaded separately on each device. Nothing is sent to anyone else.")
-            }.listRowBackground(ColorTokens.surface)
+            }.glossRow()
             if s.iCloudSync, let status {
                 Section("Status") {
                     LabeledContent("iCloud", value: status.text)
                     if status.pending > 0 { LabeledContent("Waiting to send", value: "\(status.pending)") }
                     Button("Sync Now") { Task { await container?.cloud.syncNow() } }
-                }.listRowBackground(ColorTokens.surface)
-                Section { Button("Erase iCloud Data…", role: .destructive) { confirmErase = true } } footer: { Text("Removes what StreamSetu stored in your iCloud and turns sync off. Everything on this device stays.") }.listRowBackground(ColorTokens.surface)
+                }.glossRow()
+                Section { Button("Erase iCloud Data…", role: .destructive) { confirmErase = true } } footer: { Text("Removes what StreamSetu stored in your iCloud and turns sync off. Everything on this device stays.") }.glossRow()
             }
         }
         .navigationTitle("iCloud Sync").themed("iCloud Sync")

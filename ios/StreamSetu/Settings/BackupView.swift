@@ -24,12 +24,12 @@ struct BackupView: View {
                 option("Preferences", .preferences)
                 option("Folder order, hidden items, renames", .organisation)
                 option("Viewing history and resume points", .history)
-            } header: { Text("Include") }.listRowBackground(ColorTokens.surface)
+            } header: { Text("Include") }.glossRow()
             Section {
                 Button("Create Backup…") { export() }
                 if let exportURL { ShareLink(item: exportURL) { Label("Share \(exportURL.lastPathComponent)", systemImage: "square.and.arrow.up") } }
                 Button("Restore from a File…") { importing = true }
-            } footer: { Text("A restored playlist comes back switched off and asks for its login again.") }.listRowBackground(ColorTokens.surface)
+            } footer: { Text("A restored playlist comes back switched off and asks for its login again.") }.glossRow()
             Section {
                 Toggle("Back up automatically (weekly)", isOn: $s.autoBackup)
                 if let d = s.lastAutoBackup { LabeledContent("Last automatic backup", value: d.formatted(.relative(presentation: .named))) }
@@ -42,8 +42,8 @@ struct BackupView: View {
                         Button("Restore") { load(url) }.buttonStyle(.bordered).controlSize(.small)
                     }
                 }
-            } header: { Text("Automatic backups") } footer: { Text("The latest five are kept in the app's storage on this device.") }.listRowBackground(ColorTokens.surface)
-            if let message { Section { Label(message, systemImage: failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").foregroundStyle(failed ? .orange : .green).font(.callout) }.listRowBackground(ColorTokens.surface) }
+            } header: { Text("Automatic backups") } footer: { Text("The latest five are kept in the app's storage on this device.") }.glossRow()
+            if let message { Section { Label(message, systemImage: failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").foregroundStyle(failed ? .orange : .green).font(.callout) }.glossRow() }
         }
         .navigationTitle("Backup and Restore").themed("Backup and Restore")
         .onAppear(perform: refresh)
@@ -55,8 +55,8 @@ struct BackupView: View {
         .sheet(item: Binding(get: { plan.map(PlanBox.init) }, set: { if $0 == nil { plan = nil } })) { box in
             NavigationStack {
                 List {
-                    Section("This backup contains") { ForEach(box.plan.summary, id: \.self) { Text($0) } }.listRowBackground(ColorTokens.surface)
-                    Section { Button("Restore") { apply(box.plan) } } footer: { Text("Nothing is deleted. Items that are already here are merged, not duplicated.") }.listRowBackground(ColorTokens.surface)
+                    Section("This backup contains") { ForEach(box.plan.summary, id: \.self) { Text($0) } }.glossRow()
+                    Section { Button("Restore") { apply(box.plan) } } footer: { Text("Nothing is deleted. Items that are already here are merged, not duplicated.") }.glossRow()
                 }
                 .navigationTitle("Restore").themed("Restore").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { plan = nil } } }
