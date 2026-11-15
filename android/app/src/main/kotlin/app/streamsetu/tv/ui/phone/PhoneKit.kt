@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -39,6 +40,18 @@ import app.streamsetu.tv.ui.components.Label
 import app.streamsetu.tv.ui.components.PosterPlaceholder
 import app.streamsetu.tv.ui.theme.Tokens
 import coil.compose.AsyncImage
+
+/**
+ * A glossy surface in the theme's colours: the card colour (or the accent, for a main button), a top-lit sheen and a bright hairline along the top edge. Every colour comes from [Tokens],
+ * so it changes with the theme and the accent. Solid colours only (no blur), so it stays cheap while scrolling.
+ */
+fun Modifier.glossy(shape: androidx.compose.ui.graphics.Shape, fill: Color = Tokens.card, accent: Boolean = false): Modifier {
+    val base: androidx.compose.ui.graphics.Brush = if (accent) androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Tokens.accent, Tokens.accent.copy(alpha = 0.72f))) else androidx.compose.ui.graphics.SolidColor(fill)
+    return this
+        .background(base, shape)
+        .background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color(if (accent) 0x3DFFFFFF else 0x1FFFFFFF), 0.6f to Color.Transparent), shape)
+        .border(1.dp, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x3DFFFFFF), Color(0x08FFFFFF))), shape)
+}
 
 /** True on a phone or tablet: a touch screen and no television. A Fire TV or Android TV keeps the remote layout. */
 fun isPhoneDevice(context: Context): Boolean {
@@ -98,11 +111,11 @@ fun DownloadRing(progress: Float, ink: Color, size: Dp) {
 @Composable
 fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, primary: Boolean = false) {
     Row(
-        modifier.height(44.dp).clip(RoundedCornerShape(22.dp)).background(if (primary) Color.White else Color(0x33FFFFFF)).clickable(onClick = onClick).padding(horizontal = 18.dp),
+        modifier.height(44.dp).clip(RoundedCornerShape(22.dp)).glossy(RoundedCornerShape(22.dp), accent = primary).clickable(onClick = onClick).padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
     ) {
-        if (icon != null) Icon(icon, if (primary) Color.Black else Tokens.text, 20.dp)
-        Label(text, Ph.body, if (primary) Color.Black else Tokens.text, FontWeight.SemiBold)
+        if (icon != null) Icon(icon, if (primary) Color.White else Tokens.text, 20.dp)
+        Label(text, Ph.body, if (primary) Color.White else Tokens.text, FontWeight.SemiBold)
     }
 }
 
@@ -110,11 +123,11 @@ fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
 @Composable
 fun PhonePoster(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, subtitle: String? = null, badge: String? = null, progress: Float = 0f, onLong: (() -> Unit)? = null, itemId: String? = null) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Tap(onClick, Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)).background(Tokens.card), onLong) {
+        Tap(onClick, Modifier.fillMaxWidth().aspectRatio(2f / 3f).shadow(6.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Tokens.card).border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(12.dp)), onLong) {
             if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             val shown = if (progress > 0f) progress else itemId?.let { app.streamsetu.tv.ui.components.LocalPartialProgress.current[it] } ?: 0f
             if (shown > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(shown.coerceIn(0f, 1f)).fillMaxHeight().background(Tokens.accent)) }
-            if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Color(0xB3000000), RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Ph.caption, Tokens.text, FontWeight.SemiBold) }
+            if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).background(Color(0x99000000), RoundedCornerShape(7.dp)).border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(7.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) { Label(badge, Ph.caption, Tokens.text, FontWeight.SemiBold) }
             if (itemId != null) app.streamsetu.tv.ui.components.LocalDownloadStatus.current[itemId]?.let { (st, f) -> DownloadBadge(st, f) }
             if (itemId != null && itemId in app.streamsetu.tv.ui.components.LocalWatched.current) WatchedTick()
         }
@@ -127,7 +140,7 @@ fun PhonePoster(title: String, imageUrl: String?, onClick: () -> Unit, modifier:
 @Composable
 fun PhoneWide(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, badge: String? = null, onLong: (() -> Unit)? = null) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Tap(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(10.dp)).background(Tokens.card), onLong) {
+        Tap(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f).shadow(6.dp, RoundedCornerShape(14.dp)).clip(RoundedCornerShape(14.dp)).background(Tokens.card).border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(14.dp)), onLong) {
             PosterPlaceholder(title, Modifier.fillMaxSize())
             if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().background(Tokens.accent)) }
@@ -141,28 +154,37 @@ fun PhoneWide(title: String, subtitle: String?, imageUrl: String?, onClick: () -
 @Composable
 fun SectionHeader(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
     Row(modifier.fillMaxWidth().padding(horizontal = Ph.gutter), verticalAlignment = Alignment.CenterVertically) {
-        Label(text, Ph.heading, Tokens.text, FontWeight.SemiBold, modifier = Modifier.weight(1f).semantics { heading() })
+        Label(text, 20.sp, Tokens.text, FontWeight.Bold, modifier = Modifier.weight(1f).semantics { heading() })
         if (action != null) Box(Modifier.clickable(onClick = onAction).padding(vertical = 8.dp, horizontal = 4.dp)) { Label(action, Ph.small, Tokens.accent, FontWeight.Medium) }
     }
 }
 
-/** The bottom bar, as on the iPhone: a floating rounded bar with a highlighted capsule behind the section you are in. */
+/** The bottom bar, as on the iPhone: a floating rounded bar with a highlighted capsule behind the section you are in. While the page scrolls down it shrinks to one round button at the right (the icon of the section you are in, no name); tap it to bring the bar back. */
 @Composable
-fun PhoneTabBar(selected: Tab, onSelect: (Tab) -> Unit) {
+fun PhoneTabBar(selected: Tab, onSelect: (Tab) -> Unit, collapsed: Boolean = false, onExpand: () -> Unit = {}) {
     val items = listOf(
         Triple(Tab.HOME, Icons.Filled.Home, "Home"), Triple(Tab.LIVE, Icons.Filled.LiveTv, "Live TV"), Triple(Tab.MOVIES, Icons.Filled.Movie, "Movies"),
         Triple(Tab.SERIES, Icons.Filled.VideoLibrary, "Series"), Triple(Tab.SETTINGS, Icons.Filled.MoreHoriz, "More"),
     )
-    Box(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = 14.dp, vertical = 8.dp)) {
-        Row(Modifier.fillMaxWidth().height(62.dp).clip(RoundedCornerShape(31.dp)).background(Color(0xF2151820)).padding(5.dp)) {
-            items.forEach { (tab, icon, name) ->
-                val on = tab == selected || (tab == Tab.SETTINGS && selected in listOf(Tab.GUIDE, Tab.SEARCH, Tab.LIBRARIES))
-                Column(
-                    Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(26.dp)).background(if (on) Color(0xFF263149) else Color.Transparent).clickable { onSelect(tab) },
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
-                ) {
-                    Icon(icon, if (on) Tokens.accent else Tokens.textTertiary, 24.dp)
-                    Label(name, 11.sp, if (on) Tokens.accent else Tokens.textTertiary, if (on) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.padding(top = 1.dp))
+    // The strip keeps the full bar's height in both states, so the page above it never resizes while it scrolls.
+    Box(Modifier.fillMaxWidth().height(62.dp + 16.dp).windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.CenterEnd) {
+        androidx.compose.animation.Crossfade(collapsed, animationSpec = androidx.compose.animation.core.tween(180), label = "tabbar") { small ->
+            if (small) {
+                val current = items.firstOrNull { it.first == selected } ?: items.first { it.first == Tab.SETTINGS }
+                Box(Modifier.size(52.dp).shadow(10.dp, CircleShape).clip(CircleShape).glossy(CircleShape)
+                    .semantics { contentDescription = "Show the tab bar, ${current.third} is open"; role = Role.Button }.clickable(onClick = onExpand), Alignment.Center) { Icon(current.second, Tokens.accent, 24.dp) }
+            } else {
+                Row(Modifier.fillMaxWidth().height(62.dp).shadow(10.dp, RoundedCornerShape(31.dp)).clip(RoundedCornerShape(31.dp)).glossy(RoundedCornerShape(31.dp)).padding(5.dp)) {
+                    items.forEach { (tab, icon, name) ->
+                        val on = tab == selected || (tab == Tab.SETTINGS && selected in listOf(Tab.GUIDE, Tab.SEARCH, Tab.LIBRARIES))
+                        Column(
+                            Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(26.dp)).background(if (on) Tokens.elevated else Color.Transparent).clickable { onSelect(tab) },
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                        ) {
+                            Icon(icon, if (on) Tokens.accent else Tokens.textTertiary, 24.dp)
+                            Label(name, 11.sp, if (on) Tokens.accent else Tokens.textTertiary, if (on) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.padding(top = 1.dp))
+                        }
+                    }
                 }
             }
         }
@@ -171,10 +193,10 @@ fun PhoneTabBar(selected: Tab, onSelect: (Tab) -> Unit) {
 
 /** The top of a section, as on the iPhone: its name in a pill in the middle, round buttons on the right (and one on the left when there is one). */
 @Composable
-fun PhoneTopBar(title: String, modifier: Modifier = Modifier, leading: (@Composable () -> Unit)? = null, actions: @Composable RowScope.() -> Unit = {}) {
+fun PhoneTopBar(title: String, modifier: Modifier = Modifier, leading: (@Composable () -> Unit)? = null, showTitle: Boolean = true, actions: @Composable RowScope.() -> Unit = {}) {
     Box(modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.statusBars).height(64.dp).padding(horizontal = 12.dp)) {
         Row(Modifier.align(Alignment.CenterStart)) { leading?.invoke() }
-        Box(Modifier.align(Alignment.Center).clip(RoundedCornerShape(22.dp)).background(Color(0xFF14161B)).border(1.dp, Tokens.lineStrong, RoundedCornerShape(22.dp)).padding(horizontal = 22.dp, vertical = 9.dp)) { Label(title, Ph.heading, Tokens.text, FontWeight.SemiBold) }
+        if (showTitle) Box(Modifier.align(Alignment.Center).clip(RoundedCornerShape(22.dp)).glossy(RoundedCornerShape(22.dp)).padding(horizontal = 22.dp, vertical = 9.dp)) { Label(title, Ph.heading, Tokens.text, FontWeight.SemiBold) }
         Row(Modifier.align(Alignment.CenterEnd), horizontalArrangement = Arrangement.spacedBy(8.dp)) { actions() }
     }
 }
@@ -182,13 +204,14 @@ fun PhoneTopBar(title: String, modifier: Modifier = Modifier, leading: (@Composa
 /** A round outlined button for the top bar. */
 @Composable
 fun RoundTap(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0xFF14161B)).border(1.dp, Tokens.lineStrong, CircleShape).semantics { contentDescription = label; role = Role.Button }.clickable(onClick = onClick), Alignment.Center) { Icon(icon, Tokens.text, 22.dp) }
+    Box(Modifier.size(44.dp).clip(CircleShape).glossy(CircleShape).semantics { contentDescription = label; role = Role.Button }.clickable(onClick = onClick), Alignment.Center) { Icon(icon, Tokens.text, 22.dp) }
 }
 
 /** The featured title: a rounded card with the picture, the title, a line of facts, a short story and a Play button, with dots for the other titles. It turns by itself. */
 @Composable
-fun PhoneBanner(items: List<app.streamsetu.tv.ui.components.BannerItem>, onPrimary: (app.streamsetu.tv.ui.components.BannerItem) -> Unit, onDetails: (app.streamsetu.tv.ui.components.BannerItem) -> Unit, modifier: Modifier = Modifier) {
+fun PhoneBanner(items: List<app.streamsetu.tv.ui.components.BannerItem>, onPrimary: (app.streamsetu.tv.ui.components.BannerItem) -> Unit, onDetails: (app.streamsetu.tv.ui.components.BannerItem) -> Unit, modifier: Modifier = Modifier, immersive: Boolean = false, share: Float = 0.54f) {
     if (items.isEmpty()) return
+    if (immersive) { ImmersiveBanner(items, onPrimary, onDetails, modifier, share); return }
     var index by remember { mutableIntStateOf(0) }
     LaunchedEffect(items.size, index) { if (items.size > 1) { kotlinx.coroutines.delay(8000); index = (index + 1) % items.size } }
     val b = items[index % items.size]
@@ -212,6 +235,49 @@ fun PhoneBanner(items: List<app.streamsetu.tv.ui.components.BannerItem>, onPrima
                     }
                 }
             }
+        }
+    }
+}
+
+/** How tall a full-width banner is: a share of the screen height, so the first row (or the filter chips) always peeks in under it. */
+@Composable
+fun heroHeight(share: Float = 0.54f): Dp = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * share).dp.coerceIn(360.dp, 620.dp)
+
+/** The featured title, edge to edge and up under the status bar, melting into the page below. The top bar is drawn over it by the screen. */
+@Composable
+private fun ImmersiveBanner(items: List<app.streamsetu.tv.ui.components.BannerItem>, onPrimary: (app.streamsetu.tv.ui.components.BannerItem) -> Unit, onDetails: (app.streamsetu.tv.ui.components.BannerItem) -> Unit, modifier: Modifier, share: Float) {
+    var index by remember { mutableIntStateOf(0) }
+    LaunchedEffect(items.size, index) { if (items.size > 1) { kotlinx.coroutines.delay(8000); index = (index + 1) % items.size } }
+    val b = items[index % items.size]
+    val page = Tokens.background
+    Box(modifier.fillMaxWidth().height(heroHeight(share)).background(Tokens.card).clickable { onDetails(b) }) {
+        androidx.compose.animation.Crossfade(b, animationSpec = androidx.compose.animation.core.tween(600), label = "hero") { it ->
+            Box(Modifier.fillMaxSize()) {
+                if (it.imageUrl.isNullOrBlank()) PosterPlaceholder(it.title, Modifier.fillMaxSize()) else AsyncImage(it.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color(0x99000000), 0.22f to Color.Transparent)))          // keeps the clock and the top buttons readable
+                Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0.38f to Color.Transparent, 0.72f to page.copy(alpha = 0.72f), 1f to page)))
+                Column(Modifier.align(Alignment.BottomStart).padding(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(Tokens.accent))
+                        Label("FEATURED", 11.sp, Color(0xD9FFFFFF), FontWeight.Bold, letterSpacing = 1.6.sp)
+                    }
+                    Label(it.title, 34.sp, Color.White, FontWeight.ExtraBold, maxLines = 2)
+                    if (it.facts.isNotEmpty()) Label(it.facts.joinToString("  ·  "), Ph.small, Color(0xC7FFFFFF))
+                    it.synopsis?.let { t -> Label(t, Ph.small, Color(0xB3FFFFFF), maxLines = 2) }
+                    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.height(46.dp).clip(RoundedCornerShape(23.dp)).glossy(RoundedCornerShape(23.dp), accent = true).clickable { onPrimary(it) }.padding(horizontal = 22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Filled.PlayArrow, Color.White, 22.dp); Label(if (it.primaryLabel == "Play") "Play" else it.primaryLabel, Ph.body, Color.White, FontWeight.Bold)
+                        }
+                        Row(Modifier.height(46.dp).clip(RoundedCornerShape(23.dp)).background(Color(0x40FFFFFF)).border(1.dp, Color(0x29FFFFFF), RoundedCornerShape(23.dp)).clickable { onDetails(it) }.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Filled.Info, Color.White, 20.dp); Label("Details", Ph.body, Color.White, FontWeight.SemiBold)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))          // room for the dots
+                }
+            }
+        }
+        if (items.size > 1) Row(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 20.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+            items.take(8).forEachIndexed { i, _ -> Box(Modifier.height(5.dp).width(if (i == index % items.size) 22.dp else 6.dp).clip(CircleShape).background(if (i == index % items.size) Color.White else Color(0x59FFFFFF))) }
         }
     }
 }

@@ -73,17 +73,15 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     ) + queueItems(c, s.id, ContentKind.SERIES, s.title) + favoriteOrderItems(s.id in favIds) { front -> vm.moveFavorite(s.id, ContentKind.SERIES, front) } }
 
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            item { OfflineCard(c, nav) }
-            item { NowPlayingStrip(c, nav) }
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
             item {
-                PhoneTopBar("Home", leading = { RoundTap(Icons.Filled.Layers, "Libraries") { c.library.close(); nav.toChooser() } }) { RoundTap(Icons.Filled.Search, "Search") { nav.openSearch() } }
-            }
-            item {
-                PhoneBanner(banner,
+                if (banner.isNotEmpty()) PhoneBanner(banner, immersive = true,
                     onPrimary = { b -> vm.playableFor(b.id)?.let { p -> if (p is SeriesFeature) nav.open(Overlay.SeriesDetail(p.series)) else play(c, nav, p) } },
                     onDetails = { b -> when (val p = vm.playableFor(b.id)) { is SeriesFeature -> nav.open(Overlay.SeriesDetail(p.series)); is MoviePlayable -> nav.open(Overlay.MovieDetail(p.movie)); else -> {} } })
+                else Spacer(Modifier.windowInsetsPadding(WindowInsets.statusBars).height(64.dp))          // the top bar's room when there is no banner
             }
+            item { OfflineCard(c, nav) }
+            item { NowPlayingStrip(c, nav) }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(vm.shortcutOrder.distinct(), key = { it }) { id ->
@@ -176,6 +174,8 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 Empty("Nothing to show yet", "This library has no content on this phone yet. Open Libraries and refresh it.")
             }
         }
+        // The top bar floats over the banner; its name is only drawn when there is no banner under it.
+        PhoneTopBar("Home", showTitle = banner.isEmpty(), leading = { RoundTap(Icons.Filled.Layers, "Libraries") { c.library.close(); nav.toChooser() } }) { RoundTap(Icons.Filled.Search, "Search") { nav.openSearch() } }
         sheet?.let { (t, items) -> Sheet(t, items, onClose = { sheet = null }) }
     }
 }

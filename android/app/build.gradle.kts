@@ -113,6 +113,8 @@ dependencies {
     implementation(libs.workmanager)
     implementation(libs.zxing)
     testImplementation(libs.junit)
+    testImplementation(libs.hilt.testing)          // runs the real Hilt graph in a test (AppContainerLifetimeTest)
+    kspTest(libs.hilt.compiler)
     testImplementation("org.json:json:20240303")
     testImplementation(platform(libs.compose.bom))
     testImplementation("androidx.compose.ui:ui-test-junit4")

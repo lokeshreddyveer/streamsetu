@@ -1,5 +1,7 @@
 package app.streamsetu.tv.ui.phone
 
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -93,8 +95,19 @@ private fun minimizePlayer(c: AppContainer, nav: Navigator) {
 
 @Composable
 private fun PhoneShell(c: AppContainer, nav: Navigator) {
+    // Scrolling down shrinks the bottom bar to one round button; scrolling up, or changing section, brings it back.
+    var collapsed by remember { mutableStateOf(false) }
+    LaunchedEffect(nav.tab) { collapsed = false }
+    val barScroll = remember {
+        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+            override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                if (available.y < -14f) collapsed = true else if (available.y > 10f) collapsed = false
+                return androidx.compose.ui.geometry.Offset.Zero
+            }
+        }
+    }
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+        Box(Modifier.weight(1f).fillMaxWidth().nestedScroll(barScroll)) {
             when (nav.tab) {
                 Tab.HOME -> PhoneHome(hiltViewModel(), c, nav)
                 Tab.LIVE -> PhoneLive(hiltViewModel(), c, nav)
@@ -108,7 +121,7 @@ private fun PhoneShell(c: AppContainer, nav: Navigator) {
         // The bar is hidden behind the player and detail pages, which cover the window.
         if (nav.overlays.isEmpty()) {
             MiniPlayer(c) { nav.open(Overlay.Player) }
-            PhoneTabBar(nav.tab) { nav.tab = it }
+            PhoneTabBar(nav.tab, { nav.tab = it }, collapsed = collapsed, onExpand = { collapsed = false })
         }
     }
 }

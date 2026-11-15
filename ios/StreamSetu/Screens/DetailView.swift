@@ -306,6 +306,14 @@ struct DetailView: View {
         if let next { Play.episode(next, detail.series, container) }
     }
 
+    /// What the page shows for cast and directors is also kept for search, so a title you have opened is found by the names on it straight away.
+    private func rememberPeople(_ container: AppContainer) {
+        let names = castNames + makerNames
+        guard !names.isEmpty else { return }
+        let id = item.id, kind: ContentKind = item.isSeries ? .series : .movie, source = item.sourceID
+        Task.detached { try? PeopleIndex(db: container.db).save(itemID: id, kind: kind, sourceID: source, names: names) }
+    }
+
     private func load() async {
         guard let container else { return }
         do {
@@ -325,6 +333,7 @@ struct DetailView: View {
             tmdb = more
             hasTMDBKey = container.metadata.hasKey
             loadedExtras = true
+            rememberPeople(container)
             if extras?.trailerKey == nil {
                 tmdbTrailer = more?.bestTrailer?.key
                 if tmdbTrailer == nil { previewClip = await TrailerLookup.find(title: item.title, year: item.year, isSeries: item.isSeries) }

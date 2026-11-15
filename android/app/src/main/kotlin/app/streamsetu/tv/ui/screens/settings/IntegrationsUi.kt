@@ -18,8 +18,7 @@ import kotlinx.coroutines.launch
 /** Settings, Trakt and Debrid: the person's own keys, Trakt sign-in by code, the watchlist, and a box to play a link through a debrid account. */
 @Composable
 fun IntegrationsSettings(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
-    AskAiSettings(c, nav)
-    AiSettings(c)
+    // The AI assistant is unplugged for now: AskAiSettings(c, nav) and AiSettings(c) are not shown.
     TraktSettings(c)
     DebridSettings(c)
 }

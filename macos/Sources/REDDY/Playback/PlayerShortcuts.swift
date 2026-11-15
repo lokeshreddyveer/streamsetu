@@ -20,6 +20,8 @@ struct PlayerShortcutContext: Sendable {
     var switcherOpen = false
     /// A channel number is being typed, so Return and Esc finish or cancel it.
     var numberEntryActive = false
+    /// The player is open over the screen (not full screen). It has the focus then, so the arrows can seek.
+    var isExpanded = false
 }
 
 /// Pure keyboard mapping so shortcut behaviour is testable. The caller must already have ruled out
@@ -50,8 +52,10 @@ enum PlayerShortcuts {
         case 46 where c.hasPlayback: return .toggleMute                     // M
         case 53 where c.isFullscreen: return .exitFullscreen                // Escape
         // Arrows belong to lists, tables and the guide unless the player itself has the focus (fullscreen).
-        case 123 where c.isFullscreen && c.hasPlayback && !c.isLive: return .seek(-10)
-        case 124 where c.isFullscreen && c.hasPlayback && !c.isLive: return .seek(10)
+        case 123 where (c.isFullscreen || c.isExpanded) && c.hasPlayback && !c.isLive: return .seek(-10)
+        case 124 where (c.isFullscreen || c.isExpanded) && c.hasPlayback && !c.isLive: return .seek(10)
+        case 38 where c.hasPlayback && !c.isLive: return .seek(-10)          // J
+        case 37 where c.hasPlayback && !c.isLive: return .seek(10)           // L
         case 126 where c.isFullscreen && c.hasPlayback: return c.isLive ? .channelUp : .adjustVolume(0.05)
         case 125 where c.isFullscreen && c.hasPlayback: return c.isLive ? .channelDown : .adjustVolume(-0.05)
         case 116 where c.hasPlayback && c.isLive: return .channelUp         // Page Up

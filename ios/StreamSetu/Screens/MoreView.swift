@@ -361,6 +361,7 @@ struct PlaylistsView: View {
     @Environment(AppState.self) private var state
     @Environment(IOSRouter.self) private var router
     @Environment(\.container) private var container
+    @State private var pendingDelete: PlaylistSource?
 
     var body: some View {
         OptionalStack(embedded: embedded) {
@@ -390,8 +391,13 @@ struct PlaylistsView: View {
                             }
                         }
                         .swipeActions {
-                            Button(role: .destructive) { delete(s) } label: { Label("Delete", systemImage: "trash") }
+                            Button(role: .destructive) { pendingDelete = s } label: { Label("Delete", systemImage: "trash") }
                             Button { state.sync(s.id, forceGuide: true) } label: { Label("Refresh", systemImage: "arrow.clockwise") }.tint(.blue)
+                        }
+                        .contextMenu {
+                            if state.activeSourceID != s.id, s.enabled { Button { state.switchPlaylist(s.id) } label: { Label("Use This Playlist", systemImage: "checkmark.circle") } }
+                            Button { state.sync(s.id, forceGuide: true) } label: { Label("Refresh", systemImage: "arrow.clockwise") }
+                            Button(role: .destructive) { pendingDelete = s } label: { Label("Delete…", systemImage: "trash") }
                         }
                     }
                     Button { router.presentAdd = true } label: { Label("Add Playlist", systemImage: "plus") }
@@ -400,6 +406,10 @@ struct PlaylistsView: View {
             }
             .navigationTitle("Playlists").themed("Playlists")
             .miniPlayerInset()
+            .confirmationDialog("Delete \(pendingDelete?.name ?? "this playlist")?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }), titleVisibility: .visible) {
+                Button("Delete Playlist", role: .destructive) { if let s = pendingDelete { delete(s) }; pendingDelete = nil }
+                Button("Cancel", role: .cancel) { pendingDelete = nil }
+            } message: { Text("Its channels, movies, series and saved login are removed from this device. Your provider account is not affected. You can add it again any time.") }
         }
     }
 

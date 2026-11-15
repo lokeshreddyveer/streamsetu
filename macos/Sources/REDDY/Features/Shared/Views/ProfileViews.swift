@@ -103,6 +103,7 @@ struct ProfilesList: View {
     @State private var askFor: Profile?
     @State private var pin = ""
     @State private var message: String?
+    @State private var removing: Profile?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -118,7 +119,7 @@ struct ProfilesList: View {
                     if p.kind == .kids, !service.leavingNeedsPIN, container != nil { Button("Limits…") { limitsFor = p } }
                     if p.id != service.activeID {
                         Button("Switch") { tap(p) }
-                        if p.id != ProfileService.mainID { Button("Remove", role: .destructive) { service.remove(p.id) } }
+                        if p.id != ProfileService.mainID { Button("Remove", role: .destructive) { removing = p } }
                     }
                 }
             }
@@ -129,6 +130,10 @@ struct ProfilesList: View {
             if let message { Text(message).font(.callout).foregroundStyle(.secondary) }
             Button { adding = true } label: { Label(service.canAdd ? "Add a Profile…" : "Four profiles is the most", systemImage: "plus") }.disabled(!service.canAdd)
         }
+        .confirmationDialog("Remove \(removing?.name ?? "this profile")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
+            Button("Remove Profile", role: .destructive) { if let p = removing { service.remove(p.id) }; removing = nil }
+            Button("Cancel", role: .cancel) { removing = nil }
+        } message: { Text("Its favourites, collections, watch history and resume points are deleted. Playlists are not affected.") }
         .sheet(isPresented: $adding) { AddProfileSheet(service: service) }
         .sheet(item: $limitsFor) { p in if let container { ViewingLimitsSheet(profile: p, container: container) } }
     }

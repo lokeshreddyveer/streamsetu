@@ -27,7 +27,7 @@ struct LibrarySettingsView: View {
             }.glossRow()
             Section {
                 LabeledContent("Movies read", value: "\(people.done.formatted()) of \(people.total.formatted())")
-                Button("Read More Now") { container?.startPeopleIndex() }.disabled(people.done >= people.total)
+                Button("Read More Now") { container?.startPeopleIndex(fast: true) }.disabled(people.done >= people.total)
             } header: { Text("Cast and directors") } footer: {
                 Text("So you can search for an actor or a director. StreamSetu asks your playlists about one movie at a time, slowly and never while something is playing, and keeps what it learns.")
             }.glossRow()

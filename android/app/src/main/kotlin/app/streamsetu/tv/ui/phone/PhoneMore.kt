@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -154,13 +155,7 @@ private fun PhoneSettings(c: AppContainer, nav: Navigator, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         PhoneTopBar(cat?.title ?: "Settings", leading = { RoundTap(Icons.Filled.ArrowBack, "Back") { if (open != null) open = null else onBack() } })
         if (cat == null) LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
-            items(Category.entries, key = { it.name }) { k ->
-                Row(Modifier.fillMaxWidth().clickable { open = k.name }.padding(horizontal = Ph.gutter, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Tokens.elevated), Alignment.Center) { Icon(k.icon, Tokens.accent, 22.dp) }
-                    Column(Modifier.weight(1f)) { Label(k.title, Ph.body, Tokens.text, FontWeight.SemiBold); Label(k.subtitle, Ph.caption, Tokens.textSecondary, maxLines = 2) }
-                    Icon(Icons.Filled.ChevronRight, Tokens.textTertiary, 20.dp)
-                }
-            }
+            items(Category.entries, key = { it.name }) { k -> Entry(k.icon, k.title, k.subtitle) { open = k.name } }
         } else Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = Ph.gutter, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Label(cat.subtitle, Ph.small, Tokens.textSecondary)
             SettingsPanel(cat, c, nav)
@@ -184,9 +179,11 @@ fun PhoneMore(c: AppContainer, nav: Navigator) {
 
 @Composable
 private fun Entry(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Ph.gutter, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Tokens.elevated), Alignment.Center) { Icon(icon, Tokens.accent, 22.dp) }
-        Column(Modifier.weight(1f)) { Label(title, Ph.body, Tokens.text, FontWeight.SemiBold); Label(subtitle, Ph.caption, Tokens.textSecondary) }
+    val shape = RoundedCornerShape(16.dp)
+    Row(Modifier.fillMaxWidth().padding(horizontal = Ph.gutter, vertical = 5.dp).clip(shape).glossy(shape).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).glossy(RoundedCornerShape(12.dp), accent = true), Alignment.Center) { Icon(icon, Color.White, 22.dp) }
+        Column(Modifier.weight(1f)) { Label(title, Ph.body, Tokens.text, FontWeight.SemiBold); Label(subtitle, Ph.caption, Tokens.textSecondary, maxLines = 2) }
         Icon(Icons.Filled.ChevronRight, Tokens.textTertiary, 20.dp)
     }
 }

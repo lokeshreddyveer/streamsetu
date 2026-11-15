@@ -30,11 +30,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** The single place screens ask for what they need. Everything inside is built by Hilt (see di/AppModule); this class only adds the app-wide behaviour that joins them. */
-@Singleton
 /** What was just chosen but is not playing yet (its folder, profile and connection are still being checked). The player shows it at once, over the last picture. [generation] tells a newer choice from an older one. */
 data class PendingPlayback(val itemId: String, val title: String, val generation: Long)
 
+/** The single place screens ask for what they need. Everything inside is built by Hilt (see di/AppModule); this class only adds the app-wide behaviour that joins them. One instance for the whole process, so the Application, every Activity and every Service share it. */
+@Singleton
 class AppContainer @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext val context: android.content.Context,
     val appScope: CoroutineScope,

@@ -109,7 +109,7 @@ fun rememberSearchActions(c: AppContainer, nav: Navigator, typed: String, sessio
     var asked by remember(typed, ctx) { mutableStateOf(kept?.aiAsked ?: false) }
     LaunchedEffect(typed, found, note, asked) { session?.let { if (asked) { it.aiFor = typed; it.aiFound = found; it.aiNote = note; it.aiAsked = true } } }
     val aiName = c.ai.provider.title
-    val showAsk = aiReady && looksLikeARequest && commands.isEmpty()
+    val showAsk = false && aiReady && looksLikeARequest && commands.isEmpty()          // the AI assistant is unplugged for now
     fun runAi() {
         if (busy) return
         busy = true; asked = true; error = null

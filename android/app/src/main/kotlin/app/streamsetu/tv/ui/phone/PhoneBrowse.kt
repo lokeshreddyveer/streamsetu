@@ -61,18 +61,14 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
     val folderName = (browse as? Browse.Folder)?.let { b -> folders.firstOrNull { it.id == b.id }?.title }
 
     val banner by vm.banner.collectAsStateWithLifecycle()
-    Column(Modifier.fillMaxSize()) {
-        PhoneTopBar(title) {
-            RoundTap(Icons.Filled.Search, "Search") { nav.openSearch(if (vm.kind == ContentKind.SERIES) SearchTab.SERIES else SearchTab.MOVIES) }
-            RoundTap(Icons.Filled.Folder, "Folders") { folderSheet = true }
-        }
+    Box(Modifier.fillMaxSize()) {
         val list = cards
         when {
-            list == null -> Loading(Modifier.weight(1f))
-            else -> LazyVerticalGrid(GridCells.Fixed(3), Modifier.weight(1f), state = grid, contentPadding = PaddingValues(start = Ph.gutter, end = Ph.gutter, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            list == null -> Loading(Modifier.fillMaxSize())
+            else -> LazyVerticalGrid(GridCells.Fixed(3), Modifier.fillMaxSize(), state = grid, contentPadding = PaddingValues(start = Ph.gutter, end = Ph.gutter, top = if (banner.isNotEmpty()) 0.dp else WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (banner.isNotEmpty()) item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
                     Box(Modifier.layout { m, c -> val p = m.measure(c.copy(maxWidth = c.maxWidth + 32.dp.roundToPx())); layout(c.maxWidth, p.height) { p.place(-16.dp.roundToPx(), 0) } }) {
-                        PhoneBanner(banner, onPrimary = { b -> list.firstOrNull { it.id == b.id }?.let { cd -> cd.movie?.let { play(c, nav, MoviePlayable(it)) } ?: cd.series?.let { nav.open(Overlay.SeriesDetail(it)) } } },
+                        PhoneBanner(banner, immersive = true, share = 0.46f, onPrimary = { b -> list.firstOrNull { it.id == b.id }?.let { cd -> cd.movie?.let { play(c, nav, MoviePlayable(it)) } ?: cd.series?.let { nav.open(Overlay.SeriesDetail(it)) } } },
                             onDetails = { b -> list.firstOrNull { it.id == b.id }?.let { cd -> cd.movie?.let { nav.open(Overlay.MovieDetail(it)) } ?: cd.series?.let { nav.open(Overlay.SeriesDetail(it)) } } })
                     }
                 }
@@ -112,6 +108,10 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
                     )
                 }
             }
+        }
+        PhoneTopBar(title, showTitle = banner.isEmpty()) {
+            RoundTap(Icons.Filled.Search, "Search") { nav.openSearch(if (vm.kind == ContentKind.SERIES) SearchTab.SERIES else SearchTab.MOVIES) }
+            RoundTap(Icons.Filled.Folder, "Folders") { folderSheet = true }
         }
     }
     if (folderSheet) Sheet("Folders", buildList {

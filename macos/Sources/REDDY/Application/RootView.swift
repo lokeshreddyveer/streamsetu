@@ -436,7 +436,7 @@ struct MainShell: View {
             if router.accountMenuOpen || router.playlistMenuOpen { router.closeMenus(); return true }
             if playback.isExpanded { playback.isExpanded = false; return true }
         }
-        let ctx = PlayerShortcutContext(hasPlayback: playback.current != nil, isFullscreen: playback.isFullscreen, isLive: playback.isLive, switcherOpen: playback.showChannelSwitcher, numberEntryActive: !playback.numberEntry.isEmpty)
+        let ctx = PlayerShortcutContext(hasPlayback: playback.current != nil, isFullscreen: playback.isFullscreen, isLive: playback.isLive, switcherOpen: playback.showChannelSwitcher, numberEntryActive: !playback.numberEntry.isEmpty, isExpanded: playback.isExpanded)
         guard let command = PlayerShortcuts.resolve(keyCode: event.keyCode, characters: event.charactersIgnoringModifiers, ctx) else { return false }
         switch command {
         case .togglePause: playback.togglePause()
