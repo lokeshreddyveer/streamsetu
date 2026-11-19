@@ -180,6 +180,8 @@ F="$TMP/appcast.xml"
 python3 "$SRC/macos/Scripts/appcast_add.py" "$F" 1.2.3 123 "https://x/a.dmg" 'sparkle:edSignature="s" length="1"' "notes" | grep -q added && ok "first run adds" || fail "first run did not add"
 python3 "$SRC/macos/Scripts/appcast_add.py" "$F" 1.2.3 123 "https://x/b.dmg" 'sparkle:edSignature="s2" length="1"' "notes" | grep -q "already offered" && ok "the same version again is not added" || fail "a duplicate was added"
 python3 "$SRC/macos/Scripts/appcast_add.py" "$F" 1.2.4 124 "https://x/c.dmg" 'sparkle:edSignature="s3" length="1"' "notes" | grep -q added && ok "a new version is added" || fail "a new version was not added"
+python3 "$SRC/macos/Scripts/appcast_add.py" "$F" 1.2.5 124 "https://x/d.dmg" 'sparkle:edSignature="s4" length="1"' "notes" >/dev/null 2>&1 && fail "a build no higher than the feed's was added" || ok "a build no higher than the feed's is refused"
+python3 "$SRC/macos/Scripts/appcast_add.py" "$F" 1.2.5 1x "https://x/d.dmg" 'sparkle:edSignature="s4" length="1"' "notes" >/dev/null 2>&1 && fail "a build that is not a number was added" || ok "a build that is not a number is refused"
 [ "$(grep -c '<item>' "$F")" = "2" ] && ok "two entries in all" || fail "wrong number of entries: $(grep -c '<item>' "$F")"
 
 echo
