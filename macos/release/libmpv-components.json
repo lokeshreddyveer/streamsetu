@@ -1,319 +1,319 @@
 {
-  "_note": "Name, version and SHA-256 of each bundled library; the check fails if one is missing or changed. upstream_revision is optional (reported as debt when empty). Pin an upstream tag and checksum in fetch-libmpv.sh at the next refresh.",
+  "_note": "Name, version and SHA-256 of each bundled library, as copied from the official IINA v1.5.1 release by Scripts/fetch-libmpv.sh (pinned to that release and its DMG checksum); the check fails if one is missing or changed. upstream_revision is optional (reported as debt when empty).",
   "components": [
     {
       "file": "libSvtAv1Enc.4.dylib",
       "project": "SVT-AV1",
       "version": "4.2.0",
-      "sha256": "87ccf54753a9b1f7d39336b447a16255cd1f35b5069bbe483c389c26d1ffa0e8",
+      "sha256": "bb22ad3e2a8738a9aa14048918e8c9e6e5940a4b5f3ce7fa0b2b56ac358ef6cd",
       "upstream_revision": null
     },
     {
       "file": "libarchive.13.dylib",
       "project": "libarchive",
       "version": "22.8.0",
-      "sha256": "233ef07f00cf24141122cf65abba04bf742aca35facf95f329fe7e79673a18cd",
+      "sha256": "592c81b7047509cf03b5b7ea17ee7e146958fa3e1dbeb38f0632c16da87c5c1a",
       "upstream_revision": null
     },
     {
       "file": "libass.9.dylib",
       "project": "libass",
       "version": "14.2.0",
-      "sha256": "e61f1b2a5bba2ce5b90bfeb315ab49c984bc3f13679400042ef7e263a8835f94",
+      "sha256": "5ca06e9f914e8793ff5c7e9cb91fbe3218b39c0b574b02a724c8d3dd92cdcad3",
       "upstream_revision": null
     },
     {
       "file": "libavcodec.63.dylib",
       "project": "FFmpeg",
       "version": "63.1.101",
-      "sha256": "02691763d2a7525576a1453fcc673fc0e06c608818e1481e4530da8914710b08",
+      "sha256": "d736d2ef0ca7edf67ff1abb09dd8932a233b353c5703a9eca89ce246a82b07bb",
       "upstream_revision": null
     },
     {
       "file": "libavdevice.63.dylib",
       "project": "FFmpeg",
       "version": "63.1.101",
-      "sha256": "110e21ed3af86b1880258512471d0a8f6eca484e11f2d8779e160af3fc304c56",
+      "sha256": "654ca3d420a1e3ace6d9a094045ad4b0d33b1c38857ee3f2019763feac3d4f30",
       "upstream_revision": null
     },
     {
       "file": "libavfilter.12.dylib",
       "project": "FFmpeg",
       "version": "12.1.101",
-      "sha256": "da79b1b7451ae5928e2be6a6cdf01e165c819487a5d11836218eb7c8e5292acb",
+      "sha256": "3412ad40b5ff6fbe4a992024a6fcae247ec8573930954cde8b818d0a9fadea0b",
       "upstream_revision": null
     },
     {
       "file": "libavformat.63.dylib",
       "project": "FFmpeg",
       "version": "63.1.101",
-      "sha256": "53cca21f3a9ffb48971c1f26b4cffe2e3e4eba6393ab9ab4f90f45e283dc437a",
+      "sha256": "21628c5ee7ff94d3bb5c5bfe22a141495b81a2bdbe08d840b29d5cfd15302c13",
       "upstream_revision": null
     },
     {
       "file": "libavutil.61.dylib",
       "project": "FFmpeg",
       "version": "61.1.101",
-      "sha256": "afb6644b6c70cf666b4af1299127f378b2ce3b23c5db9602ea167e369406e606",
+      "sha256": "1b5b053a6d51506a34d4591592192e66d7497a0c92c0550cdc2caa018f2f47ab",
       "upstream_revision": null
     },
     {
       "file": "libbluray.3.dylib",
       "project": "libbluray",
       "version": "3.0.0",
-      "sha256": "24bdd5643e8479a31f7b9b7355881162ae659c6e65f21dd64a02b98d180583d6",
+      "sha256": "d5e01024fefa0e81ec4fae31283507938279ea72db4dedad0d8d40a2658f4604",
       "upstream_revision": null
     },
     {
       "file": "libbrotlicommon.1.dylib",
       "project": "brotli",
       "version": "1.0.9",
-      "sha256": "cf5cf93b7af076383e777f1d96aa8dbc782b05d0a160700a94682188829c1618",
+      "sha256": "33497a26c25945bb881849ae2089a33eadec19a958dbe3440d9ab4510fd2777c",
       "upstream_revision": null
     },
     {
       "file": "libbrotlidec.1.dylib",
       "project": "brotli",
       "version": "1.0.9",
-      "sha256": "af1646834fcfb4c6c3d28b3b9a28008aebd0b1ae71371626f088402bf6c008a7",
+      "sha256": "30600748a38f59b96a3e832d2d79f3bd91633544b9b01aa8a3b4bb9adcb241e3",
       "upstream_revision": null
     },
     {
       "file": "libbrotlienc.1.dylib",
       "project": "brotli",
       "version": "1.0.9",
-      "sha256": "2a720509ab5203e965c4ee9da1578bf099261921e84102f4803fd53d221904a4",
+      "sha256": "272ec9a0fd2b33e0dfc41b8e953b6d9e88932c4f6a9c3fab3bede3d836bac2ea",
       "upstream_revision": null
     },
     {
       "file": "libbs2b.0.dylib",
       "project": "bs2b",
       "version": "1.0.0",
-      "sha256": "32356179d94db457f5a80f7c639a4ab42c84b31bb78d539e58aed72b073abf00",
+      "sha256": "71f6c0760f4df4825772f452008f39ce3688828689192300644ece70e292fd2c",
       "upstream_revision": null
     },
     {
       "file": "libdav1d.7.dylib",
       "project": "dav1d",
       "version": "7.0.0",
-      "sha256": "bb59d754a3e8cc0885d7a7415903bf17ff42c6b86f038e92e763d51f547e75e0",
+      "sha256": "75010c84cea07d48dc0fd42eb9c08e1a7a43764de3d804d4b6c332cc6813fa66",
       "upstream_revision": null
     },
     {
       "file": "libfontconfig.1.dylib",
       "project": "fontconfig",
       "version": "18.0.0",
-      "sha256": "779b3932876fcd7813bcc3096812cd0111693196063348dbb276cbb9391f1060",
+      "sha256": "d66184110f33d24bc1a4a544d4d9e477f8fc1ae09c53c68efee83bafb132feaa",
       "upstream_revision": null
     },
     {
       "file": "libfreetype.6.dylib",
       "project": "FreeType",
       "version": "27.6.0",
-      "sha256": "10c28a673749168f6521378a4b6d452e2a0b04b2f3f7c74bbc7c20e541787e0d",
+      "sha256": "a516e3787e67ffe207fbe6d4fcf0de4c9bfbcc761e16dc615925ffee5e62fc31",
       "upstream_revision": null
     },
     {
       "file": "libfribidi.0.dylib",
       "project": "FriBidi",
       "version": "0.0.0",
-      "sha256": "6f52e8a3135d9660bf57bca6cd8a3573b43417d40f04ca2d0433aa3aadd7d265",
+      "sha256": "08a01c9fd9d97bfc55d7d0e8f089f2ee59d907ea2e6b9a92188e1961f9332d2a",
       "upstream_revision": null
     },
     {
       "file": "libharfbuzz.0.dylib",
       "project": "HarfBuzz",
       "version": "61421.0.0",
-      "sha256": "c7854f94365700ec1b27fae95895c9ce88160af544d588e1b1e3fc133d8bb3c3",
+      "sha256": "ac70d9e1fe02be4458cc4154e95e380563b79566f3bdc455cd2d28f0384c447b",
       "upstream_revision": null
     },
     {
       "file": "libjpeg.62.dylib",
       "project": "libjpeg-turbo",
       "version": "62.4.0",
-      "sha256": "5c2e23955015e7d3255c715a1baa3e168cfae077767e441d98af6ab14d40c1d7",
+      "sha256": "93d95f36a78dd5e6fc90f8cbd061552e1fd580f08cffca219c2915849c3eab76",
       "upstream_revision": null
     },
     {
       "file": "libjxl.0.11.dylib",
       "project": "libjxl",
       "version": "0.11.2",
-      "sha256": "73ff5f964c0824b856210bb24742dd334ef90d710c36f5150745aaf927acfb98",
+      "sha256": "51c181d26e542d5cf2bf5a2e6b5dbad6a8acb88636c2d0e372ee3e368b11a562",
       "upstream_revision": null
     },
     {
       "file": "libjxl_cms.0.11.dylib",
       "project": "libjxl",
       "version": "0.11.2",
-      "sha256": "342b41c264cf7fec456ca50df1ed836957d648a93240699e1f951caa805fc7db",
+      "sha256": "939a6f418185680e30efd3d2f9f60d83baeaa1806d0cd3cb1e8265a0a8d145b4",
       "upstream_revision": null
     },
     {
       "file": "libjxl_threads.0.11.dylib",
       "project": "libjxl",
       "version": "0.11.2",
-      "sha256": "8ef50010a027191a9332406876d8d44ed200f1690dfde6a9e6df6c1cf03368fa",
+      "sha256": "8d41a1005b79997181caaf1fbd5301fffb7e11d76c324a3649a549238db1dec4",
       "upstream_revision": null
     },
     {
       "file": "liblcms2.2.dylib",
       "project": "Little CMS",
       "version": "3.18.0",
-      "sha256": "d58390995c94bd2b964db340174868bfebab6ad75c33acbe0c80d182c7d255f6",
+      "sha256": "98131152e1af33851671122f51e150d2d7bd470dd571e3b1913f3b74e50edcf5",
       "upstream_revision": null
     },
     {
       "file": "libluajit-5.1.2.dylib",
       "project": "LuaJIT",
       "version": "2.1.255",
-      "sha256": "6538ebdf636bde150ddd16550e0bef4fcb6d220b3f5938c3d179aa40fc4376c4",
+      "sha256": "cd083fe47169baebc22d5a9a12c5d80b7fb67c701b24184e111fbe06ef517128",
       "upstream_revision": null
     },
     {
       "file": "liblz4.1.dylib",
       "project": "LZ4",
       "version": "1.10.0",
-      "sha256": "d32781ff30126675336b587b185131f72c8bccadfb167a3b0278d6280b89c600",
+      "sha256": "3eff3cef27125aa37f0029ba53088b0a1ea3e1a7b2065280045910c61f62aad7",
       "upstream_revision": null
     },
     {
       "file": "libmpv.2.dylib",
       "project": "mpv",
       "version": "2.0.0",
-      "sha256": "68fa3f5770b0154bfcc7da694147adc97eeb4c2e388e6a3c467b002b2e40f790",
+      "sha256": "f90a076785221718bac61459675e75f3dd0268a8cac8ea1db1ac25b650b47fb2",
       "upstream_revision": null
     },
     {
       "file": "libmujs.dylib",
       "project": "MuJS",
       "version": "0.0.0",
-      "sha256": "055d028f94775a9353a6837c0962740dbc0813cf8ae454836558bb38cca706a8",
+      "sha256": "b3d7a7931b900631f791fa18add5026637e77d62ba0fa72a135520a74abdff5e",
       "upstream_revision": null
     },
     {
       "file": "libogg.0.dylib",
       "project": "libogg",
       "version": "9.6.0",
-      "sha256": "0bf9f70b12da640c9664f469b74d4ae72317d19a8fae56c3622ca64915a3e305",
+      "sha256": "4d119c1006a6641a462aa45c19544f166b1f80413ef1fb959b89506097de5064",
       "upstream_revision": null
     },
     {
       "file": "libplacebo.360.dylib",
       "project": "libplacebo",
       "version": "360.0.0",
-      "sha256": "f7690bbdf5acaae1fbd555075e0c295437346786882a1d63a7b508f6cb31856a",
+      "sha256": "62a595ef18ca26260c648835c013f1cc39f941ad71d2b8034bfed69a786e15a3",
       "upstream_revision": null
     },
     {
       "file": "librubberband.3.dylib",
       "project": "Rubber Band",
       "version": "3.0.0",
-      "sha256": "9099b445a7d292e1b8ec4b6f6c1f085a9f1f86b4821da698964a70f29970427a",
+      "sha256": "9987256c93fb45d0303a29204256988da5e00009d53b5278944c0c8350b182f3",
       "upstream_revision": null
     },
     {
       "file": "libsharpyuv.0.dylib",
       "project": "libwebp",
       "version": "2.2.0",
-      "sha256": "9f25a7b4a689b5b0c2c4e0f82af1912cf4844ef7ff771ba48b9a098258dd428d",
+      "sha256": "812810e460488760381df2beca8aeecc73a04c6e4021b4f5c7cdbd99b6fb8807",
       "upstream_revision": null
     },
     {
       "file": "libsoxr.0.dylib",
       "project": "SoXR",
       "version": "0.1.2",
-      "sha256": "0b1a2d160fcd03a19112c3ba17e7c656c395b7db49832136a929e92037907f0b",
+      "sha256": "8bae439ae8547b60e223fa73422c567d63355d36b346b89de0e5bd52eb3b8f2b",
       "upstream_revision": null
     },
     {
       "file": "libspeex.1.dylib",
       "project": "Speex",
       "version": "7.2.0",
-      "sha256": "16f9e179d6ea720d39160b1e9a251c00a7dbbdf7af5d0b3288f0adda1a9fe887",
+      "sha256": "af88cf4d030e8a8918150fea2eef68a1c76e9817811c56f71d7e9adfd28faac3",
       "upstream_revision": null
     },
     {
       "file": "libswift_Concurrency.dylib",
       "project": "Swift runtime (Apple)",
       "version": "5.7.2",
-      "sha256": "a09059ccd313d45600f574d2edcb26bf7471234e22408ae37997607e87bda027",
+      "sha256": "729c21d0548fa441d74fe554179b65755aed6ef796bf571aaddc47058d038589",
       "upstream_revision": null
     },
     {
       "file": "libswresample.7.dylib",
       "project": "FFmpeg",
       "version": "7.1.101",
-      "sha256": "794e895a4af7e9600704a4139f686be26059b4667e3334370b975f2e857cdfae",
+      "sha256": "21abddb2d466cca09ae54e97b77692ab1364d856f3fe8b191ca2ccaedce03344",
       "upstream_revision": null
     },
     {
       "file": "libswscale.10.dylib",
       "project": "FFmpeg",
       "version": "10.1.101",
-      "sha256": "3e42237b4c0f8b93f17a1fa4b592496fb4645fe28c4bd376ffcc14772e80463b",
+      "sha256": "1a0c518199a7b9df2b6d9fe5ef12e21f4b67d9872f12f7d971283d36bfba835b",
       "upstream_revision": null
     },
     {
       "file": "libuchardet.0.dylib",
       "project": "uchardet",
       "version": "0.0.8",
-      "sha256": "4670b44abef84f198cea5fd949111bd4fed01e387f9a03c69f6ede03c763f8a0",
+      "sha256": "525f535cf1099729eaf4222b43f7bf31884c086ea2c0b69815766f3fde1ff337",
       "upstream_revision": null
     },
     {
       "file": "libudfread.3.dylib",
       "project": "libudfread",
       "version": "3.0.0",
-      "sha256": "06c9933708a65cad2a7e4f29dbbc6a0d04ac52e60daf41e1a49b6a668e8120fb",
+      "sha256": "b1eb0546cfe007fb141b1d6e5a35cbbc71599401dd3342b9a8615864c5534573",
       "upstream_revision": null
     },
     {
       "file": "libunibreak.7.dylib",
       "project": "libunibreak",
       "version": "8.0.0",
-      "sha256": "72238ab6f32d27221cdc35a96334e68db09b83454544d68925f2867a25b8fea0",
+      "sha256": "5b854f2bc4662640ad34de0bef7663e8ba58282ca4c93e67381a408188177e04",
       "upstream_revision": null
     },
     {
       "file": "libvorbis.0.dylib",
       "project": "Vorbis",
       "version": "5.9.0",
-      "sha256": "6138d761ddb60383970a281bbaec1a308787450d3d72e28acff161696bb1d536",
+      "sha256": "915a5917812c3c2f88eabb46c612417f71973ce69d1cceaa67da8aa7940188e1",
       "upstream_revision": null
     },
     {
       "file": "libvorbisenc.2.dylib",
       "project": "Vorbis",
       "version": "3.12.0",
-      "sha256": "48a14fe76e53d11e4b3c5e92743ac7054fc31ffcab345d351054019b687688d4",
+      "sha256": "9a7562556205df701c810e466cc8c42df5dbcf23fa14397be1554b17332a738e",
       "upstream_revision": null
     },
     {
       "file": "libwebp.7.dylib",
       "project": "libwebp",
       "version": "10.0.0",
-      "sha256": "a2ffe2bd99c7b481e359ccab5e60649e5f68f9f21fe775ed9222ca3262bff203",
+      "sha256": "5e6af8f20cd808e6c15bc374f0ddc39f665a6af12ddd9cdf787961683dbd016c",
       "upstream_revision": null
     },
     {
       "file": "libwebpmux.3.dylib",
       "project": "libwebp",
       "version": "5.2.0",
-      "sha256": "a114853fb494ef5a68e712614e58ea62e42bc0099f8f51c5bd9d6e6a3cb6f11e",
+      "sha256": "c95dddebe6e4bd64903638d92018ba48297be98455539a9a2503ad26993107a8",
       "upstream_revision": null
     },
     {
       "file": "libzimg.2.dylib",
       "project": "zimg",
       "version": "3.0.0",
-      "sha256": "84abe31b1511dec717704a68dfe2d0e4bc72b03e3c9dd3a3dc1286003ea0c19e",
+      "sha256": "b555979e3ef8297070aec0b57169c82182ef2015dc4b98fac701f10672a6e31b",
       "upstream_revision": null
     },
     {
       "file": "libzstd.1.dylib",
       "project": "Zstandard",
       "version": "1.5.7",
-      "sha256": "b291f9009b3ab7a4dd129e9de447f2e07c136a5a1298d531651073a44d588955",
+      "sha256": "0a3a08fb1454c243f394811053ab20fb153f456ce63e78d90d64b948c0807e6b",
       "upstream_revision": null
     }
   ]

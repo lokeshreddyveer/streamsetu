@@ -9,9 +9,13 @@ cd "$(dirname "$0")/.."
 OUT=third_party/libmpv
 [ -f "$OUT/libmpv.2.dylib" ] && { echo "✔ $OUT already present"; exit 0; }
 WORK="$(mktemp -d)"
-URL="$(curl -s https://api.github.com/repos/iina/iina/releases/latest | python3 -c "import sys,json; print(next(a['browser_download_url'] for a in json.load(sys.stdin)['assets'] if a['name'].endswith('.dmg')))")"
+# Pinned: the files must be the ones recorded in release/libmpv-components.json, which the release check compares by SHA-256.
+# To refresh, change both lines below, run this script on an empty third_party/libmpv, and update that file after review.
+IINA_TAG="v1.5.1"; IINA_DMG_SHA256="f414507ec60bcfeda3a9f539f74470253e31b619d031e7a9e9a71519da1598cd"
+URL="https://github.com/iina/iina/releases/download/$IINA_TAG/IINA.$IINA_TAG.dmg"
 echo "▸ Downloading $URL"
 curl -L --fail -o "$WORK/iina.dmg" "$URL"
+[ "$(shasum -a 256 "$WORK/iina.dmg" | cut -d' ' -f1)" = "$IINA_DMG_SHA256" ] || { echo "✘ the IINA $IINA_TAG download does not match its pinned checksum"; exit 1; }
 hdiutil attach -nobrowse -readonly -mountpoint "$WORK/vol" "$WORK/iina.dmg" >/dev/null
 mkdir -p "$OUT"
 cp "$WORK/vol/IINA.app/Contents/Frameworks/"*.dylib "$OUT/"
