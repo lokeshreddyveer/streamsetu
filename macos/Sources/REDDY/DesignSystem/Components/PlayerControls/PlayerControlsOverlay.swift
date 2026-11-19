@@ -213,7 +213,7 @@ struct PlayerControlsOverlay: View {
             }
         }
         .padding(.horizontal, 14).padding(.top, 24).padding(.bottom, 10)
-        .background(LinearGradient(colors: [.clear, .black.opacity(0.82)], startPoint: .top, endPoint: .bottom))
+        .contentShape(Rectangle())            // no shade behind the row (the picture shows through), but the whole strip still counts as "over the controls"
         .onHover { overControls = $0 }
     }
 
@@ -330,33 +330,14 @@ struct PlayerControlsOverlay: View {
         IconButton(symbol: "info.circle", help: "Stream info", active: showDiagnostics) { showDiagnostics.toggle() }
     }
 
-    /// The same controls gathered into one menu when the row is narrow.
+    /// The same controls gathered into one menu when the row is narrow. It is its own (equatable) view on purpose: this overlay
+    /// re-renders on every playback tick, and rebuilding an open menu's items closed the submenu under the pointer
+    /// (Sleep Timer, More Tools, Open In) before anything in it could be chosen.
     private func overflowMenu(includeTracks: Bool) -> some View {
-        Menu {
-            if includeTracks {
-                if playback.capabilities.qualitySelection, !playback.qualityOptions.isEmpty {
-                    Section("Quality") { ForEach(playback.qualityOptions) { q in Button { playback.selectQuality(q.id) } label: { Label(q.label, systemImage: playback.selectedQualityID == q.id ? "checkmark" : "") } } }
-                }
-                Section("Video size") { ForEach(VideoSizeMode.allCases) { m in Button { playback.setVideoSizeMode(m) } label: { Label(m.rawValue, systemImage: playback.videoLayout.mode == m ? "checkmark" : "") } } }
-            }
-            if !playback.isLive {
-                Section("Speed") { ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { r in Button { playback.setRate(r) } label: { Label(r == 1 ? "Normal" : "\(r.formatted())×", systemImage: playback.rate == r ? "checkmark" : "") } } }
-            }
-            if playback.availableEngines.count > 1 {
-                Section("Engine") { ForEach(Array(playback.availableEngines).sorted { $0.rawValue < $1.rawValue }) { e in Button { playback.switchEngine(e) } label: { Label(e.rawValue, systemImage: e == playback.activeEngine ? "checkmark" : "") } } }
-            }
-            if playback.activeEngine == .avPlayer, PiPManager.shared.isSupported { Button("Picture in Picture") { PiPManager.shared.toggle() } }
-            Section("This Title") { extrasItems }
-            Menu("Sleep Timer") {
-                ForEach(SleepTimer.presets, id: \.self) { m in Button("Stop after \(m) minutes") { playback.startSleepTimer(minutes: m) } }
-                if playback.sleepTimer != nil { Divider(); Button("Cancel Sleep Timer") { playback.cancelSleepTimer() } }
-            }
-            ExternalPlayerMenu(playback: playback)
-            if hasTools { Menu("More Tools") { toolItems } }
-            if playback.screenshotSupported { Button("Save Screenshot") { saveScreenshot() } }
-            Button(showDiagnostics ? "Hide Stream Info" : "Show Stream Info") { showDiagnostics.toggle() }
-        } label: { chip("ellipsis") }
-        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("More controls").accessibilityLabel("More controls")
+        PlayerOverflowMenu(playback: playback, includeTracks: includeTracks, showsStreamInfo: showDiagnostics, loopA: $loopA, loopB: $loopB,
+                           goToTime: { showGoTo = true }, findSubtitles: { showOnlineSubs = true },
+                           saveScreenshot: { saveScreenshot() }, toggleStreamInfo: { showDiagnostics.toggle() })
+            .equatable()
     }
 
     // MARK: tools only some players have
@@ -370,7 +351,7 @@ struct PlayerControlsOverlay: View {
         return nil
     }
 
-    private var hasTools: Bool { playback.capabilities.chapters || playback.capabilities.abLoop || playback.capabilities.frameStep || playback.capabilities.volumeBoost }
+    private var hasTools: Bool { PlayerToolItems.available(for: playback) }
 
     /// The red dot that starts and stops recording the channel being watched; while it records it shows how long.
     private var recordChip: some View {
@@ -409,29 +390,7 @@ struct PlayerControlsOverlay: View {
             .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Chapters, repeat, frame step, volume boost").accessibilityLabel("More tools")
     }
 
-    @ViewBuilder private var toolItems: some View {
-        if !playback.chapters.isEmpty {
-            Section("Chapters") { ForEach(playback.chapters) { c in Button("\(c.title)  \(DurationFormatter.clock(c.time))") { playback.seek(to: c.time) } } }
-        }
-        if !playback.isLive, playback.capabilities.abLoop {
-            Section("Repeat a part") {
-                Button(loopA == nil ? "Set start here" : "Start: \(DurationFormatter.clock(loopA!))") { loopA = playback.position; applyLoop() }
-                Button(loopB == nil ? "Set end here" : "End: \(DurationFormatter.clock(loopB!))") { loopB = playback.position; applyLoop() }.disabled(loopA == nil)
-                if loopA != nil || loopB != nil { Button("Clear repeat") { loopA = nil; loopB = nil; applyLoop() } }
-            }
-        }
-        if playback.capabilities.frameStep {
-            Section("Frame by frame") {
-                Button("Back one frame") { playback.frameStep(forward: false) }
-                Button("Forward one frame") { playback.frameStep(forward: true) }
-            }
-        }
-        if playback.capabilities.volumeBoost {
-            Toggle("Volume boost (up to 130%)", isOn: Binding(get: { playback.volumeBoost }, set: { playback.volumeBoost = $0 }))
-        }
-    }
-
-    private func applyLoop() { playback.setLoop(start: loopA, end: loopA != nil && loopB != nil ? loopB : nil) }
+    private var toolItems: some View { PlayerToolItems(playback: playback, loopA: $loopA, loopB: $loopB) }
 
     // MARK: cards and the quiet line
 
@@ -467,9 +426,7 @@ struct PlayerControlsOverlay: View {
         .foregroundStyle(.white).padding(.horizontal, 14).padding(.vertical, 10).background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    private func chip(_ symbol: String) -> some View {
-        Image(systemName: symbol).font(.system(size: 14, weight: .semibold)).frame(width: 32, height: 32).background(Color.white.opacity(0.08), in: Circle())
-    }
+    private func chip(_ symbol: String) -> some View { PlayerChip(symbol: symbol) }
 
     @ViewBuilder private func volume(slider width: CGFloat?) -> some View {
         HStack(spacing: 6) {
@@ -492,11 +449,7 @@ struct PlayerControlsOverlay: View {
     }
 
     /// "Stop playback after…". While one is running the icon is lit and the menu says how long is left.
-    @ViewBuilder private var extrasItems: some View {
-        if !playback.isLive { Button("Go to Time…") { showGoTo = true } }
-        Button("Find Subtitles Online…") { showOnlineSubs = true }
-        Toggle("Remember Settings for This Title", isOn: Binding(get: { playback.remembersPerTitle }, set: { playback.remembersPerTitle = $0 }))
-    }
+    private var extrasItems: some View { PlayerTitleItems(playback: playback, goToTime: { showGoTo = true }, findSubtitles: { showOnlineSubs = true }) }
 
     private var extrasMenu: some View {
         Menu { extrasItems } label: { chip("slider.horizontal.3") }
@@ -586,6 +539,105 @@ struct PlayerControlsOverlay: View {
         let name = "\(playback.title) \(Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))).png".replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
         let rep = NSBitmapImageRep(cgImage: img)
         if let data = rep.representation(using: .png, properties: [:]) { try? data.write(to: dir.appendingPathComponent(name)) }
+    }
+}
+
+/// The round icon a player menu opens from.
+private struct PlayerChip: View {
+    let symbol: String
+    var body: some View {
+        Image(systemName: symbol).font(.system(size: 14, weight: .semibold)).frame(width: 32, height: 32).background(Color.white.opacity(0.08), in: Circle())
+    }
+}
+
+/// Chapters, repeat a part, frame by frame and volume boost: in the tools menu, and under More Tools in the narrow-row menu.
+private struct PlayerToolItems: View {
+    let playback: PlaybackCoordinator
+    @Binding var loopA: Double?
+    @Binding var loopB: Double?
+
+    static func available(for p: PlaybackCoordinator) -> Bool { p.capabilities.chapters || p.capabilities.abLoop || p.capabilities.frameStep || p.capabilities.volumeBoost }
+
+    var body: some View {
+        if !playback.chapters.isEmpty {
+            Section("Chapters") { ForEach(playback.chapters) { c in Button("\(c.title)  \(DurationFormatter.clock(c.time))") { playback.seek(to: c.time) } } }
+        }
+        if !playback.isLive, playback.capabilities.abLoop {
+            Section("Repeat a part") {
+                Button(loopA == nil ? "Set start here" : "Start: \(DurationFormatter.clock(loopA!))") { loopA = playback.position; applyLoop() }
+                Button(loopB == nil ? "Set end here" : "End: \(DurationFormatter.clock(loopB!))") { loopB = playback.position; applyLoop() }.disabled(loopA == nil)
+                if loopA != nil || loopB != nil { Button("Clear repeat") { loopA = nil; loopB = nil; applyLoop() } }
+            }
+        }
+        if playback.capabilities.frameStep {
+            Section("Frame by frame") {
+                Button("Back one frame") { playback.frameStep(forward: false) }
+                Button("Forward one frame") { playback.frameStep(forward: true) }
+            }
+        }
+        if playback.capabilities.volumeBoost {
+            Toggle("Volume boost (up to 130%)", isOn: Binding(get: { playback.volumeBoost }, set: { playback.volumeBoost = $0 }))
+        }
+    }
+
+    private func applyLoop() { playback.setLoop(start: loopA, end: loopA != nil && loopB != nil ? loopB : nil) }
+}
+
+/// Go to a time, subtitles online, remembered settings: the title options menu, and This Title in the narrow-row menu.
+private struct PlayerTitleItems: View {
+    let playback: PlaybackCoordinator
+    let goToTime: () -> Void
+    let findSubtitles: () -> Void
+    var body: some View {
+        if !playback.isLive { Button("Go to Time…", action: goToTime) }
+        Button("Find Subtitles Online…", action: findSubtitles)
+        Toggle("Remember Settings for This Title", isOn: Binding(get: { playback.remembersPerTitle }, set: { playback.remembersPerTitle = $0 }))
+    }
+}
+
+/// The "…" menu of a narrow control row. Equality leaves out the actions (they only reach the overlay's state), so the overlay's
+/// re-renders on every playback tick do not rebuild this menu; it updates only when something it lists changes.
+private struct PlayerOverflowMenu: View, Equatable {
+    let playback: PlaybackCoordinator
+    let includeTracks: Bool
+    let showsStreamInfo: Bool
+    @Binding var loopA: Double?
+    @Binding var loopB: Double?
+    let goToTime: () -> Void
+    let findSubtitles: () -> Void
+    let saveScreenshot: () -> Void
+    let toggleStreamInfo: () -> Void
+
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        a.playback === b.playback && a.includeTracks == b.includeTracks && a.showsStreamInfo == b.showsStreamInfo && a.loopA == b.loopA && a.loopB == b.loopB
+    }
+
+    var body: some View {
+        Menu {
+            if includeTracks {
+                if playback.capabilities.qualitySelection, !playback.qualityOptions.isEmpty {
+                    Section("Quality") { ForEach(playback.qualityOptions) { q in Button { playback.selectQuality(q.id) } label: { Label(q.label, systemImage: playback.selectedQualityID == q.id ? "checkmark" : "") } } }
+                }
+                Section("Video size") { ForEach(VideoSizeMode.allCases) { m in Button { playback.setVideoSizeMode(m) } label: { Label(m.rawValue, systemImage: playback.videoLayout.mode == m ? "checkmark" : "") } } }
+            }
+            if !playback.isLive {
+                Section("Speed") { ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { r in Button { playback.setRate(r) } label: { Label(r == 1 ? "Normal" : "\(r.formatted())×", systemImage: playback.rate == r ? "checkmark" : "") } } }
+            }
+            if playback.availableEngines.count > 1 {
+                Section("Engine") { ForEach(Array(playback.availableEngines).sorted { $0.rawValue < $1.rawValue }) { e in Button { playback.switchEngine(e) } label: { Label(e.rawValue, systemImage: e == playback.activeEngine ? "checkmark" : "") } } }
+            }
+            if playback.activeEngine == .avPlayer, PiPManager.shared.isSupported { Button("Picture in Picture") { PiPManager.shared.toggle() } }
+            Section("This Title") { PlayerTitleItems(playback: playback, goToTime: goToTime, findSubtitles: findSubtitles) }
+            Menu("Sleep Timer") {
+                ForEach(SleepTimer.presets, id: \.self) { m in Button("Stop after \(m) minutes") { playback.startSleepTimer(minutes: m) } }
+                if playback.sleepTimer != nil { Divider(); Button("Cancel Sleep Timer") { playback.cancelSleepTimer() } }
+            }
+            ExternalPlayerMenu(playback: playback)
+            if PlayerToolItems.available(for: playback) { Menu("More Tools") { PlayerToolItems(playback: playback, loopA: $loopA, loopB: $loopB) } }
+            if playback.screenshotSupported { Button("Save Screenshot", action: saveScreenshot) }
+            Button(showsStreamInfo ? "Hide Stream Info" : "Show Stream Info", action: toggleStreamInfo)
+        } label: { PlayerChip(symbol: "ellipsis") }
+        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("More controls").accessibilityLabel("More controls")
     }
 }
 
