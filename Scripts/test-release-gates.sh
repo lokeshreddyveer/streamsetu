@@ -175,6 +175,16 @@ if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then fa
 grep -q "update feed was not updated" "$ROOT_DIR/out.txt" && ok "and says what to run again" || fail "no instruction to repeat the feed step"
 grep -q "^release delete" "$GH_LOG" && fail "the published release was deleted" || ok "the published release was left alone"
 
+echo "A release without a Mac file"
+make_root nomac; unset MAC MAC_BUILD
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "goes through"; else fail "an Android-only release was refused:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
+grep "^release create" "$GH_LOG" | grep -q "\.dmg" && fail "a DMG was uploaded" || ok "no DMG uploaded"
+grep "^release create" "$GH_LOG" | grep -q "streamsetu-tv-9.9.9.apk" && ok "the APKs were uploaded" || fail "the APKs were not uploaded"
+grep -q "^appcast" "$GH_LOG" && fail "the Mac update feed was touched" || ok "the Mac update feed was left alone"
+grep -q "releases/download/old/StreamSetu-1.0.dmg" README.md && ok "the README's Mac row still points at the last Mac release" || fail "the README's Mac row was changed"
+expect_blocked "without a Mac file, a wrong signing certificate still blocks" 'unset MAC MAC_BUILD; export SIGNER=0000000000000000000000000000000000000000000000000000000000000000' "is not the pinned release certificate"
+expect_blocked "MAC without MAC_BUILD"           'unset MAC_BUILD' "MAC_BUILD"
+
 echo "The update feed cannot get a duplicate entry"
 F="$TMP/appcast.xml"
 python3 "$SRC/macos/Scripts/appcast_add.py" "$F" 1.2.3 123 "https://x/a.dmg" 'sparkle:edSignature="s" length="1"' "notes" | grep -q added && ok "first run adds" || fail "first run did not add"

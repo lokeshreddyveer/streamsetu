@@ -2,6 +2,7 @@
 # Every check a release must pass BEFORE anything is uploaded or published. Read-only: it changes nothing and talks to GitHub only to ask whether the tag is free.
 #
 #   MAC=<v> MAC_BUILD=<b> ANDROID=<v> TAG=<tag> NOTES=<file> Scripts/verify-release-artifacts.sh
+#   Leave MAC unset for a release without a Mac file (the Mac checks are then skipped; every Android check still runs).
 #
 # Hard gates (any one failing stops the release; all failures are listed, not only the first):
 #   * the code the files were built from is the committed code (clean tree, and the build records the same commit)
@@ -15,7 +16,8 @@
 # Tools can be replaced from the environment (HDIUTIL, CODESIGN, SPCTL, XCRUN, APKSIGNER, AAPT, GH, PYTHON3) so the gates themselves are tested with stand-ins (Scripts/test-release-gates.sh).
 set -uo pipefail
 ROOT="${RELEASE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"; cd "$ROOT"
-: "${MAC:?set MAC}" "${MAC_BUILD:?set MAC_BUILD}" "${ANDROID:?set ANDROID}" "${TAG:?set TAG}" "${NOTES:?set NOTES}"
+MAC="${MAC:-}"; [ -n "$MAC" ] && : "${MAC_BUILD:?set MAC_BUILD}"
+: "${ANDROID:?set ANDROID}" "${TAG:?set TAG}" "${NOTES:?set NOTES}"
 HDIUTIL="${HDIUTIL:-hdiutil}"; CODESIGN="${CODESIGN:-codesign}"; SPCTL="${SPCTL:-spctl}"; XCRUN="${XCRUN:-xcrun}"; GH="${GH:-gh}"; PYTHON3="${PYTHON3:-python3}"
 BT="$(ls -d "$HOME"/Library/Android/sdk/build-tools/* 2>/dev/null | sort -V | tail -1)"
 APKSIGNER="${APKSIGNER:-$BT/apksigner}"; AAPT="${AAPT:-$BT/aapt}"
@@ -27,22 +29,22 @@ bad() { echo "  ✘ $1"; FAILED=$((FAILED + 1)); }
 cleanup() { [ -n "$MNT" ] && "$HDIUTIL" detach "$MNT" -quiet >/dev/null 2>&1; [ -n "$MNT" ] && rmdir "$MNT" 2>/dev/null; true; }
 trap cleanup EXIT
 
-echo "Verifying release $TAG (Mac $MAC build $MAC_BUILD, Android $ANDROID)"
+if [ -n "$MAC" ]; then echo "Verifying release $TAG (Mac $MAC build $MAC_BUILD, Android $ANDROID)"; else echo "Verifying release $TAG (Android $ANDROID; no Mac file)"; DMG=""; fi
 
 echo "Files"
-for f in "$DMG" "$TV" "$PHONE" "$NOTES"; do [ -f "$f" ] && ok "$f" || bad "$f is missing"; done
+for f in ${DMG:+"$DMG"} "$TV" "$PHONE" "$NOTES"; do [ -f "$f" ] && ok "$f" || bad "$f is missing"; done
 
 echo "Source"
 DIRTY="$(git status --porcelain -- macos android ios Scripts web windows 2>/dev/null | grep -v '^??.*dist/' | head -5)"
 if [ -z "$DIRTY" ]; then ok "no uncommitted changes in the code"; else bad "uncommitted changes in the code (a release is built from committed code only):"; echo "$DIRTY" | sed 's/^/      /'; fi
 HEAD_SHA="$(git rev-parse HEAD 2>/dev/null || echo none)"
-for rec in "macos/dist/StreamSetu-$MAC.commit" "android/dist/$ANDROID/BUILD-COMMIT.txt"; do
+for rec in ${MAC:+"macos/dist/StreamSetu-$MAC.commit"} "android/dist/$ANDROID/BUILD-COMMIT.txt"; do
   if [ -f "$rec" ]; then [ "$(tr -d '[:space:]' < "$rec")" = "$HEAD_SHA" ] && ok "$rec is this commit" || bad "$rec: the files were built from another commit than HEAD ($HEAD_SHA); build again"
   else bad "$rec is missing (the build records the commit it was made from)"; fi
 done
 
-echo "Mac"
-if [ -f "$DMG" ]; then
+if [ -n "$MAC" ]; then echo "Mac"; fi
+if [ -n "$MAC" ] && [ -f "$DMG" ]; then
   "$XCRUN" stapler validate "$DMG" >/dev/null 2>&1 && ok "DMG is notarized and stapled" || bad "DMG is not notarized and stapled"
   "$SPCTL" --assess --type open --context context:primary-signature "$DMG" >/dev/null 2>&1 && ok "Gatekeeper accepts the DMG" || bad "Gatekeeper does not accept the DMG"
   MNT="$(mktemp -d)"
@@ -90,7 +92,7 @@ if "$PYTHON3" Scripts/audit-dependencies.py --strict >/dev/null 2>&1; then ok "d
 echo "Notes and tag"
 if [ -f "$NOTES" ]; then
   grep -q '^# ' <<<"$(head -1 "$NOTES")" && ok "notes have a title" || bad "the notes' first line must be a '# title'"
-  grep -q "$MAC" "$NOTES" && ok "notes name the Mac version" || bad "the notes do not mention Mac $MAC"
+  if [ -n "$MAC" ]; then grep -q "$MAC" "$NOTES" && ok "notes name the Mac version" || bad "the notes do not mention Mac $MAC"; fi
   grep -q "$ANDROID" "$NOTES" && ok "notes name the Android version" || bad "the notes do not mention Android $ANDROID"
 fi
 STATE="$("$GH" release view "$TAG" --repo "$REPO" --json isDraft --jq '.isDraft' 2>/dev/null || echo "none")"

@@ -39,7 +39,7 @@
         </dict>
     </array>
     <key>SUFeedURL</key><string>https://raw.githubusercontent.com/lokeshreddyveer/streamsetu/main/appcast.xml</string>
-    <key>SUPublicEDKey</key><string>4DehN3EMGzztmFkF2H4vucejhtH2lQIqrwZ5BX4ZzLY=</string>
+    <key>SUPublicEDKey</key><string>uVEyPeQw/tzkSO06ha3HIpv+EPMXgzd5zuU7DnGuv8c=</string>
     <key>SUEnableAutomaticChecks</key><true/>
     <key>SUAutomaticallyUpdate</key><false/>
     <key>NSHighResolutionCapable</key><true/>

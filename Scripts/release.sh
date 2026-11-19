@@ -3,6 +3,7 @@
 #
 #   MAC=<version> MAC_BUILD=<build> ANDROID=<version> Scripts/release.sh <tag> <notes file>
 #   e.g.  MAC=2.4.0 MAC_BUILD=240 ANDROID=0.9.1 Scripts/release.sh 2026.10.14 docs/releases/2026.10.14.md
+#   Leave MAC and MAC_BUILD unset for a release without a Mac file: the Mac update feed and the README's Mac row are then left as they are.
 #
 # Build the files first: macos/Scripts/release-signed.sh <version> <build> (signs, notarizes) and android/build-release.sh <version> <code>.
 #
@@ -16,9 +17,11 @@
 set -euo pipefail
 ROOT="${RELEASE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"; cd "$ROOT"
 TAG="${1:?usage: Scripts/release.sh <tag> <notes file>}"; NOTES="${2:?notes file}"
-: "${MAC:?set MAC to the Mac version}" "${MAC_BUILD:?set MAC_BUILD}" "${ANDROID:?set ANDROID to the Android version}"
+MAC="${MAC:-}"; MAC_BUILD="${MAC_BUILD:-}"
+if [ -n "$MAC" ] && [ -z "$MAC_BUILD" ]; then echo "✘ MAC is set but MAC_BUILD is not. Nothing was uploaded or published."; exit 1; fi
+: "${ANDROID:?set ANDROID to the Android version}"
 GH="${GH:-gh}"; REPO="${RELEASES_REPO:-lokeshreddyveer/streamsetu}"
-DMG="macos/dist/StreamSetu-$MAC.dmg"; TV="android/dist/$ANDROID/streamsetu-tv-$ANDROID.apk"; PHONE="android/dist/$ANDROID/StreamSetu-Android-$ANDROID.apk"
+DMG="${MAC:+macos/dist/StreamSetu-$MAC.dmg}"; TV="android/dist/$ANDROID/streamsetu-tv-$ANDROID.apk"; PHONE="android/dist/$ANDROID/StreamSetu-Android-$ANDROID.apk"
 # Windows is optional: set WINDOWS=<version> with the zip in windows/native/dist/ and it is a file of the release too.
 WIN=""
 if [ -n "${WINDOWS:-}" ]; then WIN="windows/native/dist/StreamSetu-Windows-$WINDOWS.zip"; [ -f "$WIN" ] || { echo "✘ $WIN is missing."; exit 1; }; fi
@@ -37,7 +40,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-{ cat "$NOTES"; printf '\n## Checksums (SHA-256)\n\n'; for f in "$DMG" "$TV" "$PHONE" ${WIN:+"$WIN"}; do printf '`%s`  %s\n\n' "$(basename "$f")" "$(shasum -a 256 "$f" | cut -d' ' -f1)"; done; } > "$BODY"
+{ cat "$NOTES"; printf '\n## Checksums (SHA-256)\n\n'; for f in ${DMG:+"$DMG"} "$TV" "$PHONE" ${WIN:+"$WIN"}; do printf '`%s`  %s\n\n' "$(basename "$f")" "$(shasum -a 256 "$f" | cut -d' ' -f1)"; done; } > "$BODY"
 TITLE="StreamSetu $(sed -n 's/^# *//p' "$NOTES" | head -1)"; [ "$TITLE" = "StreamSetu " ] && TITLE="StreamSetu $TAG"
 
 # 2. Upload as a draft.
@@ -48,10 +51,10 @@ if [ "$STATE" = "false" ]; then
   "$GH" release delete "$TAG" --repo "$REPO" --yes
 fi
 DRAFT_MADE=1
-"$GH" release create "$TAG" "$DMG" "$TV" "$PHONE" ${WIN:+"$WIN"} --repo "$REPO" --draft --title "$TITLE" --notes-file "$BODY"
+"$GH" release create "$TAG" ${DMG:+"$DMG"} "$TV" "$PHONE" ${WIN:+"$WIN"} --repo "$REPO" --draft --title "$TITLE" --notes-file "$BODY"
 
 # What arrived must be exactly what was sent.
-for f in "$DMG" "$TV" "$PHONE" ${WIN:+"$WIN"}; do
+for f in ${DMG:+"$DMG"} "$TV" "$PHONE" ${WIN:+"$WIN"}; do
   name="$(basename "$f")"; want_size="$(stat -f%z "$f" 2>/dev/null || stat -c%s "$f")"; want_sha="$(shasum -a 256 "$f" | cut -d' ' -f1)"
   row="$("$GH" release view "$TAG" --repo "$REPO" --json assets --jq ".assets[] | select(.name==\"$name\") | [.size, (.digest // \"\")] | @tsv" 2>/dev/null || true)"
   size="$(cut -f1 <<<"$row")"; digest="$(cut -f2 <<<"$row")"
@@ -68,8 +71,10 @@ done
 # 3. Publish, then the update feed.
 "$GH" release edit "$TAG" --repo "$REPO" --draft=false --latest
 PUBLISHED=1
-RELEASE_TAG="$TAG" macos/Scripts/update-appcast.sh "$MAC" "$MAC_BUILD" "$(sed -n 's/^- //p' "$NOTES" | head -1)" \
-  || { echo "! The release is published, but the Mac update feed was not updated. Run again: RELEASE_TAG=$TAG macos/Scripts/update-appcast.sh $MAC $MAC_BUILD"; exit 1; }
+if [ -n "$MAC" ]; then
+  RELEASE_TAG="$TAG" macos/Scripts/update-appcast.sh "$MAC" "$MAC_BUILD" "$(sed -n 's/^- //p' "$NOTES" | head -1)" \
+    || { echo "! The release is published, but the Mac update feed was not updated. Run again: RELEASE_TAG=$TAG macos/Scripts/update-appcast.sh $MAC $MAC_BUILD"; exit 1; }
+fi
 
 # 4. The README's download table points at this release, so it is rewritten here; the feature table (docs/FEATURES.md) is edited by hand with the features.
 IOS_VERSION="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' ios/Scripts/generate-project.py | head -1)"
@@ -77,8 +82,9 @@ python3 - "$TAG" "$MAC" "$ANDROID" "$IOS_VERSION" "${WINDOWS:-}" <<'PY'
 import re, sys
 tag, mac, android, ios, windows = sys.argv[1:6]
 text = open("README.md").read()
-text = re.sub(r"releases/download/[^/]+/StreamSetu-\d[\d.]*\.dmg", f"releases/download/{tag}/StreamSetu-{mac}.dmg", text)
-text = text.replace(re.search(r"`StreamSetu-\d[\d.]*\.dmg`", text).group(0), f"`StreamSetu-{mac}.dmg`")
+if mac:   # a release without a Mac file leaves the Mac row pointing at the last Mac release
+    text = re.sub(r"releases/download/[^/]+/StreamSetu-\d[\d.]*\.dmg", f"releases/download/{tag}/StreamSetu-{mac}.dmg", text)
+    text = text.replace(re.search(r"`StreamSetu-\d[\d.]*\.dmg`", text).group(0), f"`StreamSetu-{mac}.dmg`")
 # The television file is streamsetu-tv-<version>.apk (it was StreamSetu-FireTV-<version>.apk before 0.20.0); the phone file is StreamSetu-Android-<version>.apk.
 for old, new in ((r"(?:StreamSetu-FireTV|streamsetu-tv)", "streamsetu-tv"), (r"StreamSetu-Android", "StreamSetu-Android")):
     text = re.sub(rf"releases/download/[^/]+/{old}-\d[\d.]*\.apk", f"releases/download/{tag}/{new}-{android}.apk", text)
@@ -92,5 +98,6 @@ PY
 git add README.md && git commit -qm "README download table for $TAG" || true
 # The website reads the same notes and version numbers, so it is refreshed with every release.
 IOS="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' ios/Scripts/generate-project.py | head -1)"
-( cd web && node scripts/sync-releases.mjs --tag "$TAG" --mac "$MAC" --android "$ANDROID" --ios "$IOS" && ./host.sh restart ) || echo "! The website was not refreshed. Run web/host.sh start"
+SITE_MAC="${MAC:-$(sed -n 's/.*`StreamSetu-\([0-9][0-9.]*[0-9]\)\.dmg`.*/\1/p' README.md | head -1)}"   # the Mac version still current when this release has none
+( cd web && node scripts/sync-releases.mjs --tag "$TAG" --mac "$SITE_MAC" --android "$ANDROID" --ios "$IOS" && ./host.sh restart ) || echo "! The website was not refreshed. Run web/host.sh start"
 echo "✔ published: https://github.com/$REPO/releases/tag/$TAG"
