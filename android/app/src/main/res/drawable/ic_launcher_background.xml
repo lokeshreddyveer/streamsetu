@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Behind the launcher icon's foreground (which is opaque, so this only shows while a launcher animates the icon). Dark appearance: drawable-night. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#151719" />
+    <solid android:color="#F1EFEA" />
 </shape>

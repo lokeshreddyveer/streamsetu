@@ -318,7 +318,7 @@ fun WelcomeScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
     val drafts = entries.orEmpty().filter { it.kind == LibraryEntry.Kind.UNFINISHED }
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(first, 8) }
-    // The page takes the wordmark art's own backdrop colour, so the logo sits on it without an edge.
+    // A near-black page behind the (transparent) wordmark, as on the opening animation.
     Column(Modifier.fillMaxSize().background(Tokens.pick(Color(0xFF070808), Tokens.background)).padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Label("Everything you watch, in one place", Tokens.display, Tokens.text, FontWeight.Bold)
         AnimatedWordmark(Modifier.height(150.dp), app.streamsetu.core.ui.motion.LocalReducedMotion.current, repeatEvery = 7000L)
@@ -357,13 +357,6 @@ private fun SetupCard(title: String, subtitle: String, icon: ImageVector, modifi
     }
 }
 
-/** The wordmark art carries its own backdrop and a pale spotlight behind the mark. Alpha follows brightness, so the backdrop turns transparent and only the mark remains. */
-private val WordmarkKnockout = androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
-    1f, 0f, 0f, 0f, 0f,
-    0f, 1f, 0f, 0f, 0f,
-    0f, 0f, 1f, 0f, 0f,
-    1.3f, 1.3f, 1.3f, 0f, -190f,
-))
 
 /** Entering a connection, testing it by hand, and either saving it as a working library or keeping it as a draft. */
 @Composable
@@ -756,7 +749,7 @@ fun LogoReveal(reduced: Boolean, onDone: () -> Unit) {
 }
 
 /**
- * The wordmark, without its baked-in backdrop. It eases in (fade and a small rise in scale), a band of light crosses the mark once,
+ * The wordmark (transparent art, drawn for the app's dark pages). It eases in (fade and a small rise in scale), a band of light crosses the mark once,
  * and with [repeatEvery] set it crosses again at that interval. Only the draw phase runs while the light moves.
  */
 @Composable
@@ -782,8 +775,7 @@ fun AnimatedWordmark(modifier: Modifier, reduced: Boolean, repeatEvery: Long = 0
                     val x = size.width * (0.15f + 0.7f * t); val half = size.width * 0.12f
                     drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(0f to Color.Transparent, 0.5f to Color.White.copy(alpha = 0.6f), 1f to Color.Transparent, startX = x - half, endX = x + half), blendMode = androidx.compose.ui.graphics.BlendMode.SrcAtop)
                 }
-            },
-        colorFilter = ColorFilter.colorMatrix(WordmarkKnockout))
+            })
 }
 
 /** The page margins of a full-screen form: wide on a television, narrow and clear of the status and navigation bars on a phone. */

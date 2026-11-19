@@ -9,6 +9,8 @@
     <FileVersion>0.1.0.0</FileVersion>
     <AssemblyName>StreamSetu</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The program's icon (Explorer, taskbar, Start); light and dark are not switched by Windows for a .exe, so the dark artwork is used. -->
+    <ApplicationIcon>Assets\StreamSetu.ico</ApplicationIcon>
     <Platforms>x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
