@@ -79,6 +79,9 @@ android {
             isIncludeAndroidResources = true; isReturnDefaultValues = true
             // Sports is switched off (BuildConfig.SPORTS_ENABLED), so its tests are not part of the gate; `-PwithSports` runs them. SportsDisabledTests (the proof that it is off) always runs.
             all { t -> if (!project.hasProperty("withSports") && (project.findProperty("sportsEnabled") as String?) != "true") t.filter { excludeTestsMatching("*.sports.*"); excludeTestsMatching("*Sports*Tests") } }
+            // One long-lived test JVM slows down as Robolectric and Compose state builds up: after a few hundred tests the Compose UI tests time out ("app not idle")
+            // and the run stalls. Fresh JVMs every 100 tests, four at a time, run the whole suite in about a minute with every test passing.
+            all { t -> t.maxParallelForks = 4; t.setForkEvery(100L) }
         }
     }       // the Compose UI tests run on the JVM with Robolectric
 }
