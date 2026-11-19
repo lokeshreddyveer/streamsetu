@@ -13,7 +13,9 @@ rm -rf "$DIST" && mkdir -p "$DIST"
 
 echo "▸ Compiling (release)…"
 if swift build -c release --arch arm64 --arch x86_64 >/dev/null 2>&1; then
-  BIN=".build/apple/Products/Release/REDDY"; echo "  universal binary via SwiftPM multi-arch build"
+  # Where SwiftPM puts a multi-arch build depends on its version (.build/apple/... before Swift 6.4, .build/out/... from it), so it is asked.
+  BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/REDDY"; echo "  universal binary via SwiftPM multi-arch build"
+  lipo "$BIN" -verify_arch arm64 x86_64 || { echo "✘ $BIN is not a universal (arm64 + x86_64) binary"; exit 1; }
 else
   # Command Line Tools only: build each architecture on its own and join them with lipo.
   swift build -c release --triple arm64-apple-macosx14.0 --scratch-path .build-arm64
