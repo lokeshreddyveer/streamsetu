@@ -25,6 +25,6 @@ jobs:
       - name: Tests (the shared logic)
         run: dotnet test StreamSetu.Core.Tests -c Release
       - name: Build the app, 64-bit Intel/AMD
-        run: dotnet build StreamSetu.App -c Release -p:Platform=x64
+        run: dotnet build StreamSetu.App -c Release -r win-x64 -p:Platform=x64
       - name: Build the app, ARM64
-        run: dotnet build StreamSetu.App -c Release -p:Platform=ARM64
+        run: dotnet build StreamSetu.App -c Release -r win-arm64 -p:Platform=ARM64
