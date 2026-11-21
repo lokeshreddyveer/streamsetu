@@ -1,0 +1,30 @@
+name: Windows
+
+# Builds the Windows app and runs the tests of its shared logic on a Windows machine, which is the only place the WinUI app can be compiled.
+on:
+  push:
+    branches: [main, windows-ci]
+    paths: ['windows/native/**', '.github/workflows/windows.yml']
+  pull_request:
+    paths: ['windows/native/**', '.github/workflows/windows.yml']
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows/native
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Tests (the shared logic)
+        run: dotnet test StreamSetu.Core.Tests -c Release
+      - name: Build the app, 64-bit Intel/AMD
+        run: dotnet build StreamSetu.App -c Release -p:Platform=x64
+      - name: Build the app, ARM64
+        run: dotnet build StreamSetu.App -c Release -p:Platform=ARM64
