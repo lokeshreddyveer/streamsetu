@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.Icons
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.Alignment
@@ -36,6 +38,7 @@ fun HomeCollectionScreen(id: String, c: AppContainer, nav: Navigator, initialOnl
     val favs by vm.favourites.collectAsState(); val later by vm.watchLater.collectAsState(); val recent by vm.recentWatched.collectAsState(); val resume by vm.continueWatching.collectAsState()
     var menuTarget by remember { mutableStateOf<HomeTarget?>(null) }
     var menuRow by remember { mutableStateOf(RowKind.OTHER) }
+    var clearAsk by remember { mutableStateOf(false) }
     val title = when (id) { "favorites" -> "Favorites"; "later" -> "Watch Later"; "recent" -> "Recently Watched"; else -> "Continue Watching" }
     val first = remember { FocusRequester() }
     LaunchedEffect(id) { app.streamsetu.tv.ui.components.requestFocusSoon(first, 8) }
@@ -63,6 +66,8 @@ fun HomeCollectionScreen(id: String, c: AppContainer, nav: Navigator, initialOnl
         Column(Modifier.padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, bottom = 24.dp).fillMaxWidth().graphicsLayer { translationY = (1f - sheetIn) * (size.height + 48.dp.toPx()) }.background(Tokens.elevated.copy(alpha = 0.95f), androidx.compose.foundation.shape.RoundedCornerShape(24.dp)).border(1.dp, Tokens.line, androidx.compose.foundation.shape.RoundedCornerShape(24.dp)).padding(horizontal = 24.dp, vertical = 20.dp)) {
             Row(Modifier.padding(bottom = 10.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Label(title, Tokens.pageTitle, Tokens.text, FontWeight.Bold)
+                // The whole row can be emptied here, after a confirmation, with Undo.
+                if (id == "continue" && resume.isNotEmpty()) TvButton("Clear Continue Watching…", { clearAsk = true }, icon = Icons.Filled.DeleteSweep)
             }
             if (id != "continue") Row(Modifier.padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf<Pair<String?, String>>(null to "All", "c" to "Live Channels", "m" to "Movies", "s" to "Series").forEach { (k, label) ->
@@ -74,11 +79,16 @@ fun HomeCollectionScreen(id: String, c: AppContainer, nav: Navigator, initialOnl
                 }
             }
             val empty = if (id == "continue") resume.isEmpty() else items.isEmpty()
-            if (empty) Box(Modifier.fillMaxWidth().height(110.dp), Alignment.CenterStart) { Label(when (id) { "favorites" -> "No favorites yet. Hold OK on any title or channel to add one."; "later" -> "Nothing saved for later."; "recent" -> "Nothing watched yet."; else -> "Nothing to continue." }, Tokens.body, Tokens.textSecondary) }
+            if (empty) Box(Modifier.fillMaxWidth().height(170.dp), Alignment.Center) {
+                // A small drawn picture that moves once, then the line that says what belongs here.
+                app.streamsetu.tv.ui.components.AnimatedEmptyState(if (id == "continue" || id == "recent") app.streamsetu.tv.ui.components.EmptyArt.Nothing else app.streamsetu.tv.ui.components.EmptyArt.Bookmark,
+                    title, when (id) { "favorites" -> "No favorites yet. Hold OK on any title or channel to add one."; "later" -> "Nothing saved for later."; "recent" -> "Nothing watched yet."; else -> "Nothing to continue." }, artSize = 56.dp)
+            }
             else LazyRow(Modifier.fillMaxWidth().bleedStart(14.dp), contentPadding = PaddingValues(start = 14.dp, end = 24.dp, top = 8.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (id == "continue") items(resume, key = { "c" + it.playable.id }) { r ->
                     val t: HomeTarget? = when (val p = r.playable) { is app.streamsetu.core.model.MoviePlayable -> HomeTarget.Film(p.movie); is EpisodePlayable -> HomeTarget.Episode(p.series, p); else -> null }
-                    LandscapeCard(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, progress = if (r.isNew) 0f else r.progress.fraction, badge = if (r.isNew) "NEW" else null, width = 220.dp, onLongClick = t?.let { { longOn(it, RowKind.CONTINUE) } }, itemId = when (val p = r.playable) { is app.streamsetu.core.model.MoviePlayable -> p.movie.id; is EpisodePlayable -> p.series.id; else -> null })
+                    Box(continueItemMotion()) { LandscapeCard(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, progress = if (r.isNew) 0f else r.progress.fraction, badge = if (r.isNew) "NEW" else null, width = 220.dp, onLongClick = t?.let { { longOn(it, RowKind.CONTINUE) } }, itemId = when (val p = r.playable) { is app.streamsetu.core.model.MoviePlayable -> p.movie.id; is EpisodePlayable -> p.series.id; else -> null },
+                        cardModifier = Modifier.removeFromContinueAction { vm.removeFromContinue(r.playable.id) }) }
                 } else itemsIndexed(items, key = { _, it -> it.id }) { i, f ->
                     Box(Modifier.then(if (i == focusedAt.coerceAtMost(items.lastIndex)) Modifier.focusRequester(neighbour) else Modifier).onFocusChanged { if (it.hasFocus) focusedAt = i }) { FavCard(f, c, nav, row, ::longOn) }
                 }
@@ -86,5 +96,7 @@ fun HomeCollectionScreen(id: String, c: AppContainer, nav: Navigator, initialOnl
         }
         }
         HomeMenuHost(menuTarget, menuRow, vm, c, nav) { menuTarget = null }
+        if (clearAsk) ClearContinueConfirm(vm) { clearAsk = false }
+        Box(Modifier.fillMaxSize(), Alignment.BottomCenter) { ContinueUndoBar(vm, tv = !app.streamsetu.tv.ui.phone.isPhoneDevice(androidx.compose.ui.platform.LocalContext.current)) }
     }
 }

@@ -58,7 +58,23 @@ class MainActivity : ComponentActivity() {
         // The look (theme, accent and Projector Mode) is set here, from what is saved, before the first frame is composed: the opening screen, the profile chooser and the library chooser are
         // drawn in it from the start, and so is the screen that comes back from the player. (The app then keeps it up to date; see StreamSetuApp.)
         container.ui.let { ui -> app.streamsetu.tv.ui.theme.Tokens.apply(app.streamsetu.tv.ui.theme.Theme.of(ui.theme.value), app.streamsetu.tv.ui.theme.Accent.of(ui.accent.value), ui.projectorMode.value) }
+        // The opening ("The Other Side") plays over the app on a cold launch: the full story on a new install or after an update, the fast one otherwise, a still lockup with
+        // reduced motion, and nothing in a test run. It replaces the old wordmark splash. The system's own launch window is not held for it.
+        splashDone = true
+        val debuggable = applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
+        app.streamsetu.tv.opening.startup.StartupCoordinator.begin(
+            this, container.appScope,
+            reducedMotion = app.streamsetu.core.ui.motion.reducedMotion(this) || container.ui.animation.value != app.streamsetu.core.settings.AnimationLevel.FULL,
+            suppressed = isTestRun() || (debuggable && intent?.getBooleanExtra("SS_SKIP_INTRO", false) == true),
+            frozenAt = if (debuggable) intent?.getFloatExtra("SS_INTRO_AT", -1f)?.takeIf { it >= 0f }?.let { it * 1000f } else null,
+            frozenVariant = if (debuggable) intent?.getStringExtra("SS_INTRO_VARIANT")?.let { v -> app.streamsetu.tv.opening.domain.OpeningVariant.entries.firstOrNull { it.id == v } } else null,
+        ) { container.sources.all().let { all -> app.streamsetu.tv.opening.startup.StartupCoordinator.HasSources(all.isNotEmpty(), all.any { !it.draft }) } }
         setContent {
+            // "Fully drawn" means the app is usable (its library has been read), not that the opening has ended: the app is built underneath the opening from the first frame.
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                androidx.compose.runtime.snapshotFlow { app.streamsetu.tv.opening.startup.StartupCoordinator.machine.initOk }.first { it != null }
+                runCatching { this@MainActivity.reportFullyDrawn() }
+            }
             val watched by container.watchedTitles.collectAsStateWithLifecycle()
             val partial by container.partialTitles.collectAsStateWithLifecycle()
             val saved by container.downloads.items.collectAsStateWithLifecycle()
@@ -73,9 +89,13 @@ class MainActivity : ComponentActivity() {
                     var picked by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(profileChosen) }
                     val many by container.profiles.profiles.collectAsStateWithLifecycle()
                     if (!picked && many.size > 1) app.streamsetu.tv.ui.screens.settings.ProfilePickerOverlay(container) { picked = true; profileChosen = true }
+                    app.streamsetu.tv.opening.presentation.OpeningLayer(phone = true)
+                    app.streamsetu.tv.opening.presentation.WhatsNewLayer(phone = true)
                 } else androidx.compose.foundation.layout.Box {
                     StreamSetuTV(container, nav, onExit = { finish() })
                     app.streamsetu.tv.ui.screens.settings.ViewingBlockOverlay(container)
+                    app.streamsetu.tv.opening.presentation.OpeningLayer(phone = false)
+                    app.streamsetu.tv.opening.presentation.WhatsNewLayer(phone = false)
                 }
             }
         }
@@ -84,9 +104,13 @@ class MainActivity : ComponentActivity() {
         android.os.Handler(mainLooper).postDelayed({ if (app.streamsetu.tv.sports.SportsFeature.enabled) container.sportsReminders.start(); container.people.watchIdle(container.appScope) { container.settings.autoCastIndex.value && !app.streamsetu.tv.trace.Diag.indexer }; app.streamsetu.tv.ui.screens.settings.refreshInsightAlarms(container) }, 20_000)
     }
 
+    /** A Robolectric run or an instrumented UI test: the opening is not played (tests see the app straight away). */
+    private fun isTestRun(): Boolean = android.os.Build.FINGERPRINT == "robolectric" ||
+        runCatching { Class.forName("androidx.test.espresso.Espresso"); true }.getOrDefault(false)
+
     override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); handle(intent) }
 
-    /** `streamsetu://play?kind=channel|movie|series&q=name[&engine=auto|exoplayer|mpv]`: starts something by name (used for testing and voice shortcuts). */
+    /** `streamsetu://play?kind=channel|movie|series&q=name` or `?id=`: starts something by name or id (used for testing and voice shortcuts). */
     private fun handle(intent: android.content.Intent?) {
         // A Sports reminder notification carries only the reminder's id; the event is found and checked again inside the app.
         // With Sports off, a Sports link is ignored: nothing is remembered and nothing opens.
@@ -100,23 +124,25 @@ class MainActivity : ComponentActivity() {
                 val item: app.streamsetu.core.model.Playable? = c.catalog.movie(id)?.let { app.streamsetu.core.model.MoviePlayable(it) }
                     ?: c.catalog.episode(id)?.let { ep -> c.catalog.series(ep.seriesId)?.let { s -> app.streamsetu.core.model.EpisodePlayable(ep, s) } }
                     ?: c.catalog.channel(id)?.let { app.streamsetu.core.model.ChannelPlayable(it) }
-                if (item != null) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { play(c, nav, item) }
+                if (item != null && c.mayPlay(item) && c.linkAllowed(item)) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { play(c, nav, item) }          // the same check as at playback, and as the link by name, before the player screen opens
             }
             return
         }
-        uri.getQueryParameter("engine")?.let { e -> c.settings.setEngine(app.streamsetu.core.playback.EnginePreference.entries.firstOrNull { it.name.equals(e, true) || (e == "auto" && it.name == "AUTOMATIC") } ?: app.streamsetu.core.playback.EnginePreference.AUTOMATIC) }
+        // (An `engine=` parameter is deliberately not read: a link from a web page must not change a setting. The playback engine is chosen in Settings only.)
         // Links shared from the Apple apps and from the share button: ?channel=, ?movie= or ?series= with the name.
         val named = listOf("channel", "movie", "series").firstOrNull { uri.getQueryParameter(it) != null }
         val q = uri.getQueryParameter("q") ?: named?.let { uri.getQueryParameter(it) } ?: return
         val kind = uri.getQueryParameter("kind") ?: named
         c.appScope.launch {
-            val r = c.catalog.search(q, 1)
-            val item: app.streamsetu.core.model.Playable? = when (kind) {
-                "movie" -> r.movies.firstOrNull()?.let { app.streamsetu.core.model.MoviePlayable(it) }
-                "series" -> r.series.firstOrNull()?.let { s -> c.sync.loadEpisodes(s); c.catalog.episodesOnce(s.id).firstOrNull()?.let { app.streamsetu.core.model.EpisodePlayable(it, s) } }
-                else -> r.channels.firstOrNull()?.let { app.streamsetu.core.model.ChannelPlayable(it) }
+            // A link reaches only what could be opened by hand: a title in a locked folder opens that folder (which asks for the PIN) and plays nothing; a hidden or adult-blocked one opens nothing.
+            val item: app.streamsetu.core.model.Playable? = when (val t = c.catalog.linkTarget(kind, q)) {
+                is app.streamsetu.core.data.repo.LinkTarget.Movie -> app.streamsetu.core.model.MoviePlayable(t.movie)
+                is app.streamsetu.core.data.repo.LinkTarget.Series -> t.series.let { s -> c.sync.loadEpisodes(s); c.catalog.episodesOnce(s.id).firstOrNull()?.let { app.streamsetu.core.model.EpisodePlayable(it, s) } }
+                is app.streamsetu.core.data.repo.LinkTarget.Channel -> app.streamsetu.core.model.ChannelPlayable(t.channel)
+                is app.streamsetu.core.data.repo.LinkTarget.Locked -> { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { nav.openFolderTab(t.kind, t.folderId) }; null }
+                app.streamsetu.core.data.repo.LinkTarget.None -> null
             }
-            if (item != null) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { play(c, nav, item) }
+            if (item != null && c.mayPlay(item)) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { play(c, nav, item) }
         }
     }
 
@@ -143,6 +169,8 @@ class MainActivity : ComponentActivity() {
     private val directions = app.streamsetu.tv.nav.DirectionThrottle()
 
     override fun dispatchKeyEvent(e: android.view.KeyEvent): Boolean {
+        // While the opening is on screen, a key skips it (the media keys still reach the player) and never lands on the app underneath.
+        if (app.streamsetu.tv.opening.startup.StartupCoordinator.onKey(e.keyCode, e.action == android.view.KeyEvent.ACTION_DOWN)) return true
         container.people.noteInput()          // an idle cast-index pass stops the moment the remote is used
         app.streamsetu.tv.InputClock.note()
         container.artwork.quietFor()          // so does the picture filler: nothing is fetched or saved while the remote is in use
@@ -334,13 +362,15 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
             ) { top ->
               if (top != null) androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalFocusEnabled provides (top == nav.top)) {
                 when (val o: Overlay = top) {
-                    is Overlay.MovieDetail -> app.streamsetu.tv.ui.screens.detail.MovieDetailScreen(o.movie, c, nav)
-                    is Overlay.SeriesDetail -> app.streamsetu.tv.ui.screens.detail.SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
+                    // Keyed by the title, so opening another version from Other languages always starts a fresh page.
+                    is Overlay.MovieDetail -> androidx.compose.runtime.key(o.movie.id) { app.streamsetu.tv.ui.screens.detail.MovieDetailScreen(o.movie, c, nav) }
+                    is Overlay.SeriesDetail -> androidx.compose.runtime.key(o.series.id) { app.streamsetu.tv.ui.screens.detail.SeriesDetailScreen(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav) }
                     is Overlay.Player -> PlayerScreen(c, onClose = { closePlayer(c, nav, embeddedLive = true) }, onMultiView = { openMultiView(c, nav) }, onOpenSeries = { sr -> closePlayer(c, nav); nav.open(Overlay.SeriesDetail(sr)) }, onMinimize = { nav.liveFullscreen = false; nav.close() }, onOpenGuide = { nav.liveFullscreen = false; nav.close(); nav.go(Tab.GUIDE) })
                     is Overlay.MultiView -> app.streamsetu.tv.ui.screens.MultiViewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> nav.close(); play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch), c.queue.ifEmpty { listOf(app.streamsetu.core.model.ChannelPlayable(ch)) }) }, onSports = { nav.close(); nav.open(Overlay.SportsMultiview) })
                     is Overlay.SportsMultiview -> if (app.streamsetu.tv.sports.SportsFeature.enabled) app.streamsetu.tv.ui.screens.sports.SportsMultiviewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> c.multiviewFullscreenReturn = true; play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch)) })
                     is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                     is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav, o.only)
+                    is Overlay.Person -> app.streamsetu.tv.ui.screens.PersonScreen(o.name, o.photo, c, nav, tv = true)
                 }
               }
             }

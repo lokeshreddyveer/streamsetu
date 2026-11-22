@@ -33,16 +33,19 @@ fun Sheet(title: String, items: List<SheetItem>, onClose: () -> Unit, subtitle: 
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
     BackHandler(enabled = true) { onClose() }
+    // The sheet rises with a spring and settles (with reduced motion it only fades); its colours are the theme's.
+    val reduced = app.streamsetu.tv.ui.screens.library.reducedMotion()
+    val rise = androidx.compose.animation.core.spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.82f, stiffness = 385f)
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(shown, enter = fadeIn(), exit = fadeOut()) {
-            Box(Modifier.fillMaxSize().background(Color(0x99000000)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose))
+            Box(Modifier.fillMaxSize().background(Tokens.scrimStrong).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose))
         }
-        AnimatedVisibility(shown, Modifier.align(Alignment.BottomCenter), enter = slideInVertically { it / 2 } + fadeIn(), exit = slideOutVertically { it / 2 } + fadeOut()) {
+        AnimatedVisibility(shown, Modifier.align(Alignment.BottomCenter), enter = if (reduced) fadeIn() else slideInVertically(rise) { it / 2 } + fadeIn(), exit = if (reduced) fadeOut() else slideOutVertically { it / 2 } + fadeOut()) {
             Column(
-                Modifier.fillMaxWidth().widthIn(max = 640.dp).background(Color(0xFF141416), RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                Modifier.fillMaxWidth().widthIn(max = 640.dp).background(Tokens.elevated, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}.windowInsetsPadding(WindowInsets.navigationBars).padding(top = 8.dp, bottom = 8.dp),
             ) {
-                Box(Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(4.dp).background(Color(0x40FFFFFF), RoundedCornerShape(2.dp)))
+                Box(Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(4.dp).background(Tokens.lineStrong, RoundedCornerShape(2.dp)))
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
                     Label(title, Ph.heading, Tokens.text, FontWeight.SemiBold)
                     if (subtitle != null) Label(subtitle, Ph.small, Tokens.textSecondary, modifier = Modifier.padding(top = 2.dp))

@@ -34,13 +34,18 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     // ---- Banner: real titles from the open library, enriched with the provider's own story and picture ----
     private val featured = MutableStateFlow<List<Playable>>(emptyList())
     private val info = MutableStateFlow<Map<String, app.streamsetu.core.sync.SyncService.MovieInfo>>(emptyMap())
+    /** Waits until the library holds a movie or a series (a series-only library is as ready as any other); a library of channels only has nothing to recommend and waits. */
+    private suspend fun titlesReady() { combine(c.catalog.latestMovies(1), c.catalog.latestSeries(1)) { m, s -> m.isNotEmpty() || s.isNotEmpty() }.first { it } }
+    /** The open library's connections, read again whenever a lock, unlock, hide or the adult filter changes (so a row built before a lock is never shown after it). */
+    private val featuredNudge = MutableStateFlow(0)
+    private val idsAndRestrictions: kotlinx.coroutines.flow.Flow<List<String>> = combine(c.library.sourceIds, c.folders.restrictRev, featuredNudge) { ids, _, _ -> ids }
     init {
         viewModelScope.launch {
-            c.library.sourceIds.collectLatest { ids ->
+            idsAndRestrictions.collectLatest { ids ->
                 featured.value = emptyList()
                 if (ids.isEmpty()) return@collectLatest
                 // Waits until the library has something (a connection just read arrives after this screen opens).
-                c.catalog.latestMovies(1).first { it.isNotEmpty() }
+                titlesReady()
                 val f = runCatching { c.featured().take(8) }.getOrDefault(emptyList())
                 featured.value = f
                 f.take(6).forEach { p -> if (p is MoviePlayable && info.value[p.id] == null) { c.sync.movieInfo(p.movie)?.let { i -> info.update { it + (p.id to i) } }; delay(150) } }
@@ -78,30 +83,34 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
      * Continue Watching: titles left partway, and series with an episode that appeared after the person finished the earlier ones (marked New).
      * A series shows once, whichever of the two applies; a new episode is never put ahead of one that is still in progress.
      */
-    val continueWatching: StateFlow<List<ResumeItem>> = combine(c.user.continueWatching(), c.user.newEpisodes(), c.user.allProgress(), c.library.sourceIds) { list, fresh, progress, ids -> arrayOf(list, fresh, progress, ids) }.mapLatest { a ->
+    val continueWatching: StateFlow<List<ResumeItem>> = combine(c.user.continueWatching(CONTINUE_READ), c.user.newEpisodes(), c.user.allProgress(), idsAndRestrictions, c.user.continueHiddenFlow()) { list, fresh, progress, ids, hidden -> arrayOf(list, fresh, progress, ids, hidden) }.mapLatest { a ->
         @Suppress("UNCHECKED_CAST") val list = a[0] as List<WatchProgress>
         @Suppress("UNCHECKED_CAST") val fresh = a[1] as List<app.streamsetu.core.data.db.NewEpisodeEntity>
         @Suppress("UNCHECKED_CAST") val progress = a[2] as Map<String, WatchProgress>
         @Suppress("UNCHECKED_CAST") val ids = a[3] as List<String>
+        @Suppress("UNCHECKED_CAST") val hidden = a[4] as Map<String, Long>
         val out = ArrayList<ResumeItem>()
         val seenSeries = HashSet<String>()
+        // Display only: what sits in a locked or adult-blocked folder is left out of the row while it is locked; the progress itself is never read-filtered, changed or deleted, and returns with the unlock.
+        val snap = c.folders.visibility.snapshot(app.streamsetu.core.data.repo.Visibility.Surface.HISTORY)
         list.forEach { p ->
             when (p.kind) {
-                ContentKind.MOVIE -> c.catalog.movie(p.itemId)?.takeIf { it.sourceId in ids }?.let { out += ResumeItem(p, MoviePlayable(it), remaining(p)) }
-                ContentKind.EPISODE -> c.catalog.episode(p.itemId)?.let { e -> c.catalog.series(e.seriesId)?.takeIf { it.sourceId in ids && seenSeries.add(it.id) }?.let { out += ResumeItem(p, EpisodePlayable(e, it), "S${e.season} E${e.number}  ·  ${remaining(p)}") } }
+                ContentKind.MOVIE -> c.catalog.movie(p.itemId)?.takeIf { it.sourceId in ids && snap.movieOk(it) }?.let { out += ResumeItem(p, MoviePlayable(it), remaining(p)) }
+                ContentKind.EPISODE -> c.catalog.episode(p.itemId)?.let { e -> c.catalog.series(e.seriesId)?.takeIf { it.sourceId in ids && snap.seriesOk(it) && seenSeries.add(it.id) }?.let { out += ResumeItem(p, EpisodePlayable(e, it), "S${e.season} E${e.number}  ·  ${remaining(p)}") } }
                 else -> {}
             }
         }
         fresh.groupBy { it.seriesId }.forEach { (sid, flagged) ->
             if (sid in seenSeries) return@forEach
-            val series = c.catalog.series(sid)?.takeIf { it.sourceId in ids } ?: return@forEach
+            val series = c.catalog.series(sid)?.takeIf { it.sourceId in ids && snap.seriesOk(it) } ?: return@forEach
             val plan = app.streamsetu.core.data.repo.EpisodePlan.of(c.catalog.episodesOnce(sid), progress)
             val next = plan.forward ?: return@forEach
             // Only when everything before it was finished: otherwise the person is still catching up and Continue Watching already knows.
             if (plan.catchUp != null || plan.inProgress != null || next.id !in flagged.map { it.episodeId }) return@forEach
+            if (hidden[next.id]?.let { at -> flagged.maxOf { it.discoveredAt } <= at } == true) return@forEach          // a new episode taken out by hand stays out until a newer one appears
             out += ResumeItem(WatchProgress(next.id, ContentKind.EPISODE, sid, 0, 1, flagged.maxOf { it.discoveredAt }, false), EpisodePlayable(next, series), "New episode  ·  S${next.season} E${next.number}", isNew = true)
         }
-        out.sortedByDescending { it.progress.updatedAt }
+        out.sortedByDescending { it.progress.updatedAt }.take(CONTINUE_SHOWN)          // the lock filter comes before the count: a locked title never uses up a place
     }.reuseRows { it.playable.id }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val recentLive: StateFlow<List<LiveItem>> = combine(c.user.recentChannelIds(14), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->
@@ -121,18 +130,21 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         }.sortedBy { it.first }.map { it.second }.take(14)
     }.reuseRows { it.channel.id }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val favourites: StateFlow<List<FavItem>> = combine(c.user.favouriteIds(UserRepository.FAVOURITES), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->
+    val favourites: StateFlow<List<FavItem>> = combine(c.user.favouriteIds(UserRepository.FAVOURITES), c.library.sourceIds, c.folders.restrictRev) { ids, lib, _ -> ids to lib }.mapLatest { (ids, lib) ->
         val list = ids.toList()
-        val ch = list.mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib }.map { FavItem.Ch(it) }
-        val mv = c.catalog.moviesByIds(list).filter { it.sourceId in lib }.map { FavItem.Mv(it) }
-        val sr = c.catalog.seriesByIds(list).filter { it.sourceId in lib }.map { FavItem.Sr(it) }
+        // Display only (like Continue Watching): a title in a locked or adult-blocked folder is left out while it is locked; the saved list itself is untouched and it returns with the unlock.
+        val snap = c.folders.visibility.snapshot(app.streamsetu.core.data.repo.Visibility.Surface.HISTORY)
+        val ch = list.mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib && snap.channelOk(it) }.map { FavItem.Ch(it) }
+        val mv = c.catalog.moviesByIds(list).filter { it.sourceId in lib && snap.movieOk(it) }.map { FavItem.Mv(it) }
+        val sr = c.catalog.seriesByIds(list).filter { it.sourceId in lib && snap.seriesOk(it) }.map { FavItem.Sr(it) }
         val order = list.withIndex().associate { it.value to it.index }
         (ch + mv + sr).sortedBy { order[it.id] }.distinctBy { it.kind() + app.streamsetu.core.data.repo.SearchText.normalize(it.title) }
     }.reuseRows { it.id }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val watchLater: StateFlow<List<FavItem>> = combine(c.user.favouriteIds(UserRepository.WATCH_LATER), c.library.sourceIds) { ids, lib -> ids to lib }.mapLatest { (ids, lib) ->
+    val watchLater: StateFlow<List<FavItem>> = combine(c.user.favouriteIds(UserRepository.WATCH_LATER), c.library.sourceIds, c.folders.restrictRev) { ids, lib, _ -> ids to lib }.mapLatest { (ids, lib) ->
         val list = ids.toList(); val order = list.withIndex().associate { it.value to it.index }
-        (list.mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib }.map { FavItem.Ch(it) } + c.catalog.moviesByIds(list).filter { it.sourceId in lib }.map { FavItem.Mv(it) } + c.catalog.seriesByIds(list).filter { it.sourceId in lib }.map { FavItem.Sr(it) })
+        val snap = c.folders.visibility.snapshot(app.streamsetu.core.data.repo.Visibility.Surface.HISTORY)          // display only, as for Favourites
+        (list.mapNotNull { c.catalog.channel(it) }.filter { it.sourceId in lib && snap.channelOk(it) }.map { FavItem.Ch(it) } + c.catalog.moviesByIds(list).filter { it.sourceId in lib && snap.movieOk(it) }.map { FavItem.Mv(it) } + c.catalog.seriesByIds(list).filter { it.sourceId in lib && snap.seriesOk(it) }.map { FavItem.Sr(it) })
             .sortedBy { order[it.id] }.distinctBy { it.kind() + app.streamsetu.core.data.repo.SearchText.normalize(it.title) }
     }.reuseRows { it.id }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -145,13 +157,14 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Everything watched lately, whatever it is, newest first (the "Recently Watched" shortcut). */
-    val recentWatched: StateFlow<List<FavItem>> = combine(c.user.history(120), c.library.sourceIds) { log, lib -> log to lib }.mapLatest { (log, lib) ->
+    val recentWatched: StateFlow<List<FavItem>> = combine(c.user.history(120), idsAndRestrictions) { log, lib -> log to lib }.mapLatest { (log, lib) ->
         val seen = HashSet<String>(); val out = ArrayList<FavItem>()
+        val snap = c.folders.visibility.snapshot(app.streamsetu.core.data.repo.Visibility.Surface.HISTORY)          // display only: the history itself is untouched and the entries return when unlocked
         for (h in log) {
             val item: FavItem? = when (h.kind) {
-                "CHANNEL" -> c.catalog.channel(h.itemId)?.takeIf { it.sourceId in lib }?.let { FavItem.Ch(it) }
-                "MOVIE" -> c.catalog.movie(h.itemId)?.takeIf { it.sourceId in lib }?.let { FavItem.Mv(it) }
-                "EPISODE" -> c.catalog.episode(h.itemId)?.let { e -> c.catalog.series(e.seriesId)?.takeIf { it.sourceId in lib }?.let { FavItem.Sr(it) } }
+                "CHANNEL" -> c.catalog.channel(h.itemId)?.takeIf { it.sourceId in lib && snap.channelOk(it) }?.let { FavItem.Ch(it) }
+                "MOVIE" -> c.catalog.movie(h.itemId)?.takeIf { it.sourceId in lib && snap.movieOk(it) }?.let { FavItem.Mv(it) }
+                "EPISODE" -> c.catalog.episode(h.itemId)?.let { e -> c.catalog.series(e.seriesId)?.takeIf { it.sourceId in lib && snap.seriesOk(it) }?.let { FavItem.Sr(it) } }
                 else -> null
             }
             if (item != null && seen.add(item.id)) out += item
@@ -164,8 +177,10 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     data class ForYou(val items: List<FavItem>, val because: String)
 
     /** Never anything already watched, one entry for each film however many copies the library holds, and nothing until there is enough to go on. */
-    val forYou: StateFlow<ForYou?> = recentWatched.mapLatest { watched ->
-        val seeds = watched.filter { it !is FavItem.Ch }.take(4)
+    val forYou: StateFlow<ForYou?> = combine(recentWatched, c.folders.restrictRev) { w, _ -> w }.mapLatest { watched ->
+        // Seeds also leave out hidden folders (their names appear in the row's caption); the suggestions themselves follow the strictest rule (see SearchRepository.similarMovies).
+        val seedSnap = c.folders.visibility.snapshot(app.streamsetu.core.data.repo.Visibility.Surface.SEARCH)
+        val seeds = watched.filter { it !is FavItem.Ch && (if (it is FavItem.Mv) seedSnap.movieOk(it.movie) else if (it is FavItem.Sr) seedSnap.seriesOk(it.series) else true) }.take(4)
         if (seeds.isEmpty()) return@mapLatest null
         val seen = watched.map { it.id }.toSet()
         val lists = seeds.map { seed ->
@@ -190,8 +205,9 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     /** The row "More with …": the person in the most of what was watched lately (at least two titles), and their other titles here. */
     data class MoreWith(val name: String, val items: List<FavItem>, val titles: Int)
 
-    val moreWith: StateFlow<MoreWith?> = recentWatched.mapLatest { watched ->
-        val titles = watched.filter { it !is FavItem.Ch }.take(12)
+    val moreWith: StateFlow<MoreWith?> = combine(recentWatched, c.folders.restrictRev) { w, _ -> w }.mapLatest { watched ->
+        val snap = c.folders.visibility.snapshot(app.streamsetu.core.data.repo.Visibility.Surface.RECOMMEND)
+        val titles = watched.filter { it !is FavItem.Ch && (if (it is FavItem.Mv) snap.movieOk(it.movie) else if (it is FavItem.Sr) snap.seriesOk(it.series) else true) }.take(12)
         val ids = titles.map { it.id }
         val names = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { app.streamsetu.core.data.db.PeopleIndex.names(c.db.openHelper.readableDatabase, ids) }
         val (name, n) = app.streamsetu.core.data.repo.FavouritePerson.pick(names) ?: return@mapLatest null
@@ -203,13 +219,69 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         val keys = HashSet<String>(); val out = ArrayList<FavItem>()
         for (h in hits) {
             if (h.itemId in seen) continue
-            val item: FavItem? = if (h.kind == "SERIES") c.catalog.series(h.itemId)?.let { FavItem.Sr(it) } else c.catalog.movie(h.itemId)?.let { FavItem.Mv(it) }
+            val item: FavItem? = if (h.kind == "SERIES") c.catalog.series(h.itemId)?.takeIf(snap::seriesOk)?.let { FavItem.Sr(it) } else c.catalog.movie(h.itemId)?.takeIf(snap::movieOk)?.let { FavItem.Mv(it) }
             val year = when (item) { is FavItem.Mv -> item.movie.year; is FavItem.Sr -> item.series.year; else -> null }
             if (item != null && keys.add(app.streamsetu.core.data.repo.Similarity.stem(item.title) + "|" + (year ?: 0))) out += item
             if (out.size >= 14) break
         }
         if (out.size < 4) null else MoreWith(name, out, n)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // ---- Smart Mix shelves (Top This Week, Trending in Your Library, Because You Watched, Rediscover, preferred language) ----
+    /** One recommendation row: its heading, the line under it, and the titles (each title once, however many copies the library holds). */
+    data class MixShelf(val id: String, val title: String, val caption: String?, val items: List<FavItem>)
+
+    /** Bumped by "Shuffle recommendations" and by the things that change what may be recommended or watched. Never starts a sync. */
+    private val mixTick = MutableStateFlow(0)
+    private val mixWatch = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+    init {
+        // A playlist read that removed titles (or replaced most of them) rebuilds the shelves at once; smaller changes wait for the next open so a row never reshuffles under the person's hand.
+        viewModelScope.launch { app.streamsetu.core.data.repo.smartmix.IdentityStore.changes.collect { ch -> c.smartMix.invalidate(); if (ch.removed > 0 || ch.bulk) mixWatch.emit(Unit) } }
+        viewModelScope.launch { mixWatch.collect { mixTick.value = mixTick.value + 1 } }
+    }
+    val mix: StateFlow<List<MixShelf>> = combine(c.profiles.activeId, c.library.sourceIds, c.folders.restrictRev, mixTick) { p, ids, _, _ -> p to ids }.mapLatest { (profile, ids) ->
+        if (ids.isEmpty()) return@mapLatest emptyList()
+        titlesReady()
+        c.smartMix.invalidate()
+        val built = runCatching { c.smartMix.home(profile) }.getOrDefault(emptyList())
+        val wanted = built.filter { it.result.shelfId != app.streamsetu.core.data.smartmix.ShelfSpec.HERO }
+        val all = wanted.flatMap { it.result.ids }.distinct()
+        val movies = c.catalog.moviesByIds(all).associateBy { it.id }
+        val series = c.catalog.seriesByIds(all).associateBy { it.id }
+        val lang = c.smartMix.source.signals(profile).preferredLang
+        val out = wanted.mapNotNull { b ->
+            val all = b.result.ids.mapNotNull { id -> movies[id]?.let { FavItem.Mv(it) } ?: series[id]?.let { FavItem.Sr(it) } }
+            val items = withPosterFirst(all)
+            if (items.isEmpty() || !hasPoster(items.first())) return@mapNotNull null          // a row never starts with a blank tile
+            val (title, caption: String?) = when (b.result.shelfId) {
+                app.streamsetu.core.data.smartmix.ShelfSpec.TOP_WEEK -> "Top This Week" to null
+                app.streamsetu.core.data.smartmix.ShelfSpec.TRENDING_LIBRARY -> "Trending in Your Library" to null
+                app.streamsetu.core.data.smartmix.ShelfSpec.FOR_YOU -> "Because You Watched" to null
+                app.streamsetu.core.data.smartmix.ShelfSpec.REDISCOVER -> "Rediscover" to null
+                app.streamsetu.core.data.smartmix.ShelfSpec.LANG_PREF -> "In ${lang?.replaceFirstChar { it.uppercase() } ?: "your language"}" to null
+                else -> return@mapNotNull null
+            }
+            MixShelf(b.result.shelfId, title, caption, items)
+        }
+        // The rows are on their way to the screen: this load counts as shown (repeat suppression moves on), only once per day and counter.
+        built.forEach { b -> runCatching { c.smartMix.committed(profile, b) } }
+        out
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private fun hasPoster(f: FavItem) = when (f) { is FavItem.Mv -> !f.movie.posterUrl.isNullOrBlank(); is FavItem.Sr -> !f.series.posterUrl.isNullOrBlank(); is FavItem.Ch -> true }
+    /** Titles with a picture first, in their order; those without one only when there are too few with one to fill the row (and then last). */
+    private fun withPosterFirst(items: List<FavItem>): List<FavItem> {
+        val (with, without) = items.partition(::hasPoster)
+        return if (with.size >= 6) with else with + without
+    }
+
+    /** "Shuffle recommendations": a new draw of the recommendation rows and the banner. Reads what is stored; it never starts a sync and never touches Continue Watching. */
+    fun shuffleRecommendations() = viewModelScope.launch {
+        c.smartMix.reshuffle(c.profiles.activeId.value)
+        c.resetFeatured()
+        mixTick.value = mixTick.value + 1
+        featuredNudge.value = featuredNudge.value + 1
+    }
 
     val order: List<String> get() = visibleRows(c.ui.homeOrder(DEFAULT_ORDER), hiddenRows.value)
 
@@ -224,8 +296,54 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     fun moveFavorite(id: String, kind: ContentKind, toFront: Boolean) = viewModelScope.launch { logicalIds(id, kind).forEach { c.user.moveFavourite(it, toFront) } }
     fun setWatchLater(id: String, kind: ContentKind, on: Boolean) = viewModelScope.launch { logicalIds(id, kind).forEach { c.user.setFavourite(it, kind, on, UserRepository.WATCH_LATER) }; app.streamsetu.tv.UISound.play(if (on) app.streamsetu.tv.UISoundEvent.WATCH_LATER_ADD else app.streamsetu.tv.UISoundEvent.WATCH_LATER_REMOVE) }
     fun setWatched(id: String, kind: ContentKind, seriesId: String?, watched: Boolean) = viewModelScope.launch { c.user.setWatched(id, kind, seriesId, watched) }
-    /** Takes a title out of Continue Watching: only its resume point goes; watch history stays. */
-    fun removeFromContinue(id: String) = viewModelScope.launch { c.user.clearResumePoint(id) }
+    /**
+     * Takes a title out of Continue Watching. Only a marker of its own is written: its progress, resume position, watched mark and history all stay as they are, and it comes
+     * back to the row when it is played again. Undo takes the marker away.
+     */
+    fun removeFromContinue(id: String) = viewModelScope.launch { dismissFromRecommendations(listOf(id)); offerUndo("Removed from Continue Watching", c.user.hideFromContinue(listOf(id))) }
+
+    /** Titles whose "remove from recommendations" marker was written by the last removal, so Undo takes exactly those back. */
+    private var lastDismissed: List<String> = emptyList()
+
+    /**
+     * A title taken out of Continue Watching is no longer recommended either: a marker of its own (per profile, by identity) is written; progress, resume point, watched mark and history stay.
+     * Nothing is written for a title in a restricted folder.
+     */
+    private suspend fun dismissFromRecommendations(ids: Collection<String>) {
+        val profile = c.profiles.activeId.value
+        val done = ArrayList<String>()
+        for (r in continueWatching.value) {
+            if (r.playable.id !in ids) continue
+            val ok = when (val p = r.playable) {
+                is MoviePlayable -> c.smartMixState.dismiss(profile, "MOVIE", p.movie.id, p.movie.title, p.movie.categoryId, p.movie.year)
+                is EpisodePlayable -> c.smartMixState.dismiss(profile, "SERIES", p.series.id, p.series.title, p.series.categoryId, p.series.year)
+                else -> false
+            }
+            if (ok) done += when (val p = r.playable) { is EpisodePlayable -> p.series.id; else -> r.playable.id }
+        }
+        lastDismissed = done
+        if (done.isNotEmpty()) { c.smartMix.invalidate(); mixTick.value = mixTick.value + 1 }
+    }
+
+    /** The last removal from Continue Watching, held in memory for about five seconds so it can be undone exactly; after that it is gone. */
+    data class ContinueUndo(val message: String, val previous: List<Pair<String, Long?>>, val stamp: Long)
+    private val _continueUndo = kotlinx.coroutines.flow.MutableStateFlow<ContinueUndo?>(null)
+    val continueUndo: kotlinx.coroutines.flow.StateFlow<ContinueUndo?> = _continueUndo
+
+    /** Empties Continue Watching (after the person confirmed it), with Undo. */
+    fun clearContinue() = viewModelScope.launch { dismissFromRecommendations(continueWatching.value.map { it.playable.id }); offerUndo("Continue Watching cleared", c.user.hideAllFromContinue(continueWatching.value.map { it.progress.itemId })) }          // the new-episode cards in the row too
+
+    /** Puts back what the last removal took away, exactly as it was. */
+    fun undoContinue() = viewModelScope.launch { val u = _continueUndo.value ?: return@launch; _continueUndo.value = null; c.user.restoreContinueMarkers(u.previous); val profile = c.profiles.activeId.value; lastDismissed.forEach { c.smartMixState.undismiss(profile, it) }; lastDismissed = emptyList(); c.smartMix.invalidate(); mixTick.value = mixTick.value + 1 }
+
+    fun dismissContinueUndo() { _continueUndo.value = null }
+
+    private fun offerUndo(message: String, previous: List<Pair<String, Long?>>) {
+        if (previous.isEmpty()) return
+        val u = ContinueUndo(message, previous, System.nanoTime())
+        _continueUndo.value = u
+        viewModelScope.launch { kotlinx.coroutines.delay(UNDO_MS); if (_continueUndo.value === u) _continueUndo.value = null }
+    }
     fun removeFromRecent(id: String) = viewModelScope.launch { c.user.removeFromRecent(id) }
     fun toggleFolderFavorite(t: CategoryTile) = viewModelScope.launch { c.folders.toggleFavorite(t.kind, t.folder) }
     fun toggleFolderPinned(t: CategoryTile) = viewModelScope.launch { c.folders.togglePinned(t.kind, t.folder) }
@@ -269,3 +387,9 @@ private fun <T> Flow<List<T>>.reuseRows(key: (T) -> String): Flow<List<T>> {
         out
     }
 }
+
+/** How long Undo is offered after a removal from Continue Watching. */
+const val UNDO_MS = 5_000L
+/** Continue Watching reads this many entries, filters them by the folder rules, then shows the newest [CONTINUE_SHOWN]. */
+const val CONTINUE_READ = 120
+const val CONTINUE_SHOWN = 20

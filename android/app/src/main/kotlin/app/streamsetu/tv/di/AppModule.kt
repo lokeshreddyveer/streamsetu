@@ -30,7 +30,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
     @Provides @Singleton fun appScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    @Provides @Singleton fun database(@ApplicationContext c: Context): AppDatabase = AppDatabase.open(c, logQueries = app.streamsetu.tv.trace.TestHooks.on, queryThreads = if (app.streamsetu.tv.Perf.lowEnd(c)) 2 else 4)
+    @Provides @Singleton fun database(@ApplicationContext c: Context): AppDatabase = app.streamsetu.core.data.db.DatabaseWarmup.instance(c, logQueries = app.streamsetu.tv.trace.TestHooks.on, queryThreads = if (app.streamsetu.tv.Perf.lowEnd(c)) 2 else 4)
     @Provides @Singleton fun credentials(@ApplicationContext c: Context): CredentialStore = KeystoreCredentialStore(c)
     @Provides @Singleton fun sources(db: AppDatabase, credentials: CredentialStore) = SourceRepository(db, credentials)
     @Provides @Singleton fun library(db: AppDatabase, @ApplicationContext c: Context, scope: CoroutineScope) = app.streamsetu.core.data.repo.LibraryRepository(db, c, scope)

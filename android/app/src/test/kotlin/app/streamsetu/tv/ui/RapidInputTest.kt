@@ -35,6 +35,7 @@ import org.robolectric.annotation.Config
 @OptIn(ExperimentalTestApi::class)
 class RapidInputTest {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
 
     private fun hold(key: Key, presses: Int, gapMs: Long = 40) {
         rule.mainClock.autoAdvance = false

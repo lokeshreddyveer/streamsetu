@@ -125,6 +125,31 @@ class AppContainer @Inject constructor(
         search.contextOf = { profiles.activeId.value + "|" + (library.activeId.value ?: "") }
         appScope.launch { kotlinx.coroutines.flow.combine(profiles.activeId, library.activeId) { p, l -> "$p|$l" }.collect { search.contextChanged() } }
     }
+    /**
+     * Smart Mix for the open library: candidate source over the identity tables, persisted shelf state, repeat suppression. Built when Home first asks; never starts a sync and never reads
+     * Continue Watching's own data beyond knowing what was watched.
+     */
+    val smartMix: app.streamsetu.core.data.repo.smartmix.SmartMixHome by lazy {
+        app.streamsetu.core.data.repo.smartmix.SmartMixHome(db, folders.visibility, { library.sourceIds.value.toList() }, { app.streamsetu.tv.ui.components.preferredLanguage(this) }, trendingSource, if (Perf.lowEnd(context)) 600 else null)
+    }
+    /** "Remove from recommendations" markers and what a shelf showed, written only for titles that may be recommended. */
+    val smartMixState: app.streamsetu.core.data.repo.smartmix.SmartMixState by lazy { app.streamsetu.core.data.repo.smartmix.SmartMixState(db, folders.visibility) }
+    /** Where everything TMDB gave this device is kept (weekly list, cast): removed when the switch is turned off or the key is removed, and at the latest after 180 days. */
+    val tmdbDir: java.io.File by lazy { java.io.File(context.filesDir, "tmdb").also { it.mkdirs() } }
+    /** The person's own TMDB key (or null). There is no bundled key. */
+    fun tmdbKey(): String? = credentials.load("tmdb.key")?.takeIf { it.isNotBlank() }
+    /** TMDB weekly trending for Top This Week: active only with the switch on AND the person's own key; the cache is cleared otherwise. */
+    val trendingSource: app.streamsetu.core.data.smartmix.TrendingProvider by lazy {
+        app.streamsetu.core.data.smartmix.TrendingProvider(object : app.streamsetu.core.data.smartmix.TmdbSettings {
+            override val trendingEnabled get() = ui.tmdbTrending.value
+            override val userKey get() = tmdbKey()
+        }, app.streamsetu.core.data.repo.TmdbTrendingFetcher(), app.streamsetu.core.data.repo.FileTrendingCache(java.io.File(tmdbDir, "trending.json")))
+    }
+    /** TMDB artwork and summaries: restricted titles are never sent, and what it filled is taken back on a lock or hide and after 180 days. */
+    val tmdbService: app.streamsetu.core.data.repo.TmdbService by lazy { app.streamsetu.core.data.repo.TmdbService(db, { tmdbKey() }, folders.visibility, tmdbDir) }
+    /** The cast of a title from TMDB (the cast row on detail pages); drawn only with the person's own key. */
+    val tmdbCast: app.streamsetu.core.data.repo.TmdbCast by lazy { app.streamsetu.core.data.repo.TmdbCast({ tmdbKey() }, tmdbDir) }
+
     val profiles: app.streamsetu.tv.sync.ProfileService by lazy {
         app.streamsetu.tv.sync.ProfileService(db, context.getSharedPreferences("pin_throttle", android.content.Context.MODE_PRIVATE), beforeSwitch = {
             // Before the tables change hands: what plays is stopped and its resume point is written (to the profile that was watching), the Wi-Fi exchange is closed, and folders the
@@ -271,6 +296,17 @@ class AppContainer @Inject constructor(
      * is there and on, its folder is not locked (or has been unlocked with the PIN), and an adult folder is not hidden by this profile's settings. Done with the live state at the moment
      * of playing, never with what was true when a list was drawn. Things that belong to no catalog (a file, an address) pass.
      */
+    /** A link by id reaches only what the same link by name would: nothing in a hidden folder either (a title in a locked or adult-blocked folder is already refused by [mayPlay]). */
+    suspend fun linkAllowed(item: app.streamsetu.core.model.Playable): Boolean {
+        val snap = folders.visibility.snapshot(app.streamsetu.core.data.repo.Visibility.Surface.SEARCH)
+        return when (item) {
+            is app.streamsetu.core.model.MoviePlayable -> snap.movieOk(item.movie)
+            is app.streamsetu.core.model.EpisodePlayable -> snap.seriesOk(item.series)
+            is app.streamsetu.core.model.ChannelPlayable -> snap.channelOk(item.channel)
+            else -> true
+        }
+    }
+
     suspend fun mayPlay(item: app.streamsetu.core.model.Playable): Boolean {
         val categoryId: String? = when (item) {
             is app.streamsetu.core.model.ChannelPlayable -> item.channel.categoryId
@@ -445,15 +481,31 @@ class AppContainer @Inject constructor(
         lan.boardSink = { nowBoard.ingest(it) }
         appScope.launch { playback.current.collect { lan.nudge() } }
         // (the Plex token cleanup is a database migration now: see AppDatabase.MIGRATION_9_10)
+        appScope.launch(kotlinx.coroutines.Dispatchers.IO) { runCatching { tmdbService.purge(); app.streamsetu.core.data.repo.TmdbFiles.purge(tmdbDir) } }          // the 180-day limit at every start, whatever the network or the key
+        LauncherSurfaces.start(this)          // the widget and the Play-next row follow lock, hide, Kids and profile changes
+        ImageEviction.watch(appScope, db, folders, onRestricted = { added -> runCatching { smartMixState.purgeShown(added) }; runCatching { tmdbService.purge(); app.streamsetu.core.data.repo.TmdbFiles.purge(tmdbDir); tmdbDir.listFiles { f -> f.name.startsWith("cast-") }?.forEach { it.delete() } } }) { coil.Coil.imageLoader(context) }          // artwork of a folder that becomes locked, hidden or adult-blocked leaves the picture caches
     }
 
     private var featuredCache: List<Playable>? = null
+    /** Drops the banner mix so the next read draws again (after "Shuffle recommendations"). */
+    fun resetFeatured() { featuredCache = null }
+    /** The banner from the Smart Mix hero shelf: ranked, one card per title, nothing restricted or removed from recommendations. Null when the mix has too little (the older draw is used). */
+    private suspend fun smartFeatured(): List<Playable>? = runCatching {
+        val built = smartMix.shelf(profiles.activeId.value, app.streamsetu.core.data.smartmix.ShelfSpec.HERO)
+        val ids = built.result.ids.takeIf { !built.result.hidden && it.size >= 3 } ?: return@runCatching null
+        smartMix.committed(profiles.activeId.value, built)
+        val movies = catalog.moviesByIds(ids).associateBy { it.id }; val series = catalog.seriesByIds(ids).associateBy { it.id }
+        ids.mapNotNull { id -> movies[id]?.let { MoviePlayable(it) as Playable } ?: series[id]?.let { SeriesFeature(it) as Playable } }
+    }.getOrNull()
     private var featuredFor: String? = null
     /** The banner mix: picked once per open library (and again after a playlist is read), so it does not reshuffle when you come back to a page. */
     suspend fun featured(): List<Playable> {
-        val lib = library.activeId.value
+        val lib = library.activeId.value + "|" + profiles.activeId.value
         if (featuredFor != lib) { featuredCache = null; featuredFor = lib }
-        return featuredCache ?: catalog.featured(30).also { featuredCache = it }
+        val mix = featuredCache ?: (smartFeatured() ?: catalog.featured(30)).also { featuredCache = it }
+        // The saved mix is checked again at every read, with the folder rules as they are now: a folder locked, hidden or blocked after it was built takes its titles out at once, no rebuild awaited.
+        val snap = folders.visibility.snapshot(app.streamsetu.core.data.repo.Visibility.Surface.RECOMMEND)
+        return mix.filter { p -> when (p) { is MoviePlayable -> snap.movieOk(p.movie); is SeriesFeature -> snap.seriesOk(p.series); else -> true } }
     }
 
     /** Reads a playlist, then its guide (a guide that cannot be read never fails the playlist). */
@@ -512,7 +564,11 @@ class AppContainer @Inject constructor(
         val variants = runCatching { search.movieVariants(movie.title) }.getOrDefault(emptyList())
         if (variants.size < 2) return listOf(movie)
         val folderNames = runCatching { folders.folders(ContentKind.MOVIE).first().associate { it.id to it.providerName } }.getOrDefault(emptyMap())
-        val all = listOf(movie) + variants.filter { it.id != movie.id }
+        // Only copies in the same language (and the same dub) count as the same film here: a Hindi version opened from Other languages plays in Hindi, never the Tamil copy
+        // that happens to carry the same title.
+        fun lang(m: Movie) = app.streamsetu.core.data.repo.OtherVersions.languageOf(m.title, folderNames[m.categoryId]).let { it.name to it.dubbed }
+        val mine = lang(movie)
+        val all = listOf(movie) + variants.filter { it.id != movie.id && lang(it) == mine }
         return app.streamsetu.core.data.repo.BestVersion.order(all) { m -> listOf(m.title, folderNames[m.categoryId]) }
     }
 
@@ -597,8 +653,9 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
     private val decodeDispatcher = java.util.concurrent.Executors.newFixedThreadPool(2) { r -> Thread { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND); r.run() }.apply { name = "artwork-decode" } }.asCoroutineDispatcher()
 
     override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
-        .okHttpClient(okhttp3.OkHttpClient.Builder().dispatcher(images).addNetworkInterceptor(ArtworkAuth(container.sources, container.credentials)).build())          // per hop: a redirect to another host never carries the Plex token
-        .diskCache { coil.disk.DiskCache.Builder().directory(java.io.File(cacheDir, "image_cache")).maxSizeBytes(160L * 1024 * 1024).build() }
+        .okHttpClient(okhttp3.OkHttpClient.Builder().dispatcher(images).addInterceptor(ImageRetry()).addNetworkInterceptor(ArtworkAuth(container.sources, container.credentials)).build())          // per hop: a redirect to another host never carries the Plex token
+        // Keyed by the picture's address (many titles share one poster, so it is fetched and kept once). Bounded: 100 MB on a low-end box, 160 MB elsewhere; memory 12 % / 22 % of what the app may use.
+        .diskCache { coil.disk.DiskCache.Builder().directory(java.io.File(cacheDir, "image_cache")).maxSizeBytes((if (Perf.lowEnd(this)) 100L else 160L) * 1024 * 1024).build() }
         .crossfade(if (Perf.lowEnd(this)) 0 else 180)          // artwork fades into its card; on a low-end stick it just appears
         .memoryCache { coil.memory.MemoryCache.Builder(this).maxSizePercent(if (Perf.lowEnd(this)) 0.12 else 0.22).build() }
         // Pictures are decoded on two threads of low priority, never on every core: a held scroll used to start hundreds of decodes that took the cores from drawing.
@@ -609,6 +666,9 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        // The database opens (and, after an update, upgrades) on its own thread from the first moment, while the opening plays; the wiring that needs it gets the same object.
+        // (Not under the unit-test harness: there every test makes its own app, and a real database opened in the background for each of hundreds of tests used up the test process's memory.)
+        if (android.os.Build.FINGERPRINT != "robolectric") app.streamsetu.core.data.db.DatabaseWarmup.start(this, logQueries = app.streamsetu.tv.trace.TestHooks.on, queryThreads = if (Perf.lowEnd(this)) 2 else 4)
         UISound.init(this, settings = {
             val u = container.ui
             SoundSettings(u.soundsEnabled.value, u.soundTheme.value, u.soundVolume.value, u.navTones.value, u.selectionTones.value, u.confirmationTones.value, u.errorTones.value, u.soundsDuringPlayback.value)
@@ -624,6 +684,18 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             // The search word list is warmed when the remote has been still for a while, and never at the same time as another background job (one at a time, so the screen is not starved).
             InputClock.awaitIdle(5000)
             MaintenanceGate.lock.withLock { runCatching { container.globalSearch.warmUp() } }
+            // Titles read before the identity table existed get their identity in the background: 2,000 at a time, one job at a time, only while the remote is still, and resumed where it stopped.
+            runCatching {
+                val identity = app.streamsetu.core.data.repo.smartmix.IdentityStore(container.db)
+                var filled = 0
+                while (true) {
+                    InputClock.awaitIdle(2000)
+                    val n = MaintenanceGate.lock.withLock { identity.backfillStep() }
+                    if (n == 0) break
+                    filled += n; kotlinx.coroutines.delay(60)
+                }
+                if (filled > 0) { app.streamsetu.core.data.repo.smartmix.SourceTwins.recompute(container.db); identity.announceBackfill(filled); container.smartMix.invalidate() }
+            }
         }
         CrashReporter.install(this, runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?")
         container.appScope.launch {
@@ -697,6 +769,7 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
         val hours = getSharedPreferences("settings", MODE_PRIVATE).getInt("bgSyncHours", 0)
         CatalogSyncWorker.schedule(this, hours)
         AutoBackupWorker.schedule(this, container.settings.automaticBackups.value)
+        TmdbRefreshWorker.schedule(this)
     }
 }
 

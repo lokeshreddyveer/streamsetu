@@ -6,7 +6,7 @@ Read `SPEC-STATUS.md` for what is built against the specifications. Modules and 
 core-model        data classes, sorting and capability models, playback preference enums
 core-security     Android Keystore credential store
 core-network      OkHttp client, M3U / Xtream / XMLTV parsers
-core-database     Room (v3): catalog, libraries, folder arrangements, progress, plus the FTS4 search index and raw browse queries
+core-database     Room (v11): catalog, libraries, folder arrangements, progress, the derived content identity (`content_identity`, `source_twin`), Smart Mix state (`smartmix_*`, `rec_dismissed`, `folder_recent`), plus the FTS4 search index and raw browse queries. Schemas of every version are in `schemas/`.
 core-preferences  AppSettings (playback), UiPrefs (appearance), ParentalControls (adult filter, PIN hash)
 core-media        PlaybackController (coordinator), ExoPlayer and MPV engines, recovery policy
 core-ui           motion tokens (durations, curves, scales), reduced-motion handling, frame monitor
@@ -109,24 +109,25 @@ treats a stream stuck in buffering as a failure (18 s live, 30 s movies) so retr
 Live TV (MPEG-TS) on ExoPlayer and MPV, movies (MP4) on both, series episodes, engine fallback, add-playlist with the on-screen keyboard, focus and back navigation.
 
 ## Not built yet
-1. Catch-up playback and a time-grid guide.
-2. PIN protection for the adult switch.
-3. Stalker portals, HDHomeRun, local files and WebDAV.
-4. Subtitle styling settings; the aspect ratio / zoom controls of the Mac player.
-5. Secure-DNS fallback for blocked server names (done on Apple; same idea fits `StreamResolver`).
-6. Amazon Appstore listing; sideload the APK until then.
+1. Subtitle styling settings; the aspect ratio / zoom controls of the Mac player.
+2. Secure-DNS fallback for blocked server names (done on Apple; same idea fits `StreamResolver`).
+3. A Play (store) listing: `-PstoreBuild` already leaves out the Stalker type, the install permission and the updater, but nothing has been submitted. The Amazon Appstore listing is also not done; sideload the APK until then.
+
+(Done since this list was first written: catch-up and the time-grid guide, the PIN, Stalker portals, HDHomeRun, local files and WebDAV.)
 
 ## Build and test
 ```
 export JAVA_HOME=/opt/homebrew/opt/openjdk@17 ANDROID_HOME=$HOME/Library/Android/sdk
-./gradlew :core:testDebugUnitTest      # parsers and recovery policy
-./gradlew :app:assembleDebug           # app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:testDebugUnitTest :data:testDebugUnitTest      # the whole unit suite (Robolectric, no device)
+./gradlew :app:assembleDebug                                  # app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleRelease -PstoreBuild                   # a store-style build: no Stalker type, no install permission, no updater
 adb connect <fire-tv-ip>:5555 && adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 On a Fire TV: Settings → My Fire TV → Developer Options → ADB debugging (and Apps from unknown sources) → on.
+SMARTMIX_BENCH=1 runs the timing benchmark on synthetic libraries (`SmartMixBenchmark`); it measures the JVM, not a television.
 
 ## Verification status
-Unit tests: parsers, retry policy, parental words, divider rows, live-format choice.
+Unit tests (about 580 in `app`, 360 in `data`): parsers, retry policy, parental words, the privacy matrix (every surface against locked, hidden, adult and twin copies), the identity layer and its upgrade, Smart Mix, folder rows, TMDB limits, the build policy. Real-device behaviour (focus feel, memory and frame time on a stick) is checked by hand.
 
 ## In-app updates
 
@@ -135,3 +136,20 @@ Unit tests: parsers, retry policy, parental words, divider rows, live-format cho
 ## Search
 
 `data/.../repo/GlobalSearch.kt` is the one search for the Android phone and the Fire TV: the text index for channels, movies and series, plus episodes, guide programmes, folders and collections, grouped by kind. `SmartSearch.kt` reads "hindi movies 2024" and fixes misspellings from the library's own words (the same rules as the Mac and iPhone `GlobalSearchService`).
+
+
+## Folder rules in one place
+
+`Visibility` answers who may see which folder for three surfaces: history (display only, returns on unlock), search (adds hidden folders), and recommend (the strictest: locked stays out even after a PIN unlock, family names across playlists, and any title with a copy in a restricted folder, found by identity and by normalized title and year). Recommendations, the banner, the cast and artwork lookups, the home-screen widget and the Android TV Play-next row all use the strictest one; Continue Watching, Favourites and Watch Later use the history one and are only filtered when drawn (nothing is deleted).
+
+## Smart Mix and folder rows
+
+`data/.../smartmix` is the pure engine (integer scoring, a seeded draw, fixtures shared with the Apple apps in `smartmix/fixtures`); `data/.../repo/smartmix` holds the identity store (written beside the catalog), `RoomCandidateSource` (about 2,000 indexed copies per shelf, restriction flags filled), `RoomSmartMixStore` (profile-keyed, bounded) and `SmartMixHome`. Home shows Top This Week, Trending in Your Library, Because You Watched, Rediscover and a preferred-language row; "Shuffle recommendations" only bumps a counter (no sync). A title taken out of Continue Watching gets a `rec_dismissed` marker (progress untouched). Movies, Series and Live TV default to a Folders view (`FolderRowsModel`, 20 folders at a time, about 12 tiles each, a last "More" tile); the Grid view is a setting kept per profile on each device.
+
+## TMDB
+
+Only with the person's own key; no key is bundled. Artwork (`TmdbService`), the cast row (`TmdbCast`) and the weekly list (`TrendingProvider`) send a title name and year, or ask for the public list; nothing about the person. Restricted titles are never sent. Saved data is kept in `files/tmdb` and in correction rows (recorded in `filled.log`), shown for at most 30 days without a refresh, and removed after 180 days or when the title is locked. Removing the key stops every request; what was already filled stays until the 180-day limit.
+
+## Network and links
+
+`network_security_config.xml` keeps cleartext allowed (providers stream over plain http) but refuses it for TMDB, OpenSubtitles and GitHub. A `streamsetu://play` link can only start a title the person could open by hand (`id=`, `q=` or `movie=`/`series=`/`channel=`); it cannot change a setting, so there is no `engine=`.

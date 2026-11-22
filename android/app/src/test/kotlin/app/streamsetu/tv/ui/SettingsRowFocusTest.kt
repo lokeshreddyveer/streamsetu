@@ -29,6 +29,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34], application = android.app.Application::class, qualifiers = "w1920dp-h1080dp-xhdpi")
 class SettingsRowFocusTest {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
 
     private fun page(target: SettingFocusTarget?, count: Int = 60) {
         rule.setContent {

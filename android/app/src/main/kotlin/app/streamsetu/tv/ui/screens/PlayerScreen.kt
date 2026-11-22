@@ -352,7 +352,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                     val choosing = pending?.takeIf { it.itemId != item?.id }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Label(choosing?.title ?: if (item is EpisodePlayable) item.series.title else item?.title.orEmpty(), Tokens.display, Ink, FontWeight.Medium, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
-                        if (pending != null) Spinner()
+                        if (pending != null) app.streamsetu.tv.ui.components.BrandLoader(size = 30.dp)
                     }
                     if (item is EpisodePlayable) Label("Season ${item.episode.season}  ·  Episode ${item.episode.number}  ·  ${item.episode.title}", Tokens.small, InkDim)
                     if (showResumed) Label("Resumed at ${clock(resumedFrom)}", Tokens.small, InkDim)          // part of the title bar, so it can never sit on top of the title

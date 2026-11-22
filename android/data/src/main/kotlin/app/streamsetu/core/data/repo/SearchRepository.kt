@@ -39,11 +39,18 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
     fun clearHistory() = history.clearHistory()
     fun forgetProfile(profileId: String) = history.forgetProfile(profileId)
 
+    /**
+     * Folders to leave out of what is searched or listed for these kinds: locked (until unlocked), adult while adult content is hidden (always for a kids profile) and hidden ones.
+     * Read at the moment of asking, so a lock made a moment ago already applies. [folders] `lockedIdsNow` stays for unlocking only.
+     */
+    private suspend fun excluded(kinds: Collection<ContentKind>): Set<String> =
+        kinds.fold(emptySet()) { acc, k -> acc + folders.visibility.excludedFolders(k, Visibility.Surface.SEARCH) }
+
     suspend fun search(typed: String, scope: SearchScope = SearchScope(), limit: Int = 60): SearchResults = withContext(Dispatchers.IO) {
         val match = SearchText.matchQuery(typed)
         if (match.isEmpty()) return@withContext SearchResults()
         val sources = scope.sourceId?.let { listOf(it) } ?: library.sourceIds.value
-        val locked = folders.lockedIdsNow()
+        val locked = excluded(scope.kinds)
         val kinds = scope.kinds.map { it.name }
         val raw = db.openHelper.readableDatabase
         var hits = SearchIndex.query(raw, match, sources, kinds, 400)
@@ -77,7 +84,7 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
     /** A few titles to offer while typing (beginning with what has been typed). */
     suspend fun suggestions(typed: String, limit: Int = 6): List<String> = withContext(Dispatchers.IO) {
         val match = SearchText.matchQuery(typed); if (match.isEmpty()) return@withContext emptyList()
-        val locked = folders.lockedIdsNow()
+        val locked = excluded(listOf(ContentKind.MOVIE, ContentKind.SERIES, ContentKind.CHANNEL))
         SearchIndex.query(db.openHelper.readableDatabase, match, library.sourceIds.value, listOf("MOVIE", "SERIES", "CHANNEL"), 80)
             .filter { it.folderId == null || it.folderId !in locked }
             .sortedWith(compareByDescending<SearchHit> { SearchText.score(it.title, typed) }.thenBy { it.title.length }.thenBy { it.itemId })
@@ -86,13 +93,13 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
 
     /** The same title in other connections of the open library (for "Choose Stream" / "Choose Source"). Never merges different titles. */
     suspend fun movieVariants(title: String): List<Movie> = withContext(Dispatchers.IO) {
-        val norm = SearchText.normalize(title)
-        val hits = SearchIndex.query(db.openHelper.readableDatabase, SearchText.matchQuery(title), library.sourceIds.value, listOf("MOVIE"), 80).filter { SearchText.normalize(it.title) == norm }
+        val norm = SearchText.normalize(title); val locked = excluded(listOf(ContentKind.MOVIE))
+        val hits = SearchIndex.query(db.openHelper.readableDatabase, SearchText.matchQuery(title), library.sourceIds.value, listOf("MOVIE"), 80).filter { SearchText.normalize(it.title) == norm }.filter { it.folderId == null || it.folderId !in locked }
         db.catalog().moviesByIds(hits.map { it.itemId }).map { it.toModel() }.sortedBy { it.sourceId }
     }
     suspend fun seriesVariants(title: String): List<Series> = withContext(Dispatchers.IO) {
-        val norm = SearchText.normalize(title)
-        val hits = SearchIndex.query(db.openHelper.readableDatabase, SearchText.matchQuery(title), library.sourceIds.value, listOf("SERIES"), 80).filter { SearchText.normalize(it.title) == norm }
+        val norm = SearchText.normalize(title); val locked = excluded(listOf(ContentKind.SERIES))
+        val hits = SearchIndex.query(db.openHelper.readableDatabase, SearchText.matchQuery(title), library.sourceIds.value, listOf("SERIES"), 80).filter { SearchText.normalize(it.title) == norm }.filter { it.folderId == null || it.folderId !in locked }
         db.catalog().seriesByIds(hits.map { it.itemId }).map { it.toModel() }.sortedBy { it.sourceId }
     }
 
@@ -107,12 +114,13 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
      */
     fun similarMovies(movie: Movie, facts: Similarity.Facts?, factsOf: suspend (Movie) -> Similarity.Facts?): kotlinx.coroutines.flow.Flow<List<Suggestion<Movie>>> = kotlinx.coroutines.flow.flow {
         val pool = withContext(Dispatchers.IO) {
-            val locked = folders.lockedIdsNow()
+            // A suggestion is a recommendation: the strictest rule (see Visibility.Surface.RECOMMEND), including copies of a title that sit in a restricted folder.
+            val snap = folders.visibility.snapshot(Visibility.Surface.RECOMMEND); val locked = snap.excluded(ContentKind.MOVIE)
             val inFolder = movie.categoryId?.takeIf { it !in locked }?.let { db.catalog().moviesIn(it, 800).first() }.orEmpty().map { it.toModel() }
             val q = SearchText.matchQuery(Similarity.stem(movie.title).split(' ').take(2).joinToString(" "))
             val hits = SearchIndex.query(db.openHelper.readableDatabase, q, library.sourceIds.value, listOf("MOVIE"), 80).filter { it.folderId == null || it.folderId !in locked }
             val have = inFolder.map { it.id }.toSet()
-            inFolder + db.catalog().moviesByIds(hits.map { it.itemId }.filter { it !in have }).map { it.toModel() }
+            (inFolder + db.catalog().moviesByIds(hits.map { it.itemId }.filter { it !in have }).map { it.toModel() }).filter(snap::movieOk)
         }
         val byId = pool.associateBy { it.id }
         fun item(m: Movie) = Similarity.Item(m.id, m.title, m.year, m.rating?.toDoubleOrNull(), m.plot, m.categoryId)
@@ -132,12 +140,12 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
 
     /** The same for a series (the provider's facts are not asked for; the franchise, story, language, year, rating and folder are enough to rank). */
     suspend fun similarSeries(series: Series): List<Suggestion<Series>> = withContext(Dispatchers.IO) {
-        val locked = folders.lockedIdsNow()
+        val snap = folders.visibility.snapshot(Visibility.Surface.RECOMMEND); val locked = snap.excluded(ContentKind.SERIES)
         val inFolder = series.categoryId?.takeIf { it !in locked }?.let { db.catalog().seriesIn(it, 800).first() }.orEmpty().map { it.toModel() }
         val q = SearchText.matchQuery(Similarity.stem(series.title).split(' ').take(2).joinToString(" "))
         val hits = SearchIndex.query(db.openHelper.readableDatabase, q, library.sourceIds.value, listOf("SERIES"), 80).filter { it.folderId == null || it.folderId !in locked }
         val have = inFolder.map { it.id }.toSet()
-        val pool = inFolder + db.catalog().seriesByIds(hits.map { it.itemId }.filter { it !in have }).map { it.toModel() }
+        val pool = (inFolder + db.catalog().seriesByIds(hits.map { it.itemId }.filter { it !in have }).map { it.toModel() }).filter(snap::seriesOk)
         val byId = pool.associateBy { it.id }
         fun item(m: Series) = Similarity.Item(m.id, m.title, m.year, m.rating?.toDoubleOrNull(), m.plot, m.categoryId)
         Similarity.rank(item(series), null, pool.map(::item)).mapNotNull { r -> byId[r.id]?.let { Suggestion(it, r.reason) } }
@@ -147,11 +155,61 @@ class SearchRepository(private val db: AppDatabase, private val library: Library
     suspend fun franchiseOf(movie: Movie): List<Movie> = withContext(Dispatchers.IO) {
         val words = Similarity.stem(movie.title).split(' ').filter { it.isNotEmpty() }.take(2)
         if (words.isEmpty()) return@withContext emptyList()
-        val locked = folders.lockedIdsNow()
+        val snap = folders.visibility.snapshot(Visibility.Surface.RECOMMEND); val locked = snap.excluded(ContentKind.MOVIE)
         val hits = SearchIndex.query(db.openHelper.readableDatabase, SearchText.matchQuery(words.joinToString(" ")), library.sourceIds.value, listOf("MOVIE"), 200).filter { it.folderId == null || it.folderId !in locked }
-        val pool = db.catalog().moviesByIds(hits.map { it.itemId }).map { it.toModel() }
+        val pool = db.catalog().moviesByIds(hits.map { it.itemId }).map { it.toModel() }.filter(snap::movieOk)
         val byId = (pool + movie).associateBy { it.id }
         fun item(m: Movie) = Similarity.Item(m.id, m.title, m.year, m.rating?.toDoubleOrNull(), m.plot, m.categoryId)
         Similarity.franchise(item(movie), pool.map(::item)).mapNotNull { byId[it.id] }
+    }
+
+    /**
+     * "Other languages": the open movie in other languages (and copies in other playlists) found in the open library, the open one first (see [OtherVersions]).
+     * Empty when there is none. Read off the screen's thread; folders that are locked are left out.
+     */
+    suspend fun otherVersionsOf(movie: Movie, preferred: String? = null): List<Pair<OtherVersions.Version, Movie>> = withContext(Dispatchers.IO) {
+        val pool = versionPool(movie.title, "MOVIE") { ids -> db.catalog().moviesByIds(ids).map { it.toModel() } }
+        val byId = (pool + movie).associateBy { it.id }
+        val names = namesFor((pool + movie).map { it.sourceId to it.categoryId })
+        fun cand(m: Movie) = OtherVersions.Candidate(m.id, OtherVersions.Kind.MOVIE, m.title, m.year, m.categoryId?.let { names.second[it] }, m.sourceId, names.first[m.sourceId],
+            rating = m.rating, plot = m.plot, providerKey = m.streamRef.substringAfterLast(':').takeIf { it.isNotBlank() })
+        OtherVersions.group(cand(movie), pool.map(::cand), preferred).mapNotNull { v -> byId[v.id]?.let { v to it } }
+    }
+
+    /** The same for a series. */
+    suspend fun otherVersionsOf(series: Series, preferred: String? = null): List<Pair<OtherVersions.Version, Series>> = withContext(Dispatchers.IO) {
+        val pool = versionPool(series.title, "SERIES") { ids -> db.catalog().seriesByIds(ids).map { it.toModel() } }
+        val byId = (pool + series).associateBy { it.id }
+        val names = namesFor((pool + series).map { it.sourceId to it.categoryId })
+        fun cand(m: Series) = OtherVersions.Candidate(m.id, OtherVersions.Kind.SERIES, m.title, m.year, m.categoryId?.let { names.second[it] }, m.sourceId, names.first[m.sourceId],
+            rating = m.rating, plot = m.plot, providerKey = m.providerId.takeIf { it.isNotBlank() })
+        OtherVersions.group(cand(series), pool.map(::cand), preferred).mapNotNull { v -> byId[v.id]?.let { v to it } }
+    }
+
+    /** The open title's own version (language, dub, quality) for the line under its title; null when none of these is known. */
+    suspend fun versionOf(movie: Movie): OtherVersions.Version? = withContext(Dispatchers.IO) {
+        val folder = movie.categoryId?.let { db.catalog().categoryName(it) }
+        OtherVersions.describe(OtherVersions.Candidate(movie.id, OtherVersions.Kind.MOVIE, movie.title, movie.year, folder, movie.sourceId, null)).takeIf { it.label.isNotBlank() }
+    }
+
+    suspend fun versionOf(series: Series): OtherVersions.Version? = withContext(Dispatchers.IO) {
+        val folder = series.categoryId?.let { db.catalog().categoryName(it) }
+        OtherVersions.describe(OtherVersions.Candidate(series.id, OtherVersions.Kind.SERIES, series.title, series.year, folder, series.sourceId, null)).takeIf { it.label.isNotBlank() }
+    }
+
+    /** Titles of [kind] in the open library whose words start like [title]'s, outside locked folders. */
+    private suspend fun <T> versionPool(title: String, kind: String, load: suspend (List<String>) -> List<T>): List<T> {
+        val words = OtherVersions.key(title).split(' ').filter { it.isNotEmpty() }.take(2)
+        if (words.isEmpty()) return emptyList()
+        val locked = excluded(listOf(ContentKind.valueOf(kind)))
+        val hits = SearchIndex.query(db.openHelper.readableDatabase, SearchText.matchQuery(words.joinToString(" ")), library.sourceIds.value, listOf(kind), 200).filter { it.folderId == null || it.folderId !in locked }
+        return load(hits.map { it.itemId })
+    }
+
+    /** The playlist names and folder names of a few titles, each read once. */
+    private suspend fun namesFor(pairs: List<Pair<String, String?>>): Pair<Map<String, String>, Map<String, String>> {
+        val sources = pairs.map { it.first }.distinct().associateWith { id -> db.sources().get(id)?.name }.filterValues { it != null }.mapValues { it.value!! }
+        val cats = pairs.mapNotNull { it.second }.distinct().associateWith { id -> db.catalog().categoryName(id) }.filterValues { it != null }.mapValues { it.value!! }
+        return sources to cats
     }
 }

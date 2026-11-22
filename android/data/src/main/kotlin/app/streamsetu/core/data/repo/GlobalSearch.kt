@@ -127,7 +127,7 @@ class GlobalSearch(
     private suspend fun forSentence(n: NaturalQuery, tab: SearchTab, limit: Int): GlobalResults {
         val sources = library.sourceIds.value.toList()
         if (sources.isEmpty()) return GlobalResults()
-        val locked = folders.lockedIdsNow()
+        val locked = listOf(ContentKind.MOVIE, ContentKind.SERIES, ContentKind.CHANNEL).fold(emptySet<String>()) { acc, k -> acc + folders.visibility.excludedFolders(k, Visibility.Surface.SEARCH) }          // locked (until unlocked), adult-blocked and hidden folders
         val terms = n.quality?.let { NaturalQuery.qualityTerms[it] ?: listOf(it) } ?: emptyList()
         val (q1, q2, q3) = Triple(terms.getOrNull(0).orEmpty(), terms.getOrNull(1) ?: terms.getOrNull(0).orEmpty(), terms.getOrNull(2) ?: terms.getOrNull(0).orEmpty())
         val text = SearchText.normalize(n.text)
@@ -155,7 +155,7 @@ class GlobalSearch(
         if (sources.isEmpty()) return GlobalResults()
         val multiple = sources.size > 1
         val raw = db.openHelper.readableDatabase
-        val locked = folders.lockedIdsNow()
+        val locked = listOf(ContentKind.MOVIE, ContentKind.SERIES, ContentKind.CHANNEL).fold(emptySet<String>()) { acc, k -> acc + folders.visibility.excludedFolders(k, Visibility.Surface.SEARCH) }          // locked (until unlocked), adult-blocked and hidden folders
         val nq = SearchText.normalize(text)
         val out = LinkedHashMap<SearchKind, List<SearchItem>>()
         val more = LinkedHashSet<SearchKind>()

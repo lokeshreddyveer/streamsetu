@@ -30,13 +30,15 @@ class ContinueWidget : AppWidgetProvider() {
     private suspend fun rows(context: Context): List<Row> {
         val c = (context.applicationContext as StreamSetuApp).container
         val out = ArrayList<Row>(); val seenSeries = HashSet<String>()
-        for (p in c.user.continueWatching(8).first()) {
+        // The widget is outside the app and cannot ask for the PIN: the strictest rule applies, and the filter comes before the count (a locked title never uses up one of the three places).
+        val snap = c.folders.visibility.snapshot(app.streamsetu.core.data.repo.Visibility.Surface.RECOMMEND)
+        for (p in c.user.continueWatching(40).first()) {
             val left = ((p.durationMs - p.positionMs) / 60_000).toInt().coerceAtLeast(1)
             val detail = if (left >= 60) "${left / 60} h ${left % 60} min left" else "$left min left"
             when (p.kind) {
-                ContentKind.MOVIE -> c.catalog.movie(p.itemId)?.let { out += Row(it.title, detail) }
+                ContentKind.MOVIE -> c.catalog.movie(p.itemId)?.takeIf { snap.movieOk(it) }?.let { out += Row(it.title, detail) }
                 ContentKind.EPISODE -> c.catalog.episode(p.itemId)?.let { e ->
-                    val series = c.catalog.series(e.seriesId)
+                    val series = c.catalog.series(e.seriesId)?.takeIf { snap.seriesOk(it) }
                     if (series != null && seenSeries.add(series.id)) out += Row(series.title, "S${e.season} E${e.number}  ·  $detail")
                 }
                 else -> {}

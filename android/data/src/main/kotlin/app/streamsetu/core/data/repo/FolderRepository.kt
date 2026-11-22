@@ -22,10 +22,22 @@ class FolderRepository(
     /** Folders the person unlocked with the PIN since the app started; they lock again when a library is closed. */
     private val unlockedAt: MutableMap<String, Long> = java.util.concurrent.ConcurrentHashMap()          // typed as a Map: the concurrent class's own key view needs Android 7
     private val unlocked = MutableStateFlow<Set<String>>(emptySet())
-    fun unlock(folderId: String) { unlockedAt[folderId] = System.currentTimeMillis(); unlocked.value = unlockedAt.keys.toSet() }
-    fun lockAgain() { unlockedAt.clear(); unlocked.value = emptySet() }
+    /** The folders unlocked with the PIN right now. */
+    val unlockedFolders: Set<String> get() = unlocked.value
+    fun unlock(folderId: String) { unlockedAt[folderId] = System.currentTimeMillis(); unlocked.value = unlockedAt.keys.toSet(); bump() }
+    fun lockAgain() { unlockedAt.clear(); unlocked.value = emptySet(); bump() }
+
+    /**
+     * Changes the moment anything that decides who may see what changes: a lock, an unlock, a relock, a hide, the adult filter, kids mode. Screens that keep a list built from the catalog
+     * (Home rows, the banner mix) read again when it changes, so nothing built before a lock is shown after it. See [Visibility].
+     */
+    private val revision = MutableStateFlow(0L)
+    private fun bump() { revision.value = revision.value + 1 }
+    val restrictRev: Flow<String> = combine(revision, parental.hideAdult, parental.kids) { r, a, k -> "$r|$a|$k" }.distinctUntilChanged()
+    /** Who may see what (see [Visibility]). */
+    val visibility: Visibility by lazy { Visibility(db, { parental.hideAdult.value }, { expire(); unlockedAt.keys.toSet() }) }
     /** Applies the auto-relock policy: folders unlocked longer ago than the limit lock again. */
-    private fun expire() { val limit = relockAfterMs(); if (limit == Long.MAX_VALUE) return; val now = System.currentTimeMillis(); var changed = false; val it = unlockedAt.entries.iterator(); while (it.hasNext()) { if (now - it.next().value > limit) { it.remove(); changed = true } }; if (changed) unlocked.value = unlockedAt.keys.toSet() }
+    private fun expire() { val limit = relockAfterMs(); if (limit == Long.MAX_VALUE) return; val now = System.currentTimeMillis(); var changed = false; val it = unlockedAt.entries.iterator(); while (it.hasNext()) { if (now - it.next().value > limit) { it.remove(); changed = true } }; if (changed) { unlocked.value = unlockedAt.keys.toSet(); bump() } }
     fun isUnlocked(folderId: String): Boolean { expire(); return unlockedAt.containsKey(folderId) }
 
     /** Folders whose content must stay out of lists, search and banners right now: locked and not yet unlocked. */
@@ -65,11 +77,14 @@ class FolderRepository(
             ContentKind.SERIES -> db.catalog().seriesFolderCounts(ids)
             else -> db.catalog().channelFolderCounts(ids)
         }
-        combine(shell(kind), counts, parental.hideAdult) { (cats, prefs), cnt, hideAdult ->
+        combine(shell(kind), counts, parental.hideAdult, unlocked) { (cats, prefs), cnt, hideAdult, open ->
             val byId = prefs.associateBy { it.folderId }
             val n = cnt.associate { it.folderId to it.n }
             cats.filter { !hideAdult || !ParentalControls.isAdultName(it.name) }.mapIndexed { i, c ->
-                Triple(i, Folder(c.id, c.sourceId, c.name, n[c.id] ?: 0, byId[c.id]?.toModel() ?: FolderPref()), c)
+                // A locked folder shows its name and a lock, never how many titles it holds (until it is unlocked).
+                // A hidden folder shows none either: it is out of every count (the folder manager lists it only so it can be shown again).
+                val shown = if ((byId[c.id]?.locked == true && c.id !in open) || byId[c.id]?.hidden == true) 0 else n[c.id] ?: 0
+                Triple(i, Folder(c.id, c.sourceId, c.name, shown, byId[c.id]?.toModel() ?: FolderPref()), c)
             }.sortedWith(compareByDescending<Triple<Int, Folder, *>> { it.second.pref.pinned }.thenBy { if (it.second.pref.sortIndex >= 0) it.second.pref.sortIndex else Int.MAX_VALUE }.thenBy { it.first })
                 .map { it.second }
         }
@@ -78,12 +93,26 @@ class FolderRepository(
     private suspend fun update(kind: ContentKind, folderId: String, change: (FolderPrefEntity) -> FolderPrefEntity) {
         val cur = db.folders().get(scopeName(kind), folderId) ?: FolderPrefEntity(scopeName(kind), folderId)
         db.folders().put(change(cur))
+        bump()
+    }
+
+    /**
+     * A lock or a hide is applied to the folder and to every folder of the same name in the person's other playlists (twin playlists list the same folders): without this the twin's copy of a
+     * locked folder would stay open. Only the person's own marks are written, never the playlist.
+     */
+    private suspend fun updateFamily(kind: ContentKind, f: Folder, change: (FolderPrefEntity) -> FolderPrefEntity) {
+        val first = db.folders().get(scopeName(kind), f.id) ?: FolderPrefEntity(scopeName(kind), f.id)
+        val changed = change(first)
+        val family = FolderNames.family(f.providerName)
+        val siblings = db.catalog().categoriesOfKind(kind.name).filter { it.id != f.id && FolderNames.family(it.name) == family }
+        db.folders().putAll(listOf(changed) + siblings.map { c -> (db.folders().get(scopeName(kind), c.id) ?: FolderPrefEntity(scopeName(kind), c.id)).let { cur -> cur.copy(locked = if (changed.locked != first.locked) changed.locked else cur.locked, hidden = if (changed.hidden != first.hidden) changed.hidden else cur.hidden) } })
+        bump()
     }
 
     suspend fun toggleFavorite(kind: ContentKind, f: Folder) = update(kind, f.id) { it.copy(favorite = !it.favorite) }
     suspend fun togglePinned(kind: ContentKind, f: Folder) = update(kind, f.id) { it.copy(pinned = !it.pinned) }
-    suspend fun toggleHidden(kind: ContentKind, f: Folder) = update(kind, f.id) { it.copy(hidden = !it.hidden) }
-    suspend fun toggleLocked(kind: ContentKind, f: Folder) = update(kind, f.id) { it.copy(locked = !it.locked) }
+    suspend fun toggleHidden(kind: ContentKind, f: Folder) = updateFamily(kind, f) { it.copy(hidden = !it.hidden) }
+    suspend fun toggleLocked(kind: ContentKind, f: Folder) = updateFamily(kind, f) { it.copy(locked = !it.locked) }
     suspend fun setAlias(kind: ContentKind, f: Folder, alias: String?) = update(kind, f.id) { it.copy(alias = alias?.trim()?.ifBlank { null }) }
 
     /** Moves [f] within the list as it is shown now (one place, or to either end) and saves that whole order in one transaction. Nothing else changes place. */
@@ -97,12 +126,12 @@ class FolderRepository(
     /** One folder back to the provider's position (its other marks stay). */
     suspend fun resetPosition(kind: ContentKind, f: Folder) = update(kind, f.id) { it.copy(sortIndex = -1) }
     /** One folder back to plain: no label, not pinned, favorite, hidden or locked, in the provider's position. */
-    suspend fun resetFolder(kind: ContentKind, f: Folder) = db.folders().delete(scopeName(kind), f.id)
+    suspend fun resetFolder(kind: ContentKind, f: Folder) { db.folders().delete(scopeName(kind), f.id); bump() }
 
     /** Counts for the settings screens. */
     suspend fun lockedCount(): Int = db.browse().lockedFoldersNow().size
-    suspend fun unhideAll(kind: ContentKind) = db.folders().unhideAll(scopeName(kind))
-    suspend fun clearAllLocks() { db.folders().all().filter { it.locked }.forEach { db.folders().put(it.copy(locked = false)) }; lockAgain() }
+    suspend fun unhideAll(kind: ContentKind) { db.folders().unhideAll(scopeName(kind)); bump() }
+    suspend fun clearAllLocks() { db.folders().all().filter { it.locked }.forEach { db.folders().put(it.copy(locked = false)) }; lockAgain(); bump() }
 
     suspend fun restoreDefaultOrder(kind: ContentKind) {
         // Keeps favourites, hidden, locked and renamed state; only the order goes back to the provider's.

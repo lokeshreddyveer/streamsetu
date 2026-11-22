@@ -134,6 +134,9 @@ class BrandingResourcesTest {
         image("drawable-nodpi/tv_banner.png").let { assertEquals(320, it.width); assertEquals(180, it.height); assertFalse("banner must be opaque", it.hasAlpha) }
         image("drawable-nodpi/brand_logo.png").let { assertEquals(256, it.width); assertEquals(256, it.height) }
         image("drawable-nodpi/brand_wordmark.png").let { assertEquals(960, it.width); assertEquals(540, it.height); assertEquals("wordmark corner should be transparent", 0, alpha(it, 0, 0)) }
+        // The symbol alone (the welcome screens): square, with a transparent backdrop, since it is drawn over the dark page and its glow.
+        image("drawable-nodpi/brand_symbol.png").let { assertEquals(512, it.width); assertEquals(512, it.height); assertTrue("symbol needs an alpha channel", it.hasAlpha)
+            for ((x, y) in listOf(0 to 0, it.width - 1 to 0, 0 to it.height - 1, it.width - 1 to it.height - 1)) assertEquals("symbol corner ($x,$y) should be transparent", 0, alpha(it, x, y)) }
     }
 
     @Test fun `no leftover launcher layers from the previous icon`() {

@@ -33,7 +33,7 @@ sealed interface UpdateState {
     data class Ready(val file: File, val version: String) : UpdateState
     /** The device wants the person to allow this app to install apps first (Settings, one time). */
     data class NeedsPermission(val file: File, val version: String) : UpdateState
-    data class Failed(val message: String) : UpdateState
+    data class Failed(val message: String, val kind: UpdateFailure = UpdateFailure.OTHER, val version: String? = null) : UpdateState
 }
 
 /**
@@ -54,6 +54,11 @@ class UpdateManager(private val context: Context, private val settings: AppSetti
     private val _prompt = MutableStateFlow(false)
     /** True when a newer version was found by the automatic check and the person has not yet been told about it. */
     val prompt: StateFlow<Boolean> = _prompt
+
+    private val _failureNotice = MutableStateFlow<String?>(null)
+    /** A message to show in the prompt itself when the update the person asked for could not be used (the same message stays in Settings). Shown once. */
+    val failureNotice: StateFlow<String?> = _failureNotice
+    fun dismissFailureNotice() { _failureNotice.value = null }
 
     private val television: Boolean = context.packageManager.let { it.hasSystemFeature(PackageManager.FEATURE_LEANBACK) || it.hasSystemFeature("amazon.hardware.fire_tv") || it.hasSystemFeature(PackageManager.FEATURE_TELEVISION) }
     private val dir get() = File(context.cacheDir, "updates")
@@ -93,7 +98,7 @@ class UpdateManager(private val context: Context, private val settings: AppSetti
                 val asset = newest?.takeIf { UpdateLogic.isNewer(it.version, installedVersion()) }?.let { UpdateLogic.pickAsset(it, television) }
                 if (newest != null && asset != null) {
                     _state.value = UpdateState.Available(newest, asset)
-                    if (!manual && newest.version != settings.skippedUpdate) _prompt.value = true
+                    if (!manual && newest.version != settings.skippedUpdate && newest.version != settings.failedUpdate) _prompt.value = true          // a version that already failed is not offered again until a newer one appears
                 } else _state.value = UpdateState.UpToDate(System.currentTimeMillis())
             }.onFailure {
                 _state.value = if (manual) UpdateState.Failed("Could not check for updates. Check the connection and try again.") else UpdateState.Idle
@@ -124,7 +129,13 @@ class UpdateManager(private val context: Context, private val settings: AppSetti
                     _state.value = UpdateState.Ready(file, offer.release.version)
                     withContext(Dispatchers.Main) { install(file, offer.release.version) }
                 }
-                .onFailure { _state.value = UpdateState.Failed(it.message ?: "The update could not be downloaded.") }
+                .onFailure { e ->
+                    val f = UpdateChecks.classify(e)
+                    _state.value = UpdateState.Failed(f.message ?: "The update could not be downloaded.", f.kind, offer.release.version)
+                    // A failure that will happen again for this very version (key, checksum, a file that is not an app) is remembered, so it is not offered every day; a connection or space problem is not.
+                    if (f.kind == UpdateFailure.SIGNER || f.kind == UpdateFailure.CHECKSUM || f.kind == UpdateFailure.OTHER) settings.failedUpdate = offer.release.version
+                    _failureNotice.value = f.message
+                }
         }
     }
 
@@ -136,27 +147,18 @@ class UpdateManager(private val context: Context, private val settings: AppSetti
         if (name.isBlank() || name == "." || name == ".." || File(name).name != name || '\\' in name) error("The file name in this release is not valid, so it was not installed.")
         dir.deleteRecursively(); dir.mkdirs()
         val file = File(dir, name)
-        val digest = MessageDigest.getInstance("SHA-256")
         val c = URL(offer.asset.url).openConnection() as HttpURLConnection
+        val actual: String
         try {
             c.connectTimeout = 15_000; c.readTimeout = 30_000
             c.setRequestProperty("User-Agent", "StreamSetu/${installedVersion()}")
-            if (c.responseCode != 200) error("The download failed (${c.responseCode}).")
+            if (c.responseCode != 200) throw UpdateException(UpdateFailure.NETWORK, "The download failed (${c.responseCode}). Try again later.")
             val total = c.contentLengthLong.takeIf { it > 0 } ?: offer.asset.size
-            var done = 0L; var lastPercent = -1
-            c.inputStream.use { input -> file.outputStream().use { out ->
-                val buf = ByteArray(64 * 1024)
-                while (true) {
-                    val n = input.read(buf); if (n < 0) break
-                    out.write(buf, 0, n); digest.update(buf, 0, n); done += n
-                    if (total > 0) { val pct = (done * 100 / total).toInt().coerceIn(0, 100); if (pct != lastPercent) { lastPercent = pct; _state.value = UpdateState.Downloading(pct) } }
-                }
-            } }
-        } catch (e: Exception) { file.delete(); throw e } finally { c.disconnect() }
+            actual = UpdateChecks.copyAndHash(c.inputStream, file, total, { pct -> _state.value = UpdateState.Downloading(pct) })
+        } catch (e: Exception) { file.delete(); throw UpdateChecks.classify(e) } finally { c.disconnect() }
 
-        val actual = digest.digest().joinToString("") { "%02x".format(it) }
         android.util.Log.i("Update", "downloaded ${offer.asset.name} ${file.length()} bytes sha256=$actual expected=$expected")
-        if (actual != expected) { file.delete(); error("The download did not match its checksum, so it was not installed.") }
+        try { UpdateChecks.checkSha(actual, expected) } catch (e: UpdateException) { file.delete(); throw e }
         verifySigner(file)
         return file
     }
@@ -166,13 +168,12 @@ class UpdateManager(private val context: Context, private val settings: AppSetti
     private fun verifySigner(file: File) {
         val pm = context.packageManager
         val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-        val archive = pm.getPackageArchiveInfo(file.absolutePath, flags) ?: run { file.delete(); error("The downloaded file is not a valid app.") }
+        val archive = pm.getPackageArchiveInfo(file.absolutePath, flags)
         val installed = pm.getPackageInfo(context.packageName, flags)
-        if (archive.packageName != context.packageName) { file.delete(); error("The downloaded file is for a different app, so it was not installed.") }
-        if (certs(archive) != certs(installed) || certs(archive).isEmpty()) { file.delete(); error("The file is not signed with the same key as this app, so it was not installed.") }
-        val code = if (Build.VERSION.SDK_INT >= 28) archive.longVersionCode else archive.versionCode.toLong()
+        val code = archive?.let { if (Build.VERSION.SDK_INT >= 28) it.longVersionCode else it.versionCode.toLong() } ?: 0L
+        try { UpdateChecks.checkSigner(archive?.packageName, context.packageName, archive?.let(::certs).orEmpty(), certs(installed), code, installedCode()) }
+        catch (e: UpdateException) { file.delete(); throw e }
         android.util.Log.i("Update", "signer ok; build $code vs installed ${installedCode()}")
-        if (code <= installedCode()) { file.delete(); error("The downloaded build is not newer than the installed one.") }
     }
 
     @Suppress("DEPRECATION")

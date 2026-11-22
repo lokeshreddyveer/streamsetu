@@ -45,6 +45,7 @@ import org.robolectric.annotation.Config
 @OptIn(ExperimentalTestApi::class)
 class LeftEdgeNavigationTest {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
     private fun press(tag: String, k: Key) { rule.onNodeWithTag(tag).performKeyInput { pressKey(k) }; rule.waitForIdle() }
     private var reveals = 0
 

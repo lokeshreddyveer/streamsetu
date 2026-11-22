@@ -18,7 +18,9 @@ object Similarity {
     }
     data class Result(val id: String, val score: Double, val reason: String)
 
-    private val languages = setOf("english", "hindi", "tamil", "telugu", "kannada", "malayalam", "urdu", "punjabi", "bengali", "marathi", "gujarati", "arabic", "spanish", "french", "german", "korean", "japanese", "chinese", "turkish", "russian", "italian", "portuguese", "thai", "indonesian")
+    private val languages = setOf("english", "hindi", "tamil", "telugu", "kannada", "malayalam", "urdu", "punjabi", "bengali", "marathi", "gujarati", "arabic", "spanish", "french", "german", "korean", "japanese", "chinese", "turkish", "russian", "italian", "portuguese", "thai", "indonesian",
+        // Bangla and the other names providers use in folder and title tags. Persian, Malay and Filipino are left out: they begin real titles ("Persian Lessons").
+        "bangla", "odia", "oriya", "assamese", "nepali", "sinhala", "sinhalese", "pashto", "farsi", "tagalog", "vietnamese", "hebrew")
     private val noise = setOf("hd", "fhd", "uhd", "4k", "sd", "hdcam", "cam", "webrip", "web", "dl", "bluray", "dvdrip", "hevc", "x264", "x265", "h264", "h265", "dubbed", "dub", "multi", "sub", "subs", "eng", "season", "episode")
     private val stop = ("the a an and or of to in on at for with from by is are was were be been it its this that these those his her their they them he she we you i as but not no so if then than " +
         "who whom what when where why how into out up down over under about after before while during against between through only also just very more most some any all each one two when has have had will would could should can may might own other such")

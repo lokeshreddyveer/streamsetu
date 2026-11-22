@@ -56,6 +56,7 @@ import org.robolectric.annotation.Config
 @OptIn(ExperimentalTestApi::class)
 class SportsScreenTests {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
     private val h = 3_600_000L; private val min = 60_000L
     private val now0 = 1_800_000_000_000L + 2 * h
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())

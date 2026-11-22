@@ -164,7 +164,7 @@ fun FeaturedBanner(
                         AsyncImage(remember(it.imageUrl, heroW, heroH) { artworkRequest(context, it.imageUrl, heroW, heroH) }, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -0.45f), onError = { _ -> failed = failed + slideId })
                     } else {
                         // Only a portrait poster exists: it is shown at its own shape on the right, over a calm tint of the title's colour, never blown up to fill the banner.
-                        Box(Modifier.fillMaxSize().background(Tokens.heroPosterTint))
+                        WashBehindPoster(it.imageUrl)          // a dimmed wash of the poster behind the sharp one: no blur, no motion, a 64 x 36 decode
                         AsyncImage(it.imageUrl, null, Modifier.align(Alignment.CenterEnd).padding(top = 72.dp, bottom = 30.dp, end = 150.dp).fillMaxHeight().aspectRatio(2f / 3f, matchHeightConstraintsFirst = true).clip(RoundedCornerShape(Tokens.radius)), contentScale = ContentScale.Crop, onError = { _ -> failed = failed + slideId })
                     }
                 }

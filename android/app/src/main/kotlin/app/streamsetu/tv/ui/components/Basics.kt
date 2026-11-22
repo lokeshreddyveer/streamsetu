@@ -377,18 +377,63 @@ fun Modifier.pageBackground(): Modifier = this.drawBehind {
 /** The quiet tinted card shown while a poster loads or when there is none (same idea as the Mac app: a colour from the title). */
 @Composable
 /** [showTitle] false: a plain tinted tile (the TV posters carry their title under the picture, so the tile never adds or removes anything while a list scrolls). */
-fun PosterPlaceholder(title: String, modifier: Modifier = Modifier, showTitle: Boolean = true) {
-    // The tint comes from the title and is worked out once per title, not on every pass.
-    val brush = remember(title) {
+fun PosterPlaceholder(title: String, modifier: Modifier = Modifier, showTitle: Boolean = true, year: String? = null) {
+    // A card of the app's own look for a title that has no picture (yet, or at all): the theme's card colour with a quiet wash of the accent, a little different for each title, the title in the app's
+    // font and under it the year and the quality the name carries. Worked out once per title.
+    val accent = Tokens.accent; val card = Tokens.card; val background = Tokens.background
+    val brush = remember(title, accent, card, background) {
         var h = 1469598103934665603UL
         for (b in title.lowercase().toByteArray()) { h = (h xor b.toULong()) * 1099511628211UL }
-        val hue = (h % 360UL).toFloat()
-        Brush.linearGradient(listOf(Color.hsl(hue, 0.25f, 0.29f), Color.hsl(hue, 0.28f, 0.08f)))
+        val strength = 0.10f + (h % 9UL).toFloat() / 100f          // 0.10 .. 0.18 of the accent in the top corner
+        Brush.linearGradient(listOf(androidx.compose.ui.graphics.lerp(card, accent, strength), card, background))
     }
-    // While a list is moving fast the tile is drawn without its title (laying out up to four lines of text for every tile that scrolls in is what a text-only grid cannot afford); the title appears when the list rests.
+    val quality = remember(title) { app.streamsetu.core.data.repo.QualityBadges.from(listOf(title), 1).firstOrNull() }
+    val line = remember(year, quality) { listOfNotNull(year?.takeIf { it.isNotBlank() }, quality).joinToString(" · ") }
+    // While a list is moving fast the tile is drawn without its text (laying out up to four lines of text for every tile that scrolls in is what a text-only grid cannot afford); it appears when the list rests.
     val moving = LocalFastScroll.current?.value == true
     Box(modifier.background(brush), Alignment.BottomStart) {
-        if (showTitle && !moving) Label(remember(title) { title.uppercase() }, Tokens.row, Tokens.text.copy(alpha = 0.92f), maxLines = 4, modifier = Modifier.padding(12.dp), letterSpacing = 0.7.sp)
+        if (showTitle && !moving) Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Label(title, Tokens.row, Tokens.text.copy(alpha = 0.94f), FontWeight.SemiBold, maxLines = 4)
+            if (line.isNotEmpty()) Label(line, Tokens.caption, Tokens.textSecondary, maxLines = 1)
+        }
+    }
+}
+
+/**
+ * The picture of a title with the designed tile behind it. While the picture is on its way, or if it can never be had, the tile shows the title; when the picture arrives it fades in over the tile
+ * (no fade on a low-end box), and the tile is dropped a moment later so a wall of finished posters carries nothing underneath. [model] is the picture's request or address.
+ */
+@Composable
+fun PosterArt(title: String, model: Any?, modifier: Modifier = Modifier, year: String? = null, onError: () -> Unit = {}) {
+    var state by remember(model) { mutableStateOf(0) }          // 0 on its way, 1 arrived, 2 failed for good
+    var underlay by remember(model) { mutableStateOf(true) }
+    LaunchedEffect(state) { if (state == 1) { kotlinx.coroutines.delay(260); underlay = false } else underlay = true }
+    Box(modifier) {
+        if (underlay || model == null) PosterPlaceholder(title, Modifier.fillMaxSize(), showTitle = state != 1, year = year)
+        if (model != null) AsyncImage(model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, onSuccess = { state = 1 }, onError = { state = 2; onError() })
+    }
+}
+
+/**
+ * The wide picture of a hero when a title has only a portrait poster: a dimmed wash of the poster behind (decoded at a tiny size and stretched, so it is soft without any blur filter and costs
+ * almost nothing, and it never moves) with the poster itself sharp in front, at its own shape. Used by the phone's hero; the television's hero puts the same wash behind its own poster.
+ */
+@Composable
+fun PosterOnWash(url: String, title: String, modifier: Modifier = Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Box(modifier.background(Tokens.card)) {
+        WashBehindPoster(url)
+        PosterArt(title, remember(url) { artworkRequest(context, url, 360, 540) }, Modifier.align(Alignment.TopCenter).padding(top = 64.dp, bottom = 120.dp).fillMaxHeight().aspectRatio(2f / 3f, matchHeightConstraintsFirst = true).clip(RoundedCornerShape(Tokens.radius)))
+    }
+}
+
+/** The dimmed, soft layer behind a poster (see [PosterOnWash]): a 64 x 36 decode of the poster, filling the space, under a tint of the page colour. */
+@Composable
+fun WashBehindPoster(url: String) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Box(Modifier.fillMaxSize()) {
+        AsyncImage(remember(url) { artworkRequest(context, url, 64, 36) }, null, Modifier.fillMaxSize().graphicsLayer { alpha = 0.34f }, contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Tokens.heroPosterTint))
     }
 }
 
@@ -459,7 +504,7 @@ fun PollWhileShown(everyMs: Long, key: Any? = Unit, block: suspend () -> Unit) {
 fun artworkRequest(context: android.content.Context, url: String, widthPx: Int, heightPx: Int, cornerPx: Float = 0f, memoryOnly: Boolean = false): ImageRequest =
     ImageRequest.Builder(context).data(url)
         .size(widthPx, heightPx).precision(coil.size.Precision.INEXACT)
-        .allowHardware(true).crossfade(false)
+        .allowHardware(true).crossfade(if (app.streamsetu.tv.Perf.lowEnd(context)) 0 else 180)          // fades in over the designed tile
         .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
         // While a list is scrolling fast a picture that is not in memory is not read or decoded (that work competes with drawing); it is asked for again when the list rests.
         .diskCachePolicy(if (memoryOnly) coil.request.CachePolicy.DISABLED else coil.request.CachePolicy.ENABLED)
@@ -498,9 +543,8 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
             // With a picture to come, a flat dark tile is enough underneath (a title gradient only when there is no picture): less to draw and lay out per card.
             val filler = LocalArtworkFiller.current
             // No picture: the provider is asked for this title's own cover, and the tile fills in when it is saved.
-            if (imageUrl.isNullOrBlank()) { if (itemId != null) LaunchedEffect(itemId) { filler?.invoke(itemId, false) }; PosterPlaceholder(title, Modifier.fillMaxSize().clip(RoundedCornerShape(Tokens.radius)), showTitle = false) }
-            else AsyncImage(rememberArtwork(imageUrl, width, 3 to 2, Tokens.radius), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = ColorPainter(Tokens.card), error = ColorPainter(Tokens.card),
-                onError = { if (itemId != null) filler?.invoke(itemId, true) })
+            if (imageUrl.isNullOrBlank()) { if (itemId != null) LaunchedEffect(itemId) { filler?.invoke(itemId, false) }; PosterArt(title, null, Modifier.fillMaxSize().clip(RoundedCornerShape(Tokens.radius)), year = subtitle?.take(4)) }
+            else PosterArt(title, rememberArtwork(imageUrl, width, 3 to 2, Tokens.radius), Modifier.fillMaxSize(), year = subtitle?.take(4), onError = { if (itemId != null) filler?.invoke(itemId, true) })
             val shown = if (progress > 0f) progress else itemId?.let { LocalPartialProgress.current[it] } ?: 0f
             if (shown > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Tokens.progressTrack)) { Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Tokens.chipScrim, RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Tokens.text, FontWeight.SemiBold) }
@@ -531,14 +575,16 @@ private fun Modifier.captionInView(): Modifier {
 
 /** A wide 16:9 card (Continue Watching). */
 @Composable
-fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, progress: Float = 0f, width: Dp = Tokens.landscapeWidth, badge: String? = null, onLongClick: (() -> Unit)? = null, itemId: String? = null) {
+fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, progress: Float = 0f, width: Dp = Tokens.landscapeWidth, badge: String? = null, onLongClick: (() -> Unit)? = null, itemId: String? = null,
+                  /** Added to the card itself (the part that takes the remote), for example a screen-reader action. */ cardModifier: Modifier = Modifier) {
     Column(Modifier.width(width).captionInView(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f), container = if (imageUrl.isNullOrBlank()) Tokens.card else Color.Transparent, focusedContainer = if (imageUrl.isNullOrBlank()) Tokens.focusedSurface else Color.Transparent, clipContent = imageUrl.isNullOrBlank(), onLongClick = onLongClick, ringBand = true, browse = true) { _ ->
+        Focusable(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f).then(cardModifier), container = if (imageUrl.isNullOrBlank()) Tokens.card else Color.Transparent, focusedContainer = if (imageUrl.isNullOrBlank()) Tokens.focusedSurface else Color.Transparent, clipContent = imageUrl.isNullOrBlank(), onLongClick = onLongClick, ringBand = true, browse = true) { _ ->
             // The picture is the only layer drawn once it is there (its own placeholder is a flat tile); a card with no picture gets the title tile.
             val filler = LocalArtworkFiller.current
             if (imageUrl.isNullOrBlank()) { if (itemId != null) LaunchedEffect(itemId) { filler?.invoke(itemId, false) }; PosterPlaceholder(title, Modifier.fillMaxSize(), showTitle = false) }
             else AsyncImage(rememberArtwork(imageUrl, width, 9 to 16, Tokens.radius), title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = ColorPainter(Tokens.card), error = ColorPainter(Tokens.card), onError = { if (itemId != null) filler?.invoke(itemId, true) })
-            if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Tokens.progressTrack)) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Tokens.accent)) }
+            // The progress fills in to where it is when the card first appears.
+            if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).progressFill(progress, Tokens.progressTrack, Tokens.accent))
             if (badge != null) Box(Modifier.align(Alignment.TopStart).padding(6.dp).background(Tokens.accent, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Color(0xFF04141A), FontWeight.Bold) }
         }
         Label(title, Tokens.row, Tokens.text, FontWeight.Medium, maxLines = 2, modifier = Modifier.padding(horizontal = 2.dp))
@@ -618,7 +664,8 @@ fun Spinner(modifier: Modifier = Modifier, size: Dp = 28.dp) {
 /** Shown for the moment before a page has its data, instead of a misleading "nothing here". */
 @Composable
 fun Loading(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), Alignment.Center) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Spinner(); Label("Loading…", Tokens.row, Tokens.textSecondary) } }
+    // The brand loader (the television's dot breathing, a ribbon of light circling it) instead of a plain spinner.
+    Box(modifier.fillMaxSize(), Alignment.Center) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { BrandLoader(size = 34.dp); Label("Loading…", Tokens.row, Tokens.textSecondary) } }
 }
 
 /** A short fade-and-rise when a page appears, so moving between sections feels smooth instead of cutting. Alpha and translation only, and it stops at once under reduced motion. */

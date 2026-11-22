@@ -56,6 +56,7 @@ import java.io.File
 @OptIn(ExperimentalTestApi::class)
 class FolderFirstFocusTest {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
 
     private val noActions = object : FolderActions {
         override fun toggleFavorite(f: Folder) {}; override fun togglePinned(f: Folder) {}; override fun toggleHidden(f: Folder) {}; override fun toggleLocked(f: Folder) {}

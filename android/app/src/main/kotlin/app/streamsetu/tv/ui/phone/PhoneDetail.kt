@@ -60,6 +60,10 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
     var info by remember { mutableStateOf<SyncService.MovieInfo?>(null) }
     var variants by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var franchise by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var otherLanguages by remember { mutableStateOf<List<Pair<app.streamsetu.core.data.repo.OtherVersions.Version, Movie>>?>(null) }
+    val cast = app.streamsetu.tv.ui.components.rememberCast(c, movie.title, movie.year, false, movie.categoryId)
+    var openVersion by remember(movie.id) { mutableStateOf<app.streamsetu.core.data.repo.OtherVersions.Version?>(null) }
+    LaunchedEffect(movie.id) { openVersion = runCatching { c.search.versionOf(movie) }.getOrNull() }
     var related by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Movie>>>(emptyList()) }
     var chooseOpen by remember { mutableStateOf(false) }
     val sources by c.library.entries.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -68,6 +72,7 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
         info = runCatching { c.sync.movieInfo(movie) }.getOrNull()
         variants = runCatching { c.search.movieVariants(movie.title) }.getOrDefault(emptyList())
         franchise = runCatching { c.search.franchiseOf(movie) }.getOrDefault(emptyList())
+        otherLanguages = runCatching { c.search.otherVersionsOf(movie, app.streamsetu.tv.ui.components.preferredLanguage(c)) }.getOrDefault(emptyList())
         val facts = info?.let { app.streamsetu.core.data.repo.Similarity.facts(it.genre, it.cast, it.director) }
         runCatching { c.search.similarMovies(movie, facts) { m -> c.sync.movieInfo(m)?.let { app.streamsetu.core.data.repo.Similarity.facts(it.genre, it.cast, it.director) } }.collect { related = it } }
     }
@@ -80,6 +85,7 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
             item {
                 Column(Modifier.padding(horizontal = Ph.gutter), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Label(movie.title, Ph.title, Tokens.text, FontWeight.Bold, maxLines = 3)
+                    app.streamsetu.tv.ui.components.VersionPill(openVersion, tv = false, modifier = Modifier.padding(top = 4.dp))          // "Hindi · Dubbed · FHD"
                     Label(listOfNotNull(movie.year?.toString(), info?.duration?.takeIf { it.isNotBlank() && it != "00:00:00" }, info?.genre?.takeIf { it.isNotBlank() }, ratingBadge(movie.rating)).joinToString("  ·  "), Ph.small, Tokens.textSecondary, maxLines = 2)
                     app.streamsetu.core.data.repo.QualityBadges.from(listOf(movie.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Ph.small, Tokens.accent, FontWeight.Bold) }
                     app.streamsetu.tv.ui.components.FolderPath(c, app.streamsetu.core.model.ContentKind.MOVIE, movie.categoryId, phone = true) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.MOVIE, id) }
@@ -123,6 +129,8 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                     }
                 }
             }
+            if (cast.isNotEmpty()) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionHeader("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, false) { m -> nav.open(Overlay.Person(m.name, m.photo)) } } }
+            if (otherLanguages.let { it == null || it.size > 1 }) item { app.streamsetu.tv.ui.components.PhoneOtherLanguages(otherLanguages, { it.posterUrl }, { m -> nav.close(); nav.open(Overlay.MovieDetail(m)) }) }
             if (related.isNotEmpty()) item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("More like this")
@@ -149,6 +157,11 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
     val later by c.user.favouriteIds(UserRepository.WATCH_LATER).collectAsStateWithLifecycle(initialValue = emptySet())
     var similar by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Series>>>(emptyList()) }
     LaunchedEffect(series0.id) { similar = runCatching { c.search.similarSeries(series0) }.getOrDefault(emptyList()) }
+    var otherLanguages by remember { mutableStateOf<List<Pair<app.streamsetu.core.data.repo.OtherVersions.Version, Series>>?>(null) }
+    val cast = app.streamsetu.tv.ui.components.rememberCast(c, series0.title, series0.year, true, series0.categoryId)
+    var openVersion by remember(series0.id) { mutableStateOf<app.streamsetu.core.data.repo.OtherVersions.Version?>(null) }
+    LaunchedEffect(series0.id) { openVersion = runCatching { c.search.versionOf(series0) }.getOrNull() }
+    LaunchedEffect(series0.id) { otherLanguages = runCatching { c.search.otherVersionsOf(series0, app.streamsetu.tv.ui.components.preferredLanguage(c)) }.getOrDefault(emptyList()) }
     val seasons = episodes.groupBy { it.season }.toSortedMap()
     val plan = remember(episodes, progress) { EpisodePlan.of(episodes, progress) }
     val forward = plan.forward; val catchUp = plan.catchUp; val inProgress = plan.inProgress
@@ -166,6 +179,7 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
             item {
                 Column(Modifier.padding(horizontal = Ph.gutter), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Label(s.title, Ph.title, Tokens.text, FontWeight.Bold, maxLines = 3)
+                    app.streamsetu.tv.ui.components.VersionPill(openVersion, tv = false, modifier = Modifier.padding(top = 4.dp))          // "Hindi · Dubbed · FHD"
                     Label(listOfNotNull(s.year?.toString(), if (seasons.isNotEmpty()) "${seasons.size} season${if (seasons.size == 1) "" else "s"}" else null, ratingBadge(s.rating), if (episodes.isNotEmpty()) (if (plan.allFinished) "All watched" else "$watchedCount of ${episodes.size} watched") else null).joinToString("  ·  "), Ph.small, Tokens.textSecondary, maxLines = 2)
                     app.streamsetu.core.data.repo.QualityBadges.from(listOf(s.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Ph.small, Tokens.accent, FontWeight.Bold) }
                     app.streamsetu.tv.ui.components.FolderPath(c, app.streamsetu.core.model.ContentKind.SERIES, s.categoryId, phone = true) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.SERIES, id) }
@@ -192,7 +206,10 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                     s.plot?.takeIf { it.isNotBlank() }?.let { Label(it, Ph.body, Tokens.textSecondary, maxLines = 8, modifier = Modifier.padding(top = 4.dp)) }
                 }
             }
-            if (loading && episodes.isEmpty()) item { Row(Modifier.padding(horizontal = Ph.gutter), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Spinner(); Label("Loading episodes…", Ph.body, Tokens.textSecondary) } }
+            // Other languages come right after the overview.
+            if (cast.isNotEmpty()) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionHeader("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, false) { m -> nav.open(Overlay.Person(m.name, m.photo)) } } }
+            if (otherLanguages.let { it == null || it.size > 1 }) item { app.streamsetu.tv.ui.components.PhoneOtherLanguages(otherLanguages, { it.posterUrl }, { sr -> nav.close(); nav.open(Overlay.SeriesDetail(sr)) }) }
+            if (loading && episodes.isEmpty()) item { Row(Modifier.padding(horizontal = Ph.gutter), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { app.streamsetu.tv.ui.components.BrandLoader(size = 30.dp); Label("Loading episodes…", Ph.body, Tokens.textSecondary) } }
             error?.let { e -> if (episodes.isEmpty()) item { Label(e, Ph.body, Tokens.danger, maxLines = 3, modifier = Modifier.padding(horizontal = Ph.gutter)) } }
             if (seasons.size > 1) item {
                 LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(seasons.keys.toList(), key = { it }) { n -> Chip("Season $n", n == season, { season = n }) } }

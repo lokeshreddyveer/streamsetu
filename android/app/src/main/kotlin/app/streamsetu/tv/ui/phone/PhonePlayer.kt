@@ -312,7 +312,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
                 Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(34.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (live) { if (c.queue.size > 1) BigButton(Icons.Filled.SkipPrevious, 52) { c.step(-1); poke() } }
                     else BigButton(Icons.Filled.Replay10, 52) { playback.seekBy(-skip * 1000L); flash = -1; poke() }
-                    Box(Modifier.size(72.dp), Alignment.Center) { if (busy) Spinner() else BigButton(if (state == PlaybackState.Paused || state == PlaybackState.Ended) Icons.Filled.PlayArrow else Icons.Filled.Pause, 72) { playback.togglePause(); poke() } }
+                    Box(Modifier.size(72.dp), Alignment.Center) { if (busy) app.streamsetu.tv.ui.components.BrandLoader(size = 30.dp) else BigButton(if (state == PlaybackState.Paused || state == PlaybackState.Ended) Icons.Filled.PlayArrow else Icons.Filled.Pause, 72) { playback.togglePause(); poke() } }
                     if (live) { if (c.queue.size > 1) BigButton(Icons.Filled.SkipNext, 52) { c.step(+1); poke() } }
                     else BigButton(Icons.Filled.Forward10, 52) { playback.seekBy(skip * 1000L); flash = 1; poke() }
                 }

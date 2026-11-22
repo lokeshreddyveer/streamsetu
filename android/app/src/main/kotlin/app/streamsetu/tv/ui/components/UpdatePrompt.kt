@@ -38,6 +38,8 @@ fun TvUpdatePrompt(c: AppContainer, suppress: Boolean) {
         ),
         onClose = { c.updates.dismissPrompt() },
     )
+    val failure by c.updates.failureNotice.collectAsState()
+    failure?.let { msg -> ContextMenu("The update could not be installed", msg, listOf(MenuAction("OK", Icons.Filled.Schedule) { c.updates.dismissFailureNotice() }), onClose = { c.updates.dismissFailureNotice() }) }
     DownloadCard(st)
 }
 
@@ -56,6 +58,8 @@ fun PhoneUpdatePrompt(c: AppContainer, suppress: Boolean) {
         onClose = { c.updates.dismissPrompt() },
         subtitle = "StreamSetu ${offer.release.version} is ready. The installer will ask you to confirm.",
     )
+    val failure by c.updates.failureNotice.collectAsState()
+    failure?.let { msg -> Sheet("The update could not be installed", listOf(SheetItem("OK", Icons.Filled.Schedule) { c.updates.dismissFailureNotice() }), onClose = { c.updates.dismissFailureNotice() }, subtitle = msg) }
     DownloadCard(st)
 }
 

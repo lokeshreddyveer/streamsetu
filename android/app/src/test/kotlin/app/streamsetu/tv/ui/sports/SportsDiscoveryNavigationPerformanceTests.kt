@@ -45,6 +45,7 @@ import org.robolectric.annotation.Config
 @OptIn(ExperimentalTestApi::class)
 class SportsDiscoveryNavigationPerformanceTests {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob() + kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> })
     private lateinit var db: AppDatabase
     private lateinit var deps: FakeSportsDeps

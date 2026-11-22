@@ -49,6 +49,7 @@ import org.robolectric.annotation.Config
 @OptIn(ExperimentalTestApi::class)
 class TvCanvasLayoutTest {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
     private fun press(tag: String, k: Key) { rule.onNodeWithTag(tag).performKeyInput { pressKey(k) }; rule.waitForIdle() }
     private fun withText(scale: Float, content: @androidx.compose.runtime.Composable () -> Unit) = rule.setContent {
         CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, scale)) { content() }

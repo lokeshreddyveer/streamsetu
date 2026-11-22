@@ -261,7 +261,7 @@ fun SearchContent(
             }
             phase == SearchPhase.LOADING -> item(key = "loading") { Loading(Modifier.height(100.dp)) }
             phase == SearchPhase.FAILED -> { }                                                                   // the Retry row above is the whole answer
-            phase == SearchPhase.EMPTY -> item(key = "no-results") { TvStatusState("No titles found", detail = "Try fewer letters or another spelling.") }
+            phase == SearchPhase.EMPTY -> item(key = "no-results") { app.streamsetu.tv.ui.components.AnimatedEmptyState(app.streamsetu.tv.ui.components.EmptyArt.NoResults, "No titles found", "Try fewer letters or another spelling.", Modifier.fillMaxWidth().padding(vertical = 24.dp)) }
             r == null -> sportsRows(sportsItems, targetId, focusTarget, held, ::open)
             else -> {
                 if (r.understood.isNotEmpty()) item { Label("Understood as  " + r.understood.joinToString("  \u00b7  "), Tokens.small, Tokens.accent, maxLines = 2) }

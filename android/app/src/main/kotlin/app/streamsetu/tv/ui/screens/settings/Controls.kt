@@ -123,7 +123,8 @@ fun SettingRow(title: String, detail: String? = null, value: String? = null, ena
 @Composable
 private fun SwitchControl(on: Boolean, enabled: Boolean) {
     val reduced = app.streamsetu.core.ui.motion.LocalReducedMotion.current
-    val t = androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.SHORT, easing = app.streamsetu.core.ui.motion.Motion.Standard), label = "switchKnob")
+    // The knob springs across with a touch of give (no movement with reduced motion).
+    val t = androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.spring(dampingRatio = 0.7f, stiffness = 520f), label = "switchKnob")
     val track = androidx.compose.animation.animateColorAsState(if (!enabled) Color(0x14FFFFFF) else if (on) Mac.green else Color(0x40FFFFFF), if (reduced) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(app.streamsetu.core.ui.motion.Motion.SHORT), label = "switchTrack")
     Box(Modifier.width(50.dp).height(28.dp).drawBehind { drawRoundRect(track.value, cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2)) }.padding(3.dp)) {
         Box(Modifier.graphicsLayer { translationX = t.value * 22.dp.toPx() }.size(22.dp).background(Color.White, androidx.compose.foundation.shape.CircleShape))

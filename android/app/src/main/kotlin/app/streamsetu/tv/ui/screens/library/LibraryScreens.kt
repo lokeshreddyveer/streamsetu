@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.streamsetu.core.model.*
 import app.streamsetu.tv.nav.Base
@@ -128,10 +129,10 @@ fun ChooseLibraryScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) 
             }
         }
     }
-    if (addMenu) ContextMenu("Add a connection", null, listOf(
+    if (addMenu) ContextMenu("Add a connection", null, listOfNotNull(
         MenuAction("Xtream Codes", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.XTREAM) },
         MenuAction("M3U URL", Icons.Filled.Link) { nav.base = Base.Setup(SourceType.M3U) },
-        MenuAction("Stalker / Ministra portal", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.STALKER) },
+        MenuAction("Stalker / Ministra portal", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.STALKER) }.takeIf { !app.streamsetu.tv.BuildConfig.STORE_BUILD },
         MenuAction("Import M3U file", Icons.Filled.Description) { nav.base = Base.Setup(SourceType.LOCAL_FILE) },
         MenuAction("Jellyfin", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.JELLYFIN) },
         MenuAction("Emby", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.EMBY) },
@@ -246,9 +247,14 @@ private fun IconTile(icon: ImageVector, bg: Color, tint: Color, size: Int = 40) 
 
 @Composable
 private fun StatTile(icon: ImageVector, title: String, n: Int, modifier: Modifier = Modifier) {
-    Column(modifier.background(Color(0x990A1018), RoundedCornerShape(18.dp)).border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Image(icon, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(Tokens.accent))
-        Label("%,d".format(n), Tokens.display, Tokens.text, FontWeight.Bold)
+    // The number counts up from zero once, after the check has drawn itself; with reduced motion it is shown at once.
+    val reduced = reducedMotion()
+    val shown = remember { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0f) }
+    LaunchedEffect(Unit) { if (!reduced) { delay(450); shown.animateTo(1f, androidx.compose.animation.core.tween(900, easing = app.streamsetu.core.ui.motion.Motion.Standard)) } }
+    val look = LocalStartLook.current
+    Column(modifier.background(look.surface, RoundedCornerShape(18.dp)).border(1.dp, look.hairline, RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Image(icon, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(look.focus))
+        Label("%,d".format(kotlin.math.round(n * shown.value).toInt()), Tokens.display, Tokens.text, FontWeight.Bold)
         Label(title, Tokens.row, Tokens.textSecondary)
     }
 }
@@ -311,66 +317,71 @@ private fun LibraryTile(e: LibraryEntry, isInitial: Boolean, initialFocus: Focus
     }
 }
 
-/** Shown when there is no working library yet. */
+/**
+ * Shown when there is no working library yet: the ways to connect as tiles, each opening the connection form for its kind. The television and the phone each get their own layout
+ * (see StartScreens.kt); both reach every kind the add menus offer, and Continue Previous Setup when a draft was saved.
+ */
 @Composable
 fun WelcomeScreen(nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
     val entries by vm.entries.collectAsState()
     val drafts = entries.orEmpty().filter { it.kind == LibraryEntry.Kind.UNFINISHED }
-    val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(first, 8) }
-    // A near-black page behind the (transparent) wordmark, as on the opening animation.
-    Column(Modifier.fillMaxSize().background(Tokens.pick(Color(0xFF070808), Tokens.background)).padding(horizontal = Tokens.safeHorizontal, vertical = Tokens.safeVertical), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Label("Everything you watch, in one place", Tokens.display, Tokens.text, FontWeight.Bold)
-        AnimatedWordmark(Modifier.height(150.dp), app.streamsetu.core.ui.motion.LocalReducedMotion.current, repeatEvery = 7000L)
-        Label("Add your own playlist or login to get started.", Tokens.body, Tokens.textSecondary)
-        Spacer(Modifier.height(24.dp))
-        Row(Modifier.widthIn(max = 800.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            SetupCard("Xtream Codes", "Server, user name and password", Icons.Filled.Dns, Modifier.weight(1f).focusRequester(first)) { nav.base = Base.Setup(SourceType.XTREAM) }
-            SetupCard("M3U URL", "A playlist link", Icons.Filled.Link, Modifier.weight(1f)) { nav.base = Base.Setup(SourceType.M3U) }
-            SetupCard("Local M3U File", "A playlist file on this device", Icons.Filled.Folder, Modifier.weight(1f)) { nav.base = Base.Setup(SourceType.LOCAL_FILE) }
-            SetupCard("Stalker Portal", "Portal address and MAC", Icons.Filled.Router, Modifier.weight(1f)) { nav.base = Base.Setup(SourceType.STALKER) }
-        }
-        Spacer(Modifier.height(24.dp))
-        Label("1. Add your playlist or login   ·   2. Let it load, big lists take a minute   ·   3. Search, add favorites, press play", Tokens.small, Tokens.textSecondary)
-        Spacer(Modifier.height(6.dp))
-        Label("Arrow keys move  ·  OK chooses  ·  hold OK for options  ·  Back goes back", Tokens.small, Tokens.textTertiary)
-        Spacer(Modifier.height(14.dp))
-        Label("StreamSetu does not include any channels, movies or subscriptions. You bring your own provider.", Tokens.caption, Tokens.textTertiary)
-        if (drafts.isNotEmpty()) {
-            Spacer(Modifier.height(22.dp))
-            TvButton("Continue Previous Setup", { val d = drafts.first(); nav.base = Base.Setup(typeOf(d), d.sourceIds.first()) }, icon = Icons.Filled.Edit)
-        }
-    }
+    val context = LocalContext.current
+    val phone = remember { app.streamsetu.tv.ui.phone.isPhoneDevice(context) }
+    val open: (ConnectTile) -> Unit = { t -> nav.base = Base.Setup(t.kinds(phone).first()) }
+    val resume: (() -> Unit)? = if (drafts.isEmpty()) null else ({ val d = drafts.first(); nav.base = Base.Setup(typeOf(d), d.sourceIds.first()) })
+    if (phone) PhoneWelcome(open, resume) else TvWelcome(open, resume)
 }
 
-@Composable
-private fun SetupCard(title: String, subtitle: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Focusable(onClick, modifier.height(140.dp), container = Tokens.card, scaleOnFocus = 1.04f, shape = RoundedCornerShape(Tokens.radiusLarge)) { _ ->
-        // Icon, name and description sit at the same height on every card, whatever the description's length.
-        Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(icon, null, Modifier.size(30.dp), colorFilter = ColorFilter.tint(Tokens.accent))
-            Spacer(Modifier.height(10.dp))
-            Label(title, Tokens.row, Tokens.text, FontWeight.SemiBold)
-            Spacer(Modifier.height(4.dp))
-            Label(subtitle, Tokens.small, Tokens.textSecondary, maxLines = 2, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        }
-    }
-}
-
-
-/** Entering a connection, testing it by hand, and either saving it as a working library or keeping it as a draft. */
+/**
+ * Entering a connection, testing it by hand, and either saving it as a working library or keeping it as a draft. A header says what is being connected; the fields sit in one card.
+ * On a television the header is a column on the left and the form scrolls on the right; on a phone it is one scrolling column.
+ */
 @Composable
 fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryViewModel = hiltViewModel()) {
+    // Opened from the first-run welcome (no connection yet), the form keeps the welcome's brand look; opened from inside the app it follows the chosen theme, accent and Projector
+    // Mode. Decided once, when the list of libraries is first known, so the look does not change when the new connection is saved.
+    val entries by vm.entries.collectAsState()
+    var firstRun by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(entries) { if (firstRun == null) entries?.let { l -> firstRun = l.none { it.kind == LibraryEntry.Kind.CONNECTION } } }
+    val known = firstRun ?: entries?.none { it.kind == LibraryEntry.Kind.CONNECTION }
+    if (known == null) { Box(Modifier.fillMaxSize().background(Tokens.background)); return }
+    CompositionLocalProvider(LocalStartLook provides if (known) BrandLook else ThemeLook) { SetupContent(type, draftId, nav, vm) }
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun SetupContent(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryViewModel) {
+    val look = LocalStartLook.current
+    val reduced = reducedMotion()
     var form by remember { mutableStateOf(LibraryViewModel.Form()) }
     var id by remember { mutableStateOf(draftId ?: vm.newSetupId()) }          // one id for this whole setup: every Test, Save as Draft and the connection it becomes use it
     var message by remember { mutableStateOf<String?>(null) }
     val test by vm.test.collectAsState()
     val first = remember { FocusRequester() }
     val context = LocalContext.current
+    val phone = remember { app.streamsetu.tv.ui.phone.isPhoneDevice(context) }
+    // A tile that stands for several kinds (Media server: Plex, Jellyfin or Emby) opens here with a chooser at the top. Changing the kind keeps what was typed.
+    var kind by remember(type) { mutableStateOf(type) }
     LaunchedEffect(draftId) {
         vm.resetTest()
         if (draftId != null) vm.draft(draftId)?.let { (s, pw) -> form = LibraryViewModel.Form(s.name, s.address, s.username.orEmpty(), pw.orEmpty(), s.userAgent.orEmpty(), vm.headersFor(draftId), vm.trustsCertificate(draftId)) }
-        app.streamsetu.tv.ui.components.requestFocusSoon(first, 8)
+        // A television puts the remote on the first field; a phone does not focus anything, which would open the keyboard over the form.
+        if (!phone) app.streamsetu.tv.ui.components.requestFocusSoon(first, 8)
+    }
+    // A failed connection gives the form card a short shake, and the error row slides in under it.
+    val shake = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(test) {
+        if (test is LibraryViewModel.Test.Failed && !reduced) shake.animateTo(0f, androidx.compose.animation.core.keyframes { durationMillis = 420; -10f at 60; 10f at 120; -7f at 190; 7f at 260; -3f at 330; 0f at 420 })
+    }
+    // On a phone, the result of a connection attempt is also felt: a confirm tick when it worked, a reject buzz when it did not (Android 11 and later; Android's haptics setting decides).
+    val view = androidx.compose.ui.platform.LocalView.current
+    LaunchedEffect(test) {
+        if (!phone || android.os.Build.VERSION.SDK_INT < 30) return@LaunchedEffect
+        when (test) {
+            is LibraryViewModel.Test.Passed -> view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+            is LibraryViewModel.Test.Failed -> view.performHapticFeedback(android.view.HapticFeedbackConstants.REJECT)
+            else -> {}
+        }
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
@@ -386,147 +397,203 @@ fun SetupScreen(type: SourceType, draftId: String?, nav: Navigator, vm: LibraryV
             form = form.copy(address = uri.toString(), name = form.name.ifBlank { Uri.decode(uri.lastPathSegment.orEmpty()).substringAfterLast(':').substringAfterLast('/') })
         }
     }
-    val canTest = when (type) {
+    val canTest = when (kind) {
         SourceType.XTREAM, SourceType.TVHEADEND, SourceType.JELLYFIN, SourceType.EMBY -> form.address.isNotBlank() && form.user.isNotBlank() && form.password.isNotBlank()
         SourceType.PLEX -> form.address.isNotBlank() && form.password.isNotBlank()
         SourceType.STALKER -> form.address.isNotBlank() && Regex("""^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$""").matches(form.user.trim())
         else -> form.address.isNotBlank()
     }
-    val title = when (type) { SourceType.XTREAM -> "Add Xtream Connection"; SourceType.M3U -> "Add M3U URL"; SourceType.LOCAL_FILE -> "Add Local M3U File"; SourceType.STALKER -> "Add Stalker Portal"; else -> "Add ${type.label}" }
 
     val passed = test as? LibraryViewModel.Test.Passed
     if (passed != null) {
         val open = remember { FocusRequester() }
         LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(open, 8) }
-        Column(Modifier.fillMaxSize().screenPadding(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)) {
-            Box(Modifier.size(64.dp).background(Color(0xFF33B866), CircleShape), Alignment.Center) { Image(Icons.Filled.Check, null, Modifier.size(38.dp), colorFilter = ColorFilter.tint(Color.White)) }
-            Label("Connection verified", Tokens.display, Tokens.text, FontWeight.Bold)
-            Label(passed.name, Tokens.heading, Tokens.accent, FontWeight.SemiBold)
-            Row(Modifier.widthIn(max = 780.dp).fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Box(Modifier.fillMaxSize()) {
+        StartBackground(androidx.compose.ui.geometry.Offset(0.5f, 0.2f))
+        Column(Modifier.fillMaxSize().then(if (phone) Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier).screenPadding(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)) {
+            // The check draws itself inside a ring that bursts outwards; the counts below count up.
+            AnimatedCheck(64.dp, Tokens.success, look.focus)
+            Label("Connection verified", Tokens.display, Tokens.text, FontWeight.Bold, modifier = Modifier.riseIn(2))
+            Label(passed.name, Tokens.heading, Tokens.accent, FontWeight.SemiBold, modifier = Modifier.riseIn(3))
+            Row(Modifier.widthIn(max = 780.dp).fillMaxWidth().padding(vertical = 8.dp).riseIn(4), horizontalArrangement = Arrangement.spacedBy(if (phone) 10.dp else 16.dp)) {
                 StatTile(Icons.Filled.LiveTv, "Live TV", passed.channels, Modifier.weight(1f)); StatTile(Icons.Filled.Movie, "Movies", passed.movies, Modifier.weight(1f)); StatTile(Icons.Filled.VideoLibrary, "Series", passed.series, Modifier.weight(1f))
             }
-            Label("Saved on this device. Your login is kept in the Android Keystore and is never shown or logged.", Tokens.small, Tokens.textTertiary, maxLines = 2)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TvButton("Enter Home", {
+            Label("Saved on this device. Your login is kept in the Android Keystore and is never shown or logged.", Tokens.small, Tokens.textSecondary, maxLines = 3, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            androidx.compose.foundation.layout.FlowRow(Modifier.riseIn(5), horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                PrimaryAction("Enter Home", {
                     vm.entries.value?.firstOrNull { it.id == "src:${passed.sourceId}" }?.let { e -> vm.open(e) { nav.enterLibrary() } }
-                }, Modifier.focusRequester(open), icon = Icons.Filled.PlayArrow, primary = true)
-                TvButton("Back to Libraries", { vm.resetTest(); nav.base = Base.ChooseLibrary })
+                }, Modifier.focusRequester(open), icon = Icons.Filled.PlayArrow)
+                SetupAction("Back to Libraries", { vm.resetTest(); nav.base = Base.ChooseLibrary }, Modifier.align(Alignment.CenterVertically))
             }
+        }
         }
         return
     }
 
     if (phoneOpen) PhoneSetupDialog(onFilled = { t, f -> form = f; vm.resetTest() }, onClose = { phoneOpen = false })
-    val hasPassword = type in setOf(SourceType.XTREAM, SourceType.TVHEADEND, SourceType.ENIGMA2, SourceType.JELLYFIN, SourceType.EMBY, SourceType.PLEX, SourceType.WEBDAV)
-    Row(Modifier.fillMaxSize().screenPadding(), horizontalArrangement = Arrangement.spacedBy(48.dp)) {
-        // Left: what is being added, and where this step sits.
-        Column(Modifier.weight(0.34f).fillMaxHeight().padding(top = 48.dp), verticalArrangement = Arrangement.Top) {
-            Label(title, Tokens.display, Tokens.text, FontWeight.Bold, maxLines = 2)
-            Label(when (type) {
-                SourceType.XTREAM -> "The server address, user name and password your provider gave you."
-                SourceType.M3U -> "The playlist link your provider gave you."
-                SourceType.LOCAL_FILE -> "Pick an M3U playlist file stored on this device."
-                SourceType.LOCAL_FOLDER -> "Pick a folder of videos stored on this device."
-                SourceType.STALKER -> "Your portal address and the MAC address it expects."
-                else -> "Connect to ${type.label}."
-            }, Tokens.body, Tokens.textSecondary, maxLines = 3, modifier = Modifier.padding(top = 8.dp, bottom = 24.dp))
-            listOf("Details" to true, "Test the connection" to (test is LibraryViewModel.Test.Running), "Enter the library" to false).forEachIndexed { i, (step, now) ->
-                Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(26.dp).background(if (now || (i == 0 && test !is LibraryViewModel.Test.Running)) Color.White else Tokens.elevated, CircleShape), Alignment.Center) { Label("${i + 1}", Tokens.small, if (now || (i == 0 && test !is LibraryViewModel.Test.Running)) Tokens.onBright else Tokens.textSecondary, FontWeight.Bold) }
-                    Label(step, Tokens.row, if (now || (i == 0 && test !is LibraryViewModel.Test.Running)) Tokens.text else Tokens.textSecondary, FontWeight.Medium)
-                }
-            }
-            Label(when (type) {
-                SourceType.LOCAL_FILE, SourceType.LOCAL_FOLDER -> "Nothing is uploaded. The file is read on this device."
-                SourceType.M3U, SourceType.STALKER, SourceType.HDHOMERUN -> "Your details are kept in the Android Keystore and are never shown or logged."
-                else -> "Your login is kept in the Android Keystore and is never shown or logged."
-            }, Tokens.small, Tokens.textTertiary, maxLines = 3, modifier = Modifier.padding(top = 24.dp))
-        }
-        // Right: the fields and the actions.
-        Column(Modifier.weight(0.66f).fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(top = 48.dp), verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Top)) {
-        TvTextField(form.name, { form = form.copy(name = it) }, "Name (optional)", Modifier.widthIn(max = 640.dp).fillMaxWidth().focusRequester(first))
-        when (type) {
+    val hasPassword = kind in setOf(SourceType.XTREAM, SourceType.TVHEADEND, SourceType.ENIGMA2, SourceType.JELLYFIN, SourceType.EMBY, SourceType.PLEX, SourceType.WEBDAV)
+    // The chooser is offered while a new connection is set up; a saved one keeps its kind, and the header names it instead.
+    val group = ConnectTile.of(kind)?.kinds(phone)?.let { if (kind in it) it else it + kind }?.takeIf { it.size > 1 }
+    val choices = group.takeIf { draftId == null }
+    val describe = when (kind) {
+        SourceType.XTREAM -> "The server address, user name and password your provider gave you."
+        SourceType.M3U -> "The playlist link your provider gave you."
+        SourceType.LOCAL_FILE -> "Pick an M3U playlist file stored on this device."
+        SourceType.LOCAL_FOLDER -> "Pick a folder of videos stored on this device."
+        SourceType.STALKER -> "Your portal address and the MAC address it expects."
+        else -> "Connect to ${kind.label}."
+    }
+    val note = when (kind) {
+        SourceType.LOCAL_FILE, SourceType.LOCAL_FOLDER -> "Nothing is uploaded. The file is read on this device."
+        SourceType.M3U, SourceType.STALKER, SourceType.HDHOMERUN -> "Your details are kept in the Android Keystore and are never shown or logged."
+        else -> "Your login is kept in the Android Keystore and is never shown or logged."
+    }
+    val back = { nav.base = Base.ChooseLibrary }
+
+    // The fields of the chosen kind, inside the form's card.
+    val fields: @Composable ColumnScope.() -> Unit = {
+        FormField(form.name, { form = form.copy(name = it) }, "Name (optional)", focus = first)
+        when (kind) {
             SourceType.HDHOMERUN -> {
-                TvTextField(form.address, { form = form.copy(address = it) }, "Tuner address (192.168.1.50 or hdhomerun.local)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
-                Label("Channels are read from the tuner on your network. Run a channel scan in the tuner's own setup first.", Tokens.small, Tokens.textTertiary, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp))
+                FormField(form.address, { form = form.copy(address = it) }, "Tuner address (192.168.1.50 or hdhomerun.local)")
+                Label("Channels are read from the tuner on your network. Run a channel scan in the tuner's own setup first.", Tokens.small, look.quiet, maxLines = 3)
             }
             SourceType.TVHEADEND -> LoginFields(form, "Server (http://host:9981)", "User name", "Password", reveal) { form = it }
             SourceType.ENIGMA2 -> {
                 LoginFields(form, "Receiver address (http://192.168.1.60)", "User name (only if the receiver asks)", "Password", reveal) { form = it }
-                Label("Needs OpenWebif on the receiver. Streams play from its own stream port (8001).", Tokens.small, Tokens.textTertiary, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp))
+                Label("Needs OpenWebif on the receiver. Streams play from its own stream port (8001).", Tokens.small, look.quiet, maxLines = 3)
             }
             SourceType.JELLYFIN, SourceType.EMBY -> {
                 LoginFields(form, "Server (http://host:8096)", "User name", "Password", reveal) { form = it }
-                Label("Movies and series from the server's libraries. Live TV is not read.", Tokens.small, Tokens.textTertiary, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp))
+                Label("Movies and series from the server's libraries. Live TV is not read.", Tokens.small, look.quiet, maxLines = 3)
             }
             SourceType.PLEX -> {
-                TvTextField(form.address, { form = form.copy(address = it) }, "Server (http://host:32400)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
-                TvTextField(form.password, { form = form.copy(password = it) }, "Access token (X-Plex-Token)", Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = !reveal)
-                Label("Movies and shows from the server's libraries. Find the token in Plex Web: Get Info, View XML, the address ends in X-Plex-Token=…", Tokens.small, Tokens.textTertiary, maxLines = 3)
+                FormField(form.address, { form = form.copy(address = it) }, "Server (http://host:32400)")
+                FormField(form.password, { form = form.copy(password = it) }, "Access token (X-Plex-Token)", secret = !reveal)
+                Label("Movies and shows from the server's libraries. Find the token in Plex Web: Get Info, View XML, the address ends in X-Plex-Token=…", Tokens.small, look.quiet, maxLines = 3)
             }
             SourceType.WEBDAV -> {
                 LoginFields(form, "Share address (https://host/remote.php/dav/files/me/)", "User name (optional)", "Password (optional)", reveal) { form = it }
-                Label("Video files in the share and its folders (four levels deep) appear as movies.", Tokens.small, Tokens.textTertiary, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp))
+                Label("Video files in the share and its folders (four levels deep) appear as movies.", Tokens.small, look.quiet, maxLines = 3)
             }
             SourceType.LOCAL_FOLDER -> {
-                Label(if (form.address.isBlank()) "No folder chosen" else "Chosen: " + Uri.decode(Uri.parse(form.address).lastPathSegment.orEmpty()).substringAfterLast(':'), Tokens.body, Tokens.textSecondary)
-                TvButton("Choose Folder…", { folderPicker.launch(null) }, icon = Icons.Filled.Folder)
-                Label("Video files in the folder and its sub-folders appear as movies.", Tokens.small, Tokens.textTertiary, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp))
+                Label(if (form.address.isBlank()) "No folder chosen" else "Chosen: " + Uri.decode(Uri.parse(form.address).lastPathSegment.orEmpty()).substringAfterLast(':'), Tokens.body, Tokens.textSecondary, maxLines = 2)
+                SetupAction("Choose Folder…", { folderPicker.launch(null) }, icon = Icons.Filled.Folder)
+                Label("Video files in the folder and its sub-folders appear as movies.", Tokens.small, look.quiet, maxLines = 3)
             }
             SourceType.XTREAM -> {
-                TvTextField(form.address, { form = form.copy(address = it) }, "Server address (http://host:port)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
-                TvTextField(form.user, { form = form.copy(user = it) }, "User name", Modifier.widthIn(max = 640.dp).fillMaxWidth())
-                TvTextField(form.password, { form = form.copy(password = it) }, "Password", Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = !reveal)
+                FormField(form.address, { form = form.copy(address = it) }, "Server address (http://host:port)")
+                FormField(form.user, { form = form.copy(user = it) }, "User name")
+                FormField(form.password, { form = form.copy(password = it) }, "Password", secret = !reveal)
             }
             SourceType.STALKER -> {
-                TvTextField(form.address, { form = form.copy(address = it) }, "Portal address (http://host/c/)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
-                TvTextField(form.user, { form = form.copy(user = it) }, "MAC address (00:1A:79:xx:xx:xx)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
-                Label("Live TV is read from the portal. Movies and series from portals are not supported yet.", Tokens.small, Tokens.textTertiary, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp))
+                FormField(form.address, { form = form.copy(address = it) }, "Portal address (http://host/c/)")
+                FormField(form.user, { form = form.copy(user = it) }, "MAC address (00:1A:79:xx:xx:xx)")
+                Label("Live TV is read from the portal. Movies and series from portals are not supported yet.", Tokens.small, look.quiet, maxLines = 3)
             }
-            SourceType.ADDON -> Label("An add-on is managed in Settings, Add-ons.", Tokens.body, Tokens.textSecondary, maxLines = 2, modifier = Modifier.widthIn(max = 640.dp))
-            SourceType.M3U -> TvTextField(form.address, { form = form.copy(address = it) }, "Playlist link (http://…/playlist.m3u)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
+            SourceType.ADDON -> Label("An add-on is managed in Settings, Add-ons.", Tokens.body, Tokens.textSecondary, maxLines = 2)
+            SourceType.M3U -> FormField(form.address, { form = form.copy(address = it) }, "Playlist link (http://…/playlist.m3u)")
             SourceType.LOCAL_FILE -> {
-                Label(if (form.address.isBlank()) "No file chosen" else "Chosen: ${Uri.parse(form.address).lastPathSegment?.substringAfterLast('/') ?: form.address}", Tokens.body, Tokens.textSecondary)
-                TvButton("Choose File…", { picker.launch(arrayOf("*/*")) }, icon = Icons.Filled.Folder)
+                Label(if (form.address.isBlank()) "No file chosen" else "Chosen: ${Uri.parse(form.address).lastPathSegment?.substringAfterLast('/') ?: form.address}", Tokens.body, Tokens.textSecondary, maxLines = 2)
+                SetupAction("Choose File…", { picker.launch(arrayOf("*/*")) }, icon = Icons.Filled.Folder)
             }
         }
         // User-Agent, headers and the certificate choice are for the few providers that need them, so they are folded away; the basic form is just the address and the login.
-        if (type != SourceType.LOCAL_FILE && type != SourceType.LOCAL_FOLDER) {
+        if (kind != SourceType.LOCAL_FILE && kind != SourceType.LOCAL_FOLDER) {
             var advanced by remember { mutableStateOf(form.userAgent.isNotBlank() || form.headers.isNotBlank() || form.trustCertificate) }
-            TvButton(if (advanced) "Hide advanced options" else "Advanced options", { advanced = !advanced }, icon = if (advanced) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore)
-            if (advanced) {
-                TvTextField(form.userAgent, { form = form.copy(userAgent = it) }, "User-Agent (optional)", Modifier.widthIn(max = 640.dp).fillMaxWidth())
-                TvTextField(form.headers, { form = form.copy(headers = it) }, "Extra headers (optional): Name: value || Name: value", Modifier.widthIn(max = 640.dp).fillMaxWidth())
-                TvButton(if (form.trustCertificate) "Trust this provider's own certificate: on" else "Trust this provider's own certificate: off", { form = form.copy(trustCertificate = !form.trustCertificate) }, icon = if (form.trustCertificate) Icons.Filled.LockOpen else Icons.Filled.Lock)
-                Label(if (form.trustCertificate) "Its certificate is not checked, so anyone on the network could pose as it." else "Only if streams stop with a certificate error (MPV only).", Tokens.small, if (form.trustCertificate) Tokens.danger else Tokens.textTertiary, maxLines = 2, modifier = Modifier.widthIn(max = 640.dp))
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                SetupAction(if (advanced) "Hide advanced options" else "Advanced options", { advanced = !advanced }, icon = if (advanced) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore)
+                if (hasPassword) SetupAction(if (reveal) "Hide password" else "Show password", { reveal = !reveal }, icon = if (reveal) Icons.Filled.VisibilityOff else Icons.Filled.Visibility)
             }
-        }
-        if (hasPassword) TvButton(if (reveal) "Hide password" else "Show password", { reveal = !reveal }, icon = if (reveal) Icons.Filled.VisibilityOff else Icons.Filled.Visibility)
-        (test as? LibraryViewModel.Test.Failed)?.let { TvStatusState("The connection did not work", Modifier.widthIn(max = 640.dp), detail = it.message, icon = Icons.Filled.ErrorOutline) }
-        message?.let { Label(it, Tokens.body, Tokens.textSecondary) }
+            if (advanced) {
+                FormField(form.userAgent, { form = form.copy(userAgent = it) }, "User-Agent (optional)")
+                FormField(form.headers, { form = form.copy(headers = it) }, "Extra headers (optional): Name: value || Name: value")
+                SetupAction(if (form.trustCertificate) "Trust this provider's own certificate: on" else "Trust this provider's own certificate: off", { form = form.copy(trustCertificate = !form.trustCertificate) }, icon = if (form.trustCertificate) Icons.Filled.LockOpen else Icons.Filled.Lock)
+                Label(if (form.trustCertificate) "Its certificate is not checked, so anyone on the network could pose as it." else "Only if streams stop with a certificate error (MPV only).", Tokens.small, if (form.trustCertificate) Tokens.danger else look.quiet, maxLines = 3)
+            }
+        } else if (hasPassword) SetupAction(if (reveal) "Hide password" else "Show password", { reveal = !reveal }, icon = if (reveal) Icons.Filled.VisibilityOff else Icons.Filled.Visibility)
+    }
+
+    // Below the card: what went wrong, the wait while it connects, and the actions.
+    val actions: @Composable ColumnScope.() -> Unit = {
+        (test as? LibraryViewModel.Test.Failed)?.let { f -> androidx.compose.runtime.key(f) { TvStatusState("The connection did not work", Modifier.widthIn(max = 640.dp).slideInFromStart(), detail = f.message, icon = Icons.Filled.ErrorOutline) } }
+        message?.let { Label(it, Tokens.body, Tokens.textSecondary, maxLines = 3) }
         if (test is LibraryViewModel.Test.Running) {
             // The wait can be a minute on a big list, so it says what is happening, moves, and can be stopped.
             val stop = remember { FocusRequester() }
-            LaunchedEffect(Unit) { app.streamsetu.tv.ui.components.requestFocusSoon(stop, 4) }
-            Column(Modifier.fillMaxWidth().widthIn(max = 640.dp).background(Tokens.card, RoundedCornerShape(Tokens.radius)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Label("Testing the connection", Tokens.row, Tokens.text, FontWeight.SemiBold)
+            LaunchedEffect(Unit) { if (!phone) app.streamsetu.tv.ui.components.requestFocusSoon(stop, 4) }
+            Column(Modifier.fillMaxWidth().widthIn(max = 640.dp).background(look.surface, RoundedCornerShape(if (phone) 14.dp else 20.dp)).border(1.dp, look.hairline, RoundedCornerShape(if (phone) 14.dp else 20.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (reduced) Label("Connecting…", Tokens.row, Tokens.text, FontWeight.SemiBold)
+                    else { Label("Connecting", Tokens.row, Tokens.text, FontWeight.SemiBold); DotWave(look.focus, 4.dp, Modifier.padding(bottom = 3.dp)) }
+                }
                 IndeterminateBar()
                 Label("Signing in and reading your channels, movies and series. Big lists can take a minute.", Tokens.small, Tokens.textSecondary, maxLines = 3)
             }
-            TvButton("Cancel test", { vm.cancelTest() }, Modifier.focusRequester(stop), icon = Icons.Filled.Close)
+            SetupAction("Cancel test", { vm.cancelTest() }, Modifier.focusRequester(stop), icon = Icons.Filled.Close)
         } else {
-            // The main action first, and on a row with the phone, which is the easier way to type a login; saving a draft and cancelling are a quieter row below it.
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                TvButton("Test Connection", { if (canTest) { message = null; vm.test(type, id, form) } else message = "Fill in the details first." }, icon = Icons.Filled.PlayArrow, primary = canTest)          // lit only when there is enough to test, so it is never mistaken for the focused field
-                if (type == SourceType.XTREAM || type == SourceType.M3U) TvButton("Use my phone", { phoneOpen = true }, icon = Icons.Filled.PhoneAndroid)
+            // Connect is the one large button; typing on the phone is the secondary way in; saving a draft and cancelling are quiet text buttons.
+            val connect = { if (canTest) { message = null; vm.test(kind, id, form) } else message = "Fill in the details first." }
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                PrimaryAction("Connect", connect, if (phone) Modifier.fillMaxWidth() else Modifier, icon = Icons.Filled.PlayArrow, lit = canTest)          // dimmer until there is enough to test, so it is never mistaken for the focused field
+                if (kind == SourceType.XTREAM || kind == SourceType.M3U) SetupAction("Use my phone", { phoneOpen = true }, Modifier.align(Alignment.CenterVertically), icon = Icons.Filled.PhoneAndroid)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                TvButton("Save as Draft", { vm.saveDraft(type, id, form) { saved -> id = saved; message = "Saved. Finish it any time from Choose Your Library." } })
-                TvButton("Cancel", { nav.base = Base.ChooseLibrary })
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                QuietAction("Save as Draft", { vm.saveDraft(kind, id, form) { saved -> id = saved; message = "Saved. Finish it any time from Choose Your Library." } })
+                QuietAction("Cancel", back)
+            }
+        }
+    }
+
+    if (phone) {
+        Box(Modifier.fillMaxSize()) {
+            StartBackground(androidx.compose.ui.geometry.Offset(0.15f, 0.08f))
+            Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).windowInsetsPadding(WindowInsets.systemBars).imePadding().padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                BackLink(phone = true, onClick = back)
+                Column(Modifier.riseIn(0), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ConnectHeader(kind, phone = true, showKind = group != null && choices == null)
+                    Label(describe, 15.sp, Tokens.textSecondary, maxLines = 3)
+                }
+                choices?.let { KindChooser(it, kind, phone = true) { k -> kind = k } }
+                FormCard(phone = true, Modifier.riseIn(1).graphicsLayer { translationX = shake.value.dp.toPx() }, content = fields)
+                Column(Modifier.riseIn(2), verticalArrangement = Arrangement.spacedBy(12.dp), content = actions)
+                Label(note, Tokens.small, look.quiet, maxLines = 3, modifier = Modifier.padding(bottom = 12.dp))
+            }
+        }
+    } else {
+        Box(Modifier.fillMaxSize()) {
+        StartBackground(androidx.compose.ui.geometry.Offset(0.14f, 0.24f))
+        Row(Modifier.fillMaxSize().padding(horizontal = Tokens.safeHorizontal + 16.dp, vertical = Tokens.safeVertical), horizontalArrangement = Arrangement.spacedBy(40.dp)) {
+            // Left: what is being connected, the way back to the tiles, and how the details are kept.
+            Column(Modifier.weight(0.36f).fillMaxHeight().riseIn(0)) {
+                BackLink(phone = false, onClick = back)
+                Spacer(Modifier.height(18.dp))
+                ConnectHeader(kind, phone = false, showKind = group != null && choices == null)
+                Label(describe, 17.sp, Tokens.textSecondary, maxLines = 4, modifier = Modifier.padding(top = 14.dp))
+                Spacer(Modifier.weight(1f))
+                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Image(if (kind == SourceType.LOCAL_FILE || kind == SourceType.LOCAL_FOLDER) Icons.Filled.PhonelinkLock else Icons.Filled.Lock, null, Modifier.padding(top = 1.dp).size(15.dp), colorFilter = ColorFilter.tint(look.quiet))
+                    Label(note, Tokens.small, look.quiet, maxLines = 4)
+                }
+            }
+            // Right: the chooser, the fields in their card, and the actions. It scrolls; the padding leaves room for a focused field's lift.
+            Column(Modifier.weight(0.64f).fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(top = 8.dp, bottom = 16.dp, start = 6.dp, end = 6.dp).riseIn(1), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                choices?.let { KindChooser(it, kind, phone = false) { k -> kind = k } }
+                FormCard(phone = false, Modifier.graphicsLayer { translationX = shake.value.dp.toPx() }, content = fields)
+                actions()
             }
         }
         }
     }
+}
+
+/** The error row arriving: it slides in from the start edge and fades in, once. With reduced motion it is simply there. */
+@Composable
+private fun Modifier.slideInFromStart(): Modifier {
+    val reduced = reducedMotion()
+    val a = remember { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0f) }
+    LaunchedEffect(Unit) { if (!reduced) a.animateTo(1f, androidx.compose.animation.core.tween(320, easing = app.streamsetu.core.ui.motion.Motion.Standard)) }
+    return graphicsLayer { alpha = a.value; translationX = (1f - a.value) * -24.dp.toPx() }
 }
 
 /** A bar with a moving segment, for waits of unknown length. Only the draw phase runs while it moves. */
@@ -788,7 +855,7 @@ private fun Modifier.screenPadding(): Modifier =
 /** The three fields of a connection that signs in with a server address, a user name and a password. */
 @Composable
 private fun LoginFields(form: LibraryViewModel.Form, addressHint: String, userHint: String, passwordHint: String, reveal: Boolean = false, onChange: (LibraryViewModel.Form) -> Unit) {
-    TvTextField(form.address, { onChange(form.copy(address = it)) }, addressHint, Modifier.widthIn(max = 640.dp).fillMaxWidth())
-    TvTextField(form.user, { onChange(form.copy(user = it)) }, userHint, Modifier.widthIn(max = 640.dp).fillMaxWidth())
-    TvTextField(form.password, { onChange(form.copy(password = it)) }, passwordHint, Modifier.widthIn(max = 640.dp).fillMaxWidth(), secret = !reveal)
+    FormField(form.address, { onChange(form.copy(address = it)) }, addressHint)
+    FormField(form.user, { onChange(form.copy(user = it)) }, userHint)
+    FormField(form.password, { onChange(form.copy(password = it)) }, passwordHint, secret = !reveal)
 }

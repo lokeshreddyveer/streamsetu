@@ -32,6 +32,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34], application = android.app.Application::class, qualifiers = "w1280dp-h720dp-xhdpi")
 class ContentKeepsItsPlaceTest {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
 
     @Test fun scrollPositionAndItemsSurviveOpeningAndClosingTheFolders() {
         var open by mutableStateOf(false)

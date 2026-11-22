@@ -39,6 +39,8 @@ sealed interface Overlay {
     data class ManageLibrary(val entry: LibraryEntry) : Overlay
     /** A full list behind a Home shortcut: "favorites", "later", "recent" or "continue". */
     data class Collection(val id: String, val only: String? = null) : Overlay
+    /** A person from a cast row: their titles in this library. */
+    data class Person(val name: String, val photo: String?) : Overlay
 }
 
 /**

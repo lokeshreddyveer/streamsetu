@@ -61,9 +61,16 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
     val folderName = (browse as? Browse.Folder)?.let { b -> folders.firstOrNull { it.id == b.id }?.title }
 
     val banner by vm.banner.collectAsStateWithLifecycle()
+    // Folders (one row per folder) is the default view; Grid is the plain poster wall (Settings, or the Grid button). Remembered for each profile on each device.
+    val viewRev by c.ui.folderViewRev.collectAsStateWithLifecycle()
+    val foldersMode = remember(viewRev, c.profiles.activeId.value) { vm.foldersView() } && browse == Browse.All
+    LaunchedEffect(foldersMode) { if (foldersMode) vm.secondary.value = true }
     Box(Modifier.fillMaxSize()) {
         val list = cards
         when {
+            foldersMode -> PhoneFolderRows(vm.folderRows, vm.kind, Modifier.padding(top = 64.dp),
+                onOpenFolder = { row -> if (row.locked) folderSheet = true else { vm.folderRows.opened(row); vm.select(row.browse) } },
+                onOpenCard = { card -> card.movie?.let { nav.open(Overlay.MovieDetail(it)) } ?: card.series?.let { nav.open(Overlay.SeriesDetail(it)) } }, onOpenChannel = {})
             list == null -> Loading(Modifier.fillMaxSize())
             else -> LazyVerticalGrid(GridCells.Fixed(3), Modifier.fillMaxSize(), state = grid, contentPadding = PaddingValues(start = Ph.gutter, end = Ph.gutter, top = if (banner.isNotEmpty()) 0.dp else WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (banner.isNotEmpty()) item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
@@ -109,7 +116,8 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
                 }
             }
         }
-        PhoneTopBar(title, showTitle = banner.isEmpty()) {
+        PhoneTopBar(title, showTitle = banner.isEmpty() || foldersMode) {
+            RoundTap(if (foldersMode) Icons.Filled.GridView else Icons.Filled.ViewAgenda, if (foldersMode) "Grid" else "Folders view") { vm.setFoldersView(!foldersMode) }
             RoundTap(Icons.Filled.Search, "Search") { nav.openSearch(if (vm.kind == ContentKind.SERIES) SearchTab.SERIES else SearchTab.MOVIES) }
             RoundTap(Icons.Filled.Folder, "Folders") { folderSheet = true }
         }
@@ -138,6 +146,8 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     val shown = folders.filter { !it.pref.hidden }
     val folderName = (browse as? Browse.Folder)?.let { b -> folders.firstOrNull { it.id == b.id }?.title }
 
+    val viewRev by c.ui.folderViewRev.collectAsStateWithLifecycle()
+    val foldersMode = remember(viewRev, c.profiles.activeId.value) { vm.foldersView() } && browse == Browse.All
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     LaunchedEffect(browse) { gridState.scrollToItem(0) }
     val total by vm.total.collectAsStateWithLifecycle()
@@ -150,6 +160,7 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     }
     Column(Modifier.fillMaxSize()) {
         PhoneTopBar("Live TV") {
+            RoundTap(if (foldersMode) Icons.Filled.GridView else Icons.Filled.ViewAgenda, if (foldersMode) "Grid" else "Folders view") { vm.setFoldersView(!foldersMode) }
             RoundTap(Icons.Filled.CalendarMonth, "TV Guide") { nav.tab = Tab.GUIDE }
             RoundTap(Icons.Filled.Search, "Search") { nav.openSearch(SearchTab.LIVE) }
         }
@@ -161,7 +172,10 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
         }
         Spacer(Modifier.height(10.dp))
         val list = groups
-        if (list == null) Loading(Modifier.weight(1f))
+        if (foldersMode) PhoneFolderRows(vm.folderRows, ContentKind.CHANNEL, Modifier.weight(1f),
+            onOpenFolder = { row -> if (row.locked) folderSheet = true else { vm.folderRows.opened(row); vm.select(row.browse) } },
+            onOpenCard = {}, onOpenChannel = { ch -> play(c, nav, ChannelPlayable(ch)) })
+        else if (list == null) Loading(Modifier.weight(1f))
         else if (list.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth()) { Empty("No channels", "Nothing in this group.") }
         else LazyVerticalGrid(GridCells.Fixed(3), Modifier.weight(1f), state = gridState, contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(list, key = { it.rep.id }) { g ->

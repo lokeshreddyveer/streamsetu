@@ -12,6 +12,9 @@ import app.streamsetu.core.data.db.*
  * then out of date and the catalogs are written again once.
  */
 class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: Int = 2) {
+    /** The derived identity of every movie and series (see IdentityStore): written in the same steps as the rows, only for rows that are new or changed. IdentityStore.changes tells what a read changed. */
+    val identity = app.streamsetu.core.data.repo.smartmix.IdentityStore(db)
+
     internal fun digest(cats: List<CategoryEntity>, ch: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>): Long {
         var h = 1125899906842597L
         fun mix(x: Int) { h = 31 * h + x }
@@ -48,6 +51,11 @@ class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: 
                 db.withTransaction { write(part) }; kotlinx.coroutines.delay(PAUSE_MS)
             }
         }
+        val names = cats.associate { it.id to it.name }
+        val movieIdentity = safely { identity.begin(sourceId, "MOVIE", names) }.getOrNull()
+        val seriesIdentity = safely { identity.begin(sourceId, "SERIES", names) }.getOrNull()
+        fun movieRows(p: List<MovieEntity>) = p.map { UnderivedRow(it.id, it.sourceId, it.categoryId, it.title, it.year) }
+        fun seriesRows(p: List<SeriesEntity>) = p.map { UnderivedRow(it.id, it.sourceId, it.categoryId, it.title, it.year) }
         step(cats) { c.putCategories(it) }
         step(ch) { part ->
             c.putChannels(part)
@@ -57,13 +65,16 @@ class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: 
             } }
             app.streamsetu.core.data.db.SearchIndex.upsert(raw, part.map { app.streamsetu.core.data.db.SearchHit("CHANNEL", it.id, sourceId, it.categoryId, it.name) })
         }
-        step(mv) { part -> c.putMovies(part); app.streamsetu.core.data.db.SearchIndex.upsert(raw, part.map { app.streamsetu.core.data.db.SearchHit("MOVIE", it.id, sourceId, it.categoryId, it.title) }) }
-        step(sr) { part -> c.putSeries(part); app.streamsetu.core.data.db.SearchIndex.upsert(raw, part.map { app.streamsetu.core.data.db.SearchHit("SERIES", it.id, sourceId, it.categoryId, it.title) }) }
+        step(mv) { part -> c.putMovies(part); app.streamsetu.core.data.db.SearchIndex.upsert(raw, part.map { app.streamsetu.core.data.db.SearchHit("MOVIE", it.id, sourceId, it.categoryId, it.title) }); safely { movieIdentity?.apply(movieRows(part)) } }          // an identity that could not be written is made by the background fill later, never a failed read
+        step(sr) { part -> c.putSeries(part); app.streamsetu.core.data.db.SearchIndex.upsert(raw, part.map { app.streamsetu.core.data.db.SearchHit("SERIES", it.id, sourceId, it.categoryId, it.title) }); safely { seriesIdentity?.apply(seriesRows(part)) } }
         step(c.categoryIds(sourceId).toSet().minus(cats.map { it.id }.toSet()).toList()) { c.deleteCategories(it) }
         step(c.channelIds(sourceId).toSet().minus(ch.map { it.id }.toSet()).toList()) { gone -> c.deleteChannels(gone); app.streamsetu.core.data.db.SearchIndex.delete(raw, "CHANNEL", gone) }
-        step(c.movieIds(sourceId).toSet().minus(mv.map { it.id }.toSet()).toList()) { gone -> c.deleteMovies(gone); app.streamsetu.core.data.db.SearchIndex.delete(raw, "MOVIE", gone) }
-        step(c.seriesIds(sourceId).toSet().minus(sr.map { it.id }.toSet()).toList()) { gone -> c.deleteSeries(gone); app.streamsetu.core.data.db.SearchIndex.delete(raw, "SERIES", gone) }
+        step(c.movieIds(sourceId).toSet().minus(mv.map { it.id }.toSet()).toList()) { gone -> c.deleteMovies(gone); app.streamsetu.core.data.db.SearchIndex.delete(raw, "MOVIE", gone); safely { movieIdentity?.removed(gone) } }
+        step(c.seriesIds(sourceId).toSet().minus(sr.map { it.id }.toSet()).toList()) { gone -> c.deleteSeries(gone); app.streamsetu.core.data.db.SearchIndex.delete(raw, "SERIES", gone); safely { seriesIdentity?.removed(gone) } }
         c.putFingerprint(app.streamsetu.core.data.db.CatalogFingerprintEntity(sourceId, d, expected, fingerprintVersion))
+        // Announced only once everything is in, and only when something changed; whether this playlist is now a twin of another is looked at again.
+        val changed = listOfNotNull(movieIdentity?.finish(), seriesIdentity?.finish()).any { !it.isEmpty }
+        if (changed) safely { app.streamsetu.core.data.repo.smartmix.SourceTwins.recompute(db) }
     }
 
     private companion object {
@@ -71,3 +82,6 @@ class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: 
         const val PAUSE_MS = 8L       // a gap between steps in which a person's own write gets in
     }
 }
+
+/** Like runCatching, but a cancelled read stays cancelled (the cancellation is passed on, not swallowed as a failure of the identity step). */
+private inline fun <T> safely(block: () -> T): Result<T> = try { Result.success(block()) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Throwable) { Result.failure(e) }

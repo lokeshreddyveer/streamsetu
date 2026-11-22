@@ -17,6 +17,10 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
@@ -37,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.streamsetu.tv.nav.Tab
 import app.streamsetu.tv.ui.components.Label
+import app.streamsetu.tv.ui.components.progressFill
+import app.streamsetu.tv.ui.components.kenBurns
 import app.streamsetu.tv.ui.components.PosterPlaceholder
 import app.streamsetu.tv.ui.theme.Tokens
 import coil.compose.AsyncImage
@@ -69,8 +75,21 @@ object Ph {
 
 @Composable
 fun Tap(onClick: () -> Unit, modifier: Modifier = Modifier, onLong: (() -> Unit)? = null, content: @Composable BoxScope.() -> Unit) {
+    // Every card and poster on the phone presses in a little and springs back (only a dim with reduced motion), with a light tick on a tap.
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val view = androidx.compose.ui.platform.LocalView.current
     @OptIn(ExperimentalFoundationApi::class)
-    Box(modifier.combinedClickable(onClick = onClick, onLongClick = onLong), content = content)
+    Box(modifier.pressFeel(source).combinedClickable(interactionSource = source, indication = null, onClick = { view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY); onClick() },
+        onLongClick = onLong?.let { l -> { view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS); l() } }), content = content)
+}
+
+/** The press feel of the phone app: while [source] is pressed the item shrinks to 0.97 and dims a little, and springs back on release. With reduced motion only the dim. */
+@Composable
+fun Modifier.pressFeel(source: androidx.compose.foundation.interaction.InteractionSource): Modifier {
+    val pressed by source.collectIsPressedAsState()
+    val reduced = app.streamsetu.tv.ui.screens.library.reducedMotion()
+    val k by androidx.compose.animation.core.animateFloatAsState(if (pressed) 1f else 0f, if (reduced) androidx.compose.animation.core.snap() else app.streamsetu.tv.ui.screens.library.pressSpring(), label = "press")
+    return this.graphicsLayer { if (!reduced) { val sc = 1f - 0.03f * k; scaleX = sc; scaleY = sc }; alpha = 1f - 0.1f * k }
 }
 
 @Composable
@@ -80,13 +99,16 @@ fun Icon(icon: ImageVector, tint: Color = Tokens.text, size: Dp = 24.dp, modifie
 /** A round icon button with a 48 dp touch target. */
 @Composable
 fun IconTap(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, tint: Color = Tokens.text, filled: Boolean = false) {
-    Box(modifier.size(48.dp).clip(CircleShape).then(if (filled) Modifier.background(Color(0x40FFFFFF)) else Modifier).semantics { contentDescription = label; role = Role.Button }.clickable(onClick = onClick), Alignment.Center) { Icon(icon, tint, 24.dp) }
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Box(modifier.size(48.dp).pressFeel(source).clip(CircleShape).then(if (filled) Modifier.background(Color(0x40FFFFFF)) else Modifier).semantics { contentDescription = label; role = Role.Button }.clickable(interactionSource = source, indication = null, onClick = onClick), Alignment.Center) { Icon(icon, tint, 24.dp) }
 }
 
 @Composable
 fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, progress: Float? = null) {
+    val chipSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Row(
-        modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (selected) Tokens.accent else Tokens.elevated).semantics { this.selected = selected; role = Role.Button }.clickable(onClick = onClick).padding(horizontal = 14.dp),
+        modifier.height(36.dp).pressFeel(chipSource).clip(RoundedCornerShape(18.dp)).background(animateColorAsState(if (selected) Tokens.accent else Tokens.elevated, androidx.compose.animation.core.tween(160), label = "chip").value)
+            .semantics { this.selected = selected; role = Role.Button }.clickable(interactionSource = chipSource, indication = null, onClick = onClick).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (progress != null) DownloadRing(progress, if (selected) Color(0xFF04141A) else Tokens.accent, 18.dp)
@@ -110,8 +132,9 @@ fun DownloadRing(progress: Float, ink: Color, size: Dp) {
 
 @Composable
 fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, primary: Boolean = false) {
+    val pillSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Row(
-        modifier.height(44.dp).clip(RoundedCornerShape(22.dp)).glossy(RoundedCornerShape(22.dp), accent = primary).clickable(onClick = onClick).padding(horizontal = 18.dp),
+        modifier.height(44.dp).pressFeel(pillSource).clip(RoundedCornerShape(22.dp)).glossy(RoundedCornerShape(22.dp), accent = primary).clickable(interactionSource = pillSource, indication = null, onClick = onClick).padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
     ) {
         if (icon != null) Icon(icon, if (primary) Color.White else Tokens.text, 20.dp)
@@ -124,7 +147,7 @@ fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
 fun PhonePoster(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, subtitle: String? = null, badge: String? = null, progress: Float = 0f, onLong: (() -> Unit)? = null, itemId: String? = null) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Tap(onClick, Modifier.fillMaxWidth().aspectRatio(2f / 3f).shadow(6.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Tokens.card).border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(12.dp)), onLong) {
-            if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            app.streamsetu.tv.ui.components.PosterArt(title, imageUrl?.takeIf { it.isNotBlank() }, Modifier.fillMaxSize(), year = subtitle?.take(4))
             val shown = if (progress > 0f) progress else itemId?.let { app.streamsetu.tv.ui.components.LocalPartialProgress.current[it] } ?: 0f
             if (shown > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(shown.coerceIn(0f, 1f)).fillMaxHeight().background(Tokens.accent)) }
             if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).background(Color(0x99000000), RoundedCornerShape(7.dp)).border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(7.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) { Label(badge, Ph.caption, Tokens.text, FontWeight.SemiBold) }
@@ -143,7 +166,7 @@ fun PhoneWide(title: String, subtitle: String?, imageUrl: String?, onClick: () -
         Tap(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f).shadow(6.dp, RoundedCornerShape(14.dp)).clip(RoundedCornerShape(14.dp)).background(Tokens.card).border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(14.dp)), onLong) {
             PosterPlaceholder(title, Modifier.fillMaxSize())
             if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().background(Tokens.accent)) }
+            if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).progressFill(progress, Color(0x66000000), Tokens.accent))
             if (badge != null) Box(Modifier.align(Alignment.TopStart).padding(6.dp).background(Tokens.accent, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp)) { Label(badge, Ph.caption, Color(0xFF04141A), FontWeight.Bold) }
         }
         Label(title, Ph.small, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))
@@ -174,11 +197,20 @@ fun PhoneTabBar(selected: Tab, onSelect: (Tab) -> Unit, collapsed: Boolean = fal
                 Box(Modifier.size(52.dp).shadow(10.dp, CircleShape).clip(CircleShape).glossy(CircleShape)
                     .semantics { contentDescription = "Show the tab bar, ${current.third} is open"; role = Role.Button }.clickable(onClick = onExpand), Alignment.Center) { Icon(current.second, Tokens.accent, 24.dp) }
             } else {
-                Row(Modifier.fillMaxWidth().height(62.dp).shadow(10.dp, RoundedCornerShape(31.dp)).clip(RoundedCornerShape(31.dp)).glossy(RoundedCornerShape(31.dp)).padding(5.dp)) {
+                // The selected tab's background slides from one tab to the next instead of jumping.
+                val index = items.indexOfFirst { (tab, _, _) -> tab == selected || (tab == Tab.SETTINGS && selected in listOf(Tab.GUIDE, Tab.SEARCH, Tab.LIBRARIES)) }.coerceAtLeast(0)
+                val reduced = app.streamsetu.tv.ui.screens.library.reducedMotion()
+                val at by androidx.compose.animation.core.animateFloatAsState(index.toFloat(), if (reduced) androidx.compose.animation.core.snap() else app.streamsetu.tv.ui.screens.library.pressSpring(), label = "tabPill")
+                val pill = Tokens.elevated
+                Row(Modifier.fillMaxWidth().height(62.dp).shadow(10.dp, RoundedCornerShape(31.dp)).clip(RoundedCornerShape(31.dp)).glossy(RoundedCornerShape(31.dp)).padding(5.dp).drawBehind {
+                    val w = size.width / items.size
+                    drawRoundRect(pill, androidx.compose.ui.geometry.Offset(at * w, 0f), androidx.compose.ui.geometry.Size(w, size.height), androidx.compose.ui.geometry.CornerRadius(26.dp.toPx()))
+                }) {
                     items.forEach { (tab, icon, name) ->
                         val on = tab == selected || (tab == Tab.SETTINGS && selected in listOf(Tab.GUIDE, Tab.SEARCH, Tab.LIBRARIES))
+                        val view = androidx.compose.ui.platform.LocalView.current
                         Column(
-                            Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(26.dp)).background(if (on) Tokens.elevated else Color.Transparent).clickable { onSelect(tab) },
+                            Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(26.dp)).clickable { if (!on && android.os.Build.VERSION.SDK_INT >= 23) view.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK); onSelect(tab) },
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                         ) {
                             Icon(icon, if (on) Tokens.accent else Tokens.textTertiary, 24.dp)
@@ -218,7 +250,7 @@ fun PhoneBanner(items: List<app.streamsetu.tv.ui.components.BannerItem>, onPrima
     Box(modifier.padding(horizontal = Ph.gutter).fillMaxWidth().aspectRatio(1.55f).clip(RoundedCornerShape(20.dp)).background(Tokens.card).clickable { onDetails(b) }) {
         androidx.compose.animation.Crossfade(b, animationSpec = androidx.compose.animation.core.tween(600), label = "banner") { it ->
             Box(Modifier.fillMaxSize()) {
-                if (it.imageUrl.isNullOrBlank()) PosterPlaceholder(it.title, Modifier.fillMaxSize()) else AsyncImage(it.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                if (it.imageUrl.isNullOrBlank()) PosterPlaceholder(it.title, Modifier.fillMaxSize()) else if (!it.imageIsBackdrop) app.streamsetu.tv.ui.components.PosterOnWash(it.imageUrl, it.title, Modifier.fillMaxSize()) else AsyncImage(it.imageUrl, null, Modifier.fillMaxSize().kenBurns(it.id), contentScale = ContentScale.Crop)
                 Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0.35f to Color.Transparent, 1f to Color(0xE6000000))))
                 Column(Modifier.align(Alignment.BottomStart).padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Label(it.title, 22.sp, Color.White, FontWeight.Bold, maxLines = 2)
@@ -253,7 +285,7 @@ private fun ImmersiveBanner(items: List<app.streamsetu.tv.ui.components.BannerIt
     Box(modifier.fillMaxWidth().height(heroHeight(share)).background(Tokens.card).clickable { onDetails(b) }) {
         androidx.compose.animation.Crossfade(b, animationSpec = androidx.compose.animation.core.tween(600), label = "hero") { it ->
             Box(Modifier.fillMaxSize()) {
-                if (it.imageUrl.isNullOrBlank()) PosterPlaceholder(it.title, Modifier.fillMaxSize()) else AsyncImage(it.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                if (it.imageUrl.isNullOrBlank()) PosterPlaceholder(it.title, Modifier.fillMaxSize()) else if (!it.imageIsBackdrop) app.streamsetu.tv.ui.components.PosterOnWash(it.imageUrl, it.title, Modifier.fillMaxSize()) else AsyncImage(it.imageUrl, null, Modifier.fillMaxSize().kenBurns(it.id), contentScale = ContentScale.Crop)
                 Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color(0x99000000), 0.22f to Color.Transparent)))          // keeps the clock and the top buttons readable
                 Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0.38f to Color.Transparent, 0.72f to page.copy(alpha = 0.72f), 1f to page)))
                 Column(Modifier.align(Alignment.BottomStart).padding(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -284,12 +316,19 @@ private fun ImmersiveBanner(items: List<app.streamsetu.tv.ui.components.BannerIt
 
 /** Shows a message under a short pause rather than flashing "empty" while a list loads. */
 @Composable
-fun Empty(title: String, message: String, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Label(title, Ph.heading, Tokens.text, FontWeight.SemiBold)
-        Label(message, Ph.small, Tokens.textSecondary, maxLines = 3)
-    }
+fun Empty(title: String, message: String, modifier: Modifier = Modifier, art: app.streamsetu.tv.ui.components.EmptyArt = emptyArtFor(title)) {
+    app.streamsetu.tv.ui.components.AnimatedEmptyState(art, title, message, modifier.fillMaxWidth().padding(32.dp), titleSize = Ph.heading, messageSize = Ph.small, artSize = 64.dp)
 }
+
+/** The picture for an empty page, from what its title says. */
+fun emptyArtFor(title: String): app.streamsetu.tv.ui.components.EmptyArt = title.lowercase().let { t -> when {
+    "result" in t || "found" in t || "match" in t -> app.streamsetu.tv.ui.components.EmptyArt.NoResults
+    "favorite" in t || "later" in t || "saved" in t || "download" in t -> app.streamsetu.tv.ui.components.EmptyArt.Bookmark
+    "connection" in t || "offline" in t || "network" in t -> app.streamsetu.tv.ui.components.EmptyArt.NoConnection
+    "error" in t || "could not" in t || "failed" in t -> app.streamsetu.tv.ui.components.EmptyArt.Error
+    "library" in t -> app.streamsetu.tv.ui.components.EmptyArt.Library
+    else -> app.streamsetu.tv.ui.components.EmptyArt.Nothing
+} }
 
 /** The strip above the tab bar while something plays and the picture is closed: what it is, play or pause, and stop. Tap it to bring the picture back. */
 @Composable

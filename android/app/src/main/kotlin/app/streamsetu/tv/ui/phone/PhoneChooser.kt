@@ -58,18 +58,18 @@ fun PhoneChooser(c: AppContainer, nav: Navigator, vm: LibraryViewModel = hiltVie
                 if (e.kind == LibraryEntry.Kind.UNFINISHED) nav.base = Base.Setup(typeOf(e), e.sourceIds.first()) else vm.open(e) { nav.enterLibrary() }
             }, onMore = { menuFor = e }) }
             item {
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF131314)).clickable { addMenu = true }.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Tile(Icons.Filled.Add, Color(0xFF2A2A2C), Color.White)
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Tokens.card).clickable { addMenu = true }.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Tile(Icons.Filled.Add, Tokens.elevated, Tokens.text)
                     Column(Modifier.weight(1f)) { Label("Add a library", Ph.body, Tokens.text, FontWeight.SemiBold); Label("Xtream, M3U, Jellyfin, Emby, Plex, tuners, WebDAV, folders", Ph.caption, Tokens.textSecondary) }
                 }
             }
         }
     }
 
-    if (addMenu) Sheet("Add a library", listOf(
+    if (addMenu) Sheet("Add a library", listOfNotNull(
         SheetItem("Xtream Codes", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.XTREAM) },
         SheetItem("M3U link", Icons.Filled.Link) { nav.base = Base.Setup(SourceType.M3U) },
-        SheetItem("Stalker / Ministra portal", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.STALKER) },
+        SheetItem("Stalker / Ministra portal", Icons.Filled.Router) { nav.base = Base.Setup(SourceType.STALKER) }.takeIf { !app.streamsetu.tv.BuildConfig.STORE_BUILD },
         SheetItem("M3U file from this phone", Icons.Filled.Description) { nav.base = Base.Setup(SourceType.LOCAL_FILE) },
         SheetItem("Jellyfin", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.JELLYFIN) },
         SheetItem("Emby", Icons.Filled.Dns) { nav.base = Base.Setup(SourceType.EMBY) },
@@ -98,7 +98,7 @@ private fun Tile(icon: androidx.compose.ui.graphics.vector.ImageVector, bg: Colo
 @Composable
 private fun Row(e: LibraryEntry, onOpen: () -> Unit, onMore: () -> Unit) {
     val (bg, tint) = when {
-        e.kind == LibraryEntry.Kind.COMBINED -> Color(0xFF2A2A2C) to Color.White
+        e.kind == LibraryEntry.Kind.COMBINED -> Tokens.elevated to Tokens.text
         e.kind == LibraryEntry.Kind.UNFINISHED -> Color(0xFF4A3A14) to Tokens.gold
         e.typeLabel == "M3U URL" -> Color(0xFF3A2A66) to Color(0xFFA48BFF)
         e.typeLabel == "Local M3U file" -> Color(0xFF14463A) to Color(0xFF3DDCA8)
@@ -111,7 +111,7 @@ private fun Row(e: LibraryEntry, onOpen: () -> Unit, onMore: () -> Unit) {
         LibraryEntry.Health.UNFINISHED -> "Setup not finished" to Tokens.warning
     }
     androidx.compose.foundation.layout.Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF131314)).clickable(onClick = onOpen).padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 2.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Tokens.card).clickable(onClick = onOpen).padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 2.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Tile(when { e.kind == LibraryEntry.Kind.COMBINED -> Icons.Filled.Layers; e.kind == LibraryEntry.Kind.UNFINISHED -> Icons.Filled.Edit; else -> Icons.Filled.Dns }, bg, tint)

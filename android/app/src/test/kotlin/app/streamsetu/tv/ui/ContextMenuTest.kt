@@ -40,6 +40,7 @@ import org.robolectric.annotation.Config
 @androidx.compose.ui.test.ExperimentalTestApi
 class ContextMenuTest {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
 
     /** The guard tells "the press that opened the menu is over" by real time (400 ms). Frozen here, so how busy the machine is cannot change what the test sees. */
     @Before fun freezeGuardClock() { app.streamsetu.tv.ui.components.SelectKeyGuard.clock = { 0L } }

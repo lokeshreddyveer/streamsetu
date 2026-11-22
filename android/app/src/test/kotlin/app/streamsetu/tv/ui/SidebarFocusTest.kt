@@ -36,6 +36,7 @@ import org.robolectric.annotation.Config
 @OptIn(androidx.compose.ui.test.ExperimentalTestApi::class)
 class SidebarFocusTest {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
     private val chosen = mutableStateListOf<Tab>()
     private val folderClicks = mutableStateListOf<Int>()
     private var returns = 0

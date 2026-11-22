@@ -35,12 +35,12 @@ Anything not listed here is not claimed.
 Library chooser and setup (Xtream, M3U, local file and folder, Plex, Jellyfin, Emby, Stalker, tuners, WebDAV), combined libraries, Home, Movies, Series, details pages, Live TV with
 preview, TV Guide, global and section search, favorites, Watch Later and collections, folder arrangement and locks with PIN, new-episode detection, channel manager, catch-up and
 start-over, scheduled recordings, saved titles, reminders, statistics, backup and restore, profiles with kids limits, Wi-Fi sync between devices, phone-assisted setup, background
-sync, screenshots, crash reports, update check, refresh-rate matching, audio and subtitle delay, Trakt, debrid links, your own AI, and the touch layout for phones and tablets.
+sync, screenshots, crash reports, update check, a Folders view of Movies, Series and Live TV, Smart Mix recommendations on Home, a cast row and weekly trending (with your own TMDB key), refresh-rate matching, audio and subtitle delay, Trakt, debrid links, your own AI, and the touch layout for phones and tablets.
 
 ## Not built or not working
 
 - The Setu chat is not in the Android apps.
 - Recording of HLS channels (they are refused with a message).
-- No Windows app.
+- Windows is a separate app (`windows/native`).
 - Real-device tests are missing for Fire OS 5 and 6, Android TV (non-Fire), phones and tablets, long sessions, and every provider type.
 - The release script runs every module's unit tests, lint and the dependency check; the connected (on-device) tests run only with `CONNECTED=1`.

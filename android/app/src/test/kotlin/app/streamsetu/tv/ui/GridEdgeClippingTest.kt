@@ -45,6 +45,7 @@ import org.robolectric.annotation.Config
 @OptIn(ExperimentalTestApi::class)
 class GridEdgeClippingTest {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
 
     private fun px(dp: androidx.compose.ui.unit.Dp) = with(rule.density) { dp.toPx() }
     private fun bounds(tag: String) = rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot

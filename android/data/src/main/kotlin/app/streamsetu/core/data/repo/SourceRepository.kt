@@ -33,7 +33,7 @@ class SourceRepository(private val db: AppDatabase, private val credentials: Cre
     private suspend fun removeLocked(id: String) {
         db.withTransaction {
             val c = db.catalog()
-            c.clearChannels(id); c.clearMovies(id); c.clearSeries(id); c.clearCategories(id); c.clearFingerprint(id)
+            c.clearChannels(id); c.clearMovies(id); c.clearSeries(id); c.clearCategories(id); c.clearFingerprint(id); db.identity().clearSource(id); db.identity().clearTwinsOf(id)
             db.sources().delete(id)
             db.libraries().removeSource(id)
             val raw = db.openHelper.writableDatabase          // on this transaction's own thread, so these are part of it

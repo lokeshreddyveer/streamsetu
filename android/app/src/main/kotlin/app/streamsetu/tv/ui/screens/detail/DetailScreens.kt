@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.screens.detail
 
+import app.streamsetu.tv.ui.screens.library.riseIn
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.animation.togetherWith
@@ -96,6 +97,12 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
     LaunchedEffect(movie.id) { kotlinx.coroutines.delay(350); variants = runCatching { c.search.movieVariants(movie.title) }.getOrDefault(emptyList()) }
     val pictures by c.artwork.filled.collectAsState()          // the timeline is read again when another picture has been found
     LaunchedEffect(movie.id, pictures) { kotlinx.coroutines.delay(400); franchise = runCatching { c.search.franchiseOf(movie) }.getOrDefault(emptyList()) }
+    // The same film in other languages (or in another playlist), read off the screen's thread after the page has come in.
+    var otherLanguages by remember { mutableStateOf<List<Pair<app.streamsetu.core.data.repo.OtherVersions.Version, Movie>>?>(null) }
+    val cast = app.streamsetu.tv.ui.components.rememberCast(c, movie.title, movie.year, false, movie.categoryId)
+    var openVersion by remember(movie.id) { mutableStateOf<app.streamsetu.core.data.repo.OtherVersions.Version?>(null) }
+    LaunchedEffect(movie.id) { openVersion = runCatching { c.search.versionOf(movie) }.getOrNull() }
+    LaunchedEffect(movie.id) { kotlinx.coroutines.delay(450); otherLanguages = runCatching { c.search.otherVersionsOf(movie, app.streamsetu.tv.ui.components.preferredLanguage(c)) }.getOrDefault(emptyList()) }
     // "More like this" is ranked once, from what is already on the device, and shown as it is: it does not grow or reshuffle a few seconds later.
     var relatedLoaded by remember(movie.id) { mutableStateOf(false) }
     LaunchedEffect(movie.id, pictures) {          // read again when another picture has been found: the same titles in the same order, now with the picture
@@ -121,8 +128,10 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
                         coil.compose.AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
                     }
                 }
-                Column(Modifier.widthIn(max = 540.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {          // the left 55 % of the screen
+                // The title block rises a little into place as the page opens (only a fade with reduced motion).
+                Column(Modifier.widthIn(max = 540.dp).riseIn(0), verticalArrangement = Arrangement.spacedBy(8.dp)) {          // the left 55 % of the screen
                     Label(movie.title, Tokens.display, Tokens.text, FontWeight.Bold, maxLines = 2, modifier = Modifier.testTag("detail-title"))
+                    app.streamsetu.tv.ui.components.VersionPill(openVersion, tv = true)          // "Hindi · Dubbed · FHD": tells apart versions that share a poster and a story
                     Label(listOfNotNull(movie.year?.toString(), info?.duration?.takeIf { it.isNotBlank() && it != "00:00:00" }, info?.genre?.takeIf { it.isNotBlank() }, ratingBadge(movie.rating)).joinToString("  ·  "), Tokens.small, Tokens.textSecondary)
                     // One short line about the title, its story in at most four lines, then the actions: Play or Resume, Watch Later, Favorite, More. Everything else is under More.
                     (info?.plot ?: movie.plot)?.takeIf { it.isNotBlank() }?.let { Label(it, Tokens.body, Tokens.textSecondary, maxLines = if (more) 12 else 4) }
@@ -165,6 +174,8 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
                 }
             }
             if (franchise.size > 1) item { FranchiseTimeline(franchise, movie.id) { m -> nav.close(); nav.open(Overlay.MovieDetail(m)) } }
+            if (cast.isNotEmpty()) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionTitle("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, true) { m -> nav.open(Overlay.Person(m.name, m.photo)) } } }
+            if (otherLanguages.let { it == null || it.size > 1 }) item { app.streamsetu.tv.ui.components.TvOtherLanguages(otherLanguages, { it.posterUrl }) { m -> nav.close(); nav.open(Overlay.MovieDetail(m)) } }
             if (!relatedLoaded) item { RelatedPlaceholders() }
             if (related.isNotEmpty()) item {
                 Column {
@@ -212,6 +223,11 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
     var similarLoaded by remember(series0.id) { mutableStateOf(false) }
     val seriesPictures by c.artwork.filled.collectAsState()
     LaunchedEffect(series0.id, seriesPictures) { kotlinx.coroutines.delay(450); similar = runCatching { c.search.similarSeries(series0) }.getOrDefault(emptyList()); similarLoaded = true }
+    var otherLanguages by remember { mutableStateOf<List<Pair<app.streamsetu.core.data.repo.OtherVersions.Version, Series>>?>(null) }
+    val cast = app.streamsetu.tv.ui.components.rememberCast(c, series0.title, series0.year, true, series0.categoryId)
+    var openVersion by remember(series0.id) { mutableStateOf<app.streamsetu.core.data.repo.OtherVersions.Version?>(null) }
+    LaunchedEffect(series0.id) { openVersion = runCatching { c.search.versionOf(series0) }.getOrNull() }
+    LaunchedEffect(series0.id) { kotlinx.coroutines.delay(450); otherLanguages = runCatching { c.search.otherVersionsOf(series0, app.streamsetu.tv.ui.components.preferredLanguage(c)) }.getOrDefault(emptyList()) }
     var chooseOpen by remember { mutableStateOf(false) }
     var episodesOpen by remember { mutableStateOf(false) }
     var episodeMenu by remember { mutableStateOf<Episode?>(null) }
@@ -244,8 +260,9 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
         val pageScope = rememberCoroutineScope()
         Column(Modifier.fillMaxSize().padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 56.dp)) {
             // The title, the story and the actions stay where they are; only what is below them scrolls.
-                Column(Modifier.widthIn(max = 760.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Column(Modifier.riseIn(0).widthIn(max = 760.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Label(s.title, Tokens.display, Tokens.text, FontWeight.Bold, maxLines = 2, modifier = Modifier.testTag("detail-title"))
+                    app.streamsetu.tv.ui.components.VersionPill(openVersion, tv = true)
                     Label(listOfNotNull(s.year?.toString(), if (seasons.isNotEmpty()) "${seasons.size} season${if (seasons.size == 1) "" else "s"}" else null, ratingBadge(s.rating)).joinToString("  ·  "), Tokens.small, Tokens.textSecondary)
                     app.streamsetu.core.data.repo.QualityBadges.from(listOf(s.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Tokens.small, Tokens.accent, FontWeight.Bold) }
                     s.plot?.takeIf { it.isNotBlank() }?.let { Label(it, Tokens.body, Tokens.textSecondary, maxLines = 4) }
@@ -282,8 +299,11 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
             
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = pageList, contentPadding = PaddingValues(top = 26.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
 
-            if (loading && episodes.isEmpty()) item { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Spinner(); Label("Loading episodes…", Tokens.body, Tokens.textSecondary) } }
+            if (loading && episodes.isEmpty()) item { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { app.streamsetu.tv.ui.components.BrandLoader(size = 30.dp); Label("Loading episodes…", Tokens.body, Tokens.textSecondary) } }
             error?.let { e -> if (episodes.isEmpty()) item { Label(e, Tokens.body, Tokens.danger, maxLines = 2) } }
+            // Other languages come right after the overview (above), before the seasons.
+            if (cast.isNotEmpty()) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionTitle("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, true) { m -> nav.open(Overlay.Person(m.name, m.photo)) } } }
+            if (otherLanguages.let { it == null || it.size > 1 }) item { app.streamsetu.tv.ui.components.TvOtherLanguages(otherLanguages, { it.posterUrl }) { sr -> nav.close(); nav.open(Overlay.SeriesDetail(sr)) } }
             if (seasons.isNotEmpty()) item {
                 // Entering the seasons from the actions above or the episodes below always lands on the open season (not on whichever chip is nearest).
                 LazyRow(Modifier.bleedStart(14.dp).focusProperties { enter = { activeSeasonChip } }, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 6.dp)) {

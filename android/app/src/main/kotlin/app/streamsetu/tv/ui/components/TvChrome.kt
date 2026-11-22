@@ -22,7 +22,7 @@ import app.streamsetu.tv.ui.theme.Tokens
 @Composable
 fun TvStatusState(title: String, modifier: Modifier = Modifier, detail: String? = null, loading: Boolean = false, icon: ImageVector? = null, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
     Column(modifier.fillMaxWidth().background(if (icon != null) Tokens.card else Color.Transparent, RoundedCornerShape(Tokens.radius)).padding(vertical = 12.dp, horizontal = if (icon != null) 16.dp else 0.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (loading) Spinner()
+        if (loading) app.streamsetu.tv.ui.components.BrandLoader(size = 30.dp)
         if (icon != null) Image(icon, null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(Tokens.warning))
         Label(title, Tokens.title, Tokens.text, FontWeight.SemiBold, maxLines = 2)
         if (!detail.isNullOrBlank()) Label(detail, Tokens.body, Tokens.textSecondary, maxLines = 3, modifier = Modifier.widthIn(max = 640.dp))

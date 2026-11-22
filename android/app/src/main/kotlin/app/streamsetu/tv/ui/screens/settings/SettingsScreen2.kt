@@ -217,17 +217,39 @@ fun AppearanceSettings(c: AppContainer) {
         ToggleRow("Show the year under posters", on = meta) { ui.setShowPosterMeta(it) }
         ToggleRow("High-contrast focus", "Uses a thicker white frame around the focused item.", contrast) { ui.setHighContrastFocus(it) }
         ChoiceRow("Animation", options = AnimationLevel.entries.map { it to it.label }, value = anim) { ui.setAnimation(it) }
+        // The opening at launch: automatic (the full story on the first ever launch, a short cut on every other) or off. It cannot be skipped, so it can be turned off here.
+        val context = androidx.compose.ui.platform.LocalContext.current
+        var opening by remember { mutableStateOf(app.streamsetu.tv.opening.startup.StartupCoordinator.mode(context)) }
+        ChoiceRow("Opening", "The short film when the app starts. Reduced motion always shows a still instead.",
+            app.streamsetu.tv.opening.startup.OpeningMode.entries.map { it to it.label }, opening) { opening = it; app.streamsetu.tv.opening.startup.StartupCoordinator.setMode(context, it) }
+        var replayAsked by remember { mutableStateOf(false) }
+        ActionRow("Replay the full story", if (replayAsked) "It plays the next time the app starts." else "Plays the full opening once more, the next time the app starts.", "Replay", confirm = false) {
+            app.streamsetu.tv.opening.startup.StartupCoordinator.replayFullNextLaunch(context); replayAsked = true
+        }
     }
     SettingGroup("Artwork from TMDB", "Fills missing artwork and descriptions using your TMDB API key.") {
         var tmdbKey by remember { mutableStateOf(c.credentials.load("tmdb.key").orEmpty()) }
         var working by remember { mutableStateOf(false) }; var status by remember { mutableStateOf<String?>(null) }
         val scope = rememberCoroutineScope()
-        val tmdb = remember { app.streamsetu.core.data.repo.TmdbService(c.db) { c.credentials.load("tmdb.key") } }
-        TvTextField(tmdbKey, { tmdbKey = it.trim(); if (tmdbKey.isEmpty()) c.credentials.delete("tmdb.key") else c.credentials.save("tmdb.key", tmdbKey) }, "TMDB API key", Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), secret = true)
+        val tmdb = remember { c.tmdbService }
+        val trendingOn by c.ui.tmdbTrending.collectAsState()
+        TvTextField(tmdbKey, { tmdbKey = it.trim(); if (tmdbKey.isEmpty()) { c.credentials.delete("tmdb.key"); app.streamsetu.core.data.repo.TmdbFiles.clear(c.tmdbDir) }          // removing the key stops every TMDB request; what TMDB already filled stays until the 180-day limit (or a lock) takes it back
+ else c.credentials.save("tmdb.key", tmdbKey) }, "TMDB API key", Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), secret = true)
+        ToggleRow("Weekly trending (Top This Week)", "Uses TMDB's public weekly list to order Top This Week, matched on this device. Works only with your own key; nothing about you is sent. Turn it off and the saved list is deleted.", trendingOn && tmdbKey.isNotBlank(), enabled = tmdbKey.isNotBlank(), reason = "Enter your TMDB API key first.") {
+            c.ui.setTmdbTrending(it); if (!it) app.streamsetu.core.data.repo.TmdbFiles.clear(c.tmdbDir); c.smartMix.invalidate()
+        }
+        TmdbNotice()
         ActionRow("Fetch missing artwork now", status ?: "Looks up to 150 titles at a time. Run it again for more.", if (working) "Working…" else "Fetch", confirm = false, enabled = !working && tmdbKey.isNotBlank(), reason = "Enter your TMDB API key first.") {
             working = true; status = "Starting…"
             scope.launch { status = runCatching { tmdb.fillMissing(150) { d, t -> status = "$d of $t looked up…" } }.fold({ "Found artwork for $it titles." }, { it.message ?: "That did not work." }); working = false }
         }
+    }
+    SettingGroup("Browsing") {
+        val rev by ui.folderViewRev.collectAsState()
+        val profile = c.profiles.activeId.value
+        ToggleRow("Folders view for Movies", "One row per folder, with a See all and a More tile. Off shows the plain poster grid. Kept for each profile on this device.", remember(rev, profile) { ui.foldersView("MOVIE", profile) }) { ui.setFoldersView("MOVIE", profile, it) }
+        ToggleRow("Folders view for Series", "One row per folder, with a See all and a More tile. Off shows the plain poster grid. Kept for each profile on this device.", remember(rev, profile) { ui.foldersView("SERIES", profile) }) { ui.setFoldersView("SERIES", profile, it) }
+        ToggleRow("Folders view for Live TV", "One row of channels per folder. Off shows the channel list with the preview. Kept for each profile on this device.", remember(rev, profile) { ui.foldersView("CHANNEL", profile) }) { ui.setFoldersView("CHANNEL", profile, it) }
     }
     SettingGroup("Banner and shortcuts") {
         ToggleRow("Featured banner slideshow", "Shows featured titles at the top of Home, Movies and Series.", banner) { ui.setBannerEnabled(it) }
@@ -379,6 +401,7 @@ fun AboutSettings(c: AppContainer) {
         InfoRow("Stored on this device", "Connections, favorites, history, progress", "Logins are encrypted with the Android Keystore.")
         InfoRow("Crash and usage reports", "Off", "None are collected or sent.")
     }
+    SettingGroup("TMDB") { TmdbNotice() }
     SettingGroup("Open-source software") {
         listOf("AndroidX Media3 (ExoPlayer)" to "Apache 2.0", "mpv and libmpv for Android" to "LGPL 2.1 or later", "OkHttp and Retrofit" to "Apache 2.0", "Coil" to "Apache 2.0", "Room, Compose, WorkManager" to "Apache 2.0", "Hilt and Dagger" to "Apache 2.0", "Kotlin and kotlinx" to "Apache 2.0").forEach { (n, l) -> InfoRow(n, l) }
     }
@@ -427,3 +450,16 @@ private fun restartApp(context: android.content.Context) {
     context.startActivity(launch)
     Runtime.getRuntime().exit(0)
 }
+
+/** The TMDB logo, the notice TMDB requires, and what is and is not sent to TMDB (shown in About and beside the TMDB settings). */
+@Composable
+fun TmdbNotice() {
+    androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(app.streamsetu.tv.R.drawable.tmdb_logo), "TMDB logo", Modifier.height(14.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit, alignment = androidx.compose.ui.Alignment.CenterStart)
+        Label(TMDB_NOTICE, app.streamsetu.tv.ui.theme.Tokens.small, app.streamsetu.tv.ui.theme.Tokens.textSecondary, maxLines = 4)
+        Label(TMDB_PRIVACY, app.streamsetu.tv.ui.theme.Tokens.small, app.streamsetu.tv.ui.theme.Tokens.textTertiary, maxLines = 14)
+    }
+}
+
+const val TMDB_NOTICE = "This product uses the TMDB API but is not endorsed or certified by TMDB."
+const val TMDB_PRIVACY = "TMDB is used only with your own free API key, and no key is built into the app. Matching artwork, and opening a title's cast, sends that title's name and year to TMDB; a title in a locked or hidden folder, or with a copy in one, is never sent. Looking up a person by name (Ask) sends that name and nothing else. Weekly trending requests TMDB's public list: nothing about you, your history, your profile or this device is sent, and the list is matched here on this device. Saved lists and details, and the posters, summaries and ratings TMDB filled in, are kept for at most 180 days and then removed; anything your playlist provided itself is never touched. Turn the switch off, or remove the key, and the saved list is deleted."

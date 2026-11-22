@@ -22,7 +22,12 @@ android {
         versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
         versionName = (project.findProperty("appVersionName") as String?) ?: "0.2.0"
         // In-app updating from GitHub releases. Turn it off (-PselfUpdate=false) for a build that goes through a store, which updates apps itself.
-        buildConfigField("boolean", "SELF_UPDATE", ((project.findProperty("selfUpdate") as String?) != "false").toString())
+        buildConfigField("boolean", "SELF_UPDATE", ((project.findProperty("selfUpdate") as String?) != "false" && !project.hasProperty("storeBuild")).toString())
+        // A build for a store (-PstoreBuild): no Stalker / MAG portal connection type on the setup screens, and no permission to install packages (the in-app updater is off there too, see selfUpdate).
+        // The GitHub and Fire TV build leaves all of this on. The permission is a placeholder: the store build points it at one the manifest already holds, so it is not requested.
+        val storeBuild = project.hasProperty("storeBuild")
+        buildConfigField("boolean", "STORE_BUILD", storeBuild.toString())
+        manifestPlaceholders["installPackagesPermission"] = if (storeBuild) "android.permission.ACCESS_NETWORK_STATE" else "android.permission.REQUEST_INSTALL_PACKAGES"
         buildConfigField("boolean", "FRAME_LOG", "false")          // frame timing and key latency in the log; on for the benchmark build
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }       // Fire TV and Android TV boxes are ARM
         // Sports is switched off in the app unless a build asks for it with -PsportsEnabled=true. One flag for the code (SportsFeature) and for the two Sports receivers in the manifest.
@@ -80,8 +85,10 @@ android {
             // Sports is switched off (BuildConfig.SPORTS_ENABLED), so its tests are not part of the gate; `-PwithSports` runs them. SportsDisabledTests (the proof that it is off) always runs.
             all { t -> if (!project.hasProperty("withSports") && (project.findProperty("sportsEnabled") as String?) != "true") t.filter { excludeTestsMatching("*.sports.*"); excludeTestsMatching("*Sports*Tests") } }
             // One long-lived test JVM slows down as Robolectric and Compose state builds up: after a few hundred tests the Compose UI tests time out ("app not idle")
-            // and the run stalls. Fresh JVMs every 100 tests, four at a time, run the whole suite in about a minute with every test passing.
-            all { t -> t.maxParallelForks = 4; t.setForkEvery(100L) }
+            // and the run stalls. A fresh JVM for every test class (forkEvery counts classes), four at a time: a Compose focus test went 'not idle' only when classes shared a JVM in one particular order, run the whole suite in about a minute with every test passing.
+            // Each test JVM gets 1.5 GB: with 512 MB the batch that builds the whole app (AppContainerLifetimeTest) ran out of memory and the Compose tests sharing
+            // its JVM then timed out.
+            all { t -> t.maxParallelForks = 4; t.setForkEvery(1L); t.maxHeapSize = "1536m" }
         }
     }       // the Compose UI tests run on the JVM with Robolectric
 }

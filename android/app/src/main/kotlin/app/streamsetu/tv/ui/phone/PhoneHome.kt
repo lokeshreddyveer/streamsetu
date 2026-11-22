@@ -38,6 +38,8 @@ import app.streamsetu.tv.ui.screens.section.ratingBadge
 import app.streamsetu.tv.ui.theme.Tokens
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
+import app.streamsetu.tv.ui.screens.home.continueItemMotion
+import app.streamsetu.tv.ui.screens.home.removeFromContinueAction
 import kotlinx.coroutines.launch
 
 /** Home: a featured title, shortcuts, then rows. Everything scrolls with a finger; a tap opens, touch and hold gives the menu. */
@@ -52,6 +54,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val recent by vm.recentWatched.collectAsStateWithLifecycle()
     val forYou by vm.forYou.collectAsStateWithLifecycle()
     val moreWith by vm.moreWith.collectAsStateWithLifecycle()
+    val mix by vm.mix.collectAsStateWithLifecycle()
     val movies by vm.recentMovies.collectAsStateWithLifecycle()
     val series by vm.recentSeries.collectAsStateWithLifecycle()
     val favIds by vm.favouriteIds.collectAsStateWithLifecycle()
@@ -100,8 +103,21 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     SectionHeader("Continue Watching", action = "See all", onAction = { nav.open(Overlay.Collection("continue")) })
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(resume, key = { "c" + it.playable.id }) { r ->
-                            PhoneWide(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, Modifier.width(240.dp), progress = if (r.isNew) 0f else r.progress.fraction, badge = if (r.isNew) "NEW" else null,
-                                onLong = { sheet = r.playable.title to listOf(SheetItem("Play", Icons.Filled.PlayArrow) { play(c, nav, r.playable) }, SheetItem("Remove from Continue Watching", Icons.Filled.Close) { vm.removeFromContinue(r.playable.id) }) })
+                            // The same menu from touch and hold and from the ⋯ button on the card: Play, Remove from Continue Watching, Mark as watched.
+                            val menu = { sheet = r.playable.title to buildList {
+                                add(SheetItem("Play", Icons.Filled.PlayArrow) { play(c, nav, r.playable) })
+                                add(SheetItem("Remove from Continue Watching", Icons.Filled.Close) { vm.removeFromContinue(r.playable.id) })
+                                when (val p = r.playable) {
+                                    is app.streamsetu.core.model.MoviePlayable -> add(SheetItem("Mark as watched", Icons.Filled.Check) { vm.setWatched(p.id, ContentKind.MOVIE, null, true) })
+                                    is app.streamsetu.core.model.EpisodePlayable -> add(SheetItem("Mark as watched", Icons.Filled.Check) { vm.setWatched(p.id, ContentKind.EPISODE, p.series.id, true) })
+                                    else -> {}
+                                }
+                            } }
+                            Box(continueItemMotion().width(240.dp).removeFromContinueAction { vm.removeFromContinue(r.playable.id) }) {
+                                PhoneWide(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, Modifier.fillMaxWidth(), progress = if (r.isNew) 0f else r.progress.fraction, badge = if (r.isNew) "NEW" else null, onLong = menu)
+                                // A visible way to the menu, so removing does not depend on discovering touch and hold.
+                                Box(Modifier.align(Alignment.TopEnd).padding(2.dp)) { IconTap(Icons.Filled.MoreHoriz, "More options for ${r.playable.title}", menu, tint = Tokens.text, filled = true) }
+                            }
                         }
                     }
                 }
@@ -139,7 +155,23 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     }
                 }
             } }
-            forYou?.let { fy -> item {
+            mix.forEach { sh ->
+                item(key = "mix:" + sh.id, contentType = "mixrail") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SectionHeader(sh.title)
+                        LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            items(sh.items, key = { sh.id + it.kind() + it.id }, contentType = { "poster" }) { f ->
+                                when (f) {
+                                    is FavItem.Mv -> PhonePoster(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, Modifier.width(112.dp), itemId = f.movie.id, subtitle = f.movie.year?.toString(), onLong = { movieMenu(f.movie) })
+                                    is FavItem.Sr -> PhonePoster(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, Modifier.width(112.dp), itemId = f.series.id, subtitle = f.series.year?.toString(), onLong = { seriesMenu(f.series) })
+                                    is FavItem.Ch -> {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (mix.none { it.id == app.streamsetu.core.data.smartmix.ShelfSpec.FOR_YOU }) forYou?.let { fy -> item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("For You")
                     Label("Because you watched ${fy.because}", Ph.small, Tokens.textSecondary, modifier = Modifier.padding(horizontal = Ph.gutter))
@@ -175,8 +207,10 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
             }
         }
         // The top bar floats over the banner; its name is only drawn when there is no banner under it.
-        PhoneTopBar("Home", showTitle = banner.isEmpty(), leading = { RoundTap(Icons.Filled.Layers, "Libraries") { c.library.close(); nav.toChooser() } }) { RoundTap(Icons.Filled.Search, "Search") { nav.openSearch() } }
+        PhoneTopBar("Home", showTitle = banner.isEmpty(), leading = { RoundTap(Icons.Filled.Layers, "Libraries") { c.library.close(); nav.toChooser() } }) { RoundTap(Icons.Filled.Shuffle, "Shuffle recommendations") { vm.shuffleRecommendations() }; RoundTap(Icons.Filled.Search, "Search") { nav.openSearch() } }
         sheet?.let { (t, items) -> Sheet(t, items, onClose = { sheet = null }) }
+        // Undo after a removal from Continue Watching.
+        app.streamsetu.tv.ui.screens.home.ContinueUndoBar(vm, tv = false, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 

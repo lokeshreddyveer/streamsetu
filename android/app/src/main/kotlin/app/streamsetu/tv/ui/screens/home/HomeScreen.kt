@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +63,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val hasFavTitles by vm.favourites.select { l -> l.any { it !is FavItem.Ch } }
     val hasLater by vm.watchLater.select { it.isNotEmpty() }
     val hasForYou by vm.forYou.select { it != null }
+    val mixShelves by vm.mix.collectAsStateWithLifecycle()
     val hasMoreWith by vm.moreWith.select { it != null }
     val hasMovies by vm.recentMovies.select { it.isNotEmpty() }
     val hasSeries by vm.recentSeries.select { it.isNotEmpty() }
@@ -139,7 +141,8 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     }
                     "later" -> if (hasLater) railItem("Watch Later") { FavouriteRail("Watch Later", vm.watchLater, null, "w", RowKind.WATCH_LATER, c, nav, pad, longOn) }
                     "foryou" -> {
-                        if (hasForYou) railItem("For You") { ForYouRail(vm, c, nav, pad, longOn) }
+                        mixShelves.forEach { sh -> railItem(sh.title) { MixRail(sh, vm, c, nav, pad, longOn) } }
+                        if (hasForYou && mixShelves.none { it.id == app.streamsetu.core.data.smartmix.ShelfSpec.FOR_YOU }) railItem("For You") { ForYouRail(vm, c, nav, pad, longOn) }
                         if (hasMoreWith) railItem("More with") { MoreWithRail(vm, c, nav, pad, longOn) }
                     }
                     "movies" -> if (hasMovies) railItem("Recently Added Movies") { MoviesRail(vm, nav, pad, longOn) }
@@ -158,6 +161,8 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
         Box(Modifier.align(Alignment.TopStart).fillMaxWidth().height(28.dp).background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Tokens.background, androidx.compose.ui.graphics.Color.Transparent))))
         }
         }
+        // Undo after a removal from Continue Watching, at the bottom of the page.
+        ContinueUndoBar(vm, tv = true, modifier = Modifier.align(Alignment.BottomCenter))
       }
 
         HomeMenuHost(menuTarget, menuRow, vm, c, nav) { menuTarget = null }
@@ -189,7 +194,8 @@ private fun collectionCategories(nav: Navigator, cols: List<UserCollection>): Li
 
 /** One row of Home as one item of the page. The row is a composable of its own that collects its own list. */
 private fun LazyListScope.railItem(title: String, content: @Composable () -> Unit) {
-    item(key = "rail:$title", contentType = "rail") { content() }
+    // Rows come in one after another the first time Home appears in a session (see StaggerLimiter); after that they are simply there.
+    item(key = "rail:$title", contentType = "rail") { Box(Modifier.staggerIn("home:$title")) { content() } }
 }
 
 @Composable
@@ -223,6 +229,8 @@ private fun ShortcutRow(vm: HomeViewModel, c: AppContainer, nav: Navigator, bann
             }
             QuickCard(label, icon, n, { nav.open(Overlay.Collection(id)) }, { onMenu(id) }, if (id == vm.shortcutOrder.first() && !bannerOn && entry != null) Modifier.focusRequester(entry) else Modifier)
         }
+        // A new draw of the recommendation rows and the banner (no sync is started). Reachable with the D-pad like the other shortcuts, last in the row.
+        QuickCard("Shuffle recommendations", Icons.Filled.Shuffle, 0, { vm.shuffleRecommendations() }, {})
     }
 }
 
@@ -249,14 +257,20 @@ private fun LiveRailCard(l: LiveItem, playlist: () -> List<LiveItem>, c: AppCont
 private fun ContinueRail(vm: HomeViewModel, c: AppContainer, nav: Navigator, pad: PaddingValues, longOn: (HomeTarget, RowKind) -> Unit) {
     val all by vm.continueWatching.collectAsStateWithLifecycle()
     val cards = remember(all) { all.take(RailMax) }
-    RailFrame("Continue Watching", pad) { items(cards, key = { "c" + it.playable.id }, contentType = { "card" }) { r -> ContinueCard(r, c, nav, longOn) } }
+    // The hint under the row needs to know when the remote is in it.
+    var rowFocused by remember { mutableStateOf(false) }
+    Column(Modifier.onFocusChanged { rowFocused = it.hasFocus }) {
+        RailFrame("Continue Watching", pad) { items(cards, key = { "c" + it.playable.id }, contentType = { "card" }) { r -> Box(continueItemMotion()) { ContinueCard(r, c, nav, longOn) { vm.removeFromContinue(r.playable.id) } } } }
+        ContinueHintLine(rowFocused)
+    }
 }
 
 /** The card redraws only when its own item changes (the view model hands back the same instance for a row that did not change). */
 @Composable
-private fun ContinueCard(r: ResumeItem, c: AppContainer, nav: Navigator, longOn: (HomeTarget, RowKind) -> Unit) {
+private fun ContinueCard(r: ResumeItem, c: AppContainer, nav: Navigator, longOn: (HomeTarget, RowKind) -> Unit, onRemove: () -> Unit) {
     val t: HomeTarget? = when (val p = r.playable) { is MoviePlayable -> HomeTarget.Film(p.movie); is EpisodePlayable -> HomeTarget.Episode(p.series, p); else -> null }
-    LandscapeCard(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, progress = if (r.isNew) 0f else r.progress.fraction, badge = if (r.isNew) "NEW" else null, onLongClick = t?.let { { longOn(it, RowKind.CONTINUE) } }, itemId = when (val p = r.playable) { is app.streamsetu.core.model.MoviePlayable -> p.movie.id; is EpisodePlayable -> p.series.id; else -> null })
+    LandscapeCard(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, progress = if (r.isNew) 0f else r.progress.fraction, badge = if (r.isNew) "NEW" else null, onLongClick = t?.let { { ContinueHint.used = true; longOn(it, RowKind.CONTINUE) } }, itemId = when (val p = r.playable) { is app.streamsetu.core.model.MoviePlayable -> p.movie.id; is EpisodePlayable -> p.series.id; else -> null },
+        cardModifier = Modifier.removeFromContinueAction(onRemove))
 }
 
 /** Favourite channels (channels = true), favourite titles (false) or everything in the list (null), as one row. */
@@ -273,6 +287,13 @@ private fun ForYouRail(vm: HomeViewModel, c: AppContainer, nav: Navigator, pad: 
     val shown = fy ?: return
     val cards = remember(shown) { shown.items.take(RailMax) }
     RailFrame("For You", pad, reason = "Because you watched ${shown.because}") { items(cards, key = { "y" + it.id }, contentType = { "card" }) { f -> FavCard(f, c, nav, RowKind.OTHER, longOn) } }
+}
+
+/** One Smart Mix row: its heading, the line under it, and the titles; "Because You Watched" names the last things watched. */
+@Composable
+private fun MixRail(sh: HomeViewModel.MixShelf, vm: HomeViewModel, c: AppContainer, nav: Navigator, pad: PaddingValues, longOn: (HomeTarget, RowKind) -> Unit) {
+    val cards = remember(sh) { sh.items.take(RailMax) }
+    RailFrame(sh.title, pad) { items(cards, key = { sh.id + it.kind() + it.id }, contentType = { "card" }) { f -> FavCard(f, c, nav, RowKind.OTHER, longOn) } }
 }
 
 @Composable

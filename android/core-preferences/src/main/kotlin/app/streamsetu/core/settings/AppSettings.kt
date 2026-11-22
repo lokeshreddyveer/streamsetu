@@ -173,6 +173,11 @@ class AppSettings(context: Context) {
         get() = prefs.getString("updateSkipped", "").orEmpty()
         set(v) { prefs.edit().putString("updateSkipped", v).apply() }
 
+    /** A version whose download or check failed (a different signing key, a bad checksum, ...): the prompt does not offer it again until a newer version appears (Settings still shows it). */
+    var failedUpdate: String
+        get() = prefs.getString("updateFailed", "").orEmpty()
+        set(v) { prefs.edit().putString("updateFailed", v).apply() }
+
     // ---- Background audio and backups ----
     private val isTelevision = context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK) || context.packageManager.hasSystemFeature("amazon.hardware.fire_tv")
     private val _bgAudio = flow(prefs.getBoolean("bgAudio", !isTelevision))

@@ -24,6 +24,11 @@ abstract class FolderViewModel(protected val c: AppContainer, val kind: ContentK
     /** False while a page is being opened: only what the first screenful needs is read. The screen turns it on once the first page of titles has been drawn (Live TV, which has no such page, starts with it on). */
     val secondary = MutableStateFlow(kind == ContentKind.CHANNEL)
     val folders: StateFlow<List<Folder>> = secondary.flatMapLatest { later -> c.folders.folders(kind, withCounts = later) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(30_000), emptyList())
+    /** The Folders view (one row per folder). Its state lives here so a return from a folder or a title finds it as it was. */
+    val folderRows: app.streamsetu.tv.ui.screens.folders.FolderRowsModel by lazy { app.streamsetu.tv.ui.screens.folders.FolderRowsModel(c, kind, viewModelScope, folders, secondary) }
+    /** Folders or Grid for this kind, for this profile, on this device. */
+    fun foldersView(): Boolean = c.ui.foldersView(kind.name, c.profiles.activeId.value)
+    fun setFoldersView(on: Boolean) = c.ui.setFoldersView(kind.name, c.profiles.activeId.value, on)
     // ---- Folder actions (FolderActions) ----
     override fun toggleFavorite(f: Folder) { viewModelScope.launch { c.folders.toggleFavorite(kind, f) } }
     override fun togglePinned(f: Folder) { viewModelScope.launch { c.folders.togglePinned(kind, f) } }

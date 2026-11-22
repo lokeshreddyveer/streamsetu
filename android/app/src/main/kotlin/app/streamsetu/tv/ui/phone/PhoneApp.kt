@@ -69,13 +69,15 @@ fun PhoneApp(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
         app.streamsetu.tv.ui.components.PhoneUpdatePrompt(c, suppress = nav.top != null || base != Base.Shell)
         nav.top?.let { top ->
             when (val o = top) {
-                is Overlay.MovieDetail -> PhoneMovieDetail(o.movie, c, nav)
-                is Overlay.SeriesDetail -> PhoneSeriesDetail(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav)
+                // Each title gets a fresh page (keyed by its id), so moving to another version (Other languages) never keeps the last title's state.
+                is Overlay.MovieDetail -> androidx.compose.runtime.key(o.movie.id) { PhoneMovieDetail(o.movie, c, nav) }
+                is Overlay.SeriesDetail -> androidx.compose.runtime.key(o.series.id) { PhoneSeriesDetail(vm(key = o.series.id) { SeriesDetailViewModel(c, o.series) }, c, nav) }
                 is Overlay.Player -> PhonePlayer(c, onClose = { closePlayer(c, nav) }, onMinimize = { minimizePlayer(c, nav) }, onMultiView = { app.streamsetu.tv.openMultiView(c, nav) }, onOpenSeries = { sr -> closePlayer(c, nav); nav.open(Overlay.SeriesDetail(sr)) })
                 is Overlay.MultiView -> app.streamsetu.tv.ui.screens.MultiViewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> nav.close(); app.streamsetu.tv.play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch), c.queue.ifEmpty { listOf(app.streamsetu.core.model.ChannelPlayable(ch)) }) })
                 is Overlay.SportsMultiview -> {}          // Sports is not on the phone
                 is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                 is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav)
+                is Overlay.Person -> app.streamsetu.tv.ui.screens.PersonScreen(o.name, o.photo, c, nav, tv = false)
             }
         }
     }

@@ -65,3 +65,29 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         }
     }
 }
+
+/**
+ * Keeps what TMDB gave this device fresh and within its limits: nothing is fetched without the switch and the person's own key (and then everything saved is deleted); the weekly list is
+ * refreshed once it is a week old; anything saved is deleted after 180 days. Never runs while something plays.
+ */
+class TmdbRefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        val c = EntryPointAccessors.fromApplication(applicationContext, SyncEntryPoint::class.java).container()
+        // The 180-day limit and the folder rules apply whether or not there is a key any more.
+        runCatching { c.tmdbService.purge() }
+        if (c.tmdbKey() == null) { app.streamsetu.core.data.repo.TmdbFiles.clear(c.tmdbDir); return Result.success() }
+        app.streamsetu.core.data.repo.TmdbFiles.purge(c.tmdbDir)
+        runCatching { c.tmdbService.purge() }          // what TMDB filled in: gone after 180 days, and for anything restricted since
+        if (c.playback.current.value != null) return Result.success()
+        // Asks the provider for the view: it refreshes when the list is a week old, clears the saved list when the switch is off, and stays quiet after a failure for an hour.
+        runCatching { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { c.trendingSource.view(System.currentTimeMillis()) } }
+        return Result.success()
+    }
+    companion object {
+        private const val NAME = "tmdb-refresh"
+        fun schedule(context: Context) {
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP,
+                PeriodicWorkRequestBuilder<TmdbRefreshWorker>(12, TimeUnit.HOURS).setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).setRequiresBatteryNotLow(true).build()).build())
+        }
+    }
+}

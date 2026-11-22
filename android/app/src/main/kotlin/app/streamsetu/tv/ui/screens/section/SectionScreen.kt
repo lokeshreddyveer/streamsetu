@@ -69,6 +69,10 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val page by vm.page.collectAsState()          // the titles and the key they were read for, as one value
     val sort by vm.sort.collectAsState()
     val filter by vm.filter.collectAsState()
+    // Folders (one row per folder) is the default view of the main page; Grid (Settings, or the Grid button) is the plain poster wall. Remembered for each profile on each device.
+    val viewRev by c.ui.folderViewRev.collectAsState()
+    val foldersPref = remember(viewRev, kind, c.profiles.activeId.value) { vm.foldersView() }
+    val foldersMode = foldersPref && browse == Browse.All && !filter.active && !vm.gridOnly
     // The hero's data and the rails are asked for only once the first page of titles is on the screen, so they never queue ahead of it in the database.
     // They start only when this page is the curated landing page, its first page of titles is for the present library, sort and filter, and that page has been drawn (two frames), so they never queue ahead of it
     // and are never started for a folder, a filtered list or the plain grid.
@@ -103,7 +107,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val showMeta by c.ui.showPosterMeta.collectAsState()
     val bannerOn by c.ui.bannerEnabled.collectAsState()
     val showShortcuts by c.ui.showShortcuts.collectAsState()
-    val railsFlow = remember(firstPageShown) { if (firstPageShown) vm.rails else kotlinx.coroutines.flow.flowOf(emptyList()) }
+    val railsFlow = remember(firstPageShown, foldersMode) { if (firstPageShown && !foldersMode) vm.rails else kotlinx.coroutines.flow.flowOf(emptyList()) }
     val rails by railsFlow.collectAsState(initial = emptyList())
     val gridOnly = vm.gridOnly
     // The curated page (hero, rails, categories) and the plain poster grid are separate: in the grid only the posters, the title bar and the filter and sort buttons are drawn.
@@ -199,6 +203,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
             when {
                 foldersOpen -> { folderNav.back(); nav.revealSidebar(); true }
                 vm.gridOnly && browse == Browse.All -> { vm.gridOnly = false; true }          // from the plain grid, Back returns to the featured page
+                browse is Browse.Folder && vm.folderRows.openedFromRow -> { vm.folderRows.openedFromRow = false; vm.folderRows.restoreFocus = true; vm.select(Browse.All); true }          // from a folder opened from its row, Back returns to the row
                 browse is Browse.Continue || browse is Browse.Favorites || browse is Browse.WatchLater || browse is Browse.Recent || browse is Browse.RecentlyAdded -> { vm.select(vm.lastFolder); true }
                 else -> { folderNav.show(); true }
             }
@@ -265,7 +270,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                         TvIconButton(Icons.Filled.Search, "Search", { dlg.searchOpen = true }, if (!heroReady) Modifier.focusRequester(entry) else Modifier, onFocus = { hint = if (it) "Search" else null }, plain = heroReady)
                         TvIconButton(Icons.Filled.Folder, "Folders", { folderNav.show() }, onFocus = { hint = if (it) "Folders" else null }, plain = heroReady)
                         // A direct way to the whole library past the rails: the grid's own heading is the target.
-                        if (landing && rails.isNotEmpty() && !cards.isNullOrEmpty()) TvIconButton(Icons.Filled.GridView, "Browse all", { vm.gridOnly = true; headerScope.launch { gridState.scrollToItem(0) } }, onFocus = { hint = if (it) "Browse all" else null }, plain = heroReady)
+                        if (landing && (foldersMode || rails.isNotEmpty()) && !cards.isNullOrEmpty()) TvIconButton(Icons.Filled.GridView, if (foldersMode) "Grid" else "Browse all", { vm.gridOnly = true; headerScope.launch { gridState.scrollToItem(0) } }, onFocus = { hint = if (it) "Browse all" else null }, plain = heroReady)
                         else if (browse == Browse.All && !filter.active && gridOnly) TvIconButton(Icons.Filled.Star, "Featured", { vm.gridOnly = false; headerScope.launch { gridState.scrollToItem(0) } }, onFocus = { hint = if (it) "Featured" else null }, plain = heroReady)
                         // Filter is on the bar with Search and Folders. Sort, the poster size and the choice of source are under More.
                         TvIconButton(Icons.Filled.FilterList, if (filter.active) "Filter · ${filter.count}" else "Filter", { dlg.filterOpen = true }, on = filter.active, onFocus = { hint = if (it) (if (filter.active) "Filter · ${filter.count}" else "Filter") else null }, plain = heroReady)
@@ -281,7 +286,11 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
             if (!heroReady) Box(Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }) { pageHeader() }
             if (heroReady) SectionHero(bannerS, vm, c, heroHeight, entry, cardById, onOpen, foldersOpen, dlg, bannerPausedWhen) { pageHeader() }
             Box(Modifier.weight(1f).fillMaxWidth()) {
-            LazyVerticalGrid(
+            if (foldersMode) app.streamsetu.tv.ui.screens.folders.TvFolderRows(
+                vm.folderRows, kind, posterSize.tv, densePosters, Modifier.onPreviewKeyEvent { interacted = true; false },
+                onOpenFolder = { row -> if (row.locked) folderNav.show() else { vm.folderRows.opened(row); vm.folderRows.openedFromRow = true; vm.select(row.browse) } },
+                onOpenCard = onOpen, onOpenChannel = {}, entry = null,
+            ) else LazyVerticalGrid(
                 GridCells.Fixed(gridColumns), state = gridState, modifier = Modifier.fillMaxSize().railOnLeft().onPreviewKeyEvent { interacted = true; false },
                 contentPadding = PaddingValues(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 14.dp, bottom = 40.dp),          // room for a poster to grow (1.06) and for its frame and glow at the top and sides
                 horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), verticalArrangement = Arrangement.spacedBy(Tokens.gutter),
@@ -487,7 +496,9 @@ private fun EmptyText(browse: Browse, noun: String, filtered: Boolean, entry: Fo
         else -> "Nothing here" to "This folder has no ${noun.lowercase()} in your library."
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Label(t, Tokens.title, Tokens.text, FontWeight.SemiBold); Label(m, Tokens.body, Tokens.textSecondary, maxLines = 2)
+        // A small drawn picture that moves once as the page appears (a magnifier for no matches, a bookmark for lists, the television tuning for an empty folder).
+        val art = when { filtered -> app.streamsetu.tv.ui.components.EmptyArt.NoResults; browse == Browse.Favorites || browse == Browse.WatchLater || browse is Browse.Collection || browse == Browse.FavoriteFolders -> app.streamsetu.tv.ui.components.EmptyArt.Bookmark; else -> app.streamsetu.tv.ui.components.EmptyArt.Nothing }
+        app.streamsetu.tv.ui.components.AnimatedEmptyState(art, t, m)
         // Something for the remote to land on when the folders hand it to an empty page.
         TvButton(if (filtered) "Open Filter" else if (browse != Browse.All) "Show all ${noun.lowercase()}" else "Choose a folder", { if (filtered) onFilter() else if (browse != Browse.All) onAll() else onFolders() }, Modifier.padding(top = 8.dp).focusRequester(entry), primary = true)
     }

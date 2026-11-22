@@ -32,6 +32,20 @@ class UiPrefs(context: Context) {
     val projectorMode: StateFlow<Boolean> = _projectorMode
     fun setProjectorMode(enabled: Boolean) { prefs.edit().putBoolean("projectorMode", enabled).apply(); _projectorMode.value = enabled }
 
+    // TMDB weekly trending (Top This Week): on by default, but it does anything only with the person's own TMDB key. Nothing about the person is ever sent.
+    private val _tmdbTrending = flow(prefs.getBoolean("tmdbTrending", true))
+    val tmdbTrending: StateFlow<Boolean> = _tmdbTrending
+    fun setTmdbTrending(v: Boolean) { prefs.edit().putBoolean("tmdbTrending", v).apply(); _tmdbTrending.value = v }
+
+    // Folders or Grid for Movies, Series and Live TV: remembered for each profile on each device. Kept in a file of its own that no backup or sync reads, so a phone and a TV may differ.
+    private val viewPrefs = context.getSharedPreferences("folder_view", Context.MODE_PRIVATE)
+    private val _viewRev = MutableStateFlow(0)
+    /** Changes whenever any folder view is set, for screens showing it. */
+    val folderViewRev: StateFlow<Int> = _viewRev
+    /** True for the Folders view (the default), false for the plain Grid. [kind] is MOVIE, SERIES or CHANNEL. */
+    fun foldersView(kind: String, profileId: String): Boolean = viewPrefs.getBoolean("view.$kind.$profileId", true)
+    fun setFoldersView(kind: String, profileId: String, folders: Boolean) { viewPrefs.edit().putBoolean("view.$kind.$profileId", folders).apply(); _viewRev.value = _viewRev.value + 1 }
+
     companion object {
         /** Preference keys that describe this device's screen or output, and so are never exported or synchronised. */
         val DEVICE_ONLY = setOf("projectorMode")

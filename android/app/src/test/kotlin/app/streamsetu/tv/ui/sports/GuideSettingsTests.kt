@@ -22,6 +22,7 @@ import org.robolectric.annotation.Config
 @OptIn(ExperimentalTestApi::class)
 class GuideSettingsTests {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
 
     private fun model(vararg names: String) = GuideSettingsModel(names.mapIndexed { i, n -> GuideConnection("s$i", n, null) }, 30, "UTC", "Asia/Kolkata", null)
 

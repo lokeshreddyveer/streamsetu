@@ -21,6 +21,7 @@ object WatchNext {
     /** Called with each progress save (about every ten seconds); writes at most once every 30 seconds per item, and removes the entry near the end. */
     fun update(context: Context, item: Playable, positionMs: Long, durationMs: Long) {
         if (!available(context) || item.isLive || durationMs <= 0) return
+        if (!LauncherSurfaces.allowed(item)) { remove(context, item.id); return }          // never a restricted title
         if (positionMs >= durationMs * 0.95) { remove(context, item.id); return }
         if (positionMs < 60_000) return                       // not started yet
         val now = System.currentTimeMillis()
@@ -43,6 +44,16 @@ object WatchNext {
             val existing = resolver.query(TvContract.WatchNextPrograms.CONTENT_URI, arrayOf(TvContract.WatchNextPrograms._ID), "${TvContract.WatchNextPrograms.COLUMN_INTERNAL_PROVIDER_ID}=?", arrayOf(item.id), null)?.use { if (it.moveToFirst()) it.getLong(0) else null }
             if (existing != null) resolver.update(TvContract.buildWatchNextProgramUri(existing), v, null, null) else resolver.insert(TvContract.WatchNextPrograms.CONTENT_URI, v)
         }
+    }
+
+    /** The ids of everything this app has put in the row. */
+    fun listed(context: Context): List<String> {
+        if (!available(context)) return emptyList()
+        return runCatching {
+            context.contentResolver.query(TvContract.WatchNextPrograms.CONTENT_URI, arrayOf(TvContract.WatchNextPrograms.COLUMN_INTERNAL_PROVIDER_ID), null, null, null)?.use { c ->
+                buildList { while (c.moveToNext()) c.getString(0)?.let(::add) }
+            }.orEmpty()
+        }.getOrDefault(emptyList())
     }
 
     fun remove(context: Context, itemId: String) {

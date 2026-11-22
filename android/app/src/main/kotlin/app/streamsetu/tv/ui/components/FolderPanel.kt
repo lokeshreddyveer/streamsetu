@@ -241,7 +241,8 @@ fun FolderPanel(
         }, onClose = { menuFor = null })
     }
     infoFor?.let { f ->
-        ContextMenu(f.title, listOfNotNull("Provider name: ${f.providerName}", f.pref.alias?.let { "Display name: $it" }, "%,d titles".format(f.count),
+        ContextMenu(f.title, listOfNotNull("Provider name: ${f.providerName}", f.pref.alias?.let { "Display name: $it" }, "%,d titles".format(f.count).takeIf { f.count > 0 },          // a locked folder shows no number
+            
             listOfNotNull(if (f.pref.favorite) "favorite" else null, if (f.pref.pinned) "pinned" else null, if (f.pref.hidden) "hidden" else null, if (f.pref.locked) "locked" else null).joinToString(", ").takeIf { it.isNotBlank() }?.let { "Marked: $it" }).joinToString("\n"),
             listOf(MenuAction("Close", Icons.Filled.Close) {}), onClose = { infoFor = null })
     }

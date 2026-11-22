@@ -32,6 +32,19 @@ import org.robolectric.annotation.Config
 class AppContainerLifetimeTest {
     @get:Rule val hilt = HiltAndroidRule(this)
 
+    /**
+     * The first screen of an app with no library draws endless animations (the aurora, the loader). Robolectric runs the looper until it is idle, and a frame-driven animation never
+     * is: building or recreating the activity then spins for ever. Android's own "remove animations" setting (animator scale 0) is what the app reads to draw those screens still.
+     */
+    @org.junit.Before fun animationsOff() {
+        android.provider.Settings.Global.putFloat(app.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+    }
+
+    /** The setting must not leak into the tests that share this JVM (they read it too, to decide whether to animate). */
+    @org.junit.After fun animationsBack() {
+        android.provider.Settings.Global.putFloat(app.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+    }
+
     private val app get() = ApplicationProvider.getApplicationContext<HiltTestApplication>()
 
     private fun applicationContainer(): AppContainer = EntryPointAccessors.fromApplication(app, SyncEntryPoint::class.java).container()

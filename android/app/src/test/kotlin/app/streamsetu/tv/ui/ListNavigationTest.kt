@@ -44,6 +44,7 @@ import org.robolectric.annotation.Config
 @OptIn(ExperimentalTestApi::class)
 class ListNavigationTest {
     @get:Rule val rule = createComposeRule()
+    @get:Rule val patient = app.streamsetu.tv.ui.PatientIdle()
     private fun press(tag: String, k: Key) { rule.onNodeWithTag(tag).performKeyInput { pressKey(k) }; rule.waitForIdle() }
 
     // ---- poster grid ----

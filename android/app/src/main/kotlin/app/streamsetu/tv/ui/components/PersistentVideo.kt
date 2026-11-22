@@ -66,7 +66,7 @@ private fun LivePreviewStatus(c: AppContainer) {
     val live = current?.takeIf { it.isLive } as? ChannelPlayable
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         when (val st = state) {
-            PlaybackState.Resolving, PlaybackState.Buffering -> if (live != null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { Spinner(); Label(loadingLabel(st, providerWait), Tokens.small, Tokens.textSecondary) }
+            PlaybackState.Resolving, PlaybackState.Buffering -> if (live != null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { BrandLoader(size = 30.dp); Label(loadingLabel(st, providerWait), Tokens.small, Tokens.textSecondary) }
             is PlaybackState.Retrying -> Label("Trying again…", Tokens.small, Tokens.textSecondary)
             is PlaybackState.Failed -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Label("This channel did not play", Tokens.heading, Tokens.text, FontWeight.SemiBold); Label(st.error.message, Tokens.small, Tokens.textSecondary, maxLines = 2); Label("Press OK on the channel to try again.", Tokens.caption, Tokens.textTertiary)

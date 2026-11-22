@@ -225,6 +225,10 @@ private class LiveUiState(initialRowId: String?) {
 fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     val entry = LocalContentEntry.current ?: remember { FocusRequester() }
     val ui = remember { LiveUiState(nav.memory.recall(app.streamsetu.tv.nav.Tab.LIVE)?.id) }
+    // Folders (one row of channels per folder) is the default view; Grid (Settings) is the classic channel list with the preview. Remembered for each profile on each device.
+    val viewRev by c.ui.folderViewRev.collectAsStateWithLifecycle()
+    val liveBrowse by vm.browse.collectAsStateWithLifecycle()
+    val foldersMode = remember(viewRev, liveBrowse, c.profiles.activeId.value) { vm.foldersView() } && liveBrowse == Browse.All
     var sortOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
     var menuFor by remember { mutableStateOf<Channel?>(null) }
@@ -245,7 +249,8 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     // Back from the preview goes to the channel it came from; from the channels it goes to the categories; from the categories the shell opens the rail.
     // The folders are a column beside the channels that can be hidden. Choosing a folder or pressing Right hides it; Back from the channels shows it again, and Back from the folders opens the main sidebar.
     LaunchedEffect(Unit) { c.ensureGuide() }
-    val folderNav = remember { app.streamsetu.tv.nav.FolderNav(startOpen = true) }
+    val folderNav = remember { app.streamsetu.tv.nav.FolderNav(startOpen = !foldersMode) }
+    LaunchedEffect(foldersMode) { if (foldersMode) folderNav.hide() }
     val foldersOpen = folderNav.open
     val focusFolders = folderNav.focusTick
     var folderFocused by remember { mutableStateOf(false) }
@@ -262,9 +267,11 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     val folderScope = androidx.compose.runtime.rememberCoroutineScope()
     fun hideFolders() { folderNav.hide(); folderScope.launch { app.streamsetu.tv.ui.components.requestFocusOnFrames(8, { channelEntry.requestFocus() }, { inChannels }) } }
     // The page's own levels come before the sidebar: the picture goes back to the channels, the channels to the folders, the folders to the main sidebar.
-    DisposableEffect(inPreview, foldersOpen) {
+    DisposableEffect(inPreview, foldersOpen, foldersMode, liveBrowse) {
         val hook: () -> Boolean = {
             when {
+                foldersMode -> { nav.revealSidebar(); true }          // from the rows, Back reaches the main sidebar
+                liveBrowse is Browse.Folder && vm.folderRows.openedFromRow -> { vm.folderRows.openedFromRow = false; vm.folderRows.restoreFocus = true; vm.select(Browse.All); true }          // from a folder opened from its row, Back returns to the row
                 inPreview -> { runCatching { focusedRow.requestFocus() }; true }
                 foldersOpen -> { folderNav.back(); nav.revealSidebar(); true }
                 else -> { focusManager.clearFocus(force = true); folderNav.show(); true }          // the channel lets go of the remote first, then the folders open and take it
@@ -293,7 +300,11 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     val screenH = maxHeight
     val folderW = Tokens.folderPanelWidth
     val channelsW = if (folderNav.open) screenW * 0.22f else screenW * 0.25f
-    Row(Modifier.fillMaxSize()) {
+    if (foldersMode) Box(Modifier.fillMaxSize().padding(top = Tokens.safeVertical)) {
+        app.streamsetu.tv.ui.screens.folders.TvFolderRows(vm.folderRows, ContentKind.CHANNEL, Tokens.posterWidth, false, Modifier,
+            onOpenFolder = { row -> if (row.locked) folderNav.show() else { vm.folderRows.opened(row); vm.folderRows.openedFromRow = true; vm.select(row.browse) } },
+            onOpenCard = {}, onOpenChannel = { ch -> c.play(ChannelPlayable(ch), listOf(ChannelPlayable(ch))); nav.liveFullscreen = true; nav.open(Overlay.Player) }, entry = entry)
+    } else Row(Modifier.fillMaxSize()) {
         if (foldersOpen) {          // no fade, no slide: the page is split in one pass
             androidx.compose.runtime.CompositionLocalProvider(LocalFocusEnabled provides true) {
                 FolderPaneHost(vm, Modifier.onFocusChanged { folderFocused = it.hasFocus }.width(folderW).railOnLeft(), entry, focusFolders, onConfirm = { hideFolders() }, onRight = { hideFolders(); true }, onLeft = { folderNav.left(); nav.revealSidebar() })
@@ -551,7 +562,7 @@ private fun NowNext(ch: Channel, playingId: String?, vm: LiveSectionViewModel, c
         if (guide is GuideState.Loading) {
             // The guide is being read: say so, instead of claiming the channel is not in it.
             Row(Modifier.fillMaxWidth().background(Tokens.card, RoundedCornerShape(12.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Spinner(); Label("Loading the guide…", Tokens.row, Tokens.textSecondary)
+                app.streamsetu.tv.ui.components.BrandLoader(size = 30.dp); Label("Loading the guide…", Tokens.row, Tokens.textSecondary)
             }
         } else if (guide is GuideState.Failed) {
             Row(Modifier.fillMaxWidth().background(Tokens.card, RoundedCornerShape(12.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
