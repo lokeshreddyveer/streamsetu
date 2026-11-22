@@ -10,6 +10,8 @@ android {
     compileSdk = 35
     defaultConfig { minSdk = 22 }
     compileOptions {
+        // java.time and newer java.util methods are used here; the app module desugars them for Android 5.1 and up, and this tells this module's own lint check the same.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -22,6 +24,7 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     api(project(":core-model"))
     api(project(":core-security"))
     api(project(":core-network"))

@@ -228,7 +228,8 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     // Folders (one row of channels per folder) is the default view; Grid (Settings) is the classic channel list with the preview. Remembered for each profile on each device.
     val viewRev by c.ui.folderViewRev.collectAsStateWithLifecycle()
     val liveBrowse by vm.browse.collectAsStateWithLifecycle()
-    val foldersMode = remember(viewRev, liveBrowse, c.profiles.activeId.value) { vm.foldersView() } && liveBrowse == Browse.All
+    val activeProfileId by c.profiles.activeId.collectAsState()
+    val foldersMode = remember(viewRev, liveBrowse, activeProfileId) { vm.foldersView() } && liveBrowse == Browse.All
     var sortOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
     var menuFor by remember { mutableStateOf<Channel?>(null) }

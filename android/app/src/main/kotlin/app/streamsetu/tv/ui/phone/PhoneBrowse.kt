@@ -63,7 +63,8 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
     val banner by vm.banner.collectAsStateWithLifecycle()
     // Folders (one row per folder) is the default view; Grid is the plain poster wall (Settings, or the Grid button). Remembered for each profile on each device.
     val viewRev by c.ui.folderViewRev.collectAsStateWithLifecycle()
-    val foldersMode = remember(viewRev, c.profiles.activeId.value) { vm.foldersView() } && browse == Browse.All
+    val activeProfileId by c.profiles.activeId.collectAsState()
+    val foldersMode = remember(viewRev, activeProfileId) { vm.foldersView() } && browse == Browse.All
     LaunchedEffect(foldersMode) { if (foldersMode) vm.secondary.value = true }
     Box(Modifier.fillMaxSize()) {
         val list = cards
@@ -147,7 +148,8 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     val folderName = (browse as? Browse.Folder)?.let { b -> folders.firstOrNull { it.id == b.id }?.title }
 
     val viewRev by c.ui.folderViewRev.collectAsStateWithLifecycle()
-    val foldersMode = remember(viewRev, c.profiles.activeId.value) { vm.foldersView() } && browse == Browse.All
+    val activeProfileId by c.profiles.activeId.collectAsState()
+    val foldersMode = remember(viewRev, activeProfileId) { vm.foldersView() } && browse == Browse.All
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     LaunchedEffect(browse) { gridState.scrollToItem(0) }
     val total by vm.total.collectAsStateWithLifecycle()

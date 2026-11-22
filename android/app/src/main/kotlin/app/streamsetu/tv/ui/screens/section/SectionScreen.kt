@@ -71,7 +71,8 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
     val filter by vm.filter.collectAsState()
     // Folders (one row per folder) is the default view of the main page; Grid (Settings, or the Grid button) is the plain poster wall. Remembered for each profile on each device.
     val viewRev by c.ui.folderViewRev.collectAsState()
-    val foldersPref = remember(viewRev, kind, c.profiles.activeId.value) { vm.foldersView() }
+    val activeProfileId by c.profiles.activeId.collectAsState()
+    val foldersPref = remember(viewRev, kind, activeProfileId) { vm.foldersView() }
     val foldersMode = foldersPref && browse == Browse.All && !filter.active && !vm.gridOnly
     // The hero's data and the rails are asked for only once the first page of titles is on the screen, so they never queue ahead of it in the database.
     // They start only when this page is the curated landing page, its first page of titles is for the present library, sort and filter, and that page has been drawn (two frames), so they never queue ahead of it

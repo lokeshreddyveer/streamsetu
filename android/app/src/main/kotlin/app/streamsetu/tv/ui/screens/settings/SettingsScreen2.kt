@@ -359,7 +359,7 @@ fun DiagnosticsSettings(c: AppContainer) {
     var msg by remember { mutableStateOf<String?>(null) }
     val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "?" }
     SettingGroup("Playing now") {
-        if (c.playback.current.value == null) InfoRow("Nothing is playing", "", "Start a channel or movie, then come back to see its details.")
+        if (c.playback.current.collectAsState().value == null) InfoRow("Nothing is playing", "", "Start a channel or movie, then come back to see its details.")
         facts.forEach { (k, v) -> InfoRow(k, v) }
     }
     SettingGroup("Recent player errors", "Newest first. Addresses and logins are never shown.") {
