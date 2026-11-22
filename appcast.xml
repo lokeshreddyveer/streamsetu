@@ -3,6 +3,15 @@
   <channel>
     <title>StreamSetu</title>
     <item>
+      <title>StreamSetu 2.17.0</title>
+      <pubDate>Sun, 22 Nov 2026 08:54:24 -0000</pubDate>
+      <sparkle:version>315</sparkle:version>
+      <sparkle:shortVersionString>2.17.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[**A new look, a new opening and a smarter Home on every app.** Mac 2.17.0, Fire TV and Android TV 0.26.0, the Android phone and tablet app 0.26.0, Windows 0.2.0, and iPhone and iPad 1.3 (build 78) on the App Store. On Android and Fire TV this version must be installed fresh once: remove the old app first (see below).]]></description>
+      <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/2026.11.21/StreamSetu-2.17.0.dmg" type="application/octet-stream" sparkle:edSignature="akqKXcZeujvGi+PID/vbLMAl+f6HVLSKAtBDecL0tUCP1BGhZWCclF+G4VQX227nMrLD5hWdGEATskNcE3MHBw==" length="76053193"/>
+    </item>
+    <item>
       <title>StreamSetu 2.16.0</title>
       <pubDate>Sat, 07 Nov 2026 21:08:12 -0000</pubDate>
       <sparkle:version>314</sparkle:version>
@@ -155,5 +164,5 @@
       <description><![CDATA[Updates now come from the one StreamSetu repository. If you have an older copy, download this one once; it updates itself from then on.]]></description>
       <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/mac-v2.3.1/StreamSetu-2.3.1.dmg" type="application/octet-stream" sparkle:edSignature="C6eMDAYgR8nLbI0cQYXeeDf/ZITqwbIqLWvhz++8pB6E8Tq9U1ITGr10mGAIOMsW4pkgqoWbtKb2Me6cLZcOAg==" length="64424077"/>
     </item>
-                                    </channel>
+                                      </channel>
 </rss>
