@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
 /** (The text index, search_fts, is a virtual table made outside Room, so dropped-table checking is off.) */
 class DatabaseMigrationTests {
     @get:Rule val helper = MigrationTestHelper(InstrumentationRegistry.getInstrumentation(), AppDatabase::class.java)
-    private val current = 10
+    private val current = 11          // 11 adds the canonical identity and Smart Mix tables (raised from 10)
 
     private fun SupportSQLiteDatabase.count(table: String) = query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); it.getInt(0) }
 
@@ -82,6 +82,56 @@ class DatabaseMigrationTests {
         val list = plan("SELECT itemId FROM favorites WHERE listId = 'favorites' ORDER BY addedAt DESC")
         assertTrue("a list: $list", "index_favorites_listId_addedAt" in list)
         db.close()
+    }
+
+
+    /** Every table of the database, row by row, as text (blobs as hex), in row order: for "byte for byte the same after an upgrade". */
+    private fun SupportSQLiteDatabase.dump(tables: List<String>): Map<String, List<String>> = tables.associateWith { t ->
+        query("SELECT * FROM `$t` ORDER BY rowid").use { c ->
+            buildList { while (c.moveToNext()) add((0 until c.columnCount).joinToString("|") { i -> when (c.getType(i)) { android.database.Cursor.FIELD_TYPE_NULL -> "NULL"; android.database.Cursor.FIELD_TYPE_BLOB -> c.getBlob(i).joinToString("") { b -> "%02x".format(b) }; else -> c.getString(i) } }) }
+        }
+    }
+    private fun SupportSQLiteDatabase.userTables(): List<String> = query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'android_%' AND name != 'room_master_table' AND name NOT LIKE 'search_fts%' ORDER BY name").use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+
+    @Test fun versionTenToElevenKeepsEveryOldRowIdenticalAndAddsTheNewTablesEmpty() {
+        var oldTables: List<String> = emptyList(); var oldDump: Map<String, List<String>> = emptyMap()
+        helper.createDatabase("ten", 10).apply {
+            execSQL("INSERT INTO sources (id, name, type, address, enabled, lastSyncAt, status, sortOrder, draft, channelCount, movieCount, seriesCount, lastOpenedAt) VALUES ('s1','One','XTREAM','x',1,5,'OK',0,0,1,2,1,0), ('s2','Two','XTREAM','y',1,6,'OK',1,0,0,2,0,0)")
+            execSQL("INSERT INTO categories (id, sourceId, kind, name, sortOrder) VALUES ('c1','s1','MOVIE','HINDI | NEW',0), ('c2','s2','MOVIE','HINDI | NEW',0)")
+            execSQL("INSERT INTO movies (id, sourceId, categoryId, title, posterUrl, year, rating, plot, streamRef, addedAt) VALUES ('m1','s1','c1','Leo (2023) (Tamil) FHD','http://img/1.jpg',2023,'7.1','a plot','ref:1',100), ('m2','s2','c2','Leo 2023 Hindi','http://img/2.jpg',2023,'7.1',NULL,'ref:2',200)")
+            execSQL("INSERT INTO series (id, sourceId, categoryId, title, posterUrl, backdropUrl, year, rating, plot, providerId, addedAt) VALUES ('t1','s1','c1','Show','http://img/s.jpg',NULL,2020,NULL,NULL,'p1',50)")
+            execSQL("INSERT INTO channels (id, sourceId, categoryId, name, streamRef, catchupDays, sortOrder, addedAt, isRadio) VALUES ('ch1','s1','g','BBC One','r',0,1,1,0)")
+            execSQL("INSERT INTO favorites (itemId, kind, listId, addedAt) VALUES ('m1','MOVIE','favorites',9)")
+            execSQL("INSERT INTO progress (itemId, kind, seriesId, positionMs, durationMs, updatedAt, completed) VALUES ('m1','MOVIE',NULL,600000,6000000,1000,0), ('m2','MOVIE',NULL,0,6000000,2000,1)")
+            execSQL("INSERT INTO watch_log (itemId, kind, title, playedAt) VALUES ('m1','MOVIE','Leo',1000)")
+            execSQL("INSERT INTO folder_prefs (scope, folderId, favorite, pinned, hidden, locked, alias, sortIndex) VALUES ('MOVIE','c1',0,0,0,1,NULL,-1)")
+            execSQL("INSERT INTO catalog_fingerprints (sourceId, fingerprint, rows, version) VALUES ('s1', 7, 4, 2)")
+            oldTables = userTables(); oldDump = dump(oldTables)
+            close()
+        }
+        val db = helper.runMigrationsAndValidate("ten", 11, true, *AppDatabase.MIGRATIONS)
+        val after = db.dump(oldTables)
+        for (t in oldTables) assertEquals("table $t is identical after the upgrade", oldDump[t], after[t])
+        assertTrue("rows were really compared", oldDump.getValue("movies").size == 2 && oldDump.getValue("progress").size == 2)
+        for (t in listOf("content_identity", "source_twin", "rec_dismissed", "smartmix_shown", "smartmix_state", "folder_recent")) assertEquals("new table $t starts empty", 0, db.count(t))
+        fun hasIndex(name: String) = db.query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = '$name'").use { it.moveToFirst(); it.getInt(0) == 1 }
+        for (i in listOf("index_movies_sourceId_categoryId_addedAt", "index_series_sourceId_categoryId_addedAt", "index_content_identity_kind_identityKey_year", "index_content_identity_sourceId_kind", "index_content_identity_folderKey")) assertTrue(i, hasIndex(i))
+        // the browse path of a folder, newest first, now reads one index and sorts nothing
+        val plan = db.query("EXPLAIN QUERY PLAN SELECT * FROM movies WHERE sourceId = 's1' AND categoryId = 'c1' ORDER BY addedAt DESC LIMIT 20").use { c -> buildString { while (c.moveToNext()) append(c.getString(3)).append(" | ") } }
+        assertTrue(plan, "index_movies_sourceId_categoryId_addedAt" in plan && "TEMP B-TREE" !in plan)
+        db.close()
+    }
+
+    @Test fun theNewTablesWorkAfterTheUpgradeAndAnOlderFileKeepsOpeningNormally() {
+        helper.createDatabase("ten2", 10).close()
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, "ten2").addMigrations(*AppDatabase.MIGRATIONS).build()
+        try {
+            kotlinx.coroutines.runBlocking {
+                room.identity().putAll(listOf(app.streamsetu.core.data.db.ContentIdentityEntity("m1", "MOVIE", "s", "leo", 2023, "Tamil", 4, false, "MOVIE|hindi new", 1L, 1)))
+                assertEquals("leo", room.identity().byItemIds(listOf("m1")).single().identityKey)
+            }
+        } finally { room.close() }
     }
 
     @Test fun aFailedUpgradeLeavesTheOldDatabaseUntouched() {

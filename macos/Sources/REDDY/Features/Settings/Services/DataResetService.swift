@@ -57,6 +57,7 @@ final class DataResetService: @unchecked Sendable {
                 DELETE FROM favorites; DELETE FROM collection_items; DELETE FROM collections; DELETE FROM hidden_items;
                 DELETE FROM metadata_overrides; DELETE FROM watch_history; DELETE FROM recently_watched; DELETE FROM watch_progress;
                 DELETE FROM search_history; DELETE FROM video_layouts;
+                DELETE FROM rec_dismissed; DELETE FROM smartmix_shown; DELETE FROM smartmix_state; DELETE FROM folder_recent;
                 """)
         }
         try db.maintenance { c in try c.exec("PRAGMA wal_checkpoint(TRUNCATE)") }

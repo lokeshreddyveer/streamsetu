@@ -8,7 +8,7 @@ enum DatabaseRecovery {
     static let personalTables = [
         "sources", "profiles", "profile_rows", "profile_state", "favorites", "collections", "collection_items", "hidden_items", "metadata_overrides",
         "folder_order", "locked_categories", "watch_history", "watch_progress", "recently_watched", "search_history", "downloads", "epg_channel_mappings",
-        "video_layouts", "playback_sessions",
+        "video_layouts", "playback_sessions", "rec_dismissed",
     ]
 
     /// What a damaged database still holds, for the "this is what you would lose" summary.

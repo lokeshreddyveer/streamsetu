@@ -50,7 +50,7 @@ data class ChannelEntity(
     val isRadio: Boolean = false,
 )
 
-@Entity(tableName = "movies", indices = [Index("sourceId", "categoryId"), Index("title"), Index("sourceId", "addedAt")])
+@Entity(tableName = "movies", indices = [Index("sourceId", "categoryId"), Index("title"), Index("sourceId", "addedAt"), Index("sourceId", "categoryId", "addedAt")])
 data class MovieEntity(
     @PrimaryKey val id: String,
     val sourceId: String,
@@ -64,7 +64,7 @@ data class MovieEntity(
     val addedAt: Long,
 )
 
-@Entity(tableName = "series", indices = [Index("sourceId", "categoryId"), Index("title"), Index("sourceId", "addedAt")])
+@Entity(tableName = "series", indices = [Index("sourceId", "categoryId"), Index("title"), Index("sourceId", "addedAt"), Index("sourceId", "categoryId", "addedAt")])
 data class SeriesEntity(
     @PrimaryKey val id: String,
     val sourceId: String,
@@ -252,3 +252,51 @@ data class SportsRecordingEntity(
     val createdAt: Long,
     val updatedAt: Long,
 )
+
+// ---- Canonical content identity and the Smart Mix state (database version 11). Everything below is derived or the person's own; no playlist row is ever changed by it. ----
+
+/**
+ * One row for each movie and series: what the title IS (see IdentityKey) beside the row that says where it is. Derived from the catalog while it is written, never the other way round:
+ * dropping the table returns the app to listing every copy. [inHash] is a hash of what the key was derived from, so a sync only re-derives rows whose title, folder or year changed.
+ */
+@Entity(
+    tableName = "content_identity",
+    // No foreign key to sources on purpose: saving a connection again replaces its row, and a cascade would empty its identity every time. Removing a connection clears it explicitly.
+    indices = [Index("kind", "identityKey", "year"), Index("sourceId", "kind"), Index("folderKey")],
+)
+data class ContentIdentityEntity(
+    @PrimaryKey val itemId: String,
+    /** MOVIE or SERIES. */
+    val kind: String,
+    val sourceId: String,
+    val identityKey: String,
+    val year: Int?,
+    /** The language's English name, or null when the title does not say. */
+    val lang: String?,
+    /** 5 = 4K, 4 = FHD, 3 = HD, 2 = not marked, 1 = SD, 0 = a recording made in a cinema. */
+    val qualityRank: Int,
+    val isCam: Boolean,
+    /** Kind and the folder's normalized name, the same in every playlist: the family a lock or hide is applied to. */
+    val folderKey: String?,
+    val inHash: Long,
+    val identVer: Int,
+)
+
+/** Whether two playlists carry the same content, per kind: how many of A's titles are also in B. */
+@Entity(tableName = "source_twin", primaryKeys = ["kind", "sourceA", "sourceB"])
+data class SourceTwinEntity(val kind: String, val sourceA: String, val sourceB: String, val matched: Int, val totalA: Int, val totalB: Int, val checkedAt: Long)
+
+/** "Remove from recommendations": the person took a title out of Continue Watching. Only a marker, per profile; the progress itself is never touched. Keyed by identity so another copy is covered too. */
+@Entity(tableName = "rec_dismissed", primaryKeys = ["profileId", "itemId"], indices = [Index("profileId", "identityKey")])
+data class RecDismissedEntity(val profileId: String, val itemId: String, val kind: String, val identityKey: String, val year: Int?, val dismissedAt: Long)
+
+/** Which titles a shelf showed in its last loads (identity, not address), so the next load can offer others. */
+@Entity(tableName = "smartmix_shown", primaryKeys = ["profileId", "shelfId", "identityKey", "loadSeq"], indices = [Index("profileId", "shelfId", "loadSeq")])
+data class SmartMixShownEntity(val profileId: String, val shelfId: String, val identityKey: String, val year: Int?, val itemId: String, val loadSeq: Int, val shownAt: Long)
+
+@Entity(tableName = "smartmix_state", primaryKeys = ["profileId", "shelfId"])
+data class SmartMixStateEntity(val profileId: String, val shelfId: String, val refreshCounter: Int = 0, val loadKey: String = "", val loadSeq: Int = 0)
+
+/** When a folder was last opened by a profile (folder ordering). */
+@Entity(tableName = "folder_recent", primaryKeys = ["profileId", "categoryId"])
+data class FolderRecentEntity(val profileId: String, val categoryId: String, val lastOpenedAt: Long, val opens: Int = 1)

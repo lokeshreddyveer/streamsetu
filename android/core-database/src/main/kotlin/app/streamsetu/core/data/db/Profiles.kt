@@ -18,7 +18,7 @@ object Profiles {
     const val MAX = 4
     /** The tables that hold one person's own data. Collections come before their items. */
     /** Sports follows and reminders name their profile in a column (they are not swapped in and out), so removing a profile deletes their rows. */
-    val sportsTables = listOf("sports_follows", "sports_reminders", "sports_recordings")
+    val sportsTables = listOf("sports_follows", "sports_reminders", "sports_recordings", "rec_dismissed", "smartmix_shown", "smartmix_state", "folder_recent")          // the last four are the Smart Mix tables, which also name their profile in a column
     val personalTables = listOf("favorites", "collections", "collection_items", "progress", "watch_log", "watch_time", "new_episodes")
 
     fun create(db: SupportSQLiteDatabase) {

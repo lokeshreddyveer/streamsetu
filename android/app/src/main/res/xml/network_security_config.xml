@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  IPTV providers and local streams are often plain http, so cleartext stays allowed for everything the person points the app at. The app's own service endpoints are different:
+  TMDB, OpenSubtitles and the update check (the GitHub API) are always https. raw.githubusercontent.com and github.com are not listed: a person's own playlist may live there on plain http, and a downgrade to http is refused for them.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">themoviedb.org</domain>
+        <domain includeSubdomains="true">tmdb.org</domain>
+        <domain includeSubdomains="true">opensubtitles.com</domain>
+        <domain includeSubdomains="false">api.github.com</domain>
+    </domain-config>
+</network-security-config>

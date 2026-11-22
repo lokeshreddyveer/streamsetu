@@ -10,8 +10,9 @@ import androidx.room.RoomDatabase
         EpisodeEntity::class, EpgEntity::class, FavoriteEntity::class, ProgressEntity::class, WatchLogEntity::class,
         LibraryEntity::class, LibraryMemberEntity::class, FolderPrefEntity::class,
         NewEpisodeEntity::class, CatalogFingerprintEntity::class, CollectionEntity::class, CollectionItemEntity::class, OverrideEntity::class, EpgChannelEntity::class,
-        WatchTimeEntity::class, ChannelPrefEntity::class, ReminderEntity::class, SportsFollowEntity::class, SportsReminderEntity::class, SportsRecordingEntity::class],
-    version = 10,
+        WatchTimeEntity::class, ChannelPrefEntity::class, ReminderEntity::class, SportsFollowEntity::class, SportsReminderEntity::class, SportsRecordingEntity::class,
+        ContentIdentityEntity::class, SourceTwinEntity::class, RecDismissedEntity::class, SmartMixShownEntity::class, SmartMixStateEntity::class, FolderRecentEntity::class],
+    version = 11,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -24,11 +25,35 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun browse(): BrowseDao
     abstract fun extras(): ExtrasDao
     abstract fun sports(): SportsDao
+    abstract fun identity(): IdentityDao
 
     companion object {
         /** Adds drafts and cached counts to playlists, combined libraries, and folder arrangements. Nothing existing is touched. */
         /** Every step from the first version to the current one, in order. There is no destructive fallback: a database that cannot be upgraded is never emptied. */
-        val MIGRATIONS: Array<androidx.room.migration.Migration> get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+        val MIGRATIONS: Array<androidx.room.migration.Migration> get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+
+        /**
+         * Canonical content identity and the Smart Mix state: six new, empty tables and two indexes for the folder queries. Nothing existing is touched and nothing is filled in here (a pass over
+         * 66,000 titles must not hold up opening the database on a TV stick): the identity rows are made as playlists are read and by a background fill (see IdentityStore). Room has no
+         * downgrade, so an older build cannot open a version 11 file.
+         */
+        val MIGRATION_10_11 = object : androidx.room.migration.Migration(10, 11) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS content_identity (itemId TEXT NOT NULL, kind TEXT NOT NULL, sourceId TEXT NOT NULL, identityKey TEXT NOT NULL, year INTEGER, lang TEXT, qualityRank INTEGER NOT NULL, isCam INTEGER NOT NULL, folderKey TEXT, inHash INTEGER NOT NULL, identVer INTEGER NOT NULL, PRIMARY KEY(itemId))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_content_identity_kind_identityKey_year ON content_identity (kind, identityKey, year)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_content_identity_sourceId_kind ON content_identity (sourceId, kind)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_content_identity_folderKey ON content_identity (folderKey)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS source_twin (kind TEXT NOT NULL, sourceA TEXT NOT NULL, sourceB TEXT NOT NULL, matched INTEGER NOT NULL, totalA INTEGER NOT NULL, totalB INTEGER NOT NULL, checkedAt INTEGER NOT NULL, PRIMARY KEY(kind, sourceA, sourceB))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS rec_dismissed (profileId TEXT NOT NULL, itemId TEXT NOT NULL, kind TEXT NOT NULL, identityKey TEXT NOT NULL, year INTEGER, dismissedAt INTEGER NOT NULL, PRIMARY KEY(profileId, itemId))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_rec_dismissed_profileId_identityKey ON rec_dismissed (profileId, identityKey)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS smartmix_shown (profileId TEXT NOT NULL, shelfId TEXT NOT NULL, identityKey TEXT NOT NULL, year INTEGER, itemId TEXT NOT NULL, loadSeq INTEGER NOT NULL, shownAt INTEGER NOT NULL, PRIMARY KEY(profileId, shelfId, identityKey, loadSeq))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_smartmix_shown_profileId_shelfId_loadSeq ON smartmix_shown (profileId, shelfId, loadSeq)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS smartmix_state (profileId TEXT NOT NULL, shelfId TEXT NOT NULL, refreshCounter INTEGER NOT NULL, loadKey TEXT NOT NULL, loadSeq INTEGER NOT NULL, PRIMARY KEY(profileId, shelfId))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS folder_recent (profileId TEXT NOT NULL, categoryId TEXT NOT NULL, lastOpenedAt INTEGER NOT NULL, opens INTEGER NOT NULL, PRIMARY KEY(profileId, categoryId))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_movies_sourceId_categoryId_addedAt ON movies (sourceId, categoryId, addedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_series_sourceId_categoryId_addedAt ON series (sourceId, categoryId, addedAt)")
+            }
+        }
 
         /**
          * Plex pictures used to be saved with the access token in their address, always in the form `...?X-Plex-Token=...` (the `&X-Plex-Token` form only ever existed in playback addresses, which are
