@@ -24,6 +24,10 @@ jobs:
             10.0.x
       - name: Tests (the shared logic)
         run: dotnet test StreamSetu.Core.Tests -c Release
+      - name: Build the one-file launcher and its packer
+        run: |
+          dotnet build StreamSetu.Pack -c Release
+          dotnet build StreamSetu.Launcher -c Release
       - name: Build the app, 64-bit Intel/AMD
         run: dotnet build StreamSetu.App -c Release -r win-x64 -p:Platform=x64
       - name: Build the app, ARM64
@@ -52,18 +56,85 @@ jobs:
       - name: Build
         shell: pwsh
         run: ./Scripts/build.ps1 -Arch ${{ matrix.arch }} -SkipTests
-      - name: Zip and checksum
+      - name: Zip and checksum (kept as a workflow artifact only)
         shell: pwsh
         run: |
           $version = ([xml](Get-Content StreamSetu.App/StreamSetu.App.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-          $name = if ('${{ matrix.arch }}' -eq 'x64') { "StreamSetu-Windows-$version.zip" } else { "StreamSetu-Windows-$version-arm64.zip" }
-          New-Item -ItemType Directory -Force out | Out-Null
-          Compress-Archive -Path "dist/${{ matrix.arch }}/*" -DestinationPath "out/$name" -CompressionLevel Optimal
+          $suffix = if ('${{ matrix.arch }}' -eq 'x64') { '' } else { '-arm64' }
+          New-Item -ItemType Directory -Force out, zips | Out-Null
+          $zip = "zips/StreamSetu-Windows-$version$suffix.zip"
+          Compress-Archive -Path "dist/${{ matrix.arch }}/*" -DestinationPath $zip -CompressionLevel Optimal
+          $sha = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$sha  $(Split-Path $zip -Leaf)" | Out-File "$zip.sha256" -Encoding ascii
+      - name: Single-file publish of the app itself (a probe, to see what Windows App SDK allows)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $plat = if ('${{ matrix.arch }}' -eq 'x64') { 'x64' } else { 'ARM64' }
+          dotnet publish StreamSetu.App -c Release -r win-${{ matrix.arch }} -p:Platform=$plat -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -o probe 2>&1 | Tee-Object probe.log | Select-Object -Last 25
+          $files = Get-ChildItem probe -Recurse -File
+          "probe: $($files.Count) files, $([math]::Round(($files | Measure-Object Length -Sum).Sum / 1MB)) MB in the output folder"
+          $files | Where-Object { $_.Extension -in '.dll','.pri','.winmd' } | Select-Object -First 8 Name
+      - name: Launcher and the one-file download
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content StreamSetu.App/StreamSetu.App.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $suffix = if ('${{ matrix.arch }}' -eq 'x64') { '' } else { '-arm64' }
+          dotnet publish StreamSetu.Launcher -c Release -r win-${{ matrix.arch }} --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o launcher
+          if ($LASTEXITCODE -ne 0) { throw 'The launcher did not build.' }
+          $name = "StreamSetu-Windows-$version$suffix.exe"
+          dotnet run --project StreamSetu.Pack -c Release -- launcher/StreamSetuLauncher.exe "dist/${{ matrix.arch }}" $version "out/$name"
+          if ($LASTEXITCODE -ne 0) { throw 'Packing failed.' }
           $sha = (Get-FileHash "out/$name" -Algorithm SHA256).Hash.ToLowerInvariant()
           "$sha  $name" | Out-File "out/$name.sha256" -Encoding ascii
           Get-Content "out/$name.sha256"
+          "{0} MB" -f [math]::Round((Get-Item "out/$name").Length / 1MB)
+      - name: Test the one-file download (unpack, reuse, repair)
+        if: matrix.arch == 'x64'
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content StreamSetu.App/StreamSetu.App.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $exe = (Resolve-Path "out/StreamSetu-Windows-$version.exe").Path
+          $root = Join-Path $env:RUNNER_TEMP 'launcher-test'; New-Item -ItemType Directory $root -Force | Out-Null
+          $env:STREAMSETU_LAUNCHER_ROOT = $root; $env:STREAMSETU_LAUNCHER_QUIET = '1'; $env:STREAMSETU_LAUNCHER_NOSTART = '1'
+          function Run { $p = Start-Process $exe -Wait -PassThru; if ($p.ExitCode -ne 0) { throw "launcher exit code $($p.ExitCode)" } }
+          $folder = Join-Path $root "app-$version"
+          Run
+          foreach ($f in 'StreamSetu.exe','StreamSetu.dll','libmpv-2.dll','Assets/BrandSymbol.png','Assets/TuneIn/tv-body.png') { if (-not (Test-Path (Join-Path $folder $f))) { throw "missing after first run: $f" } }
+          "first run: unpacked $((Get-ChildItem $folder -Recurse -File).Count) files"
+          if (Get-ChildItem $folder -Recurse -Filter *.part) { throw 'left a .part file' }
+          $before = (Get-Item (Join-Path $folder 'StreamSetu.dll')).LastWriteTimeUtc.Ticks
+          Start-Sleep 2; Run
+          if ((Get-Item (Join-Path $folder 'StreamSetu.dll')).LastWriteTimeUtc.Ticks -ne $before) { throw 'second run rewrote files' }
+          'second run: reused the folder, nothing rewritten'
+          $good = (Get-FileHash "dist/x64/libmpv-2.dll").Hash
+          Add-Content (Join-Path $folder 'libmpv-2.dll') 'x'; Remove-Item (Join-Path $folder 'Assets/BrandSymbol.png')
+          Set-Content (Join-Path $folder 'StreamSetu.exe') 'tampered'
+          Run
+          if ((Get-FileHash (Join-Path $folder 'libmpv-2.dll')).Hash -ne $good) { throw 'libmpv was not repaired' }
+          if (-not (Test-Path (Join-Path $folder 'Assets/BrandSymbol.png'))) { throw 'a deleted file was not restored' }
+          if ((Get-FileHash (Join-Path $folder 'StreamSetu.exe')).Hash -ne (Get-FileHash 'dist/x64/StreamSetu.exe').Hash) { throw 'the program was not repaired' }
+          'third run: a changed, a deleted and a replaced file were put back'
+      - name: Start the real app from the one-file download
+        if: matrix.arch == 'x64'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content StreamSetu.App/StreamSetu.App.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $exe = (Resolve-Path "out/StreamSetu-Windows-$version.exe").Path
+          $root = Join-Path $env:RUNNER_TEMP 'launcher-run'; New-Item -ItemType Directory $root -Force | Out-Null
+          $env:STREAMSETU_LAUNCHER_ROOT = $root; $env:STREAMSETU_LAUNCHER_QUIET = '1'; $env:SS_SKIP_INTRO = '1'
+          $p = Start-Process $exe -PassThru
+          Start-Sleep 25
+          $app = Get-Process StreamSetu -ErrorAction SilentlyContinue
+          if ($app) { "the real app is running (pid $($app.Id)) from: $($app.Path)"; $app | Stop-Process -Force } else { "the real app is NOT running; launcher exited: $($p.HasExited) code: $($p.ExitCode)"; Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='.NET Runtime','Application Error'} -MaxEvents 3 -ErrorAction SilentlyContinue | ForEach-Object { $_.Message.Split("`n")[0..3] }; throw 'the app did not stay up' }
       - uses: actions/upload-artifact@v4
         with:
-          name: StreamSetu-Windows-${{ matrix.arch }}
+          name: StreamSetu-Windows-${{ matrix.arch }}-exe
           path: windows/native/out/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StreamSetu-Windows-${{ matrix.arch }}-zip
+          path: windows/native/zips/*
           if-no-files-found: error

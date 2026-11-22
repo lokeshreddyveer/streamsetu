@@ -276,10 +276,11 @@ public sealed record UpdateInfo(Version Version, string AssetName, string Downlo
 public static class Updates
 {
     public const string ReleasesPrefix = "https://github.com/lokeshreddyveer/streamsetu/releases/download/";
-    private static readonly Regex AssetPattern = new(@"^StreamSetu-Setup-(\d+(?:\.\d+){1,3})\.exe$", RegexOptions.ECMAScript);
+    // The installer, or the one-file download (the 64-bit one has no suffix, the ARM64 one ends in -arm64).
+    private static readonly Regex AssetPattern = new(@"^StreamSetu-(?:Setup|Windows)-(\d+(?:\.\d+){1,3})(-arm64)?\.exe$", RegexOptions.ECMAScript);
 
     /// <summary>The update in a GitHub "latest release" answer, if there is one newer than <paramref name="current"/>. The file name must be exactly ours and the address must be in our releases, so a changed release page cannot point the updater anywhere else; the SHA-256 comes from the release notes.</summary>
-    public static UpdateInfo? Parse(string releaseJson, Version current)
+    public static UpdateInfo? Parse(string releaseJson, Version current, bool arm64 = false)
     {
         System.Text.Json.JsonElement root;
         try { root = System.Text.Json.JsonDocument.Parse(releaseJson).RootElement; } catch (System.Text.Json.JsonException) { throw new InvalidOperationException("The update service answered in a form StreamSetu does not understand."); }
@@ -290,6 +291,7 @@ public static class Updates
             var name = a.TryGetProperty("name", out var n) && n.ValueKind == System.Text.Json.JsonValueKind.String ? n.GetString() : null;
             var url = a.TryGetProperty("browser_download_url", out var u) && u.ValueKind == System.Text.Json.JsonValueKind.String ? u.GetString() : null;
             if (name is null || url is null || AssetPattern.Match(name) is not { Success: true } m) continue;
+            if (m.Groups[2].Success != arm64 && name.Contains("-Windows-", StringComparison.Ordinal)) continue;             // the file for this kind of computer
             if (!url.StartsWith(ReleasesPrefix, StringComparison.Ordinal) || !url.EndsWith("/" + name, StringComparison.Ordinal) || url.Contains("..") || url.Contains('?')) continue;
             if (!Version.TryParse(m.Groups[1].Value, out var version) || version <= current) continue;
             var sha = Regex.Match(body, @"`" + Regex.Escape(name) + @"`\s+([0-9a-fA-F]{64})");

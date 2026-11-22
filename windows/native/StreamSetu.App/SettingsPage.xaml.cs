@@ -238,7 +238,7 @@ public sealed partial class SettingsPage : Page
         try
         {
             var json = await AppServices.Http.FetchTextAsync("https://api.github.com/repos/lokeshreddyveer/streamsetu/releases/latest", 2 * 1024 * 1024, headers: new Dictionary<string, string> { ["Accept"] = "application/vnd.github+json" });
-            _update = Updates.Parse(json, CurrentVersion);
+            _update = Updates.Parse(json, CurrentVersion, System.Runtime.InteropServices.RuntimeInformation.OSArchitecture == System.Runtime.InteropServices.Architecture.Arm64);
             UpdateStatus.Text = _update is null ? "You have the latest version." : $"Version {_update.Version} is available.";
             InstallButton.Visibility = _update is null ? Visibility.Collapsed : Visibility.Visible;
         }
@@ -264,7 +264,7 @@ public sealed partial class SettingsPage : Page
         }
         else
         {
-            UpdateStatus.Text = "Downloaded and checked against its published checksum, but not run for you because its signature is not one StreamSetu knows. It is in the folder that just opened: run it yourself if you trust it.";
+            UpdateStatus.Text = "Updates are manual for this build: it is not signed with a certificate StreamSetu knows. The new file was downloaded and checked against its published checksum; it is in the folder that just opened. Close StreamSetu and double-click it. Your connections and settings are kept.";
             Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
         }
     });
