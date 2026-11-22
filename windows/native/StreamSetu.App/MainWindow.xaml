@@ -5,6 +5,7 @@
     Title="StreamSetu">
     <NavigationView x:Name="Nav" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed" IsSettingsVisible="False" OpenPaneLength="230" SelectionChanged="OnSelectionChanged" Loaded="OnLoaded">
         <NavigationView.MenuItems>
+            <NavigationViewItem Content="Home" Tag="home" Icon="Home" />
             <NavigationViewItem Content="Live TV" Tag="live" Icon="Video" />
             <NavigationViewItem Content="TV Guide" Tag="guide" Icon="CalendarDay" />
             <NavigationViewItem Content="Multi-View" Tag="multiview" Icon="ViewAll" />

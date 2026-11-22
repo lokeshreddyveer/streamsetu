@@ -60,13 +60,22 @@ public static class HomeBuilder
 
     /// <summary>One folder's row: up to 12 titles, through the same restricted baseline. A folder that is locked or hidden has no row (its name and lock are shown by the caller, without a count).</summary>
     public static List<Copy> FolderRow(HomeInputs input, SmartMixState state, string profile, long refreshCounter, Kind kind, string folderName)
+        => FolderRows(input, state, profile, refreshCounter, kind, new[] { folderName }).GetValueOrDefault(folderName) ?? new List<Copy>();
+
+    /// <summary>The rows of many folders in one pass (the candidates are built once).</summary>
+    public static Dictionary<string, List<Copy>> FolderRows(HomeInputs input, SmartMixState state, string profile, long refreshCounter, Kind kind, IEnumerable<string> folderNames)
     {
         var (byId, cands, snap) = Candidates(input);
-        if (!snap.FolderOk(kind, folderName)) return new List<Copy>();
-        var key = FolderKeyOf(kind, folderName);
+        var names = folderNames.Distinct().Where(n => snap.FolderOk(kind, n)).ToList();
+        var result = new Dictionary<string, List<Copy>>();
+        foreach (var n in folderNames.Distinct()) result[n] = new List<Copy>();
+        if (names.Count == 0) return result;
         var ctx = new SmartMixContext(profile, input.DayKey, refreshCounter, null, Affinity.None, null, null);
-        var res = SmartMixEngine.Run(cands.Where(c => c.Kind == (kind == Kind.Series ? "series" : "movie")).ToList(), ctx, new[] { "folder:" + key }, state, false);
-        return res["folder:" + key].Items.Select(c => byId[c.Id]).ToList();
+        var kindName = kind == Kind.Series ? "series" : "movie";
+        var shelves = names.Select(n => "folder:" + FolderKeyOf(kind, n)).Distinct().ToList();
+        var res = SmartMixEngine.Run(cands.Where(c => c.Kind == kindName).ToList(), ctx, shelves, state, false);
+        foreach (var n in names) result[n] = res["folder:" + FolderKeyOf(kind, n)].Items.Select(c => byId[c.Id]).ToList();
+        return result;
     }
 
     public static string FolderKeyOf(Kind kind, string folderName) => kind.ToString().ToLowerInvariant() + "|" + IdentityKey.Normalize(folderName);

@@ -64,6 +64,17 @@
                 <Button Content="Connect to the selected device" Click="OnConnectDevice" />
             </StackPanel>
 
+            <TextBlock Text="Home" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
+            <TextBlock Text="Home picks from the connections already loaded and sends nothing about what you watch. Top This Week can follow the weekly trending list from TMDB when you add your own free TMDB key. It is on by default but does nothing without a key; the app has no key of its own, and the list is never kept for more than 180 days." TextWrapping="Wrap" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+            <TextBox x:Name="PreferredLanguageBox" Header="Preferred language (for example Telugu)" Width="260" LostFocus="OnHomeSettingChanged" />
+            <ToggleSwitch x:Name="TmdbSwitch" Header="Use TMDB weekly trending" Toggled="OnTmdbToggled" />
+            <PasswordBox x:Name="TmdbKeyBox" Header="Your TMDB API key" LostFocus="OnTmdbKeyChanged" />
+            <TextBlock x:Name="TmdbStatus" TextWrapping="Wrap" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+
+            <TextBlock Text="About" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
+            <Image x:Name="TmdbLogo" Height="22" HorizontalAlignment="Left" Stretch="Uniform" />
+            <TextBlock x:Name="TmdbNotice" TextWrapping="Wrap" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+
             <TextBlock Text="Updates" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
             <TextBlock x:Name="VersionText" Opacity="0.7" />
             <StackPanel Orientation="Horizontal" Spacing="8">

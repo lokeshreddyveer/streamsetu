@@ -56,7 +56,7 @@ public sealed partial class MainWindow : Window
 
     private void GoHome()
     {
-        var first = AppServices.Store.Playlists().Count == 0 && !AppServices.Profile.Kids ? "connections" : "live";
+        var first = AppServices.Store.Playlists().Count == 0 && !AppServices.Profile.Kids ? "connections" : "home";
         foreach (var item in Nav.MenuItems.Concat(Nav.FooterMenuItems).OfType<NavigationViewItem>())
             if ((string)item.Tag == first) { Nav.SelectedItem = item; break; }
     }
@@ -105,7 +105,7 @@ public sealed partial class MainWindow : Window
     {
         if (args.SelectedItemContainer?.Tag is not string tag) return;
         if (AppServices.Profile.Kids && tag is "connections" or "settings") return;
-        var page = tag switch { "connections" => typeof(ConnectionsPage), "settings" => typeof(SettingsPage), "guide" => typeof(GuidePage), "multiview" => typeof(MultiViewPage), "recordings" => typeof(RecordingsPage), _ => typeof(BrowsePage) };
+        var page = tag switch { "home" => typeof(HomePage), "connections" => typeof(ConnectionsPage), "settings" => typeof(SettingsPage), "guide" => typeof(GuidePage), "multiview" => typeof(MultiViewPage), "recordings" => typeof(RecordingsPage), _ => typeof(BrowsePage) };
         ContentFrame.Navigate(page, tag);
     }
 }

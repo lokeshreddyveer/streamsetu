@@ -26,6 +26,7 @@ public sealed partial class SettingsPage : Page
         AppServices.Lan.Changed += OnLanChanged;
         Unloaded += (_, _) => { AppServices.Lan.Changed -= OnLanChanged; AppServices.Lan.PairingOpen = false; };
         OnLanChanged();
+        LoadHomeSettings();
         _quiet = false;
     }
 

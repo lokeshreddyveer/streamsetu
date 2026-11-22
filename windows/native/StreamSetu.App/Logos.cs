@@ -17,6 +17,15 @@ public static class Logos
         return image;
     }
 
+    /// <summary>A poster at the size a tile shows it (the list rows use the small one above).</summary>
+    public static ImageSource? LoadSized(string? url, int width)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        var image = new BitmapImage { DecodePixelWidth = width };
+        _ = FillAsync(image, url);
+        return image;
+    }
+
     private static async Task FillAsync(BitmapImage image, string url)
     {
         try

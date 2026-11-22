@@ -39,6 +39,7 @@
   <!-- The brand symbol on the welcome screen, read from the program's folder at run time. -->
   <ItemGroup>
     <Content Include="Assets\BrandSymbol.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\TMDBLogo.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- libmpv-2.dll is not in the repository. Run Scripts\fetch-libmpv.ps1 once; the file is then copied next to the program. -->

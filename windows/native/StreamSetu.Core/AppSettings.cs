@@ -14,6 +14,12 @@ public sealed record AppSettings
     public string? LastProfileId { get; init; }
     /// <summary>Whether sync on this network is on.</summary>
     public bool LanSync { get; init; }
+    /// <summary>The audio language to prefer when choosing between copies and for the language shelf on Home, by its English name ("Telugu").</summary>
+    public string? PreferredLanguage { get; init; }
+    /// <summary>Weekly trending from TMDB for Top This Week. On by default, but it only does anything when the person has entered their own TMDB key.</summary>
+    public bool TmdbEnabled { get; init; } = true;
+    /// <summary>Movies, Series and Live TV show the plain list (Grid) instead of one row per folder.</summary>
+    public bool GridView { get; init; }
 
     public static AppSettings Load(LocalStore store) => store.Load("Settings", new AppSettings());
     public void Save(LocalStore store) => store.Save("Settings", this);
