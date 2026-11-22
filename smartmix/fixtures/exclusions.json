@@ -1,0 +1,714 @@
+{
+ "description": "Locked/hidden/Kids restricted ('restricted'), restricted twin, rec_dismissed: none appear on any recommendation shelf; dismissed still appears in folder rows, restricted never.",
+ "library": [
+  {
+   "added": 0,
+   "folder": "f0",
+   "id": "m0",
+   "key": "p0",
+   "lang": "Telugu",
+   "p30": 0,
+   "q": 2,
+   "year": 2018
+  },
+  {
+   "added": 9,
+   "folder": "f1",
+   "id": "m1",
+   "key": "p1",
+   "lang": "Hindi",
+   "p30": 1,
+   "q": 3,
+   "year": 2019
+  },
+  {
+   "added": 18,
+   "folder": "f2",
+   "id": "m2",
+   "key": "p2",
+   "lang": "Telugu",
+   "p30": 2,
+   "q": 4,
+   "year": 2020
+  },
+  {
+   "added": 27,
+   "folder": "f0",
+   "id": "m3",
+   "key": "p3",
+   "lang": "Hindi",
+   "p30": 0,
+   "q": 5,
+   "year": 2021
+  },
+  {
+   "added": 36,
+   "folder": "f1",
+   "id": "m4",
+   "key": "p4",
+   "lang": "Telugu",
+   "p30": 1,
+   "q": 2,
+   "year": 2022
+  },
+  {
+   "added": 45,
+   "folder": "f2",
+   "id": "m5",
+   "key": "p5",
+   "lang": "Hindi",
+   "p30": 2,
+   "q": 3,
+   "year": 2023
+  },
+  {
+   "added": 54,
+   "folder": "f0",
+   "id": "m6",
+   "key": "p6",
+   "lang": "Telugu",
+   "p30": 0,
+   "q": 4,
+   "year": 2024
+  },
+  {
+   "added": 63,
+   "folder": "f1",
+   "id": "m7",
+   "key": "p7",
+   "lang": "Hindi",
+   "p30": 1,
+   "q": 5,
+   "year": 2025
+  },
+  {
+   "added": 72,
+   "folder": "f2",
+   "id": "m8",
+   "key": "p8",
+   "lang": "Telugu",
+   "p30": 2,
+   "q": 2,
+   "year": 2018
+  },
+  {
+   "added": 81,
+   "folder": "f0",
+   "id": "m9",
+   "key": "p9",
+   "lang": "Hindi",
+   "p30": 0,
+   "q": 3,
+   "year": 2019
+  },
+  {
+   "added": 90,
+   "folder": "f1",
+   "id": "m10",
+   "key": "p10",
+   "lang": "Telugu",
+   "p30": 1,
+   "q": 4,
+   "year": 2020
+  },
+  {
+   "added": 99,
+   "folder": "f2",
+   "id": "m11",
+   "key": "p11",
+   "lang": "Hindi",
+   "p30": 2,
+   "q": 5,
+   "year": 2021
+  },
+  {
+   "added": 108,
+   "folder": "f0",
+   "id": "m12",
+   "key": "p12",
+   "lang": "Telugu",
+   "p30": 0,
+   "q": 2,
+   "year": 2022
+  },
+  {
+   "added": 117,
+   "folder": "f1",
+   "id": "m13",
+   "key": "p13",
+   "lang": "Hindi",
+   "p30": 1,
+   "q": 3,
+   "year": 2023
+  },
+  {
+   "added": 126,
+   "folder": "f2",
+   "id": "m14",
+   "key": "p14",
+   "lang": "Telugu",
+   "p30": 2,
+   "q": 4,
+   "year": 2024
+  },
+  {
+   "added": 135,
+   "folder": "f0",
+   "id": "m15",
+   "key": "p15",
+   "lang": "Hindi",
+   "p30": 0,
+   "q": 5,
+   "year": 2025
+  },
+  {
+   "added": 144,
+   "folder": "f1",
+   "id": "m16",
+   "key": "p16",
+   "lang": "Telugu",
+   "p30": 1,
+   "q": 2,
+   "year": 2018
+  },
+  {
+   "added": 153,
+   "folder": "f2",
+   "id": "m17",
+   "key": "p17",
+   "lang": "Hindi",
+   "p30": 2,
+   "q": 3,
+   "year": 2019
+  },
+  {
+   "added": 162,
+   "folder": "f0",
+   "id": "m18",
+   "key": "p18",
+   "lang": "Telugu",
+   "p30": 0,
+   "q": 4,
+   "year": 2020
+  },
+  {
+   "added": 171,
+   "folder": "f1",
+   "id": "m19",
+   "key": "p19",
+   "lang": "Hindi",
+   "p30": 1,
+   "q": 5,
+   "year": 2021
+  },
+  {
+   "added": 180,
+   "folder": "f2",
+   "id": "m20",
+   "key": "p20",
+   "lang": "Telugu",
+   "p30": 2,
+   "q": 2,
+   "year": 2022
+  },
+  {
+   "added": 189,
+   "folder": "f0",
+   "id": "m21",
+   "key": "p21",
+   "lang": "Hindi",
+   "p30": 0,
+   "q": 3,
+   "year": 2023
+  },
+  {
+   "added": 198,
+   "folder": "f1",
+   "id": "m22",
+   "key": "p22",
+   "lang": "Telugu",
+   "p30": 1,
+   "q": 4,
+   "year": 2024
+  },
+  {
+   "added": 207,
+   "folder": "f2",
+   "id": "m23",
+   "key": "p23",
+   "lang": "Hindi",
+   "p30": 2,
+   "q": 5,
+   "year": 2025
+  },
+  {
+   "added": 216,
+   "folder": "f0",
+   "id": "m24",
+   "key": "p24",
+   "lang": "Telugu",
+   "p30": 0,
+   "q": 2,
+   "year": 2018
+  },
+  {
+   "added": 225,
+   "folder": "f1",
+   "id": "m25",
+   "key": "p25",
+   "lang": "Hindi",
+   "p30": 1,
+   "q": 3,
+   "year": 2019
+  },
+  {
+   "added": 234,
+   "folder": "f2",
+   "id": "m26",
+   "key": "p26",
+   "lang": "Telugu",
+   "p30": 2,
+   "q": 4,
+   "year": 2020
+  },
+  {
+   "added": 243,
+   "folder": "f0",
+   "id": "m27",
+   "key": "p27",
+   "lang": "Hindi",
+   "p30": 0,
+   "q": 5,
+   "year": 2021
+  },
+  {
+   "added": 252,
+   "folder": "f1",
+   "id": "m28",
+   "key": "p28",
+   "lang": "Telugu",
+   "p30": 1,
+   "q": 2,
+   "year": 2022
+  },
+  {
+   "added": 261,
+   "folder": "f2",
+   "id": "m29",
+   "key": "p29",
+   "lang": "Hindi",
+   "p30": 2,
+   "q": 3,
+   "year": 2023
+  },
+  {
+   "added": 270,
+   "folder": "f0",
+   "id": "m30",
+   "key": "p30",
+   "lang": "Telugu",
+   "p30": 0,
+   "q": 4,
+   "year": 2024
+  },
+  {
+   "added": 279,
+   "folder": "f1",
+   "id": "m31",
+   "key": "p31",
+   "lang": "Hindi",
+   "p30": 1,
+   "q": 5,
+   "year": 2025
+  },
+  {
+   "added": 288,
+   "folder": "f2",
+   "id": "m32",
+   "key": "p32",
+   "lang": "Telugu",
+   "p30": 2,
+   "q": 2,
+   "year": 2018
+  },
+  {
+   "added": 297,
+   "folder": "f0",
+   "id": "m33",
+   "key": "p33",
+   "lang": "Hindi",
+   "p30": 0,
+   "q": 3,
+   "year": 2019
+  },
+  {
+   "added": 306,
+   "folder": "f1",
+   "id": "m34",
+   "key": "p34",
+   "lang": "Telugu",
+   "p30": 1,
+   "q": 4,
+   "year": 2020
+  },
+  {
+   "added": 315,
+   "folder": "f2",
+   "id": "m35",
+   "key": "p35",
+   "lang": "Hindi",
+   "p30": 2,
+   "q": 5,
+   "year": 2021
+  },
+  {
+   "added": 324,
+   "folder": "f0",
+   "id": "m36",
+   "key": "p36",
+   "lang": "Telugu",
+   "p30": 0,
+   "q": 2,
+   "year": 2022
+  },
+  {
+   "added": 333,
+   "folder": "f1",
+   "id": "m37",
+   "key": "p37",
+   "lang": "Hindi",
+   "p30": 1,
+   "q": 3,
+   "year": 2023
+  },
+  {
+   "added": 342,
+   "folder": "f2",
+   "id": "m38",
+   "key": "p38",
+   "lang": "Telugu",
+   "p30": 2,
+   "q": 4,
+   "year": 2024
+  },
+  {
+   "added": 351,
+   "folder": "f0",
+   "id": "m39",
+   "key": "p39",
+   "lang": "Hindi",
+   "p30": 0,
+   "q": 5,
+   "year": 2025
+  }
+ ],
+ "name": "exclusions",
+ "steps": [
+  {
+   "dayKey": "2026-11-21",
+   "expect": {
+    "folder:f0": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 12,
+      "fallback": "none",
+      "groups": 13,
+      "hidden": false,
+      "inCount": 40,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 12,
+      "restricted": 1,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m27",
+      "m39",
+      "m30",
+      "m12",
+      "m33",
+      "m18",
+      "m9",
+      "m21",
+      "m0",
+      "m36",
+      "m15",
+      "m24"
+     ]
+    },
+    "for-you": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 2,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 39,
+      "hidden": false,
+      "inCount": 40,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 35,
+      "restricted": 2,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m27",
+      "m36",
+      "m34",
+      "m15",
+      "m21",
+      "m38",
+      "m37",
+      "m8",
+      "m28",
+      "m1",
+      "m35",
+      "m20",
+      "m24",
+      "m19"
+     ]
+    },
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 2,
+      "diversityRelaxed": true,
+      "drawn": 12,
+      "fallback": "none",
+      "groups": 39,
+      "hidden": false,
+      "inCount": 40,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 35,
+      "restricted": 2,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m21",
+      "m30",
+      "m38",
+      "m25",
+      "m31",
+      "m22",
+      "m32",
+      "m11",
+      "m28",
+      "m39",
+      "m26",
+      "m29"
+     ]
+    },
+    "lang-pref": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 2,
+      "diversityRelaxed": false,
+      "drawn": 0,
+      "fallback": "none",
+      "groups": 39,
+      "hidden": true,
+      "inCount": 40,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 0,
+      "restricted": 2,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": []
+    },
+    "rediscover": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 2,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 39,
+      "hidden": false,
+      "inCount": 40,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 35,
+      "restricted": 2,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m17",
+      "m14",
+      "m12",
+      "m39",
+      "m1",
+      "m8",
+      "m22",
+      "m35",
+      "m26",
+      "m13",
+      "m11",
+      "m2",
+      "m10",
+      "m27"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 2,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 39,
+      "hidden": false,
+      "inCount": 40,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 35,
+      "restricted": 2,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m23",
+      "m12",
+      "m0",
+      "m11",
+      "m8",
+      "m28",
+      "m19",
+      "m13",
+      "m26",
+      "m38",
+      "m27",
+      "m14",
+      "m30",
+      "m1"
+     ]
+    },
+    "trending-library": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 2,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 39,
+      "hidden": false,
+      "inCount": 40,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 35,
+      "restricted": 2,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m0",
+      "m35",
+      "m1",
+      "m28",
+      "m32",
+      "m29",
+      "m14",
+      "m2",
+      "m23",
+      "m17",
+      "m10",
+      "m26",
+      "m11",
+      "m38"
+     ]
+    }
+   },
+   "patch": {
+    "m3": {
+     "restricted": true
+    },
+    "m4": {
+     "dismissed": true
+    },
+    "m5": {
+     "key": "p6",
+     "restricted": true
+    },
+    "m6": {
+     "dismissed": true,
+     "key": "p7"
+    }
+   },
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "for-you",
+    "rediscover",
+    "lang-pref",
+    "top-week",
+    "trending-library",
+    "folder:f0"
+   ]
+  }
+ ]
+}

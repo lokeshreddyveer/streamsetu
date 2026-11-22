@@ -1,0 +1,209 @@
+{
+ "description": "All scores tie: order is by UTF-8 bytes of id (U+FF21 < U+10400 in UTF-8 but UTF-16 order differs), not locale or UTF-16.",
+ "library": [
+  {
+   "added": 10,
+   "id": "Ａ",
+   "key": "tie 0",
+   "q": 3,
+   "year": 2020
+  },
+  {
+   "added": 10,
+   "id": "🎬",
+   "key": "tie 1",
+   "q": 3,
+   "year": 2020
+  },
+  {
+   "added": 10,
+   "id": "",
+   "key": "tie 2",
+   "q": 3,
+   "year": 2020
+  },
+  {
+   "added": 10,
+   "id": "z",
+   "key": "tie 3",
+   "q": 3,
+   "year": 2020
+  },
+  {
+   "added": 10,
+   "id": "Z",
+   "key": "tie 4",
+   "q": 3,
+   "year": 2020
+  },
+  {
+   "added": 10,
+   "id": "a",
+   "key": "tie 5",
+   "q": 3,
+   "year": 2020
+  },
+  {
+   "added": 10,
+   "id": "é",
+   "key": "tie 6",
+   "q": 3,
+   "year": 2020
+  },
+  {
+   "added": 10,
+   "id": "త",
+   "key": "tie 7",
+   "q": 3,
+   "year": 2020
+  },
+  {
+   "added": 10,
+   "id": "𐐀",
+   "key": "tie 8",
+   "q": 3,
+   "year": 2020
+  },
+  {
+   "added": 10,
+   "id": "￿",
+   "key": "tie 9",
+   "q": 3,
+   "year": 2020
+  }
+ ],
+ "name": "non-latin-ids-byte-order",
+ "steps": [
+  {
+   "dayKey": "2026-11-21",
+   "expect": {
+    "for-you": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 10,
+      "fallback": "none",
+      "groups": 10,
+      "hidden": false,
+      "inCount": 10,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 10,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "Ａ",
+      "é",
+      "🎬",
+      "𐐀",
+      "￿",
+      "",
+      "Z",
+      "a",
+      "z",
+      "త"
+     ]
+    },
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": true,
+      "drawn": 10,
+      "fallback": "none",
+      "groups": 10,
+      "hidden": false,
+      "inCount": 10,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 10,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "",
+      "Ａ",
+      "త",
+      "Z",
+      "z",
+      "￿",
+      "a",
+      "é",
+      "🎬",
+      "𐐀"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 10,
+      "fallback": "none",
+      "groups": 10,
+      "hidden": false,
+      "inCount": 10,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 10,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "Z",
+      "z",
+      "￿",
+      "🎬",
+      "Ａ",
+      "a",
+      "",
+      "𐐀",
+      "త",
+      "é"
+     ]
+    }
+   },
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "for-you",
+    "top-week"
+   ]
+  }
+ ]
+}

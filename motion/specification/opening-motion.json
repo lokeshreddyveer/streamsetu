@@ -1,0 +1,248 @@
+{
+  "id": "streamsetu.tune-in",
+  "version": 4,
+  "artboard": {
+    "width": 1000,
+    "height": 600
+  },
+  "note": "Tune In. FIRST EVER LAUNCH of a new install: the full 7.5 s story. EVERY OTHER LAUNCH (and the first launch after an update, followed by What's New): the 2.8 s cut. Never skippable. Hero beat = the play button press-in. Reduce Motion shows the still lockup.",
+  "variants": {
+    "firstInstall": {
+      "durationMs": 7500,
+      "scenes": [
+        {
+          "name": "dark",
+          "startMs": 0,
+          "endMs": 500
+        },
+        {
+          "name": "glowDot",
+          "startMs": 500,
+          "endMs": 1500
+        },
+        {
+          "name": "sweepTwitch",
+          "startMs": 1500,
+          "endMs": 2500
+        },
+        {
+          "name": "warm",
+          "startMs": 2500,
+          "endMs": 3500
+        },
+        {
+          "name": "anticipation",
+          "startMs": 3500,
+          "endMs": 4500
+        },
+        {
+          "name": "hero",
+          "startMs": 4500,
+          "endMs": 5000
+        },
+        {
+          "name": "sheen",
+          "startMs": 5000,
+          "endMs": 5500
+        },
+        {
+          "name": "wordmark",
+          "startMs": 5500,
+          "endMs": 6200
+        },
+        {
+          "name": "tagline",
+          "startMs": 6200,
+          "endMs": 7000
+        },
+        {
+          "name": "matchCut",
+          "startMs": 7000,
+          "endMs": 7500
+        }
+      ]
+    },
+    "standard": {
+      "durationMs": 2800,
+      "scenes": [
+        {
+          "name": "dark",
+          "startMs": 0,
+          "endMs": 200
+        },
+        {
+          "name": "glowDot",
+          "startMs": 200,
+          "endMs": 700
+        },
+        {
+          "name": "sweepTwitch",
+          "startMs": 700,
+          "endMs": 1200
+        },
+        {
+          "name": "warmWrap",
+          "startMs": 1200,
+          "endMs": 1900
+        },
+        {
+          "name": "hero",
+          "startMs": 1900,
+          "endMs": 2150
+        },
+        {
+          "name": "lockup",
+          "startMs": 2150,
+          "endMs": 2500
+        },
+        {
+          "name": "hold",
+          "startMs": 2500,
+          "endMs": 2650
+        },
+        {
+          "name": "matchCut",
+          "startMs": 2650,
+          "endMs": 2800
+        }
+      ]
+    },
+    "reducedMotion": {
+      "durationMs": 1400,
+      "scenes": [
+        {
+          "name": "still",
+          "startMs": 0,
+          "endMs": 1000
+        },
+        {
+          "name": "fade",
+          "startMs": 1000,
+          "endMs": 1400
+        }
+      ]
+    }
+  },
+  "keyframesMs": {
+    "dotAppears": 200,
+    "lightSweepStart": 700,
+    "lightSweepEnd": 1150,
+    "antennaTwitch": [
+      850,
+      1100
+    ],
+    "snowPeak": 1000,
+    "screenWarm": [
+      1100,
+      1700
+    ],
+    "ribbonRearDraw": [
+      1150,
+      1600
+    ],
+    "ribbonFrontDraw": [
+      1400,
+      1850
+    ],
+    "dotToPlay": [
+      1500,
+      1900
+    ],
+    "heroPressIn": [
+      1900,
+      2050
+    ],
+    "glint": 2000,
+    "ribbonSheen": [
+      2000,
+      2400
+    ],
+    "wordmark": [
+      2150,
+      2400
+    ],
+    "tagline": [
+      2250,
+      2500
+    ],
+    "matchCutExpand": [
+      2650,
+      2800
+    ]
+  },
+  "easing": {
+    "dotGlow": "ease-out",
+    "lightSweep": "cubic-ease-in-out",
+    "antennaTwitch": "ease-out with 3-4 frame settle, overshoot <= 2%",
+    "snow": "linear (noise, low opacity <= 12%)",
+    "screenWarm": "slow-ease-in-out",
+    "cameraPush": "slow-ease-in-out, 3-5% total",
+    "ribbonDrawOn": "cubic-ease-in-out",
+    "dotToPlay": "cubic-ease-out",
+    "heroPress": "ease-out, 2-3% press-in then settle",
+    "ribbonSheen": "ease-in-out, long anisotropic highlight",
+    "wordmark": "ease-out",
+    "matchCut": "cubic-ease-in-out"
+  },
+  "interaction": "none: the opening cannot be skipped or interrupted (no tap, key, remote or Back handling); it ends on elapsed time alone, with a hard fallback so it can never stay on screen.",
+  "assets": "motion/assets/tune-in/manifest.json",
+  "keyframesMsFirstInstall": {
+    "dotAppears": 500,
+    "lightSweep": [
+      1500,
+      2300
+    ],
+    "antennaTwitch": [
+      1700,
+      2200
+    ],
+    "snow": [
+      1500,
+      2500
+    ],
+    "screenWarm": [
+      2500,
+      3500
+    ],
+    "ribbonRearDraw": [
+      2500,
+      3500
+    ],
+    "ribbonFrontDraw": [
+      3500,
+      4500
+    ],
+    "dotToPlay": [
+      3500,
+      4500
+    ],
+    "heroPressIn": [
+      4500,
+      4750
+    ],
+    "glint": 4750,
+    "ribbonSheen": [
+      5000,
+      5500
+    ],
+    "wordmark": [
+      5500,
+      6200
+    ],
+    "tagline": [
+      6200,
+      7000
+    ],
+    "matchCutExpand": [
+      7000,
+      7500
+    ]
+  },
+  "launchPlan": {
+    "newInstallFirstLaunch": "firstInstall",
+    "everyOtherLaunch": "standard",
+    "firstLaunchAfterUpdate": "standard then What's New",
+    "reduceMotion": "reducedMotion",
+    "testRunsAndSkipEnv": "none"
+  }
+}

@@ -1,0 +1,836 @@
+{
+ "description": "Same library, three calendar days (incl. year change and a leap day): a new dayKey re-seeds.",
+ "library": [
+  {
+   "added": 0,
+   "id": "m0",
+   "key": "rs0",
+   "q": 2,
+   "year": 2020
+  },
+  {
+   "added": 5,
+   "id": "m1",
+   "key": "rs1",
+   "q": 3,
+   "year": 2021
+  },
+  {
+   "added": 10,
+   "id": "m2",
+   "key": "rs2",
+   "q": 4,
+   "year": 2022
+  },
+  {
+   "added": 15,
+   "id": "m3",
+   "key": "rs3",
+   "q": 5,
+   "year": 2023
+  },
+  {
+   "added": 20,
+   "id": "m4",
+   "key": "rs4",
+   "q": 2,
+   "year": 2024
+  },
+  {
+   "added": 25,
+   "id": "m5",
+   "key": "rs5",
+   "q": 3,
+   "year": 2025
+  },
+  {
+   "added": 30,
+   "id": "m6",
+   "key": "rs6",
+   "q": 4,
+   "year": 2020
+  },
+  {
+   "added": 35,
+   "id": "m7",
+   "key": "rs7",
+   "q": 5,
+   "year": 2021
+  },
+  {
+   "added": 40,
+   "id": "m8",
+   "key": "rs8",
+   "q": 2,
+   "year": 2022
+  },
+  {
+   "added": 45,
+   "id": "m9",
+   "key": "rs9",
+   "q": 3,
+   "year": 2023
+  },
+  {
+   "added": 50,
+   "id": "m10",
+   "key": "rs10",
+   "q": 4,
+   "year": 2024
+  },
+  {
+   "added": 55,
+   "id": "m11",
+   "key": "rs11",
+   "q": 5,
+   "year": 2025
+  },
+  {
+   "added": 60,
+   "id": "m12",
+   "key": "rs12",
+   "q": 2,
+   "year": 2020
+  },
+  {
+   "added": 65,
+   "id": "m13",
+   "key": "rs13",
+   "q": 3,
+   "year": 2021
+  },
+  {
+   "added": 70,
+   "id": "m14",
+   "key": "rs14",
+   "q": 4,
+   "year": 2022
+  },
+  {
+   "added": 75,
+   "id": "m15",
+   "key": "rs15",
+   "q": 5,
+   "year": 2023
+  },
+  {
+   "added": 80,
+   "id": "m16",
+   "key": "rs16",
+   "q": 2,
+   "year": 2024
+  },
+  {
+   "added": 85,
+   "id": "m17",
+   "key": "rs17",
+   "q": 3,
+   "year": 2025
+  },
+  {
+   "added": 90,
+   "id": "m18",
+   "key": "rs18",
+   "q": 4,
+   "year": 2020
+  },
+  {
+   "added": 95,
+   "id": "m19",
+   "key": "rs19",
+   "q": 5,
+   "year": 2021
+  },
+  {
+   "added": 100,
+   "id": "m20",
+   "key": "rs20",
+   "q": 2,
+   "year": 2022
+  },
+  {
+   "added": 105,
+   "id": "m21",
+   "key": "rs21",
+   "q": 3,
+   "year": 2023
+  },
+  {
+   "added": 110,
+   "id": "m22",
+   "key": "rs22",
+   "q": 4,
+   "year": 2024
+  },
+  {
+   "added": 115,
+   "id": "m23",
+   "key": "rs23",
+   "q": 5,
+   "year": 2025
+  },
+  {
+   "added": 120,
+   "id": "m24",
+   "key": "rs24",
+   "q": 2,
+   "year": 2020
+  },
+  {
+   "added": 125,
+   "id": "m25",
+   "key": "rs25",
+   "q": 3,
+   "year": 2021
+  },
+  {
+   "added": 130,
+   "id": "m26",
+   "key": "rs26",
+   "q": 4,
+   "year": 2022
+  },
+  {
+   "added": 135,
+   "id": "m27",
+   "key": "rs27",
+   "q": 5,
+   "year": 2023
+  },
+  {
+   "added": 140,
+   "id": "m28",
+   "key": "rs28",
+   "q": 2,
+   "year": 2024
+  },
+  {
+   "added": 145,
+   "id": "m29",
+   "key": "rs29",
+   "q": 3,
+   "year": 2025
+  },
+  {
+   "added": 150,
+   "id": "m30",
+   "key": "rs30",
+   "q": 4,
+   "year": 2020
+  },
+  {
+   "added": 155,
+   "id": "m31",
+   "key": "rs31",
+   "q": 5,
+   "year": 2021
+  },
+  {
+   "added": 160,
+   "id": "m32",
+   "key": "rs32",
+   "q": 2,
+   "year": 2022
+  },
+  {
+   "added": 165,
+   "id": "m33",
+   "key": "rs33",
+   "q": 3,
+   "year": 2023
+  },
+  {
+   "added": 170,
+   "id": "m34",
+   "key": "rs34",
+   "q": 4,
+   "year": 2024
+  },
+  {
+   "added": 175,
+   "id": "m35",
+   "key": "rs35",
+   "q": 5,
+   "year": 2025
+  },
+  {
+   "added": 180,
+   "id": "m36",
+   "key": "rs36",
+   "q": 2,
+   "year": 2020
+  },
+  {
+   "added": 185,
+   "id": "m37",
+   "key": "rs37",
+   "q": 3,
+   "year": 2021
+  },
+  {
+   "added": 190,
+   "id": "m38",
+   "key": "rs38",
+   "q": 4,
+   "year": 2022
+  },
+  {
+   "added": 195,
+   "id": "m39",
+   "key": "rs39",
+   "q": 5,
+   "year": 2023
+  },
+  {
+   "added": 200,
+   "id": "m40",
+   "key": "rs40",
+   "q": 2,
+   "year": 2024
+  },
+  {
+   "added": 205,
+   "id": "m41",
+   "key": "rs41",
+   "q": 3,
+   "year": 2025
+  },
+  {
+   "added": 210,
+   "id": "m42",
+   "key": "rs42",
+   "q": 4,
+   "year": 2020
+  },
+  {
+   "added": 215,
+   "id": "m43",
+   "key": "rs43",
+   "q": 5,
+   "year": 2021
+  },
+  {
+   "added": 220,
+   "id": "m44",
+   "key": "rs44",
+   "q": 2,
+   "year": 2022
+  },
+  {
+   "added": 225,
+   "id": "m45",
+   "key": "rs45",
+   "q": 3,
+   "year": 2023
+  },
+  {
+   "added": 230,
+   "id": "m46",
+   "key": "rs46",
+   "q": 4,
+   "year": 2024
+  },
+  {
+   "added": 235,
+   "id": "m47",
+   "key": "rs47",
+   "q": 5,
+   "year": 2025
+  },
+  {
+   "added": 240,
+   "id": "m48",
+   "key": "rs48",
+   "q": 2,
+   "year": 2020
+  },
+  {
+   "added": 245,
+   "id": "m49",
+   "key": "rs49",
+   "q": 3,
+   "year": 2021
+  },
+  {
+   "added": 250,
+   "id": "m50",
+   "key": "rs50",
+   "q": 4,
+   "year": 2022
+  },
+  {
+   "added": 255,
+   "id": "m51",
+   "key": "rs51",
+   "q": 5,
+   "year": 2023
+  },
+  {
+   "added": 260,
+   "id": "m52",
+   "key": "rs52",
+   "q": 2,
+   "year": 2024
+  },
+  {
+   "added": 265,
+   "id": "m53",
+   "key": "rs53",
+   "q": 3,
+   "year": 2025
+  },
+  {
+   "added": 270,
+   "id": "m54",
+   "key": "rs54",
+   "q": 4,
+   "year": 2020
+  },
+  {
+   "added": 275,
+   "id": "m55",
+   "key": "rs55",
+   "q": 5,
+   "year": 2021
+  },
+  {
+   "added": 280,
+   "id": "m56",
+   "key": "rs56",
+   "q": 2,
+   "year": 2022
+  },
+  {
+   "added": 285,
+   "id": "m57",
+   "key": "rs57",
+   "q": 3,
+   "year": 2023
+  },
+  {
+   "added": 290,
+   "id": "m58",
+   "key": "rs58",
+   "q": 4,
+   "year": 2024
+  },
+  {
+   "added": 295,
+   "id": "m59",
+   "key": "rs59",
+   "q": 5,
+   "year": 2025
+  }
+ ],
+ "name": "day-rollover",
+ "steps": [
+  {
+   "dayKey": "2026-11-21",
+   "expect": {
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": true,
+      "drawn": 12,
+      "fallback": "none",
+      "groups": 60,
+      "hidden": false,
+      "inCount": 60,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 60,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m0",
+      "m29",
+      "m26",
+      "m18",
+      "m27",
+      "m39",
+      "m15",
+      "m52",
+      "m11",
+      "m7",
+      "m14",
+      "m55"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 60,
+      "hidden": false,
+      "inCount": 60,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 60,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m56",
+      "m38",
+      "m49",
+      "m45",
+      "m37",
+      "m23",
+      "m59",
+      "m47",
+      "m51",
+      "m16",
+      "m39",
+      "m15",
+      "m2",
+      "m27"
+     ]
+    }
+   },
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "top-week"
+   ]
+  },
+  {
+   "dayKey": "2026-11-22",
+   "expect": {
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": true,
+      "drawn": 12,
+      "fallback": "none",
+      "groups": 60,
+      "hidden": false,
+      "inCount": 60,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 60,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m39",
+      "m21",
+      "m3",
+      "m44",
+      "m23",
+      "m58",
+      "m6",
+      "m51",
+      "m57",
+      "m35",
+      "m10",
+      "m42"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 60,
+      "hidden": false,
+      "inCount": 60,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 60,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m34",
+      "m18",
+      "m33",
+      "m40",
+      "m30",
+      "m10",
+      "m42",
+      "m6",
+      "m45",
+      "m24",
+      "m39",
+      "m31",
+      "m1",
+      "m57"
+     ]
+    }
+   },
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "top-week"
+   ]
+  },
+  {
+   "dayKey": "2027-01-01",
+   "expect": {
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": true,
+      "drawn": 12,
+      "fallback": "none",
+      "groups": 60,
+      "hidden": false,
+      "inCount": 60,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 60,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m29",
+      "m49",
+      "m34",
+      "m11",
+      "m12",
+      "m20",
+      "m37",
+      "m3",
+      "m33",
+      "m46",
+      "m53",
+      "m2"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 60,
+      "hidden": false,
+      "inCount": 60,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 60,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m36",
+      "m47",
+      "m34",
+      "m10",
+      "m53",
+      "m38",
+      "m56",
+      "m24",
+      "m35",
+      "m18",
+      "m31",
+      "m39",
+      "m27",
+      "m11"
+     ]
+    }
+   },
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "top-week"
+   ]
+  },
+  {
+   "dayKey": "2028-02-29",
+   "expect": {
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": true,
+      "drawn": 12,
+      "fallback": "none",
+      "groups": 60,
+      "hidden": false,
+      "inCount": 60,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 60,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m42",
+      "m23",
+      "m41",
+      "m18",
+      "m39",
+      "m52",
+      "m6",
+      "m12",
+      "m51",
+      "m35",
+      "m7",
+      "m0"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 60,
+      "hidden": false,
+      "inCount": 60,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 60,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m40",
+      "m50",
+      "m1",
+      "m21",
+      "m15",
+      "m2",
+      "m6",
+      "m35",
+      "m3",
+      "m22",
+      "m16",
+      "m17",
+      "m36",
+      "m51"
+     ]
+    }
+   },
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "top-week"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,418 @@
+{
+ "description": "3 titles: fewer picks than slots, no repeat penalty (tiny), hero >= 3 reached.",
+ "library": [
+  {
+   "added": 10,
+   "backdrop": true,
+   "id": "m1",
+   "key": "title 1",
+   "lang": "Telugu",
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "id": "m2",
+   "key": "title 2",
+   "lang": "Hindi",
+   "year": 2024
+  },
+  {
+   "added": 40,
+   "backdrop": true,
+   "id": "s3",
+   "key": "show 3",
+   "kind": "series",
+   "lang": "Telugu",
+   "year": 2023
+  }
+ ],
+ "name": "tiny-library",
+ "steps": [
+  {
+   "dayKey": "2026-11-21",
+   "expect": {
+    "for-you": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 3,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 3,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m2",
+      "m1",
+      "s3"
+     ]
+    },
+    "hero": {
+     "art": [
+      "backdrop",
+      "backdrop",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 3,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 3,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m1",
+      "s3",
+      "m2"
+     ]
+    },
+    "lang-pref": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 2,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 1,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 2,
+      "restricted": 0,
+      "tier": 5,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "s3",
+      "m1"
+     ]
+    },
+    "rediscover": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 3,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 3,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "s3",
+      "m1",
+      "m2"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 3,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 3,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m1",
+      "s3",
+      "m2"
+     ]
+    },
+    "trending-library": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 3,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 3,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "s3",
+      "m2",
+      "m1"
+     ]
+    }
+   },
+   "preferredLang": "Telugu",
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "for-you",
+    "rediscover",
+    "lang-pref",
+    "top-week",
+    "trending-library"
+   ]
+  },
+  {
+   "dayKey": "2026-11-21",
+   "expect": {
+    "for-you": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 3,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 3,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "s3",
+      "m1",
+      "m2"
+     ]
+    },
+    "hero": {
+     "art": [
+      "backdrop",
+      "backdrop",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 3,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 3,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "s3",
+      "m1",
+      "m2"
+     ]
+    },
+    "lang-pref": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 2,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 1,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 2,
+      "restricted": 0,
+      "tier": 5,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m1",
+      "s3"
+     ]
+    },
+    "rediscover": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 3,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 3,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "s3",
+      "m2",
+      "m1"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 3,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 3,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m2",
+      "m1",
+      "s3"
+     ]
+    },
+    "trending-library": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 3,
+      "fallback": "none",
+      "groups": 3,
+      "hidden": false,
+      "inCount": 3,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 3,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "s3",
+      "m2",
+      "m1"
+     ]
+    }
+   },
+   "preferredLang": "Telugu",
+   "profile": "main",
+   "refreshCounter": 1,
+   "shelves": [
+    "hero",
+    "for-you",
+    "rediscover",
+    "lang-pref",
+    "top-week",
+    "trending-library"
+   ]
+  }
+ ]
+}
