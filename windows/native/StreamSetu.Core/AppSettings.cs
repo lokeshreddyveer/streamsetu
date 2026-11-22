@@ -20,6 +20,8 @@ public sealed record AppSettings
     public bool TmdbEnabled { get; init; } = true;
     /// <summary>Movies, Series and Live TV show the plain list (Grid) instead of one row per folder.</summary>
     public bool GridView { get; init; }
+    /// <summary>The opening has played once on this computer, so later launches play the short cut.</summary>
+    public bool OpeningSeen { get; init; }
 
     public static AppSettings Load(LocalStore store) => store.Load("Settings", new AppSettings());
     public void Save(LocalStore store) => store.Save("Settings", this);

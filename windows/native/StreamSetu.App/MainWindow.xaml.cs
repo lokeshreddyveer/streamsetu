@@ -24,9 +24,29 @@ public sealed partial class MainWindow : Window
         if (_started) return;
         _started = true;
         StartBackgroundServices();
+        await PlayOpeningAsync();
         try { await ChooseProfileAsync(first: true); }
         catch (Exception ex) { await Dialogs.MessageAsync(Nav.XamlRoot, "StreamSetu", ex.Message); }
         GoHome();
+    }
+
+    /// <summary>"Tune In" over the whole window, before anything can be touched. The full story only on the first launch of a new install, the short cut every other time. No skip.</summary>
+    private async Task PlayOpeningAsync()
+    {
+        var reduced = false;
+        try { reduced = !new Windows.UI.ViewManagement.UISettings().AnimationsEnabled; } catch (Exception) { /* assume animations are on */ }
+        var suppressed = Environment.GetEnvironmentVariable("SS_SKIP_INTRO") == "1";
+        var variant = Opening.Decide(AppServices.Settings.OpeningSeen, AppServices.Store.Playlists().Count > 0, reduced, suppressed);
+        if (variant is not { } v) return;
+        try
+        {
+            var overlay = new OpeningOverlay();
+            OpeningHost.Children.Add(overlay); OpeningHost.Visibility = Visibility.Visible; Nav.IsEnabled = false;
+            await overlay.PlayAsync(v);
+        }
+        catch (Exception) { /* whatever goes wrong, the app opens */ }
+        finally { OpeningHost.Visibility = Visibility.Collapsed; OpeningHost.Children.Clear(); Nav.IsEnabled = true; }
+        if (!AppServices.Settings.OpeningSeen) AppServices.SaveSettings(AppServices.Settings with { OpeningSeen = true });
     }
 
     private readonly DispatcherTimer _reminders = new() { Interval = TimeSpan.FromSeconds(30) };

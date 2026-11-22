@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="StreamSetu">
+    <Grid>
     <NavigationView x:Name="Nav" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed" IsSettingsVisible="False" OpenPaneLength="230" SelectionChanged="OnSelectionChanged" Loaded="OnLoaded">
         <NavigationView.MenuItems>
             <NavigationViewItem Content="Home" Tag="home" Icon="Home" />
@@ -25,4 +26,6 @@
         </NavigationView.FooterMenuItems>
         <Frame x:Name="ContentFrame" />
     </NavigationView>
+    <Grid x:Name="OpeningHost" Visibility="Collapsed" />
+    </Grid>
 </Window>
