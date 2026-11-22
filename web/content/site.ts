@@ -31,6 +31,8 @@ export const features = [
   { title: "Subtitles from OpenSubtitles", text: "Use your own free key to search and download subtitles without leaving the player." },
   { title: "Multi-View", text: "Watch up to four live channels side by side, with the sound on one at a time." },
   { title: "Folders, favourites and lists", text: "Sort the provider's folders your way, lock one with a PIN, keep favourites, Watch Later and collections, and clear any of them in one go." },
+  { title: "A smarter Home", text: "Top This Week, Trending in Your Library, Because You Watched and Rediscover, picked from your own library, with a Shuffle button. Movies, Series and Live TV open as one row per folder, and a title shows its other languages and versions." },
+  { title: "Cast and privacy", text: "A cast row with photos (with your own free TMDB key) and a page for each person. Locked and hidden folders stay out of search, recommendations, widgets and anything sent to TMDB." },
   { title: "Hindi and Telugu", text: "The main screens are available in Hindi and Telugu as well as English." },
 ];
 
@@ -62,18 +64,18 @@ export const faq = [
   },
   {
     q: "How do I get it on an iPhone?",
-    a: "Through TestFlight. Open the invitation link on the Download page on your iPhone, install TestFlight if asked, and tap Install.",
+    a: "From the App Store, or through TestFlight for early builds. Open the App Store link or the invitation link on the Download page on your iPhone, install TestFlight if asked, and tap Install.",
   },
   {
     q: "How do I install it on a Fire TV?",
-    a: "Turn on Install unknown apps for the Downloader app in Settings, My Fire TV, Developer options. Open Downloader and enter the code 7315299 (or open aftv.news/7315299 in any browser), or enter the address of the Fire TV file from the Download page, and install.",
+    a: "Turn on Install unknown apps for the Downloader app in Settings, My Fire TV, Developer options. If you have an older StreamSetu on it, uninstall that first; this version has a new signing key. Open Downloader and enter the code 7315299 (or open aftv.news/7315299 in any browser), or enter the address of the Fire TV file from the Download page, and install.",
   },
   {
     q: "Does the Mac app update itself?",
-    a: "Yes. The Android and Fire TV apps check for updates too and ask before installing.",
+    a: "Yes (Sparkle). The Android and Fire TV apps check for updates too and ask before installing.",
   },
   {
     q: "Is there a Windows version?",
-    a: "Yes. Download the zip from the Releases page, unzip it and run StreamSetu.exe. It needs Windows 10 (version 1809) or later, 64-bit.",
+    a: "Yes. Download the zip from the Releases page (there is one for Windows on ARM), unzip it and run StreamSetu.exe. It needs Windows 10 (version 1809) or later, 64-bit. The app is not signed, so Windows SmartScreen may warn you the first time. It tells you when a new zip is available and offers a checked download; it does not install it.",
   },
 ];

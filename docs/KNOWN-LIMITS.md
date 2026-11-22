@@ -8,12 +8,14 @@ Only what changes what you can do. Everything else StreamSetu does is in [FEATUR
 
 - **Stalker portals** give live TV only (no movies, series or guide), and are left out of the iPhone and iPad App Store build.
 - **Recording** a live channel is on the Mac, Android phone and Fire TV, not on iPhone and iPad. **Downloads** are not on Fire TV.
-- **The Setu assistant** is on the Mac, iPhone and iPad. Android and Fire TV have commands and an Ask AI row in search, not the chat yet.
+- **The Setu assistant** (the chat bubble) is on the Mac only. The iPhone and iPad apps contain it, but its button is not shown there for now. Android and Fire TV have commands and an Ask AI row in search, not the chat yet.
 - **Problem reports** are sent only by the Mac app (off until you turn them on). The iPhone and iPad App Store build sends none.
 - **Audio and subtitle delay** need the mpv player. **Frame-rate matching** is on Fire TV and Android TV only, and only on TVs that can switch their refresh rate.
 - **Chromecast** fetches the stream itself, so only plain web streams (HLS, MP4) cast well, and a connection that needs special headers cannot be cast.
 - **Catch-up** needs a provider that offers an archive; some providers use their own time zone for it (there is a setting).
 - **Hindi and Telugu** cover the main screens and common words; long Settings explanations are still English, and the wording has not had a native-speaker review.
+- **Cast, weekly trending and TMDB artwork** need your own free TMDB key; without one the cast row is not shown and Top This Week uses what is watched on your own device.
+- **Windows** is a zip and is not signed, so SmartScreen may warn the first time. It tells you when a new zip is available and offers a checked download, but does not install it. The Setu chat is not there.
 - **Trakt and debrid** have been tested against recorded replies, not with real accounts.
 
 ## Fire TV and Android TV

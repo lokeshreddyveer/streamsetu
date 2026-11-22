@@ -12,6 +12,7 @@ ios/build/
 *.provisionprofile
 *.mobileprovision
 *.p12
+*.p8
 *.pem
 .env*
 # website
@@ -31,3 +32,5 @@ android/.gradle/
 android/local.properties
 android/dist/
 android/.kotlin/
+# windows release files
+windows/native/dist/

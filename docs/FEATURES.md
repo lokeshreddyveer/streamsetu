@@ -71,7 +71,16 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Filter Movies and Series by language, quality, rating, decade and watch status, in the Sort menu on Mac, iPhone and iPad and in the Filter panel on TV (which also has a box to find a filter by name and can narrow by connection) | ✓ | ✓ | ✓ | – | ✓ |
 | "In folder …" on a movie or series page, showing where it sits and opening that folder (useful after a search) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Play the best version of a film first (4K, then 1080p, never a cinema recording first), with the next best tried if one does not play | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Opening animation when the app starts (tap to skip; fades only with Reduce Motion) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Opening: the television tuning in (about 7.5 seconds the first time, about 3 seconds after; Automatic or Off in Settings; a still picture with Reduce Motion; it cannot be skipped), and new start and setup screens with motion and haptics | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Smart Mix Home: Top This Week, Trending in Your Library, Because You Watched, Rediscover and a row in your preferred language, with a Shuffle recommendations button that never starts a sync | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Folders view for Movies, Series and Live TV: one row per folder, 20 at a time, a More tile, a Grid switch; a locked folder shows only its name and a lock | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Other languages and versions of a title, as a row on its page | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Cast row with photos (your own free TMDB key; monograms without one) and a person screen with their titles in your library | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Weekly trending from TMDB (on by default, works only with your own TMDB key, saved for at most 180 days), with the TMDB logo and notice in About | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Don't Recommend This; remove a title from Continue Watching and keep its history (Android marks it) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Three quick taps on a tab refresh the library | – | ✓ | – | – | – |
+| Designed tiles for titles with no poster, and pictures that fail to load try again | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Locked and hidden folders left out of counts, search, recommendations, widgets, Watch Next, cast and similar titles, and never sent to TMDB | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Play a stream in another app (VLC, MX Player, IINA, Infuse and others) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Profiles: up to four people on one device, each with their own favourites, collections, history and resume points, a kids profile that keeps locked folders hidden, and PINs | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Tonight: what is on now and next on your favourite channels, what is set to record, and the next episode of your series | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -110,7 +119,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | **More like this** | | | | | |
 | Suggestions under a movie or series by franchise, director, genre, cast and story, each with its reason | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Assistant and your own services** | | | | | |
-| Setu, an assistant in a chat bubble: finds something to watch, answers about your screen, settings and playback problems, and offers actions you tap to confirm (new: tried on the Mac first) | ✓ | ✓ | ✓ | – | – |
+| Setu, an assistant in a chat bubble: finds something to watch, answers about your screen, settings and playback problems, and offers actions you tap to confirm (new: tried on the Mac first; on iPhone and iPad the button is switched off for now) | ✓ | – | – | – | – |
 | Bring your own AI: Apple Intelligence, Gemini, OpenRouter, Claude, OpenAI, Groq, NVIDIA, Ollama Cloud, or Ollama on your network, with each one's price and free limit shown | ✓ | ✓ | ✓ | ✓ without Apple Intelligence | ✓ without Apple Intelligence |
 | Ask AI from the search box when a request finds nothing | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Search box commands: go to a screen, play, resume, last channel, add or remove a favourite or Watch Later | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -126,9 +135,9 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Siri and Shortcuts | – use Open URL links | ✓ | ✓ | – | – |
 | `streamsetu://` links: play a channel or movie, search, open a tab, pause, resume, sleep | ✓ | ✓ | ✓ | play and search | play and search |
 | "Continue watching" row on the Android TV home screen | – | – | – | – | ✓ Android TV; not Fire TV |
-| Updates itself | ✓ Sparkle | TestFlight | TestFlight | ✓ checks GitHub, asks before installing | ✓ checks GitHub, asks before installing |
+| Updates itself | ✓ Sparkle | App Store, TestFlight | App Store, TestFlight | ✓ checks GitHub, asks before installing | ✓ checks GitHub, asks before installing |
 
-Stalker portals are left out of the iPhone and iPad builds that go through TestFlight and the App Store, because Apple reviews a portal's set-top-box identity differently; the Mac and Android apps keep them. The iPad runs the iPhone app, laid out for the larger screen. On the Apple apps, Picture in Picture and AirPlay work for streams AVPlayer plays; a stream played by mpv does not support them. Android phones and tablets run the same app as the Fire TV, with a touch layout chosen automatically when the device is not a television.
+Stalker portals are left out of the iPhone and iPad builds on TestFlight and the App Store, because Apple reviews a portal's set-top-box identity differently; the Mac and Android apps keep them. The iPad runs the iPhone app, laid out for the larger screen. On the Apple apps, Picture in Picture and AirPlay work for streams AVPlayer plays; a stream played by mpv does not support them. Android phones and tablets run the same app as the Fire TV, with a touch layout chosen automatically when the device is not a television. **Windows 0.2.0** (a zip: unzip it and run `StreamSetu.exe`; x64 and arm64; not signed, so SmartScreen may warn) has most of the Mac features and its own list in [windows/native/README.md](../windows/native/README.md); it also has the Smart Mix Home shelves, folder rows, the privacy rules above, other languages and versions (in the right-click menu), the cast row and the opening. It shows a new version and offers a checked download, and does not install it.
 
 ## Sync on this network
 

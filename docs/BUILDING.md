@@ -24,7 +24,8 @@ The Fire TV app has been developed and tested on a Fire TV Stick 4K (Fire OS 7).
 | `appcast.xml` | The update feed the Mac app reads |
 | `docs/RELEASING.md` | Where each download comes from and how a release is made |
 | `ios/` | The iPhone and iPad app, shares most code with the Mac app |
-| `android/` | The Fire TV and Android TV app |
+| `android/` | The Fire TV, Android TV, Android phone and tablet app |
+| `windows/native/` | The Windows app (a zip for x64 and one for arm64); see its README |
 | `legal/` | Privacy policy and terms |
 | `branding/` | Icons and artwork |
 

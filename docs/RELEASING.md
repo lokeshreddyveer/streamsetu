@@ -2,7 +2,7 @@
 
 Everything lives in this one repository: the source, the download files (GitHub Releases) and the Mac update feed (`appcast.xml` at the root).
 
-One release holds every app, named by date (for example `2026.10.14`). Its files are the Mac DMG and the two Android APKs, and its notes have a section for each app plus the SHA-256 of every file. iPhone and iPad builds go to TestFlight and are listed in the notes.
+One release holds every app, named by date (for example `2026.10.14`). Its files are the Mac DMG, the two Android APKs and the Windows zips (x64 and arm64), and its notes have a section for each app plus the SHA-256 of every file. iPhone and iPad builds go to TestFlight and, once approved, the App Store; they are listed in the notes.
 
 1. Mac: `macos/Scripts/release-signed.sh <version> <build>` (builds, signs, notarizes; the DMG lands in `macos/dist/`).
 2. Android and Fire TV: `android/build-release.sh <version> <code>` (tests, signs; the APKs land in `android/dist/<version>/`).
