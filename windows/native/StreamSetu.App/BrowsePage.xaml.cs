@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using StreamSetu.Core;
+using StreamSetu.Core.SmartMix;
 
 namespace StreamSetu.App;
 
@@ -23,6 +24,8 @@ public sealed partial class BrowsePage : Page
     private bool _quiet;                                              // true while the page changes its own controls, so that does not count as the person choosing
     private readonly HashSet<string> _unlocked = new();               // folders opened with their PIN during this visit
     private int _pinTries;
+    private int _rowsBuild;
+    private int _foldersShown = 24;
 
     public BrowsePage() { InitializeComponent(); }
 
@@ -44,6 +47,8 @@ public sealed partial class BrowsePage : Page
         FolderMenu.Content = _mode == "collections" ? "Collection" : "Folder";
         FilterButton.Visibility = _mode == "live" ? Visibility.Collapsed : Visibility.Visible;
         SortBox.Visibility = _mode == "live" ? Visibility.Collapsed : Visibility.Visible;
+        ViewBox.Visibility = UsesFolders ? Visibility.Visible : Visibility.Collapsed;
+        _quiet = true; ViewBox.SelectedIndex = AppServices.Settings.GridView ? 1 : 0; _quiet = false;
 
         _playlists = AppServices.Playlists().ToList();
         if (_playlists.Count == 0) { Say("Add a connection first (Connections, at the bottom of the menu).", InfoBarSeverity.Informational); return; }
@@ -150,15 +155,22 @@ public sealed partial class BrowsePage : Page
         if (_quiet) return;
         if (UsesFolders && CurrentFolder is { Locked: true } f && !_unlocked.Contains(f.Name))
         {
-            var ok = await Dialogs.PinAsync(XamlRoot, $"“{f.Display}” is locked", pin =>
-            {
-                if (++_pinTries > 5) { _pinTries = 0; return PinResult.Locked; }
-                return AppServices.Folders.Unlock(Scope, f.Name, pin) ? PinResult.Ok : PinResult.Wrong;
-            });
-            if (!ok) { _quiet = true; FolderBox.SelectedIndex = 0; _quiet = false; return; }
-            _pinTries = 0; _unlocked.Add(f.Name);
+            if (!await TryUnlockAsync(f)) { _quiet = true; FolderBox.SelectedIndex = 0; _quiet = false; return; }
         }
         Apply();
+    }
+
+    /// <summary>Asks for the folder's PIN; on success the folder stays open for this visit.</summary>
+    private async Task<bool> TryUnlockAsync(FolderView f)
+    {
+        var ok = await Dialogs.PinAsync(XamlRoot, $"“{f.Display}” is locked", pin =>
+        {
+            if (++_pinTries > 5) { _pinTries = 0; return PinResult.Locked; }
+            return AppServices.Folders.Unlock(Scope, f.Name, pin) ? PinResult.Ok : PinResult.Wrong;
+        });
+        if (!ok) return false;
+        _pinTries = 0; _unlocked.Add(f.Name);
+        return true;
     }
 
     private async void OnFolderMenu(object sender, RoutedEventArgs e)
@@ -181,7 +193,7 @@ public sealed partial class BrowsePage : Page
         if (CurrentFolder is not { Name.Length: > 0 } folder) { Say("Choose a folder first.", InfoBarSeverity.Informational); return; }
         var groups = _all.Select(i => i.Group).Distinct().ToList();
         Add("Rename…", async () => { var n = await Dialogs.AskAsync(XamlRoot, "Rename folder", "Name", initial: folder.Display); if (n is not null) { AppServices.Folders.Rename(Scope, folder.Name, n); BuildFolders(); Apply(); } });
-        Add("Hide", () => { AppServices.Folders.Hide(Scope, folder.Name, true); BuildFolders(); Apply(); return Task.CompletedTask; });
+        Add("Hide", () => { AppServices.HideEverywhere(_mode, folder.Name); BuildFolders(); Apply(); return Task.CompletedTask; });
         Add("Move up", () => { AppServices.Folders.MoveUp(Scope, groups, folder.Name); BuildFolders(); return Task.CompletedTask; });
         Add("Move down", () => { AppServices.Folders.MoveDown(Scope, groups, folder.Name); BuildFolders(); return Task.CompletedTask; });
         if (folder.Locked)
@@ -196,7 +208,7 @@ public sealed partial class BrowsePage : Page
                 var pin = await Dialogs.AskAsync(XamlRoot, "Lock this folder", "PIN (4 to 8 digits)", secret: true);
                 if (pin is null) return;
                 if (!PinHash.IsValid(pin)) { Say("A PIN is 4 to 8 digits.", InfoBarSeverity.Warning); return; }
-                AppServices.Folders.SetLock(Scope, folder.Name, pin); BuildFolders(); Apply();
+                AppServices.LockEverywhere(_mode, folder.Name, pin); AppServices.Mix.Purge(); BuildFolders(); Apply();
             });
         flyout.ShowAt(FolderMenu);
         await Task.CompletedTask;
@@ -205,6 +217,13 @@ public sealed partial class BrowsePage : Page
     // ---------- Search, filter, sort ----------
 
     private void OnSearchChanged(object sender, TextChangedEventArgs e) => Apply();
+
+    private void OnViewChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_quiet || _playlist is null) return;
+        AppServices.SaveSettings(AppServices.Settings with { GridView = ViewBox.SelectedIndex == 1 });
+        Apply();
+    }
     private void OnSortChanged(object sender, SelectionChangedEventArgs e) { if (!_quiet && ItemList is not null) Apply(); }
 
     private async void OnFilterClick(object sender, RoutedEventArgs e)
@@ -238,6 +257,13 @@ public sealed partial class BrowsePage : Page
     private void Apply()
     {
         if (_playlist is null) return;
+        if (ShowFolderRows)
+        {
+            ItemList.Visibility = Visibility.Collapsed; FolderRows.Visibility = Visibility.Visible; CountText.Text = "";
+            _ = BuildFolderRowsAsync();
+            return;
+        }
+        ItemList.Visibility = Visibility.Visible; FolderRows.Visibility = Visibility.Collapsed;
         var user = AppServices.User; var watched = user.Watched(); var progress = user.RecentProgress().Select(p => p.Key).ToHashSet();
         IEnumerable<Item> items = _all;
 
@@ -285,42 +311,104 @@ public sealed partial class BrowsePage : Page
     private async void OnItemClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is not Row { Item: var item } || _playlist is null || _loaded is null) return;
+        await ItemOpener.OpenAsync(Frame, XamlRoot, _playlist, _loaded, item, b => Busy.IsActive = b, Say);
+    }
+
+    // ---------- Folder rows ----------
+
+    /// <summary>One row per folder, unless the person is searching, filtering, sorting, looking at one folder, or chose Grid.</summary>
+    private bool ShowFolderRows => UsesFolders && ViewBox.SelectedIndex == 0 && _all.Count > 0 && CurrentFolder is not { Name.Length: > 0 }
+        && string.IsNullOrWhiteSpace(SearchBox.Text) && _filter == new ItemFilter() && SortBox.SelectedIndex == 0;
+
+    private async Task BuildFolderRowsAsync()
+    {
+        var mine = ++_rowsBuild;
+        var playlist = _playlist!;
+        var kind = _mode switch { "movie" => Kind.Movie, "series" => Kind.Series, _ => Kind.Live };
         try
         {
-            if (item.Kind == Kind.Series) await ChooseEpisodeAsync(item);
-            else if (item.Url is not null)
+            var folders = AppServices.Folders.Visible(Scope, _all.Select(i => i.Group), Kids);
+            var shown = folders.Take(_foldersShown).ToList();
+            var ours = _all.Select(i => new Copy(playlist.Id, i)).ToList();
+            var counts = Privacy.FolderCounts(AppServices.PrivacyNow(_unlocked), kind, ours).ToDictionary(c => c.Name, c => c.Count);
+            var rows = new Dictionary<string, List<Copy>>();
+            if (kind != Kind.Live)
             {
-                var key = KeyOf(item);
-                var start = item.Kind == Kind.Movie ? AppServices.User.ProgressOf(key)?.Position ?? 0 : 0;
-                Busy.IsActive = true;
-                string url;
-                try { url = await AppServices.PlayUrlAsync(_playlist, item.Url); }           // a Stalker portal gives a fresh link each time; every other kind returns the address as it is
-                finally { Busy.IsActive = false; }
-                Frame.Navigate(typeof(PlayerPage), new PlayRequest(_playlist, key, item.Title, url, item.Kind == Kind.Live, start, item.Kind == Kind.Live ? item : null));
+                var open = shown.Where(f => !f.Locked).Select(f => f.Name).ToList();                         // a folder opened with its PIN is shown by choosing it, not on a row
+                var copies = await AppServices.AllCopiesAsync();
+                if (mine != _rowsBuild) return;
+                var mix = AppServices.Mix.Open(AppServices.DayKey());
+                var inputs = AppServices.BuildHomeInputs(copies, new TrendingInput(), _unlocked);
+                rows = await Task.Run(() => HomeBuilder.FolderRows(inputs, mix.State, SmartMixStore.ProfileKey, mix.Refresh, kind, open));
             }
+            if (mine != _rowsBuild) return;
+
+            FolderRowsPanel.Children.Clear();
+            foreach (var f in shown)
+            {
+                var locked = f.Locked;
+                var block = new StackPanel { Spacing = 6 };
+                block.Children.Add(Tiles.FolderHeader(f.Display, locked && !_unlocked.Contains(f.Name) ? null : counts.GetValueOrDefault(f.Name), locked && !_unlocked.Contains(f.Name), () => OpenFolder(f)));
+                if (!locked)
+                {
+                    IEnumerable<Copy> tiles = kind == Kind.Live ? _all.Where(i => i.Group == f.Name).Take(12).Select(i => new Copy(playlist.Id, i)) : rows.GetValueOrDefault(f.Name) ?? new List<Copy>();
+                    if (tiles.Any()) block.Children.Add(Tiles.Strip(tiles, OpenCopy, kind == Kind.Live ? 96 : 128));
+                }
+                FolderRowsPanel.Children.Add(block);
+            }
+            if (folders.Count > shown.Count)
+            {
+                var more = new Button { Content = "Show more folders" };
+                more.Click += (_, _) => { _foldersShown += 24; Apply(); };
+                FolderRowsPanel.Children.Add(more);
+            }
+        }
+        catch (Exception ex) { if (mine == _rowsBuild) Say(ex.Message, InfoBarSeverity.Error); }
+    }
+
+    private async void OpenFolder(FolderView f)
+    {
+        if (f.Locked && !_unlocked.Contains(f.Name) && !await TryUnlockAsync(f)) return;
+        if (FolderBox.ItemsSource is IEnumerable<FolderView> list && list.FirstOrDefault(x => x.Name == f.Name) is { } match) FolderBox.SelectedItem = match;
+    }
+
+    /// <summary>The other copies of this title (another language, quality or connection), without anything from a locked, hidden or adult-blocked folder.</summary>
+    private async Task ShowVersionsAsync(Item item)
+    {
+        try
+        {
+            var copies = await AppServices.AllCopiesAsync();
+            var snap = Privacy.Snapshot(AppServices.PrivacyNow(_unlocked), Surface.Search, copies);
+            var names = AppServices.Playlists().ToDictionary(p => p.Id, p => p.Name);
+            var language = AppServices.Settings.PreferredLanguage;
+            var ctx = new CanonicalPick.Context(language, AppServices.SourceRank());
+            var versions = OtherVersions.For(snap, new Copy(_playlist!.Id, item), copies, ctx);
+            if (versions.Count == 0) { Say("There are no other versions of this title.", InfoBarSeverity.Informational); return; }
+            var labels = versions.Select(v => string.Join("  ·  ", new[] { v.Language ?? "Original", OtherVersions.QualityLabel(v.QualityRank), names.GetValueOrDefault(v.Copy.PlaylistId) ?? "" }.Where(x => x.Length > 0))).ToList();
+            var list = new ListView { SelectionMode = ListViewSelectionMode.Single, MaxHeight = 360, ItemsSource = labels, SelectedIndex = 0 };
+            var dialog = new ContentDialog { Title = item.Title, Content = list, PrimaryButtonText = "Open", CloseButtonText = "Close", DefaultButton = ContentDialogButton.Primary, XamlRoot = XamlRoot };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary || list.SelectedIndex < 0) return;
+            OpenCopy(versions[list.SelectedIndex].Copy);
         }
         catch (Exception ex) { Say(ex.Message, InfoBarSeverity.Error); }
     }
 
-    private async Task ChooseEpisodeAsync(Item series)
+    private async Task ShowCastAsync(Item item)
     {
-        Busy.IsActive = true;
-        List<Episode> episodes;
-        try { episodes = await AppServices.Loader.EpisodesAsync(_playlist!, _loaded!, series); }
-        finally { Busy.IsActive = false; }
-        if (episodes.Count == 0) { Say("No episodes were listed for this series.", InfoBarSeverity.Informational); return; }
+        try { await CastDialog.ShowAsync(XamlRoot, new Copy(_playlist!.Id, item), await AppServices.AllCopiesAsync(), OpenCopy); }
+        catch (Exception ex) { Say(ex.Message, InfoBarSeverity.Error); }
+    }
 
-        var watched = AppServices.User.Watched();
-        var labels = episodes.Select(ep => $"{(watched.Contains(_playlist!.Id + "|" + ep.Id) ? "✓ " : "")}Season {ep.Season}, episode {ep.Number}: {ep.Title}").ToList();
-        // Up Next: the first episode not yet watched is chosen to begin with.
-        var list = new ListView { SelectionMode = ListViewSelectionMode.Single, MaxHeight = 420, ItemsSource = labels };
-        var firstNew = episodes.FindIndex(ep => !watched.Contains(_playlist!.Id + "|" + ep.Id));
-        list.SelectedIndex = firstNew >= 0 ? firstNew : 0;
-        var dialog = new ContentDialog { Title = series.Title, Content = list, PrimaryButtonText = "Play", CloseButtonText = "Cancel", DefaultButton = ContentDialogButton.Primary, XamlRoot = XamlRoot };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary || list.SelectedIndex < 0) return;
-        var chosen = episodes[list.SelectedIndex];
-        var key = _playlist!.Id + "|" + chosen.Id;
-        Frame.Navigate(typeof(PlayerPage), new PlayRequest(_playlist, key, $"{series.Title}: {chosen.Title}", await AppServices.PlayUrlAsync(_playlist, chosen.Url), false, AppServices.User.ProgressOf(key)?.Position ?? 0));
+    private async void OpenCopy(Copy copy)
+    {
+        try
+        {
+            var playlist = AppServices.Playlists().FirstOrDefault(p => p.Id == copy.PlaylistId);
+            if (playlist is null) return;
+            var loaded = await AppServices.LoadAsync(playlist);
+            await ItemOpener.OpenAsync(Frame, XamlRoot, playlist, loaded, copy.Item, b => Busy.IsActive = b, Say);
+        }
+        catch (Exception ex) { Say(ex.Message, InfoBarSeverity.Error); }
     }
 
     private void OnRightTapped(object sender, RightTappedRoutedEventArgs e)
@@ -346,6 +434,8 @@ public sealed partial class BrowsePage : Page
             catch (Exception ex) { Say(ex.Message, InfoBarSeverity.Error); }
         };
         sub.Items.Add(create); flyout.Items.Add(sub);
+        if (item.Kind != Kind.Live) Add("Cast…", () => _ = ShowCastAsync(item));
+        if (item.Kind != Kind.Live) Add("Other languages and versions…", () => _ = ShowVersionsAsync(item));
         if (item.Kind != Kind.Live)
         {
             var isWatched = user.Watched().Contains(key);

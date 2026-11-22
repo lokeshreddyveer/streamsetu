@@ -32,6 +32,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBox x:Name="SearchBox" PlaceholderText="Search by name or folder" TextChanged="OnSearchChanged" />
             <ComboBox x:Name="FolderBox" Grid.Column="1" MinWidth="200" SelectionChanged="OnFolderChanged" DisplayMemberPath="Display" />
@@ -44,9 +45,17 @@
                 <ComboBoxItem Content="Year" />
             </ComboBox>
             <Button x:Name="FilterButton" Grid.Column="4" Content="Filter" Click="OnFilterClick" />
+            <ComboBox x:Name="ViewBox" Grid.Column="5" SelectedIndex="0" SelectionChanged="OnViewChanged" ToolTipService.ToolTip="Folders shows a row for each folder; Grid is the plain list">
+                <ComboBoxItem Content="Folders" />
+                <ComboBoxItem Content="Grid" />
+            </ComboBox>
         </Grid>
 
         <TextBlock x:Name="CountText" Grid.Row="3" Opacity="0.7" Style="{StaticResource CaptionTextBlockStyle}" />
+
+        <ScrollViewer x:Name="FolderRows" Grid.Row="4" Visibility="Collapsed">
+            <StackPanel x:Name="FolderRowsPanel" Spacing="20" Padding="0,0,0,32" />
+        </ScrollViewer>
 
         <ListView x:Name="ItemList" Grid.Row="4" IsItemClickEnabled="True" SelectionMode="None" ItemClick="OnItemClick" RightTapped="OnRightTapped">
             <ListView.ItemTemplate>

@@ -47,6 +47,10 @@ public sealed class LogoCache(IBytesFetcher fetcher, string folder, long maxByte
         }
     }
 
+    /// <summary>The picture, tried again (default three times, a growing pause between) when it could not be fetched. A picture that is not there after that is simply not shown.</summary>
+    public async Task<byte[]?> GetWithRetryAsync(string? url, int attempts = 3, Func<int, TimeSpan>? pause = null, Func<TimeSpan, Task>? delay = null, CancellationToken ct = default)
+        => await Retry.RunAsync(() => GetAsync(url, ct), attempts, pause, delay);
+
     private async Task<byte[]?> LoadAsync(string url, CancellationToken ct)
     {
         Directory.CreateDirectory(folder);
@@ -267,42 +271,85 @@ public static class MultiViewLayout
 // Updates
 // =====================================================================================================================================================
 
-public sealed record UpdateInfo(Version Version, string AssetName, string DownloadUrl, string Sha256, string Notes);
+public enum UpdateStatus { UpToDate, Available, NoWindowsFile }
 
+/// <param name="Sha256">From the release notes; null when the notes do not give one (then only the release page is offered, never a download).</param>
+public sealed record UpdateInfo(Version Version, string AssetName, string DownloadUrl, string? Sha256, string Notes, string PageUrl);
+
+public sealed record UpdateCheck(UpdateStatus Status, UpdateInfo? Info, string Message);
+
+/// <summary>Finding a newer Windows version. The zip is not signed, so the app never installs anything: it says a version is available, opens the release page, or saves the zip to Downloads after checking it against the SHA-256 in the release notes.</summary>
 public static class Updates
 {
     public const string ReleasesPrefix = "https://github.com/lokeshreddyveer/streamsetu/releases/download/";
-    private static readonly Regex AssetPattern = new(@"^StreamSetu-Setup-(\d+(?:\.\d+){1,3})\.exe$", RegexOptions.ECMAScript);
+    public const string ReleasePagePrefix = "https://github.com/lokeshreddyveer/streamsetu/releases/";
+    /// <summary>The list of releases (not "latest": the newest release may have no Windows file, and "latest" would then hide the Windows one).</summary>
+    public const string ReleasesList = "https://api.github.com/repos/lokeshreddyveer/streamsetu/releases?per_page=30";
+    private static readonly Regex AssetPattern = new(@"^StreamSetu-Windows-(\d+(?:\.\d+){1,3})(-arm64)?\.zip$", RegexOptions.ECMAScript);
 
-    /// <summary>The update in a GitHub "latest release" answer, if there is one newer than <paramref name="current"/>. The file name must be exactly ours and the address must be in our releases, so a changed release page cannot point the updater anywhere else; the SHA-256 comes from the release notes.</summary>
-    public static UpdateInfo? Parse(string releaseJson, Version current)
+    /// <summary>1.2 and 1.2.0 and 1.2.0.0 are the same version; 0.10.0 is newer than 0.9.0 (compared as numbers, not as text).</summary>
+    public static Version Normalize(Version v) => new(v.Major, v.Minor, Math.Max(0, v.Build), Math.Max(0, v.Revision));
+
+    public static string AssetNameFor(Version v, bool arm64) => $"StreamSetu-Windows-{v.ToString(3)}{(arm64 ? "-arm64" : "")}.zip";
+
+    /// <summary>Reads the releases list. Drafts and pre-releases are ignored; of the rest, the newest version that has a Windows zip for this kind of computer (64-bit Intel/AMD, or ARM64) decides. The file name must be exactly ours and the address must be in
+    /// our releases, so a changed release page cannot point the updater anywhere else.</summary>
+    public static UpdateCheck Check(string releasesJson, Version current, bool arm64)
     {
         System.Text.Json.JsonElement root;
-        try { root = System.Text.Json.JsonDocument.Parse(releaseJson).RootElement; } catch (System.Text.Json.JsonException) { throw new InvalidOperationException("The update service answered in a form StreamSetu does not understand."); }
-        if (root.ValueKind != System.Text.Json.JsonValueKind.Object || !root.TryGetProperty("assets", out var assets) || assets.ValueKind != System.Text.Json.JsonValueKind.Array) return null;
-        var body = root.TryGetProperty("body", out var b) && b.ValueKind == System.Text.Json.JsonValueKind.String ? b.GetString() ?? "" : "";
-        foreach (var a in assets.EnumerateArray())
+        try { root = System.Text.Json.JsonDocument.Parse(releasesJson).RootElement; }
+        catch (System.Text.Json.JsonException) { throw new InvalidOperationException("The update service answered in a form StreamSetu does not understand."); }
+        if (root.ValueKind != System.Text.Json.JsonValueKind.Array) throw new InvalidOperationException("The update service answered in a form StreamSetu does not understand.");
+        current = Normalize(current);
+        UpdateInfo? best = null;
+        foreach (var rel in root.EnumerateArray())
         {
-            var name = a.TryGetProperty("name", out var n) && n.ValueKind == System.Text.Json.JsonValueKind.String ? n.GetString() : null;
-            var url = a.TryGetProperty("browser_download_url", out var u) && u.ValueKind == System.Text.Json.JsonValueKind.String ? u.GetString() : null;
-            if (name is null || url is null || AssetPattern.Match(name) is not { Success: true } m) continue;
-            if (!url.StartsWith(ReleasesPrefix, StringComparison.Ordinal) || !url.EndsWith("/" + name, StringComparison.Ordinal) || url.Contains("..") || url.Contains('?')) continue;
-            if (!Version.TryParse(m.Groups[1].Value, out var version) || version <= current) continue;
-            var sha = Regex.Match(body, @"`" + Regex.Escape(name) + @"`\s+([0-9a-fA-F]{64})");
-            if (!sha.Success) continue;                                                                  // no checksum, no update
-            return new UpdateInfo(version, name, url, sha.Groups[1].Value.ToLowerInvariant(), body);
+            if (rel.ValueKind != System.Text.Json.JsonValueKind.Object) continue;
+            if (Flag(rel, "draft") || Flag(rel, "prerelease")) continue;
+            if (!rel.TryGetProperty("assets", out var assets) || assets.ValueKind != System.Text.Json.JsonValueKind.Array) continue;
+            var body = rel.TryGetProperty("body", out var b) && b.ValueKind == System.Text.Json.JsonValueKind.String ? b.GetString() ?? "" : "";
+            var page = rel.TryGetProperty("html_url", out var h) && h.ValueKind == System.Text.Json.JsonValueKind.String && h.GetString() is { } hu && hu.StartsWith(ReleasePagePrefix, StringComparison.Ordinal) ? hu : ReleasePagePrefix;
+            foreach (var a in assets.EnumerateArray())
+            {
+                var name = a.TryGetProperty("name", out var n) && n.ValueKind == System.Text.Json.JsonValueKind.String ? n.GetString() : null;
+                var url = a.TryGetProperty("browser_download_url", out var u) && u.ValueKind == System.Text.Json.JsonValueKind.String ? u.GetString() : null;
+                if (name is null || url is null || AssetPattern.Match(name) is not { Success: true } m) continue;
+                if (m.Groups[2].Success != arm64) continue;                                                // the file for this kind of computer
+                if (!url.StartsWith(ReleasesPrefix, StringComparison.Ordinal) || !url.EndsWith("/" + name, StringComparison.Ordinal) || url.Contains("..") || url.Contains('?')) continue;
+                if (!Version.TryParse(m.Groups[1].Value, out var parsed)) continue;
+                var version = Normalize(parsed);
+                if (best is not null && version <= best.Version) continue;
+                var sha = Regex.Match(body, @"`" + Regex.Escape(name) + @"`\s+([0-9a-fA-F]{64})");
+                best = new UpdateInfo(version, name, url, sha.Success ? sha.Groups[1].Value.ToLowerInvariant() : null, body, page);
+            }
         }
-        return null;
+        if (best is null) return new UpdateCheck(UpdateStatus.NoWindowsFile, null, "None of the recent releases has a Windows download for this computer.");
+        if (best.Version <= current) return new UpdateCheck(UpdateStatus.UpToDate, null, "You have the latest version.");
+        return new UpdateCheck(UpdateStatus.Available, best, $"Version {best.Version.ToString(3)} is available.");
     }
+
+    private static bool Flag(System.Text.Json.JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == System.Text.Json.JsonValueKind.True;
+
+    /// <summary>What to tell the person when the check itself failed: GitHub's limit, no connection, or an answer that makes no sense.</summary>
+    public static string ExplainFailure(Exception e) => e switch
+    {
+        FetchRefusedException f => "Could not check: " + f.Message,
+        InvalidOperationException i when i.Message.Contains("403", StringComparison.Ordinal) || i.Message.Contains("429", StringComparison.Ordinal) => "Could not check: GitHub is limiting how often updates can be looked up from this network. Try again in an hour.",
+        InvalidOperationException i when i.Message.Contains("404", StringComparison.Ordinal) => "Could not check: the releases page was not found.",
+        InvalidOperationException i => "Could not check: " + i.Message,
+        HttpRequestException or TaskCanceledException => "Could not check: there is no connection to GitHub right now.",
+        _ => "Could not check: " + e.Message,
+    };
 
     public static bool Matches(ReadOnlySpan<byte> file, string expectedSha256) =>
         CryptographicOperations.FixedTimeEquals(SHA256.HashData(file), Convert.FromHexString(expectedSha256));
 
-    /// <summary>Downloads the installer and keeps it only when its checksum is right.</summary>
+    /// <summary>Downloads the zip into <paramref name="folder"/> (the Downloads folder) and keeps it only when its SHA-256 is the published one. Nothing is installed.</summary>
     public static async Task<string> DownloadAsync(SafeHttp http, UpdateInfo info, string folder, CancellationToken ct = default)
     {
-        var bytes = await http.FetchBytesAsync(info.DownloadUrl, 300L * 1024 * 1024, ct).ConfigureAwait(false);
-        if (!Matches(bytes, info.Sha256)) throw new InvalidOperationException("The downloaded update does not match its checksum, so it was not kept.");
+        if (info.Sha256 is null) throw new InvalidOperationException("The release notes give no checksum for this file, so it is not downloaded here. Open the release page instead.");
+        var bytes = await http.FetchBytesAsync(info.DownloadUrl, 600L * 1024 * 1024, ct).ConfigureAwait(false);
+        if (!Matches(bytes, info.Sha256)) throw new InvalidOperationException("The downloaded file does not match its published checksum, so it was not kept.");
         Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, info.AssetName);
         await File.WriteAllBytesAsync(path, bytes, ct).ConfigureAwait(false);

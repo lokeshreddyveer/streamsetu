@@ -4,9 +4,9 @@
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>StreamSetu.App</RootNamespace>
-    <Version>0.1.0</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
+    <Version>0.2.0</Version>
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <FileVersion>0.2.0.0</FileVersion>
     <AssemblyName>StreamSetu</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- The program's icon (Explorer, taskbar, Start); light and dark are not switched by Windows for a .exe, so the dark artwork is used. -->
@@ -34,6 +34,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\StreamSetu.Core\StreamSetu.Core.csproj" />
+  </ItemGroup>
+
+  <!-- The brand symbol on the welcome screen, read from the program's folder at run time. -->
+  <ItemGroup>
+    <Content Include="Assets\BrandSymbol.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\TMDBLogo.png" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The opening's television layers are shared with the other apps: they are read from the repository's motion folder. -->
+    <Content Include="..\..\..\motion\assets\tune-in\*.png" Link="Assets\TuneIn\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- libmpv-2.dll is not in the repository. Run Scripts\fetch-libmpv.ps1 once; the file is then copied next to the program. -->

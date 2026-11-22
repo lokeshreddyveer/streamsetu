@@ -1,6 +1,6 @@
 namespace StreamSetu.Core;
 
-public enum PlaylistKind { Xtream, M3u, HdHomeRun, TvHeadend, Enigma2, Jellyfin, Emby, Plex, WebDav, LocalFolder, Stalker }
+public enum PlaylistKind { Xtream, M3u, HdHomeRun, TvHeadend, Enigma2, Jellyfin, Emby, Plex, WebDav, LocalFolder, Stalker, SingleStream }
 
 /// <summary>A playlist the person added. The password never lives here: it is kept in Windows Credential Manager under <see cref="SecretRef"/>.</summary>
 public sealed record Playlist(string Id, string Name, PlaylistKind Kind, string Address, string? Username = null, string? SecretRef = null);

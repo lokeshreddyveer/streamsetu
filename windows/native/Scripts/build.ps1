@@ -17,6 +17,6 @@ if (-not (Test-Path "StreamSetu.App\libmpv\$platform\libmpv-2.dll")) { throw "li
 
 $out = Join-Path $root "dist\$Arch"
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
-dotnet publish StreamSetu.App -c Release -r "win-$Arch" -p:Platform=$platform -o $out
+dotnet publish StreamSetu.App -c Release -r "win-$Arch" -p:Platform=$platform -p:DebugType=none -p:DebugSymbols=false -o $out
 if ($LASTEXITCODE -ne 0) { throw "The build failed." }
 Write-Host "Built: $out\StreamSetu.exe"

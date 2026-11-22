@@ -14,6 +14,25 @@ public sealed class FolderPrefs(LocalStore store)
     public void Hide(string scope, string group, bool hidden) => Edit(scope, group, p => p with { Hidden = hidden });
     public void Rename(string scope, string group, string? name) => Edit(scope, group, p => p with { Rename = string.IsNullOrWhiteSpace(name) ? null : name.Trim() });
     public void SetLock(string scope, string group, string? pin) => Edit(scope, group, p => p with { Lock = pin is null ? null : PinHash.Make(pin) });
+    public bool IsHidden(string scope, string group) => Load().Prefs.GetValueOrDefault(Key(scope, group))?.Hidden == true;
+
+    /// <summary>The folders of one scope that are locked / hidden, by the name the playlist lists (for the privacy rules).</summary>
+    public HashSet<string> LockedGroups(string scope) => GroupsWhere(scope, p => p.Lock is not null);
+    public HashSet<string> HiddenGroups(string scope) => GroupsWhere(scope, p => p.Hidden);
+    private HashSet<string> GroupsWhere(string scope, Func<Pref, bool> test)
+        => Load().Prefs.Where(kv => kv.Key.StartsWith(scope + "|", StringComparison.Ordinal) && test(kv.Value)).Select(kv => kv.Key[(scope.Length + 1)..]).ToHashSet();
+
+    /// <summary>Locks (or unlocks) the folder and every same-named folder of the other playlists (<paramref name="allGroups"/> are the names the playlists list). Nothing in a playlist changes.</summary>
+    public void SetLockFamily(string scope, string group, string? pin, IEnumerable<string> allGroups)
+    {
+        foreach (var g in FolderFamily.Siblings(group, allGroups)) SetLock(scope, g, pin);
+    }
+
+    public void HideFamily(string scope, string group, bool hidden, IEnumerable<string> allGroups)
+    {
+        foreach (var g in FolderFamily.Siblings(group, allGroups)) Hide(scope, g, hidden);
+    }
+
     public bool IsLocked(string scope, string group) => Load().Prefs.GetValueOrDefault(Key(scope, group))?.Lock is not null;
     public bool Unlock(string scope, string group, string pin) => Load().Prefs.GetValueOrDefault(Key(scope, group))?.Lock is { } l && l.Matches(pin);
 
