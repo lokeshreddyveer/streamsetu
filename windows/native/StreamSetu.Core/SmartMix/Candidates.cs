@@ -20,7 +20,7 @@ public static class SmartMixCandidates
             var w = watch(c);
             list.Add(new Cand
             {
-                Id = c.Key,
+                Id = c.StoreKey,
                 Kind = it.Kind == Kind.Series ? "series" : "movie",
                 Key = id.Key,
                 Year = id.Year,

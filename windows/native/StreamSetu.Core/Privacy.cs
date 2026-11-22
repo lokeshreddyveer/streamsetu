@@ -6,6 +6,8 @@ namespace StreamSetu.Core;
 public sealed record Copy(string PlaylistId, Item Item)
 {
     public string Key => PlaylistId + ":" + Item.Id;
+    /// <summary>The key favourites, progress and watched marks use: the connection, then the title (see AppServices.KeyOf).</summary>
+    public string StoreKey => PlaylistId + "|" + Item.Id;
 }
 
 /// <summary>Who may see which folder: the three surfaces ask differently.
