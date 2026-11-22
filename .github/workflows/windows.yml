@@ -28,3 +28,42 @@ jobs:
         run: dotnet build StreamSetu.App -c Release -r win-x64 -p:Platform=x64
       - name: Build the app, ARM64
         run: dotnet build StreamSetu.App -c Release -r win-arm64 -p:Platform=ARM64
+
+  # Run by hand (workflow_dispatch): builds the release zips, each with its SHA-256, and keeps them as workflow artifacts.
+  release:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    defaults:
+      run:
+        working-directory: windows/native
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: libmpv (pinned, checksum verified)
+        shell: pwsh
+        run: ./Scripts/fetch-libmpv.ps1 -Arch ${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}
+      - name: Build
+        shell: pwsh
+        run: ./Scripts/build.ps1 -Arch ${{ matrix.arch }} -SkipTests
+      - name: Zip and checksum
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content StreamSetu.App/StreamSetu.App.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $name = if ('${{ matrix.arch }}' -eq 'x64') { "StreamSetu-Windows-$version.zip" } else { "StreamSetu-Windows-$version-arm64.zip" }
+          New-Item -ItemType Directory -Force out | Out-Null
+          Compress-Archive -Path "dist/${{ matrix.arch }}/*" -DestinationPath "out/$name" -CompressionLevel Optimal
+          $sha = (Get-FileHash "out/$name" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$sha  $name" | Out-File "out/$name.sha256" -Encoding ascii
+          Get-Content "out/$name.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StreamSetu-Windows-${{ matrix.arch }}
+          path: windows/native/out/*
+          if-no-files-found: error

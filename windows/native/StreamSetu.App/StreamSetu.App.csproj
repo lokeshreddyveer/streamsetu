@@ -4,9 +4,9 @@
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>StreamSetu.App</RootNamespace>
-    <Version>0.1.0</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
+    <Version>0.2.0</Version>
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <FileVersion>0.2.0.0</FileVersion>
     <AssemblyName>StreamSetu</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- The program's icon (Explorer, taskbar, Start); light and dark are not switched by Windows for a .exe, so the dark artwork is used. -->
