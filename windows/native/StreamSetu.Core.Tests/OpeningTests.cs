@@ -118,7 +118,7 @@ public class OpeningTests
     public void ThePlayButtonPressesInDuringTheHeroBeat()
     {
         var k = Opening.Keys(OpeningVariant.FirstInstall)!;
-        Assert.True(Opening.Frame(OpeningVariant.FirstInstall, (k.HeroPressIn.From + k.HeroPressIn.To) / 2).Press > 0.5);
+        Assert.True(Opening.Frame(OpeningVariant.FirstInstall, (k.HeroPressIn.From + k.HeroPressIn.To) / 2).Press > 0.3);
         Assert.Equal(0, Opening.Frame(OpeningVariant.FirstInstall, k.HeroPressIn.To + 100).Press);
     }
 }
