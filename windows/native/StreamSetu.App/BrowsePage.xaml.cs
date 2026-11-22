@@ -393,6 +393,12 @@ public sealed partial class BrowsePage : Page
         catch (Exception ex) { Say(ex.Message, InfoBarSeverity.Error); }
     }
 
+    private async Task ShowCastAsync(Item item)
+    {
+        try { await CastDialog.ShowAsync(XamlRoot, new Copy(_playlist!.Id, item), await AppServices.AllCopiesAsync(), OpenCopy); }
+        catch (Exception ex) { Say(ex.Message, InfoBarSeverity.Error); }
+    }
+
     private async void OpenCopy(Copy copy)
     {
         try
@@ -428,6 +434,7 @@ public sealed partial class BrowsePage : Page
             catch (Exception ex) { Say(ex.Message, InfoBarSeverity.Error); }
         };
         sub.Items.Add(create); flyout.Items.Add(sub);
+        if (item.Kind != Kind.Live) Add("Cast…", () => _ = ShowCastAsync(item));
         if (item.Kind != Kind.Live) Add("Other languages and versions…", () => _ = ShowVersionsAsync(item));
         if (item.Kind != Kind.Live)
         {

@@ -8,6 +8,9 @@ namespace StreamSetu.App;
 /// <summary>Channel logos and posters for the lists. The picture is fetched through the safe downloader and kept on disk (LogoCache); a title with no picture, or one that cannot be fetched, simply shows none.</summary>
 public static class Logos
 {
+    /// <summary>Pictures kept in memory for the tiles on screen: never more than 48 MB, the least recently used go first. (The disk cache has its own limit.)</summary>
+    private static readonly StreamSetu.Core.ByteLru Memory = new(48L * 1024 * 1024);
+
     /// <summary>Called from the list templates. Returns at once; the picture fills in when it arrives.</summary>
     public static ImageSource? Load(string? url)
     {
@@ -30,8 +33,12 @@ public static class Logos
     {
         try
         {
-            var bytes = await AppServices.Logos.GetAsync(url);                  // back on the screen's thread after this await
-            if (bytes is null) return;
+            if (!Memory.TryGet(url, out var bytes))
+            {
+                bytes = await AppServices.Logos.GetWithRetryAsync(url)!;       // tried again a few times; back on the screen's thread after this await
+                if (bytes is null) return;
+                Memory.Put(url, bytes);
+            }
             using var stream = new InMemoryRandomAccessStream();
             await stream.WriteAsync(bytes.AsBuffer());
             stream.Seek(0);

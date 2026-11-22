@@ -139,7 +139,7 @@ public class CastTests
         var f = new Fetcher(Reply);
         var cast = await TmdbCast.CastOfAsync(f, "KEY", snap, lib[0]);
         Assert.Equal(2, cast!.Count);
-        Assert.Contains("query=Dune", f.Urls[0]); Assert.Contains("year=2021", f.Urls[0]);
+        Assert.Contains("query=dune", f.Urls[0]); Assert.Contains("year=2021", f.Urls[0]);
         var g = new Fetcher(Reply);
         Assert.Null(await TmdbCast.CastOfAsync(g, "KEY", snap, lib[1]));
         Assert.Null(await TmdbCast.CastOfAsync(g, "KEY", snap, lib[2]));                  // its twin sits in a locked folder

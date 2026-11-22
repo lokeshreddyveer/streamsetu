@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using StreamSetu.Core;
@@ -54,7 +55,7 @@ public sealed partial class HomePage : Page
     {
         ShelfHost.Children.Clear();
         if (_home is null) return;
-        var hero = Tiles.WithPictures(_home.Hero);
+        var hero = Tiles.PosterFirst(_home.Hero);
         if (hero.Count > 0) ShelfHost.Children.Add(HeroCard(hero));
         foreach (var shelf in _home.Shelves) ShelfHost.Children.Add(Tiles.Shelf(shelf.Title, shelf.Items, Open));
     }
@@ -78,6 +79,9 @@ public sealed partial class HomePage : Page
         var play = new Button { Content = copy.Item.Kind == Kind.Series ? "Choose an episode" : "Play", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         play.Click += (_, _) => Open(copy);
         buttons.Children.Add(play);
+        var cast = new Button { Content = "Cast" }; cast.Click += async (_, _) => await ShowCastAsync(copy);
+        AutomationProperties.SetName(cast, "Cast of " + copy.Item.Title);
+        buttons.Children.Add(cast);
         if (hero.Count > 1)
         {
             var prev = new Button { Content = "‹" }; prev.Click += (_, _) => { _hero = (_hero + hero.Count - 1) % hero.Count; Render(); };
@@ -88,6 +92,12 @@ public sealed partial class HomePage : Page
         Grid.SetColumn(text, 1);
         grid.Children.Add(text);
         return grid;
+    }
+
+    private async Task ShowCastAsync(Copy copy)
+    {
+        try { await CastDialog.ShowAsync(XamlRoot, copy, await AppServices.AllCopiesAsync(), Open); }
+        catch (Exception ex) { Say(ex.Message, InfoBarSeverity.Error); }
     }
 
     private async void Open(Copy copy)

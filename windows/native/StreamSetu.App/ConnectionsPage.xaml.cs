@@ -17,19 +17,22 @@ public sealed partial class ConnectionsPage : Page
     private static readonly PlaylistKind[] Kinds =
     {
         PlaylistKind.Xtream, PlaylistKind.M3u, PlaylistKind.M3u, PlaylistKind.HdHomeRun, PlaylistKind.TvHeadend, PlaylistKind.Enigma2,
-        PlaylistKind.Jellyfin, PlaylistKind.Emby, PlaylistKind.Plex, PlaylistKind.WebDav, PlaylistKind.LocalFolder, PlaylistKind.Stalker,
+        PlaylistKind.Jellyfin, PlaylistKind.Emby, PlaylistKind.Plex, PlaylistKind.WebDav, PlaylistKind.LocalFolder, PlaylistKind.Stalker, PlaylistKind.SingleStream,
     };
 
-    // Every entry of the Type box is reachable from one of these. There is no single-stream type on Windows, so there is no tile for it.
+    // Every entry of the Type box is reachable from one of these tiles.
     private static readonly ConnectionTile[] Tiles =
     {
         new("Playlist link", "An M3U or M3U8 address", "\uE71B", new[] { 1 }, new[] { "M3U link" }),
         new("Xtream Codes", "Server, user name and password", "\uE8D7", new[] { 0 }, new[] { "Xtream Codes" }),
         new("Media server", "Plex, Jellyfin or Emby", "\uE8F1", new[] { 8, 6, 7 }, new[] { "Plex", "Jellyfin", "Emby" }),
         new("TV tuner or receiver", "HDHomeRun, TVHeadend or Enigma2", "\uE7F4", new[] { 3, 4, 5 }, new[] { "HDHomeRun", "TVHeadend", "Enigma2" }),
-        new("Files and folders", "A playlist file, a folder of videos or WebDAV", "\uE8B7", new[] { 2, 10, 9 }, new[] { "Playlist file", "Folder of videos", "WebDAV" }),
+        new("Playlist file", "A file on this computer, a folder of videos or WebDAV", "\uE8B7", new[] { 2, 10, 9 }, new[] { "Playlist file", "Folder of videos", "WebDAV" }),
         new("Stalker portal", "Portal address and MAC", "\uE774", new[] { 11 }, new[] { "Stalker portal" }),
+        new("Single stream", "One channel from a direct link", "\uE714", new[] { 12 }, new[] { "Single stream" }),
     };
+
+    private readonly SetupDrafts _drafts = new(AppServices.Store);
 
     private ConnectionTile? _tile;          // the tile the form was opened from
     private bool _adding;                   // with saved connections, the types and the form show only after "Add a connection"
@@ -45,6 +48,8 @@ public sealed partial class ConnectionsPage : Page
         Reload();
         OnKindChanged(this, null!);
         LoadSymbol();
+        Unloaded += (_, _) => SaveDraft();
+        ShowResume();
     }
 
     private void BuildTiles()
@@ -163,14 +168,57 @@ public sealed partial class ConnectionsPage : Page
         if (i >= 0 && i < _tile.Kinds.Length) KindBox.SelectedIndex = _tile.Kinds[i];
     }
 
+    private int IndexFor(PlaylistKind kind, string address)
+        => kind == PlaylistKind.M3u && !address.StartsWith("http", StringComparison.OrdinalIgnoreCase) && address.Trim().Length > 0 ? 2 : Array.IndexOf(Kinds, kind);
+
+    private void ShowResume() => ResumeButton.Visibility = _drafts.Load() is null ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>What was typed so far (never a password, key or token), so "Continue previous setup" can bring it back.</summary>
+    private void SaveDraft()
+    {
+        if (FormView.Visibility != Visibility.Visible) return;
+        _drafts.Save(new SetupDraft(Kind, NameBox.Text, AddressBox.Text, UserBox.Text));
+        ShowResume();
+    }
+
+    private ConnectionTile TileFor(int kindIndex) => Tiles.First(t => t.Kinds.Contains(kindIndex));
+
+    private void OnResume(object sender, RoutedEventArgs e)
+    {
+        if (_drafts.Load() is not { } d) { ShowResume(); return; }
+        var index = IndexFor(d.Kind, d.Address);
+        KindBox.SelectedIndex = index;
+        ShowForm(TileFor(index));
+        NameBox.Text = d.Name; AddressBox.Text = d.Address; UserBox.Text = d.User ?? ""; PassBox.Password = "";
+        if (NeedsSecret) Say("Enter the password or key again: it is never kept in a saved draft.", InfoBarSeverity.Informational);
+    }
+
+    private void OnPasteKey(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter) { e.Handled = true; OnPasteGo(sender, e); }
+    }
+
+    private void OnPasteGo(object sender, RoutedEventArgs e)
+    {
+        if (SetupPaste.Detect(PasteBox.Text) is not { } guess) { PasteNote.Text = string.IsNullOrWhiteSpace(PasteBox.Text) ? "Paste a link first, or choose how you connect below." : "That does not look like a link or a playlist file. Choose how you connect below."; return; }
+        PasteNote.Text = "";
+        var index = IndexFor(guess.Kind, guess.Address);
+        KindBox.SelectedIndex = index;
+        ShowForm(TileFor(index));
+        AddressBox.Text = guess.Address; UserBox.Text = guess.User ?? ""; PassBox.Password = guess.Secret ?? "";
+        PasteBox.Text = "";
+    }
+
     private void ShowTypes()
     {
+        ShowResume();
         FormView.Visibility = Visibility.Collapsed;
         ChooserView.Visibility = Visibility.Visible;
     }
 
     private void OnBackToTypes(object sender, RoutedEventArgs e)
     {
+        SaveDraft();
         ShowTypes();
         var index = _tile is null ? -1 : Array.IndexOf(Tiles, _tile);
         if (index >= 0 && TileGrid.Children[index] is Control tile) tile.Focus(FocusState.Programmatic);
@@ -216,6 +264,7 @@ public sealed partial class ConnectionsPage : Page
             PlaylistKind.Plex => ("Server address", "http://192.168.1.60:32400"),
             PlaylistKind.WebDav => ("Folder address", "https://nas.example/remote.php/dav/files/me/Videos"),
             PlaylistKind.Stalker => ("Portal address", "http://portal.example:8080/c/"),
+            PlaylistKind.SingleStream => ("Stream link", "http://server.example/live/channel.ts"),
             _ => ("Folder", @"D:\Videos"),
         };
         PassBox.Header = Kind switch { PlaylistKind.Jellyfin or PlaylistKind.Emby => "API key (Dashboard, API keys)", PlaylistKind.Plex => "Plex token", PlaylistKind.Stalker => "MAC address (00:1A:79:12:34:56)", _ => "Password" };
@@ -226,6 +275,7 @@ public sealed partial class ConnectionsPage : Page
             PlaylistKind.Plex => "Paste your X-Plex-Token. It is kept in Windows Credential Manager.",
             PlaylistKind.Stalker => "Use the MAC address your provider gave you for this portal. Channels and films are listed; the stream link is asked for each time you press play.",
             PlaylistKind.WebDav => "Leave the user name empty for a server that needs no login.",
+            PlaylistKind.SingleStream => "One live channel from a direct link (for example .ts, .m3u8 for one channel, rtmp or rtsp). Give it a name so you can find it in Live TV.",
             PlaylistKind.HdHomeRun or PlaylistKind.Enigma2 => "Live channels only.",
             PlaylistKind.LocalFolder => "Video files in this folder and its folders are listed. Folders and shortcuts that link back up are not followed.",
             _ => "",
@@ -261,7 +311,7 @@ public sealed partial class ConnectionsPage : Page
 
     private Playlist Build(string id)
     {
-        var address = IsFile || IsFolder ? AddressBox.Text.Trim() : Kind is PlaylistKind.M3u or PlaylistKind.WebDav ? AddressBox.Text.Trim() : Xtream.NormalizeHost(AddressBox.Text);
+        var address = IsFile || IsFolder ? AddressBox.Text.Trim() : Kind is PlaylistKind.M3u or PlaylistKind.WebDav or PlaylistKind.SingleStream ? AddressBox.Text.Trim() : Xtream.NormalizeHost(AddressBox.Text);
         var name = string.IsNullOrWhiteSpace(NameBox.Text) ? (IsFile || IsFolder ? Path.GetFileName(address.TrimEnd('\\', '/')) : Uri.TryCreate(Xtream.NormalizeHost(address), UriKind.Absolute, out var u) ? u.Host : address) : NameBox.Text.Trim();
         return new Playlist(id, name, Kind, address, NeedsUser && !string.IsNullOrWhiteSpace(UserBox.Text) ? UserBox.Text.Trim() : null, NeedsSecret ? LibraryLoader.SecretKey(id) : null);
     }
@@ -294,6 +344,7 @@ public sealed partial class ConnectionsPage : Page
         var playlist = Build(id);
         if (NeedsSecret) AppServices.Secrets.Set(LibraryLoader.SecretKey(id), PassBox.Password);
         AppServices.Store.AddPlaylist(playlist);
+        _drafts.Clear(); ShowResume();
         AppServices.AllowHostOf(playlist);
         NameBox.Text = AddressBox.Text = UserBox.Text = ""; PassBox.Password = "";
         _adding = true;                                                     // the form stays open, so the message below it can be read

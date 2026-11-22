@@ -6,13 +6,22 @@
     xmlns:core="using:StreamSetu.Core"
     xmlns:local="using:StreamSetu.App">
     <Page.Resources>
-        <!-- The surfaces of this page: white at 5% with a 10% hairline; teal only for icons, focus and the hover edge. -->
-        <SolidColorBrush x:Key="SurfaceBrush" Color="#0DFFFFFF" />
-        <SolidColorBrush x:Key="SurfaceEdgeBrush" Color="#1AFFFFFF" />
-        <SolidColorBrush x:Key="TealBrush" Color="#3CC6D6" />
+      <ResourceDictionary>
+        <ResourceDictionary.ThemeDictionaries>
+            <!-- The surfaces of this page follow the app theme: a faint veil of the text colour with a hairline; teal only for icons, focus and the hover edge. -->
+            <ResourceDictionary x:Key="Default">
+                <SolidColorBrush x:Key="SurfaceBrush" Color="#0DFFFFFF" />
+                <SolidColorBrush x:Key="SurfaceEdgeBrush" Color="#1AFFFFFF" />
+            </ResourceDictionary>
+            <ResourceDictionary x:Key="Light">
+                <SolidColorBrush x:Key="SurfaceBrush" Color="#0A000000" />
+                <SolidColorBrush x:Key="SurfaceEdgeBrush" Color="#1F000000" />
+            </ResourceDictionary>
+        </ResourceDictionary.ThemeDictionaries>
+        <SolidColorBrush x:Key="TealBrush" Color="#2BA9B8" />
         <LinearGradientBrush x:Key="IconSquareBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#473CC6D6" Offset="0" />
-            <GradientStop Color="#003CC6D6" Offset="1" />
+            <GradientStop Color="#472BA9B8" Offset="0" />
+            <GradientStop Color="#002BA9B8" Offset="1" />
         </LinearGradientBrush>
 
         <!-- One connection type on the welcome screen: icon in a rounded square, title, one line under it. -->
@@ -33,8 +42,8 @@
         </DataTemplate>
 
         <Style x:Key="TileButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource SurfaceEdgeBrush}" />
+            <Setter Property="Background" Value="{ThemeResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource SurfaceEdgeBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="16" />
             <Setter Property="Padding" Value="18,16" />
@@ -46,10 +55,10 @@
             <Setter Property="FocusVisualPrimaryBrush" Value="{StaticResource TealBrush}" />
             <Setter Property="ContentTemplate" Value="{StaticResource TileTemplate}" />
         </Style>
+      </ResourceDictionary>
     </Page.Resources>
 
-    <!-- This page is always dark, whatever the app theme: the brand symbol is made for a dark backdrop. -->
-    <Grid x:Name="Root" RequestedTheme="Dark" Background="#05080C">
+    <Grid x:Name="Root" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <!-- Two soft glows and a vignette, no hard edges. Windows before 1903 does not draw gradients, so there they fall back to nothing. -->
         <Rectangle IsHitTestVisible="False">
             <Rectangle.Fill>
@@ -118,7 +127,7 @@
                 <!-- The saved connections, shown once there is at least one. -->
                 <StackPanel x:Name="SavedPanel" Spacing="16" Visibility="Collapsed">
                     <TextBlock Text="Connections" Style="{StaticResource TitleTextBlockStyle}" />
-                    <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource SurfaceEdgeBrush}" BorderThickness="1" CornerRadius="16" Padding="8">
+                    <Border Background="{ThemeResource SurfaceBrush}" BorderBrush="{ThemeResource SurfaceEdgeBrush}" BorderThickness="1" CornerRadius="16" Padding="8">
                         <ListView x:Name="SavedList" SelectionMode="None">
                             <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="core:Playlist">
@@ -148,6 +157,23 @@
                 <!-- Choosing a type, then filling it in. The same two views serve the first start and every later connection. -->
                 <StackPanel x:Name="SetupPanel" Grid.Column="1" Spacing="16" VerticalAlignment="Center" SizeChanged="OnSetupSizeChanged">
                     <StackPanel x:Name="ChooserView" Spacing="16">
+                        <!-- The paste field comes first: most people have a link already. -->
+                        <TextBlock Text="Paste a link" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="PasteBox" PlaceholderText="A playlist link, a server address or a stream" AutomationProperties.Name="Paste a link" KeyDown="OnPasteKey" />
+                            <local:PointerButton x:Name="PasteGo" Grid.Column="1" Content="Continue" Style="{StaticResource AccentButtonStyle}" Click="OnPasteGo" />
+                        </Grid>
+                        <TextBlock x:Name="PasteNote" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <local:PointerButton x:Name="ResumeButton" Visibility="Collapsed" Click="OnResume" AutomationProperties.Name="Continue previous setup">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE777;" FontSize="14" />
+                                <TextBlock Text="Continue previous setup" />
+                            </StackPanel>
+                        </local:PointerButton>
                         <TextBlock Text="Or choose how you connect" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         <Grid x:Name="TileGrid" ColumnSpacing="12" RowSpacing="12">
                             <!-- Hover and press for the tiles: hover lifts (more fill, teal edge), pressed is dimmer (and smaller, see PointerButton). -->
@@ -188,7 +214,7 @@
                             </StackPanel>
                         </Grid>
 
-                        <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource SurfaceEdgeBrush}" BorderThickness="1" CornerRadius="16" Padding="24">
+                        <Border Background="{ThemeResource SurfaceBrush}" BorderBrush="{ThemeResource SurfaceEdgeBrush}" BorderThickness="1" CornerRadius="16" Padding="24">
                             <StackPanel Spacing="16">
                                 <!-- The members of a group tile (for example Jellyfin, Emby or Plex). Hidden for a tile with one type. -->
                                 <RadioButtons x:Name="MemberChooser" Header="Type" MaxColumns="3" SelectionChanged="OnMemberChanged" Visibility="Collapsed" />
@@ -206,6 +232,7 @@
                                     <ComboBoxItem Content="WebDAV server" />
                                     <ComboBoxItem Content="Folder of video files on this computer" />
                                     <ComboBoxItem Content="Stalker / Ministra portal (MAC address)" />
+                                    <ComboBoxItem Content="Single stream (one channel link)" />
                                 </ComboBox>
                                 <TextBox x:Name="NameBox" Header="Name" PlaceholderText="My provider" />
                                 <Grid ColumnSpacing="8">
