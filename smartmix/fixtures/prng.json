@@ -1,0 +1,91 @@
+{
+ "fnv1a64": [
+  {
+   "hex": "CBF29CE484222325",
+   "input": ""
+  },
+  {
+   "hex": "AF63DC4C8601EC8C",
+   "input": "a"
+  },
+  {
+   "hex": "EA146339CF956E5F",
+   "input": "smartmix1|main|hero|2026-11-21|0"
+  },
+  {
+   "hex": "2160D92C2158319D",
+   "input": "smartmix1|తె|top-week|2026-01-01|12"
+  },
+  {
+   "hex": "1D30A9DD7340F7E5",
+   "input": "smartmix1|🎬|folder:x|2026-12-31|0"
+  }
+ ],
+ "name": "prng",
+ "seedString": {
+  "counter": 0,
+  "day": "2026-11-21",
+  "profile": "main",
+  "shelf": "hero",
+  "value": "smartmix1|main|hero|2026-11-21|0"
+ },
+ "splitmix64": [
+  {
+   "hex": [
+    "E220A8397B1DCDAF",
+    "6E789E6AA1B965F4",
+    "06C45D188009454F"
+   ],
+   "seed": 0
+  },
+  {
+   "hex": [
+    "910A2DEC89025CC1",
+    "BEEB8DA1658EEC67"
+   ],
+   "seed": 1
+  }
+ ],
+ "uniform": [
+  {
+   "n": 1000,
+   "seedString": "smartmix1|main|hero|2026-11-21|0",
+   "values": [
+    600,
+    713,
+    122,
+    290,
+    566
+   ]
+  },
+  {
+   "n": 9223372036854775809,
+   "splitmixSeed": 7,
+   "values": [
+    7392729709960833537,
+    1529793891446696394,
+    8483179396677329707,
+    7711100304988943181
+   ]
+  },
+  {
+   "ns": [
+    1,
+    2,
+    3,
+    7,
+    10,
+    1000003
+   ],
+   "splitmixSeed": 7,
+   "values": [
+    0,
+    0,
+    0,
+    3,
+    4,
+    592581
+   ]
+  }
+ ]
+}

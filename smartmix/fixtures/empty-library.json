@@ -1,0 +1,192 @@
+{
+ "description": "No candidates at all: every shelf empty, lang-pref hidden, nothing throws.",
+ "library": [],
+ "name": "empty-library",
+ "steps": [
+  {
+   "affinity": {
+    "topDecades": [
+     2010,
+     2020
+    ],
+    "topFolders": [
+     "f1",
+     "f2"
+    ],
+    "topGenres": [
+     "action",
+     "drama"
+    ],
+    "topLangs": [
+     "Telugu",
+     "Hindi",
+     "English"
+    ]
+   },
+   "dayKey": "2026-11-21",
+   "expect": {
+    "for-you": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 0,
+      "fallback": "none",
+      "groups": 0,
+      "hidden": false,
+      "inCount": 0,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 0,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": []
+    },
+    "hero": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 0,
+      "fallback": "existingFeatured",
+      "groups": 0,
+      "hidden": false,
+      "inCount": 0,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 0,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": []
+    },
+    "lang-pref": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 0,
+      "fallback": "none",
+      "groups": 0,
+      "hidden": true,
+      "inCount": 0,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 0,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": []
+    },
+    "rediscover": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 0,
+      "fallback": "none",
+      "groups": 0,
+      "hidden": false,
+      "inCount": 0,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 0,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": []
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 0,
+      "fallback": "none",
+      "groups": 0,
+      "hidden": false,
+      "inCount": 0,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 0,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": []
+    },
+    "trending-library": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 0,
+      "fallback": "none",
+      "groups": 0,
+      "hidden": false,
+      "inCount": 0,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 0,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": []
+    }
+   },
+   "preferredLang": "Telugu",
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "for-you",
+    "rediscover",
+    "lang-pref",
+    "top-week",
+    "trending-library"
+   ]
+  }
+ ]
+}

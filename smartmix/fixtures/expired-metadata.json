@@ -1,0 +1,1535 @@
+{
+ "description": "Cache 31 and 45 days old: local only (expired); 181 days: purged (local only). Items with no year/rating/added fall back to neutral features.",
+ "library": [
+  {
+   "added": 0,
+   "id": "m0",
+   "key": "dune part two",
+   "lang": "Telugu",
+   "p30": 0,
+   "year": 2024
+  },
+  {
+   "added": 11,
+   "id": "m1",
+   "key": "inside out 2",
+   "lang": "Telugu",
+   "p30": 1,
+   "year": 2024
+  },
+  {
+   "added": 22,
+   "id": "m2",
+   "key": "kalki",
+   "lang": "Telugu",
+   "p30": 2,
+   "year": 2024
+  },
+  {
+   "added": 33,
+   "id": "m3",
+   "key": "pushpa the rule",
+   "lang": "Telugu",
+   "p30": 3,
+   "year": 2024
+  },
+  {
+   "added": 44,
+   "id": "m4",
+   "key": "moana 2",
+   "lang": "Telugu",
+   "p30": 0,
+   "year": 2024
+  },
+  {
+   "added": 55,
+   "id": "m5",
+   "key": "gladiator ii",
+   "lang": "Telugu",
+   "p30": 1,
+   "year": 2024
+  },
+  {
+   "added": 66,
+   "id": "m6",
+   "key": "wicked",
+   "lang": "Telugu",
+   "p30": 2,
+   "year": 2024
+  },
+  {
+   "added": 77,
+   "id": "m7",
+   "key": "amaran",
+   "lang": "Telugu",
+   "p30": 3,
+   "year": 2024
+  },
+  {
+   "added": 88,
+   "id": "m8",
+   "key": "vettaiyan",
+   "lang": "Telugu",
+   "p30": 0,
+   "year": 2024
+  },
+  {
+   "added": 99,
+   "id": "m9",
+   "key": "other a",
+   "lang": "Telugu",
+   "p30": 1,
+   "year": 2022
+  },
+  {
+   "added": 110,
+   "id": "m10",
+   "key": "other b",
+   "lang": "Telugu",
+   "p30": 2,
+   "year": 2021
+  },
+  {
+   "added": 121,
+   "id": "m11",
+   "key": "other c",
+   "lang": "Telugu",
+   "p30": 3,
+   "year": 2020
+  },
+  {
+   "added": 132,
+   "id": "m12",
+   "key": "other d",
+   "lang": "Telugu",
+   "p30": 0,
+   "year": 2019
+  },
+  {
+   "added": 40,
+   "id": "s1",
+   "key": "the bear",
+   "kind": "series",
+   "lang": "English",
+   "year": 2022
+  },
+  {
+   "added": 40,
+   "id": "s2",
+   "key": "squid game",
+   "kind": "series",
+   "year": 2021
+  },
+  {
+   "added": 40,
+   "id": "s3",
+   "key": "shogun",
+   "kind": "series",
+   "year": 2024
+  },
+  {
+   "added": null,
+   "id": "mx0",
+   "key": "nometa 0",
+   "rating": null,
+   "year": null
+  },
+  {
+   "added": null,
+   "id": "mx1",
+   "key": "nometa 1",
+   "rating": null,
+   "year": null
+  },
+  {
+   "added": null,
+   "id": "mx2",
+   "key": "nometa 2",
+   "rating": null,
+   "year": null
+  },
+  {
+   "added": null,
+   "id": "mx3",
+   "key": "nometa 3",
+   "rating": null,
+   "year": null
+  },
+  {
+   "added": null,
+   "id": "mx4",
+   "key": "nometa 4",
+   "rating": null,
+   "year": null
+  },
+  {
+   "added": null,
+   "id": "mx5",
+   "key": "nometa 5",
+   "rating": null,
+   "year": null
+  },
+  {
+   "added": null,
+   "id": "mx6",
+   "key": "nometa 6",
+   "rating": null,
+   "year": null
+  },
+  {
+   "added": null,
+   "id": "mx7",
+   "key": "nometa 7",
+   "rating": null,
+   "year": null
+  }
+ ],
+ "name": "expired-metadata",
+ "steps": [
+  {
+   "dayKey": "2026-11-21",
+   "expect": {
+    "for-you": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m6",
+      "mx3",
+      "m11",
+      "s3",
+      "s2",
+      "m9",
+      "m2",
+      "mx4",
+      "mx1",
+      "mx6",
+      "m12",
+      "mx0",
+      "m7",
+      "s1"
+     ]
+    },
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": true,
+      "drawn": 12,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "active",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m0",
+      "s2",
+      "m8",
+      "m7",
+      "s3",
+      "m4",
+      "m1",
+      "s1",
+      "mx2",
+      "mx3",
+      "mx1",
+      "mx7"
+     ]
+    },
+    "lang-pref": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 13,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 11,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 13,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m9",
+      "m6",
+      "m0",
+      "m5",
+      "m11",
+      "m2",
+      "m8",
+      "m12",
+      "m7",
+      "m4",
+      "m3",
+      "m1",
+      "m10"
+     ]
+    },
+    "rediscover": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m4",
+      "m11",
+      "s2",
+      "m8",
+      "mx0",
+      "m6",
+      "s3",
+      "mx6",
+      "m10",
+      "s1",
+      "m3",
+      "mx1",
+      "mx5",
+      "m5"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "trendingTMDB",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "active",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m0",
+      "s3",
+      "m6",
+      "m2",
+      "m4",
+      "m5",
+      "m7",
+      "mx2",
+      "m9",
+      "m3",
+      "mx1",
+      "m11",
+      "m10",
+      "mx6"
+     ]
+    },
+    "trending-library": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "trendingTMDB",
+      "dismissed": 0,
+      "diversityRelaxed": true,
+      "drawn": 7,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 17,
+      "pool": 7,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "active",
+      "trendMode": true,
+      "watched": 0
+     },
+     "ids": [
+      "m0",
+      "m2",
+      "s3",
+      "m6",
+      "m7",
+      "m5",
+      "m4"
+     ]
+    }
+   },
+   "preferredLang": "Telugu",
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "for-you",
+    "rediscover",
+    "lang-pref",
+    "top-week",
+    "trending-library"
+   ],
+   "tmdb": {
+    "cache": {
+     "entries": [
+      {
+       "orig": "Dune: Part Two",
+       "rank": 1,
+       "title": "Dune: Part Two",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "orig": "Shōgun",
+       "rank": 2,
+       "title": "Shōgun",
+       "type": "tv",
+       "year": 2024
+      },
+      {
+       "rank": 3,
+       "title": "Wicked",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "orig": "Kalki",
+       "rank": 4,
+       "title": "Kalki 2898 AD",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 5,
+       "title": "The Bear",
+       "type": "tv",
+       "year": 2022
+      },
+      {
+       "rank": 6,
+       "title": "Moana 2",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 7,
+       "title": "Gladiator II",
+       "type": "movie",
+       "year": 2023
+      },
+      {
+       "rank": 8,
+       "title": "Not In Library",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 9,
+       "title": "Squid Game",
+       "type": "tv",
+       "year": 2030
+      },
+      {
+       "rank": 10,
+       "title": "Amaran",
+       "type": "movie",
+       "year": 2024
+      }
+     ],
+     "fetchedDaysAgo": 30
+    },
+    "enabled": true,
+    "keyPresent": true
+   }
+  },
+  {
+   "dayKey": "2026-11-21",
+   "expect": {
+    "for-you": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m6",
+      "mx3",
+      "m11",
+      "s3",
+      "s2",
+      "m9",
+      "m2",
+      "mx4",
+      "mx1",
+      "mx6",
+      "m12",
+      "mx0",
+      "m7",
+      "s1"
+     ]
+    },
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": true,
+      "drawn": 12,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "expired",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m8",
+      "m6",
+      "s3",
+      "mx1",
+      "mx4",
+      "s1",
+      "m3",
+      "s2",
+      "mx3",
+      "mx0",
+      "m10",
+      "mx6"
+     ]
+    },
+    "lang-pref": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 13,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 11,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 13,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m9",
+      "m6",
+      "m0",
+      "m5",
+      "m11",
+      "m2",
+      "m8",
+      "m12",
+      "m7",
+      "m4",
+      "m3",
+      "m1",
+      "m10"
+     ]
+    },
+    "rediscover": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m4",
+      "m11",
+      "s2",
+      "m8",
+      "mx0",
+      "m6",
+      "s3",
+      "mx6",
+      "m10",
+      "s1",
+      "m3",
+      "mx1",
+      "mx5",
+      "m5"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "expired",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m7",
+      "m3",
+      "mx1",
+      "m2",
+      "m6",
+      "s2",
+      "mx4",
+      "m1",
+      "mx0",
+      "s1",
+      "mx5",
+      "m11",
+      "m9",
+      "mx6"
+     ]
+    },
+    "trending-library": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "expired",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m7",
+      "m0",
+      "mx7",
+      "mx6",
+      "m9",
+      "s1",
+      "m5",
+      "mx0",
+      "m11",
+      "m10",
+      "s3",
+      "m6",
+      "m1",
+      "mx3"
+     ]
+    }
+   },
+   "preferredLang": "Telugu",
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "for-you",
+    "rediscover",
+    "lang-pref",
+    "top-week",
+    "trending-library"
+   ],
+   "tmdb": {
+    "cache": {
+     "entries": [
+      {
+       "orig": "Dune: Part Two",
+       "rank": 1,
+       "title": "Dune: Part Two",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "orig": "Shōgun",
+       "rank": 2,
+       "title": "Shōgun",
+       "type": "tv",
+       "year": 2024
+      },
+      {
+       "rank": 3,
+       "title": "Wicked",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "orig": "Kalki",
+       "rank": 4,
+       "title": "Kalki 2898 AD",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 5,
+       "title": "The Bear",
+       "type": "tv",
+       "year": 2022
+      },
+      {
+       "rank": 6,
+       "title": "Moana 2",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 7,
+       "title": "Gladiator II",
+       "type": "movie",
+       "year": 2023
+      },
+      {
+       "rank": 8,
+       "title": "Not In Library",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 9,
+       "title": "Squid Game",
+       "type": "tv",
+       "year": 2030
+      },
+      {
+       "rank": 10,
+       "title": "Amaran",
+       "type": "movie",
+       "year": 2024
+      }
+     ],
+     "fetchedDaysAgo": 31
+    },
+    "enabled": true,
+    "keyPresent": true
+   }
+  },
+  {
+   "dayKey": "2026-11-21",
+   "expect": {
+    "for-you": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m6",
+      "mx3",
+      "m11",
+      "s3",
+      "s2",
+      "m9",
+      "m2",
+      "mx4",
+      "mx1",
+      "mx6",
+      "m12",
+      "mx0",
+      "m7",
+      "s1"
+     ]
+    },
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": true,
+      "drawn": 12,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "expired",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m8",
+      "m6",
+      "s3",
+      "mx1",
+      "mx4",
+      "s1",
+      "m3",
+      "s2",
+      "mx3",
+      "mx0",
+      "m10",
+      "mx6"
+     ]
+    },
+    "lang-pref": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 13,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 11,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 13,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m9",
+      "m6",
+      "m0",
+      "m5",
+      "m11",
+      "m2",
+      "m8",
+      "m12",
+      "m7",
+      "m4",
+      "m3",
+      "m1",
+      "m10"
+     ]
+    },
+    "rediscover": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m4",
+      "m11",
+      "s2",
+      "m8",
+      "mx0",
+      "m6",
+      "s3",
+      "mx6",
+      "m10",
+      "s1",
+      "m3",
+      "mx1",
+      "mx5",
+      "m5"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "expired",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m7",
+      "m3",
+      "mx1",
+      "m2",
+      "m6",
+      "s2",
+      "mx4",
+      "m1",
+      "mx0",
+      "s1",
+      "mx5",
+      "m11",
+      "m9",
+      "mx6"
+     ]
+    },
+    "trending-library": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "expired",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m7",
+      "m0",
+      "mx7",
+      "mx6",
+      "m9",
+      "s1",
+      "m5",
+      "mx0",
+      "m11",
+      "m10",
+      "s3",
+      "m6",
+      "m1",
+      "mx3"
+     ]
+    }
+   },
+   "preferredLang": "Telugu",
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "for-you",
+    "rediscover",
+    "lang-pref",
+    "top-week",
+    "trending-library"
+   ],
+   "tmdb": {
+    "cache": {
+     "entries": [
+      {
+       "orig": "Dune: Part Two",
+       "rank": 1,
+       "title": "Dune: Part Two",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "orig": "Shōgun",
+       "rank": 2,
+       "title": "Shōgun",
+       "type": "tv",
+       "year": 2024
+      },
+      {
+       "rank": 3,
+       "title": "Wicked",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "orig": "Kalki",
+       "rank": 4,
+       "title": "Kalki 2898 AD",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 5,
+       "title": "The Bear",
+       "type": "tv",
+       "year": 2022
+      },
+      {
+       "rank": 6,
+       "title": "Moana 2",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 7,
+       "title": "Gladiator II",
+       "type": "movie",
+       "year": 2023
+      },
+      {
+       "rank": 8,
+       "title": "Not In Library",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 9,
+       "title": "Squid Game",
+       "type": "tv",
+       "year": 2030
+      },
+      {
+       "rank": 10,
+       "title": "Amaran",
+       "type": "movie",
+       "year": 2024
+      }
+     ],
+     "fetchedDaysAgo": 45
+    },
+    "enabled": true,
+    "keyPresent": true
+   }
+  },
+  {
+   "dayKey": "2026-11-21",
+   "expect": {
+    "for-you": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m6",
+      "mx3",
+      "m11",
+      "s3",
+      "s2",
+      "m9",
+      "m2",
+      "mx4",
+      "mx1",
+      "mx6",
+      "m12",
+      "mx0",
+      "m7",
+      "s1"
+     ]
+    },
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": true,
+      "drawn": 12,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "purged",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m8",
+      "m6",
+      "s3",
+      "mx1",
+      "mx4",
+      "s1",
+      "m3",
+      "s2",
+      "mx3",
+      "mx0",
+      "m10",
+      "mx6"
+     ]
+    },
+    "lang-pref": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 13,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 11,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 13,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m9",
+      "m6",
+      "m0",
+      "m5",
+      "m11",
+      "m2",
+      "m8",
+      "m12",
+      "m7",
+      "m4",
+      "m3",
+      "m1",
+      "m10"
+     ]
+    },
+    "rediscover": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m4",
+      "m11",
+      "s2",
+      "m8",
+      "mx0",
+      "m6",
+      "s3",
+      "mx6",
+      "m10",
+      "s1",
+      "m3",
+      "mx1",
+      "mx5",
+      "m5"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "purged",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m7",
+      "m3",
+      "mx1",
+      "m2",
+      "m6",
+      "s2",
+      "mx4",
+      "m1",
+      "mx0",
+      "s1",
+      "mx5",
+      "m11",
+      "m9",
+      "mx6"
+     ]
+    },
+    "trending-library": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 24,
+      "hidden": false,
+      "inCount": 24,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 24,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "purged",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m7",
+      "m0",
+      "mx7",
+      "mx6",
+      "m9",
+      "s1",
+      "m5",
+      "mx0",
+      "m11",
+      "m10",
+      "s3",
+      "m6",
+      "m1",
+      "mx3"
+     ]
+    }
+   },
+   "preferredLang": "Telugu",
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "for-you",
+    "rediscover",
+    "lang-pref",
+    "top-week",
+    "trending-library"
+   ],
+   "tmdb": {
+    "cache": {
+     "entries": [
+      {
+       "orig": "Dune: Part Two",
+       "rank": 1,
+       "title": "Dune: Part Two",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "orig": "Shōgun",
+       "rank": 2,
+       "title": "Shōgun",
+       "type": "tv",
+       "year": 2024
+      },
+      {
+       "rank": 3,
+       "title": "Wicked",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "orig": "Kalki",
+       "rank": 4,
+       "title": "Kalki 2898 AD",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 5,
+       "title": "The Bear",
+       "type": "tv",
+       "year": 2022
+      },
+      {
+       "rank": 6,
+       "title": "Moana 2",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 7,
+       "title": "Gladiator II",
+       "type": "movie",
+       "year": 2023
+      },
+      {
+       "rank": 8,
+       "title": "Not In Library",
+       "type": "movie",
+       "year": 2024
+      },
+      {
+       "rank": 9,
+       "title": "Squid Game",
+       "type": "tv",
+       "year": 2030
+      },
+      {
+       "rank": 10,
+       "title": "Amaran",
+       "type": "movie",
+       "year": 2024
+      }
+     ],
+     "fetchedDaysAgo": 181
+    },
+    "enabled": true,
+    "keyPresent": true
+   }
+  }
+ ]
+}

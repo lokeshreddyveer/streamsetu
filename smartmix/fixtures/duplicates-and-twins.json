@@ -1,0 +1,523 @@
+{
+ "description": "Same title in two sources (quality beats source), remake 37 years apart stays separate, +-1 year merged, nil year joins, restricted twin removes whole group, dismissed twin removes group on rec shelves, kind keeps movie/series apart.",
+ "library": [
+  {
+   "added": 10,
+   "id": "m1",
+   "key": "dune",
+   "src": 0,
+   "year": 1984
+  },
+  {
+   "added": 10,
+   "id": "m2",
+   "key": "dune",
+   "src": 0,
+   "year": 2021
+  },
+  {
+   "added": 10,
+   "id": "m3",
+   "key": "alpha",
+   "src": 0,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "id": "m4",
+   "key": "alpha",
+   "q": 5,
+   "src": 1,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "id": "m5",
+   "key": "beta",
+   "restricted": true,
+   "src": 0,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "id": "m6",
+   "key": "beta",
+   "src": 1,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "dismissed": true,
+   "id": "m7",
+   "key": "gamma",
+   "src": 0,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "id": "m8",
+   "key": "gamma",
+   "src": 1,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "id": "m9",
+   "key": "delta",
+   "year": 2020
+  },
+  {
+   "added": 10,
+   "id": "m10b",
+   "key": "delta",
+   "year": 2021
+  },
+  {
+   "added": 10,
+   "id": "m11n",
+   "key": "delta",
+   "year": null
+  },
+  {
+   "added": 40,
+   "id": "s1",
+   "key": "alpha",
+   "kind": "series",
+   "year": 2023
+  },
+  {
+   "added": 3,
+   "id": "m12",
+   "key": "eps",
+   "src": 1,
+   "year": 2024
+  },
+  {
+   "added": 1,
+   "id": "m13",
+   "key": "eps",
+   "src": 0,
+   "year": 2024
+  },
+  {
+   "added": 20,
+   "id": "m20",
+   "key": "filler 0",
+   "q": 2,
+   "year": 2015
+  },
+  {
+   "added": 29,
+   "id": "m21",
+   "key": "filler 1",
+   "q": 3,
+   "year": 2016
+  },
+  {
+   "added": 38,
+   "id": "m22",
+   "key": "filler 2",
+   "q": 4,
+   "year": 2017
+  },
+  {
+   "added": 47,
+   "id": "m23",
+   "key": "filler 3",
+   "q": 5,
+   "year": 2018
+  },
+  {
+   "added": 56,
+   "id": "m24",
+   "key": "filler 4",
+   "q": 2,
+   "year": 2019
+  },
+  {
+   "added": 65,
+   "id": "m25",
+   "key": "filler 5",
+   "q": 3,
+   "year": 2020
+  },
+  {
+   "added": 74,
+   "id": "m26",
+   "key": "filler 6",
+   "q": 4,
+   "year": 2021
+  },
+  {
+   "added": 83,
+   "id": "m27",
+   "key": "filler 7",
+   "q": 5,
+   "year": 2022
+  },
+  {
+   "added": 92,
+   "id": "m28",
+   "key": "filler 8",
+   "q": 2,
+   "year": 2023
+  },
+  {
+   "added": 101,
+   "id": "m29",
+   "key": "filler 9",
+   "q": 3,
+   "year": 2024
+  },
+  {
+   "added": 110,
+   "id": "m30",
+   "key": "filler 10",
+   "q": 4,
+   "year": 2015
+  },
+  {
+   "added": 119,
+   "id": "m31",
+   "key": "filler 11",
+   "q": 5,
+   "year": 2016
+  },
+  {
+   "added": 128,
+   "id": "m32",
+   "key": "filler 12",
+   "q": 2,
+   "year": 2017
+  },
+  {
+   "added": 137,
+   "id": "m33",
+   "key": "filler 13",
+   "q": 3,
+   "year": 2018
+  },
+  {
+   "added": 146,
+   "id": "m34",
+   "key": "filler 14",
+   "q": 4,
+   "year": 2019
+  },
+  {
+   "added": 155,
+   "id": "m35",
+   "key": "filler 15",
+   "q": 5,
+   "year": 2020
+  },
+  {
+   "added": 164,
+   "id": "m36",
+   "key": "filler 16",
+   "q": 2,
+   "year": 2021
+  },
+  {
+   "added": 173,
+   "id": "m37",
+   "key": "filler 17",
+   "q": 3,
+   "year": 2022
+  },
+  {
+   "added": 182,
+   "id": "m38",
+   "key": "filler 18",
+   "q": 4,
+   "year": 2023
+  },
+  {
+   "added": 191,
+   "id": "m39",
+   "key": "filler 19",
+   "q": 5,
+   "year": 2024
+  }
+ ],
+ "name": "duplicates-and-twins",
+ "steps": [
+  {
+   "dayKey": "2026-11-21",
+   "expect": {
+    "folder:f1": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 0,
+      "fallback": "none",
+      "groups": 0,
+      "hidden": false,
+      "inCount": 34,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 0,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": []
+    },
+    "for-you": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 1,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 28,
+      "hidden": false,
+      "inCount": 34,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 26,
+      "restricted": 1,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "s1",
+      "m39",
+      "m21",
+      "m37",
+      "m25",
+      "m34",
+      "m2",
+      "m30",
+      "m27",
+      "m33",
+      "m32",
+      "m31",
+      "m35",
+      "m10b"
+     ]
+    },
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 1,
+      "diversityRelaxed": true,
+      "drawn": 12,
+      "fallback": "none",
+      "groups": 28,
+      "hidden": false,
+      "inCount": 34,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 26,
+      "restricted": 1,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m35",
+      "m13",
+      "s1",
+      "m2",
+      "m39",
+      "m32",
+      "m38",
+      "m27",
+      "m21",
+      "m26",
+      "m4",
+      "m20"
+     ]
+    },
+    "lang-pref": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 1,
+      "diversityRelaxed": false,
+      "drawn": 0,
+      "fallback": "none",
+      "groups": 28,
+      "hidden": true,
+      "inCount": 34,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 0,
+      "restricted": 1,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": []
+    },
+    "rediscover": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 1,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 28,
+      "hidden": false,
+      "inCount": 34,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 26,
+      "restricted": 1,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m28",
+      "s1",
+      "m22",
+      "m35",
+      "m13",
+      "m4",
+      "m26",
+      "m36",
+      "m29",
+      "m24",
+      "m21",
+      "m27",
+      "m23",
+      "m37"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 1,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 28,
+      "hidden": false,
+      "inCount": 34,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 26,
+      "restricted": 1,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m22",
+      "m29",
+      "m4",
+      "m13",
+      "m10b",
+      "m32",
+      "m34",
+      "m28",
+      "m36",
+      "m30",
+      "m25",
+      "m2",
+      "s1",
+      "m31"
+     ]
+    },
+    "trending-library": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "mostWatchedHere",
+      "dismissed": 1,
+      "diversityRelaxed": false,
+      "drawn": 14,
+      "fallback": "none",
+      "groups": 28,
+      "hidden": false,
+      "inCount": 34,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 26,
+      "restricted": 1,
+      "tier": 0,
+      "tiny": false,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m4",
+      "m1",
+      "m22",
+      "m36",
+      "m2",
+      "m28",
+      "m30",
+      "m23",
+      "m10b",
+      "m35",
+      "m27",
+      "m26",
+      "m13",
+      "m38"
+     ]
+    }
+   },
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "for-you",
+    "rediscover",
+    "lang-pref",
+    "top-week",
+    "trending-library",
+    "folder:f1"
+   ]
+  }
+ ]
+}

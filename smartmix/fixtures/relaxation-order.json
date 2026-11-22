@@ -1,0 +1,286 @@
+{
+ "description": "Too few eligible items so the tiers are reached in turn (fresh const, diversity off, watched allowed -200, poster-less, sole CAM). lang-pref is never relaxed (hidden). Diagnostics report the tier used.",
+ "library": [
+  {
+   "added": 10,
+   "backdrop": true,
+   "completed": true,
+   "id": "m1",
+   "key": "a",
+   "lastWatched": 3,
+   "watched": true,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "id": "m2",
+   "key": "b",
+   "poster": true,
+   "watched": true,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "backdrop": false,
+   "id": "m3",
+   "key": "c",
+   "poster": false,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "cam": true,
+   "id": "m4",
+   "key": "d",
+   "poster": false,
+   "q": 0,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "cam": true,
+   "id": "m5",
+   "key": "e",
+   "poster": true,
+   "q": 0,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "backdrop": false,
+   "cam": true,
+   "id": "m6",
+   "key": "f",
+   "poster": false,
+   "q": 0,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "id": "m7",
+   "key": "g",
+   "loadsAgo": null,
+   "poster": true,
+   "watched": true,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "id": "m8",
+   "key": "h",
+   "lang": "Telugu",
+   "poster": true,
+   "year": 2024
+  },
+  {
+   "added": 10,
+   "backdrop": false,
+   "id": "m9",
+   "key": "i",
+   "poster": false,
+   "year": 2024
+  }
+ ],
+ "name": "relaxation-order",
+ "steps": [
+  {
+   "dayKey": "2026-11-21",
+   "expect": {
+    "folder:f9": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 0,
+      "fallback": "none",
+      "groups": 0,
+      "hidden": false,
+      "inCount": 9,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 0,
+      "restricted": 0,
+      "tier": 0,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": []
+    },
+    "for-you": {
+     "art": [],
+     "diag": {
+      "camOnly": 3,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 6,
+      "fallback": "none",
+      "groups": 9,
+      "hidden": false,
+      "inCount": 9,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 6,
+      "restricted": 0,
+      "tier": 4,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m3",
+      "m1",
+      "m9",
+      "m2",
+      "m8",
+      "m7"
+     ]
+    },
+    "hero": {
+     "art": [
+      "poster",
+      "poster",
+      "backdrop",
+      "poster"
+     ],
+     "diag": {
+      "camOnly": 3,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 4,
+      "fallback": "none",
+      "groups": 9,
+      "hidden": false,
+      "inCount": 9,
+      "lang": 0,
+      "noArtwork": 2,
+      "notTrending": 0,
+      "pool": 4,
+      "restricted": 0,
+      "tier": 3,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m8",
+      "m7",
+      "m1",
+      "m2"
+     ]
+    },
+    "lang-pref": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 1,
+      "fallback": "none",
+      "groups": 9,
+      "hidden": false,
+      "inCount": 9,
+      "lang": 8,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 1,
+      "restricted": 0,
+      "tier": 5,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m8"
+     ]
+    },
+    "rediscover": {
+     "art": [],
+     "diag": {
+      "camOnly": 0,
+      "caption": "",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 6,
+      "fallback": "none",
+      "groups": 9,
+      "hidden": false,
+      "inCount": 9,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 6,
+      "restricted": 0,
+      "tier": 5,
+      "tiny": true,
+      "tmdb": "",
+      "trendMode": false,
+      "watched": 3
+     },
+     "ids": [
+      "m6",
+      "m8",
+      "m5",
+      "m3",
+      "m9",
+      "m4"
+     ]
+    },
+    "top-week": {
+     "art": [],
+     "diag": {
+      "camOnly": 3,
+      "caption": "mostWatchedHere",
+      "dismissed": 0,
+      "diversityRelaxed": false,
+      "drawn": 6,
+      "fallback": "none",
+      "groups": 9,
+      "hidden": false,
+      "inCount": 9,
+      "lang": 0,
+      "noArtwork": 0,
+      "notTrending": 0,
+      "pool": 6,
+      "restricted": 0,
+      "tier": 4,
+      "tiny": true,
+      "tmdb": "off",
+      "trendMode": false,
+      "watched": 0
+     },
+     "ids": [
+      "m3",
+      "m9",
+      "m8",
+      "m7",
+      "m1",
+      "m2"
+     ]
+    }
+   },
+   "preferredLang": "Telugu",
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "for-you",
+    "top-week",
+    "lang-pref",
+    "rediscover",
+    "folder:f9"
+   ]
+  }
+ ]
+}

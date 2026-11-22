@@ -1,0 +1,156 @@
+{
+ "description": "200000 candidates from the documented generator: top shelf outputs under pool cap 2000 (digest + first ids).",
+ "generator": {
+  "folders": 1500,
+  "n": 200000,
+  "name": "stress-200k",
+  "seed": 13
+ },
+ "name": "stress-200k",
+ "steps": [
+  {
+   "affinity": {
+    "topDecades": [
+     2010,
+     2020
+    ],
+    "topFolders": [
+     "f1",
+     "f2"
+    ],
+    "topGenres": [
+     "action",
+     "drama"
+    ],
+    "topLangs": [
+     "Telugu",
+     "Hindi",
+     "English"
+    ]
+   },
+   "dayKey": "2026-11-21",
+   "expect": {
+    "counts": {
+     "folder:f1": 12,
+     "folder:f5": 12,
+     "for-you": 14,
+     "hero": 12,
+     "lang-pref": 14,
+     "rediscover": 14,
+     "top-week": 14,
+     "trending-library": 14
+    },
+    "digest": "9426df294d60bfe84a354bcace370e84a81c7085d1c307b2f4fcdfb44f49d818",
+    "first": {
+     "for-you": [
+      "m53214",
+      "s192953",
+      "m103743",
+      "s144010",
+      "m189352",
+      "m38630",
+      "s193307",
+      "s9279",
+      "s11796",
+      "m175325",
+      "s109276",
+      "m8690",
+      "m66562",
+      "m120069"
+     ],
+     "hero": [
+      "m35466",
+      "s65099",
+      "s67178",
+      "m165672",
+      "s156639",
+      "m187892",
+      "m64030",
+      "s20853",
+      "s180453",
+      "m175107",
+      "m94732",
+      "s116942"
+     ],
+     "lang-pref": [
+      "m51864",
+      "m195849",
+      "s62301",
+      "m190623",
+      "m58647",
+      "m139739",
+      "s74801",
+      "m56689",
+      "m20732",
+      "s64064",
+      "s67646",
+      "m62532",
+      "m142736",
+      "m30658"
+     ],
+     "rediscover": [
+      "m125600",
+      "s154594",
+      "m125529",
+      "m167098",
+      "s187132",
+      "m181820",
+      "s151098",
+      "m159919",
+      "m29340",
+      "s107633",
+      "m63610",
+      "s170992",
+      "s4692",
+      "m142313"
+     ],
+     "top-week": [
+      "m126743",
+      "s20248",
+      "m61014",
+      "m144859",
+      "m48271",
+      "s113770",
+      "m6545",
+      "m28222",
+      "s74728",
+      "m142740",
+      "m117778",
+      "m55642",
+      "m118083",
+      "m4777"
+     ],
+     "trending-library": [
+      "s80634",
+      "m190755",
+      "s20248",
+      "m96601",
+      "s74203",
+      "m108303",
+      "m136177",
+      "s193907",
+      "m88313",
+      "s170475",
+      "m28867",
+      "m157888",
+      "s35913",
+      "m73598"
+     ]
+    }
+   },
+   "preferredLang": "Telugu",
+   "profile": "main",
+   "refreshCounter": 0,
+   "shelves": [
+    "hero",
+    "for-you",
+    "rediscover",
+    "lang-pref",
+    "top-week",
+    "trending-library",
+    "folder:f1",
+    "folder:f5"
+   ]
+  }
+ ]
+}
