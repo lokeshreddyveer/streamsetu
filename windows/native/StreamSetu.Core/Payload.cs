@@ -86,6 +86,7 @@ public static class Payload
     /// <summary>The files that are missing, a different size, or not the file in the list.</summary>
     public static List<string> Problems(string folder, PayloadManifest m)
     {
+        foreach (var f in m.Files) Resolve(folder, f.Path);                       // a path that leaves the folder is refused before anything is read
         var bad = new System.Collections.Concurrent.ConcurrentBag<string>();
         Parallel.ForEach(m.Files, f =>
         {
