@@ -1,18 +1,8 @@
 import SwiftUI
 
+/// The shimmer of a loading placeholder: the motion kit's (still with Reduce Motion, stops off screen).
 struct Shimmer: ViewModifier {
-    @State private var phase: CGFloat = -1
-    func body(content: Content) -> some View {
-        content
-            .overlay(
-                GeometryReader { g in
-                    LinearGradient(colors: [.clear, .white.opacity(0.09), .clear], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: g.size.width * 0.6)
-                        .offset(x: phase * g.size.width * 1.6)
-                }.clipped()
-            )
-            .onAppear { withAnimation(.linear(duration: 1.3).repeatForever(autoreverses: false)) { phase = 1 } }
-    }
+    func body(content: Content) -> some View { content.brandShimmer() }
 }
 
 struct SkeletonBlock: View {
@@ -28,7 +18,7 @@ struct SkeletonBlock: View {
 struct LoadingView: View {
     var label: String = "Loading…"
     var body: some View {
-        VStack(spacing: Spacing.md) { ProgressView().controlSize(.large); Text(label.loc).foregroundStyle(ColorTokens.textSecondary) }
+        BrandLoader(size: 48, label: label)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

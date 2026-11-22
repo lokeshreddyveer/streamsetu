@@ -191,8 +191,7 @@ struct WebDAVClient: Sendable {
         req.setValue("application/xml", forHTTPHeaderField: "Content-Type")
         req.httpBody = Data("<?xml version=\"1.0\"?><propfind xmlns=\"DAV:\"><prop><displayname/><resourcetype/><getcontentlength/></prop></propfind>".utf8)
         for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
-        let (data, response) = try await URLSession.shared.data(for: req)
-        let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+        let (data, code) = try await HTTPClient.app.exchange(req)
         if code == 401 || code == 403 { throw Failure(message: "The server refused the login. Check the name and password.") }
         guard code == 207 || code == 200 else { throw Failure(message: "The server answered \(code). Is this a WebDAV address?") }
         return Self.parse(data, folder: folder)
@@ -220,7 +219,7 @@ struct WebDAVClient: Sendable {
     func download(_ url: URL) async -> URL? {
         var req = URLRequest(url: url, timeoutInterval: 20)
         for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
-        guard let (data, r) = try? await URLSession.shared.data(for: req), (r as? HTTPURLResponse)?.statusCode == 200, data.count < 5_000_000 else { return nil }
+        guard let (data, status) = try? await HTTPClient.app.exchange(req, maxBytes: 5_000_000), status == 200 else { return nil }
         let out = FileManager.default.temporaryDirectory.appendingPathComponent("sub-\(UUID().uuidString)-\(url.lastPathComponent)")
         return (try? data.write(to: out)) == nil ? nil : out
     }

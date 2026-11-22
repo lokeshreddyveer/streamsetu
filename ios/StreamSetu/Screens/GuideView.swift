@@ -121,7 +121,10 @@ struct GuideView: View {
     private func nowMarker(track: CGFloat) -> some View {
         let x = vm.x(for: tick)
         return Group {
-            if x > 0, x < track { Rectangle().fill(.red.opacity(0.85)).frame(width: 2).offset(x: nameWidth + x).allowsHitTesting(false) }
+            if x > 0, x < track {
+                VStack(spacing: 0) { PulsingDot(color: .red.opacity(0.9), size: 7); Rectangle().fill(.red.opacity(0.85)).frame(width: 2) }
+                    .offset(x: nameWidth + x - 2.5).allowsHitTesting(false)
+            }
         }
     }
 

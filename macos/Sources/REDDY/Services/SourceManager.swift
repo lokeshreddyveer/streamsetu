@@ -187,6 +187,7 @@ final class SourceManager: @unchecked Sendable {
 
     /// A Stalker / Ministra / MAG portal. The box's MAC address is the login. The portal is asked once to make sure the box is accepted.
     func addStalker(name: String, portal: String, mac: String) async throws -> PlaylistSource {
+        guard SourceDetector.stalkerOffered else { throw SourceValidationError.invalid }          // not in the App Store build, whichever screen asked
         let base = try SourceURLValidator.validateXtreamServer(portal)
         guard let normalized = StalkerMapper.normalizedMAC(mac) else { throw SourceValidationError.invalid }
         let ref = try secure.save(Credentials(username: normalized, password: nil))

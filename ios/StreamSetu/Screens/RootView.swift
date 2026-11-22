@@ -65,7 +65,6 @@ struct RootView: View {
     /// An iPad window wide enough for a sidebar. A narrow Split View, Slide Over or Stage Manager window (compact width) uses the iPhone navigation; an iPhone always does.
     private var usesSidebar: Bool { UIDevice.current.userInterfaceIdiom == .pad && sizeClass == .regular }
 
-    @State private var opening = !OpeningPlayed.done
     @State private var picked = ProfilePicked.done
 
     var body: some View {
@@ -83,12 +82,13 @@ struct RootView: View {
             if !v, !compactOrder.contains(router.tab) { router.tab = .more }
         }
         .loggingNotice()
+        // Short messages ("Refreshing your library…") rise in at the bottom, above the tab bar.
+        .overlay(alignment: .bottom) { ToastHost(center: state.toasts).padding(.bottom, barHeight + 8) }
         .background(ColorTokens.background)
         // The AI assistant button is unplugged for now (AssistantBubble is not shown); its code is left in place.
         .overlay { if let container { ViewingBlockOverlay(container: container) } }
         .animation(.easeInOut(duration: 0.3), value: container?.playback.viewingBlock)
         .overlay { if let container, !picked, container.profiles.isShared { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { picked = true } } } }
-        .overlay { if opening { OpeningAnimation { BrandMark() } onDone: { opening = false } } }
         .modifier(ThemeSync())
         .sheet(isPresented: $router.presentAdd) { AddPlaylistSheet() }
         .sheet(item: $router.pendingAssistantItem) { item in NavigationStack { DetailView(item: item) }.presentationDetents([.large]) }
@@ -106,40 +106,7 @@ struct ThemeSync: ViewModifier {
     }
 }
 
-/// First launch: nothing is built in, so the only thing to do is add a playlist.
-struct OnboardingView: View {
-    @Environment(IOSRouter.self) private var router
-    @Environment(\.container) private var container
-    @Environment(AppState.self) private var state
-    @State private var restore = ICloudRestore()
-
-    var body: some View {
-        VStack(spacing: 22) {
-            Spacer()
-            BrandMark().frame(width: 96, height: 96)
-            VStack(spacing: 8) {
-                Text("StreamSetu").font(.system(size: 30, weight: .bold))
-                Text("A bridge to your own TV. Add a playlist you are allowed to use and everything is kept on this device.")
-                    .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 360)
-            }
-            FirstRunSteps().frame(maxWidth: 340)
-            Button { router.presentAdd = true } label: { Label("Add a Playlist", systemImage: "plus").frame(maxWidth: 280) }
-                .buttonStyle(.borderedProminent).controlSize(.large)
-            Button { if let container { Task { await restore.start(container: container, state: state) } } } label: {
-                HStack(spacing: 8) { if restore.phase == .looking { ProgressView() }; Label("Restore from iCloud", systemImage: "icloud.and.arrow.down") }.frame(maxWidth: 280)
-            }
-            .buttonStyle(.bordered).controlSize(.large).disabled(restore.phase == .looking)
-            if restore.phase != .idle {
-                Text(restore.detail).font(.footnote).foregroundStyle(restore.phase == .nothingFound ? .orange : .secondary).multilineTextAlignment(.center).frame(maxWidth: 340)
-            }
-            Text("M3U or JSON links and files, or a login for Xtream, Jellyfin, Emby, Plex, HDHomeRun or TVHeadend. No content is included.").font(.caption).foregroundStyle(.tertiary).multilineTextAlignment(.center).frame(maxWidth: 340)
-            Spacer()
-        }
-        .padding(28).frame(maxWidth: .infinity, maxHeight: .infinity).background(ColorTokens.background)
-    }
-}
-
-/// The app icon, as shown on the welcome screen.
+/// The app icon, as shown on the About row in More.
 struct BrandMark: View {
     var body: some View {
         if let name = (Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any])?["CFBundlePrimaryIcon"] as? [String: Any],
@@ -198,8 +165,12 @@ struct MoreTab: View {
 struct CompactTabBar: View {
     @Binding var selection: IOSRouter.Tab
     @Environment(IOSRouter.self) private var router
+    @Environment(AppState.self) private var state
     @Environment(ScrollChrome.self) private var chrome: ScrollChrome?
     @Namespace private var slide
+    /// The last few taps on the bar, newest last. Three quick taps on the same tab refresh the library (see registerTap).
+    @State private var recentTaps: [(tab: IOSRouter.Tab, at: Date)] = []
+    @State private var refreshCount = 0
     private let items: [(tab: IOSRouter.Tab, title: String, symbol: String)] = [
         (.home, "Home", "house"), (.live, "Live TV", "dot.radiowaves.left.and.right"),
         (.movies, "Movies", "film"), (.series, "Series", "rectangle.stack"), (.more, "More", "ellipsis.circle"),
@@ -217,6 +188,24 @@ struct CompactTabBar: View {
         .padding(.horizontal, 20).padding(.bottom, 2)
         .frame(maxWidth: .infinity, alignment: small ? .trailing : .center)
         .sensoryFeedback(.selection, trigger: selection)
+        .sensoryFeedback(.impact(weight: .medium), trigger: refreshCount)
+    }
+
+    /// Three quick taps (within a second) on the same tab refresh the library: the playlist that is open, or every playlist when "all" is chosen.
+    /// Taps on different tabs never count, so moving around the bar quickly cannot start a refresh of a big catalogue by accident. A refresh already
+    /// running is not started again; the person is told so.
+    private func registerTap(_ tab: IOSRouter.Tab) {
+        let now = Date()
+        recentTaps = Array((recentTaps + [(tab: tab, at: now)]).filter { now.timeIntervalSince($0.at) <= 1.0 }.suffix(3))
+        guard recentTaps.count == 3, recentTaps.allSatisfy({ $0.tab == tab }) else { return }
+        recentTaps = []
+        if state.isSyncing {
+            state.toasts.show("Your library is already refreshing.", symbol: "arrow.triangle.2.circlepath")
+            return
+        }
+        if let id = state.activeSourceID { state.sync(id) } else { state.syncAll() }
+        refreshCount += 1
+        state.toasts.show("Refreshing your library…", symbol: "arrow.triangle.2.circlepath")
     }
 
     private var pill: some View {
@@ -239,6 +228,7 @@ struct CompactTabBar: View {
             ForEach(items, id: \.tab) { item in
                 let on = selection == item.tab
                 Button {
+                    registerTap(item.tab)
                     if selection == item.tab { router.reselect(item.tab); chrome?.reset() }
                     else { withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) { selection = item.tab } }
                 } label: {

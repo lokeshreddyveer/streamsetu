@@ -58,7 +58,7 @@ struct FavouritesView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 if channels.isEmpty, titles.isEmpty, loaded {
-                    EmptyState(symbol: "heart", title: "No favourites yet", message: "Tap the heart on a channel, movie or series.")
+                    EmptyState(symbol: "heart", title: "No favourites yet", message: "Tap the heart on a channel, movie or series.").frame(maxWidth: .infinity, minHeight: 360)
                 }
                 if !channels.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
@@ -253,6 +253,7 @@ struct AboutView: View {
                     ForEach(["library opened", "library read", "ready"], id: \.self) { k in if let ms = t[k] { LabeledContent(k.capitalized, value: String(format: "%.2f s", Double(ms) / 1000)) } }
                 }.glossRow()
             }
+            Section("Data sources") { TMDBAttribution() }.glossRow()
             Section("Legal") {
                 ForEach(LegalPage.allCases) { page in
                     NavigationLink { LegalView(page: page).navigationTitle(page.title).navigationBarTitleDisplayMode(.inline) } label: { Text(page.title) }

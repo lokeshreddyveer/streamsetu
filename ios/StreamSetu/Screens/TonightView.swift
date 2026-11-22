@@ -25,7 +25,7 @@ struct TonightView: View {
                     }.glossRow()
                 }
                 if !plan.alerts.isEmpty { Section("From your guide alerts") { ForEach(plan.alerts, id: \.self) { Text($0) } }.glossRow() }
-            } else { ProgressView() }
+            } else { BrandLoader(size: 40) }
         }
         .navigationTitle("Tonight").themed("Tonight")
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") { await load() }

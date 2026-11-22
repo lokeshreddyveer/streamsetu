@@ -37,6 +37,7 @@ struct VODMetadataCoverage: Sendable, Equatable {
 enum WatchFilter: String, Sendable { case started, watched }
 
 struct VODQuery: Sendable {
+    func with(limit: Int?) -> VODQuery { var q = self; q.limit = limit; return q }
     var sourceID: UUID?
     var categoryID: String?
     var favoritesOnly = false
@@ -129,6 +130,12 @@ protocol CatalogRepository: Sendable {
     func countSeries(_ q: VODQuery) throws -> Int
     func genres(kind: ContentKind) throws -> [String]
     func years(kind: ContentKind) throws -> [Int]
+    /// The catalog as recommendation surfaces must see it: always without locked folders, hidden folders and titles that have a copy in one, even in a session unlocked with the PIN.
+    var recommendationView: any CatalogRepository { get }
     /// Every channel including hidden ones and quality variants, for the Command Center.
     func allChannelsForManagement(sourceID: UUID?) throws -> [Channel]
+}
+
+extension CatalogRepository {
+    var recommendationView: any CatalogRepository { self }
 }

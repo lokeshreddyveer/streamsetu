@@ -14,7 +14,7 @@ struct WatchLaterView: View {
     var body: some View {
         ScrollView {
             if titles.isEmpty, loaded {
-                EmptyState(symbol: "bookmark", title: "Nothing saved yet", message: "Tap the bookmark on a movie or series to keep it here for later.")
+                EmptyState(symbol: "bookmark", title: "Nothing saved for later", message: "Tap the bookmark on a movie or series to keep it here for later.").frame(maxWidth: .infinity, minHeight: 360)
             }
             TitleGrid(items: sort.apply(titles), editing: editing, onRemove: { t in state.toggleWatchLater(t.id, kind: t.kind); titles.removeAll { $0.id == t.id }; if titles.isEmpty { editing = false } })
             .padding(16)

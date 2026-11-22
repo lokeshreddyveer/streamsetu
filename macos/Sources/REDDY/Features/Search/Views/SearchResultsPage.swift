@@ -111,9 +111,10 @@ struct SearchResultsPage: View {
         } else if model.visible.isEmpty {
             EmptyStateView(symbol: "magnifyingglass", title: "No results", message: "Nothing matches “\(model.term)” in any of your playlists\(model.tab == .all ? "" : " under \(model.tab.rawValue)")." + castHint).frame(height: 260)
         } else if model.tab == .all {
-            ForEach(SearchResultKind.allCases, id: \.self) { kind in
+            // Each group of results rises in after the one before it.
+            ForEach(Array(SearchResultKind.allCases.enumerated()), id: \.element) { i, kind in
                 let rows = model.results.byKind[kind] ?? []
-                if !rows.isEmpty { group(kind, rows) }
+                if !rows.isEmpty { group(kind, rows).staggeredAppear(i) }
             }
         } else {
             VStack(spacing: 0) { ForEach(model.visible) { row($0) } }.padding(.vertical, 4).surface()
@@ -166,7 +167,7 @@ struct SearchResultsPage: View {
         switch r.kind {
         case .channel: ChannelLogo(url: r.artworkURL, name: r.title, size: 30)
         case .movie, .series, .episode:
-            ArtworkImage(url: r.artworkURL, kind: r.kind == .episode ? .still : .poster, symbol: r.kind.symbol).frame(width: 30, height: r.kind == .episode ? 20 : 44)
+            ArtworkImage(url: r.artworkURL, kind: r.kind == .episode ? .still : .poster, symbol: r.kind.symbol, tile: .init(title: r.title)).frame(width: 30, height: r.kind == .episode ? 20 : 44)
                 .clipShape(RoundedRectangle(cornerRadius: 4)).frame(width: 30, height: 44)
         default: Image(systemName: r.kind.symbol).font(.system(size: 13)).foregroundStyle(ColorTokens.textSecondary).frame(width: 30, height: 30)
         }

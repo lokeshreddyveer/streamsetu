@@ -8,6 +8,8 @@ struct CatalogCategory: Identifiable, Hashable, Sendable {
     var name: String
     var sortOrder: Int
     var itemCount: Int = 0
+    /// The folder is behind the PIN. While folders are locked its count is withheld (0), so a row shows its name and a lock and nothing else.
+    var isLocked = false
 
     static func makeID(source: UUID, kind: ContentKind, provider: String) -> String {
         ItemID.make(source: source, kind: kind, provider: "cat:\(provider)")

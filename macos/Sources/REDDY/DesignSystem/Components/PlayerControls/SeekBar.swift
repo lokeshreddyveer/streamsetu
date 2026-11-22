@@ -15,7 +15,11 @@ struct SeekBar: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.white.opacity(0.22)).frame(height: hovering || dragging != nil ? 6 : 4)
                 Capsule().fill(accent).frame(width: g.size.width * frac, height: hovering || dragging != nil ? 6 : 4)
-                Circle().fill(.white).frame(width: 14, height: 14).offset(x: max(0, g.size.width * frac - 7)).opacity(hovering || dragging != nil ? 1 : 0)
+                // The thumb grows while it is dragged.
+                let thumb: CGFloat = dragging != nil ? 18 : 14
+                Circle().fill(.white).frame(width: thumb, height: thumb).offset(x: max(0, g.size.width * frac - thumb / 2)).opacity(hovering || dragging != nil ? 1 : 0)
+                    .shadow(color: .black.opacity(0.3), radius: 3, y: 1)
+                    .animation(BrandMotion.standard, value: dragging != nil)
             }
             .frame(maxHeight: .infinity)
             .contentShape(Rectangle())

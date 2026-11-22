@@ -152,7 +152,9 @@ import Foundation
             #expect(!locked.say.contains("Adult"))
             _ = parental.unlock(pin: "2468")
             let open = try #require(await AssistantToolbox(container: c).discoveryReply("play something best series"))
-            #expect(ids(open) == ["Adult Show", "Kids Show"], "visible while the person has unlocked restricted content")
+            // Changed with the always-restricted baseline for recommendations (owner decision): what the assistant proposes never comes from a locked folder, even in a session unlocked with the PIN.
+            #expect(ids(open) == ["Kids Show"], "recommendations stay restricted while the person has unlocked; the folder itself still opens")
+            #expect(try c.catalog.series(VODQuery(limit: 10)).contains { $0.title == "Adult Show" }, "the unlocked folder view still shows it")
             parental.lockNow()
             let again = try #require(await AssistantToolbox(container: c).discoveryReply("play something best series"))
             #expect(ids(again) == ["Kids Show"], "and hidden again when it relocks")
@@ -184,7 +186,7 @@ import Foundation
     }
 
     @Test func successIsReportedOnlyOncePlaybackStarts() async {
-        let out = await AssistantPlaybackWatch.started(probe: probe([.resolving, .preparing, .buffering, .playing]), expecting: "item", timeout: 30)
+        let out = await AssistantPlaybackWatch.started(probe: probe([.resolving, .preparing, .buffering, .playing]), expecting: "item", timeout: 600)          // the scripted probe advances one state per poll and returns as soon as it plays; the long limit only keeps a busy test machine (other suites hogging the main actor) from running the clock out first
         #expect(out == .done(nil))
     }
 

@@ -98,10 +98,11 @@ extension AppContainer {
             if let m = playback.statusMessage, !m.isEmpty { p += " [\(m)]" }
             c.nowPlaying = p
         }
-        let counts = (try? db.read { d in (try d.scalarInt("SELECT COUNT(*) FROM channels"), try d.scalarInt("SELECT COUNT(*) FROM movies"), try d.scalarInt("SELECT COUNT(*) FROM series")) }) ?? (0, 0, 0)
+        let visible = (try? catalog.visibleCounts(sourceID: nil)) ?? CatalogCounts()          // what the assistant is told about the library never counts locked or hidden folders
+        let counts = (visible.channels, visible.movies, visible.series)
         let sources = (try? catalog.sources().filter(\.enabled).count) ?? 0
         c.library = "\(sources) playlist(s), \(counts.0) channels, \(counts.1) movies, \(counts.2) series"
-        let taste = TasteProfile.learn(history: historyRepo, catalog: catalog, people: PeopleIndex(db: db))
+        let taste = TasteProfile.learn(history: historyRepo, catalog: catalog.recommendationView, people: PeopleIndex(db: db, alwaysRestricted: true))
         if taste.isUsable {
             let g = taste.genres.sorted { $0.value > $1.value }.prefix(3).map(\.key), l = taste.languages.sorted { $0.value > $1.value }.prefix(2).map(\.key)
             c.taste = (g + l).joined(separator: ", ")
@@ -272,8 +273,8 @@ enum WikipediaLookup {
 
     private static func fetch(_ url: URL) async throws -> Data {
         var r = URLRequest(url: url); r.timeoutInterval = 10; r.setValue("StreamSetu", forHTTPHeaderField: "User-Agent")
-        let (d, resp) = try await URLSession.shared.data(for: r)
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
+        let (d, status) = try await HTTPClient.app.exchange(r)
+        guard status == 200 else { throw URLError(.badServerResponse) }
         return d
     }
 }

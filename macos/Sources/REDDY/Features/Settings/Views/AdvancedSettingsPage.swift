@@ -115,6 +115,7 @@ struct LicensesSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(AboutInfo.notices).font(Typography.body).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                    TMDBAttribution()
                     if !libraries.isEmpty {
                         Text("Libraries bundled with this build").font(Typography.heading)
                         Text(libraries.joined(separator: "\n")).font(Typography.mono).foregroundStyle(ColorTokens.textSecondary).textSelection(.enabled)

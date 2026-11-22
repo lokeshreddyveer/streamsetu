@@ -302,7 +302,7 @@ struct AssignGuideSheet: View {
             Text("Match guide for “\(channel.name)”").font(Typography.heading)
             Text("Pick the guide channel that carries this channel's schedule. Automatic matching never overrides your choice.").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
             InlineSearchField(text: $query, prompt: "Search guide channels")
-            if !loaded { ProgressView().frame(maxWidth: .infinity).frame(height: 240) }
+            if !loaded { BrandLoader(size: 40).frame(maxWidth: .infinity).frame(height: 240) }
             else if results.isEmpty { Text(guide.isEmpty ? "This playlist has no guide data yet." : "No guide channel matches.").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).frame(maxWidth: .infinity).frame(height: 240) }
             else {
                 ScrollView {

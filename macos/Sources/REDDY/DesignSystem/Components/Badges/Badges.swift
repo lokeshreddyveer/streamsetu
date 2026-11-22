@@ -27,12 +27,14 @@ struct ProgressBar: View {
     var height: CGFloat = 3
     @Environment(\.reddyAccent) private var accent
     var body: some View {
-        GeometryReader { g in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.white.opacity(0.18))
-                Capsule().fill(accent).frame(width: g.size.width * min(1, max(0, fraction)))
+        EmptyView().modifier(ProgressFillIn(fraction: fraction) { shown in
+            AnyView(GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.18))
+                    Capsule().fill(accent).frame(width: g.size.width * min(1, max(0, shown)))
+                }
             }
-        }
-        .frame(height: height)
+            .frame(height: height))
+        })
     }
 }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppearanceSettingsPage: View {
     @Environment(AppSettings.self) private var settings
+    @AppStorage(OpeningPreference.key) private var opening = OpeningPreference.automatic.rawValue
 
     var body: some View {
         @Bindable var s = settings
@@ -24,6 +25,12 @@ struct AppearanceSettingsPage: View {
                 }
                 SettingsRow(title: "Density", detail: "Card size in grids, and row height in channel lists and the sidebar.") {
                     Picker("Density", selection: $s.density) { ForEach(LayoutDensity.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
+                }
+                SettingsRow(title: "Opening", detail: "What plays when StreamSetu starts. Automatic: the full story the first time, a short version after that. What's New still shows after an update when it is off.") {
+                    HStack(spacing: 8) {
+                        Button("Replay the Full Story") { OpeningCoordinator.shared.replayFullStory() }
+                        Picker("Opening", selection: $opening) { ForEach(OpeningPreference.allCases) { Text($0.label.loc).tag($0.rawValue) } }.pickerStyle(.menu).fixedSize()
+                    }
                 }
                 SettingsRow(title: "Reduce animation", detail: "Turns off transitions and hover animation throughout the app.") { Toggle("Reduce animation", isOn: $s.reduceMotion) }
                 SettingsRow(title: "Increase contrast", detail: "Brighter text and stronger outlines. Also follows the system Increase Contrast setting.") { Toggle("Increase contrast", isOn: $s.highContrast) }

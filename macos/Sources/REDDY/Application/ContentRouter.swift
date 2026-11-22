@@ -5,6 +5,7 @@ struct ContentRouter: View {
     @Environment(AppRouter.self) private var router
     @Environment(AppState.self) private var state
     @Environment(\.container) private var container
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The folder being viewed, when it is PIN-locked and the app is locked: the content is replaced by an unlock prompt.
     private var lockedFolder: String? {
@@ -25,7 +26,8 @@ struct ContentRouter: View {
             }
         }
         .id(router.tab)
-        .transition(.opacity)
+        // A short crossfade with an 8 pt rise between pages (only the fade with Reduce Motion).
+        .transition(BrandMotion.reduced(reduceMotion) ? .opacity : .opacity.combined(with: .offset(y: 8)))
         .animation(AnimationTokens.page, value: router.tab)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(ColorTokens.contentBackground)

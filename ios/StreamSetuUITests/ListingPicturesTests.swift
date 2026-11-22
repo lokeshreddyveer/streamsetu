@@ -19,14 +19,15 @@ final class ListingPicturesTests: XCTestCase {
         }
         func dismissAlerts() { for label in ["Not Now", "Allow", "OK", "Don’t Allow"] where app.alerts.buttons[label].exists { app.alerts.buttons[label].tap() } }
 
-        // Add the demo library once: a link with a login in it fills the whole form, then Add.
+        // Add the demo library once: a link with a login in it, pasted into the welcome screen's field, fills the whole form; then Connect.
         let alreadyThere = app.staticTexts["Movies"].waitForExistence(timeout: 12) || app.buttons["Movies"].exists
-        if !alreadyThere || app.staticTexts["Welcome"].exists {
-            if app.buttons["Add a Playlist"].waitForExistence(timeout: 5) { app.buttons["Add a Playlist"].tap() }
-            let field = app.textFields["Paste any address"]
-            XCTAssertTrue(field.waitForExistence(timeout: 10), "the Add Playlist form did not open\n\(app.debugDescription)")
-            field.tap(); field.typeText("\(demo)/get.php?username=demo&password=demo&type=m3u_plus")
-            app.buttons["Add"].tap()
+        if !alreadyThere {
+            let field = app.textFields["Paste a playlist link, server address or stream"].firstMatch
+            XCTAssertTrue(field.waitForExistence(timeout: 10), "the welcome screen's paste field is missing\n\(app.debugDescription)")
+            field.tap(); field.typeText("\(demo)/get.php?username=demo&password=demo&type=m3u_plus\n")
+            let connect = app.buttons["Connect"].firstMatch
+            XCTAssertTrue(connect.waitForExistence(timeout: 10), "the Add Playlist form did not open\n\(app.debugDescription)")
+            connect.tap()
             if app.alerts.buttons["Save Anyway"].waitForExistence(timeout: 4) { app.alerts.buttons["Save Anyway"].tap() }
             XCTAssertTrue(app.staticTexts["Movies"].waitForExistence(timeout: 90) || app.buttons["Movies"].waitForExistence(timeout: 5), "the library did not open\n\(app.debugDescription)")
             sleep(6)                                                     // posters and guide arrive

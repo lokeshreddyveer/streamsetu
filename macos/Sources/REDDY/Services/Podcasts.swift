@@ -112,7 +112,7 @@ final class PodcastService: @unchecked Sendable {
 
     init(defaults: UserDefaults, fetch: @escaping @Sendable (URL) async throws -> Data = { url in
         var r = URLRequest(url: url, timeoutInterval: 20); r.setValue("StreamSetu", forHTTPHeaderField: "User-Agent")
-        return try await URLSession.shared.data(for: r).0
+        return try await HTTPClient.app.exchange(r).data
     }) { self.defaults = defaults; self.fetch = fetch }
 
     func subscriptions() -> [PodcastSubscription] { defaults.data(forKey: key).flatMap { try? JSONDecoder().decode([PodcastSubscription].self, from: $0) } ?? [] }

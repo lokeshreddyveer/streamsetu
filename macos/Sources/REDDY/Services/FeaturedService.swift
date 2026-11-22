@@ -12,6 +12,8 @@ struct FeaturedSlide: Identifiable, Hashable, Sendable {
     let synopsis: String
     let backdropURL: String
     let posterURL: String?
+    /// True for the poster tier: the title has no usable backdrop, so the banner draws its poster (wash behind, poster in front) instead.
+    var posterOnly = false
     var id: String { item.id }
 }
 
@@ -24,7 +26,20 @@ enum FeaturedPolicy {
     // MARK: eligibility
 
     /// A title is featurable with a usable backdrop, a real synopsis, and a way to describe it (year or genre).
-    static func slide(_ item: LibraryItem) -> FeaturedSlide? {
+    static func slide(_ item: LibraryItem, allowPoster: Bool = false) -> FeaturedSlide? {
+        if allowPoster, !(item.backdropURL.map(isUsableArtwork) ?? false), let poster = item.posterURL, isUsableArtwork(poster),
+           !item.title.trimmingCharacters(in: .whitespaces).isEmpty, item.year != nil || (item.genre?.isEmpty == false) {
+            var rating: String?, minutes: Int?
+            switch item {
+            case .movie(let m):
+                if let r = m.rating, let v = Double(r), v > 0 { rating = String(format: "%.1f", v) }
+                if let d = m.durationSeconds, d > 60, let mins = Int(exactly: (d / 60).rounded()) { minutes = mins }
+            case .series(let s): if let r = s.rating, let v = Double(r), v > 0 { rating = String(format: "%.1f", v) }
+            }
+            let text = item.overview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return FeaturedSlide(item: item, title: displayTitle(item.title), year: item.year, genre: item.genre, durationMinutes: minutes, rating: rating,
+                                 synopsis: text.count >= minimumSynopsis ? text : "", backdropURL: poster, posterURL: poster, posterOnly: true)
+        }
         guard let backdrop = item.backdropURL, isUsableArtwork(backdrop),
               let synopsis = item.overview?.trimmingCharacters(in: .whitespacesAndNewlines), synopsis.count >= minimumSynopsis,
               !item.title.trimmingCharacters(in: .whitespaces).isEmpty,
@@ -104,10 +119,10 @@ enum FeaturedPolicy {
     }
 
     /// Takes eligible items in the order given, skipping repeats of the same title, up to `limit`.
-    static func slides(from items: [LibraryItem], limit: Int = target) -> [FeaturedSlide] {
+    static func slides(from items: [LibraryItem], limit: Int = target, allowPoster: Bool = false) -> [FeaturedSlide] {
         var seen = Set<String>(), out: [FeaturedSlide] = []
         for item in items {
-            guard let s = slide(item), seen.insert(uniquenessKey(item)).inserted else { continue }
+            guard let s = slide(item, allowPoster: allowPoster), seen.insert(uniquenessKey(item)).inserted else { continue }
             out.append(s)
             if out.count == limit { break }
         }
@@ -126,7 +141,11 @@ final class FeaturedService: Sendable {
     static let maxDetailRequests = 40
     static let concurrency = 3
 
-    init(catalog: CatalogRepository, details: DetailService) { self.catalog = catalog; self.details = details }
+    /// The slideshow is a recommendation, so it reads the always-restricted view of the catalog.
+    init(catalog: CatalogRepository, details: DetailService) { self.catalog = catalog.recommendationView; self.details = details }
+
+    /// Forgets every finished slideshow (called the moment a folder is locked or hidden).
+    func purge() async { await cache.clear() }
 
     /// `restricted` says whether locked folders are hidden now and `revision` counts every change to what is hidden; both are part of the cache key, so locking, unlocking or locking one more folder never shows a slideshow made before.
     func movieSlides(sourceID: UUID?, restricted: Bool = false, revision: Int = 0, now: Date = Date()) async -> [FeaturedSlide] {
@@ -142,22 +161,23 @@ final class FeaturedService: Sendable {
 
     /// Discover keeps the order of the ranking it is given (the library's own ratings and plays), only dropping titles that
     /// can't be featured. The order is that ranking's, never reshuffled.
-    func discoverSlides(ranked: [LibraryItem], sourceID: UUID?, now: Date = Date()) async -> [FeaturedSlide] {
+    func discoverSlides(ranked: [LibraryItem], sourceID: UUID?, revision: Int = 0, now: Date = Date()) async -> [FeaturedSlide] {
         let day = FeaturedPolicy.dayKey(now), scope = sourceID?.uuidString ?? "all"
-        let key = "discover|\(scope)|\(day)|\(ranked.prefix(24).map(\.id).joined(separator: ",").hashValue)"
+        // The whole ranking is part of the key (enrich() walks all of it, so a slide can come from any position), and so is the restriction revision.
+        let key = "discover|\(scope)|\(day)|\(revision)|\(ranked.count)|\(ranked.map(\.id).joined(separator: ",").hashValue)"
         if let hit = await cache.get(key) { return hit }
-        let slides = await enrich(ranked)
+        let slides = await enrich(ranked, allowPoster: true)
         if !slides.isEmpty { await cache.set(key, slides) }
         return slides
     }
 
     /// Walks `items` in order, fetching details for movies that lack a backdrop/synopsis (bounded), until there are enough slides.
-    private func enrich(_ items: [LibraryItem]) async -> [FeaturedSlide] {
+    private func enrich(_ items: [LibraryItem], allowPoster: Bool = false) async -> [FeaturedSlide] {
         var ready: [LibraryItem] = []
         var requests = 0
         var index = 0
         let want = FeaturedPolicy.target
-        while index < items.count, FeaturedPolicy.slides(from: ready, limit: want).count < want {
+        while index < items.count, FeaturedPolicy.slides(from: ready, limit: want, allowPoster: allowPoster).count < want {
             // a small batch at a time, so we stop asking the provider as soon as there are enough
             var batch: [LibraryItem] = []
             while index < items.count, batch.count < Self.concurrency {
@@ -167,7 +187,7 @@ final class FeaturedService: Sendable {
             let resolved = await withTaskGroup(of: (Int, LibraryItem).self) { group -> [(Int, LibraryItem)] in
                 for (i, item) in batch.enumerated() {
                     group.addTask { [self] in
-                        if FeaturedPolicy.slide(item) != nil { return (i, item) }
+                        if FeaturedPolicy.slide(item, allowPoster: allowPoster) != nil { return (i, item) }
                         guard case .movie(let m) = item, m.detailFetchedAt == nil, requestAllowed() else { return (i, item) }
                         if let updated = try? await details.movie(id: m.id) { return (i, .movie(updated)) }
                         return (i, item)
@@ -181,7 +201,7 @@ final class FeaturedService: Sendable {
             requests += batch.count
             if requests > Self.maxDetailRequests * 4 { break }
         }
-        return FeaturedPolicy.slides(from: ready, limit: want)
+        return FeaturedPolicy.slides(from: ready, limit: want, allowPoster: allowPoster)
     }
 
     private let budget = LockedBox(0)
@@ -195,6 +215,7 @@ final class FeaturedService: Sendable {
 
 actor FeaturedCache {
     private var store: [String: [FeaturedSlide]] = [:]
+    func clear() { store.removeAll() }
     func get(_ k: String) -> [FeaturedSlide]? { store[k] }
     func set(_ k: String, _ v: [FeaturedSlide]) {
         if store.count > 16 { store.removeAll() }                 // a day's worth is a handful of entries

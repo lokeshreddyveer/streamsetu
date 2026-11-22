@@ -142,7 +142,7 @@ struct OnYourDeviceView: View {
         case .files: FilesView()
         case .videos, .pictures:
             switch library.access {
-            case .unknown: ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .unknown: BrandLoader(size: 40).frame(maxWidth: .infinity, maxHeight: .infinity)
             case .denied: denied
             case .granted, .limited:
                 let items = tab == .videos ? library.videos : library.pictures

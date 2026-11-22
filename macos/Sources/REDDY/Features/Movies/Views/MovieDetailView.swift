@@ -9,6 +9,7 @@ struct MovieDetailView: View {
     @State private var detail: Movie?
     @State private var progress: WatchProgress?
     @State private var loading = true
+    @State private var person: PersonRoute?
 
     private var m: Movie { detail ?? movie }
 
@@ -27,6 +28,7 @@ struct MovieDetailView: View {
                         .clipShape(RoundedRectangle(cornerRadius: LayoutTokens.radius, style: .continuous)).shadow(radius: 12).offset(y: -60)
                     VStack(alignment: .leading, spacing: Spacing.md) {
                         Text(m.title).font(Typography.display).lineLimit(3)
+                        VersionPill(item: .movie(m))
                         metaLine
                         QualityBadgeRow(texts: [m.title, m.categoryName])
                         FolderPathButton(name: m.categoryName) { if let id = m.categoryID { router.movie = nil; router.openFolder(.movies, categoryID: id) } }
@@ -39,14 +41,18 @@ struct MovieDetailView: View {
                         }
                         Text("Audio and subtitle tracks appear in the player once the movie starts.").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
                     }.padding(.top, Spacing.lg)
+                    .staggeredAppear(1)          // the title and what follows rise in just after the poster
                 }
                 .padding(.horizontal, Spacing.section).padding(.bottom, Spacing.md)
                 FranchiseTimeline(currentID: m.id, movie: m) { PlayActions.open($0, router: router) }.padding(.horizontal, Spacing.section).padding(.bottom, Spacing.md)
+                CastSection(item: .movie(m)) { person = PersonRoute(name: $0) }.padding(.horizontal, Spacing.section).padding(.bottom, Spacing.md)
+                OtherLanguagesRow(item: .movie(m)) { PlayActions.open($0, router: router) }.padding(.horizontal, Spacing.section).padding(.bottom, Spacing.md)
                 SimilarSection(item: .movie(m)).padding(.horizontal, Spacing.section).padding(.bottom, Spacing.section)
             }
         }
         .frame(width: 860, height: 640).background(ColorTokens.background)
         .task { await load() }
+        .sheet(item: $person) { p in PersonSheet(person: p) { person = nil } }
     }
 
     private var metaLine: some View {

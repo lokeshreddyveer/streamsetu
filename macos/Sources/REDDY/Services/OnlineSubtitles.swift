@@ -29,9 +29,9 @@ struct OnlineSubtitles: Sendable {
         var q = "/subtitles?query=\(clean.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? clean)&languages=\(language.isEmpty ? "en" : language)&order_by=download_count"
         if let year { q += "&year=\(year)" }
         if let season, let episode { q += "&type=episode&season_number=\(season)&episode_number=\(episode)" }
-        let (data, response) = try await URLSession.shared.data(for: request(q))
-        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            throw Failure.message(http.statusCode == 401 || http.statusCode == 403 ? "The API key was not accepted." : "OpenSubtitles answered \(http.statusCode).")
+        let (data, status) = try await HTTPClient.app.exchange(request(q))
+        if !(200..<300).contains(status) {
+            throw Failure.message(status == 401 || status == 403 ? "The API key was not accepted." : "OpenSubtitles answered \(status).")
         }
         let rows = ((try JSONSerialization.jsonObject(with: data) as? [String: Any])?["data"] as? [[String: Any]]) ?? []
         return rows.prefix(15).compactMap { row in
@@ -44,14 +44,15 @@ struct OnlineSubtitles: Sendable {
 
     /// Downloads one subtitle to a temporary file and returns it.
     func download(_ hit: Hit) async throws -> URL {
-        let (loginData, loginResponse) = try await URLSession.shared.data(for: request("/login", body: ["username": account.user, "password": account.password]))
-        guard (loginResponse as? HTTPURLResponse)?.statusCode == 200, let token = (try JSONSerialization.jsonObject(with: loginData) as? [String: Any])?["token"] as? String
+        let (loginData, loginStatus) = try await HTTPClient.app.exchange(request("/login", body: ["username": account.user, "password": account.password]))          // the password goes through the app's own network client, never the system's shared session
+        guard loginStatus == 200, let token = (try JSONSerialization.jsonObject(with: loginData) as? [String: Any])?["token"] as? String
         else { throw Failure.message("OpenSubtitles did not accept the account name and password.") }
-        let (linkData, linkResponse) = try await URLSession.shared.data(for: request("/download", token: token, body: ["file_id": hit.fileID]))
-        if let http = linkResponse as? HTTPURLResponse, http.statusCode == 406 { throw Failure.message("The daily download limit of the free account is used up.") }
-        guard (linkResponse as? HTTPURLResponse)?.statusCode == 200, let link = (try JSONSerialization.jsonObject(with: linkData) as? [String: Any])?["link"] as? String, let url = URL(string: link)
+        let (linkData, linkStatus) = try await HTTPClient.app.exchange(request("/download", token: token, body: ["file_id": hit.fileID]))
+        if linkStatus == 406 { throw Failure.message("The daily download limit of the free account is used up.") }
+        guard linkStatus == 200, let link = (try JSONSerialization.jsonObject(with: linkData) as? [String: Any])?["link"] as? String, let url = URL(string: link)
         else { throw Failure.message("OpenSubtitles sent no file.") }
-        let (file, _) = try await URLSession.shared.data(from: url)
+        let (file, fileStatus) = try await HTTPClient.app.exchange(URLRequest(url: url, timeoutInterval: 20))
+        guard fileStatus == 200, !file.isEmpty else { throw Failure.message("OpenSubtitles sent no file.") }          // an error page is never saved as a subtitle
         let out = FileManager.default.temporaryDirectory.appendingPathComponent("\(hit.fileID).srt")
         try file.write(to: out)
         return out

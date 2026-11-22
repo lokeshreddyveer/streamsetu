@@ -150,6 +150,8 @@ struct LiveTVView: View {
     /// Small tiles instead of rows. A per-device choice; tiles are the default.
     @AppStorage("liveTV.tiles") private var tiles = true
     @State private var creatingGroup = false
+    @State private var viewMode: FolderViewMode = .folders
+    private var showsFolders: Bool { viewMode == .folders && model.categoryID == nil && !model.favouritesOnly && model.listID == nil && model.query.isEmpty }
     @State private var groupName = ""
 
 
@@ -163,8 +165,8 @@ struct LiveTVView: View {
     }
 
     private var noChannels: some View {
-        EmptyState(symbol: "dot.radiowaves.left.and.right", title: model.query.isEmpty ? "No channels" : "No matches",
-                   message: model.query.isEmpty ? (state.isSyncing ? "Channels appear when the playlist has been read." : "This playlist has no live channels, or the folder is empty.") : nil)
+        let text = EmptyStateText.liveTV(favouritesOnly: model.favouritesOnly, query: model.query, syncing: state.isSyncing)
+        return EmptyState(symbol: text.symbol, title: text.title, message: text.message).frame(maxWidth: .infinity, minHeight: 320)
     }
 
     @ViewBuilder private func menu(_ c: Channel) -> some View {
@@ -243,7 +245,11 @@ struct LiveTVView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if tiles { tileGrid } else if sizeClass == .regular { grid } else { list }
+                if showsFolders {
+                    LiveFolderRowsView(play: { c, queue in if let container { Play.channel(c, queue: queue, container) } }, open: { row in
+                        if let cat = model.categories.first(where: { $0.id == row.id }) { pick(cat) } else { pick(CatalogCategory(id: row.id, sourceID: row.sourceID, kind: .channel, providerID: row.id, name: row.name, sortOrder: 0)) }
+                    })
+                } else if tiles { tileGrid } else if sizeClass == .regular { grid } else { list }
             }
             .navigationTitle("Live TV").themed("Live TV", tabRoot: true)
             .toolbar {
@@ -251,6 +257,7 @@ struct LiveTVView: View {
                 TrailingPills {
                     NavigationLink { SearchView(embedded: true, tab: .liveTV) } label: { Image(systemName: "magnifyingglass").pillIcon() }.accessibilityLabel("Search")
                     NavigationLink { GuideView(embedded: true) } label: { Image(systemName: "calendar").pillIcon() }.accessibilityLabel("TV Guide")
+                    Button { viewMode = viewMode == .folders ? .grid : .folders; FolderViewMode.save(viewMode, .channel, profile: container?.profiles.activeID ?? "main") } label: { Image(systemName: viewMode == .folders ? "square.grid.3x3.square" : "folder").pillIcon() }.accessibilityLabel(viewMode == .folders ? "Show all channels" : "Show folders")
                     Button { tiles.toggle() } label: { Image(systemName: tiles ? "list.bullet" : "square.grid.3x3").pillIcon() }.accessibilityLabel(tiles ? "Show as list" : "Show as tiles")
                     Button { askNumber = true } label: { Image(systemName: "number").pillIcon() }.accessibilityLabel("Go to channel number")
                     Button { router.showMultiView = true } label: { Image(systemName: "rectangle.split.2x2").pillIcon() }.accessibilityLabel("Multi-View")
@@ -299,6 +306,7 @@ struct LiveTVView: View {
             } message: { Text("Channels are numbered by their place in the list on screen (1–\(model.channels.count)).") }
             .sheet(isPresented: Binding(get: { lockedPick != nil }, set: { if !$0 { lockedPick = nil } })) { UnlockSheet { model.categoryID = lockedPick } }
         }
+        .onAppear { viewMode = FolderViewMode.load(.channel, profile: container?.profiles.activeID ?? "main") }
         .task(id: "\(model.query)|\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(model.categoryID ?? "")-\(model.favouritesOnly)-\(model.listID ?? "")") {
             // One load for every input, including the search text. Only a change of the text waits for a pause in typing; any other change loads at once.
             guard let c = container else { return }
@@ -327,7 +335,7 @@ struct PageFooter: View {
                 .accessibilityLabel("\(total) channels in all")
         }
         if model.loadingMore {
-            ProgressView().frame(maxWidth: .infinity).padding(.vertical, 12)
+            BrandLoader(size: 32).frame(maxWidth: .infinity).padding(.vertical, 12)
         } else if model.pageFailed {
             VStack(spacing: 6) {
                 Text("More channels could not be loaded.").font(.caption).foregroundStyle(.secondary)

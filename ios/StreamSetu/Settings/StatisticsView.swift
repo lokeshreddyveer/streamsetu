@@ -42,7 +42,7 @@ struct StatisticsView: View {
                     top("Top channels", s.topChannels); top("Top movies", s.topMovies); top("Top series", s.topSeries)
                     Section { Button("Reset Statistics", role: .destructive) { confirmReset = true } }.glossRow()
                 }
-            } else { ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear) }
+            } else { BrandLoader(size: 32).frame(maxWidth: .infinity).listRowBackground(Color.clear) }
         }
         .navigationTitle("Statistics").themed("Statistics")
         .task(id: range) { await load() }

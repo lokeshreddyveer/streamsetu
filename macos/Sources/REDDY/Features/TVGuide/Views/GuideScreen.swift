@@ -117,7 +117,7 @@ struct GuideScreen: View {
     @ViewBuilder private var nowMarker: some View {
         let x = vm.x(for: clock)
         if x >= 0 && x <= vm.trackWidth {
-            VStack(spacing: 0) { Circle().fill(accent).frame(width: 8, height: 8); Rectangle().fill(accent).frame(width: 2) }
+            VStack(spacing: 0) { PulsingDot(color: accent); Rectangle().fill(accent).frame(width: 2) }
                 .offset(x: LayoutTokens.guideChannelWidth + x - 4).allowsHitTesting(false).accessibilityHidden(true)
         }
     }

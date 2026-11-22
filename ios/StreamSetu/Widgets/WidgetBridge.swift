@@ -11,6 +11,10 @@ final class WidgetBridge {
 
     func start(_ c: AppContainer) {
         loop?.cancel()
+        // A lock, a relock or a change of profile rewrites the widget in the same call, so a title that just became restricted is not left on the home screen until the next tick.
+        c.parental.observeRestriction { [weak self] in self?.publishContinueNow(c) }
+        c.observeProfileSwitch { [weak self] in self?.publishContinueNow(c) }
+        publishContinueNow(c)          // before the first widget reload: what an earlier session left behind is replaced at launch
         loop = Task { [weak self] in
             var tick = 0
             while !Task.isCancelled {
@@ -24,20 +28,16 @@ final class WidgetBridge {
 
     /// Writes what the person left unfinished, for the widget.
     func publishContinue(_ c: AppContainer) async {
-        let items: [WidgetShared.Item] = await Task.detached {
-            let list = (try? c.history.continueWatching(limit: 6, sourceID: nil)) ?? []
-            return list.compactMap { ci -> WidgetShared.Item? in
-                let fraction = ci.progress.durationSeconds > 0 ? ci.progress.positionSeconds / ci.progress.durationSeconds : 0
-                switch ci.content {
-                case .movie(let m):
-                    guard let link = DeepLink.link(movie: m.title) else { return nil }
-                    return .init(title: m.title, subtitle: "Movie", progress: fraction, link: link.absoluteString)
-                case .episode(let e, let s):
-                    guard let link = DeepLink.link(series: s.title) else { return nil }
-                    return .init(title: s.title, subtitle: "S\(e.seasonNumber) E\(e.episodeNumber) · \(e.title)", progress: fraction, link: link.absoluteString)
-                }
-            }
-        }.value
+        let history = c.widgetHistory
+        let entries = await Task.detached { ContinueWidgetFeed.entries(history: history) }.value
+        write(entries)
+    }
+
+    /// The same, at once, on the calling thread: used when what may be shown has just changed.
+    func publishContinueNow(_ c: AppContainer) { write(ContinueWidgetFeed.entries(history: c.widgetHistory)) }
+
+    private func write(_ entries: [ContinueWidgetFeed.Entry]) {
+        let items = entries.map { WidgetShared.Item(title: $0.title, subtitle: $0.subtitle, progress: $0.progress, link: $0.link) }
         guard items != lastPublished else { return }
         lastPublished = items
         WidgetShared.save(items)

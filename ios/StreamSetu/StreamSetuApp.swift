@@ -13,22 +13,34 @@ struct StreamSetuApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                switch coordinator.phase {
-                case .starting:
-                    ZStack { ColorTokens.background.ignoresSafeArea(); ProgressView() }
-                case .failed(let message):
-                    FailureView(message: message, inventory: { coordinator.inventoryOfDamagedLibrary() }, recover: { keep in Task { await coordinator.recoverLibrary(keepPersonalData: keep) } })
-                case .ready:
-                    if let c = coordinator.container, let s = coordinator.state {
-                        RootView()
-                            .scrollIndicators(.hidden)
-                            .environment(c.settings).environment(s).environment(coordinator.router)
-                            .environment(\.container, c).environment(\.artwork, c.artwork)
-                            .environment(\.locale, c.settings.language.locale ?? Locale.current)
-                            .onOpenURL { coordinator.open($0) }
+            // The opening sits beside the app, which is built underneath it from the first moment, and is owned by
+            // OpeningCoordinator (one per process): a rebuilt RootView or a new scene can never restart it or keep it on screen.
+            ZStack {
+                Group {
+                    switch coordinator.phase {
+                    case .starting:
+                        ZStack { ColorTokens.background.ignoresSafeArea(); BrandLoader(size: 56) }
+                    case .failed(let message):
+                        FailureView(message: message, inventory: { coordinator.inventoryOfDamagedLibrary() }, recover: { keep in Task { await coordinator.recoverLibrary(keepPersonalData: keep) } })
+                    case .ready:
+                        if let c = coordinator.container, let s = coordinator.state {
+                            RootView()
+                                .scrollIndicators(.hidden)
+                                .environment(c.settings).environment(s).environment(coordinator.router)
+                                .environment(\.container, c).environment(\.artwork, c.artwork)
+                                .environment(\.locale, c.settings.language.locale ?? Locale.current)
+                                // A link to a title opens its page in whichever navigation stack it sits in; a new identity per title,
+                                // so a page is never reused for another version.
+                                .environment(\.titleDestination) { item in AnyView(DetailView(item: item).id(item.id)) }
+                                .onOpenURL { coordinator.open($0) }
+                        }
                     }
                 }
+                OpeningOverlay()
+            }
+            .onChange(of: coordinator.destination, initial: true) { _, d in
+                guard d != .starting else { return }
+                OpeningCoordinator.shared.destinationReady(ok: d == .ready, hasSources: !(coordinator.state?.sources.isEmpty ?? true))
             }
             .preferredColorScheme(.dark)
             .tint(coordinator.container?.settings.accent.color ?? ColorTokens.accentDefault)
@@ -46,6 +58,11 @@ final class IOSCoordinator {
     private var booting = false
     enum Phase { case starting, ready, failed(String) }
     private(set) var phase: Phase = .starting
+    /// Where start-up stands, without the failure's message: what the opening waits for.
+    enum Destination { case starting, ready, failed }
+    var destination: Destination {
+        switch phase { case .starting: .starting; case .ready: .ready; case .failed: .failed }
+    }
     private(set) var container: AppContainer?
     private(set) var state: AppState?
     let router = IOSRouter()
@@ -244,6 +261,8 @@ final class IOSRouter {
     }
     var query = ""
     var presentAdd = false
+    /// What the Add Playlist sheet starts from when the welcome screen opened it (a tile's type or a pasted address); the sheet takes it once.
+    var addPreset: AddPreset?
     var showMultiView = false
     var pendingAdd: PendingAdd?
 }

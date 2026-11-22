@@ -122,6 +122,8 @@ struct LibraryView: View {
     @State private var loadedQuery = ""
     @State private var featured: [LibraryItem] = []
     @State private var scrollY: CGFloat = 0
+    @State private var viewMode: FolderViewMode = .folders
+    @State private var topRow: String?
 
     @Environment(\.folderColumn) private var folderColumn
     /// On iPad the folder column beside the screen owns the model too, so a folder chosen there changes this list.
@@ -131,19 +133,37 @@ struct LibraryView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var posterWidth: CGFloat { sizeClass == .regular ? 150 : 110 }
     private var showsHero: Bool { !featured.isEmpty && model.query.isEmpty && model.categoryID == nil && model.shelf == .all }
+    /// Folders is the default for the whole list; a folder, a search, a filter or another shelf shows the grid.
+    private var showsFolders: Bool { viewMode == .folders && model.categoryID == nil && model.query.isEmpty && model.shelf == .all && !model.filter.isActive }
+    private var profileID: String { container?.profiles.activeID ?? "main" }
+    private func openFolder(_ row: FolderRowsModel.Row) {
+        container?.smartMix.noteFolderOpened(profile: profileID, categoryID: row.id)
+        if let p = container?.parental, p.isLocked(row.id), p.isRestricting { lockedPick = row.id } else { model.categoryID = row.id }
+    }
+    private var emptyShelf: EmptyStateText.Shelf {
+        switch model.shelf {
+        case .all: .all; case .favourites: .favourites; case .watchLater: .watchLater; case .unwatched: .unwatched
+        case .unwatchedFavourites: .unwatchedFavourites; case .thisMonth: .thisMonth; case .newEpisodes: .newEpisodes
+        }
+    }
     private var columns: [GridItem] { [GridItem(.adaptive(minimum: posterWidth, maximum: posterWidth + 40), spacing: 14, alignment: .top)] }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                if model.items.isEmpty, !model.loading {
-                    EmptyState(symbol: model.shelf == .watchLater ? "bookmark" : model.shelf == .favourites ? "heart" : model.shelf == .unwatched ? "eye.slash" : model.shelf == .unwatchedFavourites ? "heart.slash" : model.shelf == .thisMonth ? "calendar.badge.plus" : model.shelf == .newEpisodes ? "sparkles.tv" : (kind == .movie ? "film" : "rectangle.stack"), title: model.query.isEmpty ? (model.shelf == .watchLater ? "Nothing saved yet" : model.shelf == .favourites ? "No favourites yet" : model.shelf == .unwatched ? "Everything has been played" : model.shelf == .unwatchedFavourites ? "No unwatched favourites" : model.shelf == .thisMonth ? "Nothing new this month" : model.shelf == .newEpisodes ? "No new episodes" : "Nothing here") : "No matches",
-                               message: model.query.isEmpty ? (state.isSyncing ? "Titles appear when the playlist has been read." : "This playlist has no \(kind == .movie ? "movies" : "series") in this folder.") : nil)
-                }
                 // The same slideshow as Home, only of movies (or only of series); hidden while searching or inside one folder.
                 if showsHero { FeaturedBanner(items: featured, height: HeroMetrics.height(wide: sizeClass == .regular, share: 0.46), scrollY: scrollY, immersive: true) }
                 else { Color.clear.frame(height: UIScreen.safeTop + 52) }          // the top bar's room, since the page now runs up under it
                 ShelfChips(selection: $model.shelf, kind: kind)
+                // The empty state sits below the shelf chips, centred in the space under them, and says what fits the chosen shelf.
+                if showsFolders {
+                    FolderRowsView(kind: kind, posterWidth: posterWidth, memoryKey: "\(kind.rawValue)-\(profileID)", topRow: $topRow, open: openFolder)
+                } else {
+                if model.items.isEmpty, !model.loading {
+                    let text = EmptyStateText.library(shelf: emptyShelf, series: kind == .series, query: model.query, inFolder: model.categoryID != nil, syncing: state.isSyncing)
+                    EmptyState(symbol: text.symbol, title: text.title, message: text.message)
+                        .frame(maxWidth: .infinity, minHeight: 360)
+                }
                 if !model.understood.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
@@ -156,14 +176,18 @@ struct LibraryView: View {
                 if let fixed = model.correctedTo { CorrectedNote(original: model.query, corrected: fixed).padding(.top, 4) }
                 if model.total > 0 { Text("\(model.total.formatted()) titles").appFont(12).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16) }
                 LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(model.items) { item in
+                    // The first screenful rises in one after another; titles scrolled to later appear at once.
+                    ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
                         NavigationLink(value: item) { PosterCard(item: item, width: posterWidth, note: model.matchNotes[item.id]) }.buttonStyle(.press).contextMenu { TitleMenu(item: item) }
+                            .staggeredAppear(index)
                             .task { if item.id == model.items.last?.id, let c = container { await model.loadMore(c, source: state.activeSourceID) } }
                     }
                 }
                 .padding(16)
-                if model.loading { ProgressView().padding() }
+                if model.loading { BrandLoader(size: 32).padding() }
+                }
             }
+            .scrollPosition(id: $topRow, anchor: .top)
             .ignoresSafeArea(edges: .top)
             .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, v in scrollY = v }
             .navigationTitle(kind == .movie ? "Movies" : "Series").themed(kind == .movie ? "Movies" : "Series", tabRoot: true)
@@ -173,8 +197,11 @@ struct LibraryView: View {
                 TrailingPills {
                     NavigationLink { SearchView(embedded: true, tab: kind == .movie ? .movies : .series) } label: { Image(systemName: "magnifyingglass").pillIcon() }.accessibilityLabel("Search")
                     Menu {
-                        Picker("Sort", selection: $model.sort) { ForEach(VODSort.allCases) { Text($0.rawValue).tag($0) } }
+                        Picker("Sort", selection: Binding(get: { model.sort }, set: { newSort in
+                            if showsFolders, newSort != model.sort { viewMode = .grid; FolderViewMode.save(.grid, kind, profile: profileID) }          // folder rows keep each folder's own order; a chosen sort means the grid
+                            model.sort = newSort })) { ForEach(VODSort.allCases) { Text($0.rawValue).tag($0) } }
                         LibraryFilterMenus(kind: kind, filter: $model.filter, options: model.filterOptions)
+                        Picker("View", selection: Binding(get: { viewMode }, set: { viewMode = $0; FolderViewMode.save($0, kind, profile: profileID) })) { Text("Folders").tag(FolderViewMode.folders); Text("Grid").tag(FolderViewMode.grid) }
                     } label: { Image(systemName: model.filter.isActive ? "arrow.up.arrow.down.circle.fill" : "arrow.up.arrow.down.circle").pillIcon() }
                     .accessibilityLabel(model.filter.isActive ? "Sort and filter, \(model.filter.count) filters on" : "Sort and filter")
                     if let folderColumn { FolderColumnButton(shown: folderColumn) } else { Menu {
@@ -200,7 +227,9 @@ struct LibraryView: View {
             loadedQuery = model.query
             await model.reload(c, source: state.activeSourceID)
         }
-        .onAppear { state.reloadWatched() }
+        .onAppear { state.reloadWatched(); viewMode = FolderViewMode.load(kind, profile: profileID) }
+        .onChange(of: profileID) { _, _ in viewMode = FolderViewMode.load(kind, profile: profileID); topRow = nil }
+        .onChange(of: showsFolders) { _, on in if !on { topRow = nil } }
         .onChange(of: router.pendingLibraryQuery, initial: true) { _, _ in
             guard router.tab == (kind == .movie ? .movies : .series), router.pendingLibraryQuery != nil || router.pendingShelf != nil else { return }
             model.shelf = router.pendingShelf.flatMap { LibraryModel.Shelf(rawValue: $0) } ?? .all

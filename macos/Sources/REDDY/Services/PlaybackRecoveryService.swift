@@ -24,7 +24,7 @@ struct PlaybackRecoveryService: Sendable {
 
     func decide(error: PlaybackError, attempt: Int, current: PlaybackEngineKind, available: Set<PlaybackEngineKind>, isLive: Bool, recentlyRefused: Bool = false) -> RecoveryAction {
         switch error.kind {
-        case .authorization:
+        case .authorization, .loginMissing:
             return .giveUp
         case .unsupportedFormat, .engineUnavailable:
             if attempt == 0, let alt = EngineSelector.fallback(from: current, available: available) { return .switchEngine(alt) }

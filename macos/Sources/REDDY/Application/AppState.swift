@@ -9,6 +9,13 @@ final class AppState {
     var counts = CatalogCounts()
     /// Bumped whenever the catalog changes so open screens reload.
     var catalogVersion = 0
+    /// Bumped by "Shuffle recommendations": Home draws a new mix. It never starts a sync and never touches playback history.
+    var shuffleTick = 0
+    func shuffleRecommendations() {
+        container.smartMix.reshuffle(profile: container.profiles.activeID)
+        shuffleTick += 1
+        toasts.show("Recommendations shuffled", symbol: "shuffle", kind: .success)
+    }
     var loaded = false
     /// Single source of truth for hearts across every screen.
     private(set) var favoriteIDs: Set<String> = []
@@ -230,7 +237,7 @@ final class AppState {
         reloadWatchLater()
         sources = (try? container.catalog.sources()) ?? []
         validateActiveSource()
-        counts = (try? container.catalog.counts(sourceID: activeSourceID)) ?? CatalogCounts()
+        counts = (try? container.catalog.visibleCounts(sourceID: activeSourceID)) ?? CatalogCounts()
         reloadFolders()
     }
 

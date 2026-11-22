@@ -31,6 +31,7 @@ struct HomeView: View {
                         Shelf(title: "Continue Watching") {
                             ForEach(resume) { r in
                                 Button { play(r) } label: { WideCard(title: r.title, subtitle: Self.remaining(r), imageURL: r.artworkURL, progress: r.progress.fraction, width: wide ? 320 : 240) }.buttonStyle(.press)
+                                    .contextMenu { Button("Don't Recommend This", systemImage: "hand.thumbsdown") { stopRecommending(r) } }
                             }
                         }
                     }
@@ -78,12 +79,14 @@ struct HomeView: View {
                             }
                         }
                     }
-                    ForEach(content?.shelves ?? []) { shelf in
+                    // The rows rise in one after another the first time Home appears.
+                    ForEach(Array((content?.shelves ?? []).enumerated()), id: \.element.id) { shelfIndex, shelf in
                         Shelf(title: shelf.title, caption: shelf.caption) {
                             ForEach(shelf.items) { item in
                                 NavigationLink(value: item) { PosterCard(item: item, width: wide ? 160 : 120) }.buttonStyle(.press)
                             }
                         }
+                        .staggeredAppear(shelfIndex)
                     }
                     if loaded, content?.shelves.isEmpty ?? true, resume.isEmpty {
                         EmptyState(symbol: state.isSyncing ? "arrow.triangle.2.circlepath" : "tray", title: state.isSyncing ? "Loading your library…" : "Nothing here yet",
@@ -99,6 +102,8 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { SyncIndicator() }
                 TrailingPills {
+                    Button { state.shuffleRecommendations(); UIImpactFeedbackGenerator(style: .light).impactOccurred() } label: { Image(systemName: "shuffle").pillIcon() }
+                        .accessibilityLabel("Shuffle recommendations").accessibilityHint("Picks a new mix. Does not refresh your library.")
                     NavigationLink { SearchView(embedded: true) } label: { Image(systemName: "magnifyingglass").pillIcon() }.accessibilityLabel("Search")
                 }
             }
@@ -106,7 +111,7 @@ struct HomeView: View {
             .miniPlayerInset()
         }
         .onAppear { state.reloadWatched() }
-        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(state.watchLaterIDs.count)") { await load() }
+        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(state.watchLaterIDs.count)-\(state.shuffleTick)") { await load(); container?.smartMix.refreshTrendingIfNeeded() }
         // Back from the player: Continue Watching and Recently Watched Channels show what was just played (not before, so nothing runs while it plays).
         .onChange(of: container?.playback.isExpanded ?? false) { old, now in if old && !now { Task { await load() } } }
     }
@@ -120,12 +125,17 @@ struct HomeView: View {
                 return (try? c.catalog.movie(id: entry.itemID)).flatMap { $0 }.map { .movie($0) }
             }
         }.value
-        featured = await Task.detached { (try? c.discover.featured(sourceID: source, kinds: [.movie, .series], count: 6, seed: FeaturedPicker.launchSeed)) ?? [] }.value
+        let smart = await c.smartMix.home(profile: c.profiles.activeID, sourceID: source, preferredLanguage: c.settings.preferredAudioLanguage)
+        if let order = smart?.heroOrder, !order.isEmpty {
+            featured = Array(order.filter { $0.posterURL != nil || $0.backdropURL != nil }.prefix(6))
+        } else {
+            featured = await Task.detached { (try? c.discover.featured(sourceID: source, kinds: [.movie, .series], count: 6, seed: FeaturedPicker.launchSeed)) ?? [] }.value
+        }
         let (built, items, channels, now) = await Task.detached { () -> (DiscoverContent?, [ContinueItem], [Channel], [String: String]) in
             let chans = (try? c.history.recentChannels(limit: 12, sourceID: source)) ?? []
             let at = Date()
             let guide = (try? c.epgRepo.lookup(channelIDs: chans.map(\.id), at: at)) ?? [:]
-            return (try? c.discover.build(sourceID: source), (try? c.history.continueWatching(limit: 12, sourceID: source)) ?? [], chans,
+            return (try? c.discover.build(sourceID: source, smart: smart), (try? c.history.continueWatching(limit: 12, sourceID: source)) ?? [], chans,
                     guide.compactMapValues { $0.now?.title })
         }.value
         let (next, top) = await Task.detached { ((try? c.history.upNext(sourceID: source)) ?? [], (try? c.history.mostWatchedChannels(sourceID: source)) ?? []) }.value
@@ -138,6 +148,16 @@ struct HomeView: View {
         let time = left > 60 ? "\(DurationFormatter.short(left)) left" : "almost done"
         if case .episode(let e, _) = r.content { return "S\(e.seasonNumber) E\(e.episodeNumber) · \(time)" }
         return "Resume · \(time)"
+    }
+
+    /// Writes only the "do not recommend" marker; the entry stays in Continue Watching and playback history is untouched.
+    private func stopRecommending(_ r: ContinueItem) {
+        guard let c = container else { return }
+        let id: String, profile = c.profiles.activeID
+        switch r.content { case .movie(let m): id = m.id; case .episode(_, let s): id = s.id }
+        if c.smartMix.dismiss(profile: profile, itemID: id) {
+            state.toasts.show("Won't be recommended again", symbol: "hand.thumbsdown", kind: .success, duration: 8, actionTitle: "Undo") { c.smartMix.undismiss(profile: profile, itemID: id) }
+        } else { state.toasts.show("This title can't be changed here", symbol: "exclamationmark.circle", kind: .info) }
     }
 
     private func play(_ r: ContinueItem) {

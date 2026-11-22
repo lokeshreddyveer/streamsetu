@@ -128,8 +128,20 @@ struct FeaturedSlideshow: View {
 
     private func backdrop(_ s: FeaturedSlide) -> some View {
         GeometryReader { g in
-            ArtworkImage(url: s.backdropURL, kind: .backdrop, contentMode: .fill, symbol: "film", showsPlaceholder: false)
+            if s.posterOnly {
+                // Poster tier: the poster itself, stretched and dimmed, is the wash (no blur filter, no motion); the sharp poster stands in front.
+                ZStack(alignment: .trailing) {
+                    ArtworkImage(url: s.backdropURL, kind: .poster, contentMode: .fill, symbol: "film", showsPlaceholder: false)
+                        .frame(width: g.size.width, height: g.size.height).opacity(0.5).clipped()
+                    ArtworkImage(url: s.backdropURL, kind: .poster, contentMode: .fit, symbol: "film", showsPlaceholder: false)
+                        .frame(width: g.size.height * 0.62, height: g.size.height * 0.86).clipShape(RoundedRectangle(cornerRadius: 8))
+                        .padding(.trailing, 36).padding(.bottom, 24)
+                }
                 .frame(width: g.size.width, height: g.size.height).clipped()
+            } else {
+                ArtworkImage(url: s.backdropURL, kind: .backdrop, contentMode: .fill, symbol: "film", showsPlaceholder: false)
+                    .frame(width: g.size.width, height: g.size.height).kenBurns().clipped()
+            }
         }
         .accessibilityHidden(true)
     }
@@ -147,7 +159,7 @@ struct FeaturedSlideshow: View {
             Text(s.title).font(.system(size: height < 260 ? 26 : 34, weight: .semibold)).tracking(-0.4).lineLimit(2).minimumScaleFactor(0.7)
                 .padding(.top, 6).frame(maxWidth: 560, alignment: .leading)
             Text(facts(s)).font(.system(size: 12)).foregroundStyle(Color(hex: 0xC7CEDA)).lineLimit(1).padding(.top, 6)
-            if height >= 230 {
+            if height >= 230, !s.synopsis.isEmpty {
                 Text(s.synopsis).font(.system(size: 12)).foregroundStyle(Color(hex: 0xB6BCC7)).lineLimit(2).lineSpacing(2)
                     .frame(maxWidth: 440, alignment: .leading).padding(.top, 6)
             }

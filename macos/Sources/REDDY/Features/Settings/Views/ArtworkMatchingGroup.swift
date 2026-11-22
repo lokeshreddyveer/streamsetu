@@ -6,6 +6,7 @@ struct ArtworkMatchingGroup: View {
     @Environment(AppState.self) private var state
     @State private var key = ""
     @State private var hasKey = false
+    @State private var trending = true
     @State private var running = false
     @State private var progress = MetadataMatchService.Progress()
     @State private var message: SettingsMessage?
@@ -26,21 +27,24 @@ struct ArtworkMatchingGroup: View {
                 if running { Button("Stop") { task?.cancel() } }
                 Button("Test Key") { test() }.disabled(!hasKey || running)
             }
+            SettingsRow(title: "Use TMDB weekly trending", detail: hasKey ? "Ranks Top This Week and Trending in Your Library by this week's trending titles. Only the public list is requested." : "On by default, but it only works once you add your own TMDB key above.") {
+                Toggle("", isOn: Binding(get: { trending }, set: { trending = $0; container?.smartMix.trendingEnabled = $0 })).labelsHidden().toggleStyle(.switch)
+            }
             MessageLine(message: message)
-            Text(MetadataMatchService.attribution).font(.caption).foregroundStyle(.tertiary).frame(maxWidth: .infinity, alignment: .leading)
+            TMDBAttribution()
         }
-        .onAppear { hasKey = container?.metadata.hasKey ?? false }
+        .onAppear { hasKey = container?.metadata.hasKey ?? false; trending = container?.smartMix.trendingEnabled ?? true }
     }
 
     private func save() {
         guard let svc = container?.metadata else { return }
-        do { try svc.saveKey(key); key = ""; hasKey = svc.hasKey; message = .init(text: "Key saved.", kind: .success) }
+        do { try svc.saveKey(key); key = ""; hasKey = svc.hasKey; container?.smartMix.applyPolicy(); container?.smartMix.refreshTrendingIfNeeded(); message = .init(text: "Key saved.", kind: .success) }
         catch { message = .init(text: "The key could not be saved.", kind: .failure) }
     }
 
     private func remove() {
         guard let svc = container?.metadata else { return }
-        try? svc.removeKey(); hasKey = false; message = .init(text: "Key removed.", kind: .info)
+        try? svc.removeKey(); hasKey = false; container?.smartMix.applyPolicy(); container?.smartMix.invalidate(.prefsChange); message = .init(text: "Key removed.", kind: .info)
     }
 
     private func test() {

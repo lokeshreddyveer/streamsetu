@@ -31,6 +31,8 @@ struct MenuCommands: Commands {
             Divider()
             Button("Search") { router.focusTopSearch() }.keyboardShortcut("k").disabled(locked)
             Button("Search in This Screen") { router.focusCurrentScreenSearch() }.keyboardShortcut("f").disabled(locked)
+            Divider()
+            Button("Shuffle Recommendations") { state?.shuffleRecommendations() }.keyboardShortcut("r", modifiers: [.command, .shift]).disabled(locked)
         }
         CommandMenu("Playback") {
             Button("Open Multi-View") { openWindow(id: "multiview") }.keyboardShortcut("m", modifiers: [.command, .shift]).disabled(locked)

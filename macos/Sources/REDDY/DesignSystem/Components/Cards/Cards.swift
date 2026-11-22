@@ -21,6 +21,7 @@ enum PosterTint {
 /// Branded placeholder used while artwork loads and when none exists. Original, abstract, no external assets.
 struct PosterPlaceholder: View {
     let title: String
+    var detail: String? = nil
     var showsTitle = true
     var body: some View {
         let h = PosterTint.hue(for: title)
@@ -36,7 +37,8 @@ struct PosterPlaceholder: View {
             if showsTitle {
                 Text(title.uppercased()).font(.system(size: 17, weight: .regular)).tracking(0.7).lineSpacing(0)
                     .lineLimit(4).minimumScaleFactor(0.7).multilineTextAlignment(.leading)
-                    .foregroundStyle(ColorTokens.textPrimary.opacity(0.92)).padding(12)
+                    .foregroundStyle(ColorTokens.textPrimary.opacity(0.92)).padding(12).padding(.bottom, detail == nil ? 0 : 16)
+                    .overlay(alignment: .bottomLeading) { if let detail { Text(detail).font(.system(size: 10, weight: .medium)).foregroundStyle(ColorTokens.textSecondary).lineLimit(1).padding(12) } }
             }
         }
     }
@@ -46,10 +48,11 @@ struct PosterPlaceholder: View {
 struct PosterArt: View {
     let title: String
     let url: String?
+    var detail: String? = nil
     var kind: ArtworkKind = .poster
     var body: some View {
         ZStack {
-            PosterPlaceholder(title: title)
+            PosterPlaceholder(title: title, detail: detail)
             if url.nilIfEmpty != nil { ArtworkImage(url: url, kind: kind, showsPlaceholder: false) }
         }
     }
@@ -70,11 +73,16 @@ struct PosterCardModel: Identifiable, Hashable {
     var isNew = false
     /// Watched to the end: a green tick in the corner.
     var isWatched = false
+    /// Folder rows: the title keeps room for two lines and the quiet line is always there, so tiles of a row share one height.
+    var reservesLines = false
+    /// Shown on the placeholder tile of a title without a poster: "2022 · 4K".
+    var placeholderDetail: String?
 
     init(item: LibraryItem, rank: Int? = nil, progress: Double? = nil, isFavorite: Bool = false, isNew: Bool = false, isWatched: Bool = false) {
         id = item.id; title = item.title
-        subtitle = [item.year.flatMap { item.title.contains(String($0)) ? nil : String($0) }, item.genre, item.isSeries ? "Series" : nil].compactMap { $0 }.joined(separator: " · ")
+        subtitle = [item.quietLine.isEmpty ? nil : item.quietLine, item.isSeries ? "Series" : nil].compactMap { $0 }.joined(separator: " · ")
         imageURL = item.posterURL
+        placeholderDetail = ArtworkTile.Content.detail(year: item.year, quality: item.isSeries ? "Series" : MetadataNormalizer.qualityLabel(MetadataNormalizer.normalize(item.title)))
         tag = item.isSeries ? "SERIES" : MetadataNormalizer.qualityLabel(MetadataNormalizer.normalize(item.title)).flatMap { ["4K", "FHD"].contains($0) ? $0 : nil }
         self.rank = rank; self.progress = progress; self.isFavorite = isFavorite; self.isNew = isNew; self.isWatched = isWatched
     }
@@ -122,7 +130,7 @@ struct ReddyPosterCard: View {
     private var label: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topLeading) {
-                PosterArt(title: model.title, url: model.imageURL)
+                PosterArt(title: model.title, url: model.imageURL, detail: model.placeholderDetail)
                 if model.isNew {
                     Text("NEW").font(.system(size: 8, weight: .heavy)).tracking(0.6).foregroundStyle(.white).padding(.horizontal, 6).padding(.vertical, 3)
                         .background(accent, in: RoundedRectangle(cornerRadius: 3)).padding(8).accessibilityLabel("New episode")
@@ -152,8 +160,8 @@ struct ReddyPosterCard: View {
             .animation(reduceMotion ? nil : AnimationTokens.hover, value: hovering)
             .overlay(alignment: .bottom) { if let p = model.progress, p > 0 { ProgressBar(fraction: p).padding(8) } }
 
-            Text(model.title).font(.system(size: 11, weight: .medium)).lineLimit(1).truncationMode(.tail).padding(.top, 7)
-            Text(model.subtitle).font(.system(size: 10)).foregroundStyle(ColorTokens.textSecondary).lineLimit(1).padding(.top, 3)
+            Text(model.title).font(.system(size: 11, weight: .medium)).lineLimit(model.reservesLines ? 2 : 1, reservesSpace: model.reservesLines).truncationMode(.tail).padding(.top, 7)
+            Text(model.subtitle.isEmpty && model.reservesLines ? " " : model.subtitle).font(.system(size: 10)).foregroundStyle(ColorTokens.textSecondary).lineLimit(1).padding(.top, 3)
         }
         .contentShape(Rectangle())
     }
@@ -191,7 +199,7 @@ struct ReddyRail<Item: Identifiable, Card: View>: View where Item.ID: Hashable {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title).font(.system(size: 16, weight: .semibold)).tracking(-0.2)
-                    if let caption { Text(caption).font(.system(size: 10)).foregroundStyle(ColorTokens.textTertiary) }
+                    if let caption, !caption.isEmpty { Text(caption).font(.system(size: 10)).foregroundStyle(ColorTokens.textTertiary).lineLimit(1).truncationMode(.tail) }
                 }
                 Spacer()
                 arrow("chevron.left", "Scroll \(title) left", disabled: index == 0) { index = max(0, index - step) }
@@ -200,7 +208,8 @@ struct ReddyRail<Item: Identifiable, Card: View>: View where Item.ID: Hashable {
             ScrollViewReader { proxy in
                 ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 11) {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { i, item in card(item, i + 1).id(item.id) }
+                        // The first screenful of cards rises in one after another the first time the row appears.
+                        ForEach(Array(items.enumerated()), id: \.element.id) { i, item in card(item, i + 1).staggeredAppear(i).id(item.id) }
                     }.scrollTargetLayout().padding(.vertical, 12).padding(.horizontal, 6)      // room for the hover lift and shadow
                 }
                 .scrollTargetBehavior(.viewAligned)

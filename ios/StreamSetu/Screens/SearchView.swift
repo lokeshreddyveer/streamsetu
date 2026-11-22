@@ -71,7 +71,7 @@ struct SearchView: View {
                 EmptyState(symbol: "questionmark.circle", title: "No results", message: "Try fewer letters or another spelling.")
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
             } else if phase == .loading, results.isEmpty {
-                ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear).listRowSeparator(.hidden)
+                BrandLoader(size: 32).frame(maxWidth: .infinity).listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
             if phase == .failed { failureNote.listRowBackground(Color.clear).listRowSeparator(.hidden) }
             if let fixed = correctedTo, !isBlank {
@@ -96,7 +96,7 @@ struct SearchView: View {
     private func row(_ r: SearchResult, showKind: Bool = false) -> some View {
         ReflowStack {
             if r.kind == .channel { ChannelLogo(url: r.artworkURL, name: r.title, size: 44) }
-            else { ArtworkImage(url: r.artworkURL, kind: .poster, contentMode: .fill, symbol: r.kind.symbol).frame(width: 44, height: 62).clipShape(RoundedRectangle(cornerRadius: 6)) }
+            else { ArtworkImage(url: r.artworkURL, kind: .poster, contentMode: .fill, symbol: r.kind.symbol, tile: .init(title: r.title)).frame(width: 44, height: 62).clipShape(RoundedRectangle(cornerRadius: 6)) }
             VStack(alignment: .leading, spacing: 2) {
                 Text(r.title).appFont(15, .medium).lineLimit(typeSize.isAccessibilitySize ? 4 : 2)
                 Text(showKind && !r.subtitle.isEmpty ? "\(r.kind.typeLabel) · \(r.subtitle)" : (showKind ? r.kind.typeLabel : r.subtitle)).appFont(12).foregroundStyle(.secondary).lineLimit(1)

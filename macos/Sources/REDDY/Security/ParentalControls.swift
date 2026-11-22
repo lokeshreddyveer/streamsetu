@@ -34,6 +34,18 @@ final class ParentalControls {
     }
     /// Called whenever what is visible may have changed, so screens reload.
     var onChange: () -> Void = {}
+    private var restrictionObservers: [() -> Void] = []
+    /// Observers are called first, in the same call that changed the restriction and before `onChange`: whatever was built or kept while the folder was visible (caches, widget payload) is dropped there, not on the next rebuild.
+    func observeRestriction(_ f: @escaping () -> Void) { restrictionObservers.append(f) }
+    /// Folders that have just been locked (the folder and its family): their pictures, shown history and the like are purged.
+    var onFoldersLocked: ([String]) -> Void = { _ in }
+    /// The session unlocked with the PIN has ended: pictures of the locked folders that were loaded meanwhile are evicted.
+    var onRelock: () -> Void = {}
+    /// An unlocked session happened and the pictures of the locked folders have not been swept since (survives a crash or a quit while unlocked).
+    var artworkSweepPending: Bool {
+        get { defaults.bool(forKey: Keys.sweepPending) }
+        set { defaults.set(newValue, forKey: Keys.sweepPending) }
+    }
 
     static let maxAttempts = 5
     static let lockoutSeconds: TimeInterval = 60
@@ -71,7 +83,7 @@ final class ParentalControls {
     }
 
     private enum Keys {
-        static let hash = "parental.pinhash", salt = "parental.salt", minutes = "parental.minutes", failures = "parental.failures", lockedUntil = "parental.lockoutuntil"
+        static let sweepPending = "parental.artworksweep", hash = "parental.pinhash", salt = "parental.salt", minutes = "parental.minutes", failures = "parental.failures", lockedUntil = "parental.lockoutuntil"
     }
 
     static func isValidPIN(_ pin: String) -> Bool { (4...8).contains(pin.count) && pin.allSatisfy(\.isASCII) && pin.allSatisfy(\.isNumber) }
@@ -141,6 +153,7 @@ final class ParentalControls {
         }
         defaults.set(0, forKey: Keys.failures); defaults.removeObject(forKey: Keys.lockedUntil)
         isUnlocked = true
+        artworkSweepPending = true
         unlockedUntil = now().addingTimeInterval(TimeInterval(unlockMinutes * 60))
         scheduleRelock()
         applyRestriction()
@@ -151,6 +164,7 @@ final class ParentalControls {
         guard isUnlocked else { return }
         isUnlocked = false; unlockedUntil = nil; relockTask?.cancel()
         applyRestriction()
+        onRelock()
     }
 
     /// Locks again if the unlock time has run out. Called by the timer and whenever the app becomes active.
@@ -170,7 +184,23 @@ final class ParentalControls {
     // MARK: folders
 
     /// Re-reads which folders are locked (after a backup was restored).
-    func reloadLocks() { lockedCategoryIDs = (try? catalog.lockedCategoryIDs()) ?? []; applyRestriction() }
+    /// A folder that is newly locked here (typically one locked on another device and arriving through iCloud) is treated exactly like one locked on this device: the same-named folders of the other
+    /// playlists follow, and `onFoldersLocked` runs so what was kept about it (shown history, pictures, saved details) is dropped at once.
+    func reloadLocks(onlyIfChanged: Bool = false) {
+        let before = lockedCategoryIDs
+        var now = (try? catalog.lockedCategoryIDs()) ?? []
+        let arrived = now.subtracting(before)
+        var all = arrived
+        for id in arrived { if let family = try? catalog.setCategoryLocked(id, true, family: true) { all.formUnion(family) } }
+        now.formUnion(all)
+        if onlyIfChanged, now == before { return }
+        lockedCategoryIDs = now
+        if !all.isEmpty { onFoldersLocked(Array(all)) }
+        applyRestriction()
+    }
+
+    /// Folders were hidden (here, or on another device): what is hidden changed, so everything keyed by the restriction is rebuilt, as for a lock.
+    func foldersHiddenChanged() { applyRestriction() }
 
     func isLocked(_ categoryID: String) -> Bool { lockedCategoryIDs.contains(categoryID) }
 
@@ -178,8 +208,10 @@ final class ParentalControls {
     @discardableResult
     func setFolder(_ categoryID: String, locked: Bool) -> Bool {
         guard hasPIN, locked || isUnlocked else { return false }
-        try? catalog.setCategoryLocked(categoryID, locked)
-        if locked { lockedCategoryIDs.insert(categoryID) } else { lockedCategoryIDs.remove(categoryID) }
+        // The same-named folders of the other playlists follow (and ones added later, see FolderFamily), so a twin folder cannot stand in for a locked one.
+        let changed = (try? catalog.setCategoryLocked(categoryID, locked, family: true)) ?? [categoryID]
+        if locked { lockedCategoryIDs.formUnion(changed) } else { lockedCategoryIDs.subtract(changed) }
+        if locked { onFoldersLocked(changed) }
         applyRestriction()
         return true
     }
@@ -190,6 +222,7 @@ final class ParentalControls {
     private func applyRestriction() {
         restrictionRevision += 1
         catalog.restriction.isActive = kidsMode || (hasPIN && !isUnlocked)
+        for f in restrictionObservers { f() }
         onChange()
     }
 }

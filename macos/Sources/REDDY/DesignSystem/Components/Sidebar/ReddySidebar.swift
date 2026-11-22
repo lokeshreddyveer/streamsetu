@@ -42,6 +42,8 @@ struct ReddySidebar: View {
     @State private var hovered: String?
     @State private var scroller = DragAutoScroller()
     @Environment(\.reddyAccent) private var accent
+    /// The selected row's background slides from row to row.
+    @Namespace private var selectionSlide
     @Environment(\.reddyDensity) private var density
 
     private var width: CGFloat { state.collapsed ? LayoutTokens.sidebarCollapsedWidth : LayoutTokens.sidebarWidth }
@@ -193,7 +195,14 @@ struct ReddySidebar: View {
             .padding(.horizontal, state.collapsed ? 0 : 9).frame(height: density.sidebarRowHeight)
             .frame(maxWidth: .infinity, alignment: state.collapsed ? .center : .leading)
             .foregroundStyle(selected ? accent : ColorTokens.textSecondary)
-            .background(selected ? Color.white.opacity(0.04) : .clear, in: RoundedRectangle(cornerRadius: LayoutTokens.radiusSmall, style: .continuous))
+            .background {
+                if selected {
+                    RoundedRectangle(cornerRadius: LayoutTokens.radiusSmall, style: .continuous).fill(accent.opacity(0.1))
+                        .overlay(alignment: .leading) { Capsule().fill(accent).frame(width: 3).padding(.vertical, 7) }
+                        .matchedGeometryEffect(id: "sidebar-selection", in: selectionSlide)
+                }
+            }
+            .animation(BrandMotion.standard, value: state.selection)
             .contentShape(Rectangle())
         }
         .buttonStyle(SidebarRowStyle(selected: selected))

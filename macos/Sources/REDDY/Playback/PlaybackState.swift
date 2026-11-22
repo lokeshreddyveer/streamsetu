@@ -2,7 +2,7 @@ import Foundation
 
 struct PlaybackError: Error, Equatable, Sendable {
     enum Kind: String, Sendable {
-        case network, nameLookup, providerBusy, timeout, authorization, unsupportedFormat, providerUnavailable, notFound, engineUnavailable, unknown
+        case network, nameLookup, providerBusy, timeout, authorization, loginMissing, unsupportedFormat, providerUnavailable, notFound, engineUnavailable, unknown
     }
     let kind: Kind
     let detail: String?
@@ -17,6 +17,7 @@ struct PlaybackError: Error, Equatable, Sendable {
         case .nameLookup: "This network can't reach the stream's server\(detail.map { " (\($0))" } ?? ""). Your internet may be fine."
         case .timeout: "The stream took too long to start. Try again."
         case .authorization: "Your streaming provider rejected the playback request."
+        case .loginMissing: "The saved login for this playlist could not be found."
         case .unsupportedFormat: "This stream format is not supported by the selected playback engine."
         case .providerUnavailable: "The stream could not be reached."
         case .notFound: "The provider no longer has this stream."
@@ -33,6 +34,7 @@ struct PlaybackError: Error, Equatable, Sendable {
         case .network: "Check your Wi-Fi or mobile data. If other apps work, your provider's server may be down."
         case .timeout: "Live streams can be slow to start. Try again, or choose the Smooth buffering profile in Settings > Playback."
         case .authorization: "Your login may have expired, or too many devices are using the account. Check the playlist's login."
+        case .loginMissing: "Edit the playlist and enter its login again. Nothing else needs to change."
         case .unsupportedFormat: "Try the other playback engine in Settings > Playback, or leave it on Automatic."
         case .providerUnavailable: "The channel may be offline right now. Try another channel, or try again later."
         case .notFound: "Refresh the playlist; the provider may have removed or renamed it."
@@ -54,6 +56,8 @@ struct PlaybackError: Error, Equatable, Sendable {
         Trace.log("classify raw error domain=\(raw.domain) code=\(raw.code) http=\(httpStatus.map(String.init) ?? "-") \(raw.localizedDescription) underlying=\((raw.userInfo[NSUnderlyingErrorKey] as? NSError).map { "\($0.domain) \($0.code)" } ?? "-") failingHost=\(failingHost ?? "-")")
         if let s = httpStatus { return fromHTTP(s) }
         if let pe = error as? PlaybackError { return pe }
+        // The login is missing from this device's Keychain (restored from a backup, or removed): retrying cannot help, editing the login does.
+        if let se = error as? SourceError, case .credentialsMissing = se { return .init(.loginMissing) }
         if let ne = error as? NetworkError {
             switch ne {
             case .offline: return .init(.network)

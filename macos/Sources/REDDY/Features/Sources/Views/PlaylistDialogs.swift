@@ -5,13 +5,19 @@ struct AddPlaylistDialog: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        ReddyDialog(title: "Add playlist", width: 520, onClose: { router.modal = nil }) {
-            AddSourceForm { added in
-                state.reload()
-                state.switchPlaylist(added.id)
-                router.modal = nil
+        GeometryReader { geo in
+            // The dialog never grows past the window: the tiles or fields scroll, while the buttons stay pinned and visible.
+            // 300 covers the margin around the dialog, its title bar and the pinned buttons with the legal line.
+            ReddyDialog(title: "Add playlist", width: 560, onClose: { router.modal = nil }) {
+                AddSourceForm(scrollHeight: max(200, geo.size.height - 300)) { added in
+                    state.reload()
+                    state.switchPlaylist(added.id)
+                    router.modal = nil
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .startMotionGate()
     }
 }
 

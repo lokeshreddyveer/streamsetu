@@ -82,6 +82,11 @@ enum AssistantDiagnostics {
                 out.why = "The provider answered but refused the request. That means the login is wrong or expired, or the account is already streaming on too many devices."
                 out.next = ["Open the playlist's login and check the username and password with your provider.", "Close the stream on your other devices, then retry."]
                 out.actions = ["retry", "open_sources"]
+            case .loginMissing:
+                out.cause = .credentials
+                out.why = "The saved login for this playlist is no longer on this device, so the stream cannot be asked for."
+                out.next = ["Open the playlist and enter its login again."]
+                out.actions = ["open_sources"]
             case .unsupportedFormat:
                 out.cause = .format
                 let other: PlaybackEngineKind = e.engine == .mpv ? .avPlayer : .mpv

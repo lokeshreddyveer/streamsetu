@@ -14,7 +14,17 @@ struct DetectedSource: Equatable, Sendable {
 
 enum SourceDetector {
 
-    static func detect(_ raw: String) -> DetectedSource? {
+    /// False in the App Store build. Everything that could start a Stalker source (the Type menu, the tiles, the paste detector, the form's Add button, the use case) follows this one switch;
+    /// a Stalker source that already exists (synced, restored from a backup) is not affected and keeps working.
+    static var stalkerOffered: Bool {
+        #if STREAMSETU_APPSTORE
+        false
+        #else
+        true
+        #endif
+    }
+
+    static func detect(_ raw: String, allowStalker: Bool = SourceDetector.stalkerOffered) -> DetectedSource? {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !text.contains("\n"), !text.contains(" "), let c = URLComponents(string: text), let scheme = c.scheme?.lowercased(), c.host?.isEmpty == false else { return nil }
         let path = c.path.lowercased()
@@ -44,7 +54,7 @@ enum SourceDetector {
         if port == 8096 || path.hasPrefix("/jellyfin") {
             return DetectedSource(kind: .jellyfin, server: origin, note: "Looks like a Jellyfin server (Emby uses the same port; change the type if it is Emby).")
         }
-        if path.hasSuffix("/c") || path.hasSuffix("/c/") || path.contains("/stalker_portal") || path.hasSuffix("/portal.php") {
+        if allowStalker, path.hasSuffix("/c") || path.hasSuffix("/c/") || path.contains("/stalker_portal") || path.hasSuffix("/portal.php") {
             return DetectedSource(kind: .stalker, server: text, note: "Looks like a Stalker or MAG portal. Add the box's MAC address.")
         }
         if path.hasPrefix("/web/") || path.hasPrefix("/api/getservices") || path.hasPrefix("/api/getallservices") {

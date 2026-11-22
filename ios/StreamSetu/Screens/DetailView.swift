@@ -39,9 +39,12 @@ struct DetailView: View {
                     LinearGradient(colors: [.black.opacity(0.5), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.2))          // keeps the clock and the buttons readable
                     LinearGradient(stops: [.init(color: .clear, location: 0.42), .init(color: ColorTokens.background.opacity(0.55), location: 0.66),
                                            .init(color: ColorTokens.background.opacity(0.92), location: 0.88), .init(color: ColorTokens.background, location: 1)], startPoint: .top, endPoint: .bottom)
-                    Text(item.cleanTitle).appFont(28, .heavy).lineLimit(3).minimumScaleFactor(0.7).foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.5), radius: 12, y: 2)
-                        .padding(.horizontal, 20).padding(.bottom, 12)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(item.cleanTitle).appFont(28, .heavy).lineLimit(3).minimumScaleFactor(0.7).foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.5), radius: 12, y: 2)
+                        VersionPill(item: item)
+                    }
+                    .padding(.horizontal, 20).padding(.bottom, 12)
                 }
                 .zIndex(0)
                 VStack(alignment: .leading, spacing: 14) {
@@ -66,10 +69,12 @@ struct DetailView: View {
                     FolderPathButton(name: item.categoryName) { if let id = item.categoryID { dismiss(); router.pendingFolder = (item.kind, id); router.go(item.isSeries ? .series : .movies) } }
                     facts
                     if let error { Label(error, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange) }
+                    if item.isSeries { OtherLanguagesRow(item: item, useLinks: true) }
                     if item.isSeries { episodes }
-                    if case .movie(let m) = item { FranchiseTimeline(currentID: m.id, movie: m, useLinks: true) }
+                    if case .movie(let m) = item { FranchiseTimeline(currentID: m.id, movie: m, useLinks: true); OtherLanguagesRow(item: item, useLinks: true) }
+                    CastSection(item: item, useLinks: true)
                     SimilarRow(item: item, extras: extras)
-                }.padding(.top, -20).padding(.horizontal, 16).frame(maxWidth: 820, alignment: .leading)
+                }.staggeredAppear(1).padding(.top, -20).padding(.horizontal, 16).frame(maxWidth: 820, alignment: .leading)
                     .frame(maxWidth: .infinity).background(ColorTokens.background).zIndex(1)      // slides over the banner as it recedes
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -92,6 +97,12 @@ struct DetailView: View {
             CollectionMenu(itemID: item.id, kind: item.kind)
         } label: { Image(systemName: "ellipsis.circle").pillIcon() } } }
         .background(ColorTokens.background)
+        .navigationDestination(for: PersonRoute.self) { p in
+            PersonTitlesList(name: p.name) { e in
+                NavigationLink(value: e.item) { PosterCard(item: e.item, width: 110, note: e.otherLanguages.isEmpty ? nil : "Also in " + e.otherLanguages.joined(separator: ", ")) }.buttonStyle(.press)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+        }
         .task { await load() }
         .miniPlayerInset()
     }
@@ -148,7 +159,7 @@ struct DetailView: View {
 
     /// The whole cast, when there is more than the credits row shows.
     @ViewBuilder private var facts: some View {
-        if castNames.count > 2 { fact("Cast", castNames.prefix(12).joined(separator: ", ")) }
+        EmptyView()          // the cast is the round-photo row below (CastSection); a plain "Cast: a, b, c" line would repeat it
     }
 
     private var ratingText: String? {
@@ -294,7 +305,7 @@ struct DetailView: View {
                 }
             }
         } else if error == nil {
-            ProgressView().frame(maxWidth: .infinity).padding()
+            BrandLoader(size: 32).frame(maxWidth: .infinity).padding()
         }
     }
 
@@ -336,7 +347,7 @@ struct DetailView: View {
             rememberPeople(container)
             if extras?.trailerKey == nil {
                 tmdbTrailer = more?.bestTrailer?.key
-                if tmdbTrailer == nil { previewClip = await TrailerLookup.find(title: item.title, year: item.year, isSeries: item.isSeries) }
+                if tmdbTrailer == nil, container.metadata.isSendable(item.id) { previewClip = await TrailerLookup.find(title: item.title, year: item.year, isSeries: item.isSeries) }
             }
         } catch {
             self.error = CredentialRedactor.redact((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
@@ -405,6 +416,8 @@ struct SimilarRow: View {
     let extras: ProviderExtras?
     @Environment(\.container) private var container
     @State private var suggestions: [SimilarSuggestion] = []
+    /// The suggestion being opened.
+    @State private var opened: LibraryItem?
 
     var body: some View {
         // A task on an empty view never runs, so something always exists here: a one-point clear line holds the loading step until there is a row to show.
@@ -416,7 +429,7 @@ struct SimilarRow: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(alignment: .top, spacing: 12) {
                             ForEach(suggestions) { s in
-                                NavigationLink(value: s.item) {
+                                Button { opened = s.item } label: {
                                     VStack(alignment: .leading, spacing: 4) {
                                         PosterCard(item: s.item, width: 110)
                                         Text(s.reason).appFont(11).foregroundStyle(.secondary).lineLimit(1).frame(width: 110, alignment: .leading)
@@ -428,6 +441,7 @@ struct SimilarRow: View {
                 }.padding(.top, 8)
             }
         }
+        .opensTitle($opened)
         // First from what is in the catalog, then again when the provider has sent the cast and director.
         .task(id: (extras?.cast ?? []) + (extras?.directors ?? []) + [item.id]) {
             guard let container else { return }

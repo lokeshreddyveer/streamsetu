@@ -82,11 +82,31 @@ final class SQLiteFavoritesRepository: FavoritesRepository {
 
     // MARK: hidden / overrides (local metadata only; the provider catalog is never modified)
 
+    /// Hiding a folder hides the same-named folders of the other playlists too (and ones added later: see FolderFamily), so a twin folder never stands in for it.
     func hide(_ id: String, kind: String) throws {
-        try db.write { try $0.execute("INSERT OR REPLACE INTO hidden_items(item_id, kind, hidden_at) VALUES(?,?,?)", [id, kind, Date()]) }
+        let hidden: [String] = try db.write { c in
+            let ids = kind == "category" ? try FolderFamily.members(of: id, in: c) : [id]
+            for x in ids { try c.execute("INSERT OR REPLACE INTO hidden_items(item_id, kind, hidden_at) VALUES(?,?,?)", [x, kind, Date()]) }
+            return ids
+        }
+        if kind == "category" { onFoldersHidden?(hidden) } else { onHiddenChanged?(hidden, true) }
     }
 
-    func unhide(_ id: String) throws { try db.write { try $0.execute("DELETE FROM hidden_items WHERE item_id=?", [id]) } }
+    /// Told the folders that were just hidden (the folder and its family), so what was kept about them (pictures, shown history) can be dropped at once. Set once at start-up.
+    nonisolated(unsafe) var onFoldersHidden: (@Sendable ([String]) -> Void)?
+
+    /// Told when single titles were hidden (`hidden` true) or anything was shown again (`hidden` false), so everything keyed by what is hidden is rebuilt. Set once at start-up.
+    nonisolated(unsafe) var onHiddenChanged: (@Sendable ([String], Bool) -> Void)?
+
+    func unhide(_ id: String) throws {
+        try db.write { c in
+            // Showing a folder shows its whole family, otherwise the next sync would hide it again from the folder still hidden.
+            let isFolder = try c.scalarInt("SELECT COUNT(*) FROM hidden_items WHERE item_id=? AND kind='category'", [id]) > 0
+            let ids = isFolder ? try FolderFamily.members(of: id, in: c) : [id]
+            for x in ids { try c.execute("DELETE FROM hidden_items WHERE item_id=?", [x]) }
+        }
+        onHiddenChanged?([id], false)
+    }
 
     func hiddenIDs(kind: String?) throws -> [String] {
         try db.read { c in

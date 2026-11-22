@@ -18,6 +18,8 @@ struct PlayerControlsOverlay: View {
     @State private var visible = true
     @State private var hideTask: Task<Void, Never>?
     @State private var showDiagnostics = false
+    /// The playlist whose login is being edited from the failure card (when the saved login is missing).
+    @State private var editingSource: PlaylistSource?
     @State private var showPicture = false
     @State private var showSearch = false
     @State private var showOnlineSubs = false
@@ -39,6 +41,7 @@ struct PlayerControlsOverlay: View {
 
     var body: some View {
         GeometryReader { g in content.background { if playback.isAudioOnly { AudioOnlyBackdrop(playback: playback, program: program) } }.onAppear { size = g.size }.onChange(of: g.size) { _, n in size = n } }
+            .sheet(item: $editingSource) { source in if let appState { EditSourceSheet(source: source).environment(appState) } }
     }
 
     private var content: some View {
@@ -52,7 +55,7 @@ struct PlayerControlsOverlay: View {
                     playback.panVideo(by: CGSize(width: v.translation.width - lastDrag.width, height: v.translation.height - lastDrag.height), container: size)
                     lastDrag = v.translation
                 }.onEnded { _ in lastDrag = .zero })
-            statusLayer
+            statusLayer.animation(BrandMotion.emphasized, value: failureShown)
             if !playback.numberEntry.isEmpty { numberBadge.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(24).allowsHitTesting(false).transition(.opacity) }
             if playback.repeatedBuffering, !dismissedBufferingHint {
                 bufferingHint.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top).padding(.top, 70)
@@ -140,7 +143,7 @@ struct PlayerControlsOverlay: View {
         switch playback.state {
         case .resolving, .preparing, .buffering, .seeking, .recovering:
             VStack(spacing: Spacing.sm) {
-                ProgressView().controlSize(.large)
+                BrandLoader(size: 52, tint: .white)
                 if let m = playback.statusMessage { Text(m).font(Typography.bodyMedium).foregroundStyle(.white.opacity(0.85)) }
                 else if playback.state == .recovering { Text("Reconnecting…").font(Typography.bodyMedium).foregroundStyle(.white.opacity(0.85)) }
             }.padding(Spacing.xl).background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: LayoutTokens.radius)).allowsHitTesting(false)
@@ -150,6 +153,10 @@ struct PlayerControlsOverlay: View {
                 Text(e.message).font(Typography.bodyMedium).multilineTextAlignment(.center).frame(maxWidth: 360)
                 Text(e.advice).font(Typography.caption).foregroundStyle(.white.opacity(0.7)).multilineTextAlignment(.center).frame(maxWidth: 360)
                 HStack {
+                    // A missing login is fixed by entering it again, not by retrying: that comes first.
+                    if e.kind == .loginMissing, appState != nil, let id = playback.current?.sourceID, let source = try? container?.catalog.source(id: id) {
+                        PrimaryButton(title: "Edit Login", symbol: "key") { editingSource = source }
+                    }
                     PrimaryButton(title: "Try again", symbol: "arrow.clockwise") { playback.retryNow() }
                     if let alt = playback.availableEngines.first(where: { $0 != playback.activeEngine }) {
                         SecondaryButton(title: "Use \(alt.rawValue)") { playback.switchEngine(alt) }
@@ -157,6 +164,7 @@ struct PlayerControlsOverlay: View {
                     SecondaryButton(title: "Ask Setu", symbol: "sparkles") { AssistantLauncher.shared.ask("Why did this fail? Diagnose it and tell me what to do.") }
                 }
             }.padding(Spacing.xl).background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: LayoutTokens.radiusLarge))
+            .transition(.move(edge: .bottom).combined(with: .opacity))          // the error card rises into place
         case .ended:
             if playback.upNext != nil {
                 VStack(spacing: Spacing.sm) {
@@ -167,6 +175,8 @@ struct PlayerControlsOverlay: View {
         default: EmptyView()
         }
     }
+
+    private var failureShown: Bool { if case .failed = playback.state { true } else { false } }
 
     // MARK: structured overlay regions
 

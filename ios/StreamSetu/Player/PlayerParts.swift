@@ -286,7 +286,7 @@ struct StatusCard: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            ProgressView().controlSize(.large).tint(.white)
+            BrandLoader(size: 52, tint: .white)
             Text(headline).font(.system(size: 15, weight: .semibold))
             if let message, !message.isEmpty { Text(message.loc).font(.system(size: 13)).foregroundStyle(.white.opacity(0.8)).multilineTextAlignment(.center) }
             if state == .recovering { Button("Stop waiting") { stop() }.buttonStyle(.bordered).tint(.white) }
@@ -307,6 +307,9 @@ struct StatusCard: View {
     }
 }
 
+/// The playlist to open from the player (its login is missing).
+struct PlaylistToEdit: Identifiable { let id: UUID }
+
 /// The picture when a stream has failed for good: what happened, and what can be done.
 struct FailureCard: View {
     let error: PlaybackError
@@ -317,6 +320,8 @@ struct FailureCard: View {
     var nextChannel: () -> Void
     var sendLog: () -> Void
     var close: () -> Void
+    /// Set when the saved login is missing: opens the playlist, where the login is entered again.
+    var editLogin: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 12) {
@@ -324,7 +329,12 @@ struct FailureCard: View {
             Text(error.message).multilineTextAlignment(.center).font(.system(size: 16, weight: .semibold))
             Text(error.advice).multilineTextAlignment(.center).font(.footnote).foregroundStyle(.white.opacity(0.75))
             HStack(spacing: 10) {
-                Button("Try Again") { retry() }.buttonStyle(.borderedProminent).tint(ColorTokens.accentDefault)
+                if let editLogin {
+                    Button("Edit Login") { editLogin() }.buttonStyle(.borderedProminent).tint(ColorTokens.accentDefault)
+                    Button("Try Again") { retry() }.buttonStyle(.bordered).tint(.white)
+                } else {
+                    Button("Try Again") { retry() }.buttonStyle(.borderedProminent).tint(ColorTokens.accentDefault)
+                }
                 if isLive && canZap { Button("Next Channel") { nextChannel() }.buttonStyle(.bordered).tint(.white) }
                 Button("Close") { close() }.buttonStyle(.bordered).tint(.white)
             }

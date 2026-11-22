@@ -2,7 +2,26 @@ import Foundation
 
 final class SQLiteSearchRepository: SearchRepository {
     let db: DatabaseManager
-    init(db: DatabaseManager) { self.db = db }
+    /// The catalog's lock state: while locked, titles in locked folders are not found. Hidden folders are never searched, locked or not.
+    let restriction: SQLiteCatalogRepository.Restriction?
+    /// Recommendation callers (assistant suggestions, similar titles) ask for the always-restricted view: locked folders stay out even when unlocked with the PIN.
+    let alwaysRestricted: Bool
+    init(db: DatabaseManager, restriction: SQLiteCatalogRepository.Restriction? = nil, alwaysRestricted: Bool = false) {
+        self.db = db; self.restriction = restriction; self.alwaysRestricted = alwaysRestricted
+    }
+
+    /// The search view for recommendation callers.
+    var baseline: SQLiteSearchRepository { alwaysRestricted ? self : SQLiteSearchRepository(db: db, restriction: restriction, alwaysRestricted: true) }
+
+    /// `AND` clause that removes documents of items in hidden folders and, while folders are locked, locked folders. Pushed into the query so a locked title is never returned, not only dropped later.
+    static func folderGuard(documentAlias d: String, locked: Bool) -> String {
+        func bad(_ x: String) -> String {
+            "\(x).category_id IN (SELECT item_id FROM hidden_items WHERE kind='category')" + (locked ? " OR \(x).category_id IN (SELECT category_id FROM locked_categories)" : "")
+        }
+        return " AND NOT EXISTS (SELECT 1 FROM movies x1 WHERE x1.id=\(d).item_id AND (\(bad("x1"))))"
+             + " AND NOT EXISTS (SELECT 1 FROM series x2 WHERE x2.id=\(d).item_id AND (\(bad("x2"))))"
+             + " AND NOT EXISTS (SELECT 1 FROM channels x3 WHERE x3.id=\(d).item_id AND (\(bad("x3"))))"
+    }
 
     func search(term: String, filters: SearchFilters, limit: Int = 200) throws -> [SearchHit] {
         let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -24,6 +43,8 @@ final class SQLiteSearchRepository: SearchRepository {
         if let l = filters.language { sql += " AND d.language=?"; args.append(l) }
         if let g = filters.genre { sql += " AND d.genre=?"; args.append(g) }
         sql += " AND d.item_id NOT IN (SELECT item_id FROM hidden_items)"
+        let locked = alwaysRestricted || restriction?.isActive == true
+        sql += Self.folderGuard(documentAlias: "d", locked: locked)
         // exact title, then title prefix, then BM25 relevance (title weighted highest)
         sql += " ORDER BY (d.normalized = ?) DESC, (d.normalized LIKE ? || '%') DESC, bm25(catalog_fts, 10.0, 6.0, 2.0, 1.0, 1.0, 0.5) LIMIT \(max(1, limit))"
         args.append(norm); args.append(norm)
@@ -37,7 +58,7 @@ final class SQLiteSearchRepository: SearchRepository {
         // Titles with a person of that name come after the titles named like it: a film called "Keanu" still comes before the films with Keanu Reeves.
         guard filters.category == nil, filters.language == nil, filters.genre == nil else { return found }
         let have = Set(found.map(\.itemID))
-        let withPerson = PeopleIndex(db: db).hits(term: trimmed, kinds: filters.kinds, sourceID: filters.sourceID, limit: limit).filter { !have.contains($0.itemID) }
+        let withPerson = PeopleIndex(db: db, restriction: restriction, alwaysRestricted: alwaysRestricted).hits(term: trimmed, kinds: filters.kinds, sourceID: filters.sourceID, limit: limit).filter { !have.contains($0.itemID) }
         return Array((found + withPerson).prefix(max(1, limit)))
     }
 

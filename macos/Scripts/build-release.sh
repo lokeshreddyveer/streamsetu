@@ -32,6 +32,11 @@ sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD/" Configuration/Info.pli
 cp Configuration/PrivacyInfo.xcprivacy "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
 # The app's wording in Hindi and Telugu (and the English marker): one folder per language, each with its Localizable.strings.
 for LANG in en hi te; do cp -R "Resources/Localization/$LANG.lproj" "$APP/Contents/Resources/$LANG.lproj"; done
+# The transparent TV symbol shown on the welcome screen (BrandSymbol in the code).
+cp Resources/Branding/BrandSymbol.png "$APP/Contents/Resources/BrandSymbol.png"
+cp Resources/Branding/TMDBLogo.png "$APP/Contents/Resources/TMDBLogo.png"
+# The layers of the opening's television (TuneIn-<layer>.png), from the shared motion assets at the root of the repository.
+for LAYER in ../motion/assets/tune-in/*.png; do cp "$LAYER" "$APP/Contents/Resources/TuneIn-$(basename "$LAYER")"; done
 echo "APPL????" > "$APP/Contents/PkgInfo"
 
 echo "▸ Icon…"

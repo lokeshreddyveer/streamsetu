@@ -96,7 +96,9 @@ final class ProfileService {
     @discardableResult
     func remove(_ id: String) -> Bool {
         guard id != Self.mainID, id != activeID else { return false }
-        do { try db.write { c in try c.execute("DELETE FROM profile_rows WHERE profile_id = ?", [id]); try c.execute("DELETE FROM profiles WHERE id = ?", [id]) } } catch { return false }
+        do { try db.write { c in try c.execute("DELETE FROM profile_rows WHERE profile_id = ?", [id]); try c.execute("DELETE FROM profiles WHERE id = ?", [id])
+            // What the shelves remembered for this profile (dismissals, shown history, folder opens): keyed by profile, so it goes with it.
+            for t in ["rec_dismissed", "smartmix_shown", "smartmix_state", "folder_recent"] { try c.execute("DELETE FROM \(t) WHERE profile_id = ?", [id]) } } } catch { return false }
         reload()
         return true
     }

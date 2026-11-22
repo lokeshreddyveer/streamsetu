@@ -5,7 +5,7 @@ struct TitleDetails: Codable, Sendable, Equatable {
     struct Trailer: Codable, Sendable, Equatable, Identifiable { var key: String; var name: String; var type: String; var id: String { key }
         var watchURL: URL? { URL(string: "https://www.youtube.com/watch?v=\(key)") } }
     struct Person: Codable, Sendable, Equatable, Identifiable { var name: String; var role: String?; var photoPath: String?; var id: String { name + (role ?? "") }
-        var photoURL: String? { photoPath.map { MetadataMatchService.imageBase + "w185" + $0 } } }
+        var photoURL: String? { photoPath.map { $0.hasPrefix("https://") ? $0 : MetadataMatchService.imageBase + "w185" + $0 } } }
     struct Similar: Codable, Sendable, Equatable, Identifiable { var tmdbID: Int; var title: String; var year: Int?; var id: Int { tmdbID } }
 
     var tmdbID: Int

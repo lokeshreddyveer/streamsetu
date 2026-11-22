@@ -67,6 +67,7 @@ struct IconButton: View {
             Image(systemName: symbol)
                 .font(.system(size: size * 0.45, weight: .semibold))
                 .foregroundStyle(active ? accent : ColorTokens.textPrimary)
+                .symbolEffect(.bounce, value: active)          // a toggle (favourite, watch later) pops when it changes
                 .frame(width: size, height: size)
                 .background(hovering ? Color.white.opacity(0.12) : Color.white.opacity(0.06), in: Circle())
         }

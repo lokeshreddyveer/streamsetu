@@ -18,6 +18,8 @@ struct IndexResult: Sendable {
     var previous: Int
     var removed: Int
     var categories = CategoryReconcile()
+    /// What the sync changed for content identity (movies and series only); nil when nothing was written.
+    var identity: IdentityChangeSet?
 }
 
 /// Writes a fully downloaded and validated catalog in ONE transaction. A failed or implausible refresh never
@@ -26,6 +28,8 @@ struct IndexResult: Sendable {
 final class CatalogIndexer: Sendable {
     let db: DatabaseManager
     init(db: DatabaseManager) { self.db = db }
+    /// Called after a sync that changed which titles exist (never for a sync that changed nothing), so cached recommendations can be dropped.
+    let identityChanged = LockedBox<(@Sendable (IdentityChangeSet) -> Void)?>(nil)
 
     /// Raise when the importer starts reading other fields: every saved fingerprint then stops matching and the catalogs are written once more.
     static let fingerprintVersion = 1
@@ -118,6 +122,7 @@ final class CatalogIndexer: Sendable {
 
         return try db.write { c in
             let rec = try upsertCategories(categories, referenced: Self.referencedCategories(channels, id: \.categoryID, name: \.categoryName), kind: .channel, source: source, stamp: stamp, in: c)
+            try FolderFamily.apply(in: c)          // a playlist added after a folder was locked or hidden cannot show its twin folder
             let st = try c.prepare("""
                 INSERT INTO channels(id, source_id, provider_id, name, normalized_name, category_id, category_name, logo_url, epg_id,
                     language, country, resolution_hint, sort_order, stream_ref, group_key, is_primary, last_seen_at, first_seen_at, archive_days)
@@ -164,8 +169,9 @@ final class CatalogIndexer: Sendable {
         if try isUnchanged(kind: "movie", table: "movies", source: source, fingerprint: fp, rows: unique.count) {
             return IndexResult(total: unique.count, previous: previous, removed: 0)
         }
-        return try db.write { c in
+        let result = try db.write { c in
             let rec = try upsertCategories(categories, referenced: Self.referencedCategories(movies, id: \.categoryID, name: \.categoryName), kind: .movie, source: source, stamp: stamp, in: c)
+            try FolderFamily.apply(in: c)          // a playlist added after a folder was locked or hidden cannot show its twin folder
             let st = try c.prepare("""
                 INSERT INTO movies(id, source_id, provider_id, title, normalized_title, overview, poster_url, backdrop_url, release_year,
                     duration_seconds, genre, rating, category_id, category_name, stream_ref, added_at, created_at, updated_at, last_seen_at)
@@ -182,16 +188,20 @@ final class CatalogIndexer: Sendable {
                 try st.run([m.id, m.sourceID, m.providerID, m.title, m.normalizedTitle, m.overview, m.posterURL, m.backdropURL, m.releaseYear,
                             m.durationSeconds, m.genre, m.rating, m.categoryID, m.categoryName, m.streamRef, m.addedAt, stamp, stamp, stamp])
             }
+            let gone = try c.query("SELECT id FROM movies WHERE source_id=? AND last_seen_at < ?", [source.id, stamp]) { $0.string(0) }
             try c.execute("DELETE FROM movies WHERE source_id=? AND last_seen_at < ?", [source.id, stamp])
             let removed = c.changes
+            let identity = try IdentityStore.apply(rows: unique.map { .init(id: $0.id, title: $0.title, category: $0.categoryName, year: $0.releaseYear) }, removedIDs: gone, source: source.id, kind: .movie, in: c)
             try SearchIndexer.upsert(unique.map {
                 SearchDoc(itemID: $0.id, kind: .movie, sourceID: source.id, title: $0.title, normalized: $0.normalizedTitle,
                           category: $0.categoryName, genre: $0.genre, language: nil, sourceName: source.name)
             }, in: c)
             try SearchIndexer.removeStale(kind: .movie, table: "movies", sourceID: source.id, in: c)
             try saveFingerprint(kind: "movie", source: source, fingerprint: fp, rows: unique.count, in: c)
-            return IndexResult(total: unique.count, previous: previous, removed: removed, categories: rec)
+            return IndexResult(total: unique.count, previous: previous, removed: removed, categories: rec, identity: identity)
         }
+        if let ch = result.identity, !ch.isEmpty { refreshTwinsIfNeeded(); identityChanged.value?(ch) }
+        return result
     }
 
     func saveMovieDetail(id: String, detail: MovieDetail) throws {
@@ -217,8 +227,9 @@ final class CatalogIndexer: Sendable {
         if try isUnchanged(kind: "series", table: "series", source: source, fingerprint: fp, rows: unique.count) {
             return IndexResult(total: unique.count, previous: previous, removed: 0)
         }
-        return try db.write { c in
+        let result = try db.write { c in
             let rec = try upsertCategories(categories, referenced: Self.referencedCategories(series, id: \.categoryID, name: \.categoryName), kind: .series, source: source, stamp: stamp, in: c)
+            try FolderFamily.apply(in: c)          // a playlist added after a folder was locked or hidden cannot show its twin folder
             let st = try c.prepare("""
                 INSERT INTO series(id, source_id, provider_id, title, normalized_title, overview, poster_url, backdrop_url, genre, release_year,
                     rating, category_id, category_name, added_at, last_seen_at, first_seen_at)
@@ -234,16 +245,20 @@ final class CatalogIndexer: Sendable {
                 try st.run([s.id, s.sourceID, s.providerID, s.title, s.normalizedTitle, s.overview, s.posterURL, s.backdropURL, s.genre,
                             s.releaseYear, s.rating, s.categoryID, s.categoryName, s.addedAt, stamp, stamp])
             }
+            let gone = try c.query("SELECT id FROM series WHERE source_id=? AND last_seen_at < ?", [source.id, stamp]) { $0.string(0) }
             try c.execute("DELETE FROM series WHERE source_id=? AND last_seen_at < ?", [source.id, stamp])
             let removed = c.changes
+            let identity = try IdentityStore.apply(rows: unique.map { .init(id: $0.id, title: $0.title, category: $0.categoryName, year: $0.releaseYear) }, removedIDs: gone, source: source.id, kind: .series, in: c)
             try SearchIndexer.upsert(unique.map {
                 SearchDoc(itemID: $0.id, kind: .series, sourceID: source.id, title: $0.title, normalized: $0.normalizedTitle,
                           category: $0.categoryName, genre: $0.genre, language: nil, sourceName: source.name)
             }, in: c)
             try SearchIndexer.removeStale(kind: .series, table: "series", sourceID: source.id, in: c)
             try saveFingerprint(kind: "series", source: source, fingerprint: fp, rows: unique.count, in: c)
-            return IndexResult(total: unique.count, previous: previous, removed: removed, categories: rec)
+            return IndexResult(total: unique.count, previous: previous, removed: removed, categories: rec, identity: identity)
         }
+        if let ch = result.identity, !ch.isEmpty { refreshTwinsIfNeeded(); identityChanged.value?(ch) }
+        return result
     }
 
     /// Replaces seasons/episodes for one series. Episode ids are stable, so watch progress is untouched.
@@ -268,6 +283,12 @@ final class CatalogIndexer: Sendable {
                             e.imageURL, e.durationSeconds, e.streamRef])
             }
         }
+    }
+
+    /// With two or more playlists on, how much of each the other has is recomputed after a sync that changed titles. A failure here never fails the sync.
+    private func refreshTwinsIfNeeded() {
+        guard ((try? db.read { try $0.scalarInt("SELECT COUNT(*) FROM sources WHERE enabled=1") }) ?? 0) >= 2 else { return }
+        _ = try? IdentityStore(db: db).refreshTwins()
     }
 
     /// User renames survive provider refreshes.

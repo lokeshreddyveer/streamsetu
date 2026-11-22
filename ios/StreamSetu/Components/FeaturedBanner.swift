@@ -60,7 +60,7 @@ struct HeroCard: View {
     private var immersiveBody: some View {
         ZStack(alignment: .bottomLeading) {
             ParallaxBanner(height: height, scrollY: scrollY) {
-                ArtworkImage(url: item.backdropURL ?? item.posterURL, kind: .backdrop, contentMode: .fill, symbol: "film", alignment: .top)
+                ArtworkImage(url: item.backdropURL ?? item.posterURL, kind: .backdrop, contentMode: .fill, symbol: "film", alignment: .top).kenBurns()
             }
             LinearGradient(colors: [.black.opacity(0.5), .clear], startPoint: .top, endPoint: .init(x: 0.5, y: 0.2))
             LinearGradient(stops: [.init(color: .clear, location: 0.5), .init(color: ColorTokens.background.opacity(0.6), location: 0.74),
@@ -99,7 +99,7 @@ struct HeroCard: View {
     private var cardBody: some View {
         ZStack(alignment: .bottomLeading) {
             ParallaxBanner(height: height, scrollY: scrollY) {
-                ArtworkImage(url: item.backdropURL ?? item.posterURL, kind: .backdrop, contentMode: .fill, symbol: "film", alignment: .top)
+                ArtworkImage(url: item.backdropURL ?? item.posterURL, kind: .backdrop, contentMode: .fill, symbol: "film", alignment: .top).kenBurns()
             }
             LinearGradient(stops: [.init(color: .clear, location: 0.3), .init(color: .black.opacity(0.5), location: 0.65), .init(color: .black.opacity(0.92), location: 1)],
                            startPoint: .top, endPoint: .bottom)

@@ -116,7 +116,7 @@ extension AppContainer {
     /// The AI never supplies titles to show: it reads the words, and (with no TMDB key) says what a person is known for, which is only used to look for those titles in the library.
     func askWhatToWatch(_ request: String, previous: WatchIntent? = nil, useAI: Bool = true) async throws -> AskAnswer {
         guard !parental.kidsMode else { throw AIError.unavailable("The AI is not available in a kids profile.") }
-        let index = PeopleIndex(db: db)
+        let index = PeopleIndex(db: db, alwaysRestricted: true)          // what to watch is a recommendation: locked and hidden folders stay out even when unlocked
         let local = LocalIntent.parse(request) { words in index.canonicalName(for: words) }
         var intent = local
         var aiNote: String?
@@ -139,9 +139,9 @@ extension AppContainer {
             catch { aiNote = nil }
         }
         if let previous { intent = previous.refined(by: intent) }
-        var lib = AskLibrary(catalog: catalog, people: index, history: historyRepo)
+        var lib = AskLibrary(catalog: catalog.recommendationView, people: index, history: historyRepo)
         lib.request = request
-        lib.taste = await Task.detached { [catalog, historyRepo] in TasteProfile.learn(history: historyRepo, catalog: catalog, people: index) }.value
+        lib.taste = await Task.detached { [catalog = catalog.recommendationView, historyRepo] in TasteProfile.learn(history: historyRepo, catalog: catalog, people: index) }.value
         if useAI, config.isReady, settings.defaultsStore.object(forKey: "askai.judge") as? Bool ?? true {
             lib.judge = { system, prompt in try? await AIClient(config: config).ask(system: system, prompt: prompt) }
         }

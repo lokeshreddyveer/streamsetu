@@ -189,6 +189,8 @@ enum SimilarTitles {
 /// Finds the pool for a title (its own folder, and titles with the same start of name) from the catalog and ranks it.
 struct SimilarService: Sendable {
     let catalog: CatalogRepository
+    /// A suggestion is a recommendation, so it reads the always-restricted view: nothing from a locked or hidden folder (or with a copy there), even when unlocked.
+    init(catalog: CatalogRepository) { self.catalog = catalog.recommendationView }
 
     private func candidate(_ item: LibraryItem) -> SimilarTitles.Candidate {
         switch item {

@@ -119,6 +119,8 @@ struct ReddyTopBar: View {
     var onSelectTab: (AppTab) -> Void
     var onToggleAccount: () -> Void
     @Environment(\.reddyAccent) private var accent
+    /// The selected tab's underline slides from tab to tab.
+    @Namespace private var underline
     @FocusState private var searchFocused: Bool
     private var metrics: TopBarMetrics { TopBarMetrics.metrics(for: state.width) }
 
@@ -159,8 +161,10 @@ struct ReddyTopBar: View {
                         .frame(width: TabLabelMetrics.textWidth(t.title) + 2 * metrics.tabPadding, height: LayoutTokens.headerHeight)
                         .foregroundStyle(state.tab == t ? accent : ColorTokens.textSecondary)
                         .overlay(alignment: .bottom) {
-                            Capsule().fill(accent).frame(width: 18, height: 2).padding(.bottom, 1)
-                                .opacity(state.tab == t ? 1 : 0).scaleEffect(x: state.tab == t ? 1 : 0.4)
+                            if state.tab == t {
+                                Capsule().fill(accent).frame(width: 18, height: 2).padding(.bottom, 1)
+                                    .matchedGeometryEffect(id: "tab-underline", in: underline)
+                            }
                         }
                         .animation(AnimationTokens.standard, value: state.tab)
                         .contentShape(Rectangle())

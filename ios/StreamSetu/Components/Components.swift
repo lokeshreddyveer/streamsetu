@@ -37,7 +37,7 @@ extension LibraryItem {
     }
     /// "2025 · Thriller"
     /// The year is left out when the title already carries it, e.g. "Only Me (2026)".
-    var detailLine: String { [titleHasYear ? nil : year.map(String.init), genre].compactMap { $0 }.joined(separator: " · ") }
+    var detailLine: String { quietLine }
     var titleHasYear: Bool { year.map { title.contains(String($0)) } ?? false }
 }
 
@@ -45,9 +45,12 @@ extension LibraryItem {
 struct ProgressStrip: View {
     let fraction: Double
     var body: some View {
-        GeometryReader { g in
-            Rectangle().fill(.black.opacity(0.5)).overlay(alignment: .leading) { Rectangle().fill(ColorTokens.accentDefault).frame(width: g.size.width * min(1, fraction)) }
-        }.frame(height: 3)
+        // The bar fills in to how far was watched when the card appears (at once with Reduce Motion).
+        EmptyView().modifier(ProgressFillIn(fraction: fraction) { shown in
+            AnyView(GeometryReader { g in
+                Rectangle().fill(.black.opacity(0.5)).overlay(alignment: .leading) { Rectangle().fill(ColorTokens.accentDefault).frame(width: g.size.width * min(1, shown)) }
+            }.frame(height: 3))
+        })
     }
 }
 
@@ -58,12 +61,15 @@ struct PosterCard: View {
     var progress: Double?
     /// Why a search found it when its own name does not say ("Cast: Mahesh Babu"); shown where the year and genre would be.
     var note: String?
+    /// Folder rows: the quiet line is a short genre or the year only (never the folder's own name), the title keeps room for two lines and the second line is always reserved, so every tile in a row is the same height.
+    var folderLine: String??
     @Environment(AppState.self) private var state
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .bottom) {
-                ArtworkImage(url: item.posterURL ?? item.backdropURL, kind: .poster, contentMode: .fill, symbol: item.isSeries ? "rectangle.stack" : "film")
+                ArtworkImage(url: item.posterURL ?? item.backdropURL, kind: .poster, contentMode: .fill, symbol: item.isSeries ? "rectangle.stack" : "film",
+                             tile: .init(title: item.cleanTitle, detail: ArtworkTile.Content.detail(year: item.year, quality: item.isSeries ? "Series" : MetadataNormalizer.qualityLabel(MetadataNormalizer.normalize(item.title)))))
                     .frame(width: width, height: width * 1.5)
                 if let shown = progress ?? state.partialProgress(item.id), shown > 0 { ProgressStrip(fraction: shown) }
             }
@@ -91,10 +97,14 @@ struct PosterCard: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.white.opacity(0.08)))
-            Text(item.title).appFont(12, .semibold).lineLimit(2).multilineTextAlignment(.leading).frame(width: width, alignment: .leading)
-            if let note { Text(note).appFont(11, .medium).foregroundStyle(ColorTokens.accentDefault).lineLimit(1).frame(width: width, alignment: .leading) }
+            Text(item.title).appFont(12, .semibold).lineLimit(2, reservesSpace: folderLine != nil).multilineTextAlignment(.leading).frame(width: width, alignment: .leading)
+            if let folderLine {
+                Text(folderLine ?? " ").appFont(11).foregroundStyle(.secondary).lineLimit(1).frame(width: width, alignment: .leading).accessibilityHidden(folderLine == nil)
+            } else if let note { Text(note).appFont(11, .medium).foregroundStyle(ColorTokens.accentDefault).lineLimit(1).frame(width: width, alignment: .leading) }
             else if !item.detailLine.isEmpty { Text(item.detailLine).appFont(11).foregroundStyle(.secondary).lineLimit(1).frame(width: width, alignment: .leading) }
         }
+        .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .hoverEffect(.lift)          // an iPad pointer lifts the poster
         .accessibilityElement(children: .combine)
     }
 }
@@ -132,7 +142,7 @@ struct Shelf<Content: View>: View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title.loc).appFont(18, .semibold).accessibilityAddTraits(.isHeader)
-                if let caption { Text(caption.loc).appFont(12).foregroundStyle(.secondary) }
+                if let caption, !caption.isEmpty { Text(caption.loc).appFont(12).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail) }
             }.padding(.horizontal, 16)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 12) { content }.padding(.horizontal, 16)
@@ -150,7 +160,8 @@ struct EmptyState: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Image(systemName: symbol).appFont(36, .light).foregroundStyle(.secondary)
+            // Drawn, gently moving art chosen from the symbol the screen asks for (a television tuning, a magnifier, a bookmark …).
+            BrandEmptyArt(symbol: symbol, size: 80)
             Text(title.loc).font(.headline)
             if let message { Text(message.loc).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center) }
             if let actionTitle, let action { Button(actionTitle, action: action).buttonStyle(.borderedProminent).padding(.top, 4) }

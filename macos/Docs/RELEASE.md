@@ -35,7 +35,7 @@ Tests pass · `verify-layering.sh` OK · version/build set · release notes in `
 notarized · stapled · checksums generated.
 
 ## Known limitations
-- Updates are manual (Sparkle can be added later).
+- The Mac app is a Developer ID build that updates itself with Sparkle. There is deliberately no Mac App Store build or `STREAMSETU_APPSTORE` flag for the Mac: a Mac App Store version would need its own target without Sparkle, the Stalker portal type, the diagnostics uploader and the problem-report entries in the privacy manifest.
 - Raw MPEG-TS support relies on the segmenter; exotic streams without PAT/PMT will not start.
 - MKV/RTSP/DASH require libmpv.
 - Sandboxed (App Store) distribution needs the sandbox entitlements file and a review of the loopback bridge.

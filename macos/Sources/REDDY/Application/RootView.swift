@@ -3,17 +3,26 @@ import AppKit
 
 struct RootView: View {
     let coordinator: AppCoordinator
-    @State private var opening = !OpeningPlayed.done
     @State private var picked = ProfilePicked.done
     @State private var confirmFresh = false
     @State private var inventory = DatabaseRecovery.Inventory()
 
     var body: some View {
-        // The opening sits beside the content, not on it, so the content changing from "starting" to "ready" never rebuilds it (that cut it short).
+        // The opening sits beside the content, not on it, and is owned by OpeningCoordinator (one per process), so neither the content
+        // changing from "starting" to "ready" nor the window being rebuilt can restart it or keep it on screen.
         ZStack {
             content
-            if opening { OpeningAnimation { BrandIcon(size: 104) } onDone: { opening = false }.transition(.opacity).zIndex(10) }
+            OpeningOverlay().zIndex(10)
         }
+        .onChange(of: destination, initial: true) { _, d in
+            guard d != .starting else { return }
+            OpeningCoordinator.shared.destinationReady(ok: d == .ready, hasSources: !(coordinator.state?.sources.isEmpty ?? true))
+        }
+    }
+
+    private enum Destination { case starting, ready, failed }
+    private var destination: Destination {
+        switch coordinator.phase { case .starting: .starting; case .ready: .ready; case .failed: .failed }
     }
 
     private func choosing(_ c: AppContainer) -> Bool { !picked && c.profiles.isShared }
@@ -21,7 +30,7 @@ struct RootView: View {
     @ViewBuilder private var content: some View {
         switch coordinator.phase {
         case .starting:
-            VStack(spacing: Spacing.lg) { Image(systemName: "play.tv.fill").font(.system(size: 44)).foregroundStyle(ColorTokens.accentDefault); ProgressView(); Text("Opening your library…").foregroundStyle(ColorTokens.textSecondary) }
+            BrandLoader(size: 56, label: "Opening your library…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity).background(ColorTokens.background).preferredColorScheme(.dark)
         case .failed(let message):
             VStack(spacing: Spacing.lg) {
@@ -347,8 +356,8 @@ struct MainShell: View {
         }
         Color.clear.frame(width: 0, height: 0).sheet(isPresented: $addingProfile) { AddProfileSheet(service: container.profiles) }
         if switchingProfile { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { switchingProfile = false } }.zIndex(12) }
-        if let m = router.movie { scrim { router.closeDetail() } ; MovieDetailView(movie: m).dialogFrame().transition(.opacity.combined(with: .scale(scale: 0.98))).zIndex(6) }
-        if let s = router.series { scrim { router.closeDetail() } ; SeriesDetailView(series: s).dialogFrame().transition(.opacity.combined(with: .scale(scale: 0.98))).zIndex(6) }
+        if let m = router.movie { scrim { router.closeDetail() } ; MovieDetailView(movie: m).id(m.id).dialogFrame().transition(.opacity.combined(with: .scale(scale: 0.98))).zIndex(6) }
+        if let s = router.series { scrim { router.closeDetail() } ; SeriesDetailView(series: s).id(s.id).dialogFrame().transition(.opacity.combined(with: .scale(scale: 0.98))).zIndex(6) }
         if let modal = router.modal { modalView(modal) }
         if container.playback.isExpanded { scrim { container.playback.isExpanded = false }; expandedPlayer.zIndex(8) }
     }

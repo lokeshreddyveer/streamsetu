@@ -3,6 +3,9 @@ import Foundation
 /// The people in the library (cast and directors), kept so a name can be searched for. It only ever adds rows of its own and reads the catalog.
 struct PeopleIndex: Sendable {
     let db: DatabaseManager
+    /// Same rules as the search: hidden folders never, locked folders while the catalog is locked (or always, for recommendation callers).
+    var restriction: SQLiteCatalogRepository.Restriction? = nil
+    var alwaysRestricted = false
 
     static func norm(_ name: String) -> String { MetadataNormalizer.normalize(name) }
 
@@ -49,7 +52,8 @@ struct PeopleIndex: Sendable {
     }
 
     /// Titles with a person whose name starts with each word typed ("keanu", "reeves", "keanu re"). Needs at least three letters.
-    func hits(term: String, kinds: Set<ContentKind>, sourceID: UUID?, limit: Int) -> [SearchHit] {
+    /// `exact` is for a person's own page: the whole name must be the one given ("Ram" never brings "Ramesh"); search keeps the word-start matching.
+    func hits(term: String, kinds: Set<ContentKind>, sourceID: UUID?, limit: Int, exact: Bool = false) -> [SearchHit] {
         let words = Self.norm(term).split(separator: " ").map(String.init)
         guard words.joined().count >= 3, kinds.contains(.movie) || kinds.contains(.series) else { return [] }
         var sql = """
@@ -57,13 +61,17 @@ struct PeopleIndex: Sendable {
             FROM (SELECT DISTINCT item_id, kind, source_id FROM people WHERE 1=1
             """
         var args: [(any SQLConvertible)?] = []
-        for w in words { sql += " AND (norm LIKE ? OR norm LIKE ?)"; args.append(w + "%"); args.append("% " + w + "%") }
+        if exact { sql += " AND norm = ?"; args.append(words.joined(separator: " ")) }
+        else { for w in words { sql += " AND (norm LIKE ? OR norm LIKE ?)"; args.append(w + "%"); args.append("% " + w + "%") } }
         sql += """
             ) p JOIN sources src ON src.id = p.source_id AND src.enabled = 1
             LEFT JOIN movies m ON p.kind = 'movie' AND m.id = p.item_id
             LEFT JOIN series s ON p.kind = 'series' AND s.id = p.item_id
             WHERE (m.id IS NOT NULL OR s.id IS NOT NULL) AND p.item_id NOT IN (SELECT item_id FROM hidden_items)
             """
+        let folder = "COALESCE(m.category_id, s.category_id)"
+        sql += " AND (\(folder) IS NULL OR \(folder) NOT IN (SELECT item_id FROM hidden_items WHERE kind='category'))"
+        if alwaysRestricted || restriction?.isActive == true { sql += " AND (\(folder) IS NULL OR \(folder) NOT IN (SELECT category_id FROM locked_categories))" }
         if let sourceID { sql += " AND p.source_id = ?"; args.append(sourceID.uuidString.lowercased()) }
         sql += " ORDER BY CAST(COALESCE(m.rating, s.rating, '0') AS REAL) DESC LIMIT \(max(1, limit))"
         let found = (try? db.read { c in

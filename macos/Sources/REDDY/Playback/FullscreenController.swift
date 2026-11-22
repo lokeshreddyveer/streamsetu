@@ -1,5 +1,4 @@
 import AppKit
-import SwiftUI
 import Observation
 
 
@@ -114,7 +113,7 @@ final class PlayerFullscreenWindow: NSWindow, NSWindowDelegate, FullscreenWindow
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
-    init<Content: View>(title: String, content: Content) {
+    init(title: String, contentView view: NSView) {
         super.init(contentRect: NSRect(x: 0, y: 0, width: 960, height: 540),
                    styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                    backing: .buffered, defer: false)
@@ -125,7 +124,7 @@ final class PlayerFullscreenWindow: NSWindow, NSWindowDelegate, FullscreenWindow
         backgroundColor = .black
         collectionBehavior = [.fullScreenPrimary, .fullScreenDisallowsTiling]
         appearance = NSAppearance(named: .darkAqua)
-        contentView = NSHostingView(rootView: content)
+        contentView = view
         delegate = self
         for b: NSWindow.ButtonType in [.closeButton, .miniaturizeButton, .zoomButton] { standardWindowButton(b)?.isHidden = true }
     }
@@ -146,23 +145,4 @@ final class PlayerFullscreenWindow: NSWindow, NSWindowDelegate, FullscreenWindow
     func windowDidEnterFullScreen(_ notification: Notification) { onDidEnter?() }
     func windowDidExitFullScreen(_ notification: Notification) { onDidExit?() }
     func windowWillClose(_ notification: Notification) { if !closing { onClosed?() } }
-}
-
-/// Fullscreen content: the video, the same controls, and Escape / double-click / the button all leave fullscreen.
-struct FullscreenPlayerRoot: View {
-    let container: AppContainer
-    @State private var program: EPGProgram?
-    @State private var nextProgram: EPGProgram?
-
-    var body: some View {
-        let p = container.playback
-        FullscreenPlayerView(playback: p, program: program, nextProgram: nextProgram) { p.isFullscreen = false }
-            .environment(container.settings).environment(\.container, container)
-            .reddyTheme(container.settings)
-            .task(id: p.currentChannel?.id) {
-                guard let id = p.currentChannel?.id else { program = nil; nextProgram = nil; return }
-                let list = await Task.detached { (try? container.epgRepo.nowNext(channelIDs: [id], at: Date()))?[id] ?? [] }.value
-                program = list.first { $0.isLive() }; nextProgram = list.first { $0.start > Date() }
-            }
-    }
 }

@@ -14,4 +14,6 @@ final class ArtworkService: Sendable {
     func clear() async { await cache.clear() }
     func relieveMemory() async { await cache.relieveMemory() }
     func trim() async { await cache.trimDisk() }
+    @discardableResult
+    func evict(urls: [String]) async -> Int { await cache.evict(urls: urls) }
 }

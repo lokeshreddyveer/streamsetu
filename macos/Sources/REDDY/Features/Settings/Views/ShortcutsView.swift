@@ -12,6 +12,7 @@ struct ShortcutsView: View {
             Row(keys: "⌘F", what: "Search within this screen"),
             Row(keys: "⌘N", what: "Add a playlist"),
             Row(keys: "⌘R", what: "Refresh all playlists"),
+            Row(keys: "⇧⌘R", what: "Shuffle recommendations (does not refresh)"),
             Row(keys: "Esc", what: "Close the top-most thing: search, a panel, a detail page, then the player"),
             Row(keys: "Tab / ⇧Tab", what: "Move between buttons and cards (turn on Keyboard navigation in System Settings > Keyboard)"),
             Row(keys: "Return", what: "Open or play what is highlighted"),

@@ -11,11 +11,21 @@ struct LibraryScreen: View {
     @State private var appliedDefaultSort = false
     @State private var vm: LibraryBrowserViewModel
     @State private var slides: [FeaturedSlide] = []
+    @State private var viewMode: FolderViewMode = .folders
+    @State private var topRow: String?
 
     init(kind: ContentKind) { self.kind = kind; _vm = State(initialValue: LibraryBrowserViewModel(kind: kind)) }
 
     private var selection: SidebarSelection { router.selection }
     private var taskKey: String { "\(selection)-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(vm.sort.rawValue)-\(String(describing: vm.filter))" }
+
+    /// Folders is the default view of the full Movies / Series lists; a search or a filter always shows the grid, and so do the shortcut lists (favourites, unwatched, and so on).
+    private var showsFolders: Bool {
+        guard viewMode == .folders, vm.search.isEmpty, vm.filter.count == 0 else { return false }
+        return selection == .shortcut(.allMovies) || selection == .shortcut(.featured) || selection == .shortcut(.library)
+    }
+    private var showsModeSwitch: Bool { selection == .shortcut(.allMovies) || selection == .shortcut(.featured) || selection == .shortcut(.library) }
+    private var profileID: String { container?.profiles.activeID ?? "main" }
 
     private var showsSlideshow: Bool { kind == .movie && selection == .shortcut(.featured) }
     private var slideshowKey: String { "\(showsSlideshow)-\(state.activeSourceID?.uuidString ?? "")-\(FeaturedPolicy.dayKey(Date()))-\(container?.parental.restrictionRevision ?? 0)" }
@@ -28,7 +38,16 @@ struct LibraryScreen: View {
             VStack(alignment: .leading, spacing: 10) {
                 PageHead(title: title)
                 LibraryToolbar(search: $vm.search, prompt: "Search all \(vm.noun)…", count: vm.countText, focusToken: router.focusSearch) {
-                    SortMenu(options: vm.availableSorts, selection: $vm.sort, filterCount: vm.filter.count) { $0.rawValue } extra: {
+                    if showsModeSwitch {
+                        Picker("View", selection: Binding(get: { viewMode }, set: { viewMode = $0; FolderViewMode.save($0, kind, profile: profileID) })) {
+                            Label("Folders", systemImage: "folder").tag(FolderViewMode.folders); Label("Grid", systemImage: "square.grid.2x2").tag(FolderViewMode.grid)
+                        }.pickerStyle(.segmented).labelsHidden().fixedSize().accessibilityLabel("Folders or grid")
+                    }
+                    SortMenu(options: vm.availableSorts, selection: Binding(get: { vm.sort }, set: { newSort in
+                        // Folder rows keep each folder's own order, so choosing a sort means choosing the grid, which honours it.
+                        if showsFolders, newSort != vm.sort { viewMode = .grid; FolderViewMode.save(.grid, kind, profile: profileID) }
+                        vm.sort = newSort
+                    }), filterCount: vm.filter.count) { $0.rawValue } extra: {
                         LibraryFilterMenus(kind: kind, filter: $vm.filter, options: vm.filterOptions)
                     }
                 }
@@ -47,15 +66,23 @@ struct LibraryScreen: View {
                             Spacer()
                         }.padding(.bottom, 8).transition(.opacity)
                     }
-                    content(layout).padding(.bottom, 16).frame(maxWidth: .infinity, alignment: .leading)
-                        .animation(AnimationTokens.page, value: vm.loading)
+                    if showsFolders, state.hasLibrary {
+                        FolderRowsSection(kind: kind, memoryKey: "\(kind.rawValue)-\(profileID)", topRow: $topRow).padding(.bottom, 16).frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        content(layout).padding(.bottom, 16).frame(maxWidth: .infinity, alignment: .leading)
+                            .animation(AnimationTokens.page, value: vm.loading)
+                    }
                 }
+                .scrollPosition(id: $topRow, anchor: .top)
                 .scrollIndicators(.hidden)
                 .frame(maxHeight: .infinity)
                 .clipped()
             }
             .padding(.horizontal, LayoutTokens.gutter).padding(.top, 10)
         }
+        .onAppear { viewMode = FolderViewMode.load(kind, profile: profileID) }
+        .onChange(of: profileID) { _, _ in viewMode = FolderViewMode.load(kind, profile: profileID); topRow = nil }
+        .onChange(of: showsFolders) { _, on in if !on { topRow = nil } }          // the grid must not inherit a folder row as its scroll position; the row is restored from memory on return
         .onAppear { if !appliedDefaultSort { appliedDefaultSort = true; vm.sort = settings.defaultLibrarySort.sort } }
         .onAppear { state.reloadWatched(); takeLibraryQuery() }
         .onChange(of: router.libraryQuery) { _, _ in takeLibraryQuery() }
@@ -80,14 +107,16 @@ struct LibraryScreen: View {
             EmptyStateView(symbol: emptySymbol, title: emptyTitle, message: emptyMessage).frame(height: 260)
         } else {
             LazyVGrid(columns: Array(repeating: GridItem(.fixed(layout.cardWidth), spacing: 12, alignment: .top), count: layout.columns), alignment: .leading, spacing: 16) {
-                ForEach(vm.items) { item in
+                // The first screenful rises in one after another; titles scrolled to later appear at once.
+                ForEach(Array(vm.items.enumerated()), id: \.element.id) { index, item in
                     ReddyPosterCard(model: noted(PosterCardModel(item: item, progress: vm.progress[item.id] ?? state.partialProgress(item.id), isFavorite: state.isFavorite(item.id), isNew: state.hasNewEpisodes(item.id), isWatched: state.isWatched(item.id)), item.id), width: layout.cardWidth,
                                     onOpen: { open(item) }, onPlay: { play(item) })
                         .contextMenu { menu(item) }
                         .task { if let c = container { await vm.loadMoreIfNeeded(c, current: item, selection: selection, source: state.activeSourceID) } }
+                        .staggeredAppear(index)
                 }
             }
-            if vm.loading { ProgressView().controlSize(.small).frame(maxWidth: .infinity).padding(.vertical, 10) }
+            if vm.loading { BrandLoader(size: 28).frame(maxWidth: .infinity).padding(.vertical, 10) }
         }
     }
 

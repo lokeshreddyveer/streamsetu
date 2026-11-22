@@ -4,7 +4,31 @@ final class SQLiteCatalogRepository: CatalogRepository {
     let db: DatabaseManager
     /// While active, content in PIN-locked folders is absent from every query below, as if it were not in the library.
     let restriction = Restriction()
-    init(db: DatabaseManager) { self.db = db }
+    /// True only for the recommendation view (see `baseline`): locked folders, hidden folders and hidden titles are always absent, whatever the session says,
+    /// and a title with a copy in such a folder is absent too.
+    let alwaysRestricted: Bool
+    /// Whether this view also applies the twin rule inside every query. The recommendation view does for single reads and for lists without a limit; for a limited list it reads
+    /// through `lite` (same view, no twin rule) and applies the twin rule to the few rows it got, which costs a handful of lookups instead of two sets built over the whole library.
+    private let twinRule: Bool
+    private let baselineStore: SQLiteCatalogRepository?
+    private let liteStore: SQLiteCatalogRepository?
+    init(db: DatabaseManager) {
+        self.db = db
+        alwaysRestricted = false; twinRule = false
+        baselineStore = SQLiteCatalogRepository(baselineOf: db)
+        liteStore = nil
+    }
+    private init(baselineOf db: DatabaseManager) {
+        self.db = db; alwaysRestricted = true; twinRule = true; baselineStore = nil
+        liteStore = SQLiteCatalogRepository(liteOf: db)
+    }
+    private init(liteOf db: DatabaseManager) { self.db = db; alwaysRestricted = true; twinRule = false; baselineStore = nil; liteStore = nil }
+
+    /// The catalog as every recommendation surface (hero, shelves, seeds, similar titles, widgets, assistant suggestions) must see it. Unlocking with the PIN does not widen it.
+    var baseline: SQLiteCatalogRepository { baselineStore ?? self }
+    var recommendationView: any CatalogRepository { baseline }
+    /// Locked folders are hidden right now (a PIN is set and not unlocked, or a Kids profile is in use), or this is the recommendation view.
+    var isRestricting: Bool { alwaysRestricted || restriction.isActive }
 
     final class Restriction: @unchecked Sendable {
         private let lock = NSLock()
@@ -13,12 +37,105 @@ final class SQLiteCatalogRepository: CatalogRepository {
     }
 
     /// `AND` clause that removes items whose folder is locked. Empty when nothing is restricted.
-    private func restricted(_ alias: String) -> String {
-        restriction.isActive ? " AND (\(alias).category_id IS NULL OR \(alias).category_id NOT IN (SELECT category_id FROM locked_categories))" : ""
+    fileprivate func restricted(_ alias: String) -> String {
+        guard isRestricting else { return "" }
+        return " AND (\(alias).category_id IS NULL OR \(alias).category_id NOT IN (SELECT category_id FROM locked_categories))" + baselineExtra(alias)
+    }
+
+    /// The `AND` clause this view applies to a table aliased `alias` (`m` movies, `x` series, `c` channels).
+    func restrictedClause(_ alias: String) -> String { restricted(alias) }
+
+    /// What only the recommendation view adds: hidden folders and hidden titles, and the rule that a title is restricted when ANY copy of it
+    /// (the twin playlist's, another language's) sits in a locked or hidden folder. Two sets are worked out once per statement (never per row): the titles that share an
+    /// identity (same key, year within one) with a copy in such a folder, and the titles that share a normalized title with one (the fallback for titles with no identity yet).
+    private func baselineExtra(_ alias: String) -> String {
+        guard alwaysRestricted else { return "" }
+        var s = " AND \(alias).id NOT IN (SELECT item_id FROM hidden_items) AND (\(alias).category_id IS NULL OR \(alias).category_id NOT IN (SELECT item_id FROM hidden_items WHERE kind='category'))"
+        guard alias != "c", twinRule else { return s }
+        let table = alias == "m" ? "movies" : "series", kind = alias == "m" ? "movie" : "series"
+        // Every copy that is restricted: in a locked or hidden folder, or hidden itself.
+        let copies = """
+            SELECT t.id FROM categories rc JOIN \(table) t ON t.source_id = rc.source_id AND t.category_id = rc.id
+            WHERE rc.kind='\(kind)' AND (rc.id IN (SELECT category_id FROM locked_categories) OR rc.id IN (SELECT item_id FROM hidden_items WHERE kind='category'))
+            UNION SELECT id FROM \(table) WHERE id IN (SELECT item_id FROM hidden_items WHERE kind<>'category')
+            """
+        // The title test is only for copies that have no identity row yet (a backfill still running), where the identity rule cannot see them: same title and a compatible year
+        // (within one, or either unknown). A copy that has an identity row is judged by the identity rule alone, so unrelated titles that merely share their words are never caught.
+        let uncovered = """
+            SELECT t2.normalized_title AS nt, t2.release_year AS ry FROM \(table) t2 WHERE t2.id IN (\(copies)) AND t2.normalized_title <> ''
+                AND NOT EXISTS (SELECT 1 FROM content_identity ci WHERE ci.item_id = t2.id)
+            """
+        // And the mirror case: the candidate itself has no identity row yet while a restricted copy (covered or not) has the same title and a compatible year.
+        let allRestricted = """
+            SELECT t2.normalized_title AS nt, t2.release_year AS ry FROM \(table) t2 WHERE t2.id IN (\(copies)) AND t2.normalized_title <> ''
+            """
+        // With nothing locked or hidden at all the twin rule has nothing to look for: the constant test is true, the OR stops there, and the sets below are never built.
+        s += """
+             AND ((NOT EXISTS (SELECT 1 FROM locked_categories) AND NOT EXISTS (SELECT 1 FROM hidden_items)) OR (
+                 \(alias).id NOT IN (SELECT me.item_id FROM (\(copies)) r JOIN content_identity tw ON tw.item_id = r.id
+                     JOIN content_identity me ON me.kind = tw.kind AND me.identity_key = tw.identity_key AND (me.year IS NULL OR tw.year IS NULL OR abs(me.year - tw.year) <= 1))
+                 AND NOT EXISTS (SELECT 1 FROM (\(uncovered)) u WHERE u.nt = \(alias).normalized_title AND (\(alias).release_year IS NULL OR u.ry IS NULL OR abs(\(alias).release_year - u.ry) <= 1))
+                 AND NOT (NOT EXISTS (SELECT 1 FROM content_identity me0 WHERE me0.item_id = \(alias).id)
+                          AND EXISTS (SELECT 1 FROM (\(allRestricted)) u2 WHERE u2.nt = \(alias).normalized_title AND (\(alias).release_year IS NULL OR u2.ry IS NULL OR abs(\(alias).release_year - u2.ry) <= 1)))))
+            """
+        return s
+    }
+
+    /// Reads rows from the lite view in growing windows from the top until `limit` of them pass the twin rule (or the list ends). Rows that fail are skipped, so the result is
+    /// what the full rule would return, in the same order.
+    private static func overFetch<T>(limit: Int, read: (Int) throws -> [T], twinFree: ([T]) throws -> Set<String>, id: (T) -> String) throws -> [T] {
+        guard limit > 0 else { return [] }
+        var window = max(limit * 2 + 16, 48)
+        while true {
+            let rows = try read(window)
+            let ok = try twinFree(rows)
+            let kept = rows.filter { ok.contains(id($0)) }
+            if kept.count >= limit || rows.count < window { return Array(kept.prefix(limit)) }
+            window *= 4
+        }
+    }
+
+    /// The ids among these (all of one table) that have no copy in a locked or hidden folder: one lookup per id through the identity index, and always the same-title test as well (fail closed: a restricted copy
+    /// with no identity row yet, during a backfill, is still caught by its title).
+    fileprivate func twinFree(_ ids: [String], table: String) throws -> Set<String> {
+        guard !ids.isEmpty else { return [] }
+        var out = Set<String>()
+        let kind = table == "movies" ? "movie" : "series"
+        func bad(_ t: String) -> String { "(\(t).category_id IN (SELECT category_id FROM locked_categories) OR \(t).category_id IN (SELECT item_id FROM hidden_items WHERE kind='category') OR \(t).id IN (SELECT item_id FROM hidden_items WHERE kind<>'category'))" }
+        for chunk in stride(from: 0, to: ids.count, by: 300).map({ Array(ids[$0..<min($0 + 300, ids.count)]) }) {
+            let marks = chunk.map { _ in "?" }.joined(separator: ","), args = chunk.map { $0 as (any SQLConvertible)? }
+            let sql = """
+                SELECT m.id FROM \(table) m WHERE m.id IN (\(marks))
+                AND ((NOT EXISTS (SELECT 1 FROM locked_categories) AND NOT EXISTS (SELECT 1 FROM hidden_items)) OR (
+                    NOT EXISTS (SELECT 1 FROM content_identity me JOIN content_identity tw ON tw.kind = me.kind AND tw.identity_key = me.identity_key AND (tw.year IS NULL OR me.year IS NULL OR abs(tw.year - me.year) <= 1)
+                        JOIN \(table) t ON t.id = tw.item_id WHERE me.item_id = m.id AND me.kind = '\(kind)' AND \(bad("t")))
+                    AND NOT EXISTS (SELECT 1 FROM (SELECT t2.normalized_title AS nt, t2.release_year AS ry FROM \(table) t2 WHERE \(bad("t2")) AND t2.normalized_title <> ''
+                                                    AND NOT EXISTS (SELECT 1 FROM content_identity ci WHERE ci.item_id = t2.id)) u
+                                    WHERE u.nt = m.normalized_title AND (m.release_year IS NULL OR u.ry IS NULL OR abs(m.release_year - u.ry) <= 1))
+                    AND NOT (NOT EXISTS (SELECT 1 FROM content_identity me0 WHERE me0.item_id = m.id)
+                             AND EXISTS (SELECT 1 FROM (SELECT t2.normalized_title AS nt, t2.release_year AS ry FROM \(table) t2 WHERE \(bad("t2")) AND t2.normalized_title <> '') u2
+                                         WHERE u2.nt = m.normalized_title AND (m.release_year IS NULL OR u2.ry IS NULL OR abs(m.release_year - u2.ry) <= 1)))))
+                """
+            out.formUnion(try db.read { try $0.query(sql, args) { $0.string(0) } })
+        }
+        return out
+    }
+
+    /// Which of these titles (movies or series) the recommendation view may show: not in a locked or hidden folder, not hidden, and with no copy in one. A few lookups per id.
+    func recommendableIDs(_ ids: [String]) throws -> Set<String> {
+        let view = baseline, lite = view.liteStore ?? view
+        var out = Set<String>()
+        for chunk in stride(from: 0, to: ids.count, by: 300).map({ Array(ids[$0..<min($0 + 300, ids.count)]) }) {
+            let marks = chunk.map { _ in "?" }.joined(separator: ","), args = chunk.map { $0 as (any SQLConvertible)? }
+            let movies = try db.read { try $0.query("SELECT m.id FROM movies m WHERE m.id IN (\(marks))\(lite.restricted("m"))", args) { $0.string(0) } }
+            let series = try db.read { try $0.query("SELECT x.id FROM series x WHERE x.id IN (\(marks))\(lite.restricted("x"))", args) { $0.string(0) } }
+            out.formUnion(try view.twinFree(movies, table: "movies")); out.formUnion(try view.twinFree(series, table: "series"))
+        }
+        return out
     }
 
     func hiddenByLock(_ ids: [String]) throws -> Set<String> {
-        guard restriction.isActive, !ids.isEmpty else { return [] }
+        guard isRestricting, !ids.isEmpty else { return [] }
         var out = Set<String>()
         for chunk in stride(from: 0, to: ids.count, by: 300).map({ Array(ids[$0..<min($0 + 300, ids.count)]) }) {
             let marks = chunk.map { _ in "?" }.joined(separator: ",")
@@ -37,12 +154,21 @@ final class SQLiteCatalogRepository: CatalogRepository {
 
     func lockedCategoryIDs() throws -> Set<String> { Set(try db.read { try $0.query("SELECT category_id FROM locked_categories") { $0.string(0) } }) }
 
-    func setCategoryLocked(_ id: String, _ locked: Bool) throws {
+    /// Locks or unlocks a folder. With `family`, the same-named folders of every other playlist (including ones added later) follow it. Returns the folders changed.
+    @discardableResult
+    func setCategoryLocked(_ id: String, _ locked: Bool, family: Bool = false) throws -> [String] {
         try db.write { c in
-            if locked { try c.execute("INSERT OR IGNORE INTO locked_categories(category_id) VALUES(?)", [id]) }
-            else { try c.execute("DELETE FROM locked_categories WHERE category_id=?", [id]) }
+            let ids = family ? try FolderFamily.members(of: id, in: c) : [id]
+            for x in ids {
+                if locked { try c.execute("INSERT OR IGNORE INTO locked_categories(category_id) VALUES(?)", [x]) }
+                else { try c.execute("DELETE FROM locked_categories WHERE category_id=?", [x]) }
+            }
+            return ids
         }
     }
+
+    /// Every folder (as it is stored) that carries the lock, read live from the database.
+    func familyMembers(of id: String) throws -> [String] { try db.read { try FolderFamily.members(of: id, in: $0) } }
 
     // MARK: sources
 
@@ -143,11 +269,15 @@ final class SQLiteCatalogRepository: CatalogRepository {
     func categories(sourceID: UUID?, kind: ContentKind, includeHidden: Bool) throws -> [CatalogCategory] {
         let table: String
         switch kind { case .channel: table = "channels"; case .movie: table = "movies"; case .series: table = "series"; case .episode: return [] }
+        // A locked folder is listed by name only while folders are locked: its count is never computed (the CASE does not run the subquery) and is reported as 0.
+        let hideCount = isRestricting ? "1" : "0"
         var sql = """
             SELECT cat.id, cat.source_id, cat.kind, cat.provider_id, cat.name, cat.sort_order,
-                   (SELECT COUNT(*) FROM \(table) x WHERE x.source_id=cat.source_id AND x.category_id=cat.id\(kind == .channel ? " AND x.is_primary=1" : ""))
+                   CASE WHEN \(hideCount) = 1 AND lc.category_id IS NOT NULL THEN 0
+                        ELSE (SELECT COUNT(*) FROM \(table) x WHERE x.source_id=cat.source_id AND x.category_id=cat.id\(kind == .channel ? " AND x.is_primary=1" : "")) END,
+                   lc.category_id IS NOT NULL
             FROM categories cat JOIN sources s ON s.id=cat.source_id AND s.enabled=1
-            LEFT JOIN folder_order fo ON fo.category_id=cat.id WHERE cat.kind=?
+            LEFT JOIN folder_order fo ON fo.category_id=cat.id LEFT JOIN locked_categories lc ON lc.category_id=cat.id WHERE cat.kind=?
             """
         var args: [(any SQLConvertible)?] = [kind.rawValue]
         if let sourceID { sql += " AND cat.source_id=?"; args.append(sourceID) }
@@ -156,7 +286,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
         return try db.read { c in
             try c.query(sql, args) { r in
                 CatalogCategory(id: r.string(0), sourceID: r.uuid(1) ?? UUID(), kind: kind, providerID: r.string(3), name: r.string(4),
-                                sortOrder: r.int(5), itemCount: r.int(6))
+                                sortOrder: r.int(5), itemCount: r.int(6), isLocked: r.bool(7))
             }
         }
     }
@@ -365,6 +495,13 @@ final class SQLiteCatalogRepository: CatalogRepository {
     }
 
     func movies(_ q: VODQuery) throws -> [Movie] {
+        if twinRule, let lite = liteStore, let limit = q.limit, q.offset == 0, q.ids == nil {
+            return try Self.overFetch(limit: limit) { n in try lite.moviesInView(q.with(limit: n)) } twinFree: { try self.twinFree($0.map(\.id), table: "movies") } id: { $0.id }
+        }
+        return try moviesInView(q)
+    }
+
+    fileprivate func moviesInView(_ q: VODQuery) throws -> [Movie] {
         var sql = Self.movieSelect + " WHERE 1=1"
         var args: [(any SQLConvertible)?] = []
         guard vodWhere(q, alias: "m", kind: "movie", sql: &sql, args: &args) else { return [] }
@@ -398,7 +535,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
     func movieCopies(of m: Movie) throws -> [Movie] {
         let found = try db.read { try $0.query(Self.movieSelect + " WHERE m.normalized_title=?" + restricted("m"), [m.normalizedTitle], Self.mapMovie) }
         // The film that was handed in is added only when nothing hides it: a title in a folder that has since been locked must not come back through here.
-        return found.contains { $0.id == m.id } ? found : (restriction.isActive ? found : [m] + found)
+        return found.contains { $0.id == m.id } ? found : (isRestricting ? found : [m] + found)
     }
 
     func movie(id: String) throws -> Movie? {
@@ -436,6 +573,13 @@ final class SQLiteCatalogRepository: CatalogRepository {
     }
 
     func series(_ q: VODQuery) throws -> [Series] {
+        if twinRule, let lite = liteStore, let limit = q.limit, q.offset == 0, q.ids == nil {
+            return try Self.overFetch(limit: limit) { n in try lite.seriesInView(q.with(limit: n)) } twinFree: { try self.twinFree($0.map(\.id), table: "series") } id: { $0.id }
+        }
+        return try seriesInView(q)
+    }
+
+    fileprivate func seriesInView(_ q: VODQuery) throws -> [Series] {
         var sql = Self.seriesSelect + " WHERE 1=1"
         var args: [(any SQLConvertible)?] = []
         guard vodWhere(q, alias: "x", kind: "series", sql: &sql, args: &args) else { return [] }
@@ -491,7 +635,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
             FROM categories cat JOIN sources s ON s.id=cat.source_id AND s.enabled=1
             WHERE cat.id NOT IN (SELECT item_id FROM hidden_items WHERE kind='category')
             """
-        if restriction.isActive { sql += " AND cat.id NOT IN (SELECT category_id FROM locked_categories)" }
+        if isRestricting { sql += " AND cat.id NOT IN (SELECT category_id FROM locked_categories)" }
         var args: [(any SQLConvertible)?] = []
         for w in words { sql += " AND cat.normalized_name LIKE ? ESCAPE '\\'"; args.append("%" + w.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "%", with: "\\%").replacingOccurrences(of: "_", with: "\\_") + "%") }
         sql += " ORDER BY (cat.normalized_name = ?) DESC, length(cat.normalized_name), cat.name COLLATE NOCASE LIMIT \(max(1, limit))"
@@ -548,7 +692,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
         var args: [(any SQLConvertible)?] = [like]
         if let sourceID { sql += " AND series_id IN (SELECT id FROM series WHERE source_id=?)"; args.append(sourceID) }
         else { sql += " AND series_id IN (SELECT x.id FROM series x JOIN sources s ON s.id=x.source_id AND s.enabled=1)" }
-        if restriction.isActive { sql += " AND series_id IN (SELECT x.id FROM series x WHERE x.category_id IS NULL OR x.category_id NOT IN (SELECT category_id FROM locked_categories))" }
+        if isRestricting { sql += " AND series_id IN (SELECT x.id FROM series x WHERE x.category_id IS NULL OR x.category_id NOT IN (SELECT category_id FROM locked_categories))" }
         sql += " ORDER BY title COLLATE NOCASE LIMIT \(max(1, limit))"
         return try db.read { try $0.query(sql, args, Self.mapEpisode) }
     }
@@ -569,17 +713,41 @@ final class SQLiteCatalogRepository: CatalogRepository {
         }
     }
 
-    func genres(kind: ContentKind) throws -> [String] {
+    /// Counts of what anyone may be shown: not in a locked or hidden folder and not hidden themselves, whatever the session says. (`counts` stays the raw table size, for diagnostics and backups.)
+    /// Worked out as the table size less what sits in locked or hidden folders less the hidden titles elsewhere, so it never walks the whole table.
+    func visibleCounts(sourceID: UUID?) throws -> CatalogCounts {
         try db.read { c in
-            try c.query("SELECT DISTINCT genre FROM search_docs WHERE kind=? AND genre IS NOT NULL AND genre!='' ORDER BY genre COLLATE NOCASE LIMIT 200", [kind.rawValue]) { $0.string(0) }
+            let a: [(any SQLConvertible)?] = sourceID.map { [$0] } ?? []
+            let src = sourceID == nil ? "" : " AND x.source_id=?"
+            func count(_ table: String, _ kind: String) throws -> Int {
+                let total = try c.scalarInt("SELECT COUNT(*) FROM \(table) x WHERE 1=1\(src)", a)
+                let restrictedFolders = "SELECT rc.id FROM categories rc WHERE rc.kind='\(kind)' AND (rc.id IN (SELECT category_id FROM locked_categories) OR rc.id IN (SELECT item_id FROM hidden_items WHERE kind='category'))"
+                let inFolders = try c.scalarInt("SELECT COUNT(*) FROM categories rc JOIN \(table) x ON x.source_id = rc.source_id AND x.category_id = rc.id WHERE rc.id IN (\(restrictedFolders))\(src)", a)
+                let hiddenElsewhere = try c.scalarInt("""
+                    SELECT COUNT(*) FROM hidden_items h JOIN \(table) x ON x.id = h.item_id
+                    WHERE h.kind <> 'category' AND (x.category_id IS NULL OR x.category_id NOT IN (\(restrictedFolders)))\(src)
+                    """, a)
+                return max(0, total - inFolders - hiddenElsewhere)
+            }
+            return CatalogCounts(channels: try count("channels", "channel"), movies: try count("movies", "movie"), series: try count("series", "series"))
         }
     }
 
+    /// Genres that at least one visible title has. Never a genre that exists only in a locked or hidden folder.
+    func genres(kind: ContentKind) throws -> [String] {
+        let table = kind == .movie ? "movies" : "series", alias = kind == .movie ? "m" : "x"
+        let sql = """
+            SELECT DISTINCT d.genre FROM search_docs d WHERE d.kind=? AND d.genre IS NOT NULL AND d.genre!=''
+            AND d.item_id IN (SELECT \(alias).id FROM \(table) \(alias) JOIN sources s ON s.id=\(alias).source_id AND s.enabled=1 WHERE 1=1\(baseline.restricted(alias)))
+            ORDER BY d.genre COLLATE NOCASE LIMIT 200
+            """
+        return try db.read { c in try c.query(sql, [kind.rawValue]) { $0.string(0) } }
+    }
+
     func years(kind: ContentKind) throws -> [Int] {
-        let table = kind == .movie ? "movies" : "series"
-        return try db.read { c in
-            try c.query("SELECT DISTINCT release_year FROM \(table) WHERE release_year BETWEEN 1900 AND 2100 ORDER BY release_year DESC") { $0.int(0) }
-        }
+        let table = kind == .movie ? "movies" : "series", alias = kind == .movie ? "m" : "x"
+        let sql = "SELECT DISTINCT \(alias).release_year FROM \(table) \(alias) JOIN sources s ON s.id=\(alias).source_id AND s.enabled=1 WHERE \(alias).release_year BETWEEN 1900 AND 2100\(baseline.restricted(alias)) ORDER BY \(alias).release_year DESC"
+        return try db.read { c in try c.query(sql) { $0.int(0) } }
     }
 
     func allChannelsForManagement(sourceID: UUID?) throws -> [Channel] {

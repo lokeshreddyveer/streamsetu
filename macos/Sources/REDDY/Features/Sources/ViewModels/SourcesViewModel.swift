@@ -6,13 +6,9 @@ enum AddSourceKind: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     /// What the Type menu offers. The App Store build leaves out the Stalker / MAG portal type (it presents a set-top-box identity, and is
     /// mostly used with services that are not licensed); every other build keeps it.
-    static var offered: [AddSourceKind] {
-        #if STREAMSETU_APPSTORE
-        allCases.filter { $0 != .stalker }
-        #else
-        allCases
-        #endif
-    }
+    static var offered: [AddSourceKind] { offered(stalker: stalkerOffered) }
+    static func offered(stalker: Bool) -> [AddSourceKind] { stalker ? allCases : allCases.filter { $0 != .stalker } }
+    static var stalkerOffered: Bool { SourceDetector.stalkerOffered }
     /// Types that ask for a server, a user name and a password.
     var usesLogin: Bool { self == .xtream || self == .jellyfin || self == .emby || self == .tvheadend || self == .enigma2 }
 }
@@ -54,16 +50,18 @@ final class AddSourceViewModel {
     func acceptPlainHTTP() { acceptedPlainHTTPFor = acceptanceKey }
 
     /// Fills the form from one pasted address. The person still reviews it and presses Add.
-    func paste(_ text: String) {
-        guard let d = SourceDetector.detect(text) else { detectionNote = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : "That doesn't look like an address."; return }
+    func paste(_ text: String, allowStalker: Bool = AddSourceKind.stalkerOffered) {
+        guard let d = SourceDetector.detect(text, allowStalker: allowStalker), AddSourceKind.offered(stalker: allowStalker).contains(d.kind) else { detectionNote = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : "That doesn't look like an address."; return }
         kind = d.kind; server = d.server; url = d.url
         if !d.username.isEmpty { username = d.username }
         if !d.password.isEmpty { password = d.password }
         detectionNote = d.note
     }
 
+    var allowStalker = AddSourceKind.stalkerOffered
     var canSubmit: Bool {
-        switch kind {
+        if kind == .stalker && !allowStalker { return false }
+        return switch kind {
         case .tvheadend, .enigma2: !server.trimmingCharacters(in: .whitespaces).isEmpty
         case .stream: !url.trimmingCharacters(in: .whitespaces).isEmpty
         case .xtream, .jellyfin, .emby: !server.trimmingCharacters(in: .whitespaces).isEmpty && !username.isEmpty && !password.isEmpty

@@ -48,12 +48,20 @@ struct LibraryItemCard: View {
     var width: CGFloat = 150
     /// Adds a "remove from this list" entry to the card's menu (used by the history lists).
     var removal: (title: String, action: () -> Void)?
+    /// Folder rows only: the quiet line (short genre or year, or nothing) replaces the usual one, and the tile reserves its lines so a row never jumps.
+    var folderLine: String??
     @Environment(\.container) private var container
     @Environment(AppState.self) private var state
     @Environment(AppRouter.self) private var router
 
+    private var cardModel: PosterCardModel {
+        var m = PosterCardModel(item: item, rank: rank, progress: progress ?? state.partialProgress(item.id), isFavorite: state.isFavorite(item.id), isNew: state.hasNewEpisodes(item.id), isWatched: state.isWatched(item.id))
+        if let folderLine { m.subtitle = folderLine ?? ""; m.reservesLines = true }
+        return m
+    }
+
     var body: some View {
-        ReddyPosterCard(model: PosterCardModel(item: item, rank: rank, progress: progress ?? state.partialProgress(item.id), isFavorite: state.isFavorite(item.id), isNew: state.hasNewEpisodes(item.id), isWatched: state.isWatched(item.id)), width: width,
+        ReddyPosterCard(model: cardModel, width: width,
                         onOpen: { PlayActions.open(item, router: router) },
                         onPlay: { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item) } })
             .contextMenu {
@@ -135,7 +143,7 @@ struct DiscoverPage: View {
     @State private var slides: [FeaturedSlide] = []
     @State private var filter = DiscoverFilter()
 
-    private var slideshowKey: String { "\(state.activeSourceID?.uuidString ?? "")-\(FeaturedPolicy.dayKey(Date()))-\(content != nil)" }
+    private var slideshowKey: String { "\(state.activeSourceID?.uuidString ?? "")-\(FeaturedPolicy.dayKey(Date()))-\(content != nil)-\(state.shuffleTick)" }
 
     /// The header and the toolbar stay put. The slideshow is the first thing in the scrolling region, so it scrolls up and out of the way with the rails.
     /// The region is clipped, so nothing can move the top navigation or the sidebar.
@@ -160,17 +168,21 @@ struct DiscoverPage: View {
             .padding(.horizontal, LayoutTokens.gutter).padding(.top, 10)
         }
         .onAppear { state.reloadWatched() }
-        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") {
+        .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(state.shuffleTick)") {
             guard let c = container, state.hasLibrary else { loaded = true; return }
             let sid = state.activeSourceID
-            let built = await Task.detached { try? c.discover.build(sourceID: sid) }.value
+            // The engine picks the mix off the main thread; if the identity layer is not ready it returns nil and the earlier Home is drawn.
+            let smart = await c.smartMix.home(profile: c.profiles.activeID, sourceID: sid, preferredLanguage: c.settings.preferredAudioLanguage)
+            let built = await Task.detached { try? c.discover.build(sourceID: sid, smart: smart) }.value
             content = built; loaded = true
+            c.smartMix.refreshTrendingIfNeeded()
         }
         // Keyed on the playlist and the day (and on whether content exists yet), not on filters or refreshes: choosing a
         // filter or a catalog update never rebuilds or restarts the slideshow.
         .task(id: slideshowKey) {
             guard let c = container, let content, state.hasLibrary else { return }
-            let built = await c.featured.discoverSlides(ranked: DiscoverFilter.slideshowOrder(content.shelves), sourceID: state.activeSourceID)
+            let ranked = content.heroOrder.isEmpty ? DiscoverFilter.slideshowOrder(content.shelves) : content.heroOrder
+            let built = await c.featured.discoverSlides(ranked: ranked, sourceID: state.activeSourceID, revision: c.parental.restrictionRevision)
             if !built.isEmpty || slides.isEmpty { slides = built }
         }
     }
@@ -278,9 +290,20 @@ struct ContinueWatchingPage: View {
         .buttonStyle(.plain).accessibilityLabel("Resume \(ci.title)")
         .contextMenu {
             Button("Resume") { resume(ci) }
+            Button("Don't Recommend This", systemImage: "hand.thumbsdown") { stopRecommending(ci) }
             Divider()
             Button("Remove from Continue Watching", role: .destructive) { remove(ci) }
         }
+    }
+
+    /// Writes only the "do not recommend" marker. The entry stays in Continue Watching and nothing about playback changes.
+    private func stopRecommending(_ ci: ContinueItem) {
+        guard let c = container else { return }
+        let id: String, profile = c.profiles.activeID
+        switch ci.content { case .movie(let m): id = m.id; case .episode(_, let s): id = s.id }
+        if c.smartMix.dismiss(profile: profile, itemID: id) {
+            state.toasts.show("Won't be recommended again", symbol: "hand.thumbsdown", kind: .success, duration: 8, actionTitle: "Undo") { c.smartMix.undismiss(profile: profile, itemID: id) }
+        } else { state.toasts.show("This title can't be changed here", symbol: "exclamationmark.circle", kind: .info) }
     }
 
     private func resume(_ ci: ContinueItem) {

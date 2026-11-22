@@ -104,6 +104,7 @@ struct AssistantCoverageRow: Equatable {
         "LiveTV": covered("feature", "LiveTV", read: "search_everything, tv_guide, now_playing", act: "play_title, open_screen", restrictions: "yes: AssistantAuthorizer", error: "yes"),
         "Movies": covered("feature", "Movies", read: "search_library, title_details, similar_titles", act: "play_title, favourite, watch_later, open_screen with filters", restrictions: "yes: AssistantAuthorizer", error: "yes"),
         "Onboarding": unsupported("feature", "Onboarding", ui: "yes", "First-run screens; the assistant is not shown there."),
+        "Opening": unsupported("feature", "Opening", ui: "yes", "The opening and What's New at launch; the assistant is not shown there."),
         "Player": covered("feature", "Player", read: "diagnose_playback, now_playing, recommend_engine", act: "control_playback, retry_playback, switch_engine, select_track", restrictions: "yes: AssistantAuthorizer (session, profile)", error: "yes: diagnosis table"),
         "RecentlyWatched": unsupported("feature", "RecentlyWatched", "History is summarised by watch_stats but not searchable or editable by the assistant yet."),
         "Search": covered("feature", "Search", read: "search_everything (same engine as the search box)", act: "open_screen with filter words", restrictions: "n/a", error: "yes"),

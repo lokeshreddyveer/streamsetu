@@ -6,6 +6,7 @@ struct SeriesDetailView: View {
     @Environment(AppState.self) private var state
     @Environment(AppRouter.self) private var router
     @State private var vm = SeriesDetailViewModel()
+    @State private var person: PersonRoute?
 
     private var s: Series { vm.detail?.series ?? series }
 
@@ -18,6 +19,7 @@ struct SeriesDetailView: View {
                         LinearGradient(colors: [.clear, ColorTokens.background], startPoint: .top, endPoint: .bottom)
                         VStack(alignment: .leading, spacing: 6) {
                             Text(s.title).font(Typography.display).lineLimit(2)
+                            VersionPill(item: .series(s))
                             Text([s.releaseYear.flatMap { s.title.contains(String($0)) ? nil : String($0) }, s.genre ?? s.categoryName, vm.detail.map { "\($0.seasons.count) season\($0.seasons.count == 1 ? "" : "s")" }].compactMap { $0 }.joined(separator: " · "))
                                 .font(Typography.bodyMedium).foregroundStyle(ColorTokens.textSecondary)
                             QualityBadgeRow(texts: [s.title, s.categoryName])
@@ -44,6 +46,8 @@ struct SeriesDetailView: View {
                         }
                     }
                     TrailerSection(itemID: s.id, title: s.title, year: s.releaseYear, isSeries: true)
+                    CastSection(item: .series(s)) { person = PersonRoute(name: $0) }
+                    OtherLanguagesRow(item: .series(s)) { PlayActions.open($0, router: router) }
                     if vm.loading && vm.detail == nil { ForEach(0..<5, id: \.self) { _ in SkeletonBlock(height: 72, radius: 10) } }
                     else if let e = vm.error, vm.detail == nil { EmptyStateView(symbol: "exclamationmark.triangle", title: "Couldn't load episodes", message: e, actionTitle: "Try Again") { Task { if let c = container { await vm.load(series, c) } } }.frame(height: 220) }
                     else if vm.episodesInSeason.isEmpty { Text("No episodes available.").foregroundStyle(ColorTokens.textSecondary) }
@@ -65,6 +69,7 @@ struct SeriesDetailView: View {
         }
         .frame(width: 880, height: 680).background(ColorTokens.background)
         .task { if let c = container { await vm.load(series, c) } }
+        .sheet(item: $person) { p in PersonSheet(person: p) { person = nil } }
     }
 
     private func playTitle(_ e: Episode, _ p: WatchProgress?) -> String {

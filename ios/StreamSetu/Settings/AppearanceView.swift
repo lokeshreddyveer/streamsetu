@@ -4,6 +4,7 @@ import SwiftUI
 struct AppearanceView: View {
     @Environment(AppSettings.self) private var settings
     @State private var draft = CustomTheme.standard
+    @AppStorage(OpeningPreference.key) private var opening = OpeningPreference.automatic.rawValue
 
     var body: some View {
         @Bindable var s = settings
@@ -14,6 +15,10 @@ struct AppearanceView: View {
             Section {
                 Picker("Language", selection: $s.language) { ForEach(AppLanguage.allCases) { Text($0.label).tag($0) } }
             } footer: { Text("The language of the app's own wording. Titles and descriptions come from your playlists and stay as they are. Some text is still in English.") }.glossRow()
+            Section {
+                Picker("Opening", selection: $opening) { ForEach(OpeningPreference.allCases) { Text($0.label).tag($0.rawValue) } }
+                Button("Replay the Full Story") { OpeningCoordinator.shared.replayFullStory() }
+            } footer: { Text("What plays when StreamSetu starts. Automatic: the full story the first time, a short version after that. What's New still shows after an update when it is off.") }.glossRow()
             Section {
                 Toggle("Increase contrast", isOn: $s.highContrast)
             } footer: { Text("Brighter text and stronger outlines. Also follows Settings > Accessibility > Display > Increase Contrast.") }.glossRow()

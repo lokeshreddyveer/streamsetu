@@ -187,6 +187,8 @@ struct PlayerScreen: View {
     @State private var skipAt: Date?
     @State private var scrubPreview: Double?
     @State private var logNote: String?
+    /// The playlist opened from the failure card when its saved login is missing.
+    @State private var editingSource: PlaylistToEdit?
     @State private var landscape = false
     @State private var aspect: AspectRatioOption = .original
     @State private var zoom = 1.0
@@ -232,7 +234,7 @@ struct PlayerScreen: View {
     private var controlsLayer: some View {
         GeometryReader { geo in
             ZStack {
-                status
+                status.animation(BrandMotion.emphasized, value: isFailed)
                 cards
                 if streamInfo, !locked, !showControls, infoVisible {
                     // One small faint line, so nothing jumps around when the controls hide.
@@ -294,6 +296,7 @@ struct PlayerScreen: View {
                                setFill: setFill, setSpeed: setSpeed, saveFrame: saveFrame)
         }
         .sheet(isPresented: $showEpisodes) { EpisodeListSheet(playback: playback) }
+        .sheet(item: $editingSource) { p in NavigationStack { PlaylistDetailView(sourceID: p.id) } }
         .sheet(isPresented: $showSearch) {
             if let c = container {
                 PlayerSearchSheet(onChannel: { Play.channel($0, queue: playback.queue, c) }, onMovie: { Play.movie($0, c) }, onEpisode: { Play.episode($0, $1, c) })
@@ -466,13 +469,16 @@ struct PlayerScreen: View {
     @ViewBuilder private var status: some View {
         switch playback.state {
         case .buffering, .seeking:
-            VStack(spacing: 8) { ProgressView().controlSize(.large).tint(.white); if let m = playback.statusMessage { Text(m).font(.caption).foregroundStyle(.white.opacity(0.8)) } }
+            VStack(spacing: 8) { BrandLoader(size: 52, tint: .white); if let m = playback.statusMessage { Text(m).font(.caption).foregroundStyle(.white.opacity(0.8)) } }
         case .resolving, .preparing, .recovering:
             StatusCard(state: playback.state, message: playback.statusMessage, offline: playback.waitingForNetwork) { playback.stop(); dismiss() }
         case .failed(let e):
             FailureCard(error: e, isLive: playback.isLive, canZap: playback.queue.count > 1, logNote: $logNote,
                         retry: { playback.retryNow() }, nextChannel: { zap(1) },
-                        sendLog: { sendLog() }, close: { playback.stop(); dismiss() })
+                        sendLog: { sendLog() }, close: { playback.stop(); dismiss() },
+                        editLogin: e.kind == .loginMissing ? playback.current.map { r in { editingSource = PlaylistToEdit(id: r.sourceID) } } : nil)
+                .transition(.move(edge: .bottom).combined(with: .opacity))          // the error card rises into place
+
         default: EmptyView()
         }
     }
@@ -544,12 +550,15 @@ struct PlayerScreen: View {
                 bottomBar
             }
             .padding(.horizontal, landscape ? 24 : 16).padding(.top, 8).padding(.bottom, landscape ? 30 : 34)
-            // Play, back and forward sit on the true middle of the screen, whatever the bars above and below take up.
-            transport.frame(maxWidth: .infinity, maxHeight: .infinity).ignoresSafeArea()
+            // Play, back and forward sit on the true middle of the screen, whatever the bars above and below take up. While a stream has
+            // failed, the failure card is in that place, so they are not shown (they would sit on top of its text and do nothing).
+            if !isFailed { transport.frame(maxWidth: .infinity, maxHeight: .infinity).ignoresSafeArea() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(.white)
     }
+
+    private var isFailed: Bool { if case .failed = playback.state { true } else { false } }
 
     private var infoVisible: Bool {
         playback.state == .playing || playback.state == .buffering || playback.state == .paused || playback.state == .seeking

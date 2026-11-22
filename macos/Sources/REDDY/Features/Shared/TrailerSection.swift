@@ -29,7 +29,6 @@ struct TrailerSection: View {
                 let line = [e.ageRating, e.country].compactMap { $0 }.joined(separator: " · ")
                 if !line.isEmpty { Text(line).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary) }
                 if !e.directors.isEmpty { fact(isSeries ? "Creator" : "Director", e.directors.joined(separator: ", ")) }
-                if !e.cast.isEmpty { fact("Cast", e.cast.prefix(12).joined(separator: ", ")) }
             }
         }
         .task(id: itemID) { await load() }
@@ -66,7 +65,7 @@ struct TrailerSection: View {
         if extras?.trailerKey == nil {
             let cand = MetadataMatchService.Candidate(id: itemID, isSeries: isSeries, title: title, year: year)
             tmdbTrailer = await c.metadata.details(for: cand)?.bestTrailer?.key
-            if tmdbTrailer == nil { clip = await TrailerLookup.find(title: title, year: year, isSeries: isSeries) }
+            if tmdbTrailer == nil, c.metadata.isSendable(itemID) { clip = await TrailerLookup.find(title: title, year: year, isSeries: isSeries) }
         }
     }
 }

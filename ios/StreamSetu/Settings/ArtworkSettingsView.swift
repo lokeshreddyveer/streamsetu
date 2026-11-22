@@ -6,6 +6,7 @@ struct ArtworkSettingsView: View {
     @Environment(AppState.self) private var state
     @State private var key = ""
     @State private var hasKey = false
+    @State private var trending = true
     @State private var running = false
     @State private var progress = MetadataMatchService.Progress()
     @State private var message: String?
@@ -18,7 +19,7 @@ struct ArtworkSettingsView: View {
                 SecureField(hasKey ? "Replace key" : "Paste your TMDB API key", text: $key).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Button("Save Key") { save() }.disabled(key.trimmingCharacters(in: .whitespaces).isEmpty)
                 if hasKey { Button("Remove Key", role: .destructive) {
-                    do { try container?.metadata.removeKey(); hasKey = false; say("Key removed.") }
+                    do { try container?.metadata.removeKey(); hasKey = false; container?.smartMix.applyPolicy(); container?.smartMix.invalidate(.prefsChange); say("Key removed.") }
                     catch { say("Could not remove the key: \(error.localizedDescription)", failure: true) }
                 } }
             } header: { Text("API key") } footer: {
@@ -30,17 +31,20 @@ struct ArtworkSettingsView: View {
                 Button("Test Key") { test() }.disabled(!hasKey || running)
                 if let message { Label(message, systemImage: failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").foregroundStyle(failed ? .orange : .green).font(.callout) }
             } footer: { Text("Only the title and year are sent. Anything your playlist already provides is left alone.") }.glossRow()
-            Section { Text(MetadataMatchService.attribution).font(.caption).foregroundStyle(.secondary) }.glossRow()
+            Section {
+                Toggle("Use TMDB weekly trending", isOn: Binding(get: { trending }, set: { trending = $0; container?.smartMix.trendingEnabled = $0 }))
+            } footer: { Text(hasKey ? "Ranks Top This Week and Trending in Your Library by this week's trending titles. Only the public list is requested." : "On by default, but it only works once you add your own TMDB key above.") }.glossRow()
+            Section { TMDBAttribution() }.glossRow()
         }
         .navigationTitle("Artwork and Details").themed("Artwork and Details")
-        .onAppear { hasKey = container?.metadata.hasKey ?? false }
+        .onAppear { hasKey = container?.metadata.hasKey ?? false; trending = container?.smartMix.trendingEnabled ?? true }
     }
 
     private func say(_ m: String, failure: Bool = false) { message = m; failed = failure }
 
     private func save() {
         guard let svc = container?.metadata else { return }
-        do { try svc.saveKey(key); key = ""; hasKey = svc.hasKey; say("Key saved.") } catch { say("The key could not be saved.", failure: true) }
+        do { try svc.saveKey(key); key = ""; hasKey = svc.hasKey; container?.smartMix.applyPolicy(); container?.smartMix.refreshTrendingIfNeeded(); say("Key saved.") } catch { say("The key could not be saved.", failure: true) }
     }
 
     private func test() {

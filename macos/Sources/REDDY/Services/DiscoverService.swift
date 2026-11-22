@@ -15,6 +15,12 @@ enum LibraryItem: Identifiable, Hashable, Sendable {
     /// The provider's folder the title is in.
     var categoryID: String? { switch self { case .movie(let m): m.categoryID; case .series(let s): s.categoryID } }
     var categoryName: String? { switch self { case .movie(let m): m.categoryName; case .series(let s): s.categoryName } }
+    /// The genre the provider gave, never the folder's name standing in for it.
+    var providerGenre: String? { switch self { case .movie(let m): m.genre; case .series(let s): s.genre } }
+    /// The quiet line under a tile: "2022 · Comedy". The year is left out when the title already carries it, and a "genre" that is really a folder label ("ENGLISH | 4K") or a quality tag is dropped.
+    var quietLine: String {
+        [year.flatMap { title.contains(String($0)) ? nil : String($0) }, providerGenre.flatMap { FolderTileLine.usableGenre($0, folder: "") }].compactMap { $0 }.joined(separator: " · ")
+    }
     var kind: ContentKind { isSeries ? .series : .movie }
     var sourceID: UUID { switch self { case .movie(let m): m.sourceID; case .series(let s): s.sourceID } }
     var durationSeconds: Double? { if case .movie(let m) = self { m.durationSeconds } else { nil } }
@@ -25,13 +31,15 @@ struct DiscoverShelf: Identifiable, Sendable {
     let title: String
     /// What the shelf is really based on. Never claims chart data, provider affiliation or availability.
     let caption: String
-    let items: [LibraryItem]
+    var items: [LibraryItem]
     var ranked = false
 }
 
 struct DiscoverContent: Sendable {
     var hero: LibraryItem?
     var shelves: [DiscoverShelf]
+    /// The order the engine chose for the slideshow (empty: the slideshow follows the shelves, as before).
+    var heroOrder: [LibraryItem] = []
 }
 
 /// Builds the Discover page from the playlist's own data. Shelves that have nothing to show are omitted.
@@ -46,7 +54,12 @@ final class DiscoverService: Sendable {
     let history: HistoryRepository
 
     private let people: PeopleIndex?
-    init(catalog: CatalogRepository, history: HistoryRepository, people: PeopleIndex? = nil) { self.catalog = catalog; self.history = history; self.people = people }
+    /// Everything this builds is a recommendation, so it reads the always-restricted view of the catalog and of the cast index: what is in a locked or hidden folder
+    /// (or has a copy there) is not recommended even while the person has unlocked with the PIN.
+    init(catalog: CatalogRepository, history: HistoryRepository, people: PeopleIndex? = nil) {
+        self.catalog = catalog.recommendationView; self.history = history
+        self.people = people.map { var p = $0; p.alwaysRestricted = true; return p }
+    }
 
     static let providerShelves: [(title: String, keywords: [String], phrases: [String])] = [
         ("Netflix", ["netflix"], []),
@@ -55,7 +68,7 @@ final class DiscoverService: Sendable {
     ]
     static let indianKeywords: Set<String> = ["indian", "india", "hindi", "telugu", "tamil", "malayalam", "kannada", "bengali", "marathi", "punjabi", "gujarati", "bollywood", "tollywood"]
 
-    func build(sourceID: UUID?, now: Date = Date()) throws -> DiscoverContent {
+    func build(sourceID: UUID?, now: Date = Date(), smart: SmartMixHomeResult? = nil) throws -> DiscoverContent {
         let size = 14
         func items(_ movies: [Movie], _ series: [Series]) -> [LibraryItem] { movies.map { .movie($0) } + series.map { .series($0) } }
         var shelves: [DiscoverShelf] = []
@@ -73,7 +86,9 @@ final class DiscoverService: Sendable {
             if trending.count == size { break }
         }
         let mixed = zip(recentMovies, recentSeries).flatMap { [LibraryItem.movie($0), .series($1)] }
-        if trending.count >= 6 {
+        if let smart, !smart.shelves.isEmpty {
+            shelves.append(contentsOf: smart.shelves)
+        } else if trending.count >= 6 {
             shelves.append(DiscoverShelf(id: "trending", title: "Trending in Your Library", caption: "Most played on \(Self.thisDevice) in the last 30 days", items: trending))
         } else if !(trending.isEmpty && mixed.isEmpty) {
             // Too little play history to rank: lead with what was played, then fill with the newest additions.
@@ -83,12 +98,13 @@ final class DiscoverService: Sendable {
             shelves.append(DiscoverShelf(id: "trending", title: "Trending in Your Library", caption: caption, items: Array((trending + fill).prefix(size))))
         }
 
-        if let forYou = try forYouShelf(sourceID: sourceID, size: size) { shelves.append(forYou) }
+        if smart == nil || smart?.shelves.isEmpty == true, let forYou = try forYouShelf(sourceID: sourceID, size: size) { shelves.append(forYou) }
         if let cast = try castShelf(sourceID: sourceID, size: size) { shelves.append(cast) }
 
-        let topMovies = try catalog.movies(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { (Double($0.rating ?? "") ?? 0) > 0 }.prefix(size)
+        let legacyTop = smart == nil || smart?.shelves.isEmpty == true
+        let topMovies = legacyTop ? try catalog.movies(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { (Double($0.rating ?? "") ?? 0) > 0 }.prefix(size) : []
         if !topMovies.isEmpty { shelves.append(DiscoverShelf(id: "top-movies", title: "Top Movies This Week", caption: "Ranked by your provider's ratings · not a chart", items: items(Array(topMovies), []), ranked: true)) }
-        let topShows = try catalog.series(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { (Double($0.rating ?? "") ?? 0) > 0 }.prefix(size)
+        let topShows = legacyTop ? try catalog.series(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { (Double($0.rating ?? "") ?? 0) > 0 }.prefix(size) : []
         if !topShows.isEmpty { shelves.append(DiscoverShelf(id: "top-shows", title: "Top Shows This Week", caption: "Ranked by your provider's ratings · not a chart", items: items([], Array(topShows)), ranked: true)) }
 
         // Provider and regional shelves come from categories that really exist in this playlist.
@@ -107,7 +123,8 @@ final class DiscoverService: Sendable {
         let hero = recentMovies.first { $0.backdropURL != nil || $0.posterURL != nil }.map { LibraryItem.movie($0) }
             ?? recentSeries.first { $0.backdropURL != nil || $0.posterURL != nil }.map { LibraryItem.series($0) }
             ?? recentMovies.first.map { LibraryItem.movie($0) } ?? recentSeries.first.map { LibraryItem.series($0) }
-        return DiscoverContent(hero: hero, shelves: shelves)
+        let first = smart?.heroOrder.first
+        return DiscoverContent(hero: first ?? hero, shelves: shelves, heroOrder: smart?.heroOrder ?? [])
     }
 
     /// Titles like the last few things that were watched here, skipping everything already watched. nil until there is enough to go on.
@@ -182,8 +199,8 @@ final class DiscoverService: Sendable {
             return out
         }()
         guard !merged.isEmpty else { return nil }
-        let names = (Array(topM) + Array(topS)).map(\.name).uniqued(by: { $0 }).prefix(2).map { "“\($0)”" }.joined(separator: ", ")
-        return DiscoverShelf(id: id, title: title, caption: "From your playlist's \(names) \(names.contains(",") ? "categories" : "category")", items: merged)
+        // No caption: the provider's folder names are long and shout ("NETFLIX | ENGLISH MOVIES"), and the shelf title already says what it is.
+        return DiscoverShelf(id: id, title: title, caption: "", items: FolderTileOrder.preferPosters(merged))
     }
 
     /// Whole-word / whole-phrase match on a normalized category name ("Apple TV+" → "apple tv plus").

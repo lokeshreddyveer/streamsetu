@@ -28,6 +28,12 @@ final class AppContainer {
     let favorites: FavoritesService
     let history: HistoryService
     let discover: DiscoverService
+    /// Continue Watching as the widget and the lock screen may show it: read through the always-restricted view, so nothing from a locked or hidden folder is ever written to them.
+    let widgetHistory: HistoryService
+    let recommendationMemory: RecommendationMemory
+    /// Smart Mix: candidate pool from the identity tables, per-profile shown history, TMDB weekly trending (only with the person's own key).
+    let smartMix: SmartMixCoordinator
+    let privacy: PrivacyPurge
     /// Fixes misspelt searches from the words in the library (built the first time it is needed).
     let spelling: SpellingIndex
     let featured: FeaturedService
@@ -87,7 +93,7 @@ final class AppContainer {
         db = try databasePath.map { try DatabaseManager(path: $0) } ?? DatabaseManager.standard()
         catalog = SQLiteCatalogRepository(db: db)
         epgRepo = SQLiteEPGRepository(db: db)
-        searchRepo = SQLiteSearchRepository(db: db)
+        searchRepo = SQLiteSearchRepository(db: db, restriction: catalog.restriction)
         favoritesRepo = SQLiteFavoritesRepository(db: db)
         historyRepo = SQLiteHistoryRepository(db: db)
         videoPrefs = SQLiteVideoPreferencesRepository(db: db)
@@ -95,6 +101,7 @@ final class AppContainer {
         settings = AppSettings()
         AppDNSController.apply(settings.appDNS)          // before the first session or player is created
         http = HTTPClient()
+        HTTPClient.app = http          // services that are not handed the client reach the same one (and so the same proxy)
         self.credentials = credentials
         podcasts = PodcastService(defaults: settings.defaultsStore)
         sources = SourceManager(catalog: catalog, credentials: credentials, http: http, headers: SourceHeadersStore(defaults: settings.defaultsStore))
@@ -108,6 +115,9 @@ final class AppContainer {
         favorites = FavoritesService(repo: favoritesRepo, catalog: catalog)
         history = HistoryService(repo: historyRepo, catalog: catalog)
         discover = DiscoverService(catalog: catalog, history: historyRepo, people: PeopleIndex(db: db))
+        widgetHistory = HistoryService(repo: historyRepo, catalog: catalog.baseline)
+        recommendationMemory = RecommendationMemory(db: db, catalog: catalog)
+        smartMix = SmartMixCoordinator(db: db, catalog: catalog, memory: recommendationMemory, credentials: credentials, defaults: settings.defaultsStore)
         spelling = SpellingIndex(db: db)
         details = DetailService(catalog: catalog, indexer: indexer, sources: sources)
         featured = FeaturedService(catalog: catalog, details: details)
@@ -118,6 +128,7 @@ final class AppContainer {
         reminders = ReminderService()
         health = IndexHealthMonitor(db: db)
         categoryDiagnostics = CategoryDiagnosticsService(catalog: catalog, sources: sources)
+        privacy = PrivacyPurge(db: db, artwork: artwork)
         parental = ParentalControls(catalog: catalog)
         appLock = AppLock(settings: settings)
         statistics = StatisticsService(db: db, catalog: catalog)
@@ -229,7 +240,86 @@ final class AppContainer {
             }
         }
         playback.programOnNow = { [epgRepo] channel in ((try? epgRepo.nowNext(channelIDs: [channel.id], at: Date())) ?? [:])[channel.id]?.first { $0.isLive(at: Date()) } }
+        wirePrivacy()
         applySettings()
+    }
+
+    private var profileObservers: [() -> Void] = []
+    /// Called whenever another profile becomes the one in use (after its rows are in place).
+    func observeProfileSwitch(_ f: @escaping () -> Void) { profileObservers.append(f) }
+
+    /// What is dropped, at once, when a folder is locked or hidden or an unlocked session ends: caches, what the shelves remembered, the pictures. See PrivacyPurge.
+    private func wirePrivacy() {
+        let memory = recommendationMemory, purge = privacy, featured = featured
+        let smart = smartMix
+        parental.observeRestriction { Task { await featured.purge() }; smart.invalidate(.lockOrRestrictionChange) }
+        observeProfileSwitch { smart.invalidate(.profileSwitch) }
+        indexer.identityChanged.value = { [weak self] _ in
+            smart.invalidate(.syncChanged)
+            // A sync (a playlist added after a folder was locked or hidden) can lock or hide its twin folders in the database: the lock badges and the purge hooks are told now, not at the next reload.
+            Task { @MainActor in self?.parental.reloadLocks(onlyIfChanged: true); self?.hiddenArrived() }
+        }
+        let metadata = metadata
+        parental.onFoldersLocked = { ids in
+            _ = try? memory.purgeRestricted()
+            smart.invalidate(.lockOrRestrictionChange)
+            Task.detached(priority: .utility) { metadata.purgeStored(inFolders: ids); await purge.evictArtwork(inFolders: ids) }
+        }
+        favoritesRepo.onFoldersHidden = { [weak self] ids in
+            _ = try? memory.purgeRestricted()
+            smart.invalidate(.hideChange)
+            Task.detached(priority: .utility) { metadata.purgeStored(inFolders: ids); await purge.evictArtwork(inFolders: ids) }
+            // The featured slideshow, Home, the folder rows and the widget were built while these folders were visible: a restriction change rebuilds them all.
+            Task { @MainActor in self?.syncKnownHidden(); self?.parental.foldersHiddenChanged() }
+        }
+        favoritesRepo.onHiddenChanged = { [weak self] ids, hidden in
+            if hidden {
+                _ = try? memory.purgeRestricted()
+                Task.detached(priority: .utility) { metadata.purgeStoredTitles(ids) }
+            }
+            smart.invalidate(.hideChange)
+            Task { @MainActor in self?.syncKnownHidden(); self?.parental.foldersHiddenChanged() }
+        }
+        parental.onRelock = { [weak self] in self?.sweepRestrictedArtwork() }
+        if parental.artworkSweepPending { sweepRestrictedArtwork() }          // the last session ended while unlocked (a crash or a quit): its pictures are still on disk
+        _ = try? memory.purgeRestricted()
+        _ = metadata.purgeExpired()
+        let restrictedNow = (try? purge.restrictedFolderIDs()) ?? []
+        knownHidden = Set((try? db.read { try $0.query("SELECT item_id FROM hidden_items WHERE kind='category'") { $0.string(0) } }) ?? [])
+        if ProcessInfo.processInfo.environment["STREAMSETU_TESTING"] == nil {
+            let identity = IdentityStore(db: db), database = db
+            Task.detached(priority: .background) {
+                metadata.purgeStored(inFolders: restrictedNow)          // anything saved about a title that is locked or hidden now
+                SchemaV19.ensureQueryIndexes(db: database)              // the big indexes are built here, never in the launch migration
+                identity.backfillAll()
+            }          // titles that have no identity yet, a few thousand at a time
+        }
+    }
+
+    /// Hidden folders that arrived from another device: the same-named folders of the other playlists follow, and what was kept about the newly hidden ones is dropped, as for a hide made here.
+    private var knownHidden: Set<String> = []
+    /// A hide or unhide made here: what is hidden is re-read, so the next sync's check sees it as already known and does not purge and rebuild a second time.
+    private func syncKnownHidden() { knownHidden = (try? db.read { try Self.hiddenFolders($0) }) ?? knownHidden }
+    nonisolated private static func hiddenFolders(_ c: Connection) throws -> Set<String> { Set(try c.query("SELECT item_id FROM hidden_items WHERE kind='category'") { $0.string(0) }) }
+    private func hiddenArrived() {
+        let db = db
+        Task.detached { [weak self] in
+            // The write (twin folders follow) runs off the main actor.
+            let now: Set<String>? = try? db.write { c in _ = try FolderFamily.apply(in: c); return try Self.hiddenFolders(c) }
+            await MainActor.run {
+                guard let self, let now else { return }
+                let arrived = now.subtracting(self.knownHidden)
+                self.knownHidden = now
+                if !arrived.isEmpty { self.favoritesRepo.onFoldersHidden?(Array(arrived)) }
+            }
+        }
+    }
+
+    private func sweepRestrictedArtwork() {
+        Task { [privacy] in
+            await privacy.sweepRestrictedArtwork()
+            parental.artworkSweepPending = false
+        }
     }
 
     /// A kids profile with limits counts and stops playback; any other profile plays freely.
@@ -244,6 +334,7 @@ final class AppContainer {
     /// Another profile is now in use: its own data is in place, so screens reload; kids profiles hide the locked folders; sync, which carries the first profile only, pauses.
     private func profileSwitched() {
         parental.kidsMode = profiles.active.kind == .kids
+        for f in profileObservers { f() }
         applyViewingLimits()
         watchQueue.reload()
         Task { await updateCloudSync() }
@@ -262,6 +353,7 @@ final class AppContainer {
     /// Another device changed something: refresh what depends on it.
     private func cloudApplied(_ r: SyncApplyResult) {
         if r.tables.contains(SyncTable.settingsName) { settings.reloadFromStore() }
+        if r.tables.contains("hidden_items") { hiddenArrived() }
         if r.tables.contains("locked_categories") { parental.reloadLocks() }
         onCloudChange?(r)
     }

@@ -9,6 +9,8 @@ struct LiveTVScreen: View {
     @State private var vm = LiveTVViewModel()
     @AppStorage("live.channelListWidth") private var storedListWidth: Double = 300
     @AppStorage("live.channelListCollapsed") private var listCollapsed = false
+    @State private var viewMode: FolderViewMode = .folders
+    private var showsFolders: Bool { viewMode == .folders && filter == .all && vm.search.isEmpty && vm.listID == nil }
 
     private var playback: PlaybackCoordinator? { container?.playback }
     private var currentChannel: Channel? { playback?.currentChannel }
@@ -21,6 +23,11 @@ struct LiveTVScreen: View {
             LiveToolbar(label: folderLabel, listCollapsed: $listCollapsed, search: Binding(get: { vm.search }, set: { vm.search = $0; if let c = container { vm.scheduleSearch(c) } }),
                         count: vm.channels.count, searching: !vm.search.isEmpty, focusToken: router.focusSearch,
                         lists: vm.lists, activeListID: Binding(get: { vm.listID }, set: { vm.listID = $0 }))
+            if filter == .all {
+                Picker("View", selection: Binding(get: { viewMode }, set: { viewMode = $0; FolderViewMode.save($0, .channel, profile: container?.profiles.activeID ?? "main") })) {
+                    Label("Folders", systemImage: "folder").tag(FolderViewMode.folders); Label("List", systemImage: "list.bullet").tag(FolderViewMode.grid)
+                }.pickerStyle(.segmented).labelsHidden().fixedSize().accessibilityLabel("Folders or channel list")
+            }
             LiveSplit(listWidth: $storedListWidth, collapsed: $listCollapsed) {
                 channelColumn
             } player: {
@@ -29,6 +36,7 @@ struct LiveTVScreen: View {
             .surface(radius: 10)
         }
         .padding(.horizontal, LayoutTokens.gutter).padding(.top, 10).padding(.bottom, 12)
+        .onAppear { viewMode = FolderViewMode.load(.channel, profile: container?.profiles.activeID ?? "main") }
         .task(id: taskKey) {
             vm.sourceID = state.activeSourceID; vm.filter = filter
             if let c = container { await vm.reload(c) }
@@ -51,6 +59,8 @@ struct LiveTVScreen: View {
         VStack(spacing: 0) {
             if !state.hasLibrary {
                 EmptyStateView(symbol: "list.bullet.rectangle", title: "No playlist", message: "Add a playlist to watch live TV.", actionTitle: "Add playlist") { router.modal = .addPlaylist }
+            } else if showsFolders {
+                LiveFolderColumn(play: { play($0) }, currentID: currentChannel?.id)
             } else if vm.loading {
                 VStack(spacing: 6) { ForEach(0..<9, id: \.self) { _ in SkeletonBlock(height: 40, radius: 7) } }.padding(.horizontal, 8)
                 Spacer()

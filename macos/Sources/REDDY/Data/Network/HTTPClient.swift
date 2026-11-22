@@ -41,6 +41,23 @@ final class HTTPClient: @unchecked Sendable {
         lock.withLock { _session.finishTasksAndInvalidate(); _session = fresh }
     }
 
+    /// The client the whole app uses, set once by the container at start-up, so a service without its own reference to it (subtitles, podcasts, a WebDAV folder) still goes through the proxy
+    /// and network settings the person chose. A plain client is only what runs before the container exists, such as in a unit test.
+    nonisolated(unsafe) static var app = HTTPClient()
+
+    /// A small request/response through this client's session: the body and the status come back as they are, whatever the status.
+    func exchange(_ request: URLRequest, maxBytes: Int = 8_000_000) async throws -> (data: Data, status: Int) {
+        // Read as a stream and stop at the limit, so a hostile server cannot make the app hold more than that; a redirect to another host drops the logins we sent.
+        let (bytes, response) = try await session.bytes(for: request, delegate: RedirectCredentialGuard())
+        if response.expectedContentLength > Int64(maxBytes) { throw NetworkError.tooLarge(limit: Int64(maxBytes)) }
+        var data = Data()
+        for try await byte in bytes {
+            data.append(byte)
+            if data.count > maxBytes { throw NetworkError.tooLarge(limit: Int64(maxBytes)) }
+        }
+        return (data, (response as? HTTPURLResponse)?.statusCode ?? 0)
+    }
+
     static let tempDirectory: URL = {
         let d = FileManager.default.temporaryDirectory.appendingPathComponent("REDDY-downloads", isDirectory: true)
         try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
@@ -61,8 +78,8 @@ final class HTTPClient: @unchecked Sendable {
     }
 
     /// Small responses (JSON). Still downloaded to disk first, then mapped.
-    func data(_ request: URLRequest, maxBytes: Int64) async throws -> Data {
-        let r = try await RetryPolicy.standard.run { [self] in try await download(request, maxBytes: maxBytes) }
+    func data(_ request: URLRequest, maxBytes: Int64, retry: RetryPolicy = .standard) async throws -> Data {
+        let r = try await retry.run { [self] in try await download(request, maxBytes: maxBytes) }
         guard let url = r.fileURL else { throw NetworkError.unreadable }
         defer { try? FileManager.default.removeItem(at: url) }
         return try Data(contentsOf: url, options: .mappedIfSafe)
@@ -71,6 +88,13 @@ final class HTTPClient: @unchecked Sendable {
     func downloadWithRetry(_ request: URLRequest, maxBytes: Int64,
                            progress: (@Sendable (Int64, Int64?) -> Void)? = nil) async throws -> DownloadResult {
         try await RetryPolicy.standard.run { [self] in try await download(request, maxBytes: maxBytes, progress: progress) }
+    }
+}
+
+/// Per-request delegate for `exchange`: a redirect to another host, port or scheme repeats the request without the logins and keys we set (see RedirectPolicy).
+final class RedirectCredentialGuard: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(RedirectPolicy.sanitized(request, after: task.originalRequest ?? request))
     }
 }
 

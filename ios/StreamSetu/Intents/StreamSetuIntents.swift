@@ -15,7 +15,7 @@ struct ChannelEntityQuery: EntityStringQuery {
         await IOSCoordinator.shared.boot()
         guard let c = IOSCoordinator.shared.container else { return [] }
         var q = ChannelQuery(); q.collapseVariants = true; q.limit = 25; configure(&q)
-        return await Task.detached { ((try? c.catalog.channels(q)) ?? []).map { ChannelEntity(id: $0.id, name: $0.name) } }.value
+        return await Task.detached { ((try? c.catalog.baseline.channels(q)) ?? []).map { ChannelEntity(id: $0.id, name: $0.name) } }.value
     }
     func entities(for identifiers: [String]) async throws -> [ChannelEntity] { await channels { $0.collapseVariants = false; $0.ids = identifiers } }
     func entities(matching string: String) async throws -> [ChannelEntity] { await channels { $0.search = string } }
@@ -30,7 +30,7 @@ struct PlayChannelIntent: AppIntent {
 
     @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
         await IOSCoordinator.shared.boot()
-        guard let c = IOSCoordinator.shared.container, let ch = try? c.catalog.channel(id: channel.id) else { return .result(dialog: "I couldn't find that channel.") }
+        guard let c = IOSCoordinator.shared.container, let ch = try? c.catalog.baseline.channel(id: channel.id) else { return .result(dialog: "I couldn't find that channel.") }
         c.playback.play(channel: ch, queue: [ch])
         c.playback.isExpanded = true
         return .result(dialog: "Playing \(ch.name).")
