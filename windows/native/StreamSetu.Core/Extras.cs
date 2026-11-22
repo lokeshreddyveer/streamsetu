@@ -47,6 +47,10 @@ public sealed class LogoCache(IBytesFetcher fetcher, string folder, long maxByte
         }
     }
 
+    /// <summary>The picture, tried again (default three times, a growing pause between) when it could not be fetched. A picture that is not there after that is simply not shown.</summary>
+    public async Task<byte[]?> GetWithRetryAsync(string? url, int attempts = 3, Func<int, TimeSpan>? pause = null, Func<TimeSpan, Task>? delay = null, CancellationToken ct = default)
+        => await Retry.RunAsync(() => GetAsync(url, ct), attempts, pause, delay);
+
     private async Task<byte[]?> LoadAsync(string url, CancellationToken ct)
     {
         Directory.CreateDirectory(folder);

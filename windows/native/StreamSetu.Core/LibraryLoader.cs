@@ -125,6 +125,10 @@ public sealed class LibraryLoader(ITextFetcher fetcher, ISecretStore secrets)
                 return Wrap(lib);
             }
 
+            case PlaylistKind.SingleStream:
+                lib.Live.Add(new Item { Id = "1", Kind = Kind.Live, Title = playlist.Name, Group = "Single stream", Url = playlist.Address.Trim() });
+                return Wrap(lib);
+
             case PlaylistKind.Stalker:
                 return await new StalkerClient(fetcher).LoadAsync(playlist, Secret(playlist, passwordGiven), ct);
 
@@ -199,7 +203,7 @@ public sealed class LibraryLoader(ITextFetcher fetcher, ISecretStore secrets)
                 var token = Secret(playlist, null);
                 return Connectors.PlexEpisodes(playlist.Address, token, await fetcher.FetchAsync(Connectors.PlexUrl(playlist.Address, $"/library/metadata/{Xtream.EncodeComponent(series.SeriesId ?? "")}/allLeaves", token), Connectors.PlexHeaders, ct));
             }
-            case PlaylistKind.HdHomeRun: case PlaylistKind.Enigma2: case PlaylistKind.Stalker: return new();      // no series lists
+            case PlaylistKind.HdHomeRun: case PlaylistKind.Enigma2: case PlaylistKind.Stalker: case PlaylistKind.SingleStream: return new();      // no series lists
         }
         var user = playlist.Username ?? "";
         var pass = Secret(playlist, null);

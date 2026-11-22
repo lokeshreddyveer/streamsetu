@@ -55,6 +55,16 @@ public static class Tmdb
             ? ($"https://api.themoviedb.org/3/trending/{type}/week", new Dictionary<string, string> { ["Authorization"] = "Bearer " + key })
             : ($"https://api.themoviedb.org/3/trending/{type}/week?api_key={Uri.EscapeDataString(key)}", null);
 
+    /// <summary>Any TMDB request: the key goes in the address (v3) or in a header (a v4 token), the same as the trending list.</summary>
+    public static (string Url, Dictionary<string, string>? Headers) Get(string path, string key, params (string Name, string Value)[] query)
+    {
+        var parts = query.Select(q => q.Name + "=" + Uri.EscapeDataString(q.Value)).ToList();
+        var bearer = key.StartsWith("eyJ", StringComparison.Ordinal);
+        if (!bearer) parts.Add("api_key=" + Uri.EscapeDataString(key));
+        var url = "https://api.themoviedb.org/3" + path + (parts.Count > 0 ? "?" + string.Join("&", parts) : "");
+        return (url, bearer ? new Dictionary<string, string> { ["Authorization"] = "Bearer " + key } : null);
+    }
+
     /// <summary>Refreshes the cache when it is due and the feature is active. A failure keeps the old cache (until the 180-day cap). Returns the cache to use, or null.</summary>
     public static async Task<Cache?> RefreshAsync(LocalStore store, ITextFetcher fetcher, string? key, bool enabled, DateTimeOffset now, CancellationToken ct = default)
     {
