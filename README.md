@@ -44,7 +44,7 @@ More pictures: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
 | **Mac** | [`StreamSetu-2.17.0.dmg`](../../releases/download/2026.11.21/StreamSetu-2.17.0.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
 | **Fire TV and Android TV** | [`streamsetu-tv-0.26.0.apk`](../../releases/download/2026.11.21/streamsetu-tv-0.26.0.apk) | Signed with the StreamSetu release key (new in 0.26.0: uninstall an older copy first). Remote layout. Android 5.1 or later. |
 | **Android phone and tablet** | [`StreamSetu-Android-0.26.0.apk`](../../releases/download/2026.11.21/StreamSetu-Android-0.26.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
-| **Windows** | [`StreamSetu-Windows-0.2.0.zip`](../../releases/download/2026.11.21/StreamSetu-Windows-0.2.0.zip) | A zip: unzip and run `StreamSetu.exe`. Windows 10 (version 1809) or later, 64-bit; `StreamSetu-Windows-0.2.0-arm64.zip` for Windows on ARM. Not signed, so SmartScreen may warn. |
+| **Windows** | [`StreamSetu-Windows-0.2.0.zip`](../../releases/download/2026.11.21/StreamSetu-Windows-0.2.0.zip) | A zip: unzip and run `StreamSetu.exe`. Windows 10 (version 1809) or later, 64-bit; [`StreamSetu-Windows-0.2.0-arm64.zip`](../../releases/download/2026.11.21/StreamSetu-Windows-0.2.0-arm64.zip) for Windows on ARM. Not signed, so SmartScreen may warn. |
 
 Every download is on the [Releases](../../releases) page with its SHA-256 checksum (`shasum -a 256 <file>`). Needs macOS 14, iOS 18, Windows 10 or Android 5.1 (the mpv player needs Android 8). How a release is made: [docs/RELEASING.md](docs/RELEASING.md).
 

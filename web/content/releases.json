@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.11.21",
+      "title": "21 November 2026",
+      "summary": "**A new look, a new opening and a smarter Home on every app.** Mac 2.17.0, Fire TV and Android TV 0.26.0, the Android phone and tablet app 0.26.0, Windows 0.2.0, and iPhone and iPad 1.3 (build 78) on the App Store. On Android and Fire TV this version must be installed fresh once: remove the old app first (see below).",
+      "date": "2026-11-21",
+      "mac": "2.17.0",
+      "android": "0.26.0",
+      "ios": "1.3"
+    },
+    {
       "tag": "2026.11.07",
       "title": "7 November 2026",
       "summary": "**StreamSetu for Windows 0.1.0 is here, Mac 2.16.0, Fire TV and Android TV 0.24.0, the Android phone app, and a new iPhone and iPad build on TestFlight.** Windows is a native app that plays with the same mpv engine as the Mac; the other apps get fixes to sync, App Lock, saved logins, playback and the way titles are shown.",
