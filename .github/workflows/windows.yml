@@ -3,7 +3,7 @@ name: Windows
 # Builds the Windows app and runs the tests of its shared logic on a Windows machine, which is the only place the WinUI app can be compiled.
 on:
   push:
-    branches: [main, windows-ci]
+    branches: [main, windows-ci, windows-release]
     paths: ['windows/native/**', '.github/workflows/windows.yml']
   pull_request:
     paths: ['windows/native/**', '.github/workflows/windows.yml']

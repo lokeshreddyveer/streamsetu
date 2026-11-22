@@ -79,7 +79,8 @@
             <TextBlock x:Name="VersionText" Opacity="0.7" />
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Content="Check for updates" Click="OnCheckUpdates" />
-                <Button x:Name="InstallButton" Content="Download and install" Click="OnInstallUpdate" Visibility="Collapsed" Style="{StaticResource AccentButtonStyle}" />
+                <Button x:Name="InstallButton" Content="Download the zip" Click="OnInstallUpdate" Visibility="Collapsed" Style="{StaticResource AccentButtonStyle}" />
+                <Button x:Name="PageButton" Content="Open the release page" Click="OnOpenReleasePage" Visibility="Collapsed" />
             </StackPanel>
             <TextBlock x:Name="UpdateStatus" TextWrapping="Wrap" />
 

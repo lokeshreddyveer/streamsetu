@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography.X509Certificates;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using StreamSetu.Core;
@@ -226,46 +225,42 @@ public sealed partial class SettingsPage : Page
 
     // ---------- Updates ----------
 
-    /// <summary>The thumbprint of the certificate StreamSetu installers are signed with. Empty until a signing certificate is set up (Scripts\package.ps1 prints it): until then an update is downloaded and checked against its published checksum, but never run for you.</summary>
-    private const string PinnedSignerThumbprint = "";
-
     private static Version CurrentVersion => System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 1);
     private UpdateInfo? _update;
 
     private async void OnCheckUpdates(object sender, RoutedEventArgs e) => await Safely(async () =>
     {
-        UpdateStatus.Text = "Checking…"; InstallButton.Visibility = Visibility.Collapsed;
+        UpdateStatus.Text = "Checking…"; InstallButton.Visibility = PageButton.Visibility = Visibility.Collapsed; _update = null;
         try
         {
-            var json = await AppServices.Http.FetchTextAsync("https://api.github.com/repos/lokeshreddyveer/streamsetu/releases/latest", 2 * 1024 * 1024, headers: new Dictionary<string, string> { ["Accept"] = "application/vnd.github+json" });
-            _update = Updates.Parse(json, CurrentVersion);
-            UpdateStatus.Text = _update is null ? "You have the latest version." : $"Version {_update.Version} is available.";
-            InstallButton.Visibility = _update is null ? Visibility.Collapsed : Visibility.Visible;
+            var json = await AppServices.Http.FetchTextAsync(Updates.ReleasesList, 4 * 1024 * 1024, headers: new Dictionary<string, string> { ["Accept"] = "application/vnd.github+json" });
+            var check = Updates.Check(json, CurrentVersion, System.Runtime.InteropServices.RuntimeInformation.OSArchitecture == System.Runtime.InteropServices.Architecture.Arm64);
+            UpdateStatus.Text = check.Status == StreamSetu.Core.UpdateStatus.NoWindowsFile ? "Could not check: " + check.Message : check.Message;
+            if (check.Info is { } info)
+            {
+                _update = info;
+                PageButton.Visibility = Visibility.Visible;
+                InstallButton.Visibility = info.Sha256 is null ? Visibility.Collapsed : Visibility.Visible;
+                UpdateStatus.Text += " StreamSetu does not install updates itself: download the zip, unzip it and run StreamSetu.exe.";
+            }
         }
-        catch (Exception ex) when (ex is FetchRefusedException or InvalidOperationException) { UpdateStatus.Text = "Could not check: " + ex.Message; }
+        catch (Exception ex) when (ex is FetchRefusedException or InvalidOperationException or HttpRequestException or TaskCanceledException) { UpdateStatus.Text = Updates.ExplainFailure(ex); }
     });
 
+    private void OnOpenReleasePage(object sender, RoutedEventArgs e)
+    {
+        if (_update is not null) Process.Start(new ProcessStartInfo(_update.PageUrl) { UseShellExecute = true });
+    }
+
+    /// <summary>Saves the zip to the Downloads folder after checking it against the published SHA-256. It does not install, run or unpack anything.</summary>
     private async void OnInstallUpdate(object sender, RoutedEventArgs e) => await Safely(async () =>
     {
         if (_update is null) return;
         UpdateStatus.Text = "Downloading…";
         string path;
-        try { path = await Updates.DownloadAsync(AppServices.Http, _update, Path.Combine(Path.GetTempPath(), "StreamSetu-update")); }
-        catch (Exception ex) when (ex is FetchRefusedException or InvalidOperationException) { UpdateStatus.Text = ex.Message; return; }
-
-        // The checksum matched what the release notes say. Running it also needs the signature to be ours.
-        string? signer = null;
-        try { signer = new X509Certificate2(X509Certificate.CreateFromSignedFile(path)).Thumbprint; } catch (Exception) { }
-        if (PinnedSignerThumbprint.Length > 0 && string.Equals(signer, PinnedSignerThumbprint, StringComparison.OrdinalIgnoreCase))
-        {
-            UpdateStatus.Text = "Installing. StreamSetu will close and reopen.";
-            Process.Start(new ProcessStartInfo(path, "/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS") { UseShellExecute = true });
-            Application.Current.Exit();
-        }
-        else
-        {
-            UpdateStatus.Text = "Downloaded and checked against its published checksum, but not run for you because its signature is not one StreamSetu knows. It is in the folder that just opened: run it yourself if you trust it.";
-            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
-        }
+        try { path = await Updates.DownloadAsync(AppServices.Http, _update, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")); }
+        catch (Exception ex) when (ex is FetchRefusedException or InvalidOperationException or HttpRequestException or IOException) { UpdateStatus.Text = ex.Message; return; }
+        UpdateStatus.Text = "Saved to your Downloads folder and checked against the published checksum. Nothing has been installed: close StreamSetu, unzip it and run StreamSetu.exe. Your connections and settings are kept.";
+        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
     });
 }

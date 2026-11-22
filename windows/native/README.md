@@ -4,7 +4,7 @@ A native Windows app: WinUI 3 screens and the libmpv player, the same engine as 
 
 ## Get it
 
-Download `StreamSetu-Windows-0.2.0.zip` from the [Releases](../../../releases) page, unzip it anywhere and run `StreamSetu.exe`. Windows 10 (version 1809) or later, 64-bit. On the first start it opens **Connections**: pick the type, fill it in, press **Test**, then **Save**.
+Download `StreamSetu-Windows-0.2.0.zip` from the [Releases](../../../releases) page, unzip it anywhere and run `StreamSetu.exe`. Windows 10 (version 1809) or later, 64-bit (on a Windows on ARM computer, download `StreamSetu-Windows-0.2.0-arm64.zip`). The app is not signed, so Windows may ask you to confirm the first start (**More info**, then **Run anyway**). StreamSetu does not install updates itself: **Settings, Check for updates** tells you when a newer version is available and can save its zip to your Downloads folder, checked against the published SHA-256; unzip it and run `StreamSetu.exe`. On the first start it opens **Connections**: pick the type, fill it in, press **Test**, then **Save**.
 
 ## What is in it
 

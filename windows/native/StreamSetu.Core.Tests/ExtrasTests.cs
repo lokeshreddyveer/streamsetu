@@ -206,31 +206,95 @@ public sealed class ExtrasTests : IDisposable
 
     // ----- Updates -----
 
-    private static string Release(string name, string url, string body) => System.Text.Json.JsonSerializer.Serialize(new { tag_name = "x", body, assets = new[] { new { name, browser_download_url = url } } });
-    private const string Prefix = "https://github.com/lokeshreddyveer/streamsetu/releases/download/2026.11.07/";
+    private const string Base = "https://github.com/lokeshreddyveer/streamsetu/releases/download/";
+    private static string Sha = new('a', 64);
+
+    private static object Rel(string tag, string[] names, bool draft = false, bool pre = false, string? body = null, bool withSums = true)
+        => new { tag_name = tag, draft, prerelease = pre, html_url = "https://github.com/lokeshreddyveer/streamsetu/releases/tag/" + tag,
+                 body = body ?? (withSums ? string.Join("\n", names.Select(n => $"`{n}`  {Sha}")) : "notes"), assets = names.Select(n => new { name = n, browser_download_url = Base + tag + "/" + n }).ToArray() };
+
+    private static string List(params object[] releases) => System.Text.Json.JsonSerializer.Serialize(releases);
 
     [Fact]
-    public void An_update_is_found_only_when_it_is_newer_ours_and_has_a_checksum()
+    public void A_newer_zip_is_offered_with_its_checksum_and_page()
     {
-        var sha = new string('a', 64);
-        var good = Release("StreamSetu-Setup-1.2.0.exe", Prefix + "StreamSetu-Setup-1.2.0.exe", $"Notes\n`StreamSetu-Setup-1.2.0.exe`  {sha}\n");
-        var info = Updates.Parse(good, new Version(1, 1, 0))!;
-        Assert.Equal(new Version(1, 2, 0), info.Version); Assert.Equal(sha, info.Sha256);
-        Assert.Null(Updates.Parse(good, new Version(1, 2, 0))); Assert.Null(Updates.Parse(good, new Version(2, 0)));
-        Assert.Null(Updates.Parse(Release("StreamSetu-Setup-1.2.0.exe", Prefix + "StreamSetu-Setup-1.2.0.exe", "no checksum here"), new Version(1, 0)));
-        Assert.Null(Updates.Parse("""{"tag_name":"x"}""", new Version(1, 0))); Assert.Throws<InvalidOperationException>(() => Updates.Parse("<html>", new Version(1, 0)));
+        var json = List(Rel("v0.3.0", new[] { "StreamSetu-Windows-0.3.0.zip", "StreamSetu-Windows-0.3.0-arm64.zip" }));
+        var c = Updates.Check(json, new Version(0, 2, 0, 0), arm64: false);
+        Assert.Equal(UpdateStatus.Available, c.Status); Assert.Equal("Version 0.3.0 is available.", c.Message);
+        Assert.Equal("StreamSetu-Windows-0.3.0.zip", c.Info!.AssetName); Assert.Equal(Sha, c.Info.Sha256); Assert.EndsWith("/tag/v0.3.0", c.Info.PageUrl);
+        Assert.Equal("StreamSetu-Windows-0.3.0-arm64.zip", Updates.Check(json, new Version(0, 2, 0), arm64: true).Info!.AssetName);
+    }
+
+    [Fact]
+    public void Versions_are_compared_as_numbers_and_the_same_version_is_up_to_date()
+    {
+        var ten = List(Rel("v0.10.0", new[] { "StreamSetu-Windows-0.10.0.zip" }));
+        Assert.Equal(UpdateStatus.Available, Updates.Check(ten, new Version(0, 9, 0), false).Status);            // 0.10.0 is newer than 0.9.0
+        Assert.Equal(UpdateStatus.UpToDate, Updates.Check(ten, new Version(0, 10, 0, 0), false).Status);        // the program says 0.10.0.0, the file says 0.10.0
+        Assert.Equal(UpdateStatus.UpToDate, Updates.Check(ten, new Version(1, 0), false).Status);
+        Assert.Equal(new Version(0, 2, 0, 0), Updates.Normalize(new Version(0, 2)));
+        Assert.Equal("StreamSetu-Windows-0.2.0-arm64.zip", Updates.AssetNameFor(new Version(0, 2, 0, 0), true));
+    }
+
+    [Fact]
+    public void The_newest_release_without_a_windows_file_does_not_hide_an_older_one_that_has_it()
+    {
+        var json = List(Rel("android-1.0", new[] { "StreamSetu-Android-1.0.apk" }), Rel("v0.3.0", new[] { "StreamSetu-Windows-0.3.0.zip" }), Rel("v0.2.0", new[] { "StreamSetu-Windows-0.2.0.zip" }));
+        Assert.Equal("StreamSetu-Windows-0.3.0.zip", Updates.Check(json, new Version(0, 2, 0), false).Info!.AssetName);
+        Assert.Equal(UpdateStatus.UpToDate, Updates.Check(json, new Version(0, 3, 0), false).Status);
+    }
+
+    [Fact]
+    public void No_windows_file_anywhere_is_said_plainly_not_as_up_to_date()
+    {
+        var c = Updates.Check(List(Rel("a", new[] { "StreamSetu-Android-1.0.apk" })), new Version(0, 2), false);
+        Assert.Equal(UpdateStatus.NoWindowsFile, c.Status); Assert.Contains("Windows", c.Message); Assert.DoesNotContain("latest", c.Message);
+        Assert.Equal(UpdateStatus.NoWindowsFile, Updates.Check("[]", new Version(0, 2), false).Status);
+        Assert.Equal(UpdateStatus.NoWindowsFile, Updates.Check(List(Rel("v1", new[] { "StreamSetu-Windows-1.0.0.zip" })), new Version(0, 2), arm64: true).Status);   // only a 64-bit zip exists
+    }
+
+    [Fact]
+    public void Drafts_and_prereleases_are_ignored()
+    {
+        var json = List(Rel("v9.0.0", new[] { "StreamSetu-Windows-9.0.0.zip" }, draft: true), Rel("v8.0.0", new[] { "StreamSetu-Windows-8.0.0.zip" }, pre: true), Rel("v0.2.0", new[] { "StreamSetu-Windows-0.2.0.zip" }));
+        Assert.Equal(UpdateStatus.UpToDate, Updates.Check(json, new Version(0, 2, 0), false).Status);
+    }
+
+    [Fact]
+    public async Task A_release_without_a_checksum_is_still_announced_but_cannot_be_downloaded_here()
+    {
+        var c = Updates.Check(List(Rel("v0.3.0", new[] { "StreamSetu-Windows-0.3.0.zip" }, withSums: false)), new Version(0, 2), false);
+        Assert.Equal(UpdateStatus.Available, c.Status); Assert.Null(c.Info!.Sha256);
+        var http = new SafeHttp(new HostAllowList(), "t");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Updates.DownloadAsync(http, c.Info, Path.GetTempPath()));
     }
 
     [Theory]
-    [InlineData("StreamSetu-Setup-1.2.0.exe", "https://evil.example/releases/download/x/StreamSetu-Setup-1.2.0.exe")]
-    [InlineData("StreamSetu-Setup-1.2.0.exe", "https://github.com/lokeshreddyveer/streamsetu/releases/download/x/Other.exe")]
-    [InlineData("StreamSetu-Setup-1.2.0.exe", "https://github.com/lokeshreddyveer/streamsetu/releases/download/../../evil/StreamSetu-Setup-1.2.0.exe")]
-    [InlineData("StreamSetu-Setup-1.2.0.exe", "https://github.com/lokeshreddyveer/streamsetu/releases/download/x/StreamSetu-Setup-1.2.0.exe?redirect=evil")]
-    [InlineData("..\\StreamSetu-Setup-1.2.0.exe", "https://github.com/lokeshreddyveer/streamsetu/releases/download/x/..\\StreamSetu-Setup-1.2.0.exe")]
-    [InlineData("StreamSetu-Setup-1.2.0.exe.exe", "https://github.com/lokeshreddyveer/streamsetu/releases/download/x/StreamSetu-Setup-1.2.0.exe.exe")]
-    [InlineData("StreamSetu-Android-9.9.9.apk", "https://github.com/lokeshreddyveer/streamsetu/releases/download/x/StreamSetu-Android-9.9.9.apk")]
+    [InlineData("StreamSetu-Windows-1.2.0.zip", "https://evil.example/releases/download/x/StreamSetu-Windows-1.2.0.zip")]
+    [InlineData("StreamSetu-Windows-1.2.0.zip", "https://github.com/lokeshreddyveer/streamsetu/releases/download/x/Other.zip")]
+    [InlineData("StreamSetu-Windows-1.2.0.zip", "https://github.com/lokeshreddyveer/streamsetu/releases/download/../../evil/StreamSetu-Windows-1.2.0.zip")]
+    [InlineData("StreamSetu-Windows-1.2.0.zip", "https://github.com/lokeshreddyveer/streamsetu/releases/download/x/StreamSetu-Windows-1.2.0.zip?redirect=evil")]
+    [InlineData("..\\StreamSetu-Windows-1.2.0.zip", "https://github.com/lokeshreddyveer/streamsetu/releases/download/x/..\\StreamSetu-Windows-1.2.0.zip")]
+    [InlineData("StreamSetu-Windows-1.2.0.zip.exe", "https://github.com/lokeshreddyveer/streamsetu/releases/download/x/StreamSetu-Windows-1.2.0.zip.exe")]
+    [InlineData("StreamSetu-Setup-1.2.0.exe", "https://github.com/lokeshreddyveer/streamsetu/releases/download/x/StreamSetu-Setup-1.2.0.exe")]
     public void A_release_page_that_points_the_updater_anywhere_else_is_ignored(string name, string url)
-        => Assert.Null(Updates.Parse(Release(name, url, $"`{name}`  {new string('a', 64)}"), new Version(1, 0)));
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(new[] { new { tag_name = "x", draft = false, prerelease = false, body = $"`{name}`  {Sha}", assets = new[] { new { name, browser_download_url = url } } } });
+        Assert.Equal(UpdateStatus.NoWindowsFile, Updates.Check(json, new Version(0, 1), false).Status);
+    }
+
+    [Fact]
+    public void Garbage_and_failures_are_explained_not_called_up_to_date()
+    {
+        Assert.Throws<InvalidOperationException>(() => Updates.Check("<html>", new Version(1, 0), false));
+        Assert.Throws<InvalidOperationException>(() => Updates.Check("""{"message":"API rate limit exceeded"}""", new Version(1, 0), false));
+        Assert.Contains("limiting", Updates.ExplainFailure(new InvalidOperationException("The server answered 403.")));
+        Assert.Contains("limiting", Updates.ExplainFailure(new InvalidOperationException("The server answered 429.")));
+        Assert.Contains("no connection", Updates.ExplainFailure(new HttpRequestException("x")));
+        Assert.Contains("not found", Updates.ExplainFailure(new InvalidOperationException("The server answered 404.")));
+        Assert.StartsWith("Could not check", Updates.ExplainFailure(new FetchRefusedException(Refusal.Unreachable, "unreachable")));
+        Assert.All(new[] { Updates.ExplainFailure(new IOException("disk")), Updates.ExplainFailure(new InvalidOperationException("odd")) }, m => Assert.StartsWith("Could not check", m));
+    }
 
     [Fact]
     public void A_download_is_kept_only_when_it_matches_its_checksum()
