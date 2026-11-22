@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="1000" height="600">
+  <title>StreamSetu opening: The Other Side, canonical paths</title>
+  <rect width="1000" height="600" fill="#080E1D"/>
+  <!-- The spark: about 30 % left of centre, where the first line begins. -->
+  <circle id="spark" cx="200" cy="372" r="3.6" fill="#E6F8FF"/>
+  <!-- First line: from the spark, nearly level, rising gently, bending to the crossing at (500, 300), then on beyond it. -->
+  <path id="first-in" d="M200 372 C330 372 380 210 500 300" fill="none" stroke="#8FD8E3" stroke-width="3" stroke-linecap="round"/>
+  <path id="first-out" d="M500 300 C590 368 690 404 800 396" fill="none" stroke="#8FD8E3" stroke-width="3" stroke-linecap="round"/>
+  <!-- Second line: from the right on its own, more curved path (not a mirror of the first); it passes under the first at the crossing. -->
+  <path id="second-in" d="M820 358 C700 356 640 168 500 300" fill="none" stroke="#1FA7B8" stroke-width="3" stroke-linecap="round"/>
+  <path id="second-out" d="M500 300 C410 382 320 412 190 404" fill="none" stroke="#1FA7B8" stroke-width="3" stroke-linecap="round"/>
+  <!-- The passage at its widest: the lines pulled apart into a lens around the crossing. -->
+  <path id="passage" d="M60 300 C302 172.3 698 172.3 940 300 C698 427.7 302 427.7 60 300 Z" fill="none" stroke="#65D6E8" stroke-width="2.5" opacity="0.6"/>
+  <!-- The sweep the passage folds into: the ribbon's path across the mark. -->
+  <path id="ribbon-sweep" d="M373 339 C430 352 560 330 643 216" fill="none" stroke="#8FD8E3" stroke-width="7" stroke-linecap="round" opacity="0.6"/>
+  <!-- Where the official mark (the brand symbol artwork, never redrawn) and the name sit. -->
+  <rect id="mark" x="350" y="105" width="300" height="300" fill="none" stroke="#C9D2DA" stroke-dasharray="6 6" opacity="0.4"/>
+  <text id="wordmark" x="500" y="470" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="52" fill="#F5F7FC">StreamSetu</text>
+</svg>

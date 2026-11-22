@@ -1,0 +1,371 @@
+{
+ "canvas": {
+  "width": 1024,
+  "height": 1024
+ },
+ "zOrderBottomToTop": [
+  "ribbon-rear",
+  "screen",
+  "antenna-left",
+  "antenna-right",
+  "tv-body",
+  "play-button",
+  "ribbon-front"
+ ],
+ "zOrderNote": "Deviation from the brief: screen and antennas sit BELOW tv-body (body bezel overlaps their edges, exact recomposite, rotation-safe). Swap only if you also use the hard-edged window variant.",
+ "layers": [
+  {
+   "name": "ribbon-rear",
+   "file": "ribbon-rear.png",
+   "bbox": [
+    868,
+    333,
+    954,
+    518
+   ],
+   "note": "Bronze inner face of the ribbon, behind the right bezel (extends 16px under the bezel, hidden by tv-body)."
+  },
+  {
+   "name": "screen",
+   "file": "screen.png",
+   "bbox": [
+    171,
+    260,
+    861,
+    837
+   ],
+   "note": "Clean glass plate (no play button, no ribbon); extends ~4px under the bezel. Drawn BELOW tv-body so the bezel lip covers its edge."
+  },
+  {
+   "name": "antenna-left",
+   "file": "antenna-left.png",
+   "bbox": [
+    297,
+    28,
+    485,
+    239
+   ],
+   "note": "Left antenna rod+ball; rod extends ~16px below the bezel top edge so it can rotate; drawn BELOW tv-body (body hides the extension).",
+   "pivot": {
+    "x": 454.5,
+    "y": 222.0
+   },
+   "maxTwitchDeg": 6
+  },
+  {
+   "name": "antenna-right",
+   "file": "antenna-right.png",
+   "bbox": [
+    502,
+    27,
+    692,
+    243
+   ],
+   "note": "Right antenna rod+ball; same as left.",
+   "pivot": {
+    "x": 529.4,
+    "y": 226.0
+   },
+   "maxTwitchDeg": 6
+  },
+  {
+   "name": "tv-body",
+   "file": "tv-body.png",
+   "bbox": [
+    60,
+    214,
+    900,
+    971
+   ],
+   "note": "Silver frame with transparent screen window, feet. No antennas, no ribbon, no play button."
+  },
+  {
+   "name": "play-button",
+   "file": "play-button.png",
+   "bbox": [
+    390,
+    344,
+    671,
+    658
+   ],
+   "note": "Cream triangle with its soft dark shadow (black, partial alpha)."
+  },
+  {
+   "name": "ribbon-front",
+   "file": "ribbon-front.png",
+   "bbox": [
+    62,
+    402,
+    958,
+    951
+   ],
+   "note": "Ribbon front sweep from the right wrap to the free tail, plus its specular glow and edge shadow as partial-alpha pixels."
+  },
+  {
+   "name": "sweep-mask",
+   "file": "sweep-mask.png",
+   "bbox": [
+    60,
+    27,
+    900,
+    971
+   ],
+   "note": "Alpha of all silver parts (body + antennas), white RGB.",
+   "role": "mask"
+  },
+  {
+   "name": "glint-mask",
+   "file": "glint-mask.png",
+   "bbox": [
+    217,
+    27,
+    793,
+    268
+   ],
+   "note": "Soft highlight spots (antenna ball tips, top bezel edge), white RGB.",
+   "role": "mask"
+  }
+ ],
+ "playButton": {
+  "center": [
+   501.6,
+   501.3
+  ],
+  "bbox": [
+   420,
+   373,
+   641,
+   628
+  ]
+ },
+ "screen": {
+  "windowBBox": [
+   175,
+   264,
+   857,
+   833
+  ],
+  "cornerRadiusEstimate": {
+   "topLeft": 135,
+   "topRight": 120,
+   "bottomRight": 120,
+   "bottomLeft": 150,
+   "note": "BL is estimated (hidden by ribbon)"
+  }
+ },
+ "ribbon": {
+  "centerline": [
+   [
+    884.9,
+    334.1
+   ],
+   [
+    895.2,
+    353.2
+   ],
+   [
+    903.8,
+    373.0
+   ],
+   [
+    910.3,
+    393.4
+   ],
+   [
+    915.5,
+    414.4
+   ],
+   [
+    919.9,
+    435.9
+   ],
+   [
+    924.1,
+    458.1
+   ],
+   [
+    932.0,
+    463.6
+   ],
+   [
+    943.1,
+    461.8
+   ],
+   [
+    953.6,
+    458.9
+   ],
+   [
+    954.0,
+    511.4
+   ],
+   [
+    936.0,
+    547.3
+   ],
+   [
+    908.2,
+    578.2
+   ],
+   [
+    876.2,
+    605.1
+   ],
+   [
+    840.8,
+    627.3
+   ],
+   [
+    803.2,
+    646.1
+   ],
+   [
+    764.9,
+    663.2
+   ],
+   [
+    725.5,
+    677.7
+   ],
+   [
+    685.6,
+    690.5
+   ],
+   [
+    645.1,
+    701.8
+   ],
+   [
+    604.5,
+    712.5
+   ],
+   [
+    564.0,
+    723.1
+   ],
+   [
+    522.8,
+    731.4
+   ],
+   [
+    481.6,
+    739.4
+   ],
+   [
+    440.5,
+    747.8
+   ],
+   [
+    399.0,
+    754.4
+   ],
+   [
+    357.6,
+    761.0
+   ],
+   [
+    316.6,
+    770.0
+   ],
+   [
+    275.7,
+    779.4
+   ],
+   [
+    235.2,
+    790.3
+   ],
+   [
+    195.1,
+    802.7
+   ],
+   [
+    157.6,
+    821.4
+   ],
+   [
+    122.0,
+    843.3
+   ],
+   [
+    93.3,
+    871.9
+   ]
+  ],
+  "widths": [
+   1.0,
+   19.5,
+   39.7,
+   60.6,
+   81.0,
+   99.4,
+   114.7,
+   92.3,
+   50.3,
+   8.0,
+   67.9,
+   46.8,
+   89.5,
+   109.5,
+   125.9,
+   127.2,
+   133.2,
+   134.5,
+   135.8,
+   135.9,
+   132.9,
+   131.7,
+   132.2,
+   130.3,
+   130.1,
+   131.1,
+   127.9,
+   127.1,
+   124.4,
+   123.3,
+   111.2,
+   107.8,
+   103.5,
+   85.4
+  ],
+  "order": "rear top-right end -> behind frame -> split -> front right wrap -> along band -> free tail end",
+  "rearPointCount": 10,
+  "split": {
+   "rearFrontLine": [
+    [
+     897.7,
+     516.4
+    ],
+    [
+     911.7,
+     504.0
+    ],
+    [
+     925.4,
+     491.7
+    ],
+    [
+     938.4,
+     479.1
+    ],
+    [
+     950.6,
+     465.3
+    ]
+   ],
+   "S1_frameEdge": [
+    897.7,
+    516.4
+   ],
+   "S2_silhouette": [
+    952.5,
+    462.7
+   ]
+  }
+ },
+ "weakSpots": [
+  "Clean-plate glass behind play button and ribbon is synthesized (smooth gradient + grain).",
+  "Lower-left frame corner/bar under the ribbon is synthesized (mirror/cross-fade of visible bezel).",
+  "Rear ribbon extension under the bezel is inpainted (hidden)."
+ ]
+}

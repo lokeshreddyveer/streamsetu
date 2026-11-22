@@ -1,0 +1,27 @@
+{
+  "id": "streamsetu.tune-in.tokens",
+  "version": 2,
+  "color": {
+    "background": "#04090D",
+    "backgroundGlow": "#0A2A33",
+    "brandTeal": "#1FA7B8",
+    "brandIceTeal": "#8FD8E3",
+    "brandSilver": "#C9D2DA",
+    "cream": "#F2EEE6",
+    "foreground": "#F5F7FC",
+    "foregroundSecondary": "#9AA4AE"
+  },
+  "geometry": {
+    "mark": { "centerX": 500, "centerY": 270, "size": 330 },
+    "wordmarkBaselineY": 478,
+    "taglineBaselineY": 520,
+    "portraitWindowWidth": 700
+  },
+  "motionLimits": {
+    "cameraPushPercentTotal": [3, 8],
+    "fakeOrbitDegrees": [2, 5],
+    "maxFlashesPerSecond": 3,
+    "glintCount": 1
+  },
+  "notes": "Teal and cream only; no rainbow refraction, no whole-frame white pop. The mark is the supplied artwork split into layers; it is never redrawn or distorted."
+}
