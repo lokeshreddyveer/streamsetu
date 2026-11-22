@@ -372,6 +372,27 @@ public sealed partial class BrowsePage : Page
         if (FolderBox.ItemsSource is IEnumerable<FolderView> list && list.FirstOrDefault(x => x.Name == f.Name) is { } match) FolderBox.SelectedItem = match;
     }
 
+    /// <summary>The other copies of this title (another language, quality or connection), without anything from a locked, hidden or adult-blocked folder.</summary>
+    private async Task ShowVersionsAsync(Item item)
+    {
+        try
+        {
+            var copies = await AppServices.AllCopiesAsync();
+            var snap = Privacy.Snapshot(AppServices.PrivacyNow(_unlocked), Surface.Search, copies);
+            var names = AppServices.Playlists().ToDictionary(p => p.Id, p => p.Name);
+            var language = AppServices.Settings.PreferredLanguage;
+            var ctx = new CanonicalPick.Context(language, AppServices.SourceRank());
+            var versions = OtherVersions.For(snap, new Copy(_playlist!.Id, item), copies, ctx);
+            if (versions.Count == 0) { Say("There are no other versions of this title.", InfoBarSeverity.Informational); return; }
+            var labels = versions.Select(v => string.Join("  ·  ", new[] { v.Language ?? "Original", OtherVersions.QualityLabel(v.QualityRank), names.GetValueOrDefault(v.Copy.PlaylistId) ?? "" }.Where(x => x.Length > 0))).ToList();
+            var list = new ListView { SelectionMode = ListViewSelectionMode.Single, MaxHeight = 360, ItemsSource = labels, SelectedIndex = 0 };
+            var dialog = new ContentDialog { Title = item.Title, Content = list, PrimaryButtonText = "Open", CloseButtonText = "Close", DefaultButton = ContentDialogButton.Primary, XamlRoot = XamlRoot };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary || list.SelectedIndex < 0) return;
+            OpenCopy(versions[list.SelectedIndex].Copy);
+        }
+        catch (Exception ex) { Say(ex.Message, InfoBarSeverity.Error); }
+    }
+
     private async void OpenCopy(Copy copy)
     {
         try
@@ -407,6 +428,7 @@ public sealed partial class BrowsePage : Page
             catch (Exception ex) { Say(ex.Message, InfoBarSeverity.Error); }
         };
         sub.Items.Add(create); flyout.Items.Add(sub);
+        if (item.Kind != Kind.Live) Add("Other languages and versions…", () => _ = ShowVersionsAsync(item));
         if (item.Kind != Kind.Live)
         {
             var isWatched = user.Watched().Contains(key);

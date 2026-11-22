@@ -218,3 +218,29 @@ public class PrivacyAndIdentityTests
         state.Purge("p"); Assert.Empty(state.Get("p", "for-you").Rows);
     }
 }
+
+public class OtherVersionsTests
+{
+    private static Item M(string id, string title, string group, int year = 2021) => new() { Id = id, Kind = Kind.Movie, Title = title, Group = group, Year = year };
+
+    [Fact]
+    public void OffersOtherLanguagesAndQualitiesBestFirstWithoutRestrictedOnes()
+    {
+        var lib = new List<Copy>
+        {
+            new("A", M("1", "Dune (2021)", "English | General")),
+            new("A", M("2", "Dune 2021 4K", "Hindi Dubbed")),
+            new("B", M("3", "Dune", "Telugu")),
+            new("B", M("4", "Dune HDCAM", "Secret")),            // in a locked folder: never offered
+            new("B", M("5", "Dunes of Time", "Telugu")),           // another title
+            new("B", M("6", "Dune", "Telugu", 1984)),              // a remake decades earlier
+        };
+        var input = new PrivacyInput(new Dictionary<Kind, IReadOnlySet<string>> { [Kind.Movie] = new HashSet<string> { "Secret" } }, new Dictionary<Kind, IReadOnlySet<string>>(), new Dictionary<Kind, IReadOnlySet<string>>(), false, false);
+        var snap = Privacy.Snapshot(input, Surface.Search, lib);
+        var others = OtherVersions.For(snap, lib[0], lib, new CanonicalPick.Context("Telugu"));
+        Assert.Equal(new[] { "B:3", "A:2" }, others.Select(o => o.Copy.Key));       // the preferred language first, then the better picture
+        Assert.Equal("4K", OtherVersions.QualityLabel(others[1].QualityRank));
+        Assert.Equal("Hindi", others[1].Language);
+        Assert.Equal(6, lib.Count);                                                  // nothing was removed or merged
+    }
+}
