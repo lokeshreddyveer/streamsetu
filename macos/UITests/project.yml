@@ -1,0 +1,27 @@
+name: StreamSetuMacUITests
+options:
+  bundleIdPrefix: app.streamsetu.macuitests
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+schemes:
+  StreamSetuMacUITests:
+    build:
+      targets:
+        StreamSetuMacUITests: [test]
+    test:
+      targets: [StreamSetuMacUITests]
+targets:
+  StreamSetuMacUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [StreamSetuMacUITests]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.streamsetu.macuitests.tests
