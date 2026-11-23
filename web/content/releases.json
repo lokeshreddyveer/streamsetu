@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "2026.11.23",
+      "title": "23 November 2026",
+      "summary": "**Streaming services inside the Mac app, a faster Mac app, and the Setu assistant on iPhone and iPad.** Mac 2.18.0, iPhone and iPad 1.4 (build 79), Android phone and tablet 0.27.0, Fire TV and Android TV 0.27.0.",
+      "date": "2026-11-23",
+      "mac": "2.18.0",
+      "android": "0.27.0",
+      "ios": "1.4"
+    },
+    {
       "tag": "2026.11.21",
       "title": "21 November 2026",
       "summary": "**A new look, a new opening and a smarter Home on every app.** Mac 2.17.0, Fire TV and Android TV 0.26.0, the Android phone and tablet app 0.26.0, Windows 0.2.0, and iPhone and iPad 1.3 (build 78) on the App Store. On Android and Fire TV this version must be installed fresh once: remove the old app first (see below).",
