@@ -78,4 +78,15 @@
   </tr>
 </table>
 
+## iPad
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="screenshots/ipad-home.png" alt="StreamSetu on iPad: Home with the sidebar" width="50%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Home</sub></td>
+  </tr>
+</table>
+
 The artwork in these screenshots comes from the provider's own playlist. StreamSetu ships no content.
