@@ -29,9 +29,6 @@ struct StreamSetuApp: App {
                                 .environment(c.settings).environment(s).environment(coordinator.router)
                                 .environment(\.container, c).environment(\.artwork, c.artwork)
                                 .environment(\.locale, c.settings.language.locale ?? Locale.current)
-                                // A link to a title opens its page in whichever navigation stack it sits in; a new identity per title,
-                                // so a page is never reused for another version.
-                                .environment(\.titleDestination) { item in AnyView(DetailView(item: item).id(item.id)) }
                                 .onOpenURL { coordinator.open($0) }
                         }
                     }
@@ -44,7 +41,7 @@ struct StreamSetuApp: App {
             }
             .preferredColorScheme(.dark)
             .tint(coordinator.container?.settings.accent.color ?? ColorTokens.accentDefault)
-            .task { CrashCollector.shared.start(); await coordinator.boot(); if let c = coordinator.container { WidgetBridge.shared.start(c); SharePlayService.shared.listen(c) { coordinator.open($0) } } }
+            .task { CrashCollector.shared.start(); SmoothMetricsCollector.shared.start(); await coordinator.boot(); if let c = coordinator.container { WidgetBridge.shared.start(c); SharePlayService.shared.listen(c) { coordinator.open($0) } } }
             .onChange(of: scenePhase) { _, phase in coordinator.scenePhaseChanged(phase) }
         }
     }
@@ -82,7 +79,11 @@ final class IOSCoordinator {
                 try? session.setCategory(.playback, mode: .moviePlayback)
                 try? session.setActive(true)
             }
-            let c = try AppContainer()
+            let opened = try await Task.detached(priority: .userInitiated) { try DatabaseManager.standard() }.value          // open + migrate off the main thread
+            let c = try AppContainer(openedDatabase: opened)
+            #if DEBUG
+            if AtlasWalk.on { AtlasWalk.seed(c) }          // the screen walk (UI test) starts from a small fixed library
+            #endif
             mark("library opened")
             container = c
             // The cover goes up before the first screen: at a cold launch the app is locked from the start (`AppLock` begins locked when it is on), and nothing else would raise the cover until
@@ -91,6 +92,7 @@ final class IOSCoordinator {
             lockWindow.show(c.appLock.enabled && c.appLock.isLocked, lock: c.appLock)
             let s = AppState(container: c)
             state = s
+            c.artworkMatcher.setForeground(true)          // artwork is matched by itself while the app is open
             c.parental.onChange = { [weak s] in s?.reloadFolders(); s?.catalogVersion += 1 }
             await s.start()
             mark("library read")
@@ -100,8 +102,12 @@ final class IOSCoordinator {
             }
             Task.detached { [artwork = c.artwork] in await artwork.trim() }
             mark("ready")
-            UserDefaults.standard.set(marks, forKey: "startup.timings")
+            UserDefaults.standard.set(marks, forKey: DefaultsKey.startupTimings)
             phase = .ready                                  // the app opens now; iCloud starts in the background, it is never waited for
+            AtlasIndexer.refresh(c)          // Spotlight and Shortcuts know the screens and settings
+            #if DEBUG
+            if AtlasWalk.on { AtlasWalk.ready(container: c, router: router, state: s) }
+            #endif
             if let note = recoveryNote { s.toasts.show(note, symbol: "lifepreserver", kind: .warning); recoveryNote = nil }
             Task { await c.startCloudIfEnabled() }
             Task { try? await Task.sleep(nanoseconds: 20_000_000_000); c.startPeopleIndex() }
@@ -147,6 +153,14 @@ final class IOSCoordinator {
 
     private let lockWindow = LockWindow()
 
+    /// Carries the run on for the extra seconds iOS grants after the app leaves the screen; ends the grant when the run finishes or time is up (what is done stays done).
+    private func keepMatchingInBackground(_ m: ArtworkAutoMatcher) {
+        guard m.isRunning else { return }
+        let box = BackgroundGrant()
+        box.id = UIApplication.shared.beginBackgroundTask(withName: "artwork-matching") { m.stop(); box.end() }
+        Task.detached { while m.isRunning { try? await Task.sleep(nanoseconds: 1_000_000_000) }; box.end() }
+    }
+
     func scenePhaseChanged(_ phase: ScenePhase) {
         if let lock = container?.appLock {
             if phase == .background { lock.appLeft() }
@@ -155,7 +169,9 @@ final class IOSCoordinator {
             lockWindow.show(lock.enabled && (lock.isLocked || phase != .active), lock: lock)
         }
         if phase == .background { container?.playback.persistProgress(); BackgroundRefresh.schedule() }
+        if let m = container?.artworkMatcher { if phase == .active { m.setForeground(true) } else if phase == .background { m.setForeground(false, stopping: false); keepMatchingInBackground(m) } }          // a few seconds after leaving, the background task (BackgroundRefresh) carries on
         if phase == .active, let c = container { Task { await c.scheduler.appOpened() } }
+        if phase == .active, let c = container { AtlasIndexer.refresh(c) }          // after a kids profile ends, or an update changed the Atlas
         if phase == .active { container?.cloud.poke(); Task { await container?.cloud.syncNow() } }
         if phase == .background { container?.cloud.poke() }
     }
@@ -180,6 +196,7 @@ final class IOSCoordinator {
         case .playChannel(let name)?: playChannel(named: name)
         case .playMovie(let title)?: playMovie(titled: title)
         case .findSeries(let title)?: router.query = title; router.go(.search)
+        case .atlas(let id)?: if let c = container, let s = state { _ = AtlasOpener.open(id, container: c, router: router, state: s) }
         case .sleep(let m)?: container?.playback.startSleepTimer(minutes: m)
         default: break
         }
@@ -240,7 +257,16 @@ final class IOSRouter {
     var pendingShelf: String?
     /// On iPhone, Search, Guide, Library and Settings live inside the More tab so Movies and Series stay on the bar.
     typealias MoreRoute = PhoneMoreRoute
-    var morePath: [MoreRoute] = []
+    /// The pages of More that code opens (Search, Library, Settings...). The stack itself shows `moreStack`, which also holds everything a link pushes (a title, a Settings page, a playlist): a stack whose path is a plain array of one type
+    /// silently ignores links that carry any other type, so the rows of Library and Settings did nothing.
+    private(set) var moreRoutes: [MoreRoute] = []
+    var moreStack = NavigationPath() {
+        didSet { if moreStack.count < moreRoutes.count { moreRoutes = Array(moreRoutes.prefix(moreStack.count)) } }          // a page was popped
+    }
+    var morePath: [MoreRoute] {
+        get { moreRoutes }
+        set { moreRoutes = newValue; moreStack = NavigationPath(newValue) }
+    }
     /// Bumped when the tab already on show is tapped again: that tab's screen is rebuilt, so any page opened inside it (a title, a folder) closes and it is back at its start, at the top.
     var rootResets: [Tab: Int] = [:]
     /// Tapping the tab that is already open goes back to that tab's start screen, as in every iPhone app.
@@ -278,8 +304,8 @@ private struct FailureView: View {
             Image(systemName: "exclamationmark.triangle").appFont(34).foregroundStyle(.orange)
             Text("StreamSetu could not open its library").font(.headline)
             Text(message.loc).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Button("Repair Library") { recover(true) }.buttonStyle(.borderedProminent)
-            Button("Start Fresh…", role: .destructive) { held = inventory(); confirmFresh = true }.buttonStyle(.bordered)
+            Button("Repair Library") { recover(true) }.buttonStyle(.borderedProminent).atlas("control.ios.failure.repair")
+            Button("Start Fresh…", role: .destructive) { held = inventory(); confirmFresh = true }.buttonStyle(.bordered).atlas("control.ios.failure.startFresh")
             Text("Repair keeps your playlists, favourites, lists, profiles, locks and watch history, and reads the channels again from your playlists. The damaged library is never deleted: it is kept in the Recovery folder.").font(.caption).foregroundStyle(.tertiary).multilineTextAlignment(.center)
         }
         .padding(32).frame(maxWidth: .infinity, maxHeight: .infinity).background(ColorTokens.background)
@@ -310,4 +336,12 @@ private struct FailureView: View {
             window?.isHidden = true; window = nil
         }
     }
+}
+
+
+/// One background-time grant, ended exactly once.
+final class BackgroundGrant: @unchecked Sendable {
+    private let lock = NSLock()
+    var id: UIBackgroundTaskIdentifier = .invalid
+    func end() { lock.lock(); let x = id; id = .invalid; lock.unlock(); if x != .invalid { Task { @MainActor in UIApplication.shared.endBackgroundTask(x) } } }
 }

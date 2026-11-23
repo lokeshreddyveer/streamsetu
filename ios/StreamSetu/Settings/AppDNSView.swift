@@ -1,6 +1,8 @@
 import SwiftUI
 
 /// Encrypted DNS for StreamSetu's own traffic. Not a VPN: nothing outside the app changes.
+enum AppDNSRoute: Hashable { case providers }
+
 struct AppDNSView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.container) private var container
@@ -14,11 +16,10 @@ struct AppDNSView: View {
         @Bindable var s = settings
         Form {
             Section {
-                Toggle("Use App DNS", isOn: $s.appDNS.enabled)
-                NavigationLink {
-                    ProviderList(config: $s.appDNS)
-                } label: { LabeledContent("DNS provider", value: s.appDNS.provider.rawValue) }
-                Toggle("Use system DNS for local devices", isOn: $s.appDNS.localUsesSystem)
+                Toggle("Use App DNS", isOn: $s.appDNS.enabled).atlas("setting.appDNS")
+                NavigationLink(value: AppDNSRoute.providers) { LabeledContent("DNS provider", value: s.appDNS.provider.rawValue) }
+                .atlas("control.ios.appDNS.provider")
+                Toggle("Use system DNS for local devices", isOn: $s.appDNS.localUsesSystem).atlas("control.ios.appDNS.localSystem")
                 LabeledContent("Status") { Text(AppDNSStatus.line(s.appDNS, mpvInUse: false)).multilineTextAlignment(.trailing).foregroundStyle(.secondary) }
             } footer: {
                 Text("Looks up server names through the DNS provider you choose, inside StreamSetu only. It is not a VPN and changes nothing else on this device. It can fix DNS blocking; it cannot get past IP blocking, routing problems or geographic limits. \(s.appDNS.provider.summary).")
@@ -35,8 +36,8 @@ struct AppDNSView: View {
             }
 
             Section {
-                Button { Task { await runTest() } } label: { HStack { Text("Test App DNS"); if testing { Spacer(); ProgressView() } } }.disabled(testing)
-                Button("Clear DNS Cache") { AppDNSController.clearCache(); container?.http.setProxy(settings.proxy.isActive ? settings.proxy : nil); state.toasts.show("DNS cache cleared", symbol: "checkmark.circle") }
+                Button { Task { await runTest() } } label: { HStack { Text("Test App DNS"); if testing { Spacer(); ProgressView() } } }.disabled(testing).atlas("control.ios.appDNS.test")
+                Button("Clear DNS Cache") { AppDNSController.clearCache(); container?.http.setProxy(settings.proxy.isActive ? settings.proxy : nil); state.toasts.show("DNS cache cleared", symbol: "checkmark.circle") }.atlas("control.ios.appDNS.clearCache")
             }.glossRow()
 
             if let r = result {
@@ -55,7 +56,8 @@ struct AppDNSView: View {
                 Text(AppDNSStatus.privacyNotice).font(.footnote).foregroundStyle(.secondary)
             }.listRowBackground(Color.clear)
         }
-        .navigationTitle("App DNS").themed("App DNS")
+        .navigationDestination(for: AppDNSRoute.self) { _ in ProviderList(config: $s.appDNS) }
+        .navigationTitle("App DNS").atlasScreen("screen.ios.settings.appDNS").themed("App DNS")
         .onAppear { bootstrapText = s.appDNS.customBootstrap.joined(separator: ", ") }
         .onChange(of: s.appDNS.customURL) { _, v in
             if case .failure(let p) = AppDNSValidator.validate(v), !v.isEmpty { customProblem = p.description } else { customProblem = nil }
@@ -84,6 +86,7 @@ private struct ProviderList: View {
                         if config.provider == p { Image(systemName: "checkmark").foregroundStyle(ColorTokens.accentDefault) }
                     }
                 }
+                .atlas("control.ios.appDNS.provider")
             }
         }.navigationTitle("DNS provider").themed("DNS provider")
     }

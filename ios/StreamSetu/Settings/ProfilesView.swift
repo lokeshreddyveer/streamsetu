@@ -14,6 +14,6 @@ struct ProfilesView: View {
                 }.glossRow()
             }
         }
-        .navigationTitle("Profiles").themed("Profiles")
+        .navigationTitle("Profiles").atlasScreen("screen.ios.settings.profiles").themed("Profiles")
     }
 }

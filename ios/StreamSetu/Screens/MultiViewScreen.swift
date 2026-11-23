@@ -28,11 +28,11 @@ struct MultiViewScreen: View {
                 else if let big = model.maximized { tile(big, compact: false) }
                 else { layout }
             }
-            .navigationTitle("Multi-View").navigationBarTitleDisplayMode(.inline).clearTopBar()
+            .navigationTitle("Multi-View").navigationBarTitleDisplayMode(.inline).clearTopBar().atlasScreen("screen.ios.multiView")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { Button("Done") { dismiss() } }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button { model.toggleMute() } label: { Image(systemName: model.isMuted ? "speaker.slash.fill" : "speaker.wave.2") }.disabled(model.tiles.isEmpty).accessibilityLabel("Mute all")
+                    Button { model.toggleMute() } label: { Image(systemName: model.isMuted ? "speaker.slash.fill" : "speaker.wave.2") }.disabled(model.tiles.isEmpty).accessibilityLabel("Mute all").atlas("control.ios.multiView.mute")
                     Menu {
                         Picker("Layout", selection: Binding(get: { model.layout }, set: { model.layout = $0 })) {
                             ForEach(MultiViewModel.Layout.allCases) { Label($0.rawValue, systemImage: $0.symbol).tag($0) }
@@ -44,7 +44,8 @@ struct MultiViewScreen: View {
                         Divider()
                         Button("Close All", role: .destructive) { model.removeAll() }.disabled(model.tiles.isEmpty)
                     } label: { Image(systemName: "ellipsis.circle") }
-                    Button { showPicker = true } label: { Image(systemName: "plus") }.disabled(model.isFull).accessibilityLabel("Add channel")
+                    .atlas("control.ios.multiView.menu")
+                    Button { showPicker = true } label: { Image(systemName: "plus") }.disabled(model.isFull).accessibilityLabel("Add channel").atlas("control.ios.multiView.add")
                 }
             }
             .toolbarBackground(.visible, for: .navigationBar)
@@ -72,8 +73,8 @@ struct MultiViewScreen: View {
             Image(systemName: "rectangle.split.2x2").appFont(40, .light).foregroundStyle(.secondary)
             Text("Watch up to four channels at once").font(.title3.weight(.semibold))
             Text("One has the sound; tap another to switch it. Double-tap a tile to fill the screen.").font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 360)
-            Button { showPicker = true } label: { Label("Add a Channel", systemImage: "plus") }.buttonStyle(.borderedProminent).controlSize(.large)
-            if !model.presets.isEmpty { HStack { ForEach(model.presets.prefix(3)) { p in Button(p.name) { model.load(p) }.buttonStyle(.bordered) } } }
+            Button { showPicker = true } label: { Label("Add a Channel", systemImage: "plus") }.buttonStyle(.borderedProminent).controlSize(.large).atlas("control.ios.multiView.add")
+            if !model.presets.isEmpty { HStack { ForEach(model.presets.prefix(3)) { p in Button(p.name) { model.load(p) }.buttonStyle(.bordered).atlas("control.ios.multiView.preset") } } }
         }.padding(24)
     }
 
@@ -107,7 +108,7 @@ struct MultiViewScreen: View {
                 VStack(spacing: 8) {
                     Text(failure).font(.callout).multilineTextAlignment(.center)
                     if let d = t.failureDetail, !d.isEmpty { Text(d).font(.caption2).foregroundStyle(.secondary).lineLimit(2) }
-                    HStack { Button("Try Again") { model.retry(t.id) }; Button("Change") { swapTile = t.id } }.buttonStyle(.bordered)
+                    HStack { Button("Try Again") { model.retry(t.id) }.atlas("control.ios.multiView.tileRetry"); Button("Change") { swapTile = t.id }.atlas("control.ios.multiView.tileRetry") }.buttonStyle(.bordered)
                 }.padding(8).frame(maxWidth: .infinity, maxHeight: .infinity).background(.black.opacity(0.6))
             } else if t.isWorking {
                 VStack(spacing: 6) { ChannelLogo(url: t.channel.logoURL, name: t.channel.name, size: compact ? 30 : 48); ProgressView(); if t.reconnecting { Text("Reconnecting…").font(.caption2) } }
@@ -137,6 +138,7 @@ struct MultiViewScreen: View {
             Button("Remove", systemImage: "xmark", role: .destructive) { model.remove(t.id) }
         }
         .accessibilityElement(children: .contain).accessibilityLabel(t.channel.name + (t.isAudible ? ", sound on" : ""))
+        .atlas("context.ios.multiViewTile")
     }
 }
 
@@ -152,7 +154,7 @@ private struct MVPicker: View {
     var body: some View {
         NavigationStack {
             List {
-                Picker("Show", selection: $favouritesOnly) { Text("All channels").tag(false); Text("Favourites").tag(true) }.pickerStyle(.segmented).listRowBackground(Color.clear)
+                Picker("Show", selection: $favouritesOnly) { Text("All channels").tag(false); Text("Favourites").tag(true) }.pickerStyle(.segmented).listRowBackground(Color.clear).atlas("control.ios.multiView.pickerFilter")
                 ForEach(results) { c in
                     let shown = model.tiles.contains { $0.channel.id == c.id }
                     Button {
@@ -169,6 +171,7 @@ private struct MVPicker: View {
                             if shown { Image(systemName: "checkmark").foregroundStyle(.secondary) }
                         }.contentShape(Rectangle())
                     }.buttonStyle(.press).disabled(shown)
+                    .atlas("control.ios.multiView.pickChannel")
                 }
             }
             .listStyle(.plain)

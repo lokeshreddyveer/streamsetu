@@ -29,7 +29,10 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.18), value: router.tab)
-        .onAppear { visited.insert(router.tab) }
+        .onAppear {
+            visited.insert(router.tab)
+            if let container { ShowMeController.shared.opener = { id in AtlasOpener.open(id, container: container, router: router, state: state).isDone } }
+        }
         .onChange(of: router.tab) { _, t in visited.insert(t); chrome.reset() }
         // Pages pushed from a tab (Settings and its sub-pages, details) do not inherit a safe-area inset placed around the tabs, so their last
         // row slid under the bar. A bottom margin on every scrolling page does reach them, and follows the bar as the mini player comes and goes.
@@ -85,15 +88,29 @@ struct RootView: View {
         // Short messages ("Refreshing your library…") rise in at the bottom, above the tab bar.
         .overlay(alignment: .bottom) { ToastHost(center: state.toasts).padding(.bottom, barHeight + 8) }
         .background(ColorTokens.background)
-        // The AI assistant button is unplugged for now (AssistantBubble is not shown); its code is left in place.
+        // Setu, the assistant: a round sparkles button above the bars (hidden in kids mode, on the welcome screens, and while a keyboard is up).
+        .overlay {
+            if let container, !state.needsOnboarding {
+                AssistantBubble(container: container, bottomInset: barHeight + 8, receded: chrome.barCollapsed,
+                                open: { item in DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { router.pendingAssistantItem = item } },          // the chat sheet closes first (one sheet at a time)
+                                look: { (screen: iosScreenName, item: nil, search: nil) },
+                                perform: { p in
+                                    switch p.kind {
+                                    case .command, .playItem, .toggleList, .openAtlas: return await SearchCommandRunner.execute(p.kind, container: container, router: router, state: state)
+                                    default: return await container.perform(p, state: state)
+                                    }
+                                })
+            }
+        }
         .overlay { if let container { ViewingBlockOverlay(container: container) } }
         .animation(.easeInOut(duration: 0.3), value: container?.playback.viewingBlock)
         .overlay { if let container, !picked, container.profiles.isShared { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { picked = true } } } }
         .modifier(ThemeSync())
         .sheet(isPresented: $router.presentAdd) { AddPlaylistSheet() }
-        .sheet(item: $router.pendingAssistantItem) { item in NavigationStack { DetailView(item: item) }.presentationDetents([.large]) }
+        .sheet(item: $router.pendingAssistantItem) { item in NavigationStack { DetailView(item: item).id(item.id).titleAndPersonDestinations() }.presentationDetents([.large]) }
         .fullScreenCover(isPresented: $router.showMultiView) { if let container { MultiViewScreen(model: container.multiView) } }
         .modifier(PlayerCover(active: true))
+        .atlasShowMeHost()
     }
 }
 
@@ -137,16 +154,17 @@ struct MoreTab: View {
 
     var body: some View {
         @Bindable var router = router
-        NavigationStack(path: $router.morePath) {
+        NavigationStack(path: $router.moreStack) {
             List {
                 Section {
-                    NavigationLink(value: IOSRouter.MoreRoute.library) { Label("Library", systemImage: "books.vertical") }
-                    NavigationLink(value: IOSRouter.MoreRoute.playlists) { Label("Playlists", systemImage: "list.bullet.rectangle") }
-                    NavigationLink(value: IOSRouter.MoreRoute.settings) { Label("Settings", systemImage: "gearshape") }
+                    NavigationLink(value: IOSRouter.MoreRoute.library) { Label("Library", systemImage: "books.vertical") }.atlas("screen.ios.tab.library")
+                    NavigationLink(value: IOSRouter.MoreRoute.playlists) { Label("Playlists", systemImage: "list.bullet.rectangle") }.atlas("screen.ios.tab.playlists")
+                    NavigationLink(value: IOSRouter.MoreRoute.settings) { Label("Settings", systemImage: "gearshape") }.atlas("screen.ios.tab.settings")
                 }.glossRow()
             }
-            .navigationTitle("More").themed("More", tabRoot: true)
+            .navigationTitle("More").atlasScreen("screen.ios.tab.more").themed("More", tabRoot: true)
             .miniPlayerInset()
+            .titleAndPersonDestinations()
             .navigationDestination(for: IOSRouter.MoreRoute.self) { route in
                 switch route {
                 case .search: SearchView(embedded: true)
@@ -221,6 +239,7 @@ struct CompactTabBar: View {
         }
         .buttonStyle(.press)
         .accessibilityLabel("Show the tab bar, \(current.title) is open")
+        .atlas("screen.ios.tabBar")
     }
 
     private var fullBar: some View {
@@ -245,7 +264,8 @@ struct CompactTabBar: View {
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.press)
-                .accessibilityLabel(item.title).accessibilityAddTraits(on ? [.isSelected, .isButton] : .isButton)
+                .accessibilityLabel(item.title).accessibilityIdentifier("tab.\(item.tab)").accessibilityAddTraits(on ? [.isSelected, .isButton] : .isButton)
+                .atlas("screen.ios.tabBar")
             }
         }
         .padding(3)

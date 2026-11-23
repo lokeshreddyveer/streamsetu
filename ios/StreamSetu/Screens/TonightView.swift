@@ -21,13 +21,14 @@ struct TonightView: View {
                             Button { container?.playback.play(episode: u.episode, series: u.series) } label: {
                                 VStack(alignment: .leading) { Text(u.series.title); Text("S\(u.episode.seasonNumber) E\(u.episode.episodeNumber) · \(u.episode.title)").font(.caption).foregroundStyle(.secondary) }
                             }
+                            .atlas("control.ios.tonight.play")
                         }
                     }.glossRow()
                 }
                 if !plan.alerts.isEmpty { Section("From your guide alerts") { ForEach(plan.alerts, id: \.self) { Text($0) } }.glossRow() }
             } else { BrandLoader(size: 40) }
         }
-        .navigationTitle("Tonight").themed("Tonight")
+        .navigationTitle("Tonight").atlasScreen("screen.ios.tonight").themed("Tonight")
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") { await load() }
     }
 
@@ -38,6 +39,7 @@ struct TonightView: View {
                 Text("\(s.channel.name) · " + (live ? "until \(TimeFormatter.time(s.program.end))" : TimeFormatter.time(s.program.start))).font(.caption).foregroundStyle(.secondary)
             }
         }
+        .atlas("control.ios.tonight.play")
     }
 
     private func load() async {

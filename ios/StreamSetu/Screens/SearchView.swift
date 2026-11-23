@@ -9,11 +9,13 @@ struct SearchView: View {
     @Environment(IOSRouter.self) private var router
     @Environment(\.container) private var container
     @State private var results = GlobalSearchResults()
+    /// True once this screen has set itself up (opened the field, cleared a per-tab query). Coming back from a title page must not do either again: the query stays and the field is not reopened by itself.
+    @State private var didSetUp = false
+    /// True while this screen is the one on top (false once a title page is pushed over it).
+    @State private var isTop = false
     /// Idle, loading, results, empty or failed: the screen says which. A failed search keeps the results already shown.
     @State private var phase = SearchPhase.idle
     @State private var retryTick = 0
-    @State private var opened: LibraryItem?
-    @State private var openedCollection: CatalogCollection?
     @FocusState private var focused: Bool
     /// Whether the search field is open. Closing it with the cross takes you back to the screen you came from.
     @State private var presented = false
@@ -30,21 +32,36 @@ struct SearchView: View {
         @Bindable var router = router
         OptionalStack(embedded: embedded) {
             list
-            .navigationTitle("Search").navigationBarTitleDisplayMode(vertical == .compact ? .inline : .automatic).themed("Search")
+            .navigationTitle("Search").navigationBarTitleDisplayMode(vertical == .compact ? .inline : .automatic).themed("Search").atlasScreen("screen.ios.tab.search")
             .searchable(text: $router.query, isPresented: $presented, placement: .navigationBarDrawer(displayMode: .always), prompt: prompt)
             .searchSuggestions {
                 if router.query.isEmpty {
                     ForEach(recents, id: \.self) { r in Label(r, systemImage: "clock.arrow.circlepath").searchCompletion(r) }
-                    if !recents.isEmpty { Button("Clear Recent Searches", role: .destructive) { recentStore.clear(); recents = [] } }
+                    if !recents.isEmpty { Button("Clear Recent Searches", role: .destructive) { recentStore.clear(); recents = [] }.atlasCovers("screen.ios.tab.search") }
                 }
             }
             .onSubmit(of: .search) { recentStore.add(router.query); recents = recentStore.list() }
             .searchFocused($focused)
-            .onAppear { recents = recentStore.list(); if tab != .all { router.query = "" }; if embedded { presented = true; focused = true } }
-            .onChange(of: presented) { _, open in if !open, embedded { dismiss() } }
-            .onDisappear { if tab != .all { recentStore.add(router.query); router.query = "" } }
-            .navigationDestination(item: $opened) { DetailView(item: $0) }
-            .navigationDestination(item: $openedCollection) { CollectionDetailView(collection: $0) }
+            .onAppear {
+                isTop = true
+                recents = recentStore.list()
+                guard !didSetUp else { return }                         // back from a title page: nothing is reset or reopened
+                didSetUp = true
+                if tab != .all { router.query = "" }
+                if embedded { presented = true; focused = true }
+            }
+            .onChange(of: presented) { _, open in
+                // Closing the field with the cross clears the text; a title page opening over this screen keeps it. Only the first is "go back": dismiss() pops whatever is on top, so it is
+                // never called while a title page is open (the text is still there then).
+                guard !open, embedded, isTop, router.query.isEmpty else { return }
+                dismiss()
+            }
+            .onDisappear {
+                isTop = false
+                focused = false                                         // the field lets go of the keyboard when a page opens over it
+                if tab != .all, !router.query.isEmpty { recentStore.add(router.query) }
+            }
+            .titleAndPersonDestinations(ownsStack: !embedded)      // embedded: the stack it is pushed into (Home, Library, More) already has them
             .miniPlayerInset()
         }
         .task(id: "\(router.query)|\(retryTick)") { await run() }
@@ -59,10 +76,11 @@ struct SearchView: View {
                 ForEach(SearchCommands.parse(router.query)) { cmd in
                     Button { SearchCommandRunner.run(cmd, container: container, router: router, state: state) } label: {
                         Label(cmd.title, systemImage: cmd.symbol).appFont(15, .medium).frame(maxWidth: .infinity, alignment: .leading)
-                    }.buttonStyle(.press).glossRow()
+                    }.buttonStyle(.press).atlasCovers("screen.ios.tab.search").glossRow()
                 }
             }
-            if !isBlank, let container { SmartPicksCard(container: container, query: router.query, open: { opened = $0 }).listRowBackground(Color.clear).listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)) }
+            if !isBlank, let container { AtlasPaletteList(query: router.query, platform: AtlasAssistant.platform, appStore: AtlasAssistant.appStore, showAsk: !container.parental.kidsMode, open: { _ = AtlasOpener.open($0, container: container, router: router, state: state) }, show: { ShowMeController.shared.start(entryID: $0); ShowMeController.shared.openCurrentScreen() }, ask: { AssistantLauncher.shared.ask($0) }).listRowBackground(Color.clear).listRowSeparator(.hidden) }
+            if !isBlank, let container { SmartPicksCard(container: container, query: router.query, open: { _ in }, useLinks: true).listRowBackground(Color.clear).listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)) }
             if isBlank {
                 EmptyState(symbol: "magnifyingglass", title: "Search your library", message: "Channels, movies, series and episodes from every playlist.")
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
@@ -78,12 +96,12 @@ struct SearchView: View {
                 CorrectedNote(original: router.query, corrected: fixed).listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
             if !isBlank, let top = results.exactMatch(for: router.query) {
-                Section("Top Match") { Button { activate(top) } label: { row(top, showKind: true) }.buttonStyle(.press) }.glossRow()
+                Section("Top Match") { resultLink(top, showKind: true) }.glossRow()
             }
             ForEach(SearchResultKind.allCases.filter { tab.kinds.contains($0) && !(results.byKind[$0] ?? []).isEmpty }, id: \.self) { kind in
                 Section(kind.groupTitle) {
                     ForEach(results.byKind[kind] ?? []) { r in
-                        Button { activate(r) } label: { row(r) }.buttonStyle(.press)
+                        resultLink(r)
                     }
                 }.glossRow()
             }
@@ -93,22 +111,34 @@ struct SearchView: View {
         .scrollDismissesKeyboard(.immediately)      // scrolling the results pulls the keyboard away so they can be seen, also in landscape
     }
 
+        /// A title or collection is a navigation link (value-based, like Home and Library); anything else acts in place.
+    @ViewBuilder private func resultLink(_ r: SearchResult, showKind: Bool = false) -> some View {
+        switch r.destination.phoneAction {
+        case .openMovie(let id): NavigationLink(value: TitleRef(id: id, isSeries: false)) { row(r, showKind: showKind) }.buttonStyle(.press).atlasCovers("screen.ios.tab.search")
+        case .openSeries(let id): NavigationLink(value: TitleRef(id: id, isSeries: true)) { row(r, showKind: showKind) }.buttonStyle(.press).atlasCovers("screen.ios.tab.search")
+        case .showCollection(let id): NavigationLink(value: CollectionRef(id: id)) { row(r, showKind: showKind) }.buttonStyle(.press).atlasCovers("screen.ios.tab.search")
+        default: Button { activate(r) } label: { row(r, showKind: showKind) }.buttonStyle(.press).atlasCovers("screen.ios.tab.search")
+        }
+    }
+
     private func row(_ r: SearchResult, showKind: Bool = false) -> some View {
         ReflowStack {
             if r.kind == .channel { ChannelLogo(url: r.artworkURL, name: r.title, size: 44) }
-            else { ArtworkImage(url: r.artworkURL, kind: .poster, contentMode: .fill, symbol: r.kind.symbol, tile: .init(title: r.title)).frame(width: 44, height: 62).clipShape(RoundedRectangle(cornerRadius: 6)) }
+            else { ArtworkImage(url: r.artworkURL, kind: .poster, contentMode: .fill, symbol: r.kind.symbol, tile: .init(title: r.title)).frame(width: 44, height: 62).clipShape(RoundedRectangle(cornerRadius: 6)).overlay(alignment: .topTrailing) { if let rt = r.rating { RatingBadge(value: rt).scaleEffect(0.85, anchor: .topTrailing).padding(2) } } }
             VStack(alignment: .leading, spacing: 2) {
                 Text(r.title).appFont(15, .medium).lineLimit(typeSize.isAccessibilitySize ? 4 : 2)
                 Text(showKind && !r.subtitle.isEmpty ? "\(r.kind.typeLabel) · \(r.subtitle)" : (showKind ? r.kind.typeLabel : r.subtitle)).appFont(12).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 0)
         }.contentShape(Rectangle())
+            .prioritizesArtwork(r.ratingTileIDs)
+            .modifier(SearchResultMenuModifier(result: r, handlers: { IOSTileHandlers.make($0, container: container, router: router) }, playChannel: { ch in if let c = container { Play.channel(ch, queue: [ch], c) } }))
     }
 
     private var failureNote: some View {
         VStack(spacing: 8) {
             Label("The search could not be completed.", systemImage: "exclamationmark.triangle").appFont(14, .medium).foregroundStyle(.secondary)
-            Button("Retry") { retryTick += 1 }.buttonStyle(.bordered)
+            Button("Retry") { retryTick += 1 }.buttonStyle(.bordered).atlasCovers("screen.ios.tab.search")
         }.frame(maxWidth: .infinity).padding(.vertical, 8)
     }
 
@@ -154,10 +184,8 @@ struct SearchView: View {
         switch r.destination.phoneAction {
         case .playChannel(let id):
             if let ch = try? c.catalog.channel(id: id) { Play.channel(ch, queue: [ch], c) }
-        case .openMovie(let id):
-            if let m = try? c.catalog.movie(id: id) { opened = .movie(m) }
-        case .openSeries(let id):
-            if let s = try? c.catalog.seriesItem(id: id) { opened = .series(s) }
+        case .openMovie, .openSeries, .showCollection:
+            break                                                        // these rows are navigation links
         case .playEpisode(let id, let seriesID):
             if let e = try? c.catalog.episode(id: id), let s = try? c.catalog.seriesItem(id: seriesID) { Play.episode(e, s, c) }
         case .playProgramme(let channelID):
@@ -169,11 +197,6 @@ struct SearchView: View {
             router.go(tab)
         case .unavailable:
             break                                                        // never shown: the search returns no folder of a kind that has none
-        case .showCollection(let id):
-            Task {
-                let found = await Task.detached { (try? c.favoritesRepo.collections())?.first { $0.id == id } }.value
-                if let found { openedCollection = found } else { state.toasts.show("That collection no longer exists", symbol: "square.stack") }
-            }
         }
     }
 }

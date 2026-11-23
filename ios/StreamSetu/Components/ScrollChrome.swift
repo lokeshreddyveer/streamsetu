@@ -101,6 +101,7 @@ struct ChromeFold: ViewModifier {
                     .opacity(folded ? 1 : 0)
                     .allowsHitTesting(folded)
                     .accessibilityLabel("Show buttons").accessibilityHidden(!folded)
+                    .atlas("control.ios.chrome.unfold")
             }
     }
 }

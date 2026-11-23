@@ -9,7 +9,7 @@ struct ProxyView: View {
         @Bindable var s = settings
         Form {
             Section {
-                Picker("Type", selection: $s.proxyKind) { ForEach(ProxyConfig.Kind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+                Picker("Type", selection: $s.proxyKind) { ForEach(ProxyConfig.Kind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.atlas("setting.proxy")
                 if s.proxyKind != .off {
                     TextField("Host", text: $s.proxyHost).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                     TextField("Port", text: $port).keyboardType(.numberPad)
@@ -19,7 +19,7 @@ struct ProxyView: View {
                 Text("Sends playlist, guide, artwork and detail requests, and streams played by the MPV engine, through the proxy. MPV supports HTTP proxies only. Apple's player uses the system network settings and ignores this. This is a proxy for StreamSetu's own requests only, not a VPN: StreamSetu does not create a tunnel for the app or hide your address from the proxy.")
             }.glossRow()
         }
-        .navigationTitle("Proxy").themed("Proxy")
+        .navigationTitle("Proxy").atlasScreen("screen.ios.settings.proxy").themed("Proxy")
         .onAppear { port = s.proxyPort > 0 ? String(s.proxyPort) : "" }
     }
 }

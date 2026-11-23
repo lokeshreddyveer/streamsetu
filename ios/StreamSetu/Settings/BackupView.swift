@@ -26,26 +26,26 @@ struct BackupView: View {
                 option("Viewing history and resume points", .history)
             } header: { Text("Include") }.glossRow()
             Section {
-                Button("Create Backup…") { export() }
+                Button("Create Backup…") { export() }.atlas("control.ios.backup.create")
                 if let exportURL { ShareLink(item: exportURL) { Label("Share \(exportURL.lastPathComponent)", systemImage: "square.and.arrow.up") } }
-                Button("Restore from a File…") { importing = true }
+                Button("Restore from a File…") { importing = true }.atlas("control.ios.backup.restore")
             } footer: { Text("A restored playlist comes back switched off and asks for its login again.") }.glossRow()
             Section {
-                Toggle("Back up automatically (weekly)", isOn: $s.autoBackup)
+                Toggle("Back up automatically (weekly)", isOn: $s.autoBackup).atlas("setting.autoBackup")
                 if let d = s.lastAutoBackup { LabeledContent("Last automatic backup", value: d.formatted(.relative(presentation: .named))) }
-                Button("Back Up Now") { _ = container?.autoBackup.runNow(); refresh(); say("Backup saved on this device.") }
+                Button("Back Up Now") { _ = container?.autoBackup.runNow(); refresh(); say("Backup saved on this device.") }.atlas("control.ios.backup.now")
                 ForEach(autoFiles, id: \.self) { url in
                     HStack {
                         Text(url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "StreamSetu-auto-", with: "")).font(.callout)
                         Spacer()
                         ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }.buttonStyle(.borderless)
-                        Button("Restore") { load(url) }.buttonStyle(.bordered).controlSize(.small)
+                        Button("Restore") { load(url) }.buttonStyle(.bordered).controlSize(.small).atlas("control.ios.backup.restoreAuto")
                     }
                 }
             } header: { Text("Automatic backups") } footer: { Text("The latest five are kept in the app's storage on this device.") }.glossRow()
             if let message { Section { Label(message, systemImage: failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").foregroundStyle(failed ? .orange : .green).font(.callout) }.glossRow() }
         }
-        .navigationTitle("Backup and Restore").themed("Backup and Restore")
+        .navigationTitle("Backup and Restore").atlasScreen("screen.ios.settings.backup").themed("Backup and Restore")
         .onAppear(perform: refresh)
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json, .data]) { r in
             guard case .success(let url) = r else { return }
@@ -56,7 +56,7 @@ struct BackupView: View {
             NavigationStack {
                 List {
                     Section("This backup contains") { ForEach(box.plan.summary, id: \.self) { Text($0) } }.glossRow()
-                    Section { Button("Restore") { apply(box.plan) } } footer: { Text("Nothing is deleted. Items that are already here are merged, not duplicated.") }.glossRow()
+                    Section { Button("Restore") { apply(box.plan) }.atlas("control.ios.backup.apply") } footer: { Text("Nothing is deleted. Items that are already here are merged, not duplicated.") }.glossRow()
                 }
                 .navigationTitle("Restore").themed("Restore").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { plan = nil } } }
@@ -71,7 +71,7 @@ struct BackupView: View {
     }
 
     private func option(_ title: String, _ o: BackupOptions) -> some View {
-        Toggle(title, isOn: Binding(get: { include.contains(o) }, set: { if $0 { include.insert(o) } else { include.remove(o) } }))
+        Toggle(title, isOn: Binding(get: { include.contains(o) }, set: { if $0 { include.insert(o) } else { include.remove(o) } })).atlas("control.ios.backup.option")
     }
 
     private func say(_ m: String, failure: Bool = false) { message = m; failed = failure }

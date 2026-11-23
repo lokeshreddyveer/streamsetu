@@ -5,8 +5,15 @@
     <key>NSPrivacyTracking</key><false/>
     <key>NSPrivacyTrackingDomains</key><array/>
     <key>NSPrivacyCollectedDataTypes</key>
-    <!-- The App Store build sends no problem reports for now (see DiagnosticsUploader.availableInThisBuild), so it collects nothing. -->
-    <array/>
+    <!-- Titles and years looked up at metadata services (TMDB, fanart.tv, TVmaze, TheTVDB) for artwork and details. Not linked to the person, not used for tracking. The App Store build sends no problem reports (see DiagnosticsUploader.availableInThisBuild). -->
+    <array>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key><string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key><false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key><false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key><array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+        </dict>
+    </array>
     <key>NSPrivacyAccessedAPITypes</key>
     <array>
         <dict>

@@ -27,11 +27,12 @@ struct CatchUpSheet: View {
                                     }
                                 }
                             }.buttonStyle(.press)
+                            .atlas("control.ios.catchUp.play")
                         }
                     }
                 }
             }
-            .navigationTitle("Earlier on \(channel.name)").navigationBarTitleDisplayMode(.inline).clearTopBar()
+            .navigationTitle("Earlier on \(channel.name)").atlasScreen("screen.ios.catchUp").navigationBarTitleDisplayMode(.inline).clearTopBar()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .presentationDetents([.medium, .large])

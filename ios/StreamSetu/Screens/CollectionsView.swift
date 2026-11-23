@@ -26,6 +26,7 @@ struct CollectionMenu: View {
             }
             Button("Cancel", role: .cancel) { newName = "" }
         }
+        .atlas("control.ios.collections.addTo")
     }
 
     private func add(_ c: CatalogCollection) {
@@ -48,12 +49,13 @@ struct CollectionsView: View {
                 EmptyState(symbol: "square.stack", title: "No collections yet", message: "Group channels, movies and series your own way. Channels in a collection also appear as a list in Live TV.").listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
             ForEach(collections) { c in
-                NavigationLink { CollectionDetailView(collection: c) } label: { LibraryRow(symbol: "square.stack.fill", tint: .indigo, title: c.name, count: nil) }
+                NavigationLink(value: CollectionRef(id: c.id)) { LibraryRow(symbol: "square.stack.fill", tint: .indigo, title: c.name, count: nil) }
                     .swipeActions { Button(role: .destructive) { try? container?.favoritesRepo.deleteCollection(id: c.id); reload() } label: { Label("Delete", systemImage: "trash") } }
+                    .atlas("gesture.ios.swipeCollection")
             }
         }
-        .navigationTitle("Collections").themed("Collections")
-        .toolbar { TrailingPills { Button { naming = true } label: { Image(systemName: "plus").pillIcon() }.accessibilityLabel("New collection") } }
+        .navigationTitle("Collections").atlasScreen("screen.ios.collections").themed("Collections")
+        .toolbar { TrailingPills { Button { naming = true } label: { Image(systemName: "plus").pillIcon() }.accessibilityLabel("New collection").atlas("control.ios.collections.new") } }
         .alert("New Collection", isPresented: $naming) {
             TextField("Name", text: $newName)
             Button("Create") { _ = try? container?.favoritesRepo.createCollection(name: newName.trimmingCharacters(in: .whitespaces)); newName = ""; reload() }
@@ -99,9 +101,9 @@ struct CollectionDetailView: View {
                 }
             }.padding(16)
         }
-        .navigationTitle(collection.name).themed(collection.name)
+        .navigationTitle(collection.name).atlasScreen("screen.collection.detail").themed(collection.name)
         .editButton($editing, enabled: !channels.isEmpty || !titles.isEmpty)
-        .toolbar { TrailingPills { Button("Rename") { name = collection.name; renaming = true } } }
+        .toolbar { TrailingPills { Button("Rename") { name = collection.name; renaming = true }.atlas("control.ios.collections.rename") } }
         .listTools(sort: $sort, canClear: !channels.isEmpty || !titles.isEmpty, clearLabel: "Remove Everything from This Collection", confirmTitle: "Empty this collection?",
                    confirmMessage: "Everything in “\(collection.name)” is removed from it. The collection stays, and nothing leaves your library.") {
             for ch in channels { try? container?.favoritesRepo.remove(itemID: ch.id, fromCollection: collection.id) }

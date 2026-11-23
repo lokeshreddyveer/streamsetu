@@ -178,9 +178,10 @@ struct LibraryView: View {
                 LazyVGrid(columns: columns, spacing: 16) {
                     // The first screenful rises in one after another; titles scrolled to later appear at once.
                     ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-                        NavigationLink(value: item) { PosterCard(item: item, width: posterWidth, note: model.matchNotes[item.id]) }.buttonStyle(.press).contextMenu { TitleMenu(item: item) }
+                        NavigationLink(value: item) { PosterCard(item: item, width: posterWidth, note: model.matchNotes[item.id]) }.buttonStyle(.press).titleTileMenu(item)
                             .staggeredAppear(index)
                             .task { if item.id == model.items.last?.id, let c = container { await model.loadMore(c, source: state.activeSourceID) } }
+                            .atlas("context.tile.menu")
                     }
                 }
                 .padding(16)
@@ -190,12 +191,12 @@ struct LibraryView: View {
             .scrollPosition(id: $topRow, anchor: .top)
             .ignoresSafeArea(edges: .top)
             .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, v in scrollY = v }
-            .navigationTitle(kind == .movie ? "Movies" : "Series").themed(kind == .movie ? "Movies" : "Series", tabRoot: true)
-            .navigationDestination(for: LibraryItem.self) { DetailView(item: $0) }
+            .navigationTitle(kind == .movie ? "Movies" : "Series").atlasScreen(kind == .movie ? "screen.ios.tab.movies" : "screen.ios.tab.series").themed(kind == .movie ? "Movies" : "Series", tabRoot: true)
+            .titleAndPersonDestinations()
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { SyncIndicator() }
                 TrailingPills {
-                    NavigationLink { SearchView(embedded: true, tab: kind == .movie ? .movies : .series) } label: { Image(systemName: "magnifyingglass").pillIcon() }.accessibilityLabel("Search")
+                    NavigationLink(value: ToolRoute.search(kind == .movie ? .movies : .series)) { Image(systemName: "magnifyingglass").pillIcon() }.accessibilityLabel("Search").atlas("control.ios.library.search")
                     Menu {
                         Picker("Sort", selection: Binding(get: { model.sort }, set: { newSort in
                             if showsFolders, newSort != model.sort { viewMode = .grid; FolderViewMode.save(.grid, kind, profile: profileID) }          // folder rows keep each folder's own order; a chosen sort means the grid
@@ -204,6 +205,7 @@ struct LibraryView: View {
                         Picker("View", selection: Binding(get: { viewMode }, set: { viewMode = $0; FolderViewMode.save($0, kind, profile: profileID) })) { Text("Folders").tag(FolderViewMode.folders); Text("Grid").tag(FolderViewMode.grid) }
                     } label: { Image(systemName: model.filter.isActive ? "arrow.up.arrow.down.circle.fill" : "arrow.up.arrow.down.circle").pillIcon() }
                     .accessibilityLabel(model.filter.isActive ? "Sort and filter, \(model.filter.count) filters on" : "Sort and filter")
+                    .atlas("control.ios.library.sortMenu")
                     if let folderColumn { FolderColumnButton(shown: folderColumn) } else { Menu {
                         Button { model.categoryID = nil } label: { Label("All", systemImage: model.categoryID == nil ? "checkmark" : "") }
                         Divider()
@@ -212,7 +214,7 @@ struct LibraryView: View {
                                 if let p = container?.parental, p.isLocked(cat.id), p.isRestricting { lockedPick = cat.id } else { model.categoryID = cat.id }
                             } label: { Label(cat.name, systemImage: model.categoryID == cat.id ? "checkmark" : (container?.parental.isLocked(cat.id) == true ? "lock" : "")) }
                         }
-                    } label: { Image(systemName: "line.3.horizontal.decrease.circle").pillIcon() }.accessibilityLabel("Folders") }
+                    } label: { Image(systemName: "line.3.horizontal.decrease.circle").pillIcon() }.accessibilityLabel("Folders").atlas("control.ios.library.folderMenu") }
                 }
             }
             .refreshable { state.syncAll() }
@@ -275,5 +277,6 @@ struct ShelfChips: View {
                 .background(on ? AnyShapeStyle(ColorTokens.accentDefault) : AnyShapeStyle(.thinMaterial), in: Capsule())
                 .foregroundStyle(on ? Color.white : Color.primary)
         }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
+        .atlas("control.ios.library.shelf")
     }
 }

@@ -254,7 +254,7 @@ struct PlayerScreen: View {
             .offset(y: max(0, drag))
             .onChange(of: geo.size, initial: true) { _, s in landscape = s.width > s.height }
         }
-        .statusBarHidden(!showControls)
+        .statusBarHidden(!showControls).atlasScreen("screen.ios.player")
         .persistentSystemOverlays(.hidden)
         .onAppear {
             fill = PlayerMemory.fill(for: playback.current?.itemID) ?? lastFill; scheduleHide(); if playback.isLive { showBanner() }
@@ -380,7 +380,7 @@ struct PlayerScreen: View {
         skipTotal = PlayerMath.stackedSkip(previousTotal: skipTotal, previousSide: skipSide, previousAt: skipAt, side: side, now: Date())
         skipSide = side; skipAt = Date()
         playback.seek(by: Double(side) * 10)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Haptics.tap()
         showHUD(GestureHUD(symbol: back ? "gobackward" : "goforward", label: "\(back ? "−" : "+")\(Int(skipTotal)) s", level: nil), hideAfter: 0.9)
     }
 
@@ -404,7 +404,7 @@ struct PlayerScreen: View {
         if holding {
             heldRate = playback.rate
             playback.setRate(2)
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            Haptics.firm()
             showHUD(GestureHUD(symbol: "forward.fill", label: "2×", level: nil), hideAfter: nil)
         } else {
             if let r = heldRate { playback.setRate(r) }
@@ -430,13 +430,13 @@ struct PlayerScreen: View {
         guard on != fill else { return }
         fill = on; lastFill = on
         PlayerMemory.setFill(on, for: playback.current?.itemID)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Haptics.tap()
         showHUD(GestureHUD(symbol: on ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right", label: on ? "Fill" : "Fit", level: nil), hideAfter: 0.9)
     }
 
     /// Swipe to change channel while watching live TV.
     private func zap(_ step: Int) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        Haptics.firm()
         if step > 0 { playback.nextChannel() } else { playback.previousChannelInList() }
         scheduleHide()
     }
@@ -504,6 +504,7 @@ struct PlayerScreen: View {
                     Button { skip.action() } label: { Label(skip.title, systemImage: "forward.end.fill").font(.system(size: 14, weight: .semibold)).padding(.horizontal, 16).frame(minHeight: 40) }
                         .buttonStyle(.plain).foregroundStyle(.white).background(.black.opacity(0.65), in: Capsule()).overlay(Capsule().strokeBorder(.white.opacity(0.3)))
                         .frame(maxWidth: .infinity, alignment: .trailing).transition(.opacity)
+                        .atlas("control.ios.player.skip")
                 }
                 if let next = playback.upNext, !playback.isLive, let d = playback.duration, d > 60, d - playback.position < 30,
                    nextDismissedFor != playback.current?.itemID {
@@ -531,10 +532,11 @@ struct PlayerScreen: View {
         VStack {
             Spacer()
             if showControls {
-                Button { locked = false; UINotificationFeedbackGenerator().notificationOccurred(.success); scheduleHide() } label: {
+                Button { locked = false; Haptics.success(); scheduleHide() } label: {
                     Label("Unlock controls", systemImage: "lock.open.fill").font(.system(size: 15, weight: .semibold)).padding(.horizontal, 18).frame(minHeight: 44)
                         .background(.black.opacity(0.7), in: Capsule())
                 }.foregroundStyle(.white).accessibilityLabel("Unlock controls").transition(.opacity)
+                .atlas("control.ios.player.unlockControls")
             }
         }.padding(.bottom, 40)
     }
@@ -567,7 +569,7 @@ struct PlayerScreen: View {
     /// Minimal top bar: close, what is playing, AirPlay and one More button that holds everything else.
     private var topBar: some View {
         HStack(spacing: 8) {
-            Button { dismiss() } label: { Image(systemName: "chevron.down").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44) }.accessibilityLabel("Close player")
+            Button { dismiss() } label: { Image(systemName: "chevron.down").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44) }.accessibilityLabel("Close player").atlas("control.ios.player.close")
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
                     Text(playback.title).font(.system(size: 16, weight: .semibold)).lineLimit(1)
@@ -578,7 +580,7 @@ struct PlayerScreen: View {
             }
             Spacer(minLength: 8)
             if landscape { ClockBattery() }
-            Button { showSearch = true; hideTask?.cancel() } label: { Image(systemName: "magnifyingglass").font(.system(size: 18, weight: .semibold)).frame(width: 44, height: 44) }.accessibilityLabel("Search the catalog")
+            Button { showSearch = true; hideTask?.cancel() } label: { Image(systemName: "magnifyingglass").font(.system(size: 18, weight: .semibold)).frame(width: 44, height: 44) }.accessibilityLabel("Search the catalog").atlas("control.ios.player.search")
             AirPlayButton().frame(width: 44, height: 44)
             moreMenu
         }
@@ -628,6 +630,7 @@ struct PlayerScreen: View {
             Image(systemName: "ellipsis.circle").font(.system(size: 20)).frame(width: 44, height: 44)
         }
         .accessibilityLabel("More")
+        .atlas("control.ios.player.moreMenu")
     }
 
     @ViewBuilder private var pipButton: some View {
@@ -647,17 +650,18 @@ struct PlayerScreen: View {
     private var transport: some View {
         HStack(spacing: landscape ? 56 : 44) {
             if playback.isLive {
-                Button { playback.previousChannelInList(); scheduleHide() } label: { Image(systemName: "backward.end.fill").font(.system(size: 26)).frame(width: 52, height: 52) }.accessibilityLabel("Previous channel")
+                Button { playback.previousChannelInList(); scheduleHide() } label: { Image(systemName: "backward.end.fill").font(.system(size: 26)).frame(width: 52, height: 52) }.accessibilityLabel("Previous channel").atlas("control.ios.player.previousChannel")
             } else {
-                Button { playback.seek(by: -10); scheduleHide() } label: { Image(systemName: "gobackward.10").font(.system(size: 32)).frame(width: 52, height: 52) }.accessibilityLabel("Back 10 seconds")
+                Button { playback.seek(by: -10); scheduleHide() } label: { Image(systemName: "gobackward.10").font(.system(size: 32)).frame(width: 52, height: 52) }.accessibilityLabel("Back 10 seconds").atlas("control.ios.player.skipBack")
             }
             Button { playback.togglePause(); scheduleHide() } label: {
                 Image(systemName: playback.state == .playing || playback.state == .buffering ? "pause.fill" : "play.fill").font(.system(size: 44)).frame(width: 72, height: 72)
             }.accessibilityLabel(playback.state == .playing ? "Pause" : "Play")
+            .atlas("control.ios.player.playPause")
             if playback.isLive {
-                Button { playback.nextChannel(); scheduleHide() } label: { Image(systemName: "forward.end.fill").font(.system(size: 26)).frame(width: 52, height: 52) }.accessibilityLabel("Next channel")
+                Button { playback.nextChannel(); scheduleHide() } label: { Image(systemName: "forward.end.fill").font(.system(size: 26)).frame(width: 52, height: 52) }.accessibilityLabel("Next channel").atlas("control.ios.player.nextChannel")
             } else {
-                Button { playback.seek(by: 30); scheduleHide() } label: { Image(systemName: "goforward.30").font(.system(size: 32)).frame(width: 52, height: 52) }.accessibilityLabel("Forward 30 seconds")
+                Button { playback.seek(by: 30); scheduleHide() } label: { Image(systemName: "goforward.30").font(.system(size: 32)).frame(width: 52, height: 52) }.accessibilityLabel("Forward 30 seconds").atlas("control.ios.player.skipForward")
             }
         }
     }
@@ -702,6 +706,7 @@ struct PlayerScreen: View {
             Group { if label { Label(title, systemImage: symbol).labelStyle(.titleAndIcon) } else { Image(systemName: symbol) } }
                 .padding(.horizontal, label ? 12 : 0).frame(minWidth: 44, minHeight: 44)
         }.accessibilityLabel(title)
+        .atlas("control.ios.player.bottomButtons")
     }
 
     // MARK: actions
@@ -733,7 +738,7 @@ struct PlayerScreen: View {
     private func saveFrame() -> String {
         guard let image = playback.screenshot() else { return "No picture to save right now." }
         UIImageWriteToSavedPhotosAlbum(UIImage(cgImage: image), nil, nil, nil)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         return "Saved. If nothing appears in Photos, allow it in Settings."
     }
 
@@ -803,8 +808,8 @@ struct MiniPlayerBar: View {
                     Text(statusText(p)).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                Button { p.togglePause() } label: { Image(systemName: p.state == .playing || p.state == .buffering ? "pause.fill" : "play.fill").font(.system(size: 20)).frame(width: 40, height: 40) }.accessibilityLabel("Play or pause")
-                Button { p.stop() } label: { Image(systemName: "xmark").font(.system(size: 15, weight: .semibold)).frame(width: 36, height: 40) }.accessibilityLabel("Stop")
+                Button { p.togglePause() } label: { Image(systemName: p.state == .playing || p.state == .buffering ? "pause.fill" : "play.fill").font(.system(size: 20)).frame(width: 40, height: 40) }.accessibilityLabel("Play or pause").atlas("control.ios.miniPlayer.playPause")
+                Button { p.stop() } label: { Image(systemName: "xmark").font(.system(size: 15, weight: .semibold)).frame(width: 36, height: 40) }.accessibilityLabel("Stop").atlas("control.ios.miniPlayer.stop")
             }
             .padding(.horizontal, 14).padding(.vertical, 6)
             .background(ColorTokens.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -814,6 +819,7 @@ struct MiniPlayerBar: View {
             .padding(.horizontal, 20)
             .contentShape(Rectangle())
             .onTapGesture { p.isExpanded = true }
+            .atlas("screen.ios.miniPlayer")
         }
     }
 

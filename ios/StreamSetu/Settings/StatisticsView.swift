@@ -18,7 +18,7 @@ struct StatisticsView: View {
     var body: some View {
         List {
             if let container { Section { WeeklyDigestCard(container: container) }.listRowBackground(Color.clear).listRowInsets(EdgeInsets()) }
-            Section { Picker("Range", selection: $range) { ForEach(Range.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).listRowBackground(Color.clear) }.glossRow()
+            Section { Picker("Range", selection: $range) { ForEach(Range.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).listRowBackground(Color.clear).atlas("control.ios.statistics.range") }.glossRow()
             if let s = stats {
                 if s.isEmpty {
                     EmptyState(symbol: "chart.bar", title: "Nothing to show yet", message: "Watch something and your viewing time appears here. It stays on this device.").listRowBackground(Color.clear)
@@ -40,17 +40,18 @@ struct StatisticsView: View {
                         LabeledContent("Series", value: Self.duration(s.seriesSeconds))
                     }.glossRow()
                     top("Top channels", s.topChannels); top("Top movies", s.topMovies); top("Top series", s.topSeries)
-                    Section { Button("Reset Statistics", role: .destructive) { confirmReset = true } }.glossRow()
+                    Section { Button("Reset Statistics", role: .destructive) { confirmReset = true }.atlas("control.ios.statistics.reset") }.glossRow()
                 }
             } else { BrandLoader(size: 32).frame(maxWidth: .infinity).listRowBackground(Color.clear) }
         }
-        .navigationTitle("Statistics").themed("Statistics")
+        .navigationTitle("Statistics").atlasScreen("screen.ios.statistics").themed("Statistics")
         .task(id: range) { await load() }
         .confirmationDialog("Reset viewing statistics?", isPresented: $confirmReset, titleVisibility: .visible) {
             Button("Reset Statistics", role: .destructive) {
                 do { try container?.statistics.clear(); stats = ViewingStatistics() }
                 catch { state.toasts.show("Could not reset the statistics: \(error.localizedDescription)", symbol: "exclamationmark.triangle") }
             }
+            .atlas("control.ios.statistics.reset")
         } message: { Text("Deletes the playback log these figures come from. Favourites, history and resume points stay.") }
     }
 

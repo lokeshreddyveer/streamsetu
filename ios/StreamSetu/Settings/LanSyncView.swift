@@ -11,7 +11,7 @@ struct LanSyncView: View {
         let lan = container?.lan
         Form {
             Section {
-                Toggle("Sync on this network", isOn: $s.lanSync).onChange(of: s.lanSync) { _, on in container?.lan.setEnabled(on) }
+                Toggle("Sync on this network", isOn: $s.lanSync).onChange(of: s.lanSync) { _, on in container?.lan.setEnabled(on) }.atlas("setting.lanSync")
             } footer: {
                 Text("Devices on the same Wi-Fi share favourites, Watch Later, collections and resume points directly with each other. No account and no server; nothing leaves your network. Pair each device once.")
             }.glossRow()
@@ -20,14 +20,15 @@ struct LanSyncView: View {
                     LabeledContent("Status", value: lan.status)
                     ForEach(lan.trusted, id: \.id) { p in
                         LabeledContent(p.name, value: lan.found.contains { $0.id == p.id } ? "On this network" : "Not here now")
-                            .swipeActions { Button("Forget", role: .destructive) { lan.forget(p) } }
+                            .swipeActions { Button("Forget", role: .destructive) { lan.forget(p) }.atlas("gesture.ios.swipePeer") }
+                            .atlas("gesture.ios.swipePeer")
                     }
-                    Button("Add a Device…") { adding = true }
-                    Button("Sync Now") { Task { await lan.syncNow() } }
+                    Button("Add a Device…") { adding = true }.atlas("control.ios.lan.add")
+                    Button("Sync Now") { Task { await lan.syncNow() } }.atlas("control.ios.lan.syncNow")
                 }.glossRow()
             }
         }
-        .navigationTitle("Sync on this network").themed("Sync on this network")
+        .navigationTitle("Sync on this network").atlasScreen("screen.ios.settings.lan").themed("Sync on this network")
         .sheet(isPresented: $adding) { if let lan { NavigationStack { LanPairView(service: lan) } } }
     }
 }

@@ -78,9 +78,9 @@ struct IPadShell: View {
     private var shortcuts: some View {
         Group {
             ForEach(Array(Self.all.enumerated()), id: \.offset) { i, item in
-                Button(item.title) { router.go(item.tab) }.keyboardShortcut(KeyEquivalent(Character("\(i + 1)")), modifiers: .command)
+                Button(item.title) { router.go(item.tab) }.keyboardShortcut(KeyEquivalent(Character("\(i + 1)")), modifiers: .command).atlas("screen.ios.ipadSidebar")
             }
-            Button("Search") { router.go(.search) }.keyboardShortcut("f", modifiers: .command)
+            Button("Search") { router.go(.search) }.keyboardShortcut("f", modifiers: .command).atlas("control.ios.ipad.searchShortcut")
         }
         .opacity(0).frame(width: 0, height: 0).accessibilityHidden(true)
     }

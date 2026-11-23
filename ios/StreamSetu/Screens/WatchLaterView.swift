@@ -19,7 +19,7 @@ struct WatchLaterView: View {
             TitleGrid(items: sort.apply(titles), editing: editing, onRemove: { t in state.toggleWatchLater(t.id, kind: t.kind); titles.removeAll { $0.id == t.id }; if titles.isEmpty { editing = false } })
             .padding(16)
         }
-        .navigationTitle("Watch Later").themed("Watch Later")
+        .navigationTitle("Watch Later").atlasScreen("screen.ios.watchLater").themed("Watch Later")
         .editButton($editing, enabled: !titles.isEmpty)
         .listTools(sort: $sort, canClear: !titles.isEmpty, clearLabel: "Remove All from Watch Later", confirmTitle: "Remove everything from Watch Later?",
                    confirmMessage: "The titles stay in your library; they just leave this list.") {
@@ -42,58 +42,28 @@ struct WatchLaterView: View {
     }
 }
 
-/// The long-press menu on a movie or series: favourite, and watch later.
-struct TitleMenu: View {
-    let item: LibraryItem
-    @Environment(AppState.self) private var state
-    @Environment(\.container) private var container
-
-    var body: some View {
-        Button("Watch Privately", systemImage: "eye.slash") {
-            guard let container else { return }
-            switch item {
-            case .movie(let m): Play.movie(m, container, privately: true)
-            case .series(let s): Task { await Play.series(s, container, privately: true) }
-            }
-        }
-        Button(state.isFavorite(item.id) ? "Remove from Favourites" : "Add to Favourites", systemImage: state.isFavorite(item.id) ? "heart.slash" : "heart") {
-            state.toggleFavorite(item.id, kind: item.kind)
-        }
-        Button(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later", systemImage: state.isWatchLater(item.id) ? "bookmark.slash" : "bookmark") {
-            state.toggleWatchLater(item.id, kind: item.kind)
-        }
-        if state.isFavorite(item.id) {
-            Button("Move to Front of Favourites", systemImage: "arrow.up.to.line") { state.moveFavorite(item.id, kind: item.kind, toFront: true) }
-            Button("Move to End of Favourites", systemImage: "arrow.down.to.line") { state.moveFavorite(item.id, kind: item.kind, toFront: false) }
-        }
-        if let q = container?.watchQueue {
-            if q.contains(item.id) {
-                Button("Remove from Queue", systemImage: "text.badge.minus") { q.remove(item.id) }
-            } else {
-                Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { q.add(item, next: true) }
-                Button("Add to Queue", systemImage: "text.badge.plus") { q.add(item) }
-            }
-        }
-        CollectionMenu(itemID: item.id, kind: item.kind)
-        ShareLinkButton(link: item.isSeries ? DeepLink.link(series: item.title) : DeepLink.link(movie: item.title), name: item.title)
+/// What an iPhone or iPad screen supplies to the shared menu.
+@MainActor enum IOSTileHandlers {
+    static func make(_ item: LibraryItem, container: AppContainer?, router: IOSRouter) -> TileMenuHandlers {
+        var h = TileMenuHandlers(
+            play: { guard let c = container else { return }; switch item { case .movie(let m): Play.movie(m, c); case .series(let s): Task { await Play.series(s, c, privately: false) } } },
+            playPrivately: { guard let c = container else { return }; switch item { case .movie(let m): Play.movie(m, c, privately: true); case .series(let s): Task { await Play.series(s, c, privately: true) } } },
+            open: { router.pendingAssistantItem = item })          // the root view opens the title's page
+        if let cat = item.categoryID { h.openFolder = { router.pendingFolder = (item.kind, cat); router.go(item.isSeries ? .series : .movies) } }
+        h.goToCast = { CastFocus.request(item.id); router.pendingAssistantItem = item }          // the title page has the cast row
+        return h
     }
 }
 
-/// The queue button on a title's page: line it up to play next, or take it out of the line.
-struct QueueButton: View {
+extension View {
+    /// Long press: the shared tile menu, and the same items as VoiceOver actions.
+    func titleTileMenu(_ item: LibraryItem, kind: TileMenu.Kind = .title) -> some View { modifier(IOSTitleTileMenu(item: item, kind: kind)) }
+}
+
+private struct IOSTitleTileMenu: ViewModifier {
     let item: LibraryItem
+    let kind: TileMenu.Kind
     @Environment(\.container) private var container
-    var body: some View {
-        if let q = container?.watchQueue {
-            Menu {
-                if q.contains(item.id) {
-                    Button("Remove from Queue", systemImage: "text.badge.minus") { q.remove(item.id) }
-                } else {
-                    Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { q.add(item, next: true) }
-                    Button("Add to Queue", systemImage: "text.badge.plus") { q.add(item) }
-                }
-            } label: { Image(systemName: q.contains(item.id) ? "text.badge.checkmark" : "text.badge.plus").frame(width: 24, height: 24) }
-                .buttonStyle(ActionCircleStyle(tint: q.contains(item.id) ? Color.accentColor : nil)).accessibilityLabel("Queue")
-        }
-    }
+    @Environment(IOSRouter.self) private var router
+    func body(content: Content) -> some View { content.tileMenu(item, kind: kind, handlers: IOSTileHandlers.make(item, container: container, router: router)) }
 }

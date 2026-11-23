@@ -19,30 +19,30 @@ struct StorageView: View {
                 LabeledContent("Artwork cache", value: bytes(storage.artworkCache))
                 LabeledContent("Temporary files", value: bytes(storage.temporary))
                 LabeledContent("Total", value: bytes(storage.total))
-                Button("Clear Artwork Cache") { run { await container?.artwork.clear(); return "Artwork cache cleared." } }
-                Button("Clear Temporary Files") { run { let r = container?.maintenance.clearTemporaryFiles(); return "Removed \(r?.files ?? 0) temporary files." } }
+                Button("Clear Artwork Cache") { run { await container?.artwork.clear(); return "Artwork cache cleared." } }.atlas("control.ios.storage.clearArtwork")
+                Button("Clear Temporary Files") { run { let r = container?.maintenance.clearTemporaryFiles(); return "Removed \(r?.files ?? 0) temporary files." } }.atlas("control.ios.storage.clearTemp")
             }.glossRow()
             Section("Library maintenance") {
-                Button("Optimize Database") { run { try container?.maintenance.optimizeDatabase().summary ?? "" } }
-                Button("Check Database Integrity") { run { let r = try container?.maintenance.verifyDatabase(); return r?.ok == true ? "The database is healthy (schema v\(r?.schemaVersion ?? 0))." : "Problems found: \(r?.problems.joined(separator: "; ") ?? "")" } }
-                Button("Rebuild Search Index") { run { try container?.maintenance.rebuildSearchIndex(); state.catalogVersion += 1; return "Search index rebuilt." } }
+                Button("Optimize Database") { run { try container?.maintenance.optimizeDatabase().summary ?? "" } }.atlas("control.ios.storage.optimize")
+                Button("Check Database Integrity") { run { let r = try container?.maintenance.verifyDatabase(); return r?.ok == true ? "The database is healthy (schema v\(r?.schemaVersion ?? 0))." : "Problems found: \(r?.problems.joined(separator: "; ") ?? "")" } }.atlas("control.ios.storage.integrity")
+                Button("Rebuild Search Index") { run { try container?.maintenance.rebuildSearchIndex(); state.catalogVersion += 1; return "Search index rebuilt." } }.atlas("control.ios.storage.rebuildSearch")
             }.glossRow()
             if let message { Section { Text(message).font(.callout) }.glossRow() }
             Section {
-                Button("Create Diagnostic Report") { makeReport() }
+                Button("Create Diagnostic Report") { makeReport() }.atlas("control.ios.storage.report")
                 if let report { ShareLink(item: report) { Label("Share Report", systemImage: "square.and.arrow.up") } }
             } header: { Text("Diagnostics") } footer: { Text("Passwords, tokens and stream addresses are removed from the report.") }.glossRow()
             Section("Reset") {
-                Button("Clear Watch History…", role: .destructive) { confirm = .history }
-                Button("Remove Everything…", role: .destructive) { confirm = .everything }
+                Button("Clear Watch History…", role: .destructive) { confirm = .history }.atlas("control.ios.storage.clearHistory")
+                Button("Remove Everything…", role: .destructive) { confirm = .everything }.atlas("control.ios.storage.removeEverything")
             }.glossRow()
         }
         .overlay { if working { ProgressView().controlSize(.large) } }
-        .navigationTitle("Storage and Maintenance").themed("Storage and Maintenance")
+        .navigationTitle("Storage and Maintenance").atlasScreen("screen.ios.settings.storage").themed("Storage and Maintenance")
         .task { refresh() }
         .confirmationDialog(confirm == .everything ? "Remove everything?" : "Clear watch history?", isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }), titleVisibility: .visible) {
-            if confirm == .everything { Button("Remove Everything", role: .destructive) { run { try container?.dataReset.removeEverything(); state.reload(); return "Everything was removed." } } }
-            else { Button("Clear History", role: .destructive) { run { try container?.dataReset.clearViewingHistory(); state.catalogVersion += 1; return "Watch history cleared." } } }
+            if confirm == .everything { Button("Remove Everything", role: .destructive) { run { try container?.dataReset.removeEverything(); state.reload(); return "Everything was removed." } }.atlas("control.ios.storage.removeEverything") }
+            else { Button("Clear History", role: .destructive) { run { try container?.dataReset.clearViewingHistory(); state.catalogVersion += 1; return "Watch history cleared." } }.atlas("control.ios.storage.clearHistory") }
         } message: { Text(confirmMessage) }
     }
 

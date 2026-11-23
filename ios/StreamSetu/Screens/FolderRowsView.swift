@@ -39,7 +39,7 @@ struct FolderRowsView: View {
                 if model.hasMore { ProgressView().frame(maxWidth: .infinity).padding(.vertical, 8) }
             }
         }
-        .scrollTargetLayout()
+        .scrollTargetLayout().atlasScreen("screen.ios.folderRows")
         .padding(.top, 8)
         .task(id: reloadKey) {
             guard let c = container else { return }
@@ -63,10 +63,7 @@ private struct FolderRowCell: View {
         VStack(alignment: .leading, spacing: 8) {
             Button { open(row) } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    if row.locked { Image(systemName: "lock.fill").appFont(13).foregroundStyle(.secondary) }
-                    Text(row.display).appFont(18, .semibold).lineLimit(1).truncationMode(.tail)
-                    // The count is quiet: smaller, dim, in brackets, on the name's baseline, and it never wraps or gets cut before the name does.
-                    if !row.locked { Text(row.countText).appFont(13).foregroundStyle(.tertiary).lineLimit(1).fixedSize().layoutPriority(1) }
+                    FolderHeaderLabel(row: row, noun: .title)
                     Spacer(minLength: 8)
                     Text(row.locked ? "Open" : "See all").appFont(13, .medium).foregroundStyle(.secondary)
                     Image(systemName: "chevron.right").appFont(11, .semibold).foregroundStyle(.secondary).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
@@ -75,20 +72,22 @@ private struct FolderRowCell: View {
             }
             .buttonStyle(.plain).padding(.horizontal, 16)
             .accessibilityAddTraits(.isHeader)
-            .accessibilityLabel(row.accessibilityTitle)
+            .accessibilityLabel(row.accessibilityTitle(.title))
             .accessibilityHint(row.locked ? "Asks for the PIN" : "Opens the whole folder")
+            .atlas("control.ios.folderRows.openFolder")
             if !row.locked {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
                         if let items = model.tiles[row.id] {
                             ForEach(items) { item in
-                                NavigationLink(value: item) { PosterCard(item: item, width: posterWidth, folderLine: .some(FolderTileLine.line(for: item, folder: row.name))) }.buttonStyle(.press).contextMenu { TitleMenu(item: item) }
+                                NavigationLink(value: item) { PosterCard(item: item, width: posterWidth, folderLine: .some(FolderTileLine.line(for: item, folder: row.name))) }.buttonStyle(.press).titleTileMenu(item).atlas("context.tile.menu")
                             }
                             Button { open(row) } label: {
                                 VStack(spacing: 6) { Image(systemName: "chevron.right.circle").appFont(26); Text("More ›").appFont(14, .medium) }
                                     .foregroundStyle(.secondary).frame(width: posterWidth, height: posterWidth * 1.5)
                                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
                             }.buttonStyle(.press).accessibilityLabel("More in \(row.display)")
+                            .atlas("control.ios.folderRows.more")
                         } else {
                             ForEach(0..<5, id: \.self) { _ in FolderSkeleton(width: posterWidth, height: posterWidth * 1.5, radius: 8) }
                         }
@@ -136,7 +135,7 @@ struct LiveFolderRowsView: View {
                     }
                 }
             }
-            .scrollTargetLayout().padding(.vertical, 8)
+            .scrollTargetLayout().atlasScreen("screen.ios.folderRows").padding(.vertical, 8)
         }
         .scrollPosition(id: $topRow, anchor: .top)
         .task(id: reloadKey) {
@@ -159,15 +158,15 @@ private struct LiveRowCell: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button { open(row) } label: {
-                HStack(spacing: 6) {
-                    if row.locked { Image(systemName: "lock.fill").appFont(13).foregroundStyle(.secondary) }
-                    Text(row.locked ? row.display : "\(row.display) · \(row.count.formatted())").appFont(18, .semibold).lineLimit(1)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    FolderHeaderLabel(row: row, noun: .channel)
                     Spacer(minLength: 8)
                     if row.special == nil { Text(row.locked ? "Open" : "See all").appFont(13, .medium).foregroundStyle(.secondary); Image(systemName: "chevron.right").appFont(11, .semibold).foregroundStyle(.secondary) }
                 }.contentShape(Rectangle())
             }
             .buttonStyle(.plain).padding(.horizontal, 16).disabled(row.special != nil)
-            .accessibilityAddTraits(.isHeader).accessibilityLabel(row.locked ? "\(row.display), locked folder" : "\(row.display), \(row.count) channels")
+            .accessibilityAddTraits(.isHeader).accessibilityLabel(row.accessibilityTitle(.channel))
+            .atlas("control.ios.folderRows.openFolder")
             if !row.locked {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
@@ -180,6 +179,7 @@ private struct LiveRowCell: View {
                                     VStack(spacing: 6) { Image(systemName: "chevron.right.circle").appFont(24); Text("More ›").appFont(13, .medium) }
                                         .foregroundStyle(.secondary).frame(width: 104, height: 96).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
                                 }.buttonStyle(.press).accessibilityLabel("More in \(row.display)")
+                                .atlas("control.ios.folderRows.more")
                             }
                         } else {
                             ForEach(0..<5, id: \.self) { _ in FolderSkeleton(width: 104, height: 120, radius: 12) }

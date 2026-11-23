@@ -29,6 +29,7 @@ struct PlaybackHealthView: View {
                                     settings.setEngineOverride(hint.engine == .mpv ? .mpv : .avPlayer, for: s.id)
                                     note = "Done. \(s.name) now uses \(hint.engine.rawValue). You can change it in Settings → Playback."
                                 }.buttonStyle(.borderedProminent)
+                                .atlas("control.ios.health.useEngine")
                                 if hint.engine == .mpv { Text("MPV has no Picture in Picture or AirPlay.").font(.footnote).foregroundStyle(.secondary) }
                             }.padding(.vertical, 4)
                         }
@@ -41,11 +42,11 @@ struct PlaybackHealthView: View {
                 ForEach(problems, id: \.self) { Text($0).font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary) }
             }.glossRow()
             Section {
-                if DiagnosticsUploader.availableInThisBuild { Button { send() } label: { Label(sending ? "Sending…" : "Send My Log", systemImage: "paperplane") }.disabled(sending) }
-                Button("Reset These Numbers", role: .destructive) { StartStats.shared.reset(); reload() }
+                if DiagnosticsUploader.availableInThisBuild { Button { send() } label: { Label(sending ? "Sending…" : "Send My Log", systemImage: "paperplane") }.disabled(sending).atlas("control.ios.health.sendLog") }
+                Button("Reset These Numbers", role: .destructive) { StartStats.shared.reset(); reload() }.atlas("control.ios.health.reset")
             } footer: { Text("Only counts and times are kept, on this device. No titles or addresses.") }.glossRow()
         }
-        .navigationTitle("Playback Health").themed("Playback Health")
+        .navigationTitle("Playback Health").atlasScreen("screen.ios.settings.health").themed("Playback Health")
         .task { reload() }
     }
 
@@ -53,7 +54,7 @@ struct PlaybackHealthView: View {
         VStack(alignment: .leading, spacing: 2) {
             Text("\(r.live ? "Live TV" : "Movies and episodes") · \(r.engine)").font(.subheadline.weight(.semibold))
             let rec = r.record
-            Text(rec.plays == 0 ? "No successful starts yet" : "Starts in about \(Int(rec.average.rounded())) s (slowest \(Int(rec.slowest.rounded())) s) · \(rec.plays) play\(rec.plays == 1 ? "" : "s")")
+            Text(rec.plays == 0 ? "No successful starts yet" : "Starts in about \(Int(rec.average.rounded())) s (slowest \(Int(rec.slowest.rounded())) s) · \(Localized.plural(rec.plays, one: "%@ play", other: "%@ plays"))")
                 .font(.footnote).foregroundStyle(.secondary)
             if rec.failures > 0 { Text("\(rec.failures) gave up").font(.footnote).foregroundStyle(.orange) }
         }

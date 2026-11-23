@@ -29,6 +29,7 @@ struct GuideView: View {
             GeometryReader { geo in
                 let track = max(120, geo.size.width - nameWidth)
                 VStack(spacing: 0) {
+                    GuideFreshnessBanner()
                     ruler(track: track)
                     Divider()
                     if vm.channels.isEmpty, !vm.loading {
@@ -54,7 +55,7 @@ struct GuideView: View {
             }
             }
             }
-            .navigationTitle("Guide").themed("Guide · \(vm.dayLabel)").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Guide").atlasScreen("screen.ios.tab.guide").themed("Guide · \(vm.dayLabel)").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 TrailingPills {
                     Menu {
@@ -65,12 +66,14 @@ struct GuideView: View {
                         Button("Earlier (−3 h)") { vm.shift(hours: -3) }
                         Button("Later (+3 h)") { vm.shift(hours: 3) }
                     } label: { Image(systemName: "clock").pillIcon() }.accessibilityLabel("Jump in time")
+                    .atlas("control.ios.guide.jump")
                     Menu {
                         Button { setScope(.withGuide) } label: { Label("Channels with a guide", systemImage: vm.scope == .withGuide ? "checkmark" : "") }
                         Button { setScope(.favorites) } label: { Label("Favourites", systemImage: vm.scope == .favorites ? "checkmark" : "") }
                         Divider()
                         ForEach(categories) { cat in Button { setScope(.category(cat.id)) } label: { Label(cat.name, systemImage: vm.scope == .category(cat.id) ? "checkmark" : "") } }
                     } label: { Image(systemName: "line.3.horizontal.decrease.circle").pillIcon() }.accessibilityLabel("Which channels")
+                    .atlas("control.ios.guide.scope")
                 }
             }
             .sheet(item: $selected) { ProgrammeSheet(selection: $0) }
@@ -137,7 +140,7 @@ struct GuideView: View {
             ForEach(vm.channels) { c in
                 let shown = (vm.programs[c.id] ?? []).filter { $0.end > vm.windowStart && $0.start < vm.windowEnd }
                 Section {
-                    Button { if let container { Play.channel(c, queue: vm.channels, container) } } label: { Label("Watch \(c.name)", systemImage: "play.fill") }
+                    Button { if let container { Play.channel(c, queue: vm.channels, container) } } label: { Label("Watch \(c.name)", systemImage: "play.fill") }.atlas("control.ios.guide.watch")
                     ForEach(shown) { p in
                         Button { selected = Selection(channel: c, program: p) } label: {
                             VStack(alignment: .leading, spacing: 2) {
@@ -146,6 +149,7 @@ struct GuideView: View {
                                     .appFont(12).foregroundStyle(.secondary)
                             }
                         }
+                        .atlas("control.ios.guide.programme")
                     }
                 } header: { Text(c.name) }
                 .glossRow()
@@ -164,6 +168,7 @@ struct GuideView: View {
                     Text(c.name).appFont(10).lineLimit(2).minimumScaleFactor(0.8).foregroundStyle(.secondary)
                 }.frame(width: nameWidth, height: rowHeight)
             }.buttonStyle(.press)
+            .atlas("control.ios.guide.watch")
             ZStack(alignment: .topLeading) {
                 ForEach(vm.programs[c.id] ?? []) { p in
                     let x0 = max(0, vm.x(for: p.start)), x1 = min(track, vm.x(for: p.end))
@@ -178,6 +183,7 @@ struct GuideView: View {
                             .background(p.isLive() ? ColorTokens.accentDefault.opacity(0.28) : ColorTokens.card, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                             .opacity(p.end < Date() ? 0.6 : 1)
                         }.buttonStyle(.press).offset(x: x0, y: 3)
+                        .atlas("control.ios.guide.programme")
                     }
                 }
             }
@@ -211,17 +217,17 @@ private struct ProgrammeSheet: View {
                 }.glossRow()
                 Section {
                     if p.isLive() {
-                        Button { play() } label: { Label("Watch Now", systemImage: "play.fill") }
+                        Button { play() } label: { Label("Watch Now", systemImage: "play.fill") }.atlas("control.ios.programme.watch")
                     } else if p.end < Date() {
-                        if c.archiveDays > 0 { Button { catchUp() } label: { Label("Watch from the Archive", systemImage: "clock.arrow.circlepath") } }
+                        if c.archiveDays > 0 { Button { catchUp() } label: { Label("Watch from the Archive", systemImage: "clock.arrow.circlepath") }.atlas("control.ios.programme.archive") }
                         else { Text("This channel has no archive.").foregroundStyle(.secondary) }
                     } else {
-                        Button { toggleReminder() } label: { Label(reminder ? "Cancel Reminder" : "Remind Me", systemImage: reminder ? "bell.slash" : "bell") }
+                        Button { toggleReminder() } label: { Label(reminder ? "Cancel Reminder" : "Remind Me", systemImage: reminder ? "bell.slash" : "bell") }.atlas("control.ios.programme.remind")
                     }
                     if let note { Text(note).font(.callout).foregroundStyle(.secondary) }
                 }.glossRow()
             }
-            .navigationTitle("Programme").themed("Programme").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Programme").atlasScreen("screen.ios.programme").themed("Programme").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .presentationDetents([.medium])

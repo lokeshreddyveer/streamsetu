@@ -10,17 +10,17 @@ struct DownloadsView: View {
             Section { DownloadsList() }.glossRow()
             if let d = container?.downloads {
                 Section {
-                    Toggle("Only on Wi-Fi", isOn: Binding(get: { d.wifiOnly }, set: { d.wifiOnly = $0 }))
-                    Toggle("Delete after watching", isOn: Binding(get: { d.deleteWhenWatched }, set: { d.deleteWhenWatched = $0 }))
-                    if !d.records.isEmpty { Button("Remove All Downloads", role: .destructive) { confirmRemoveAll = true } }
+                    Toggle("Only on Wi-Fi", isOn: Binding(get: { d.wifiOnly }, set: { d.wifiOnly = $0 })).atlas("setting.downloadsWifiOnly")
+                    Toggle("Delete after watching", isOn: Binding(get: { d.deleteWhenWatched }, set: { d.deleteWhenWatched = $0 })).atlas("setting.downloadsDeleteWatched")
+                    if !d.records.isEmpty { Button("Remove All Downloads", role: .destructive) { confirmRemoveAll = true }.atlas("control.ios.downloads.removeAll") }
                 } footer: {
                     Text("Downloads are kept out of your device backup, pause while something is playing, and carry on from where they stopped.")
                 }.glossRow()
             }
         }
-        .navigationTitle("Downloads").themed("Downloads")
+        .navigationTitle("Downloads").atlasScreen("screen.ios.downloads").themed("Downloads")
         .confirmationDialog("Remove every download?", isPresented: $confirmRemoveAll, titleVisibility: .visible) {
-            Button("Remove All", role: .destructive) { container?.downloads.removeAll() }
+            Button("Remove All", role: .destructive) { container?.downloads.removeAll() }.atlas("control.ios.downloads.removeAll")
         } message: { Text("The saved copies are deleted from this device. Your playlists are not changed.") }
     }
 }

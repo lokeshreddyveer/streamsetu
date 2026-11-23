@@ -3,7 +3,7 @@ import XCTest
 
 /// The links the app opens from outside (Shortcuts, Siri, the widget, other apps), as installed in this app.
 @MainActor final class DeepLinkRoutingTests: XCTestCase {
-    private func link(_ s: String) -> DeepLink? { URL(string: s).flatMap(DeepLink.parse) }
+    private func link(_ s: String) -> DeepLink? { URL(string: s).flatMap { DeepLink.parse($0) } }
 
     func testSearchLinkCarriesItsWordsAndOpensSearchInMore() {
         guard case .search(let q)? = link("streamsetu://search?q=football") else { return XCTFail("did not parse") }
@@ -18,6 +18,13 @@ import XCTest
             let router = IOSRouter(); router.go(IOSRouter.Tab(t))
             XCTAssertEqual(router.tab, tab, url); XCTAssertEqual(router.morePath, page.map { [$0] } ?? [], url)
         }
+    }
+
+    func testAtlasLinkOpensThePageTheEntryNames() {
+        guard case .atlas(let id)? = link("streamsetu://atlas?id=screen.ios.tab.guide") else { return XCTFail("did not parse") }
+        XCTAssertEqual(id, "screen.ios.tab.guide")
+        XCTAssertNil(link("streamsetu://atlas?id=a%20b")); XCTAssertNil(link("streamsetu://atlas"))
+        XCTAssertEqual(DeepLink.link(atlas: "screen.ios.tab.guide").flatMap { DeepLink.parse($0) }, .atlas(id: "screen.ios.tab.guide"))
     }
 
     func testDangerousLinksAreRefused() {

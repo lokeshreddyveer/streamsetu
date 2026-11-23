@@ -25,62 +25,43 @@ struct DetailView: View {
     @State private var tmdb: TitleDetails?
     @State private var loadedExtras = false
     @State private var hasTMDBKey = true
+    @State private var versionsModel = TitleVersionsModel()
+    @State private var hub = TitleHubModel()
+    @State private var progress: WatchProgress?
+    @State private var nextEpisode: Episode?
+    @State private var playingTrailer: String?
+    @State private var art: HeroArtwork
+    @State private var episodeProgress: [String: WatchProgress] = [:]
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    @Environment(\.artwork) private var artwork
+    @ScaledMetric(relativeTo: .largeTitle) private var titleScale: CGFloat = 1
+
+    init(item: LibraryItem) {
+        self.item = item
+        _art = State(initialValue: HeroArtwork.preloaded(backdrop: item.backdropURL, poster: item.posterURL))      // a title seen before has its picture in the first frame
+    }
+
+    private var reduceMotion: Bool { BrandMotion.reduced(systemReduceMotion) }
+    private var artKey: String { (heroBackdrop ?? "") + "|" + (posterValue ?? "") }
     /// A tall picture, under half the screen, with the title low on it, so the rating, credits and story are in view without scrolling.
     private var heroHeight: CGFloat { HeroMetrics.height(wide: sizeClass == .regular, share: 0.45) }
 
+    /// The first episode's picture, the last resort for a series whose provider and TMDB sent no poster or backdrop.
+    private var firstStill: String? { detail?.episodes.sorted { ($0.seasonNumber, $0.episodeNumber) < ($1.seasonNumber, $1.episodeNumber) }.compactMap { $0.imageURL.nilIfEmpty }.first }
+    /// Backdrop: the provider's, TMDB's own, then the hub's. With none the hero washes the poster (and, with no poster either, the first episode's picture).
+    private var backdropValue: String? { (movie?.backdropURL ?? detail?.series.backdropURL ?? item.backdropURL).nilIfEmpty ?? tmdb?.backdropURL ?? hub.backdropURL.nilIfEmpty }
+    /// Poster: the provider's cover, TMDB's poster, the hub's, then the first episode's picture; only then the generated tile.
+    private var posterValue: String? { (movie?.posterURL ?? detail?.series.posterURL ?? item.posterURL).nilIfEmpty ?? tmdb?.posterURL ?? hub.posterURL.nilIfEmpty ?? (item.isSeries ? firstStill : nil) }
+    private var heroBackdrop: String? { backdropValue ?? (posterValue == nil ? firstStill : nil) }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                ZStack(alignment: .bottomLeading) {
-                    ParallaxBanner(height: heroHeight, scrollY: scrollY) {
-                        ArtworkImage(url: (movie?.backdropURL ?? item.backdropURL) ?? item.posterURL, kind: .backdrop, contentMode: .fill, symbol: "film", alignment: .top)
-                    }
-                    LinearGradient(colors: [.black.opacity(0.5), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.2))          // keeps the clock and the buttons readable
-                    LinearGradient(stops: [.init(color: .clear, location: 0.42), .init(color: ColorTokens.background.opacity(0.55), location: 0.66),
-                                           .init(color: ColorTokens.background.opacity(0.92), location: 0.88), .init(color: ColorTokens.background, location: 1)], startPoint: .top, endPoint: .bottom)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(item.cleanTitle).appFont(28, .heavy).lineLimit(3).minimumScaleFactor(0.7).foregroundStyle(.white)
-                            .shadow(color: .black.opacity(0.5), radius: 12, y: 2)
-                        VersionPill(item: item)
-                    }
-                    .padding(.horizontal, 20).padding(.bottom, 12)
-                }
-                .zIndex(0)
-                VStack(alignment: .leading, spacing: 14) {
-                    chipRow
-                    genreRow
-                    credits
-                    overviewBlock
-                    missingNote
-                    Button { if item.isSeries { playSeries() } else if let container, let m = movie ?? asMovie { Play.movie(m, container) } } label: {
-                        Label(item.isSeries && resumeEpisode != nil ? "Resume" : "Play", systemImage: "play.fill").frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(SolidPlayStyle()).disabled(item.isSeries && detail == nil)
-                    HStack(spacing: 14) {
-                        Button { state.toggleFavorite(item.id, kind: item.kind) } label: { Image(systemName: state.isFavorite(item.id) ? "heart.fill" : "heart").frame(width: 24, height: 24).symbolEffect(.bounce, value: state.isFavorite(item.id)) }
-                            .buttonStyle(ActionCircleStyle(tint: state.isFavorite(item.id) ? .pink : nil)).accessibilityLabel(state.isFavorite(item.id) ? "Remove from favourites" : "Add to favourites")
-                        Button { state.toggleWatchLater(item.id, kind: item.kind) } label: { Image(systemName: state.isWatchLater(item.id) ? "bookmark.fill" : "bookmark").frame(width: 24, height: 24).symbolEffect(.bounce, value: state.isWatchLater(item.id)) }
-                            .buttonStyle(ActionCircleStyle(tint: state.isWatchLater(item.id) ? .orange : nil)).accessibilityLabel(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later")
-                        QueueButton(item: item)
-                        if case .movie(let m) = item { DownloadButton(itemID: m.id, compact: true) { $0.enqueue(movie: m) }.buttonStyle(ActionCircleStyle()) }
-                        trailerButton
-                    }.frame(maxWidth: .infinity)
-                    FolderPathButton(name: item.categoryName) { if let id = item.categoryID { dismiss(); router.pendingFolder = (item.kind, id); router.go(item.isSeries ? .series : .movies) } }
-                    facts
-                    if let error { Label(error, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange) }
-                    if item.isSeries { OtherLanguagesRow(item: item, useLinks: true) }
-                    if item.isSeries { episodes }
-                    if case .movie(let m) = item { FranchiseTimeline(currentID: m.id, movie: m, useLinks: true); OtherLanguagesRow(item: item, useLinks: true) }
-                    CastSection(item: item, useLinks: true)
-                    SimilarRow(item: item, extras: extras)
-                }.staggeredAppear(1).padding(.top, -20).padding(.horizontal, 16).frame(maxWidth: 820, alignment: .leading)
-                    .frame(maxWidth: .infinity).background(ColorTokens.background).zIndex(1)      // slides over the banner as it recedes
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
+            Group { if sizeClass == .regular { wideLayout } else { narrowLayout } }
+                .frame(maxWidth: .infinity, alignment: .center)
         }
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, v in scrollY = v }
-        .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea(edges: .top).atlasScreen("screen.ios.detail")
         .navigationBarTitleDisplayMode(.inline).clearTopBar()
         .toolbar { TrailingPills { Menu {
             Button("Watch Privately", systemImage: "eye.slash") {
@@ -94,36 +75,304 @@ struct DetailView: View {
                     SharePlayService.shared.startWhenReady(container)
                 }
             }
-            CollectionMenu(itemID: item.id, kind: item.kind)
-        } label: { Image(systemName: "ellipsis.circle").pillIcon() } } }
-        .background(ColorTokens.background)
-        .navigationDestination(for: PersonRoute.self) { p in
-            PersonTitlesList(name: p.name) { e in
-                NavigationLink(value: e.item) { PosterCard(item: e.item, width: 110, note: e.otherLanguages.isEmpty ? nil : "Also in " + e.otherLanguages.joined(separator: ", ")) }.buttonStyle(.press)
+            if let q = container?.watchQueue {
+                if q.contains(item.id) { Button("Remove from Queue", systemImage: "text.badge.minus") { q.remove(item.id) } }
+                else {
+                    Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { q.add(item, next: true) }
+                    Button("Add to Queue", systemImage: "text.badge.plus") { q.add(item) }
+                }
             }
-            .navigationBarTitleDisplayMode(.inline)
-        }
+            CollectionMenu(itemID: item.id, kind: item.kind)
+        } label: { Image(systemName: "ellipsis.circle").pillIcon() }.atlas("control.ios.detail.moreMenu") } }
+        .background(ColorTokens.background)
+        .fullScreenCover(isPresented: $showTrailer) { if let k = playingTrailer ?? trailerKey { TrailerSheet(key: k, title: item.title) } }
+        .fullScreenCover(isPresented: $showClip) { if let u = previewClip { ClipSheet(url: u) } }
         .task { await load() }
+        .task(id: artKey) {
+            art.peek(backdrop: heroBackdrop, poster: posterValue)
+            await art.load(backdrop: heroBackdrop, poster: posterValue, artwork: artwork)
+        }
+        .task(id: item.id) { await versionsModel.load(item, container: container) }
+        .task(id: item.id) { if let container { hub.open(itemID: item.id, isSeries: item.isSeries, container: container) } }
+        .onDisappear { hub.close() }
+        .onMetadataLanded(for: item.id) {
+            Task {
+                switch item {
+                case .movie(let m): if let x = try? await container?.details.movie(id: m.id) { movie = x }
+                case .series(let sr): if let x = try? await container?.details.series(id: sr.id) { detail = x }          // the series page picks up its new backdrop too
+                }
+            }
+        }
         .miniPlayerInset()
+    }
+
+    // MARK: layout
+
+    private var narrowLayout: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            hero(width: 400)
+            VStack(alignment: .leading, spacing: 24) {
+                playBlock
+                versionsBlock
+                synopsisBlock
+                missingNote
+                if let error { Label(error, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange) }
+                detailsGrid
+                CastSection(item: item, useLinks: true).castRowFocus(item.id)
+                if item.isSeries { episodes }
+                bottomSections
+            }.padding(.top, 8).padding(.horizontal, 16).frame(maxWidth: 820, alignment: .leading).frame(maxWidth: .infinity)
+        }
+    }
+
+    /// iPad: the hero across the top; Play, versions and the story beside the details; then cast, episodes and the rails at full width.
+    private var wideLayout: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            hero(width: 900)
+            VStack(alignment: .leading, spacing: 28) {
+                HStack(alignment: .top, spacing: 32) {
+                    VStack(alignment: .leading, spacing: 22) { playBlock; versionsBlock; synopsisBlock; missingNote }.frame(maxWidth: .infinity, alignment: .leading)
+                    detailsGrid.frame(width: 320)
+                }
+                CastSection(item: item, useLinks: true).castRowFocus(item.id)
+                if item.isSeries { episodes }
+                bottomSections
+            }.padding(.top, 8).padding(.horizontal, 28).frame(maxWidth: 1100).frame(maxWidth: .infinity)
+        }
+    }
+
+    private func hero(width: CGFloat) -> some View {
+        let compact = sizeClass != .regular
+        return ZStack(alignment: .bottomLeading) {
+            ParallaxBanner(height: heroHeight, scrollY: reduceMotion ? 0 : scrollY) { TitleHeroBackground(art: art, title: item.cleanTitle) }
+            LinearGradient(colors: [.black.opacity(0.5), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.25)).allowsHitTesting(false)          // keeps the clock and the buttons readable
+            HStack(alignment: .bottom, spacing: 16) {
+                ArtworkImage(url: posterValue, kind: .poster, contentMode: .fill, alignment: .top, tile: ArtworkTile.Content(title: item.cleanTitle, detail: yearValue.map(String.init)))
+                    .frame(width: compact ? 96 : 140, height: compact ? 144 : 210).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.white.opacity(0.16), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.5), radius: 14, y: 6).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 8) {
+                    titleOrLogo(compact ? 28 : 38)
+                    FadingHScroll { HStack(spacing: 8) { TitleChipsRow(chips: chips, rating: credibleRating, spoken: chipsSpoken).fixedSize(horizontal: true, vertical: false); if item.isSeries { NextEpisodeChip(stamp: hub.nextEpisodeStamp, onDark: true).fixedSize() } } }
+                    if let g = TitlePageLogic.genreLine(genreNames) { Text(g).font(.subheadline).foregroundStyle(Color.white.opacity(0.72)).lineLimit(1) }
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, sizeClass == .regular ? 28 : 16).padding(.bottom, 14)
+        }
+        .zIndex(0)
+    }
+
+    /// The title in type; the hub's logo (when it has one) is drawn over the same space and the text fades out, so nothing moves when it arrives.
+    private func titleOrLogo(_ size: CGFloat) -> some View {
+        Text(item.cleanTitle).font(.system(size: size * titleScale, weight: .heavy)).lineLimit(3).minimumScaleFactor(0.6).foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.55), radius: 10, y: 2)
+            .opacity(hub.logoURL.nilIfEmpty == nil ? 1 : 0)
+            .overlay(alignment: .leading) {
+                if let logo = hub.logoURL.nilIfEmpty { ArtworkImage(url: logo, kind: .backdrop, contentMode: .fit, alignment: .leading, showsPlaceholder: false).frame(maxWidth: 300, maxHeight: size * titleScale * 1.9, alignment: .leading).accessibilityHidden(true) }
+            }
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: hub.logoURL)
+            .accessibilityLabel(item.cleanTitle).accessibilityAddTraits(.isHeader)
+    }
+
+    private var chips: [TitlePageLogic.Chip] {
+        TitlePageLogic.chips(year: yearValue, runtimeSeconds: runtimeSeconds, age: ageText, quality: TitlePage.quality([item.title, item.categoryName, item.genre]), seasons: item.isSeries ? detail?.seasons.count : nil)
+    }
+    private var chipsSpoken: String { TitlePageLogic.chipsSpoken(chips, rating: credibleRating, runtimeSeconds: runtimeSeconds) }
+
+    // MARK: play block
+
+    private var playLabelModel: TitlePageLogic.PlayLabel {
+        if item.isSeries {
+            guard let e = nextEpisode else { return TitlePageLogic.playLabel(resume: nil) }
+            return TitlePageLogic.playLabel(episode: (e.seasonNumber, e.episodeNumber), resume: TitlePageLogic.resume(episodeProgress[e.id]), startedSeries: !episodeProgress.isEmpty)
+        }
+        return TitlePageLogic.playLabel(resume: TitlePageLogic.resume(progress))
+    }
+
+    private var playBlock: some View {
+        VStack(spacing: 18) {
+            TitlePlayPill(label: playLabelModel, enabled: !(item.isSeries && detail == nil), expand: true) {
+                if item.isSeries { playSeries() } else if let container, let m = movie ?? asMovie { Play.movie(m, container) }
+            }
+            circleActions
+        }
+    }
+
+    private func circleAction(_ text: String, _ symbol: String, active: Bool = false, action: @escaping () -> Void) -> some View {
+        VStack(spacing: 6) {
+            Button(action: action) { Image(systemName: symbol).symbolEffect(.bounce, value: active) }.buttonStyle(HeroCircleStyle(active: active, size: 50)).accessibilityLabel(text).atlasCovers("control.ios.detail.trailer")
+            Text(text).font(.caption2.weight(.medium)).foregroundStyle(ColorTokens.textSecondary).lineLimit(2).multilineTextAlignment(.center).accessibilityHidden(true)
+        }.frame(maxWidth: .infinity)
+    }
+
+    private var circleActions: some View {
+        let fav = state.isFavorite(item.id), later = state.isWatchLater(item.id)
+        return TitleActionRow {
+            circleAction("Favourite", fav ? "heart.fill" : "heart", active: fav) { state.toggleFavorite(item.id, kind: item.kind) }
+                .accessibilityValue(fav ? "On" : "Off").atlas("control.ios.detail.favourite")
+            circleAction("Watch Later", later ? "bookmark.fill" : "bookmark", active: later) { state.toggleWatchLater(item.id, kind: item.kind) }
+                .accessibilityValue(later ? "On" : "Off").atlas("control.ios.detail.watchLater")
+            if hasTrailer {
+                circleAction("Trailer", "play.rectangle") { playingTrailer = nil; if trailerKey != nil { showTrailer = true } else if previewClip != nil { showClip = true } }.atlas("control.ios.detail.trailer")
+            }
+            if case .movie(let m) = item {
+                VStack(spacing: 6) {
+                    DownloadButton(itemID: m.id, compact: true) { $0.enqueue(movie: m) }.buttonStyle(HeroCircleStyle(size: 50)).menuStyle(.button).menuIndicator(.hidden).fixedSize()
+                    Text("Download").font(.caption2.weight(.medium)).foregroundStyle(ColorTokens.textSecondary).accessibilityHidden(true)
+                }.frame(maxWidth: .infinity)
+            }
+            if let link = item.isSeries ? DeepLink.link(series: item.title) : DeepLink.link(movie: item.title) {
+                VStack(spacing: 6) {
+                    ShareLink(item: link, subject: Text(item.cleanTitle), message: Text("Open “\(item.cleanTitle)” in StreamSetu")) { Image(systemName: "square.and.arrow.up") }.buttonStyle(HeroCircleStyle(size: 50)).accessibilityLabel("Share")
+                    Text("Share").font(.caption2.weight(.medium)).foregroundStyle(ColorTokens.textSecondary).accessibilityHidden(true)
+                }.frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    @ViewBuilder private var versionsBlock: some View { TitleVersionsSection(versions: versionsModel.versions, useLinks: true) }
+
+    @ViewBuilder private var synopsisBlock: some View {
+        if let t = storyText { MacSynopsis(text: t, tagline: tmdb?.tagline?.nilIfEmpty) }
+    }
+
+    private func openFolder() {
+        guard let id = item.categoryID else { return }
+        dismiss(); router.pendingFolder = (item.kind, id); router.go(item.isSeries ? .series : .movies)
+    }
+
+    @ViewBuilder private var detailsGrid: some View {
+        let castShown = !(tmdb?.cast.isEmpty ?? true) || !castNames.isEmpty
+        let rows = TitlePageLogic.gridRows(TitleDetails_.rows(directors: makerNames, isSeries: item.isSeries, starring: starring, country: extras?.country, studio: nil, released: releasedText, folder: item.categoryName) { openFolder() }, castShown: castShown)
+        if !rows.isEmpty {
+            TitleDetailsGrid(rows: rows, onPerson: { _ in }, onFolder: item.categoryID == nil ? nil : { openFolder() }, useLinks: true)
+        }
+    }
+
+    /// Metadata, version picker, Play, actions, synopsis, genres (a series then lists its episodes), details, cast.
+    @ViewBuilder private var topBlock: some View {
+        metaLine
+        versionPicker
+        playButton
+        actionRow
+        synopsis
+        GenreChips(genres: genreNames)
+        missingNote
+        if let error { Label(error, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange) }
+        if item.isSeries { episodes }
+    }
+
+    @ViewBuilder private var lowerBlock: some View {
+        detailsBlock
+        CastSection(item: item, useLinks: true).castRowFocus(item.id)
+        bottomSections
+    }
+
+    @ViewBuilder private var bottomSections: some View {
+        extrasSection
+        if case .movie(let m) = item { FranchiseTimeline(currentID: m.id, movie: m, useLinks: true) }
+        SimilarRow(item: item, extras: extras)
+    }
+
+    // MARK: pieces
+
+    private var credibleRating: Double? {
+        DisplayRating.value(tmdbAverage: tmdb?.rating, tmdbVotes: tmdb?.votes, provider: movie?.rating ?? detail?.series.rating ?? { switch item { case .movie(let m): m.rating; case .series(let s): s.rating } }())
+    }
+
+    /// One quiet line: year, runtime, age rating, quality, and a star rating only when it is credible.
+    private var metaLine: some View {
+        let parts = TitlePage.metaParts(year: yearValue, runtimeSeconds: runtimeSeconds, age: ageText, quality: TitlePage.quality([item.title, item.categoryName, item.genre]))
+        return HStack(spacing: 8) {
+            Text(parts.joined(separator: " · ")).lineLimit(2)
+            if item.isSeries { NextEpisodeChip(stamp: hub.nextEpisodeStamp).fixedSize() }
+            if let r = credibleRating { RatingLabel(value: r) }
+            Spacer(minLength: 0)
+        }.font(.subheadline.weight(.medium)).foregroundStyle(ColorTokens.textSecondary)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var versionPicker: some View { VersionPickerLine(versions: versionsModel.versions, useLinks: true) { _ in } }
+
+    private var playLabel: String {
+        if item.isSeries {
+            let e = nextEpisode
+            return TitlePage.playTitle(remainingSeconds: nil, episode: e.map { ($0.seasonNumber, $0.episodeNumber) })
+        }
+        if let p = progress, !p.completed, p.positionSeconds > 30 { return TitlePage.playTitle(remainingSeconds: p.durationSeconds - p.positionSeconds, episode: nil) }
+        return "Play"
+    }
+
+    private var playButton: some View {
+        TitlePlayButton(title: playLabel, enabled: !(item.isSeries && detail == nil)) {
+            if item.isSeries { playSeries() } else if let container, let m = movie ?? asMovie { Play.movie(m, container) }
+        }
+    }
+
+    private var actionRow: some View {
+        let fav = state.isFavorite(item.id), later = state.isWatchLater(item.id)
+        return TitleActionRow {
+            Button { state.toggleFavorite(item.id, kind: item.kind) } label: { ActionLabel(text: "Favourite", symbol: fav ? "heart.fill" : "heart", active: fav) }.buttonStyle(.plain)
+                .accessibilityLabel(fav ? "Favourite, on" : "Favourite, off").accessibilityHint("Toggles favourite")
+                .atlas("control.ios.detail.favourite")
+            Button { state.toggleWatchLater(item.id, kind: item.kind) } label: { ActionLabel(text: "Watch Later", symbol: later ? "bookmark.fill" : "bookmark", active: later) }.buttonStyle(.plain)
+                .accessibilityLabel(later ? "Watch Later, on" : "Watch Later, off").accessibilityHint("Toggles watch later")
+                .atlas("control.ios.detail.watchLater")
+            if hasTrailer {
+                Button { playingTrailer = nil; if trailerKey != nil { showTrailer = true } else if previewClip != nil { showClip = true } } label: { ActionLabel(text: "Trailer", symbol: "play.rectangle") }.buttonStyle(.plain).atlas("control.ios.detail.trailer")
+            }
+            if case .movie(let m) = item { DownloadButton(itemID: m.id, tile: true) { $0.enqueue(movie: m) }.buttonStyle(.plain) }
+            if let link = item.isSeries ? DeepLink.link(series: item.title) : DeepLink.link(movie: item.title) {
+                ShareLink(item: link, subject: Text(item.cleanTitle), message: Text("Open “\(item.cleanTitle)” in StreamSetu")) { ActionLabel(text: "Share", symbol: "square.and.arrow.up") }.buttonStyle(.plain)
+            }
+        }
+    }
+
+    @ViewBuilder private var synopsis: some View {
+        if let s = storyText { TitleSynopsis(text: s) }
+    }
+
+    private var genreNames: [String] {
+        let own = ProviderExtras.names(movie?.genre ?? item.genre)
+        return own.isEmpty ? (tmdb?.genres ?? []) : own
+    }
+
+    private var starring: [PersonRoute] {
+        if let c = tmdb?.cast, !c.isEmpty { return c.prefix(6).map { PersonRoute(name: $0.name, tmdbID: $0.tmdbID, fromTitle: item.title, fromYear: item.year) } }
+        return castNames.prefix(6).map { PersonRoute(name: $0, fromTitle: item.title, fromYear: item.year) }
+    }
+
+    private var releasedText: String? {
+        DateText.short(iso: tmdb?.releaseDate) ?? yearValue.map(String.init)
+    }
+
+    @ViewBuilder private var detailsBlock: some View {
+        let rows = TitleDetails_.rows(directors: makerNames, isSeries: item.isSeries, starring: starring, country: extras?.country, studio: nil, released: releasedText, folder: item.categoryName) {
+            if let id = item.categoryID { dismiss(); router.pendingFolder = (item.kind, id); router.go(item.isSeries ? .series : .movies) }
+        }
+        DetailsBlock(rows: rows, useLinks: true)
+    }
+
+    /// Trailers from TMDB, only when there is more than the one the Trailer action plays.
+    @ViewBuilder private var extrasSection: some View {
+        let list = (tmdb?.trailers ?? []).prefix(4)
+        if list.count > 1 {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Trailers & extras").font(.headline).accessibilityAddTraits(.isHeader)
+                ForEach(Array(list)) { t in
+                    Button { playingTrailer = t.key; showTrailer = true } label: {
+                        Label(t.name, systemImage: "play.rectangle").font(.subheadline).lineLimit(2).multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
+                    }.buttonStyle(.plain)
+                    .atlas("control.ios.detail.trailer")
+                }
+            }
+        }
     }
 
     /// From the provider when it sends one, otherwise from TMDB when a key is set in Settings.
     private var trailerKey: String? { extras?.trailerKey ?? tmdbTrailer }
 
     private var hasTrailer: Bool { trailerKey != nil || previewClip != nil }
-
-    private var trailerButton: some View {
-        Button {
-            if trailerKey != nil { showTrailer = true } else if previewClip != nil { showClip = true } else { showSearch = true }
-        } label: {
-            Image(systemName: hasTrailer ? "play.rectangle.fill" : "magnifyingglass").frame(width: 24, height: 24)
-        }
-        .buttonStyle(ActionCircleStyle())
-        .accessibilityLabel(hasTrailer ? "Watch Trailer" : "Find Trailer on YouTube")
-        .fullScreenCover(isPresented: $showTrailer) { if let k = trailerKey { TrailerSheet(key: k, title: item.title) } }
-        .fullScreenCover(isPresented: $showClip) { if let u = previewClip { ClipSheet(url: u) } }
-        .sheet(isPresented: $showSearch) { if let u = searchURL { SafariView(url: u).ignoresSafeArea() } }
-    }
 
     private var searchURL: URL? {
         var c = URLComponents(string: "https://www.youtube.com/results")
@@ -162,11 +411,7 @@ struct DetailView: View {
         EmptyView()          // the cast is the round-photo row below (CastSection); a plain "Cast: a, b, c" line would repeat it
     }
 
-    private var ratingText: String? {
-        let own = (movie?.rating ?? detail?.series.rating).flatMap { Double($0) } ?? item.ratingValue
-        guard let v = own ?? tmdb?.rating, v > 0 else { return nil }
-        return String(format: "%.1f", v)
-    }
+    private var ratingText: String? { credibleRating.map { String(format: "%.1f", $0) } }
 
     /// Rating, age rating, year, length and the picture quality, in one row. The year is always shown (the title no longer carries it).
     private var chipRow: some View {
@@ -235,10 +480,10 @@ struct DetailView: View {
     @ViewBuilder private var missingNote: some View {
         if loadedExtras, storyText == nil, castNames.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                Text(hasTMDBKey ? "No summary or cast is available for this title." : "Your provider sent no summary or cast for this title. Add a TMDB key in Settings, under Artwork and Details, to fill them in.")
+                Text(hasTMDBKey ? "No summary or cast is available for this title." : "Your provider sent no summary or cast for this title. Add a details key in Settings, under Artwork and Details, to fill them in.")
                     .appFont(13).foregroundStyle(ColorTokens.textSecondary)
                 if !hasTMDBKey {
-                    Button("Open Settings") { dismiss(); router.go(.settings) }.appFont(13, .semibold).foregroundStyle(Color.accentColor)
+                    Button("Open Settings") { dismiss(); router.go(.settings) }.appFont(13, .semibold).foregroundStyle(Color.accentColor).atlas("control.ios.detail.openSettings")
                 }
             }
         }
@@ -252,6 +497,7 @@ struct DetailView: View {
                 if overview.count > 140 {
                     Button(overviewOpen ? "Less" : "More") { withAnimation(.smooth(duration: 0.25)) { overviewOpen.toggle() } }
                         .appFont(13, .semibold).foregroundStyle(ColorTokens.accentDefault)
+                        .atlas("control.ios.detail.overview")
                 }
             }
         }
@@ -278,35 +524,72 @@ struct DetailView: View {
     @ViewBuilder private var episodes: some View {
         if let detail {
             let numbers = Array(Set(detail.episodes.map(\.seasonNumber))).sorted()
-            if numbers.count > 1 {
-                Picker("Season", selection: $season) { ForEach(numbers, id: \.self) { Text("Season \($0)").tag($0) } }.pickerStyle(.menu)
-            }
-            VStack(spacing: 0) {
-                ForEach(detail.episodes.filter { $0.seasonNumber == season }.sorted { $0.episodeNumber < $1.episodeNumber }) { e in
-                    HStack(spacing: 6) {
-                    Button { if let container { Play.episode(e, detail.series, container) } } label: {
-                        HStack(spacing: 12) {
-                            ArtworkImage(url: e.imageURL ?? detail.series.backdropURL, kind: .still, contentMode: .fill, symbol: "play.rectangle").frame(width: 112, height: 63).clipShape(RoundedRectangle(cornerRadius: 6))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("\(e.episodeNumber). \(e.title)").appFont(14, .medium).lineLimit(2).multilineTextAlignment(.leading)
-                                if let d = e.durationSeconds, d > 0 { Text(DurationFormatter.short(d)).appFont(12).foregroundStyle(.secondary) }
+            let list = detail.episodes.filter { $0.seasonNumber == season }.sorted { $0.episodeNumber < $1.episodeNumber }
+            VStack(alignment: .leading, spacing: 14) {
+                TitleSectionHeader(title: "Episodes", count: list.isEmpty ? nil : "\(list.count)")
+                if numbers.count > 1 {
+                    FadingHScroll {
+                        HStack(spacing: 8) {
+                            ForEach(numbers, id: \.self) { n in
+                                TitleChoiceChip(text: "Season \(n)", selected: n == season) { season = n }.accessibilityAddTraits(n == season ? .isSelected : []).atlas("control.ios.detail.season")
                             }
-                            Spacer(minLength: 0)
-                            Image(systemName: "play.circle").foregroundStyle(.secondary)
-                        }.padding(.vertical, 8).contentShape(Rectangle())
-                    }.buttonStyle(.press)
-                    .contextMenu {
-                        Button("Play", systemImage: "play.fill") { if let container { Play.episode(e, detail.series, container) } }
-                        Button("Watch Privately", systemImage: "eye.slash") { if let container { Play.episode(e, detail.series, container, privately: true) } }
+                        }.padding(.vertical, 3).padding(.horizontal, 1)
                     }
-                    DownloadButton(itemID: e.id, compact: true) { $0.enqueue(episode: e, series: detail.series) }.buttonStyle(.borderless).font(.system(size: 22)).foregroundStyle(.secondary).frame(width: 44, height: 44)
+                }
+                VStack(spacing: 0) {
+                    ForEach(list) { e in
+                        HStack(spacing: 6) {
+                            Button { if let container { Play.episode(e, detail.series, container) } } label: { episodeRow(e, detail.series) }.buttonStyle(.press)
+                                .contextMenu {
+                                    Text(e.title)          // the full name as the provider sent it
+                                    Button("Play", systemImage: "play.fill") { if let container { Play.episode(e, detail.series, container) } }
+                                    Button("Watch Privately", systemImage: "eye.slash") { if let container { Play.episode(e, detail.series, container, privately: true) } }
+                                }
+                                .accessibilityElement(children: .ignore).accessibilityLabel(episodeSpoken(e)).accessibilityHint("Plays this episode")
+                                .atlas("control.ios.detail.episode")
+                            DownloadButton(itemID: e.id, compact: true) { $0.enqueue(episode: e, series: detail.series) }.buttonStyle(.borderless).font(.system(size: 22)).foregroundStyle(.secondary).frame(width: 44, height: 44)
+                        }
+                        Divider().overlay(ColorTokens.line)
                     }
-                    Divider().overlay(ColorTokens.line)
                 }
             }
         } else if error == nil {
             BrandLoader(size: 32).frame(maxWidth: .infinity).padding()
         }
+    }
+
+    private func episodeRow(_ e: Episode, _ series: Series) -> some View {
+        let resume = TitlePageLogic.resume(episodeProgress[e.id])
+        return HStack(alignment: .top, spacing: 12) {
+            ZStack(alignment: .bottom) {
+                ArtworkImage(url: e.imageURL ?? series.backdropURL, kind: .still, contentMode: .fill, symbol: "play.rectangle", tile: ArtworkTile.Content(title: e.title, detail: "Episode \(e.episodeNumber)", showsTitle: false))
+                if let r = resume {
+                    GeometryReader { g in ZStack(alignment: .leading) { Capsule().fill(Color.white.opacity(0.25)); Capsule().fill(Color.accentColor).frame(width: g.size.width * r.fraction) } }.frame(height: 3).padding(.horizontal, 6).padding(.bottom, 6)
+                }
+            }
+            .frame(width: 128, height: 72).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(alignment: .topTrailing) { if episodeProgress[e.id]?.completed == true { Image(systemName: "checkmark.circle.fill").foregroundStyle(.white, ColorTokens.success).padding(4) } }
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text("\(e.episodeNumber). \(TitlePageLogic.cleanEpisodeTitle(e.title, series: series.title, number: e.episodeNumber))").font(.subheadline.weight(.semibold)).lineLimit(2).multilineTextAlignment(.leading)
+                    if nextEpisode?.id == e.id { Text("UP NEXT").font(.system(size: 9, weight: .bold)).tracking(0.5).foregroundStyle(.white).padding(.horizontal, 6).padding(.vertical, 2).background(Capsule().fill(Color.accentColor)) }
+                }
+                if let o = e.overview?.nilIfEmpty { Text(o).font(.caption).foregroundStyle(ColorTokens.textSecondary).lineLimit(2).multilineTextAlignment(.leading) }
+                HStack(spacing: 6) {
+                    if let d = e.durationSeconds, d > 0 { Text(DurationFormatter.short(d)) }
+                    if let r = resume { Text("· " + TitlePageLogic.remainingText(r.remaining)) }
+                }.font(.caption2).foregroundStyle(ColorTokens.textTertiary)
+            }
+            Spacer(minLength: 0)
+        }.padding(.vertical, 8).contentShape(Rectangle())
+    }
+
+    private func episodeSpoken(_ e: Episode) -> String {
+        var parts = ["Episode \(e.episodeNumber), \(TitlePageLogic.cleanEpisodeTitle(e.title, series: detail?.series.title ?? item.title, number: e.episodeNumber))", e.title]
+        if let d = e.durationSeconds, d > 0 { parts.append(TitlePageLogic.spokenDuration(d)) }
+        if episodeProgress[e.id]?.completed == true { parts.append("watched") } else if let r = TitlePageLogic.resume(episodeProgress[e.id]) { parts.append("\(Int(r.fraction * 100)) percent watched") }
+        if nextEpisode?.id == e.id { parts.append("up next") }
+        return parts.joined(separator: ", ")
     }
 
     private var resumeEpisode: Episode? { nil }
@@ -331,17 +614,24 @@ struct DetailView: View {
             switch item {
             case .movie(let m):
                 movie = try await container.details.movie(id: m.id)
+                progress = try? container.historyRepo.progress(for: m.id)
                 extras = await container.details.extras(movie: m.id)
             case .series(let s):
                 let d = try await container.details.series(id: s.id)
                 detail = d
+                episodeProgress = Dictionary(((try? container.historyRepo.progress(forSeries: s.id)) ?? []).map { ($0.itemID, $0) }, uniquingKeysWith: { a, _ in a })
                 if let first = d.episodes.map(\.seasonNumber).min() { season = first }
                 if let r = try? container.history.resumeTarget(seriesID: s.id) { season = r.seasonNumber }
+                nextEpisode = ((try? container.history.resumeTarget(seriesID: s.id)) ?? nil) ?? d.episodes.sorted { ($0.seasonNumber, $0.episodeNumber) < ($1.seasonNumber, $1.episodeNumber) }.first
                 if let e = d.extras { extras = e } else { extras = await container.details.extras(series: s.id) }
             }
             let c = MetadataMatchService.Candidate(id: item.id, isSeries: item.isSeries, title: item.title, year: item.year)
             let more = await container.metadata.details(for: c)
             tmdb = more
+            // A title with no picture anywhere is looked up again once, so the pictures TMDB has are filled in and the page picks them up (it listens for them landing).
+            if (item.posterURL.nilIfEmpty ?? item.backdropURL.nilIfEmpty) == nil, more?.posterPath == nil, container.metadata.hasKey, container.metadata.isSendable(item.id) {
+                if let again = await container.metadata.details(for: c, maxAge: 0) { tmdb = again }
+            }
             hasTMDBKey = container.metadata.hasKey
             loadedExtras = true
             rememberPeople(container)
@@ -365,7 +655,7 @@ struct TrailerSheet: View {
         ZStack(alignment: .topTrailing) {
             Color.black.ignoresSafeArea()
             YouTubeView(key: key).ignoresSafeArea(edges: .bottom)
-            Button { dismiss() } label: { Image(systemName: "xmark").pillIcon() }.buttonStyle(.press).padding(16).accessibilityLabel("Close trailer")
+            Button { dismiss() } label: { Image(systemName: "xmark").pillIcon() }.buttonStyle(.press).padding(16).accessibilityLabel("Close trailer").atlas("control.ios.detail.closeTrailer")
         }
     }
 }
@@ -385,13 +675,6 @@ private struct YouTubeView: UIViewRepresentable {
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 }
 
-/// An in-app browser page (used for the YouTube search when no trailer is known).
-struct SafariView: UIViewControllerRepresentable {
-    let url: URL
-    func makeUIViewController(context: Context) -> SFSafariViewController { SFSafariViewController(url: url) }
-    func updateUIViewController(_ vc: SFSafariViewController, context: Context) {}
-}
-
 /// Plays a trailer clip (a plain video file) with the system player.
 struct ClipSheet: View {
     let url: URL
@@ -402,7 +685,7 @@ struct ClipSheet: View {
         ZStack(alignment: .topTrailing) {
             Color.black.ignoresSafeArea()
             if let player { VideoPlayer(player: player).ignoresSafeArea() }
-            Button { dismiss() } label: { Image(systemName: "xmark").pillIcon() }.buttonStyle(.press).padding(16).accessibilityLabel("Close trailer")
+            Button { dismiss() } label: { Image(systemName: "xmark").pillIcon() }.buttonStyle(.press).padding(16).accessibilityLabel("Close trailer").atlas("control.ios.detail.closeTrailer")
         }
         .onAppear { let p = AVPlayer(url: url); player = p; p.play() }
         .onDisappear { player?.pause(); player = nil }
@@ -416,8 +699,6 @@ struct SimilarRow: View {
     let extras: ProviderExtras?
     @Environment(\.container) private var container
     @State private var suggestions: [SimilarSuggestion] = []
-    /// The suggestion being opened.
-    @State private var opened: LibraryItem?
 
     var body: some View {
         // A task on an empty view never runs, so something always exists here: a one-point clear line holds the loading step until there is a row to show.
@@ -429,19 +710,19 @@ struct SimilarRow: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(alignment: .top, spacing: 12) {
                             ForEach(suggestions) { s in
-                                Button { opened = s.item } label: {
+                                NavigationLink(value: s.item) {
                                     VStack(alignment: .leading, spacing: 4) {
                                         PosterCard(item: s.item, width: 110)
                                         Text(s.reason).appFont(11).foregroundStyle(.secondary).lineLimit(1).frame(width: 110, alignment: .leading)
                                     }
                                 }.buttonStyle(.plain)
+                                .atlas("control.ios.detail.similar")
                             }
                         }
                     }
                 }.padding(.top, 8)
             }
         }
-        .opensTitle($opened)
         // First from what is in the catalog, then again when the provider has sent the cast and director.
         .task(id: (extras?.cast ?? []) + (extras?.directors ?? []) + [item.id]) {
             guard let container else { return }

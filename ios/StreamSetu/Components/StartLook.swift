@@ -325,6 +325,7 @@ struct StartTileButton: View {
         .accessibilityLabel(tile.title)
         .accessibilityHint(tile.subtitle)
         .accessibilityAddTraits(.isButton)
+        .atlas("control.ios.welcome.tile")
     }
 
     private func wake() { if !reduceMotion { play += 1 } }
@@ -369,11 +370,13 @@ struct StartPasteField: View {
                     Button(action: submit) { Image(systemName: "arrow.right.circle.fill").font(.system(size: 26)).foregroundStyle(ColorTokens.accentDefault) }
                         .buttonStyle(.borderless).accessibilityLabel("Continue")
                         .transition(.scale.combined(with: .opacity))
+                        .atlas("control.ios.welcome.pasteSubmit")
                 } else {
                     Button { if let t = UIPasteboard.general.string { text = t } } label: {
                         Image(systemName: "doc.on.clipboard").font(.system(size: 16, weight: .medium)).foregroundStyle(palette.textSecondary).frame(width: 30, height: 30)
                     }
                     .buttonStyle(.borderless).accessibilityLabel("Paste")
+                    .atlas("control.ios.welcome.paste")
                 }
             }
             .padding(.horizontal, 14).frame(minHeight: 54)
@@ -462,6 +465,7 @@ struct StartSegments<Item: Hashable>: View {
             }
             .buttonStyle(.plain)
             .accessibilityAddTraits(on ? [.isSelected, .isButton] : .isButton)
+            .atlas("control.ios.welcome.segment")
         }
     }
 }

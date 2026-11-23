@@ -48,10 +48,12 @@ private struct ListToolsModifier: ViewModifier {
                         Menu {
                             Picker("Sort", selection: sort) { ForEach(TitleSort.allCases) { Text($0.rawValue).tag($0) } }
                         } label: { Image(systemName: "arrow.up.arrow.down").pillIcon() }.accessibilityLabel("Sort")
+                        .atlas("control.ios.list.sort")
                     }
                     Menu {
                         Button(clearLabel, systemImage: "trash", role: .destructive) { confirming = true }.disabled(!canClear)
                     } label: { Image(systemName: "ellipsis").pillIcon() }.accessibilityLabel("More")
+                    .atlas("control.ios.list.moreMenu")
                 }
             }
             .confirmationDialog(confirmTitle, isPresented: $confirming, titleVisibility: .visible) {
@@ -73,14 +75,16 @@ struct TitleGrid: View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: width, maximum: width + 40), spacing: 14, alignment: .top)], spacing: 18) {
             ForEach(items) { t in
                 ZStack(alignment: .topLeading) {
-                    NavigationLink { DetailView(item: t) } label: { PosterCard(item: t, width: width) }.buttonStyle(.press)
-                        .contextMenu { TitleMenu(item: t) }
+                    NavigationLink(value: t) { PosterCard(item: t, width: width) }.buttonStyle(.press)
+                        .titleTileMenu(t)
                         .disabled(editing)
+                        .atlas("context.tile.menu")
                     if editing {
                         Button { withAnimation(.snappy) { onRemove(t) } } label: {
                             Image(systemName: "minus.circle.fill").font(.system(size: 26)).symbolRenderingMode(.palette).foregroundStyle(.white, .red)
                                 .shadow(radius: 3)
                         }.offset(x: -6, y: -8).accessibilityLabel("Remove \(t.title)")
+                        .atlas("control.ios.list.remove")
                     }
                 }
             }
@@ -108,10 +112,12 @@ struct ChannelTileGrid: View {
                         .background(ColorTokens.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(0.06)))
                     }.buttonStyle(.press).disabled(editing)
+                    .atlas("context.channel.menu")
                     if editing {
                         Button { withAnimation(.snappy) { onRemove(c) } } label: {
                             Image(systemName: "minus.circle.fill").font(.system(size: 24)).symbolRenderingMode(.palette).foregroundStyle(.white, .red).shadow(radius: 3)
                         }.offset(x: -5, y: -7).accessibilityLabel("Remove \(c.name)")
+                        .atlas("control.ios.list.remove")
                     }
                 }
             }
@@ -135,6 +141,6 @@ struct ListHeader: View {
 extension View {
     /// An Edit / Done button in the top bar.
     func editButton(_ editing: Binding<Bool>, enabled: Bool) -> some View {
-        toolbar { TrailingPills { Button(editing.wrappedValue ? "Done" : "Edit") { withAnimation(.snappy) { editing.wrappedValue.toggle() } }.disabled(!enabled && !editing.wrappedValue) } }
+        toolbar { TrailingPills { Button(editing.wrappedValue ? "Done" : "Edit") { withAnimation(.snappy) { editing.wrappedValue.toggle() } }.disabled(!enabled && !editing.wrappedValue).atlas("control.ios.list.edit") } }
     }
 }

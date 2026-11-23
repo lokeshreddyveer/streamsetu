@@ -160,7 +160,7 @@ struct LiveTVView: View {
     @ViewBuilder private var empty: some View {
         if model.failed {
             EmptyState(symbol: "exclamationmark.triangle", title: "Channels could not be loaded", message: "Pull down to try again, or tap Retry.")
-            Button("Retry") { if let c = container { Task { await model.load(c, source: state.activeSourceID) } } }.buttonStyle(.borderedProminent)
+            Button("Retry") { if let c = container { Task { await model.load(c, source: state.activeSourceID) } } }.buttonStyle(.borderedProminent).atlas("control.ios.live.retry")
         } else { noChannels }
     }
 
@@ -170,15 +170,9 @@ struct LiveTVView: View {
     }
 
     @ViewBuilder private func menu(_ c: Channel) -> some View {
-        Button("Watch Privately", systemImage: "eye.slash") { if let container { Play.channel(c, queue: [c], container, privately: true) } }
-        Button(state.isFavorite(c.id) ? "Remove from Favourites" : "Add to Favourites", systemImage: "heart") { state.toggleFavorite(c.id, kind: .channel) }
-        CollectionMenu(itemID: c.id, kind: .channel)
-        ShareLinkButton(link: DeepLink.link(channel: c.name), name: c.name)
-        Button("Rename…", systemImage: "pencil") { newName = c.name; renaming = c }
-        Button("Hide Channel", systemImage: "eye.slash", role: .destructive) { try? container?.favoritesRepo.hide(c.id, kind: "channel"); state.catalogVersion += 1 }
-        Button("Add to Multi-View", systemImage: "rectangle.split.2x2") {
+        ChannelMenuContent(channel: c, onPlay: { open(c) }, onMultiView: {
             if container?.multiView.add(c) != .full { router.showMultiView = true } else { state.toasts.show("Multi-View is full (4 channels)", symbol: "rectangle.split.2x2") }
-        }
+        }, onRename: { newName = c.name; renaming = c })          // the one shared builder (TileMenu.entries, kind .channel)
     }
 
     private func pick(_ cat: CatalogCategory?) {
@@ -198,6 +192,7 @@ struct LiveTVView: View {
                     .swipeActions(edge: .leading) { Button { state.toggleFavorite(c.id, kind: .channel) } label: { Label(state.isFavorite(c.id) ? "Unfavourite" : "Favourite", systemImage: "heart") }.tint(.pink) }
                     .contextMenu { menu(c) }
                     .onAppear { model.appeared(c.id) }.onDisappear { model.disappeared(c.id) }
+                    .atlas("context.channel.menu")
             }
             PageFooter(model: model).listRowBackground(Color.clear).listRowSeparator(.hidden)
         }
@@ -218,6 +213,7 @@ struct LiveTVView: View {
                     }
                     .buttonStyle(.press).contextMenu { menu(c) }
                     .onAppear { model.appeared(c.id) }.onDisappear { model.disappeared(c.id) }
+                    .atlas("context.channel.menu")
                 }
             }.padding(16)
             PageFooter(model: model).padding(.bottom, 16)
@@ -236,6 +232,7 @@ struct LiveTVView: View {
                     }
                     .buttonStyle(.press).contextMenu { menu(c) }
                     .onAppear { model.appeared(c.id) }.onDisappear { model.disappeared(c.id) }
+                    .atlas("context.channel.menu")
                 }
             }.padding(12)
             PageFooter(model: model).padding(.bottom, 16)
@@ -251,23 +248,25 @@ struct LiveTVView: View {
                     })
                 } else if tiles { tileGrid } else if sizeClass == .regular { grid } else { list }
             }
-            .navigationTitle("Live TV").themed("Live TV", tabRoot: true)
+            .navigationTitle("Live TV").atlasScreen("screen.ios.tab.live").themed("Live TV", tabRoot: true)
+            .titleAndPersonDestinations()
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { SyncIndicator() }
                 TrailingPills {
-                    NavigationLink { SearchView(embedded: true, tab: .liveTV) } label: { Image(systemName: "magnifyingglass").pillIcon() }.accessibilityLabel("Search")
-                    NavigationLink { GuideView(embedded: true) } label: { Image(systemName: "calendar").pillIcon() }.accessibilityLabel("TV Guide")
-                    Button { viewMode = viewMode == .folders ? .grid : .folders; FolderViewMode.save(viewMode, .channel, profile: container?.profiles.activeID ?? "main") } label: { Image(systemName: viewMode == .folders ? "square.grid.3x3.square" : "folder").pillIcon() }.accessibilityLabel(viewMode == .folders ? "Show all channels" : "Show folders")
-                    Button { tiles.toggle() } label: { Image(systemName: tiles ? "list.bullet" : "square.grid.3x3").pillIcon() }.accessibilityLabel(tiles ? "Show as list" : "Show as tiles")
-                    Button { askNumber = true } label: { Image(systemName: "number").pillIcon() }.accessibilityLabel("Go to channel number")
-                    Button { router.showMultiView = true } label: { Image(systemName: "rectangle.split.2x2").pillIcon() }.accessibilityLabel("Multi-View")
-                    Button { model.favouritesOnly.toggle() } label: { Image(systemName: model.favouritesOnly ? "heart.fill" : "heart").pillIcon().foregroundStyle(model.favouritesOnly ? Color.pink : ColorTokens.textPrimary) }.accessibilityLabel("Favourites only")
+                    NavigationLink(value: ToolRoute.search(.liveTV)) { Image(systemName: "magnifyingglass").pillIcon() }.accessibilityLabel("Search").atlas("control.ios.live.search")
+                    NavigationLink(value: ToolRoute.guide) { Image(systemName: "calendar").pillIcon() }.accessibilityLabel("TV Guide").atlas("control.ios.live.guide")
+                    Button { viewMode = viewMode == .folders ? .grid : .folders; FolderViewMode.save(viewMode, .channel, profile: container?.profiles.activeID ?? "main") } label: { Image(systemName: viewMode == .folders ? "square.grid.3x3.square" : "folder").pillIcon() }.accessibilityLabel(viewMode == .folders ? "Show all channels" : "Show folders").atlas("control.ios.live.viewMode")
+                    Button { tiles.toggle() } label: { Image(systemName: tiles ? "list.bullet" : "square.grid.3x3").pillIcon() }.accessibilityLabel(tiles ? "Show as list" : "Show as tiles").atlas("control.ios.live.tiles")
+                    Button { askNumber = true } label: { Image(systemName: "number").pillIcon() }.accessibilityLabel("Go to channel number").atlas("control.ios.live.goToNumber")
+                    Button { router.showMultiView = true } label: { Image(systemName: "rectangle.split.2x2").pillIcon() }.accessibilityLabel("Multi-View").atlas("control.ios.live.multiView")
+                    Button { model.favouritesOnly.toggle() } label: { Image(systemName: model.favouritesOnly ? "heart.fill" : "heart").pillIcon().foregroundStyle(model.favouritesOnly ? Color.pink : ColorTokens.textPrimary) }.accessibilityLabel("Favourites only").atlas("control.ios.live.favouritesOnly")
                     if !model.lists.isEmpty {
                         Menu {
                             Button { model.listID = nil } label: { Label("All Channels", systemImage: model.listID == nil ? "checkmark" : "") }
                             Divider()
                             ForEach(model.lists) { l in Button { model.listID = l.id } label: { Label(l.name, systemImage: model.listID == l.id ? "checkmark" : "") } }
                         } label: { Image(systemName: "list.star").pillIcon() }.accessibilityLabel("Lists")
+                        .atlas("control.ios.live.lists")
                     }
                     if let folderColumn { FolderColumnButton(shown: folderColumn) } else { Menu {
                         Button { pick(nil) } label: { Label("All Channels", systemImage: model.categoryID == nil ? "checkmark" : "") }
@@ -275,7 +274,7 @@ struct LiveTVView: View {
                         ForEach(model.categories) { cat in
                             Button { pick(cat) } label: { Label(cat.name, systemImage: model.categoryID == cat.id ? "checkmark" : (container?.parental.isLocked(cat.id) == true ? "lock" : "")) }
                         }
-                    } label: { Image(systemName: "line.3.horizontal.decrease.circle").pillIcon() }.accessibilityLabel("Folders") }
+                    } label: { Image(systemName: "line.3.horizontal.decrease.circle").pillIcon() }.accessibilityLabel("Folders").atlas("control.ios.live.categories") }
                 }
             }
             .refreshable { state.syncAll() }
@@ -330,7 +329,7 @@ struct PageFooter: View {
     let model: LiveTVModel
     var body: some View {
         if !model.loadingMore, !model.pageFailed, let total = model.total, total > 0 {
-            Text(total > model.channels.count ? "\(model.channels.count) of \(total) channels" : "\(total) channel\(total == 1 ? "" : "s")")
+            Text(total > model.channels.count ? "\(model.channels.count) of \(total) channels" : "\(Localized.plural(total, one: "%@ channel", other: "%@ channels"))")
                 .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 12)
                 .accessibilityLabel("\(total) channels in all")
         }
@@ -339,7 +338,7 @@ struct PageFooter: View {
         } else if model.pageFailed {
             VStack(spacing: 6) {
                 Text("More channels could not be loaded.").font(.caption).foregroundStyle(.secondary)
-                Button("Retry") { model.retryPage() }.buttonStyle(.bordered)
+                Button("Retry") { model.retryPage() }.buttonStyle(.bordered).atlas("control.ios.live.retryPage")
             }.frame(maxWidth: .infinity).padding(.vertical, 12)
         }
     }
@@ -362,6 +361,7 @@ struct GroupChips: View {
                     Label("New Group", systemImage: "plus").appFont(13, .medium).padding(.horizontal, 12).frame(minHeight: 36)
                         .overlay(Capsule().strokeBorder(.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [4])))
                 }.buttonStyle(.plain).foregroundStyle(.secondary)
+                .atlas("control.ios.live.newGroup")
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
         }
@@ -373,5 +373,6 @@ struct GroupChips: View {
                 .background(on ? AnyShapeStyle(ColorTokens.accentDefault) : AnyShapeStyle(.thinMaterial), in: Capsule())
                 .foregroundStyle(on ? Color.white : Color.primary)
         }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
+        .atlas("control.ios.live.group")
     }
 }

@@ -54,6 +54,8 @@ struct HeroCard: View {
     var body: some View {
         NavigationLink(value: item) { immersive ? AnyView(immersiveBody) : AnyView(cardBody) }
             .buttonStyle(.press)
+            .titleTileMenu(item)
+            .expressArtwork(item, needsBackdrop: true).atlas("control.ios.home.hero")          // a hero without a backdrop gets match + details at once
     }
 
     /// Full width, melting into the page below: the artwork fades to the page colour, so there is no edge where the banner stops.
@@ -70,7 +72,7 @@ struct HeroCard: View {
                     .shadow(color: .black.opacity(0.5), radius: 10, y: 2)
                 HStack(spacing: 8) {
                     if let r = item.ratingValue {
-                        Label(String(format: "%.1f", r), systemImage: "star.fill").labelStyle(.titleAndIcon).foregroundStyle(.yellow)
+                        RatingLabel(value: r)
                             .appFont(12, .bold).padding(.horizontal, 8).padding(.vertical, 3).background(.ultraThinMaterial, in: Capsule())
                     }
                     let meta = [item.year.map(String.init), item.genre].compactMap { $0 }.joined(separator: " · ")
@@ -107,7 +109,7 @@ struct HeroCard: View {
                 Text(item.title).appFont(height > 280 ? 30 : 24, .heavy).lineLimit(2).shadow(color: .black.opacity(0.4), radius: 8, y: 2)
                 HStack(spacing: 8) {
                     if let r = item.ratingValue {
-                        Label(String(format: "%.1f", r), systemImage: "star.fill").labelStyle(.titleAndIcon).foregroundStyle(.yellow)
+                        RatingLabel(value: r)
                             .appFont(12, .bold).padding(.horizontal, 8).padding(.vertical, 3).background(.ultraThinMaterial, in: Capsule())
                     }
                     if !item.detailLine.isEmpty { Text(item.detailLine).lineLimit(1) }

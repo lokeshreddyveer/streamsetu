@@ -50,12 +50,12 @@ struct AddPlaylistSheet: View {
                 }
             }
             .environment(\.startPalette, palette)
-            .themed("Add Playlist")
+            .themed("Add Playlist").atlasScreen("screen.ios.addPlaylist")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 if step == .form {
                     ToolbarItem(placement: .confirmationAction) {
-                        if vm.isWorking { DotWave(color: palette.text).accessibilityLabel("Connecting") } else { Button("Connect", action: connect).disabled(!vm.canSubmit) }
+                        if vm.isWorking { DotWave(color: palette.text).accessibilityLabel("Connecting") } else { Button("Connect", action: connect).disabled(!vm.canSubmit).atlas("control.ios.addPlaylist.connect") }
                     }
                 }
             }
@@ -64,7 +64,7 @@ struct AddPlaylistSheet: View {
                 pick(url)
             }
             .alert("This server is not encrypted", isPresented: $askAboutHTTP) {
-                Button("Save Anyway") { vm.acceptPlainHTTP(); add() }
+                Button("Save Anyway") { vm.acceptPlainHTTP(); add() }.atlas("control.ios.addPlaylist.saveAnyway")
                 Button("Cancel", role: .cancel) {}
             } message: { Text(vm.plainHTTPWarning ?? "") }
             .onAppear { if fromWelcome == nil { fromWelcome = state.needsOnboarding }; applyPending() }
@@ -107,6 +107,7 @@ struct AddPlaylistSheet: View {
                     Label("All connection types", systemImage: "chevron.left").appFont(15, .medium).foregroundStyle(palette.textSecondary)
                 }
                 .buttonStyle(.borderless)
+                .atlas("control.ios.addPlaylist.back")
                 header
                 if tile.kinds.count > 1 {
                     StartSegments(items: tile.kinds, selection: $vm.kind) { $0.rawValue.replacingOccurrences(of: " receiver", with: "") }
@@ -131,6 +132,7 @@ struct AddPlaylistSheet: View {
                 }
                 .buttonStyle(StartPrimaryStyle(busy: vm.isWorking))
                 .disabled(!vm.canSubmit || vm.isWorking)
+                .atlas("control.ios.addPlaylist.connect")
             }
             .animation(reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.32, dampingFraction: 0.82), value: vm.error)
             .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 28)
@@ -174,11 +176,13 @@ struct AddPlaylistSheet: View {
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(StartSecondaryStyle()).disabled(finder.searching)
+            .atlas("control.ios.addPlaylist.findTuners")
             ForEach(finder.tuners) { t in
                 Button { vm.server = t.host; if vm.name.isEmpty { vm.name = t.name } } label: {
                     Label("\(t.name) · \(t.host)", systemImage: "tv.and.mediabox").frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(StartSecondaryStyle())
+                .atlas("control.ios.addPlaylist.pickTuner")
             }
         case .plex:
             labelled("Server address", .address) { address("Server address (http://host:32400)", $vm.server) }
@@ -198,6 +202,7 @@ struct AddPlaylistSheet: View {
                     Label(vm.fileURL?.lastPathComponent ?? "Choose a file…", systemImage: "doc").lineLimit(1).frame(maxWidth: .infinity)
                 }
                 .buttonStyle(StartSecondaryStyle())
+                .atlas("control.ios.addPlaylist.chooseFile")
             }
         }
     }

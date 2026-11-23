@@ -139,7 +139,8 @@ struct ResumeCard: View {
             Text("Resumed at \(DurationFormatter.clock(position))").font(.system(size: 14, weight: .medium))
             Button("Start over") { startOver() }.font(.system(size: 14, weight: .semibold)).foregroundStyle(ColorTokens.accentDefault)
                 .frame(minHeight: 44)
-            Button { dismiss() } label: { Image(systemName: "xmark").font(.system(size: 12, weight: .bold)).frame(width: 32, height: 44) }.accessibilityLabel("Dismiss")
+                .atlas("control.ios.player.startOver")
+            Button { dismiss() } label: { Image(systemName: "xmark").font(.system(size: 12, weight: .bold)).frame(width: 32, height: 44) }.accessibilityLabel("Dismiss").atlas("control.ios.player.resumeDismiss")
         }
         .foregroundStyle(.white).padding(.horizontal, 14)
         .background(.black.opacity(0.72), in: Capsule())
@@ -159,7 +160,8 @@ struct NextEpisodeCard: View {
             }
             Button { play() } label: { Label("Play Now", systemImage: "play.fill").font(.system(size: 14, weight: .semibold)) }
                 .buttonStyle(.borderedProminent).tint(ColorTokens.accentDefault)
-            Button { dismiss() } label: { Image(systemName: "xmark").font(.system(size: 12, weight: .bold)).frame(width: 32, height: 44) }.accessibilityLabel("Dismiss")
+                .atlas("control.ios.player.nextEpisodePlay")
+            Button { dismiss() } label: { Image(systemName: "xmark").font(.system(size: 12, weight: .bold)).frame(width: 32, height: 44) }.accessibilityLabel("Dismiss").atlas("control.ios.player.nextEpisodeDismiss")
         }
         .foregroundStyle(.white).padding(.horizontal, 14).padding(.vertical, 8)
         .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -202,7 +204,7 @@ struct MiniGuideCard: View {
             HStack {
                 Text("On this channel").font(.system(size: 13, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
                 Spacer()
-                Button { close() } label: { Image(systemName: "xmark").font(.system(size: 12, weight: .bold)).frame(width: 32, height: 32) }.accessibilityLabel("Close guide")
+                Button { close() } label: { Image(systemName: "xmark").font(.system(size: 12, weight: .bold)).frame(width: 32, height: 32) }.accessibilityLabel("Close guide").atlas("control.ios.player.miniGuideClose")
             }
             if programmes.isEmpty { Text("No guide information for this channel.").font(.system(size: 13)).foregroundStyle(.white.opacity(0.7)) }
             ForEach(programmes.prefix(4), id: \.start) { p in
@@ -212,7 +214,7 @@ struct MiniGuideCard: View {
                     if p.isLive() { Text("NOW").font(.system(size: 9, weight: .bold)).padding(.horizontal, 5).padding(.vertical, 2).background(.red, in: Capsule()) }
                     Spacer(minLength: 0)
                     if p.start > Date() {
-                        Button { remind(p) } label: { Image(systemName: reminded.contains(p.id) ? "bell.fill" : "bell").frame(width: 36, height: 36) }.accessibilityLabel(reminded.contains(p.id) ? "Reminder set" : "Remind me")
+                        Button { remind(p) } label: { Image(systemName: reminded.contains(p.id) ? "bell.fill" : "bell").frame(width: 36, height: 36) }.accessibilityLabel(reminded.contains(p.id) ? "Reminder set" : "Remind me").atlas("control.ios.player.miniGuideRemind")
                     }
                 }
             }
@@ -247,8 +249,9 @@ struct ChannelSidePanel: View {
                         Button { folder = nil } label: { Label("All channels", systemImage: folder == nil ? "checkmark" : "") }
                         ForEach(folders, id: \.self) { f in Button { folder = f } label: { Label(f, systemImage: folder == f ? "checkmark" : "") } }
                     } label: { Image(systemName: "folder").frame(width: 44, height: 44) }.accessibilityLabel("Folders")
+                    .atlas("control.ios.player.channelFolders")
                 }
-                Button { close() } label: { Image(systemName: "xmark").font(.system(size: 14, weight: .bold)).frame(width: 44, height: 44) }.accessibilityLabel("Close channel list")
+                Button { close() } label: { Image(systemName: "xmark").font(.system(size: 14, weight: .bold)).frame(width: 44, height: 44) }.accessibilityLabel("Close channel list").atlas("control.ios.player.channelListClose")
             }.padding(.leading, 16)
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.white.opacity(0.6))
@@ -264,6 +267,7 @@ struct ChannelSidePanel: View {
                                     .padding(.horizontal, 14).padding(.vertical, 8)
                                     .background(playback.currentChannel?.id == c.id ? Color.white.opacity(0.1) : .clear)
                             }.buttonStyle(.plain).id(c.id)
+                            .atlas("control.ios.player.channelRow")
                         }
                     }
                 }
@@ -289,7 +293,7 @@ struct StatusCard: View {
             BrandLoader(size: 52, tint: .white)
             Text(headline).font(.system(size: 15, weight: .semibold))
             if let message, !message.isEmpty { Text(message.loc).font(.system(size: 13)).foregroundStyle(.white.opacity(0.8)).multilineTextAlignment(.center) }
-            if state == .recovering { Button("Stop waiting") { stop() }.buttonStyle(.bordered).tint(.white) }
+            if state == .recovering { Button("Stop waiting") { stop() }.buttonStyle(.bordered).tint(.white).atlas("control.ios.player.stopWaiting") }
         }
         .foregroundStyle(.white).padding(20).frame(maxWidth: 320)
         .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -330,15 +334,15 @@ struct FailureCard: View {
             Text(error.advice).multilineTextAlignment(.center).font(.footnote).foregroundStyle(.white.opacity(0.75))
             HStack(spacing: 10) {
                 if let editLogin {
-                    Button("Edit Login") { editLogin() }.buttonStyle(.borderedProminent).tint(ColorTokens.accentDefault)
-                    Button("Try Again") { retry() }.buttonStyle(.bordered).tint(.white)
+                    Button("Edit Login") { editLogin() }.buttonStyle(.borderedProminent).tint(ColorTokens.accentDefault).atlas("control.ios.player.failureEditLogin")
+                    Button("Try Again") { retry() }.buttonStyle(.bordered).tint(.white).atlas("control.ios.player.failureRetry")
                 } else {
-                    Button("Try Again") { retry() }.buttonStyle(.borderedProminent).tint(ColorTokens.accentDefault)
+                    Button("Try Again") { retry() }.buttonStyle(.borderedProminent).tint(ColorTokens.accentDefault).atlas("control.ios.player.failureRetry")
                 }
-                if isLive && canZap { Button("Next Channel") { nextChannel() }.buttonStyle(.bordered).tint(.white) }
-                Button("Close") { close() }.buttonStyle(.bordered).tint(.white)
+                if isLive && canZap { Button("Next Channel") { nextChannel() }.buttonStyle(.bordered).tint(.white).atlas("control.ios.player.failureNextChannel") }
+                Button("Close") { close() }.buttonStyle(.bordered).tint(.white).atlas("control.ios.player.failureClose")
             }
-            if DiagnosticsUploader.availableInThisBuild { Button { sendLog() } label: { Label(logNote ?? "Send My Log", systemImage: "paperplane") }.font(.footnote).tint(.white).disabled(logNote != nil) }
+            if DiagnosticsUploader.availableInThisBuild { Button { sendLog() } label: { Label(logNote ?? "Send My Log", systemImage: "paperplane") }.font(.footnote).tint(.white).disabled(logNote != nil).atlas("control.ios.player.failureSendLog") }
         }
         .foregroundStyle(.white).padding(24).frame(maxWidth: 380)
         .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -380,7 +384,7 @@ struct PlayerOptionsSheet: View {
                 if !playback.audioTracks.isEmpty {
                     Section("Audio") {
                         ForEach(playback.audioTracks) { t in
-                            Button { playback.selectAudio(t.id) } label: { HStack { Text(t.label); Spacer(); if t.isSelected { Image(systemName: "checkmark") } } }
+                            Button { playback.selectAudio(t.id) } label: { HStack { Text(t.label); Spacer(); if t.isSelected { Image(systemName: "checkmark") } } }.atlas("control.ios.player.audioTrack")
                         }
                     }
                 }
@@ -392,16 +396,17 @@ struct PlayerOptionsSheet: View {
                         Picker("Loudness", selection: Binding(get: { playback.audioProcessing }, set: { playback.setAudioProcessing($0) })) {
                             ForEach(AudioProcessingMode.allCases) { Text($0.rawValue).tag($0) }
                         }
+                        .atlas("setting.audioProcessing")
                         if playback.capabilities.volumeBoost {
-                            Toggle("Volume boost (up to 130%)", isOn: Binding(get: { playback.volumeBoost }, set: { playback.volumeBoost = $0 }))
+                            Toggle("Volume boost (up to 130%)", isOn: Binding(get: { playback.volumeBoost }, set: { playback.volumeBoost = $0 })).atlas("control.ios.player.volumeBoost")
                         }
                     }
                 }
                 if !playback.subtitleTracks.isEmpty {
                     Section("Subtitles") {
-                        Button { playback.selectSubtitle(nil) } label: { HStack { Text("Off"); Spacer(); if !playback.subtitleTracks.contains(where: { $0.isSelected }) { Image(systemName: "checkmark") } } }
+                        Button { playback.selectSubtitle(nil) } label: { HStack { Text("Off"); Spacer(); if !playback.subtitleTracks.contains(where: { $0.isSelected }) { Image(systemName: "checkmark") } } }.atlas("control.ios.player.subtitleTrack")
                         ForEach(playback.subtitleTracks) { t in
-                            Button { playback.selectSubtitle(t.id) } label: { HStack { Text(t.label); Spacer(); if t.isSelected { Image(systemName: "checkmark") } } }
+                            Button { playback.selectSubtitle(t.id) } label: { HStack { Text(t.label); Spacer(); if t.isSelected { Image(systemName: "checkmark") } } }.atlas("control.ios.player.subtitleTrack")
                         }
                         nudge("Subtitle timing", ms: $subtitleDelayMS, range: -10000...10000) { playback.setSubtitleDelay(Double($0) / 1000) }
                         VStack(alignment: .leading) {
@@ -409,12 +414,12 @@ struct PlayerOptionsSheet: View {
                             Slider(value: $subtitleSize, in: 60...200, step: 10) { e in if !e { applySubtitle { $0.subtitleSize = subtitleSize } } }
                         }
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack { ForEach(SubtitlePreset.all) { p in Button(p.name) { applySubtitle(p.apply); subtitleSize = container?.settings.subtitleSize ?? 100 }.buttonStyle(.bordered) } }
+                            HStack { ForEach(SubtitlePreset.all) { p in Button(p.name) { applySubtitle(p.apply); subtitleSize = container?.settings.subtitleSize ?? 100 }.buttonStyle(.bordered).atlas("control.ios.player.subtitleStyle") } }
                         }
                     }
                 }
                 Section {
-                    Button { importingSubtitle = true } label: { Label("Add subtitle file…", systemImage: "doc.badge.plus") }
+                    Button { importingSubtitle = true } label: { Label("Add subtitle file…", systemImage: "doc.badge.plus") }.atlas("control.ios.player.addSubtitle")
                     if let subtitleNote { Text(subtitleNote).font(.footnote).foregroundStyle(.secondary) }
                 } header: { if playback.subtitleTracks.isEmpty { Text("Subtitles") } } footer: { Text("Choose an .srt, .vtt or .ass file from Files. It works while this video plays.") }
                 if !playback.isLive {
@@ -422,30 +427,31 @@ struct PlayerOptionsSheet: View {
                         Picker("Speed", selection: Binding(get: { playback.rate }, set: { setSpeed($0) })) {
                             ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { Text($0 == 1 ? "Normal" : String(format: "%g×", $0)).tag($0) }
                         }.pickerStyle(.segmented)
+                        .atlas("control.ios.player.speed")
                         if playback.currentSeries != nil { Text("Remembered for this series.").font(.footnote).foregroundStyle(.secondary) }
                     }
                 }
                 if !playback.chapters.isEmpty {
                     Section("Chapters") {
                         ForEach(playback.chapters) { c in
-                            Button { playback.seek(to: c.time); dismiss() } label: { HStack { Text(c.title); Spacer(); Text(DurationFormatter.clock(c.time)).foregroundStyle(.secondary).monospacedDigit() } }
+                            Button { playback.seek(to: c.time); dismiss() } label: { HStack { Text(c.title); Spacer(); Text(DurationFormatter.clock(c.time)).foregroundStyle(.secondary).monospacedDigit() } }.atlas("control.ios.player.chapter")
                         }
                     }
                 }
                 if !playback.isLive, playback.capabilities.abLoop {
                     Section("Repeat") {
                         HStack {
-                            Button(loopA == nil ? "Set start" : "Start \(DurationFormatter.clock(loopA!))") { loopA = playback.position; apply() }.buttonStyle(.bordered)
-                            Button(loopB == nil ? "Set end" : "End \(DurationFormatter.clock(loopB!))") { loopB = playback.position; apply() }.buttonStyle(.bordered).disabled(loopA == nil)
-                            if loopA != nil || loopB != nil { Button("Clear", role: .destructive) { loopA = nil; loopB = nil; apply() } }
+                            Button(loopA == nil ? "Set start" : "Start \(DurationFormatter.clock(loopA!))") { loopA = playback.position; apply() }.buttonStyle(.bordered).atlas("control.ios.player.loop")
+                            Button(loopB == nil ? "Set end" : "End \(DurationFormatter.clock(loopB!))") { loopB = playback.position; apply() }.buttonStyle(.bordered).disabled(loopA == nil).atlas("control.ios.player.loop")
+                            if loopA != nil || loopB != nil { Button("Clear", role: .destructive) { loopA = nil; loopB = nil; apply() }.atlas("control.ios.player.loop") }
                         }
                     }
                 }
                 if playback.capabilities.frameStep {
                     Section("Frame by frame") {
                         HStack(spacing: 20) {
-                            Button { playback.frameStep(forward: false) } label: { Label("Back", systemImage: "backward.frame") }
-                            Button { playback.frameStep(forward: true) } label: { Label("Forward", systemImage: "forward.frame") }
+                            Button { playback.frameStep(forward: false) } label: { Label("Back", systemImage: "backward.frame") }.atlas("control.ios.player.frameStep")
+                            Button { playback.frameStep(forward: true) } label: { Label("Forward", systemImage: "forward.frame") }.atlas("control.ios.player.frameStep")
                         }.buttonStyle(.bordered)
                     }
                 }
@@ -453,37 +459,37 @@ struct PlayerOptionsSheet: View {
                     if !playback.isLive {
                         HStack {
                             TextField("Go to time, for example 1:23:45", text: $goToText).keyboardType(.numbersAndPunctuation).submitLabel(.go).onSubmit { goTo() }
-                            Button("Go") { goTo() }.disabled(PlaybackCoordinator.parseTime(goToText) == nil)
+                            Button("Go") { goTo() }.disabled(PlaybackCoordinator.parseTime(goToText) == nil).atlas("control.ios.player.goToTime")
                         }
                     }
-                    Button { showOnlineSubs = true } label: { Label("Find subtitles online", systemImage: "captions.bubble") }
-                    Toggle("Remember settings for this title", isOn: Binding(get: { remember }, set: { remember = $0; ItemMemory().enabled = $0 }))
+                    Button { showOnlineSubs = true } label: { Label("Find subtitles online", systemImage: "captions.bubble") }.atlas("control.ios.player.findSubtitles")
+                    Toggle("Remember settings for this title", isOn: Binding(get: { remember }, set: { remember = $0; ItemMemory().enabled = $0 })).atlas("setting.rememberPerTitle")
                 }
                 if playback.capabilities.pictureAdjustments {
                     Section("Picture tuning") {
                         tuning("Brightness", $picture.brightness); tuning("Contrast", $picture.contrast); tuning("Saturation", $picture.saturation); tuning("Gamma", $picture.gamma)
-                        if !picture.isDefault { Button("Reset picture tuning", role: .destructive) { picture = PictureAdjustments(); playback.setPicture(picture) } }
+                        if !picture.isDefault { Button("Reset picture tuning", role: .destructive) { picture = PictureAdjustments(); playback.setPicture(picture) }.atlas("control.ios.player.resetPicture") }
                     }
                 } else {
                     Section("Picture tuning") { Text("Brightness, contrast, saturation and gamma work in the MPV player. Switch the player in the Player section.").font(.footnote).foregroundStyle(.secondary) }
                 }
                 Section("Picture") {
-                    Picker("Size", selection: Binding(get: { fill }, set: { setFill($0) })) { Text("Fit").tag(false); Text("Fill").tag(true) }.pickerStyle(.segmented)
-                    Picker("Shape", selection: $aspect) { ForEach(AspectRatioOption.presets) { Text($0.title).tag($0) } }
+                    Picker("Size", selection: Binding(get: { fill }, set: { setFill($0) })) { Text("Fit").tag(false); Text("Fill").tag(true) }.pickerStyle(.segmented).atlas("control.ios.player.fitFill")
+                    Picker("Shape", selection: $aspect) { ForEach(AspectRatioOption.presets) { Text($0.title).tag($0) } }.atlas("control.ios.player.aspect")
                     VStack(alignment: .leading) {
                         Text("Zoom \(String(format: "%.2g", zoom))×").font(.subheadline)
                         Slider(value: $zoom, in: 1...3, step: 0.25)
                     }
-                    if zoom > 1 || aspect != .original { Button("Reset picture") { zoom = 1; aspect = .original }.foregroundStyle(.red) }
+                    if zoom > 1 || aspect != .original { Button("Reset picture") { zoom = 1; aspect = .original }.foregroundStyle(.red).atlas("control.ios.player.resetPicture") }
                     if playback.capabilities.screenshot {
-                        Button { frameNote = saveFrame() } label: { Label("Save frame to Photos", systemImage: "camera") }
+                        Button { frameNote = saveFrame() } label: { Label("Save frame to Photos", systemImage: "camera") }.atlas("control.ios.player.saveFrame")
                         if let frameNote { Text(frameNote).font(.footnote).foregroundStyle(.secondary) }
                     }
                 }
                 Section("Controls") {
-                    Picker("Hide controls after", selection: $controlSeconds) { Text("3 s").tag(3.0); Text("5 s").tag(5.0); Text("8 s").tag(8.0); Text("Never").tag(0.0) }
-                    Toggle("Show stream details on the picture", isOn: $streamInfo)
-                    Toggle("Left-handed layout", isOn: $leftHanded)
+                    Picker("Hide controls after", selection: $controlSeconds) { Text("3 s").tag(3.0); Text("5 s").tag(5.0); Text("8 s").tag(8.0); Text("Never").tag(0.0) }.atlas("setting.storage.playerControlSeconds")
+                    Toggle("Show stream details on the picture", isOn: $streamInfo).atlas("setting.storage.playerStreamInfo")
+                    Toggle("Left-handed layout", isOn: $leftHanded).atlas("setting.storage.playerLeftHanded")
                 }
                 Section("Stream details") {
                     detail("Player", playback.activeEngine.rawValue)
@@ -496,7 +502,7 @@ struct PlayerOptionsSheet: View {
             }
             .fileImporter(isPresented: $importingSubtitle, allowedContentTypes: [.item]) { addSubtitle($0) }
             .sheet(isPresented: $showOnlineSubs) { OnlineSubtitleSheet().presentationDetents([.medium, .large]) }
-            .navigationTitle("Options").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Options").navigationBarTitleDisplayMode(.inline).atlasScreen("screen.ios.playerOptions")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .onAppear {
                 picture = container?.settings.picture ?? PictureAdjustments()
@@ -520,9 +526,9 @@ struct PlayerOptionsSheet: View {
         HStack {
             Text(title)
             Spacer()
-            Button { ms.wrappedValue = max(range.lowerBound, ms.wrappedValue - 50); set(ms.wrappedValue) } label: { Image(systemName: "minus.circle").frame(width: 40, height: 40) }.buttonStyle(.plain).accessibilityLabel("\(title) earlier")
+            Button { ms.wrappedValue = max(range.lowerBound, ms.wrappedValue - 50); set(ms.wrappedValue) } label: { Image(systemName: "minus.circle").frame(width: 40, height: 40) }.buttonStyle(.plain).accessibilityLabel("\(title) earlier").atlas("control.ios.player.syncNudge")
             Text("\(ms.wrappedValue > 0 ? "+" : "")\(ms.wrappedValue) ms").monospacedDigit().frame(minWidth: 84)
-            Button { ms.wrappedValue = min(range.upperBound, ms.wrappedValue + 50); set(ms.wrappedValue) } label: { Image(systemName: "plus.circle").frame(width: 40, height: 40) }.buttonStyle(.plain).accessibilityLabel("\(title) later")
+            Button { ms.wrappedValue = min(range.upperBound, ms.wrappedValue + 50); set(ms.wrappedValue) } label: { Image(systemName: "plus.circle").frame(width: 40, height: 40) }.buttonStyle(.plain).accessibilityLabel("\(title) later").atlas("control.ios.player.syncNudge")
         }
     }
 
@@ -606,6 +612,7 @@ struct ChannelNumberPad: View {
                 ForEach(["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "Go"], id: \.self) { k in
                     Button { press(k) } label: { Text(k).font(.system(size: 24, weight: .medium)).frame(maxWidth: .infinity, minHeight: 56).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12)) }
                         .buttonStyle(.plain).accessibilityLabel(k == "⌫" ? "Delete" : k)
+                        .atlas("control.ios.player.numberPad")
                 }
             }
         }
@@ -636,6 +643,7 @@ struct EpisodeListSheet: View {
                 if seasons.count > 1 {
                     Picker("Season", selection: Binding(get: { season ?? seasons.first ?? 1 }, set: { season = $0 })) { ForEach(seasons, id: \.self) { Text("Season \($0)").tag($0) } }
                         .pickerStyle(.segmented)
+                        .atlas("control.ios.player.episodeSeason")
                 }
                 ForEach(shown) { e in
                     Button { if let s = playback.currentSeries { playback.play(episode: e, series: s); dismiss() } } label: {
@@ -646,9 +654,10 @@ struct EpisodeListSheet: View {
                             if e.id == playback.currentEpisodeID { Image(systemName: "waveform").foregroundStyle(ColorTokens.accentDefault) }
                         }
                     }
+                    .atlas("control.ios.player.episodeRow")
                 }
             }
-            .navigationTitle(playback.currentSeries?.title ?? "Episodes").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(playback.currentSeries?.title ?? "Episodes").navigationBarTitleDisplayMode(.inline).atlasScreen("screen.ios.player.episodes")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .presentationDetents([.medium, .large])
@@ -685,7 +694,7 @@ struct StreamInfoChips: View {
             subtitleChip
             if !playback.isLive { speedChip }
             shareChip
-            if m.stallCount > 0 { chipLabel("\(m.stallCount) pause\(m.stallCount == 1 ? "" : "s")", "exclamationmark.circle") }
+            if m.stallCount > 0 { chipLabel("\(Localized.plural(m.stallCount, one: "%@ pause", other: "%@ pauses"))", "exclamationmark.circle") }
             chipLabel(playback.activeEngine == .mpv ? "MPV" : "Apple", nil)
         }
         .padding(.horizontal, 2)
@@ -708,6 +717,7 @@ struct StreamInfoChips: View {
             }
         } label: { chipLabel(title + " ▾", "rectangle.on.rectangle") }
             .accessibilityLabel("Picture \(title). Choose size or quality.")
+            .atlas("control.ios.player.pictureChip")
     }
 
     /// Sound: the audio languages only. A file with one track still shows it, ticked.
@@ -725,6 +735,7 @@ struct StreamInfoChips: View {
                 }
             } label: { chipLabel(name + " ▾", "speaker.wave.2") }
                 .accessibilityLabel("Audio: \(name). Choose another.")
+                .atlas("control.ios.player.audioChip")
         }
     }
 
@@ -745,6 +756,7 @@ struct StreamInfoChips: View {
             }
         } label: { chipLabel(name + " ▾", "captions.bubble") }
             .accessibilityLabel("Subtitles: \(name). Choose another or add a file.")
+            .atlas("control.ios.player.subtitleChip")
     }
 
     /// Watch Together: shown when the film or channel can be shared over FaceTime.
@@ -754,6 +766,7 @@ struct StreamInfoChips: View {
                 if SharePlayService.shared.active { SharePlayService.shared.leave() } else { Task { await SharePlayService.shared.start(c) } }
             } label: { chipLabel(SharePlayService.shared.active ? "Leave SharePlay" : "Watch Together", "shareplay") }
                 .accessibilityLabel(SharePlayService.shared.active ? "Leave SharePlay" : "Watch together over FaceTime")
+                .atlas("control.ios.player.sharePlay")
         }
     }
 
@@ -766,6 +779,7 @@ struct StreamInfoChips: View {
             }
         } label: { chipLabel((playback.rate == 1 ? "1×" : String(format: "%g×", playback.rate)) + " ▾", "speedometer") }
             .accessibilityLabel("Speed. Choose another.")
+            .atlas("control.ios.player.speedChip")
     }
 
     private func chipLabel(_ text: String, _ symbol: String?) -> some View {
@@ -854,6 +868,7 @@ struct GestureTour: View {
                 row("ellipsis.circle", "Everything else is under the ⋯ button")
                 Button { done() } label: { Text("Got it").font(.system(size: 17, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 48) }
                     .buttonStyle(.borderedProminent).tint(ColorTokens.accentDefault).padding(.top, 6)
+                    .atlas("control.ios.player.tourDone")
             }
             .foregroundStyle(.white).padding(22).frame(maxWidth: 440)
             .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 20, style: .continuous))

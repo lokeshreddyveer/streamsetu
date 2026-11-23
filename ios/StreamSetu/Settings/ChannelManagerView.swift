@@ -27,7 +27,7 @@ struct ChannelManagerView: View {
 
     var body: some View {
         List {
-            Section { Picker("Show", selection: $filter) { ForEach(Filter.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).listRowBackground(Color.clear) }.glossRow()
+            Section { Picker("Show", selection: $filter) { ForEach(Filter.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).listRowBackground(Color.clear).atlas("control.ios.channelManager.filter") }.glossRow()
             ForEach(shown.prefix(400)) { c in
                 Button { editing = c } label: {
                     HStack(spacing: 12) {
@@ -41,14 +41,15 @@ struct ChannelManagerView: View {
                     }
                 }.buttonStyle(.press)
                 .swipeActions {
-                    if hidden.contains(c.id) { Button { setHidden(c, false) } label: { Label("Show", systemImage: "eye") }.tint(.green) }
-                    else { Button(role: .destructive) { setHidden(c, true) } label: { Label("Hide", systemImage: "eye.slash") } }
+                    if hidden.contains(c.id) { Button { setHidden(c, false) } label: { Label("Show", systemImage: "eye") }.tint(.green).atlas("gesture.ios.swipeChannelManager") }
+                    else { Button(role: .destructive) { setHidden(c, true) } label: { Label("Hide", systemImage: "eye.slash") }.atlas("gesture.ios.swipeChannelManager") }
                 }
+                .atlas("control.ios.channelManager.edit")
             }
             if shown.count > 400 { Text("Showing 400 of \(shown.count). Search to narrow it down.").font(.caption).foregroundStyle(.secondary) }
         }
         .listStyle(.plain)
-        .navigationTitle("Channel Manager").themed("Channel Manager")
+        .navigationTitle("Channel Manager").atlasScreen("screen.ios.settings.channelManager").themed("Channel Manager")
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search channels")
         .sheet(item: $editing) { c in ChannelEditSheet(channel: c) { Task { await load() } } }
         .task(id: state.catalogVersion) { await load() }
@@ -96,19 +97,19 @@ private struct ChannelEditSheet: View {
                     LabeledContent("Guide entry", value: epgID.isEmpty ? "Automatic" : epgID)
                     TextField("Search the guide", text: $search).textInputAutocapitalization(.never).autocorrectionDisabled()
                     ForEach(matches, id: \.id) { g in
-                        Button { epgID = g.id } label: { HStack { VStack(alignment: .leading) { Text(g.name); Text(g.id).font(.caption).foregroundStyle(.secondary) }; Spacer(); if epgID == g.id { Image(systemName: "checkmark") } } }.buttonStyle(.press)
+                        Button { epgID = g.id } label: { HStack { VStack(alignment: .leading) { Text(g.name); Text(g.id).font(.caption).foregroundStyle(.secondary) }; Spacer(); if epgID == g.id { Image(systemName: "checkmark") } } }.buttonStyle(.press).atlas("control.ios.channelManager.guideEntry")
                     }
-                    if !epgID.isEmpty { Button("Use Automatic Matching") { epgID = "" } }
+                    if !epgID.isEmpty { Button("Use Automatic Matching") { epgID = "" }.atlas("control.ios.channelManager.autoMatch") }
                 } header: { Text("Programme guide") } footer: { Text("Pick the guide entry that belongs to this channel when automatic matching got it wrong. Applies after the next guide refresh.") }.glossRow()
                 Section { Button("Reset Changes", role: .destructive) {
                     do { try container?.favoritesRepo.clearOverride(itemID: channel.id); changed(); state.catalogVersion += 1; dismiss() }
                     catch { state.toasts.show("Could not reset the channel: \(error.localizedDescription)", symbol: "exclamationmark.triangle") }
-                } }.glossRow()
+                }.atlas("control.ios.channelManager.reset") }.glossRow()
             }
             .navigationTitle(channel.name).themed(channel.name).navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.atlas("control.ios.channelManager.save") }
             }
         }
         .task {

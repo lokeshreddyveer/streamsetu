@@ -34,7 +34,7 @@ final class ListingPicturesTests: XCTestCase {
         }
         dismissAlerts()
         // Home has loaded when its rows are on screen; the first picture is taken only then (the splash screen is still up for a moment after launch).
-        XCTAssertTrue(app.staticTexts["Trending in Your Library"].waitForExistence(timeout: 30) || app.staticTexts["Top Movies This Week"].waitForExistence(timeout: 5), "Home did not load\n\(app.debugDescription)")
+        XCTAssertTrue(app.staticTexts["Popular in Your Library"].waitForExistence(timeout: 30) || app.staticTexts["Trending in Your Library"].waitForExistence(timeout: 5) || app.staticTexts["Top Movies This Week"].waitForExistence(timeout: 5), "Home did not load\n\(app.debugDescription)")
         sleep(4)                                                         // the posters arrive
         shot("1-home")
 

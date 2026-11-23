@@ -14,9 +14,9 @@ struct VPNView: View {
                     .foregroundStyle(on ? Color.green : Color.secondary)
             } footer: { Text("To turn a VPN on or off, use Settings > General > VPN & Device Management, or your VPN provider's app.") }.glossRow()
             Section {
-                Toggle("Pause if the VPN drops", isOn: $s.vpnPause)
+                Toggle("Pause if the VPN drops", isOn: $s.vpnPause).atlas("setting.vpn")
             } footer: { Text("While something is playing, playback pauses if a connected VPN disconnects, so a stream does not carry on outside it. StreamSetu does not provide a VPN or an app-only VPN tunnel: it can only notice that a VPN set up on this device is on, and it never sees what that VPN does.") }.glossRow()
         }
-        .navigationTitle("VPN").themed("VPN")
+        .navigationTitle("VPN").atlasScreen("screen.ios.settings.vpn").themed("VPN")
     }
 }

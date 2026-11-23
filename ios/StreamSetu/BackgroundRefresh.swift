@@ -20,6 +20,9 @@ enum BackgroundRefresh {
                 await IOSCoordinator.shared.boot()
                 guard let container = IOSCoordinator.shared.container else { task.setTaskCompleted(success: false); return }
                 await container.scheduler.checkNow(wait: true)
+                _ = await container.runGuideHub()
+                // Then the artwork queue, for as long as iOS gives time (it is cancelled by the expiration handler; what is done stays done).
+                await container.artworkMatcher.runToCompletion()
                 task.setTaskCompleted(success: !Task.isCancelled)
             }
             task.expirationHandler = { work.cancel() }

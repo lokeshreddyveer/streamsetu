@@ -36,6 +36,7 @@ struct IPadFolderColumn: View {
         }
         .listRowBackground(selection == id ? ColorTokens.accentDefault.opacity(0.16) : Color.clear)
         .accessibilityAddTraits(selection == id ? .isSelected : [])
+        .atlas("control.ios.ipad.folder")
     }
 }
 
@@ -87,5 +88,6 @@ struct FolderColumnButton: View {
     var body: some View {
         Button { shown.toggle() } label: { Image(systemName: "sidebar.leading").pillIcon() }.accessibilityLabel(shown ? "Hide folders" : "Show folders")
             .keyboardShortcut("0", modifiers: [.command, .option])
+            .atlas("control.ios.ipad.folderColumn")
     }
 }

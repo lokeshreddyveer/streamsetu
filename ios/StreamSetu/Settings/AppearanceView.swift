@@ -13,14 +13,14 @@ struct AppearanceView: View {
                 ThemePreview(palette: s.theme == .custom ? draft.palette : s.theme.palette).frame(height: 120).listRowInsets(EdgeInsets())
             }.glossRow()
             Section {
-                Picker("Language", selection: $s.language) { ForEach(AppLanguage.allCases) { Text($0.label).tag($0) } }
+                Picker("Language", selection: $s.language) { ForEach(AppLanguage.allCases) { Text($0.label).tag($0) } }.atlas("setting.language")
             } footer: { Text("The language of the app's own wording. Titles and descriptions come from your playlists and stay as they are. Some text is still in English.") }.glossRow()
             Section {
-                Picker("Opening", selection: $opening) { ForEach(OpeningPreference.allCases) { Text($0.label).tag($0.rawValue) } }
-                Button("Replay the Full Story") { OpeningCoordinator.shared.replayFullStory() }
+                Picker("Opening", selection: $opening) { ForEach(OpeningPreference.allCases) { Text($0.label).tag($0.rawValue) } }.atlas("setting.opening")
+                Button("Replay the Full Story") { OpeningCoordinator.shared.replayFullStory() }.atlas("control.ios.appearance.replayStory")
             } footer: { Text("What plays when StreamSetu starts. Automatic: the full story the first time, a short version after that. What's New still shows after an update when it is off.") }.glossRow()
             Section {
-                Toggle("Increase contrast", isOn: $s.highContrast)
+                Toggle("Increase contrast", isOn: $s.highContrast).atlas("setting.highContrast")
             } footer: { Text("Brighter text and stronger outlines. Also follows Settings > Accessibility > Display > Increase Contrast.") }.glossRow()
             Section("Theme") {
                 ForEach(AppTheme.Group.allCases, id: \.self) { group in
@@ -40,6 +40,7 @@ struct AppearanceView: View {
                                         if s.theme == t { Image(systemName: "checkmark").foregroundStyle(ColorTokens.accentDefault) }
                                     }
                                 }
+                                .atlas("setting.theme")
                             }
                         }
                     }
@@ -58,8 +59,8 @@ struct AppearanceView: View {
                         Label(draft.textContrast < 4.5 ? "Text is hard to read on this background (contrast \(String(format: "%.1f", draft.textContrast)):1, aim for 4.5)." : "The accent is hard to see on this background.", systemImage: "exclamationmark.triangle")
                             .font(.callout).foregroundStyle(.orange)
                     }
-                    Button("Apply") { s.customTheme = draft }.disabled(draft == s.customTheme)
-                    Button("Start Again", role: .destructive) { draft = .standard; s.customTheme = .standard }
+                    Button("Apply") { s.customTheme = draft }.disabled(draft == s.customTheme).atlas("control.ios.appearance.customApply")
+                    Button("Start Again", role: .destructive) { draft = .standard; s.customTheme = .standard }.atlas("control.ios.appearance.customReset")
                 }.glossRow()
             }
             Section("Accent colour") {
@@ -69,11 +70,12 @@ struct AppearanceView: View {
                             Circle().fill(a.color).frame(width: 32, height: 32)
                                 .overlay(Circle().strokeBorder(.white, lineWidth: s.accent == a ? 2.5 : 0).padding(-3))
                         }.buttonStyle(.press).accessibilityLabel(a.title).accessibilityAddTraits(s.accent == a ? .isSelected : [])
+                        .atlas("setting.accent")
                     }
                 }.padding(.vertical, 4)
             }.glossRow()
         }
-        .navigationTitle("Appearance").themed("Appearance")
+        .navigationTitle("Appearance").atlasScreen("screen.ios.settings.appearance").themed("Appearance")
         .onAppear { draft = settings.customTheme }
     }
 

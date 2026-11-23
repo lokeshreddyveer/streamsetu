@@ -20,12 +20,12 @@ struct FeedbackView: View {
     var body: some View {
         Form {
             Section {
-                Picker("Type", selection: $kind) { ForEach(FeedbackKind.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
+                Picker("Type", selection: $kind) { ForEach(FeedbackKind.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).atlas("control.ios.feedback.type")
                 TextEditor(text: $text).frame(minHeight: 150)
             } footer: { Text(kind == .problem ? "What went wrong, and what were you doing? The more detail, the easier it is to fix." : "What would you like StreamSetu to do?") }.glossRow()
             if kind == .problem {
                 Section {
-                    Toggle("Include diagnostics", isOn: $includeDiagnostics)
+                    Toggle("Include diagnostics", isOn: $includeDiagnostics).atlas("control.ios.feedback.diagnostics")
                     if includeDiagnostics, let diagnostics {
                         DisclosureGroup("See what is included") { Text(diagnostics).font(.system(size: 11, design: .monospaced)).textSelection(.enabled) }
                     }
@@ -34,7 +34,8 @@ struct FeedbackView: View {
             Section {
                 Toggle("Share playback logs automatically", isOn: $shareAutomatically)
                     .onChange(of: shareAutomatically) { _, on in DiagnosticsUploader.shared.isEnabled = on }
-                Button { sendLogNow() } label: { Label(sharingNow ? "Sending…" : "Send My Log Now", systemImage: "paperplane") }.disabled(sharingNow)
+                    .atlas("control.ios.feedback.autoShare")
+                Button { sendLogNow() } label: { Label(sharingNow ? "Sending…" : "Send My Log Now", systemImage: "paperplane") }.disabled(sharingNow).atlas("control.ios.feedback.sendLog")
                 if let shareNote { Text(shareNote).font(.footnote).foregroundStyle(ColorTokens.textSecondary) }
                 DisclosureGroup("See exactly what is sent") {
                     Text(sharedPreview).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
@@ -43,12 +44,12 @@ struct FeedbackView: View {
                 Text("Off until you turn it on. When it is on and a stream fails for good, StreamSetu sends the recent playback log to the developer: what was tried, which player, error codes, your app and iOS version and device model. Server names are replaced with server-1, server-2… Never logins, passwords, playlist names, titles or stream addresses. Kept for 30 days. You can turn it off here any time; you can also send one log by hand.")
             }.glossRow()
             Section {
-                Button { send() } label: { Label("Send by Email", systemImage: "envelope") }
+                Button { send() } label: { Label("Send by Email", systemImage: "envelope") }.atlas("control.ios.feedback.sendEmail")
                 ShareLink(item: message.fullText) { Label("Share or Copy Instead", systemImage: "square.and.arrow.up") }
-                Button("Clear Playback Log", role: .destructive) { PlaybackLog.shared.clear(); Task { await loadDiagnostics() } }
+                Button("Clear Playback Log", role: .destructive) { PlaybackLog.shared.clear(); Task { await loadDiagnostics() } }.atlas("control.ios.feedback.clearLog")
             } footer: { Text("This opens your mail app with the message ready, addressed to \(FeedbackMessage.address). Nothing is sent until you press Send there.") }.glossRow()
         }
-        .navigationTitle("Send Feedback").themed("Send Feedback")
+        .navigationTitle("Send Feedback").atlasScreen("screen.ios.settings.feedback").themed("Send Feedback")
         .task { await loadDiagnostics(); loadSharedPreview() }
         .sheet(isPresented: $showMail) { MailView(message: message).ignoresSafeArea() }
     }

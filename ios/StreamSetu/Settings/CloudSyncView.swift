@@ -11,8 +11,8 @@ struct CloudSyncView: View {
         let status = container?.cloud.status
         Form {
             Section {
-                Toggle("Sync with iCloud", isOn: $s.iCloudSync).onChange(of: s.iCloudSync) { _, _ in Task { await container?.updateCloudSync() } }
-                Toggle("Sync logins", isOn: $s.syncLogins).disabled(!s.iCloudSync).onChange(of: s.syncLogins) { _, _ in Task { await container?.updateCloudSync() } }
+                Toggle("Sync with iCloud", isOn: $s.iCloudSync).onChange(of: s.iCloudSync) { _, _ in Task { await container?.updateCloudSync() } }.atlas("setting.icloudSync")
+                Toggle("Sync logins", isOn: $s.syncLogins).disabled(!s.iCloudSync).onChange(of: s.syncLogins) { _, _ in Task { await container?.updateCloudSync() } }.atlas("setting.syncLogins")
             } footer: {
                 Text("Playlists, favourites, collections, watch history and resume positions, folder organisation and settings follow you to your other devices through your own private iCloud. Logins travel in iCloud Keychain, end-to-end encrypted by Apple; turn that off to enter them on each device. The channels, movies and series are downloaded separately on each device. Nothing is sent to anyone else.")
             }.glossRow()
@@ -20,14 +20,14 @@ struct CloudSyncView: View {
                 Section("Status") {
                     LabeledContent("iCloud", value: status.text)
                     if status.pending > 0 { LabeledContent("Waiting to send", value: "\(status.pending)") }
-                    Button("Sync Now") { Task { await container?.cloud.syncNow() } }
+                    Button("Sync Now") { Task { await container?.cloud.syncNow() } }.atlas("control.ios.icloud.syncNow")
                 }.glossRow()
-                Section { Button("Erase iCloud Data…", role: .destructive) { confirmErase = true } } footer: { Text("Removes what StreamSetu stored in your iCloud and turns sync off. Everything on this device stays.") }.glossRow()
+                Section { Button("Erase iCloud Data…", role: .destructive) { confirmErase = true }.atlas("control.ios.icloud.erase") } footer: { Text("Removes what StreamSetu stored in your iCloud and turns sync off. Everything on this device stays.") }.glossRow()
             }
         }
-        .navigationTitle("iCloud Sync").themed("iCloud Sync")
+        .navigationTitle("iCloud Sync").atlasScreen("screen.ios.settings.icloud").themed("iCloud Sync")
         .confirmationDialog("Erase StreamSetu data from iCloud?", isPresented: $confirmErase, titleVisibility: .visible) {
-            Button("Erase and Turn Off", role: .destructive) { Task { s.iCloudSync = false; await container?.cloud.eraseCloudData() } }
+            Button("Erase and Turn Off", role: .destructive) { Task { s.iCloudSync = false; await container?.cloud.eraseCloudData() } }.atlas("control.ios.icloud.erase")
         } message: { Text("Other devices keep their own copies. Turning sync on again uploads this device's data afresh.") }
     }
 }

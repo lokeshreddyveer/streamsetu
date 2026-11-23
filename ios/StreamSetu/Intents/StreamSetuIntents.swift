@@ -83,5 +83,7 @@ struct StreamSetuShortcuts: AppShortcutsProvider {
         AppShortcut(intent: ResumePlaybackIntent(), phrases: ["Resume \(.applicationName)"], shortTitle: "Resume", systemImageName: "play.fill")
         AppShortcut(intent: SleepTimerIntent(), phrases: ["Set a sleep timer in \(.applicationName)"], shortTitle: "Sleep Timer", systemImageName: "moon.zzz")
         AppShortcut(intent: NextChannelIntent(), phrases: ["Next channel in \(.applicationName)"], shortTitle: "Next Channel", systemImageName: "forward.end")
+        AppShortcut(intent: AskSetuIntent(), phrases: ["Ask \(.applicationName)", "Ask Setu in \(.applicationName)"], shortTitle: "Ask Setu", systemImageName: "sparkles")
+        AppShortcut(intent: OpenAtlasEntryIntent(), phrases: ["Open \(\.$target) in \(.applicationName)"], shortTitle: "Open a Setting", systemImageName: "gearshape")
     }
 }

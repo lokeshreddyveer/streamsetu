@@ -27,13 +27,12 @@ private struct ScaledFont: ViewModifier {
 extension LibraryItem {
     /// The title as shown on a banner or a detail page: without a "(2026)" in it, since the year is shown beside it.
     var cleanTitle: String {
-        let t = title.replacingOccurrences(of: "\\s*\\((19|20)\\d{2}\\)", with: "", options: .regularExpression).trimmingCharacters(in: .whitespaces)
-        return t.isEmpty ? title : t
+        DisplayTitle.clean(title)          // the same cleaning the tiles and the artwork search use (never empty)
     }
     /// The provider's rating as a number worth showing, or nil.
     var ratingValue: Double? {
         let r: String? = { switch self { case .movie(let m): m.rating; case .series(let s): s.rating } }()
-        return r.flatMap { Double($0) }.flatMap { $0 > 0 ? $0 : nil }
+        return RatingRule.credible(r)          // the ranking's rule: 0, 10, 10.0 and unreadable ratings show no badge
     }
     /// "2025 · Thriller"
     /// The year is left out when the title already carries it, e.g. "Only Me (2026)".
@@ -63,13 +62,31 @@ struct PosterCard: View {
     var note: String?
     /// Folder rows: the quiet line is a short genre or the year only (never the folder's own name), the title keeps room for two lines and the second line is always reserved, so every tile in a row is the same height.
     var folderLine: String??
+    /// What the tile calls the title (the cleaned name); the original is used when nil.
+    var displayTitle: String?
+    /// Shelves: the title keeps room for two lines and the quiet line is always there, so every tile of a row is the same height and nothing is clipped at any text size.
+    var uniformHeight = false
     @Environment(AppState.self) private var state
+    @Environment(\.container) private var container
+    @State private var landed: String?
+    @State private var landedRating: Double?
 
     var body: some View {
+        card.onMetadataLanded(for: item.id) {
+            guard let c = container else { return }
+            let id = item.id, needsPoster = (item.posterURL ?? "").isEmpty, needsRating = item.ratingValue == nil
+            Task.detached {
+                let p = needsPoster ? c.metadata.posterURL(for: id) : nil, r = needsRating ? c.metadata.ratingValue(for: id) : nil
+                await MainActor.run { withAnimation(.easeIn(duration: 0.25)) { if let p, !p.isEmpty { landed = p }; if let r { landedRating = r } } }
+            }
+        }.prioritizesArtwork((item.posterURL ?? "").isEmpty || item.ratingValue == nil ? [item.id] : [])          // a tile without a poster that is on screen is matched first
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .bottom) {
-                ArtworkImage(url: item.posterURL ?? item.backdropURL, kind: .poster, contentMode: .fill, symbol: item.isSeries ? "rectangle.stack" : "film",
-                             tile: .init(title: item.cleanTitle, detail: ArtworkTile.Content.detail(year: item.year, quality: item.isSeries ? "Series" : MetadataNormalizer.qualityLabel(MetadataNormalizer.normalize(item.title)))))
+                ArtworkImage(url: (item.posterURL.nilIfEmpty ?? landed) ?? item.backdropURL, kind: .poster, contentMode: .fill, symbol: item.isSeries ? "rectangle.stack" : "film",
+                             tile: .init(title: item.cleanTitle, detail: ArtworkTile.Content.detail(year: item.year, quality: item.isSeries ? "Series" : MetadataNormalizer.qualityLabel(MetadataNormalizer.normalize(item.title))), showsTitle: false))
                     .frame(width: width, height: width * 1.5)
                 if let shown = progress ?? state.partialProgress(item.id), shown > 0 { ProgressStrip(fraction: shown) }
             }
@@ -89,7 +106,7 @@ struct PosterCard: View {
                 }.padding(6)
             }
             .overlay(alignment: .topTrailing) {
-                if let r = item.ratingValue {
+                if let r = item.ratingValue ?? landedRating {
                     Label(String(format: "%.1f", r), systemImage: "star.fill").labelStyle(.titleAndIcon)
                         .appFont(10, .bold).padding(.horizontal, 6).padding(.vertical, 3)
                         .background(.black.opacity(0.65), in: Capsule()).foregroundStyle(.yellow).padding(6)
@@ -97,11 +114,11 @@ struct PosterCard: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.white.opacity(0.08)))
-            Text(item.title).appFont(12, .semibold).lineLimit(2, reservesSpace: folderLine != nil).multilineTextAlignment(.leading).frame(width: width, alignment: .leading)
+            Text(displayTitle ?? item.title).appFont(12, .semibold).lineLimit(2, reservesSpace: folderLine != nil || uniformHeight).multilineTextAlignment(.leading).frame(width: width, alignment: .leading)
             if let folderLine {
                 Text(folderLine ?? " ").appFont(11).foregroundStyle(.secondary).lineLimit(1).frame(width: width, alignment: .leading).accessibilityHidden(folderLine == nil)
             } else if let note { Text(note).appFont(11, .medium).foregroundStyle(ColorTokens.accentDefault).lineLimit(1).frame(width: width, alignment: .leading) }
-            else if !item.detailLine.isEmpty { Text(item.detailLine).appFont(11).foregroundStyle(.secondary).lineLimit(1).frame(width: width, alignment: .leading) }
+            else if !item.detailLine.isEmpty || uniformHeight { Text(item.detailLine.isEmpty ? " " : item.detailLine).appFont(11).foregroundStyle(.secondary).lineLimit(1).frame(width: width, alignment: .leading).accessibilityHidden(item.detailLine.isEmpty) }
         }
         .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: 8, style: .continuous))
         .hoverEffect(.lift)          // an iPad pointer lifts the poster
@@ -116,12 +133,14 @@ struct WideCard: View {
     let imageURL: String?
     var progress: Double?
     var width: CGFloat = 240
+    var rating: Double? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .bottom) {
                 ArtworkImage(url: imageURL, kind: .backdrop, contentMode: .fill, symbol: "play.rectangle")
                     .frame(width: width, height: width * 9 / 16)
+                    .overlay(alignment: .topTrailing) { if let rating { RatingBadge(value: rating).padding(6) } }
                 if let progress, progress > 0 { ProgressStrip(fraction: progress) }
             }
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -133,19 +152,26 @@ struct WideCard: View {
     }
 }
 
+/// The side inset shared by a shelf's heading and its first card, on every device.
+enum ShelfLayout { static let inset: CGFloat = 16 }
+
 struct Shelf<Content: View>: View {
     let title: String
     var caption: String?
+    /// Shelves with the "All time top / Trending this week" pair in the header: the view that is on, and what a tap does.
+    var mode: SMShelfMode? = nil
+    var onMode: ((SMShelfMode) -> Void)? = nil
+    /// Genre shelves: the title becomes a link to the full list.
+    var seeAll: AnyView? = nil
     @ViewBuilder var content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title.loc).appFont(18, .semibold).accessibilityAddTraits(.isHeader)
-                if let caption, !caption.isEmpty { Text(caption.loc).appFont(12).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail) }
-            }.padding(.horizontal, 16)
+        VStack(alignment: .leading, spacing: HomeLayout.headerGap) {
+            ShelfHeader(shelfTitle: title, title: Text(title.loc).appFont(18, .semibold).accessibilityAddTraits(.isHeader), caption: caption, mode: mode, onMode: onMode,
+                        trailing: Group { if let seeAll { seeAll } })
+            .padding(.horizontal, ShelfLayout.inset)
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 12) { content }.padding(.horizontal, 16)
+                LazyHStack(alignment: .top, spacing: HomeLayout.tileGap) { content }.padding(.horizontal, ShelfLayout.inset)
             }
         }
     }
@@ -164,7 +190,7 @@ struct EmptyState: View {
             BrandEmptyArt(symbol: symbol, size: 80)
             Text(title.loc).font(.headline)
             if let message { Text(message.loc).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center) }
-            if let actionTitle, let action { Button(actionTitle, action: action).buttonStyle(.borderedProminent).padding(.top, 4) }
+            if let actionTitle, let action { Button(actionTitle, action: action).buttonStyle(.borderedProminent).padding(.top, 4).atlas("control.ios.emptyState.action") }
         }
         .padding(32).frame(maxWidth: .infinity)
     }
@@ -188,6 +214,7 @@ struct ChannelRow: View {
                 HStack(spacing: 6) {
                     Text(channel.name).appFont(15, .medium).lineLimit(lines)
                     if isFavorite { Image(systemName: "heart.fill").appFont(10).foregroundStyle(.pink) }
+                    GuideDot(availability: programme == nil ? .none : .nowNext)
                 }
                 if let p = programme {
                     Text(p.title).appFont(12).foregroundStyle(.secondary).lineLimit(lines)
@@ -295,22 +322,7 @@ struct Themed: ViewModifier {
     }
 }
 
-/// Touch feel for cards, rows and buttons: they dip a little under the finger and spring back, with a light tap from the haptic
-/// engine, like the buttons in Apple's own apps.
-struct PressStyle: ButtonStyle {
-    var scale: CGFloat = 0.96
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? scale : 1)
-            .opacity(configuration.isPressed ? 0.88 : 1)
-            .animation(.spring(response: 0.28, dampingFraction: 0.65), value: configuration.isPressed)
-            .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.55), trigger: configuration.isPressed) { _, pressed in pressed }
-    }
-}
-
-extension ButtonStyle where Self == PressStyle {
-    static var press: PressStyle { PressStyle() }
-}
+// `.buttonStyle(.press)` is BrandPressStyle (DesignSystem/Components/Motion/BrandMotion.swift): the one press style, which honours Reduce Motion.
 
 /// A screen's name, floating like a button.
 struct TitlePill: View {
@@ -416,17 +428,6 @@ struct FlatChipBackground: View {
 extension View {
     /// A list row background. As in the release build: the theme's surface colour, nothing more.
     func glossRow() -> some View { listRowBackground(ColorTokens.surface) }
-}
-
-/// The main button on a detail page: the app's accent colour, white text, nothing else.
-struct SolidPlayStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var enabled
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
-            .frame(maxWidth: .infinity).frame(height: 50)
-            .background(Capsule().fill(Color.accentColor))
-            .opacity(enabled ? (configuration.isPressed ? 0.85 : 1) : 0.45)
-    }
 }
 
 /// The small round buttons beside it (favourite, watch later, queue, download, trailer): all the same size and fill. `tint` colours the symbol when the thing is switched on.

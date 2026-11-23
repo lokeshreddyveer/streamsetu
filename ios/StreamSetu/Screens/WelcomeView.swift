@@ -24,7 +24,7 @@ struct OnboardingView: View {
             if twoColumns { wide } else { narrow }
         }
         .background(StartBackdrop(glowAt: twoColumns ? UnitPoint(x: 0.24, y: 0.4) : UnitPoint(x: 0.5, y: 0.14)))
-        .onChange(of: pasted) { _, v in detector.paste(v) }
+        .onChange(of: pasted) { _, v in detector.paste(v) }.atlasScreen("screen.ios.welcome")
     }
 
     // MARK: Layouts
@@ -124,6 +124,7 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(StartSecondaryStyle()).disabled(restore.phase == .looking)
+            .atlas("control.ios.welcome.restore")
             if restore.phase != .idle {
                 Text(restore.detail).font(.footnote)
                     .foregroundStyle(restore.phase == .nothingFound ? ColorTokens.warning : palette.textSecondary)

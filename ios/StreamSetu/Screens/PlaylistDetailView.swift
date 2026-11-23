@@ -2,6 +2,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Everything about one playlist: name, login, guide, per-playlist playback behaviour, headers, and a channel health check.
+struct PlaylistHealthRoute: Hashable { let sourceID: UUID }
+
 struct PlaylistDetailView: View {
     let sourceID: UUID
     @Environment(AppState.self) private var state
@@ -32,19 +34,19 @@ struct PlaylistDetailView: View {
                     TextField("Name", text: $name).onSubmit { rename() }
                     LabeledContent("Type", value: s.type.title)
                     LabeledContent("Address", value: s.baseURL).lineLimit(1).truncationMode(.middle)
-                    Toggle("Enabled", isOn: Binding(get: { s.enabled }, set: { on in try? container?.sources.setEnabled(sourceID, on); state.reload() }))
-                    if state.activeSourceID != sourceID, s.enabled { Button("Make This the Active Playlist") { state.switchPlaylist(sourceID) } }
-                    if s.type != .m3uLocal { Button("Change Login or Address…") { showLogin = true } }
+                    Toggle("Enabled", isOn: Binding(get: { s.enabled }, set: { on in try? container?.sources.setEnabled(sourceID, on); state.reload() })).atlas("control.ios.playlist.enabled")
+                    if state.activeSourceID != sourceID, s.enabled { Button("Make This the Active Playlist") { state.switchPlaylist(sourceID) }.atlas("control.ios.playlist.makeActive") }
+                    if s.type != .m3uLocal { Button("Change Login or Address…") { showLogin = true }.atlas("control.ios.playlist.changeLogin") }
                 }.glossRow()
                 Section("Status") {
                     LabeledContent("Last update", value: s.lastSync.map { $0.formatted(.relative(presentation: .named)) } ?? "Never")
                     if let p = state.syncProgress[sourceID], p.state.isBusy { Label(p.state.label, systemImage: "arrow.triangle.2.circlepath") }
                     else if case .failed(let m)? = state.syncProgress[sourceID]?.state { Label(m, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.callout) }
-                    Button("Refresh Now") { state.sync(sourceID, forceGuide: true) }
+                    Button("Refresh Now") { state.sync(sourceID, forceGuide: true) }.atlas("control.ios.playlist.refresh")
                 }.glossRow()
                 Section {
                     TextField("Guide (XMLTV) address", text: $guideURL).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().onSubmit { saveGuide() }
-                    Button { pickGuide = true } label: { Label("Use a Guide File…", systemImage: "doc") }
+                    Button { pickGuide = true } label: { Label("Use a Guide File…", systemImage: "doc") }.atlas("control.ios.playlist.guideFile")
                     Stepper(value: $shift, in: -720...720, step: 15) { Text("Guide time shift: \(shiftLabel(shift))") }
                         .onChange(of: shift) { _, v in settings.setGuideShiftMinutes(v, for: sourceID) }
                 } header: { Text("Guide") } footer: {
@@ -59,36 +61,39 @@ struct PlaylistDetailView: View {
                             ForEach(PlaybackEnginePreference.allCases) { Text($0.rawValue).tag(PlaybackEnginePreference?.some($0)) }
                         }
                         .onChange(of: engine) { _, v in settings.setEngineOverride(v, for: sourceID) }
+                        .atlas("setting.playlistEngine")
                     }
                     Picker("Buffering", selection: $buffering) {
                         Text("Use the app setting").tag(BufferingMode?.none)
                         ForEach(BufferingMode.allCases) { Text($0.rawValue).tag(BufferingMode?.some($0)) }
                     }
                     .onChange(of: buffering) { _, v in settings.setBufferingOverride(v, for: sourceID) }
+                    .atlas("setting.playlistBuffering")
                 } header: { Text("Playback for this playlist") } footer: {
                     Text("Catch-up clock: if archive programmes start at the wrong point, correct the difference between the provider's clock and yours.")
                 }.glossRow()
                 Section {
                     TextField("User-Agent", text: $userAgent).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    Menu("Use a Common One") { ForEach(SourceHeaders.presets, id: \.name) { p in Button(p.name) { userAgent = p.value } } }
+                    Menu("Use a Common One") { ForEach(SourceHeaders.presets, id: \.name) { p in Button(p.name) { userAgent = p.value }.atlas("setting.userAgent") } }.atlas("setting.userAgent")
                     TextEditor(text: $extraHeaders).font(.system(.footnote, design: .monospaced)).frame(minHeight: 70).textInputAutocapitalization(.never).autocorrectionDisabled()
                     ForEach(headerProblems, id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
-                    Button("Save Headers") { saveHeaders() }
+                    Button("Save Headers") { saveHeaders() }.atlas("control.ios.playlist.saveHeaders")
                 } header: { Text("Connection headers") } footer: {
                     Text("Only needed when a provider answers certain players. One header per line (Name: value). Logins and cookies can't be set here.")
                 }.glossRow()
-                Section { NavigationLink("Check Channels") { PlaylistHealthView(sourceID: sourceID) } }.glossRow()
-                Section { Button("Delete Playlist…", role: .destructive) { confirmDelete = true } }.glossRow()
+                Section { NavigationLink("Check Channels", value: PlaylistHealthRoute(sourceID: sourceID)).atlas("control.ios.playlist.checkChannels") }.glossRow()
+                Section { Button("Delete Playlist…", role: .destructive) { confirmDelete = true }.atlas("control.ios.playlist.delete") }.glossRow()
                 if let message { Section { Text(message).font(.callout).foregroundStyle(.secondary) }.glossRow() }
             } else { Text("This playlist no longer exists.") }
         }
         .fileImporter(isPresented: $pickGuide, allowedContentTypes: [.xml, .gzip, .data]) { result in
             if case .success(let url) = result { importGuide(url) }
         }
-        .navigationTitle(source?.name ?? "Playlist").themed(source?.name ?? "Playlist").navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(for: PlaylistHealthRoute.self) { PlaylistHealthView(sourceID: $0.sourceID) }
+        .navigationTitle(source?.name ?? "Playlist").atlasScreen("screen.ios.settings.playlistDetail").themed(source?.name ?? "Playlist").navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: load)
         .confirmationDialog("Delete this playlist?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete Playlist", role: .destructive) { try? container?.sources.remove(sourceID); state.reload(); dismiss() }
+            Button("Delete Playlist", role: .destructive) { try? container?.sources.remove(sourceID); state.reload(); dismiss() }.atlas("control.ios.playlist.delete")
         } message: { Text("Its channels, movies and series are removed from this device, along with the saved login. Favourites of its items go too.") }
         .sheet(isPresented: $showLogin) { if let s = source { EditLoginSheet(source: s) } }
     }
@@ -151,17 +156,17 @@ private struct EditLoginSheet: View {
                 } else {
                     Section { TextField("Playlist address", text: $address).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled() }.glossRow()
                     Section {
-                        Picker("Sign-in", selection: $authKind) { ForEach(HTTPAuthKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+                        Picker("Sign-in", selection: $authKind) { ForEach(HTTPAuthKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.atlas("control.ios.playlist.authKind")
                         if authKind == .basic { TextField("Username", text: $authUser).textInputAutocapitalization(.never).autocorrectionDisabled() }
                         if authKind != .none { SecureField(authKind == .basic ? "Password" : "Token", text: $authSecret) }
                     } header: { Text("Link sign-in") } footer: { Text("Sent with every request to this link, and kept encrypted with its address. Leave the password or token blank to keep the saved one.") }.glossRow()
                 }
                 if let error { Section { Text(error).foregroundStyle(.orange).font(.callout) }.glossRow() }
             }
-            .navigationTitle("Change Login").themed("Change Login").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Change Login").atlasScreen("screen.ios.playlist.editLogin").themed("Change Login").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(source.type.hasLogin ? password.isEmpty && !(source.type == .stalker && !username.isEmpty) : address.isEmpty) }
+                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(source.type.hasLogin ? password.isEmpty && !(source.type == .stalker && !username.isEmpty) : address.isEmpty).atlas("control.ios.playlist.saveLogin") }
             }
         }
         .onAppear { if source.type == .m3uRemote, let m = container?.sources { let a = m.httpAuth(for: source.id); authKind = a.kind; authUser = a.username } }
@@ -197,7 +202,7 @@ struct PlaylistHealthView: View {
     var body: some View {
         List {
             Section {
-                Button { run() } label: { HStack { if running { ProgressView() }; Text(running ? "Checking \(done) of \(total)…" : "Check \(sample) Channels") } }.disabled(running)
+                Button { run() } label: { HStack { if running { ProgressView() }; Text(running ? "Checking \(done) of \(total)…" : "Check \(sample) Channels") } }.disabled(running).atlas("control.ios.playlist.runCheck")
             } footer: { Text("Asks each channel for its first few kilobytes. A channel that stays silent isn't necessarily dead: some providers start slowly or allow one stream at a time.") }.glossRow()
             if !results.isEmpty {
                 let dead = results.filter { $0.health.isDead }
@@ -206,7 +211,7 @@ struct PlaylistHealthView: View {
                     LabeledContent("Slow", value: "\(results.filter { if case .slow = $0.health { true } else { false } }.count)")
                     LabeledContent("No answer", value: "\(results.filter { $0.health == .silent }.count)")
                     LabeledContent("Dead", value: "\(dead.count)")
-                    if !dead.isEmpty { Button("Hide \(dead.count) Dead Channel\(dead.count == 1 ? "" : "s")", role: .destructive) { hide(dead) } }
+                    if !dead.isEmpty { Button("Hide \(Localized.plural(dead.count, one: "%@ Dead Channel", other: "%@ Dead Channels"))", role: .destructive) { hide(dead) }.atlas("control.ios.playlist.hideDead") }
                     if hidden > 0 { Label("Hid \(hidden) channels.", systemImage: "checkmark.circle").foregroundStyle(.green) }
                 }.glossRow()
                 Section("Dead channels") {
@@ -219,7 +224,7 @@ struct PlaylistHealthView: View {
                 }.glossRow()
             }
         }
-        .navigationTitle("Check Channels").themed("Check Channels")
+        .navigationTitle("Check Channels").atlasScreen("screen.ios.playlist.health").themed("Check Channels")
     }
 
     private func run() {

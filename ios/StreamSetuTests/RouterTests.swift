@@ -48,3 +48,25 @@ import XCTest
         }
     }
 }
+
+/// Setu's button on iPhone and iPad: plugged in, and hidden where it would be in the way.
+final class AssistantButtonTests: XCTestCase {
+    func testHiddenInKidsModeAndOnboarding() {
+        XCTAssertFalse(AssistantButtonRules.visible(kidsMode: true, onboarding: false, keyboardUp: false, chatOpen: false))
+        XCTAssertFalse(AssistantButtonRules.visible(kidsMode: false, onboarding: true, keyboardUp: false, chatOpen: false))
+        XCTAssertTrue(AssistantButtonRules.visible(kidsMode: false, onboarding: false, keyboardUp: false, chatOpen: false))
+    }
+
+    func testHiddenWhileTheKeyboardIsUpUnlessTheChatIsOpen() {
+        XCTAssertFalse(AssistantButtonRules.visible(kidsMode: false, onboarding: false, keyboardUp: true, chatOpen: false))
+        XCTAssertTrue(AssistantButtonRules.visible(kidsMode: false, onboarding: false, keyboardUp: true, chatOpen: true))
+        XCTAssertFalse(AssistantButtonRules.visible(kidsMode: true, onboarding: false, keyboardUp: false, chatOpen: true))
+    }
+
+    func testTheRootViewShowsTheButton() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("StreamSetu/Screens/RootView.swift")
+        let source = try String(contentsOf: root, encoding: .utf8)
+        XCTAssertTrue(source.contains("AssistantBubble(container: container"), "the assistant button must be plugged into the root view")
+        XCTAssertTrue(source.contains("!state.needsOnboarding"))
+    }
+}
