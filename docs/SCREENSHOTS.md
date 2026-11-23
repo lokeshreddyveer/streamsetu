@@ -102,9 +102,9 @@ Built for the remote: a sidebar, big posters and a live preview.
 
 ## iPhone
 
-From the launch screen to Settings, then the menus and the person page.
+From the launch screen to Settings, then the menus and more pages.
 
-<p align="center"><img src="screenshots/iphone-row.gif" alt="StreamSetu on iPhone, from the launch screen to Series and Settings" width="100%"></p>
+<p align="center"><img src="screenshots/iphone-row.gif" alt="StreamSetu on iPhone, from the launch screen to the title pages" width="100%"></p>
 
 ### All screens, in order
 
@@ -131,7 +131,7 @@ From the launch screen to Settings, then the menus and the person page.
     <td width="25%" valign="top" align="center"><img src="screenshots/ios-person.png" alt="StreamSetu on iPhone: Person page" width="100%"><br><sub><b>13</b> &nbsp;Person page</sub></td>
     <td width="25%" valign="top" align="center"><img src="screenshots/ios-menu-title.png" alt="StreamSetu on iPhone: Title page menu" width="100%"><br><sub><b>14</b> &nbsp;Title page menu</sub></td>
     <td width="25%" valign="top" align="center"><img src="screenshots/ios-menu-movies.png" alt="StreamSetu on iPhone: Title menu in Movies" width="100%"><br><sub><b>15</b> &nbsp;Title menu in Movies</sub></td>
-    <td width="25%"></td>
+    <td width="25%" valign="top" align="center"><img src="screenshots/ios-timeline.png" alt="StreamSetu on iPhone: Title page: timeline, other languages and more like this" width="100%"><br><sub><b>16</b> &nbsp;Title page: timeline, other languages and more like this</sub></td>
   </tr>
 </table>
 
