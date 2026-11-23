@@ -76,6 +76,8 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Folders view for Movies, Series and Live TV: one row per folder, 20 at a time, a More tile, a Grid switch; a locked folder shows only its name and a lock | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Other languages and versions of a title, as a row on its page | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Cast row with photos (the details service; monograms when it is off) and a person screen with their titles in your library | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Reworked title pages for movies and series, genre shelves on Home and Browse with an All time / Trending switch, and the same stars on a title everywhere (one shared rating rule) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Better matching of titles to artwork and details, with the artwork, episode-data and schedule services behind one layer (ids only; each can be turned off in Settings) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Weekly trending from the details service (on by default with the built-in key or your own, saved for at most 180 days), with the details service logo and notice in About | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Don't Recommend This; remove a title from Continue Watching and keep its history (Android marks it) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Three quick taps on a tab refresh the library | – | ✓ | – | – | – |
@@ -119,9 +121,9 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | **More like this** | | | | | |
 | Suggestions under a movie or series by franchise, director, genre, cast and story, each with its reason | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Assistant and your own services** | | | | | |
-| Streaming services inside the app: a Services menu (can be pinned to the top bar) that opens each provider's own site in the app; sign-in and data are the provider's, and you can clear a service's data (new, not yet verified; Mac only) | ✓ | – | – | – | – |
+| Streaming services inside the app: a Services menu (can be pinned to the top bar) that opens each provider's own site in the app; sign-in and data are the provider's, and you can clear a service's data, with a themed Services panel, a card for each service in Settings and a message that says why a service did not load (new in 2.18.0; checked by tests, not yet tried by hand for every service; Mac only) | ✓ | – | – | – | – |
 | Optional page options for one streaming service (Mac only): skipping its video ads and skipping community-marked sponsor segments, each off by default, each asking first with the risks explained, shown once when the service is first opened and any time in Settings; never in a kids profile or while locked | ✓ | – | – | – | – |
-| Setu, an assistant in a chat bubble: finds something to watch, answers about your screen, settings and playback problems, and offers actions you tap to confirm (new; on iPhone and iPad it opens as a bottom sheet or popover; hidden in kids mode) | ✓ | ✓ | – | – | – |
+| Setu, an assistant in a chat bubble: finds something to watch, answers about your screen, settings and playback problems, and offers actions you tap to confirm (new; on iPhone and iPad it opens as a bottom sheet or popover; hidden in kids mode; on in iPhone and iPad 1.4) | ✓ | ✓ | ✓ | – | – |
 | Bring your own AI: Apple Intelligence, Gemini, OpenRouter, Claude, OpenAI, Groq, NVIDIA, Ollama Cloud, or Ollama on your network, with each one's price and free limit shown | ✓ | ✓ | ✓ | ✓ without Apple Intelligence | ✓ without Apple Intelligence |
 | Ask AI from the search box when a request finds nothing | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Search box commands: go to a screen, play, resume, last channel, add or remove a favourite or Watch Later | ✓ | ✓ | ✓ | ✓ | ✓ |

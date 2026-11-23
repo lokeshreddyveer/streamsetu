@@ -33,6 +33,9 @@ export const features = [
   { title: "Folders, favourites and lists", text: "Sort the provider's folders your way, lock one with a PIN, keep favourites, Watch Later and collections, and clear any of them in one go." },
   { title: "A smarter Home", text: "Top This Week, Trending in Your Library, Because You Watched and Rediscover, picked from your own library, with a Shuffle button. Movies, Series and Live TV open as one row per folder, and a title shows its other languages and versions." },
   { title: "Cast and privacy", text: "A cast row with photos (from an online details service) and a page for each person. Locked and hidden folders stay out of search, recommendations, widgets and anything sent to an online service." },
+  { title: "Title pages and genre shelves", text: "Reworked pages for movies and series, genre shelves on Home and Browse with an All time and Trending switch, and the same stars on a title on every app." },
+  { title: "Streaming services on the Mac", text: "Open a streaming service's own website inside StreamSetu from a Services menu, with its own settings card and a button that clears only that service's data." },
+  { title: "Ask Setu", text: "An assistant in a chat bubble answers questions about the app and offers actions you tap to confirm. It sends nothing until you choose a provider and key, and it is hidden in kids mode." },
   { title: "Hindi and Telugu", text: "The main screens are available in Hindi and Telugu as well as English." },
 ];
 
