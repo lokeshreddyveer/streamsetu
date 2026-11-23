@@ -1,0 +1,199 @@
+{
+ "guide": [
+  {
+   "source": "provider:p1",
+   "id": "CNN.us",
+   "names": [
+    "CNN"
+   ],
+   "country": "us",
+   "language": "en",
+   "priority": 10
+  },
+  {
+   "source": "provider:p1",
+   "id": "ESPN.us",
+   "names": [
+    "ESPN"
+   ],
+   "country": "us",
+   "language": "en",
+   "priority": 10
+  },
+  {
+   "source": "provider:p1",
+   "id": "ESPN2.us",
+   "names": [
+    "ESPN 2"
+   ],
+   "country": "us",
+   "language": "en",
+   "priority": 10
+  },
+  {
+   "source": "provider:p1",
+   "id": "Nickelodeon.us",
+   "names": [
+    "Nickelodeon"
+   ],
+   "country": "us",
+   "language": "en",
+   "priority": 10
+  },
+  {
+   "source": "provider:p1",
+   "id": "FujiTV.jp",
+   "names": [
+    "Fuji TV"
+   ],
+   "country": "jp",
+   "language": "ja",
+   "priority": 10
+  },
+  {
+   "source": "provider:p1",
+   "id": "HBOEast.us",
+   "names": [
+    "HBO East"
+   ],
+   "country": "us",
+   "language": "en",
+   "priority": 10
+  },
+  {
+   "source": "provider:p1",
+   "id": "HBO.us",
+   "names": [
+    "HBO"
+   ],
+   "country": "us",
+   "language": "en",
+   "priority": 10
+  },
+  {
+   "source": "provider:p1",
+   "id": "RAI1.it",
+   "names": [
+    "RAI 1"
+   ],
+   "country": "it",
+   "language": "it",
+   "priority": 10
+  },
+  {
+   "source": "provider:p1",
+   "id": "La1.es",
+   "names": [
+    "La 1"
+   ],
+   "country": "es",
+   "language": "es",
+   "priority": 10
+  }
+ ],
+ "cases": [
+  {
+   "id": 1,
+   "note": "a feed word is dropped when the guide lists only the bare name",
+   "channel": {
+    "name": "CNN East",
+    "id": "c"
+   },
+   "expect": {
+    "status": "mapped",
+    "xmltv": "CNN.us",
+    "method": "name",
+    "confidence": 0.65
+   }
+  },
+  {
+   "id": 2,
+   "note": "a name the guide lists as it is stays as it is",
+   "channel": {
+    "name": "HBO East",
+    "id": "c"
+   },
+   "expect": {
+    "status": "mapped",
+    "xmltv": "HBOEast.us",
+    "method": "name",
+    "confidence": 0.7
+   }
+  },
+  {
+   "id": 3,
+   "note": "US| US: reads as one country prefix",
+   "channel": {
+    "name": "US| US: Nickelodeon",
+    "id": "c"
+   },
+   "expect": {
+    "status": "mapped",
+    "xmltv": "Nickelodeon.us",
+    "method": "name",
+    "confidence": 0.7
+   }
+  },
+  {
+   "id": 4,
+   "note": "an id from another guide whose name shares nothing is not trusted when the name is listed",
+   "channel": {
+    "name": "RAI 1",
+    "tvg": "La1.es",
+    "id": "c"
+   },
+   "expect": {
+    "status": "mapped",
+    "xmltv": "RAI1.it",
+    "method": "name",
+    "confidence": 0.7
+   }
+  },
+  {
+   "id": 5,
+   "note": "the same words with another number is another channel",
+   "channel": {
+    "name": "ESPN 2",
+    "tvg": "ESPN.us",
+    "id": "c"
+   },
+   "expect": {
+    "status": "mapped",
+    "xmltv": "ESPN2.us",
+    "method": "name",
+    "confidence": 0.7
+   }
+  },
+  {
+   "id": 6,
+   "note": "the own playlist's guide is trusted (shared case 46)",
+   "channel": {
+    "name": "RAI 1",
+    "tvg": "La1.es",
+    "own": "provider:p1",
+    "id": "c"
+   },
+   "expect": {
+    "status": "mapped",
+    "xmltv": "La1.es",
+    "method": "exact",
+    "confidence": 0.99
+   }
+  },
+  {
+   "id": 7,
+   "note": "no name match: the id stays",
+   "channel": {
+    "name": "Sports Plus",
+    "tvg": "CNN.us",
+    "id": "c"
+   },
+   "expect": {
+    "status": "mapped",
+    "xmltv": "CNN.us",
+    "method": "exactOther",
+    "confidence": 0.95
+   }
+  }
+ ]
+}

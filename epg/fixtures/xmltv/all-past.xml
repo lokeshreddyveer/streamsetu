@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tv>
+  <channel id="p"><display-name>Past</display-name></channel>
+  <programme start="20261110200000 +0000" stop="20261110210000 +0000" channel="p"><title>Old one</title></programme>
+  <programme start="20261111200000 +0000" stop="20261111210000 +0000" channel="p"><title>Old two</title></programme>
+  <programme start="20261112200000 +0000" stop="20261112210000 +0000" channel="p"><title>Old three</title></programme>
+</tv>

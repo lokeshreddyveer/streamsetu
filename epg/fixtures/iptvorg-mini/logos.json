@@ -1,0 +1,67 @@
+[
+ {
+  "channel": "BBCOne.uk",
+  "feed": null,
+  "tags": [
+   "old"
+  ],
+  "width": 900,
+  "height": 900,
+  "format": "PNG",
+  "url": "https://example.test/logos/bbcone-old.png"
+ },
+ {
+  "channel": "BBCOne.uk",
+  "feed": null,
+  "tags": [],
+  "width": 64,
+  "height": 64,
+  "format": "PNG",
+  "url": "https://example.test/logos/bbcone-small.png"
+ },
+ {
+  "channel": "BBCOne.uk",
+  "feed": null,
+  "tags": [],
+  "width": 512,
+  "height": 512,
+  "format": "JPEG",
+  "url": "https://example.test/logos/bbcone.jpg"
+ },
+ {
+  "channel": "BBCOne.uk",
+  "feed": null,
+  "tags": [],
+  "width": 512,
+  "height": 512,
+  "format": "PNG",
+  "url": "https://example.test/logos/bbcone.png"
+ },
+ {
+  "channel": "BBCOne.uk",
+  "feed": null,
+  "tags": [],
+  "width": 1000,
+  "height": 1000,
+  "format": "PNG",
+  "url": "http://example.test/logos/bbcone-insecure.png"
+ },
+ {
+  "channel": "BlockedNews.uk",
+  "feed": null,
+  "tags": [],
+  "width": 512,
+  "height": 512,
+  "format": "PNG",
+  "url": "https://example.test/logos/blocked.png"
+ },
+ {
+  "channel": "CNN.us",
+  "feed": null,
+  "tags": [],
+  "width": 256,
+  "height": 256,
+  "format": "SVG",
+  "url": "https://example.test/logos/cnn.svg"
+ }
+]

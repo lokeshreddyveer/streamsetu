@@ -1,0 +1,193 @@
+{
+ "cases": [
+  {
+   "note": "tvg id equals database id",
+   "channel": {
+    "id": "1",
+    "name": "Anything",
+    "tvg": "BBCOne.uk"
+   },
+   "expect": {
+    "match": "BBCOne.uk",
+    "by": "id",
+    "logo": "https://example.test/logos/bbcone.png",
+    "languages": [
+     "eng"
+    ],
+    "timezones": [
+     "Europe/London"
+    ]
+   }
+  },
+  {
+   "note": "name and country",
+   "channel": {
+    "id": "2",
+    "name": "BBC One HD",
+    "country": "uk"
+   },
+   "expect": {
+    "match": "BBCOne.uk",
+    "by": "name"
+   }
+  },
+  {
+   "note": "alternative name",
+   "channel": {
+    "id": "3",
+    "name": "BBC 1",
+    "country": "UK"
+   },
+   "expect": {
+    "match": "BBCOne.uk",
+    "by": "name"
+   }
+  },
+  {
+   "note": "country prefix in the name",
+   "channel": {
+    "id": "4",
+    "name": "UK | BBC Two"
+   },
+   "expect": {
+    "match": "BBCTwo.uk",
+    "by": "name"
+   }
+  },
+  {
+   "note": "same name in two countries: name only, first record wins",
+   "channel": {
+    "id": "5",
+    "name": "Comedy Central"
+   },
+   "expect": {
+    "match": "ComedyCentral.uk",
+    "by": "name"
+   }
+  },
+  {
+   "note": "a country hint is not read: first record wins",
+   "channel": {
+    "id": "6",
+    "name": "Comedy Central",
+    "country": "us"
+   },
+   "expect": {
+    "match": "ComedyCentral.uk",
+    "by": "name"
+   }
+  },
+  {
+   "note": "no country filter: name only",
+   "channel": {
+    "id": "7",
+    "name": "CNN",
+    "country": "uk"
+   },
+   "expect": {
+    "match": "CNN.us",
+    "by": "name"
+   }
+  },
+  {
+   "note": "blocked id by tvg",
+   "channel": {
+    "id": "8",
+    "name": "Blocked News",
+    "tvg": "BlockedNews.uk"
+   },
+   "expect": {
+    "match": null
+   }
+  },
+  {
+   "note": "blocked record by name",
+   "channel": {
+    "id": "9",
+    "name": "Blocked News",
+    "country": "uk"
+   },
+   "expect": {
+    "match": null
+   }
+  },
+  {
+   "note": "closed channel",
+   "channel": {
+    "id": "10",
+    "name": "Closed TV",
+    "country": "uk"
+   },
+   "expect": {
+    "match": null
+   }
+  },
+  {
+   "note": "adult record",
+   "channel": {
+    "id": "11",
+    "name": "Adult Example",
+    "country": "us"
+   },
+   "expect": {
+    "match": null
+   }
+  },
+  {
+   "note": "restricted library channel",
+   "channel": {
+    "id": "12",
+    "name": "BBC One",
+    "country": "uk",
+    "restricted": true
+   },
+   "expect": {
+    "match": null
+   }
+  },
+  {
+   "note": "unique name, no country",
+   "channel": {
+    "id": "13",
+    "name": "Unique Channel"
+   },
+   "expect": {
+    "match": "UniqueChannel.xx",
+    "by": "name"
+   }
+  },
+  {
+   "note": "unknown",
+   "channel": {
+    "id": "14",
+    "name": "Nothing Like This"
+   },
+   "expect": {
+    "match": null
+   }
+  },
+  {
+   "note": "logo of a blocked channel is never offered",
+   "channel": {
+    "id": "15",
+    "name": "Blocked News"
+   },
+   "expect": {
+    "match": null
+   }
+  },
+  {
+   "note": "svg only logo is kept (no better choice)",
+   "channel": {
+    "id": "16",
+    "name": "x",
+    "tvg": "CNN.us"
+   },
+   "expect": {
+    "match": "CNN.us",
+    "by": "id",
+    "logo": "https://example.test/logos/cnn.svg"
+   }
+  }
+ ]
+}

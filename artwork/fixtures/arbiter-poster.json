@@ -1,0 +1,35 @@
+{
+ "pick": [
+  {"ctx": {"preferredLang": "hi", "originalLang": "hi"}, "candidates": [
+    {"source": "tmdb", "url": "t-en", "lang": "en", "width": 2000, "height": 3000, "likes": 40},
+    {"source": "fanart", "url": "f-hi", "lang": "hi", "width": 1000, "height": 1426, "likes": 5}],
+   "expected": "f-hi", "notes": "the preferred language beats a bigger poster in English"},
+  {"ctx": {"preferredLang": "en"}, "candidates": [
+    {"source": "fanart", "url": "f", "lang": "en", "width": 1000, "height": 1500, "likes": 0},
+    {"source": "tmdb", "url": "t", "lang": "en", "width": 1000, "height": 1500, "likes": 0},
+    {"source": "tvdb", "url": "v", "lang": "en", "width": 1000, "height": 1500, "likes": 0}],
+   "expected": "t", "notes": "equal scores: TMDB, then fanart, then TheTVDB"},
+  {"ctx": {"preferredLang": "en"}, "candidates": [
+    {"source": "tmdb", "url": "wide", "lang": "en", "width": 3000, "height": 2000, "likes": 100},
+    {"source": "tmdb", "url": "tall", "lang": "en", "width": 1000, "height": 1500, "likes": 0}],
+   "expected": "tall", "notes": "a landscape image is not a poster (aspect penalty)"},
+  {"ctx": {"preferredLang": "en"}, "candidates": [
+    {"source": "tmdb", "url": "tiny", "lang": "en", "width": 400, "height": 600, "likes": 50},
+    {"source": "fanart", "url": "ok", "lang": "en", "width": 1000, "height": 1500, "likes": 0}],
+   "expected": "ok", "notes": "under 500 px wide loses 500 points"},
+  {"ctx": {"preferredLang": "te", "originalLang": "te"}, "candidates": [
+    {"source": "tmdb", "url": "en", "lang": "en", "width": 1000, "height": 1500, "likes": 0},
+    {"source": "tmdb", "url": "none", "lang": null, "width": 1000, "height": 1500, "likes": 0}],
+   "expected": "none", "notes": "textless (600) beats English (400) when the preferred language is missing"},
+  {"ctx": {"preferredLang": "en"}, "candidates": [], "expected": null, "notes": "nothing to pick"}
+ ],
+ "replace": [
+  {"stored": {"source": "tmdb", "quality": 1100, "expired": false, "failCount": 0}, "candidateScore": 1140, "expected": false, "notes": "inside the margin of 50: no change"},
+  {"stored": {"source": "tmdb", "quality": 1100, "expired": false, "failCount": 0}, "candidateScore": 1151, "expected": true, "notes": "better by more than 50"},
+  {"stored": {"source": "tmdb", "quality": 1100, "expired": true, "failCount": 0}, "candidateScore": 900, "expected": true, "notes": "an expired value is replaced even by a lower score"},
+  {"stored": {"source": "tmdb", "quality": 1100, "expired": false, "failCount": 2}, "candidateScore": 900, "expected": true, "notes": "an address that failed twice is replaced"},
+  {"stored": {"source": "playlist", "quality": 0, "expired": false, "failCount": 0}, "candidateScore": 5000, "expected": false, "notes": "art the playlist provided is never replaced"},
+  {"stored": {"source": "tmdb", "quality": "pinned", "expired": true, "failCount": 5}, "candidateScore": 5000, "expected": false, "notes": "a person's own choice is never replaced"},
+  {"stored": null, "candidateScore": 10, "expected": true, "notes": "nothing stored yet"}
+ ]
+}

@@ -1,0 +1,4112 @@
+{
+ "name": "home-layout",
+ "description": "Home v2: row placement by weekday and time, one-title-per-screen composition with re-rank and exploration slots, franchise keys, default view of a ranked row, row names. Written by smartmix/tools/make_home_fixtures.py.",
+ "layout": [
+  {
+   "name": "weekday afternoon, full library",
+   "present": [
+    "binge",
+    "collections",
+    "for-you",
+    "fresh",
+    "lang-pref",
+    "movie-night",
+    "rediscover",
+    "top-week",
+    "trending"
+   ],
+   "genres": [
+    "genre:thriller",
+    "genre:comedy",
+    "genre:scifi",
+    "genre:drama",
+    "genre:action",
+    "genre:horror"
+   ],
+   "moods": [
+    "mood:edge",
+    "mood:feelGood"
+   ],
+   "weekday": 3,
+   "hour": 14,
+   "kids": false,
+   "expect": [
+    "top-week",
+    "for-you",
+    "genre:thriller",
+    "trending",
+    "mood:edge",
+    "genre:comedy",
+    "lang-pref",
+    "collections",
+    "genre:scifi",
+    "rediscover",
+    "mood:feelGood",
+    "genre:drama"
+   ]
+  },
+  {
+   "name": "friday evening: movie night",
+   "present": [
+    "binge",
+    "collections",
+    "for-you",
+    "fresh",
+    "lang-pref",
+    "movie-night",
+    "rediscover",
+    "top-week",
+    "trending"
+   ],
+   "genres": [
+    "genre:thriller",
+    "genre:comedy",
+    "genre:scifi",
+    "genre:drama",
+    "genre:action",
+    "genre:horror"
+   ],
+   "moods": [
+    "mood:edge",
+    "mood:feelGood"
+   ],
+   "weekday": 5,
+   "hour": 20,
+   "kids": false,
+   "expect": [
+    "top-week",
+    "for-you",
+    "movie-night",
+    "genre:thriller",
+    "trending",
+    "mood:edge",
+    "genre:comedy",
+    "lang-pref",
+    "collections",
+    "genre:scifi",
+    "rediscover",
+    "mood:feelGood"
+   ]
+  },
+  {
+   "name": "saturday morning: fresh first, binge on",
+   "present": [
+    "binge",
+    "collections",
+    "for-you",
+    "fresh",
+    "lang-pref",
+    "movie-night",
+    "rediscover",
+    "top-week",
+    "trending"
+   ],
+   "genres": [
+    "genre:thriller",
+    "genre:comedy",
+    "genre:scifi",
+    "genre:drama",
+    "genre:action",
+    "genre:horror"
+   ],
+   "moods": [
+    "mood:edge",
+    "mood:feelGood"
+   ],
+   "weekday": 6,
+   "hour": 8,
+   "kids": false,
+   "expect": [
+    "top-week",
+    "fresh",
+    "for-you",
+    "genre:thriller",
+    "trending",
+    "mood:edge",
+    "genre:comedy",
+    "lang-pref",
+    "collections",
+    "genre:scifi",
+    "binge",
+    "mood:feelGood"
+   ]
+  },
+  {
+   "name": "sunday evening: binge, no movie night",
+   "present": [
+    "binge",
+    "collections",
+    "for-you",
+    "fresh",
+    "lang-pref",
+    "movie-night",
+    "rediscover",
+    "top-week",
+    "trending"
+   ],
+   "genres": [
+    "genre:thriller",
+    "genre:comedy",
+    "genre:scifi",
+    "genre:drama",
+    "genre:action",
+    "genre:horror"
+   ],
+   "moods": [
+    "mood:edge",
+    "mood:feelGood"
+   ],
+   "weekday": 7,
+   "hour": 20,
+   "kids": false,
+   "expect": [
+    "top-week",
+    "for-you",
+    "genre:thriller",
+    "trending",
+    "mood:edge",
+    "genre:comedy",
+    "lang-pref",
+    "binge",
+    "collections",
+    "genre:scifi",
+    "rediscover",
+    "mood:feelGood"
+   ]
+  },
+  {
+   "name": "kids profile",
+   "present": [
+    "collections",
+    "for-you",
+    "fresh",
+    "rediscover",
+    "top-week",
+    "trending"
+   ],
+   "genres": [
+    "genre:comedy",
+    "genre:animation",
+    "genre:family"
+   ],
+   "moods": [
+    "mood:withKids",
+    "mood:feelGood"
+   ],
+   "weekday": 5,
+   "hour": 20,
+   "kids": true,
+   "expect": [
+    "mood:withKids",
+    "top-week",
+    "genre:comedy",
+    "for-you",
+    "genre:animation",
+    "fresh",
+    "collections",
+    "genre:family",
+    "mood:feelGood",
+    "rediscover",
+    "trending"
+   ]
+  },
+  {
+   "name": "brand-new install: only popular row and genres",
+   "present": [
+    "collections",
+    "top-week"
+   ],
+   "genres": [
+    "genre:thriller",
+    "genre:comedy",
+    "genre:scifi"
+   ],
+   "moods": [],
+   "weekday": 2,
+   "hour": 12,
+   "kids": false,
+   "expect": [
+    "top-week",
+    "genre:thriller",
+    "collections",
+    "genre:comedy",
+    "genre:scifi"
+   ]
+  },
+  {
+   "name": "no genre rows, no moods",
+   "present": [
+    "for-you",
+    "rediscover",
+    "top-week"
+   ],
+   "genres": [],
+   "moods": [],
+   "weekday": 2,
+   "hour": 12,
+   "kids": false,
+   "expect": [
+    "top-week",
+    "for-you",
+    "rediscover"
+   ]
+  },
+  {
+   "name": "only genre rows: a thin page keeps six",
+   "present": [],
+   "genres": [
+    "genre:thriller",
+    "genre:comedy",
+    "genre:scifi",
+    "genre:drama",
+    "genre:action",
+    "genre:horror"
+   ],
+   "moods": [],
+   "weekday": 2,
+   "hour": 12,
+   "kids": false,
+   "expect": [
+    "genre:thriller",
+    "genre:comedy",
+    "genre:scifi",
+    "genre:drama",
+    "genre:action",
+    "genre:horror"
+   ]
+  },
+  {
+   "name": "late night after Saturday: small hours keep movie night",
+   "present": [
+    "binge",
+    "collections",
+    "for-you",
+    "fresh",
+    "lang-pref",
+    "movie-night",
+    "rediscover",
+    "top-week",
+    "trending"
+   ],
+   "genres": [
+    "genre:thriller",
+    "genre:comedy",
+    "genre:scifi",
+    "genre:drama",
+    "genre:action",
+    "genre:horror"
+   ],
+   "moods": [
+    "mood:edge",
+    "mood:feelGood"
+   ],
+   "weekday": 7,
+   "hour": 2,
+   "kids": false,
+   "expect": [
+    "top-week",
+    "for-you",
+    "movie-night",
+    "genre:thriller",
+    "trending",
+    "mood:edge",
+    "genre:comedy",
+    "lang-pref",
+    "binge",
+    "collections",
+    "genre:scifi",
+    "rediscover"
+   ]
+  }
+ ],
+ "compose": [
+  {
+   "name": "weekday: every title appears once; rows below the minimum disappear",
+   "results": [
+    {
+     "id": "top-week",
+     "ordered": true,
+     "picks": [
+      {
+       "id": "a00",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a01",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a02",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a03",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a04",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a05",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a06",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a07",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a08",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a09",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a10",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a11",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a12",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a13",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a14",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a15",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "trending-library",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "a00",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a01",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a02",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a03",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a04",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a05",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "t00",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t01",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t02",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t03",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t04",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t05",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t06",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t07",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t08",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t09",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "for-you",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "f00",
+       "kind": "movie",
+       "year": 2000,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f01",
+       "kind": "movie",
+       "year": 2003,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f02",
+       "kind": "movie",
+       "year": 2006,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f03",
+       "kind": "movie",
+       "year": 2009,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f04",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f05",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f06",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f07",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f08",
+       "kind": "movie",
+       "year": 2000,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f09",
+       "kind": "movie",
+       "year": 2003,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f10",
+       "kind": "movie",
+       "year": 2006,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f11",
+       "kind": "movie",
+       "year": 2009,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f12",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f13",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f14",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f15",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f16",
+       "kind": "movie",
+       "year": 2000,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f17",
+       "kind": "movie",
+       "year": 2003,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f18",
+       "kind": "movie",
+       "year": 2006,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f19",
+       "kind": "movie",
+       "year": 2009,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f20",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f21",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f22",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f23",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      }
+     ]
+    },
+    {
+     "id": "genre:thriller",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "g00",
+       "kind": "movie",
+       "year": 2010,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g01",
+       "kind": "movie",
+       "year": 2011,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g02",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g03",
+       "kind": "movie",
+       "year": 2013,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g04",
+       "kind": "movie",
+       "year": 2014,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g05",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g06",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g07",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g08",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g09",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g10",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g11",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g12",
+       "kind": "movie",
+       "year": 2010,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g13",
+       "kind": "movie",
+       "year": 2011,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g14",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g15",
+       "kind": "movie",
+       "year": 2013,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g16",
+       "kind": "movie",
+       "year": 2014,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g17",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g18",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g19",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g20",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g21",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g22",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g23",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "genre:comedy",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "f00",
+       "kind": "movie"
+      },
+      {
+       "id": "f01",
+       "kind": "movie"
+      },
+      {
+       "id": "f02",
+       "kind": "movie"
+      },
+      {
+       "id": "f03",
+       "kind": "movie"
+      },
+      {
+       "id": "f04",
+       "kind": "movie"
+      },
+      {
+       "id": "c00",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      },
+      {
+       "id": "c01",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      },
+      {
+       "id": "c02",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      },
+      {
+       "id": "c03",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      }
+     ]
+    },
+    {
+     "id": "movie-night",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "m00",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m01",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m02",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m03",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m04",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m05",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m06",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m07",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m08",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m09",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m10",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m11",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m12",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m13",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "binge",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "b00",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b01",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b02",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b03",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b04",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b05",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b06",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b07",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b08",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b09",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b10",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b11",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b12",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b13",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      }
+     ]
+    }
+   ],
+   "affinity": {
+    "genreKeys": [
+     "thriller",
+     "drama"
+    ],
+    "topLangs": [
+     "Hindi"
+    ]
+   },
+   "weekday": 3,
+   "hour": 14,
+   "kids": false,
+   "expect": [
+    {
+     "row": "top-week",
+     "ids": [
+      "a00",
+      "a01",
+      "a02",
+      "a03",
+      "a04",
+      "a05",
+      "a06",
+      "a07",
+      "a08",
+      "a09",
+      "a10",
+      "a11",
+      "a12",
+      "a13"
+     ]
+    },
+    {
+     "row": "for-you",
+     "ids": [
+      "f00",
+      "f01",
+      "f02",
+      "f04",
+      "f03",
+      "f05",
+      "f07",
+      "f06",
+      "f08",
+      "f09",
+      "f10",
+      "f12",
+      "f11",
+      "f13"
+     ]
+    },
+    {
+     "row": "genre:thriller",
+     "ids": [
+      "g00",
+      "g01",
+      "g02",
+      "g03",
+      "g04",
+      "g10",
+      "g05",
+      "g06",
+      "g07",
+      "g11",
+      "g08",
+      "g09",
+      "g12",
+      "g13"
+     ]
+    },
+    {
+     "row": "trending-library",
+     "ids": [
+      "t00",
+      "t01",
+      "t02",
+      "t03",
+      "t04",
+      "t05",
+      "t06",
+      "t07",
+      "t08",
+      "t09"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "friday evening adds movie night",
+   "results": [
+    {
+     "id": "top-week",
+     "ordered": true,
+     "picks": [
+      {
+       "id": "a00",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a01",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a02",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a03",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a04",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a05",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a06",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a07",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a08",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a09",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a10",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a11",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a12",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a13",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a14",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a15",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "trending-library",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "a00",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a01",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a02",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a03",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a04",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a05",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "t00",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t01",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t02",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t03",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t04",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t05",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t06",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t07",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t08",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t09",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "for-you",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "f00",
+       "kind": "movie",
+       "year": 2000,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f01",
+       "kind": "movie",
+       "year": 2003,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f02",
+       "kind": "movie",
+       "year": 2006,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f03",
+       "kind": "movie",
+       "year": 2009,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f04",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f05",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f06",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f07",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f08",
+       "kind": "movie",
+       "year": 2000,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f09",
+       "kind": "movie",
+       "year": 2003,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f10",
+       "kind": "movie",
+       "year": 2006,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f11",
+       "kind": "movie",
+       "year": 2009,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f12",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f13",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f14",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f15",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f16",
+       "kind": "movie",
+       "year": 2000,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f17",
+       "kind": "movie",
+       "year": 2003,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f18",
+       "kind": "movie",
+       "year": 2006,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f19",
+       "kind": "movie",
+       "year": 2009,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f20",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f21",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f22",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f23",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      }
+     ]
+    },
+    {
+     "id": "genre:thriller",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "g00",
+       "kind": "movie",
+       "year": 2010,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g01",
+       "kind": "movie",
+       "year": 2011,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g02",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g03",
+       "kind": "movie",
+       "year": 2013,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g04",
+       "kind": "movie",
+       "year": 2014,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g05",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g06",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g07",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g08",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g09",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g10",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g11",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g12",
+       "kind": "movie",
+       "year": 2010,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g13",
+       "kind": "movie",
+       "year": 2011,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g14",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g15",
+       "kind": "movie",
+       "year": 2013,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g16",
+       "kind": "movie",
+       "year": 2014,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g17",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g18",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g19",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g20",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g21",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g22",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g23",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "genre:comedy",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "f00",
+       "kind": "movie"
+      },
+      {
+       "id": "f01",
+       "kind": "movie"
+      },
+      {
+       "id": "f02",
+       "kind": "movie"
+      },
+      {
+       "id": "f03",
+       "kind": "movie"
+      },
+      {
+       "id": "f04",
+       "kind": "movie"
+      },
+      {
+       "id": "c00",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      },
+      {
+       "id": "c01",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      },
+      {
+       "id": "c02",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      },
+      {
+       "id": "c03",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      }
+     ]
+    },
+    {
+     "id": "movie-night",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "m00",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m01",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m02",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m03",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m04",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m05",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m06",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m07",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m08",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m09",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m10",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m11",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m12",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m13",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "binge",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "b00",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b01",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b02",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b03",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b04",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b05",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b06",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b07",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b08",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b09",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b10",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b11",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b12",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b13",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      }
+     ]
+    }
+   ],
+   "affinity": {
+    "genreKeys": [
+     "thriller",
+     "drama"
+    ],
+    "topLangs": [
+     "Hindi"
+    ]
+   },
+   "weekday": 5,
+   "hour": 20,
+   "kids": false,
+   "expect": [
+    {
+     "row": "top-week",
+     "ids": [
+      "a00",
+      "a01",
+      "a02",
+      "a03",
+      "a04",
+      "a05",
+      "a06",
+      "a07",
+      "a08",
+      "a09",
+      "a10",
+      "a11",
+      "a12",
+      "a13"
+     ]
+    },
+    {
+     "row": "for-you",
+     "ids": [
+      "f00",
+      "f01",
+      "f02",
+      "f04",
+      "f03",
+      "f05",
+      "f07",
+      "f06",
+      "f08",
+      "f09",
+      "f10",
+      "f12",
+      "f11",
+      "f13"
+     ]
+    },
+    {
+     "row": "movie-night",
+     "ids": [
+      "m00",
+      "m01",
+      "m02",
+      "m03",
+      "m04",
+      "m05",
+      "m06",
+      "m07",
+      "m08",
+      "m09",
+      "m10",
+      "m11",
+      "m12",
+      "m13"
+     ]
+    },
+    {
+     "row": "genre:thriller",
+     "ids": [
+      "g00",
+      "g01",
+      "g02",
+      "g03",
+      "g04",
+      "g10",
+      "g05",
+      "g06",
+      "g07",
+      "g11",
+      "g08",
+      "g09",
+      "g12",
+      "g13"
+     ]
+    },
+    {
+     "row": "trending-library",
+     "ids": [
+      "t00",
+      "t01",
+      "t02",
+      "t03",
+      "t04",
+      "t05",
+      "t06",
+      "t07",
+      "t08",
+      "t09"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "no history: no exploration slots",
+   "results": [
+    {
+     "id": "top-week",
+     "ordered": true,
+     "picks": [
+      {
+       "id": "a00",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a01",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a02",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a03",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a04",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a05",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a06",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a07",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a08",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a09",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a10",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a11",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a12",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a13",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a14",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a15",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "trending-library",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "a00",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a01",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a02",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a03",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a04",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "a05",
+       "kind": "movie",
+       "year": 2024,
+       "genre": "action",
+       "genres": [
+        "action"
+       ]
+      },
+      {
+       "id": "t00",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t01",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t02",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t03",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t04",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t05",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t06",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t07",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t08",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "t09",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "for-you",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "f00",
+       "kind": "movie",
+       "year": 2000,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f01",
+       "kind": "movie",
+       "year": 2003,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f02",
+       "kind": "movie",
+       "year": 2006,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f03",
+       "kind": "movie",
+       "year": 2009,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f04",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f05",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f06",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f07",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f08",
+       "kind": "movie",
+       "year": 2000,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f09",
+       "kind": "movie",
+       "year": 2003,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f10",
+       "kind": "movie",
+       "year": 2006,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f11",
+       "kind": "movie",
+       "year": 2009,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f12",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f13",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f14",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f15",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f16",
+       "kind": "movie",
+       "year": 2000,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f17",
+       "kind": "movie",
+       "year": 2003,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f18",
+       "kind": "movie",
+       "year": 2006,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f19",
+       "kind": "movie",
+       "year": 2009,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f20",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ],
+       "lang": "Hindi",
+       "franchise": "saga"
+      },
+      {
+       "id": "f21",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f22",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "comedy",
+       "genres": [
+        "comedy"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      },
+      {
+       "id": "f23",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "sci-fi",
+       "genres": [
+        "science fiction"
+       ],
+       "lang": "Hindi",
+       "franchise": null
+      }
+     ]
+    },
+    {
+     "id": "genre:thriller",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "g00",
+       "kind": "movie",
+       "year": 2010,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g01",
+       "kind": "movie",
+       "year": 2011,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g02",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g03",
+       "kind": "movie",
+       "year": 2013,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g04",
+       "kind": "movie",
+       "year": 2014,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g05",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g06",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g07",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g08",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g09",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g10",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g11",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g12",
+       "kind": "movie",
+       "year": 2010,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g13",
+       "kind": "movie",
+       "year": 2011,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g14",
+       "kind": "movie",
+       "year": 2012,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g15",
+       "kind": "movie",
+       "year": 2013,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g16",
+       "kind": "movie",
+       "year": 2014,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g17",
+       "kind": "movie",
+       "year": 2015,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g18",
+       "kind": "movie",
+       "year": 2016,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g19",
+       "kind": "movie",
+       "year": 2017,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g20",
+       "kind": "movie",
+       "year": 2018,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g21",
+       "kind": "movie",
+       "year": 2019,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g22",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      },
+      {
+       "id": "g23",
+       "kind": "movie",
+       "year": 2021,
+       "genre": "thriller",
+       "genres": [
+        "thriller"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "genre:comedy",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "f00",
+       "kind": "movie"
+      },
+      {
+       "id": "f01",
+       "kind": "movie"
+      },
+      {
+       "id": "f02",
+       "kind": "movie"
+      },
+      {
+       "id": "f03",
+       "kind": "movie"
+      },
+      {
+       "id": "f04",
+       "kind": "movie"
+      },
+      {
+       "id": "c00",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      },
+      {
+       "id": "c01",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      },
+      {
+       "id": "c02",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      },
+      {
+       "id": "c03",
+       "kind": "movie",
+       "genres": [
+        "comedy"
+       ],
+       "genre": "comedy"
+      }
+     ]
+    },
+    {
+     "id": "movie-night",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "m00",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m01",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m02",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m03",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m04",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m05",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m06",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m07",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m08",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m09",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m10",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m11",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m12",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "m13",
+       "kind": "movie",
+       "year": 2020,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "binge",
+     "ordered": false,
+     "picks": [
+      {
+       "id": "b00",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b01",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b02",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b03",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b04",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b05",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b06",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b07",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b08",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b09",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b10",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b11",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b12",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      },
+      {
+       "id": "b13",
+       "kind": "series",
+       "year": 2021,
+       "genre": "drama",
+       "genres": [
+        "drama"
+       ]
+      }
+     ]
+    }
+   ],
+   "affinity": {
+    "genreKeys": [],
+    "topLangs": []
+   },
+   "weekday": 3,
+   "hour": 14,
+   "kids": false,
+   "expect": [
+    {
+     "row": "top-week",
+     "ids": [
+      "a00",
+      "a01",
+      "a02",
+      "a03",
+      "a04",
+      "a05",
+      "a06",
+      "a07",
+      "a08",
+      "a09",
+      "a10",
+      "a11",
+      "a12",
+      "a13"
+     ]
+    },
+    {
+     "row": "for-you",
+     "ids": [
+      "f00",
+      "f01",
+      "f02",
+      "f04",
+      "f03",
+      "f05",
+      "f07",
+      "f06",
+      "f08",
+      "f09",
+      "f10",
+      "f12",
+      "f11",
+      "f13"
+     ]
+    },
+    {
+     "row": "genre:thriller",
+     "ids": [
+      "g00",
+      "g01",
+      "g02",
+      "g03",
+      "g04",
+      "g10",
+      "g05",
+      "g06",
+      "g07",
+      "g11",
+      "g08",
+      "g09",
+      "g12",
+      "g13"
+     ]
+    },
+    {
+     "row": "trending-library",
+     "ids": [
+      "t00",
+      "t01",
+      "t02",
+      "t03",
+      "t04",
+      "t05",
+      "t06",
+      "t07",
+      "t08",
+      "t09"
+     ]
+    }
+   ]
+  }
+ ],
+ "franchise": [
+  {
+   "key": "john wick",
+   "expect": "john wick"
+  },
+  {
+   "key": "john wick 2",
+   "expect": "john wick"
+  },
+  {
+   "key": "john wick chapter 4",
+   "expect": "john wick"
+  },
+  {
+   "key": "harry potter chamber secrets",
+   "expect": "harry potter"
+  },
+  {
+   "key": "iron man 3",
+   "expect": "iron man"
+  },
+  {
+   "key": "crash",
+   "expect": null
+  },
+  {
+   "key": "heat",
+   "expect": null
+  },
+  {
+   "key": "the",
+   "expect": null
+  },
+  {
+   "key": "fast furious 6",
+   "expect": "fast furious"
+  },
+  {
+   "key": "ocean eleven",
+   "expect": "ocean eleven"
+  },
+  {
+   "key": "a b",
+   "expect": null
+  },
+  {
+   "key": "12 34",
+   "expect": null
+  },
+  {
+   "key": "rocky ii",
+   "expect": null
+  },
+  {
+   "key": "mission impossible fallout",
+   "expect": "mission impossible"
+  },
+  {
+   "key": "rocky",
+   "expect": null
+  },
+  {
+   "key": "3 idiots",
+   "expect": "3 idiots"
+  },
+  {
+   "key": "lord of rings fellowship",
+   "expect": null
+  },
+  {
+   "key": "lord of war",
+   "expect": null
+  }
+ ],
+ "modeDefault": [
+  {
+   "chosen": null,
+   "weeklyOrdered": true,
+   "allTimeOrdered": true,
+   "mode": "weekly",
+   "auto": false
+  },
+  {
+   "chosen": null,
+   "weeklyOrdered": false,
+   "allTimeOrdered": true,
+   "mode": "allTime",
+   "auto": true
+  },
+  {
+   "chosen": null,
+   "weeklyOrdered": false,
+   "allTimeOrdered": false,
+   "mode": "weekly",
+   "auto": false
+  },
+  {
+   "chosen": null,
+   "weeklyOrdered": true,
+   "allTimeOrdered": false,
+   "mode": "weekly",
+   "auto": false
+  },
+  {
+   "chosen": "weekly",
+   "weeklyOrdered": false,
+   "allTimeOrdered": true,
+   "mode": "weekly",
+   "auto": false
+  },
+  {
+   "chosen": "allTime",
+   "weeklyOrdered": true,
+   "allTimeOrdered": false,
+   "mode": "allTime",
+   "auto": false
+  }
+ ],
+ "titles": {
+  "rows": [
+   "Pick Up Where You Left Off",
+   "This Week's Top Picks",
+   "Popular in Your Library",
+   "Picked for You",
+   "Hidden Gems",
+   "Fresh Additions",
+   "Movie Night",
+   "Binge-Worthy Series",
+   "Collections",
+   "Browse by Genre",
+   "With the Kids",
+   "Edge of Your Seat",
+   "Feel-Good Picks"
+  ],
+  "genres": {
+   "action": "Action Packed",
+   "comedy": "Laugh Out Loud",
+   "drama": "Drama Worth Your Time",
+   "thriller": "Thrillers Worth Watching",
+   "scifi": "Sci-Fi Picks",
+   "horror": "Horror After Dark",
+   "romance": "Love Stories",
+   "crime": "Crime Stories",
+   "animation": "Animated Favourites",
+   "documentary": "Real-World Docs",
+   "family": "Family Time",
+   "fantasy": "Fantasy Worlds",
+   "mystery": "Mysteries to Solve",
+   "adventure": "Adventure Awaits",
+   "war": "War Stories",
+   "western": "Westerns",
+   "history": "History Comes Alive",
+   "music": "Music and Musicals",
+   "biography": "True Life Stories",
+   "kids": "Kids' Corner",
+   "anime": "Anime Picks",
+   "reality": "Reality Favourites"
+  }
+ }
+}

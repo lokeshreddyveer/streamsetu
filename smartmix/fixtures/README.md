@@ -1,5 +1,7 @@
 # Smart Mix shared fixtures
 
+Owner: the StreamSetu maintainer. Apple and Android test owners keep their runners in step; `smartmix/tools/smartmix_ref.py` (regenerate with `make_fixtures.py`) is the single source of the expected values. Shared by Swift and Kotlin (enforced by `Scripts/check-fixtures.py`); the Windows (C#) runner is on hold.
+
 One set of JSON files, consumed by the Swift tests (`macos/Tests/REDDYTests/SmartMix*`) and the Kotlin tests. Every expected value was computed by the
 reference script `smartmix/tools/smartmix_ref.py` (integer-only Python); regenerate with `python3 smartmix/tools/make_fixtures.py`.
 Swift and Kotlin must reproduce every id list and every diagnostics field exactly. Contract: the ranking contract (05) plus the decisions below.
@@ -27,10 +29,10 @@ of the library for that step only (lock/dismiss toggles). `commit: true` records
 id, kind [movie|series: movie], key (identity key, already normalised: grouping is `(kind,key)`) [""], year [nil], added (days before dayStart; nil = unknown) [nil],
 rating (text) [nil], q (quality rank 0..5) [2], cam [false], lang [nil], folder (folderKey) [nil], franchise [nil], genre (primaryGenre) [nil],
 poster [true], backdrop [false], watched [false], completed [false], lastWatched (days ago) [nil], p7, p30 [0] (identity-level play counts),
-trend (TMDB rank, only set by the matcher, never in input; ignored if present), loadsAgo (ignored: derived from state), restricted [false], dismissed [false], src (preferred-source rank, lower is better) [0].
+trend (the details service rank, only set by the matcher, never in input; ignored if present), loadsAgo (ignored: derived from state), restricted [false], dismissed [false], src (preferred-source rank, lower is better) [0].
 
 ## Pipeline (what both platforms implement)
-1. loadsAgo: from the state store for (profile, shelf), see State. 2. TMDB matcher assigns `trend` (only when active, see TMDB).
+1. loadsAgo: from the state store for (profile, shelf), see State. 2. The details service matcher assigns `trend` (only when active, see the details service).
 3. Grouping: candidates grouped by `(kind,key)`; inside a group, members sorted by (year nil last, year, id bytes) are split into clusters: a member whose year is more than 1
    above the cluster's FIRST year starts a new cluster; nil-year members join the first cluster. One cluster = one title (one card).
 4. Cluster flags: restricted = any member restricted; dismissed = any member dismissed; watched/completed = any; lastWatched = min; p7/p30 = sums; trend = min; loadsAgo = min; camOnly = all members CAM.
@@ -51,7 +53,7 @@ trend (TMDB rank, only set by the matcher, never in input; ignored if present), 
 8. Tier loop: t = 0..5 (1 fresh const, 2 diversity off, 3 watched allowed, 4 poster-less allowed, 5 sole-CAM allowed); stop at the first tier with picks >= min. If none reaches min the tier 5 result stands.
 9. Empty after tier 5 (and not lang-pref): fallback `recentlyAdded` (restricted/dismissed already removed; clusters with poster or backdrop, by added asc nil last then id; `plainLibrary` by id if none have art;
    hero with nothing at all = `existingFeatured`, the UI keeps its existing art). lang-pref empty = `hidden: true`.
-10. top-week: with TMDB active and >= 6 non-restricted clusters matched, those eligible matched clusters in the pool are picked first in TMDB rank order (max 14, no PRNG draw, they count as the "last two" for diversity),
+10. top-week: with the details service active and >= 6 non-restricted clusters matched, those eligible matched clusters in the pool are picked first in the details service rank order (max 14, no PRNG draw, they count as the "last two" for diversity),
     the rest of the slots are drawn normally (same PRNG stream); caption `trendingTMDB`, otherwise `mostWatchedHere`. trending-library: trend mode iff >= 3 non-restricted matched clusters
     (then only matched clusters are eligible, caption `trendingTMDB`); otherwise it behaves like local top-week scoring under its own seed (caption `mostWatchedHere`).
 
@@ -60,7 +62,7 @@ Per (profile, shelf): refreshCounter, loadKey, seq, rows (identityKey, year, ite
 Build with loadKey L: effSeq = seq if state.loadKey == L else seq+1; for each row ago = effSeq - rowSeq, rows with ago < 1 are ignored; per identityKey the smallest ago counts; fresh feature 1:100, 2:400, 3:700, else 1000.
 `record(L, rows)` (first successful render only): no-op if state.loadKey == L; else loadKey = L, seq += 1, append rows with the new seq, keep the 48 newest rows (seq desc, stable). Rows never include restricted items.
 
-## TMDB
+## The details service
 Active only when `enabled` (default true) and `keyPresent` (the person's own key) and cache present and age <= 30 days. Age 31..180: `expired` (local only). Age > 180: `purged` (cache must be deleted; local only). No cache: `noCache`. Without key or switched off: `off`.
 Matching (candidate `key` is the already-normalised identity key; entries are normalised with `fold_title`): kind movie<->movie, tv<->series; names = fold(title) and fold(original title); year must be within 1 if both are known;
 lowest rank wins per candidate. `fold_title` = NFKD, drop combining marks, lowercase, every run of characters that are not ASCII letters/digits and not non-ASCII (code point >= 0x80) becomes one space, drop one leading the/a/an when more words follow. (Fixtures only use plain ASCII and one accented title.)
@@ -73,4 +75,12 @@ poster u(100)>=12; backdrop u(100)<55; watched u(100)<6; completed watched&&u(10
 Python evaluates `a and b` lazily where written (`completed`), so draw `u(100)<70` only when watched is true; copy the Python short-circuit behaviour exactly. Ids: `m<i>` or `s<i>`.
 
 ## Diagnostics fields compared
-inCount, groups, restricted, dismissed, camOnly, noArtwork, watched, lang, notTrending, pool, drawn, tier, tiny, hidden, fallback, diversityRelaxed, caption, tmdb, trendMode. Never any titles.
+inCount, groups, restricted, dismissed, camOnly, noArtwork, watched, lang, notTrending, pool, drawn, tier, tiny, hidden, fallback, diversityRelaxed, caption, `tmdb`, trendMode. Never any titles.
+
+## Genre shelves and shelf modes (added)
+`genre-shelves.json` and `shelf-modes.json` follow a different layout (see docs/SMART-MIX.md, sections 1-6 and 8); they are not engine cases and the generic runner skips them.
+`home-layout.json` (docs/SMART-MIX.md section 10; written by `smartmix/tools/make_home_fixtures.py`) pins Home v2 placement by weekday and hour, one-title-per-screen composition (exclusion, re-rank, exploration), franchise keys, the default view of a ranked row and the row names; also skipped by the generic runner.
+Swift: `macos/Tests/REDDYTests/GenreShelfTests.swift`. Kotlin and C# ports must reproduce every `expect` value.
+
+## Pending: language mix
+`small-mixed-300.json` is heavy in Indian-language titles. A second 300-title fixture with a Spanish, Korean, Japanese, Arabic, Turkish, French and German mix is wanted so the language shelves and diversity limits are checked on a library that is not Indian. Its expected shelves must come from running the engine, so it is not written by hand.

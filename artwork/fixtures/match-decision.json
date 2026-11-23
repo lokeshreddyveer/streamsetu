@@ -1,0 +1,3508 @@
+[
+  {
+    "libraryTitle": "The Silent Harbor (2019)",
+    "year": 2019,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 100,
+        "title": "The Silent Harbor",
+        "originalTitle": "The Silent Harbor",
+        "year": 2019,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 200,
+        "title": "The Silent Harbor Returns",
+        "originalTitle": "The Silent Harbor Returns",
+        "year": 2022,
+        "popularity": 5,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 100,
+    "notes": "exact name and year"
+  },
+  {
+    "libraryTitle": "Golden River Story (2015)",
+    "year": 2015,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 101,
+        "title": "Golden River Story",
+        "originalTitle": "Golden River Story",
+        "year": 2015,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 201,
+        "title": "Golden River Story Returns",
+        "originalTitle": "Golden River Story Returns",
+        "year": 2018,
+        "popularity": 5,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 101,
+    "notes": "exact name and year"
+  },
+  {
+    "libraryTitle": "Midnight Orchard (2021)",
+    "year": 2021,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 102,
+        "title": "Midnight Orchard",
+        "originalTitle": "Midnight Orchard",
+        "year": 2021,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 202,
+        "title": "Midnight Orchard Returns",
+        "originalTitle": "Midnight Orchard Returns",
+        "year": 2024,
+        "popularity": 5,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 102,
+    "notes": "exact name and year"
+  },
+  {
+    "libraryTitle": "Crimson Kingdom (2008)",
+    "year": 2008,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 103,
+        "title": "Crimson Kingdom",
+        "originalTitle": "Crimson Kingdom",
+        "year": 2008,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 203,
+        "title": "Crimson Kingdom Returns",
+        "originalTitle": "Crimson Kingdom Returns",
+        "year": 2011,
+        "popularity": 5,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 103,
+    "notes": "exact name and year"
+  },
+  {
+    "libraryTitle": "Paper Moons (2012)",
+    "year": 2012,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 104,
+        "title": "Paper Moons",
+        "originalTitle": "Paper Moons",
+        "year": 2012,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 204,
+        "title": "Paper Moons Returns",
+        "originalTitle": "Paper Moons Returns",
+        "year": 2015,
+        "popularity": 5,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 104,
+    "notes": "exact name and year"
+  },
+  {
+    "libraryTitle": "Northern Signal (2017)",
+    "year": 2017,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 105,
+        "title": "Northern Signal",
+        "originalTitle": "Northern Signal",
+        "year": 2017,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 205,
+        "title": "Northern Signal Returns",
+        "originalTitle": "Northern Signal Returns",
+        "year": 2020,
+        "popularity": 5,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 105,
+    "notes": "exact name and year"
+  },
+  {
+    "libraryTitle": "Hidden Letters (2003)",
+    "year": 2003,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 106,
+        "title": "Hidden Letters",
+        "originalTitle": "Hidden Letters",
+        "year": 2003,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 206,
+        "title": "Hidden Letters Returns",
+        "originalTitle": "Hidden Letters Returns",
+        "year": 2006,
+        "popularity": 5,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 106,
+    "notes": "exact name and year"
+  },
+  {
+    "libraryTitle": "Burning Horizon (2022)",
+    "year": 2022,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 107,
+        "title": "Burning Horizon",
+        "originalTitle": "Burning Horizon",
+        "year": 2022,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 207,
+        "title": "Burning Horizon Returns",
+        "originalTitle": "Burning Horizon Returns",
+        "year": 2025,
+        "popularity": 5,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 107,
+    "notes": "exact name and year"
+  },
+  {
+    "libraryTitle": "Lost Garden (1999)",
+    "year": 1999,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 108,
+        "title": "Lost Garden",
+        "originalTitle": "Lost Garden",
+        "year": 1999,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 208,
+        "title": "Lost Garden Returns",
+        "originalTitle": "Lost Garden Returns",
+        "year": 2002,
+        "popularity": 5,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 108,
+    "notes": "exact name and year"
+  },
+  {
+    "libraryTitle": "Final Echoes (2010)",
+    "year": 2010,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 109,
+        "title": "Final Echoes",
+        "originalTitle": "Final Echoes",
+        "year": 2010,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 209,
+        "title": "Final Echoes Returns",
+        "originalTitle": "Final Echoes Returns",
+        "year": 2013,
+        "popularity": 5,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 109,
+    "notes": "exact name and year"
+  },
+  {
+    "libraryTitle": "Glass Voyage Rising",
+    "year": 2018,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 300,
+        "title": "Glass Voyage Rising",
+        "originalTitle": "Glass Voyage Rising",
+        "year": 2019,
+        "popularity": 20,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 300,
+    "notes": "longer title, year one out is accepted (the year of the copy)"
+  },
+  {
+    "libraryTitle": "Iron Tide Chronicle",
+    "year": 2014,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 301,
+        "title": "Iron Tide Chronicle",
+        "originalTitle": "Iron Tide Chronicle",
+        "year": 2013,
+        "popularity": 20,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 301,
+    "notes": "longer title, year one out is accepted (the year of the copy)"
+  },
+  {
+    "libraryTitle": "Neon Harbor Legacy",
+    "year": 2020,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 302,
+        "title": "Neon Harbor Legacy",
+        "originalTitle": "Neon Harbor Legacy",
+        "year": 2021,
+        "popularity": 20,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 302,
+    "notes": "longer title, year one out is accepted (the year of the copy)"
+  },
+  {
+    "libraryTitle": "Second Kingdom Rising",
+    "year": 2005,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 303,
+        "title": "Second Kingdom Rising",
+        "originalTitle": "Second Kingdom Rising",
+        "year": 2004,
+        "popularity": 20,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 303,
+    "notes": "longer title, year one out is accepted (the year of the copy)"
+  },
+  {
+    "libraryTitle": "Broken Mountain Tale",
+    "year": 2011,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 304,
+        "title": "Broken Mountain Tale",
+        "originalTitle": "Broken Mountain Tale",
+        "year": 2012,
+        "popularity": 20,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 304,
+    "notes": "longer title, year one out is accepted (the year of the copy)"
+  },
+  {
+    "libraryTitle": "Twilight Empire Saga",
+    "year": 2016,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 305,
+        "title": "Twilight Empire Saga",
+        "originalTitle": "Twilight Empire Saga",
+        "year": 2015,
+        "popularity": 20,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 305,
+    "notes": "longer title, year one out is accepted (the year of the copy)"
+  },
+  {
+    "libraryTitle": "Pushpa",
+    "year": 2021,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 320,
+        "title": "Pushpa",
+        "originalTitle": "Pushpa",
+        "year": 2022,
+        "popularity": 40,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 320,
+    "notes": "short film, only one of its name, language agrees, year one out: accepted"
+  },
+  {
+    "libraryTitle": "Jawan",
+    "year": 2023,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 321,
+        "title": "Jawan",
+        "originalTitle": "Jawan",
+        "year": 2022,
+        "popularity": 40,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 321,
+    "notes": "short film, only one of its name, language agrees, year one out: accepted"
+  },
+  {
+    "libraryTitle": "Leo",
+    "year": 2023,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 322,
+        "title": "Leo",
+        "originalTitle": "Leo",
+        "year": 2023,
+        "popularity": 40,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 322,
+    "notes": "short title needs its exact year, even when it is the only film of that name"
+  },
+  {
+    "libraryTitle": "Pushpa",
+    "year": 2021,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 330,
+        "title": "Pushpa",
+        "originalTitle": "Pushpa",
+        "year": 2022,
+        "popularity": 40,
+        "originalLanguage": "te"
+      },
+      {
+        "id": 331,
+        "title": "Pushpa",
+        "originalTitle": "Pushpa",
+        "year": 1995,
+        "popularity": 3,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 330,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: short title, year one out and another film of the name: not guessed"
+  },
+  {
+    "libraryTitle": "Jawan",
+    "year": 2023,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 332,
+        "title": "Jawan",
+        "originalTitle": "Jawan",
+        "year": 2023,
+        "popularity": 80,
+        "originalLanguage": "hi"
+      },
+      {
+        "id": 333,
+        "title": "Jawan",
+        "originalTitle": "Jawan",
+        "year": 2017,
+        "popularity": 5,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 332,
+    "notes": "short title with the exact year wins over a namesake"
+  },
+  {
+    "libraryTitle": "Kick",
+    "year": 2009,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 334,
+        "title": "Kick",
+        "originalTitle": "Kick",
+        "year": 2014,
+        "popularity": 20,
+        "originalLanguage": "hi"
+      },
+      {
+        "id": 335,
+        "title": "Kick",
+        "originalTitle": "Kick",
+        "year": 2009,
+        "popularity": 15,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 334,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: namesakes: the exact year decides, not popularity"
+  },
+  {
+    "libraryTitle": "Midnight Voyage Tale",
+    "year": 2012,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 340,
+        "title": "Midnight Voyage Tale",
+        "originalTitle": "Midnight Voyage Tale",
+        "year": 2014,
+        "popularity": 12,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 340,
+    "notes": "near-exact distinctive name, year two out accepted"
+  },
+  {
+    "libraryTitle": "Midnight Voyage Tale",
+    "year": 2012,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 341,
+        "title": "Midnight Voyage Tale",
+        "originalTitle": "Midnight Voyage Tale",
+        "year": 2016,
+        "popularity": 12,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 341,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: year four out refused"
+  },
+  {
+    "libraryTitle": "Harbor Lights Show",
+    "year": 2015,
+    "kind": "series",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 342,
+        "title": "Harbor Lights Show",
+        "originalTitle": "Harbor Lights Show",
+        "year": 2017,
+        "popularity": 12,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 342,
+    "notes": "series: year two out accepted"
+  },
+  {
+    "libraryTitle": "Harbor Lights Show",
+    "year": 2015,
+    "kind": "series",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 343,
+        "title": "Harbor Lights Show",
+        "originalTitle": "Harbor Lights Show",
+        "year": 2019,
+        "popularity": 12,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 343,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: series: year four out refused"
+  },
+  {
+    "libraryTitle": "Silent Orchard Days",
+    "year": 2010,
+    "kind": "series",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 344,
+        "title": "Silent Orchard Days",
+        "originalTitle": "Silent Orchard Days",
+        "year": 2010,
+        "popularity": 12,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 344,
+    "notes": "series exact"
+  },
+  {
+    "libraryTitle": "Crimson Tide Rising",
+    "year": 1995,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 350,
+        "title": "Crimson Tide Rising",
+        "originalTitle": "Crimson Tide Rising",
+        "year": 2020,
+        "popularity": 50,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 350,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: same name, a different decade: another film"
+  },
+  {
+    "libraryTitle": "Last Voyage Home",
+    "year": 2001,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 351,
+        "title": "Last Voyage Home",
+        "originalTitle": "Last Voyage Home",
+        "year": 2019,
+        "popularity": 50,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 351,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: same name, a different decade: another film"
+  },
+  {
+    "libraryTitle": "Golden Echo Valley",
+    "year": 2008,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 352,
+        "title": "Golden Echo Valley",
+        "originalTitle": "Golden Echo Valley",
+        "year": 1975,
+        "popularity": 50,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 352,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: same name, a different decade: another film"
+  },
+  {
+    "libraryTitle": "Paper Garden Tales",
+    "year": 2014,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 353,
+        "title": "Paper Garden Tales",
+        "originalTitle": "Paper Garden Tales",
+        "year": 2000,
+        "popularity": 50,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 353,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: same name, a different decade: another film"
+  },
+  {
+    "libraryTitle": "Neon Signal",
+    "year": 2019,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 360,
+        "title": "Neon Signal",
+        "originalTitle": "Neon Signal",
+        "year": 1985,
+        "popularity": 50,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 361,
+        "title": "Neon Signal",
+        "originalTitle": "Neon Signal",
+        "year": 2019,
+        "popularity": 5,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 360,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: the film of the right year, though less popular"
+  },
+  {
+    "libraryTitle": "Neon Signal Reborn",
+    "year": 2019,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 362,
+        "title": "Neon Signal Reborn",
+        "originalTitle": "Neon Signal Reborn",
+        "year": 2020,
+        "popularity": 5,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 363,
+        "title": "Neon Signal Reborn",
+        "originalTitle": "Neon Signal Reborn",
+        "year": 2019,
+        "popularity": 3,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 362,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: exact year before one-out year"
+  },
+  {
+    "libraryTitle": "Pokiri (2006)",
+    "year": 2006,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 400,
+        "title": "Pokkiri",
+        "originalTitle": "Pokkiri",
+        "year": 2006,
+        "popularity": 25,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 400,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Dulhaniya Le Aaeegi (2026)",
+    "year": 2026,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 401,
+        "title": "Dulhania Le Aayegi",
+        "originalTitle": "Dulhania Le Aayegi",
+        "year": 2026,
+        "popularity": 25,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 401,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Bahubali The Beginning (2015)",
+    "year": 2015,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 402,
+        "title": "Baahubali: The Beginning",
+        "originalTitle": "Baahubali: The Beginning",
+        "year": 2015,
+        "popularity": 25,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 402,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Veeram Returns (2014)",
+    "year": 2014,
+    "kind": "movie",
+    "languageTag": "Tamil",
+    "candidates": [
+      {
+        "id": 403,
+        "title": "Viram Returns",
+        "originalTitle": "Viram Returns",
+        "year": 2014,
+        "popularity": 25,
+        "originalLanguage": "ta"
+      }
+    ],
+    "expectedId": 403,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Phir Hera Pheri (2006)",
+    "year": 2006,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 404,
+        "title": "Fir Hera Feri",
+        "originalTitle": "Fir Hera Feri",
+        "year": 2006,
+        "popularity": 25,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 404,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Kantha Chronicle (2022)",
+    "year": 2022,
+    "kind": "movie",
+    "languageTag": "Kannada",
+    "candidates": [
+      {
+        "id": 405,
+        "title": "Kanta Chronicle",
+        "originalTitle": "Kanta Chronicle",
+        "year": 2022,
+        "popularity": 25,
+        "originalLanguage": "kn"
+      }
+    ],
+    "expectedId": 405,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Wikram Vedha (2022)",
+    "year": 2022,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 406,
+        "title": "Vikram Vedha",
+        "originalTitle": "Vikram Vedha",
+        "year": 2022,
+        "popularity": 25,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 406,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Thalaiva Rising (2013)",
+    "year": 2013,
+    "kind": "movie",
+    "languageTag": "Tamil",
+    "candidates": [
+      {
+        "id": 407,
+        "title": "Talaiva Rising",
+        "originalTitle": "Talaiva Rising",
+        "year": 2013,
+        "popularity": 25,
+        "originalLanguage": "ta"
+      }
+    ],
+    "expectedId": 407,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Gajini Returns (2008)",
+    "year": 2008,
+    "kind": "movie",
+    "languageTag": "Tamil",
+    "candidates": [
+      {
+        "id": 408,
+        "title": "Ghajini Returns",
+        "originalTitle": "Ghajini Returns",
+        "year": 2008,
+        "popularity": 25,
+        "originalLanguage": "ta"
+      }
+    ],
+    "expectedId": 408,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Bheeshma Parvam (2022)",
+    "year": 2022,
+    "kind": "movie",
+    "languageTag": "Malayalam",
+    "candidates": [
+      {
+        "id": 409,
+        "title": "Bhishma Parvam",
+        "originalTitle": "Bhishma Parvam",
+        "year": 2022,
+        "popularity": 25,
+        "originalLanguage": "ml"
+      }
+    ],
+    "expectedId": 409,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Mahaan Story (2022)",
+    "year": 2022,
+    "kind": "movie",
+    "languageTag": "Tamil",
+    "candidates": [
+      {
+        "id": 410,
+        "title": "Mahan Story",
+        "originalTitle": "Mahan Story",
+        "year": 2022,
+        "popularity": 25,
+        "originalLanguage": "ta"
+      }
+    ],
+    "expectedId": 410,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Sooryavanshi Rising (2021)",
+    "year": 2021,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 411,
+        "title": "Suryavanshi Rising",
+        "originalTitle": "Suryavanshi Rising",
+        "year": 2021,
+        "popularity": 25,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 411,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Kuch Kuch Hota Hai Aaj (2001)",
+    "year": 2001,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 412,
+        "title": "Kuch Kuch Hota Hai Aj",
+        "originalTitle": "Kuch Kuch Hota Hai Aj",
+        "year": 2001,
+        "popularity": 25,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 412,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Maharshi Story (2019)",
+    "year": 2019,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 413,
+        "title": "Maharshi Story",
+        "originalTitle": "Maharshi Story",
+        "year": 2019,
+        "popularity": 25,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 413,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Duniya Gol Hai (2011)",
+    "year": 2011,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 414,
+        "title": "Dunia Gol Hai",
+        "originalTitle": "Dunia Gol Hai",
+        "year": 2011,
+        "popularity": 25,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 414,
+    "notes": "transliteration variant of an Indian-language title"
+  },
+  {
+    "libraryTitle": "Pokiri",
+    "year": 2006,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 430,
+        "title": "Pokkiri",
+        "originalTitle": "Pokkiri",
+        "year": 2007,
+        "popularity": 25,
+        "originalLanguage": "ta"
+      },
+      {
+        "id": 431,
+        "title": "Pokiri",
+        "originalTitle": "Pokiri",
+        "year": 2006,
+        "popularity": 25,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 431,
+    "notes": "same sound, two films: the exact spelling and year"
+  },
+  {
+    "libraryTitle": "Dulhaniya Le Aaeegi",
+    "year": 2026,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 432,
+        "title": "Dulhania Le Aayegi",
+        "originalTitle": "Dulhania Le Aayegi",
+        "year": 2026,
+        "popularity": 20,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 432,
+    "notes": "spelling variants of two words"
+  },
+  {
+    "libraryTitle": "Dulhaniya Le Aaeegi",
+    "year": 2026,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 433,
+        "title": "Dulhan Hum Le Jayenge",
+        "originalTitle": "Dulhan Hum Le Jayenge",
+        "year": 2000,
+        "popularity": 20,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": null,
+    "notes": "a different film with a similar start"
+  },
+  {
+    "libraryTitle": "Le Dulhania Aayegi",
+    "year": 2026,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 440,
+        "title": "Dulhania Le Aayegi",
+        "originalTitle": "Dulhania Le Aayegi",
+        "year": 2026,
+        "popularity": 20,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 440,
+    "notes": "words in another order"
+  },
+  {
+    "libraryTitle": "Baahu Bali The Beginning",
+    "year": 2015,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 441,
+        "title": "Baahubali: The Beginning",
+        "originalTitle": "Baahubali: The Beginning",
+        "year": 2015,
+        "popularity": 60,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 441,
+    "notes": "a space in the middle of a word"
+  },
+  {
+    "libraryTitle": "Mr. Bean Holiday",
+    "year": 2007,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 442,
+        "title": "Mr. Bean's Holiday",
+        "originalTitle": "Mr. Bean's Holiday",
+        "year": 2007,
+        "popularity": 40,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 442,
+    "notes": "possessive dropped"
+  },
+  {
+    "libraryTitle": "Spider Man No Way Home",
+    "year": 2021,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 443,
+        "title": "Spider-Man: No Way Home",
+        "originalTitle": "Spider-Man: No Way Home",
+        "year": 2021,
+        "popularity": 200,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 443,
+    "notes": "hyphen and colon"
+  },
+  {
+    "libraryTitle": "Fast and Furious 6",
+    "year": 2013,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 444,
+        "title": "Fast & Furious 6",
+        "originalTitle": "Fast & Furious 6",
+        "year": 2013,
+        "popularity": 80,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 444,
+    "notes": "and / ampersand"
+  },
+  {
+    "libraryTitle": "Baahubali",
+    "year": 2015,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 450,
+        "title": "Baahubali: The Beginning",
+        "originalTitle": "Baahubali: The Beginning",
+        "year": 2015,
+        "popularity": 60,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 450,
+    "notes": "library has no subtitle, exact year"
+  },
+  {
+    "libraryTitle": "Baahubali",
+    "year": 2015,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 451,
+        "title": "Baahubali: The Beginning",
+        "originalTitle": "Baahubali: The Beginning",
+        "year": 2017,
+        "popularity": 60,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 451,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: library name only a head of a different film's title and year differs"
+  },
+  {
+    "libraryTitle": "Avatar: The Way of Water",
+    "year": 2022,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 452,
+        "title": "Avatar: The Way of Water",
+        "originalTitle": "Avatar: The Way of Water",
+        "year": 2022,
+        "popularity": 300,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 453,
+        "title": "Avatar",
+        "originalTitle": "Avatar",
+        "year": 2009,
+        "popularity": 400,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 452,
+    "notes": "subtitle kept: full title beats the head"
+  },
+  {
+    "libraryTitle": "Avatar The Way of Water 2022 4K",
+    "year": 2022,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 454,
+        "title": "Avatar: The Way of Water",
+        "originalTitle": "Avatar: The Way of Water",
+        "year": 2022,
+        "popularity": 300,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 454,
+    "notes": "tags removed by cleaning"
+  },
+  {
+    "libraryTitle": "Kalki 2898 AD: Part One",
+    "year": 2024,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 455,
+        "title": "Kalki 2898 AD",
+        "originalTitle": "Kalki 2898 AD",
+        "year": 2024,
+        "popularity": 90,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 455,
+    "notes": "subtitle on the library side"
+  },
+  {
+    "libraryTitle": "Dune: Part Two",
+    "year": 2024,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 456,
+        "title": "Dune: Part Two",
+        "originalTitle": "Dune: Part Two",
+        "year": 2024,
+        "popularity": 200,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 457,
+        "title": "Dune",
+        "originalTitle": "Dune",
+        "year": 2021,
+        "popularity": 300,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 456,
+    "notes": "part two is not part one"
+  },
+  {
+    "libraryTitle": "Dune",
+    "year": 2021,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 458,
+        "title": "Dune: Part Two",
+        "originalTitle": "Dune: Part Two",
+        "year": 2024,
+        "popularity": 200,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 459,
+        "title": "Dune",
+        "originalTitle": "Dune",
+        "year": 2021,
+        "popularity": 300,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 459,
+    "notes": "the plain title is the first film"
+  },
+  {
+    "libraryTitle": "Mission Impossible - Fallout",
+    "year": 2018,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 460,
+        "title": "Mission: Impossible - Fallout",
+        "originalTitle": "Mission: Impossible - Fallout",
+        "year": 2018,
+        "popularity": 100,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 460,
+    "notes": "dash and colon"
+  },
+  {
+    "libraryTitle": "Rocky II",
+    "year": 1979,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 470,
+        "title": "Rocky II",
+        "originalTitle": "Rocky II",
+        "year": 1979,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 471,
+        "title": "Rocky",
+        "originalTitle": "Rocky",
+        "year": 1976,
+        "popularity": 50,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 470,
+    "notes": "roman numeral"
+  },
+  {
+    "libraryTitle": "Rocky 2",
+    "year": 1979,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 472,
+        "title": "Rocky II",
+        "originalTitle": "Rocky II",
+        "year": 1979,
+        "popularity": 30,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 472,
+    "notes": "digit for roman numeral"
+  },
+  {
+    "libraryTitle": "Toy Story 3",
+    "year": 2010,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 473,
+        "title": "Toy Story 3",
+        "originalTitle": "Toy Story 3",
+        "year": 2010,
+        "popularity": 60,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 474,
+        "title": "Toy Story",
+        "originalTitle": "Toy Story",
+        "year": 1995,
+        "popularity": 70,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 473,
+    "notes": "number kept"
+  },
+  {
+    "libraryTitle": "Kung Fu Panda Part 2",
+    "year": 2011,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 475,
+        "title": "Kung Fu Panda 2",
+        "originalTitle": "Kung Fu Panda 2",
+        "year": 2011,
+        "popularity": 60,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 475,
+    "notes": "Part N"
+  },
+  {
+    "libraryTitle": "Pushpa Chapter 2",
+    "year": 2024,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 476,
+        "title": "Pushpa 2: The Rule",
+        "originalTitle": "Pushpa 2: The Rule",
+        "year": 2024,
+        "popularity": 150,
+        "originalLanguage": "te"
+      },
+      {
+        "id": 477,
+        "title": "Pushpa: The Rise",
+        "originalTitle": "Pushpa: The Rise",
+        "year": 2021,
+        "popularity": 100,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 476,
+    "notes": "chapter number picks the sequel by year"
+  },
+  {
+    "libraryTitle": "KGF Chapter 2",
+    "year": 2022,
+    "kind": "movie",
+    "languageTag": "Kannada",
+    "candidates": [
+      {
+        "id": 478,
+        "title": "K.G.F: Chapter 2",
+        "originalTitle": "K.G.F: Chapter 2",
+        "year": 2022,
+        "popularity": 120,
+        "originalLanguage": "kn"
+      },
+      {
+        "id": 479,
+        "title": "K.G.F: Chapter 1",
+        "originalTitle": "K.G.F: Chapter 1",
+        "year": 2018,
+        "popularity": 100,
+        "originalLanguage": "kn"
+      }
+    ],
+    "expectedId": 478,
+    "notes": "the right chapter"
+  },
+  {
+    "libraryTitle": "Drishyam 2",
+    "year": 2021,
+    "kind": "movie",
+    "languageTag": "Malayalam",
+    "candidates": [
+      {
+        "id": 480,
+        "title": "Drishyam 2",
+        "originalTitle": "Drishyam 2",
+        "year": 2021,
+        "popularity": 40,
+        "originalLanguage": "ml"
+      },
+      {
+        "id": 481,
+        "title": "Drishyam",
+        "originalTitle": "Drishyam",
+        "year": 2013,
+        "popularity": 40,
+        "originalLanguage": "ml"
+      }
+    ],
+    "expectedId": 480,
+    "notes": "sequel number"
+  },
+  {
+    "libraryTitle": "Hera Pheri III",
+    "year": 2025,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 482,
+        "title": "Hera Pheri 3",
+        "originalTitle": "Hera Pheri 3",
+        "year": 2025,
+        "popularity": 10,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 482,
+    "notes": "roman numeral three"
+  },
+  {
+    "libraryTitle": "The Matrix (1999)",
+    "year": 1999,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 490,
+        "title": "Matrix",
+        "originalTitle": "Matrix",
+        "year": 1999,
+        "popularity": 80,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 490,
+    "notes": "leading article"
+  },
+  {
+    "libraryTitle": "Matrix, The",
+    "year": 1999,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 491,
+        "title": "The Matrix",
+        "originalTitle": "The Matrix",
+        "year": 1999,
+        "popularity": 80,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 491,
+    "notes": "inverted article"
+  },
+  {
+    "libraryTitle": "A Quiet Place",
+    "year": 2018,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 492,
+        "title": "Quiet Place",
+        "originalTitle": "Quiet Place",
+        "year": 2018,
+        "popularity": 60,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 492,
+    "notes": "article A"
+  },
+  {
+    "libraryTitle": "Godfather",
+    "year": 1972,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 493,
+        "title": "The Godfather",
+        "originalTitle": "The Godfather",
+        "year": 1972,
+        "popularity": 90,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 493,
+    "notes": "missing article"
+  },
+  {
+    "libraryTitle": "Breaking Bad S03",
+    "year": 2008,
+    "kind": "series",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 500,
+        "title": "Breaking Bad",
+        "originalTitle": "Breaking Bad",
+        "year": 2008,
+        "popularity": 200,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 500,
+    "notes": "season tag"
+  },
+  {
+    "libraryTitle": "Money Heist (La Casa de Papel) S01",
+    "year": 2017,
+    "kind": "series",
+    "languageTag": "Spanish",
+    "candidates": [
+      {
+        "id": 501,
+        "title": "Money Heist",
+        "originalTitle": "La Casa de Papel",
+        "year": 2017,
+        "popularity": 100,
+        "originalLanguage": "es"
+      }
+    ],
+    "expectedId": 501,
+    "notes": "bracket and season tag"
+  },
+  {
+    "libraryTitle": "Sacred Games - Season 2",
+    "year": 2018,
+    "kind": "series",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 502,
+        "title": "Sacred Games",
+        "originalTitle": "Sacred Games",
+        "year": 2018,
+        "popularity": 50,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 502,
+    "notes": "season word"
+  },
+  {
+    "libraryTitle": "The Family Man S02",
+    "year": 2021,
+    "kind": "series",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 503,
+        "title": "The Family Man",
+        "originalTitle": "The Family Man",
+        "year": 2019,
+        "popularity": 50,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 503,
+    "notes": "series year is the season's year: two out accepted"
+  },
+  {
+    "libraryTitle": "Mirzapur (2018)",
+    "year": 2018,
+    "kind": "series",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 504,
+        "title": "Mirzapur",
+        "originalTitle": "Mirzapur",
+        "year": 2018,
+        "popularity": 50,
+        "originalLanguage": "hi"
+      },
+      {
+        "id": 505,
+        "title": "Mirzapur",
+        "originalTitle": "Mirzapur",
+        "year": 1990,
+        "popularity": 2,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 504,
+    "notes": "series exact year"
+  },
+  {
+    "libraryTitle": "Midnight Express Show",
+    "year": 2010,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 510,
+        "title": "Midnight Express Show",
+        "originalTitle": "Midnight Express Show",
+        "year": 2010,
+        "popularity": 50,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 511,
+        "title": "Midnight Express Show",
+        "originalTitle": "Midnight Express Show",
+        "year": 2010,
+        "popularity": 40,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 510,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: two equally good answers: left unmatched"
+  },
+  {
+    "libraryTitle": "Midnight Express Show",
+    "year": 2010,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 512,
+        "title": "Midnight Express Show",
+        "originalTitle": "Midnight Express Show",
+        "year": 2010,
+        "popularity": 90,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 513,
+        "title": "Midnight Express Show",
+        "originalTitle": "Midnight Express Show",
+        "year": 2010,
+        "popularity": 10,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 512,
+    "notes": "a clear popularity lead decides"
+  },
+  {
+    "libraryTitle": "Silver Path Story",
+    "year": 2010,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 514,
+        "title": "Silver Path Story",
+        "originalTitle": "Silver Path Story",
+        "year": 2010,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 515,
+        "title": "Silver Path Story",
+        "originalTitle": "Silver Path Story",
+        "year": 2010,
+        "popularity": 30,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 514,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: same year and popularity: the library's language decides"
+  },
+  {
+    "libraryTitle": "Silver Path Story",
+    "year": 2010,
+    "kind": "movie",
+    "languageTag": "Tamil",
+    "candidates": [
+      {
+        "id": 516,
+        "title": "Silver Path Story",
+        "originalTitle": "Silver Path Story",
+        "year": 2010,
+        "popularity": 30,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 517,
+        "title": "Silver Path Story",
+        "originalTitle": "Silver Path Story",
+        "year": 2010,
+        "popularity": 30,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 516,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: no language tie-break available: unmatched"
+  },
+  {
+    "libraryTitle": "Thunder Road Return",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 518,
+        "title": "Thunder Road Return",
+        "originalTitle": "Thunder Road Return",
+        "year": 1999,
+        "popularity": 50,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 519,
+        "title": "Thunder Road Return",
+        "originalTitle": "Thunder Road Return",
+        "year": 2018,
+        "popularity": 48,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 518,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: no library year, a remake of the same name: unmatched"
+  },
+  {
+    "libraryTitle": "Thunder Road Return",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 520,
+        "title": "Thunder Road Return",
+        "originalTitle": "Thunder Road Return",
+        "year": 1999,
+        "popularity": 5,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 521,
+        "title": "Thunder Road Return",
+        "originalTitle": "Thunder Road Return",
+        "year": 2018,
+        "popularity": 80,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 520,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: no library year, the remake is far more popular"
+  },
+  {
+    "libraryTitle": "Thunder Road Return",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 522,
+        "title": "Thunder Road Return",
+        "originalTitle": "Thunder Road Return",
+        "year": 2018,
+        "popularity": 80,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 522,
+    "notes": "no library year, only one film of the name"
+  },
+  {
+    "libraryTitle": "Calm Seas Return",
+    "year": 2010,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 523,
+        "title": "Calm Seas Return",
+        "originalTitle": "Calm Seas Return",
+        "year": 2010,
+        "popularity": 3,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 524,
+        "title": "Calm Seas Return",
+        "originalTitle": "Calm Seas Return",
+        "year": 2011,
+        "popularity": 3,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 523,
+    "notes": "exact year before one out"
+  },
+  {
+    "libraryTitle": "Up",
+    "year": 2009,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 530,
+        "title": "Up",
+        "originalTitle": "Up",
+        "year": 2009,
+        "popularity": 90,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 531,
+        "title": "Up",
+        "originalTitle": "Up",
+        "year": 1976,
+        "popularity": 2,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 530,
+    "notes": "short name, exact year"
+  },
+  {
+    "libraryTitle": "Up",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 532,
+        "title": "Up",
+        "originalTitle": "Up",
+        "year": 2009,
+        "popularity": 90,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 533,
+        "title": "Up",
+        "originalTitle": "Up",
+        "year": 1976,
+        "popularity": 2,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 532,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: short name, no year, namesakes"
+  },
+  {
+    "libraryTitle": "It",
+    "year": 2017,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 534,
+        "title": "It",
+        "originalTitle": "It",
+        "year": 2017,
+        "popularity": 200,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 535,
+        "title": "It",
+        "originalTitle": "It",
+        "year": 1990,
+        "popularity": 100,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 534,
+    "notes": "short, exact year"
+  },
+  {
+    "libraryTitle": "It",
+    "year": 2019,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 536,
+        "title": "It Chapter Two",
+        "originalTitle": "It Chapter Two",
+        "year": 2019,
+        "popularity": 200,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": null,
+    "notes": "short name is not a head of a longer one"
+  },
+  {
+    "libraryTitle": "Her",
+    "year": 2013,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 537,
+        "title": "Her",
+        "originalTitle": "Her",
+        "year": 2013,
+        "popularity": 50,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 537,
+    "notes": "one short word, exact year"
+  },
+  {
+    "libraryTitle": "Her",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 538,
+        "title": "Her",
+        "originalTitle": "Her",
+        "year": 2013,
+        "popularity": 50,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 538,
+    "notes": "short film, no library year, only one of its name, language agrees: accepted"
+  },
+  {
+    "libraryTitle": "Us",
+    "year": 2019,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 539,
+        "title": "Us",
+        "originalTitle": "Us",
+        "year": 2019,
+        "popularity": 50,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 540,
+        "title": "Us",
+        "originalTitle": "Us",
+        "year": 2019,
+        "popularity": 48,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 539,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: two namesakes of one year"
+  },
+  {
+    "libraryTitle": "Oppenheimer",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 541,
+        "title": "Oppenheimer",
+        "originalTitle": "Oppenheimer",
+        "year": 2023,
+        "popularity": 200,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 541,
+    "notes": "one-word film, no library year, only one of its name, language agrees: accepted"
+  },
+  {
+    "libraryTitle": "The Matrix",
+    "year": 1999,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 550,
+        "title": "The Matrix Reloaded",
+        "originalTitle": "The Matrix Reloaded",
+        "year": 2003,
+        "popularity": 80,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 551,
+        "title": "The Matrix Revolutions",
+        "originalTitle": "The Matrix Revolutions",
+        "year": 2003,
+        "popularity": 70,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": null,
+    "notes": "sequels are not the film"
+  },
+  {
+    "libraryTitle": "Matrix Reloaded",
+    "year": 2003,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 552,
+        "title": "The Matrix",
+        "originalTitle": "The Matrix",
+        "year": 1999,
+        "popularity": 80,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 553,
+        "title": "The Matrix Reloaded",
+        "originalTitle": "The Matrix Reloaded",
+        "year": 2003,
+        "popularity": 70,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 553,
+    "notes": "the right one of a series"
+  },
+  {
+    "libraryTitle": "Silent Harbor Night",
+    "year": 2012,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 554,
+        "title": "Silent Harbor",
+        "originalTitle": "Silent Harbor",
+        "year": 2012,
+        "popularity": 30,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": null,
+    "notes": "a shorter title of the same year is another film"
+  },
+  {
+    "libraryTitle": "Golden River",
+    "year": 2015,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 555,
+        "title": "Golden Rivers",
+        "originalTitle": "Golden Rivers",
+        "year": 2015,
+        "popularity": 30,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 555,
+    "notes": "two words, plural, exact year: accepted"
+  },
+  {
+    "libraryTitle": "Golden Stream",
+    "year": 2015,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 584,
+        "title": "Golden Dream",
+        "originalTitle": "Golden Dream",
+        "year": 2015,
+        "popularity": 30,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": null,
+    "notes": "two words, one different word, exact year: refused"
+  },
+  {
+    "libraryTitle": "Crimson Kingdom Rising Tale",
+    "year": 2014,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 556,
+        "title": "Crimson Kingdom Rising Tales",
+        "originalTitle": "Crimson Kingdom Rising Tales",
+        "year": 2014,
+        "popularity": 30,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 556,
+    "notes": "one letter out in a long title"
+  },
+  {
+    "libraryTitle": "Hidden Letters",
+    "year": 2003,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 557,
+        "title": "Hidden Leaders",
+        "originalTitle": "Hidden Leaders",
+        "year": 2003,
+        "popularity": 30,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": null,
+    "notes": "different word, same length"
+  },
+  {
+    "libraryTitle": "Paper Moons Story",
+    "year": 2012,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 558,
+        "title": "Paper Moon Story",
+        "originalTitle": "Paper Moon Story",
+        "year": 2012,
+        "popularity": 30,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 558,
+    "notes": "plural in a long title"
+  },
+  {
+    "libraryTitle": "बाहुबली: द बिगिनिंग (2015)",
+    "year": 2015,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 560,
+        "title": "Baahubali: The Beginning",
+        "originalTitle": "बाहुबली: द बिगिनिंग",
+        "year": 2015,
+        "popularity": 60,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 560,
+    "notes": "library in Devanagari, TMDB original title in the same script"
+  },
+  {
+    "libraryTitle": "千と千尋の神隠し (2001)",
+    "year": 2001,
+    "kind": "movie",
+    "languageTag": "Japanese",
+    "candidates": [
+      {
+        "id": 561,
+        "title": "Spirited Away",
+        "originalTitle": "千と千尋の神隠し",
+        "year": 2001,
+        "popularity": 90,
+        "originalLanguage": "ja"
+      }
+    ],
+    "expectedId": 561,
+    "notes": "Japanese title matches the original title"
+  },
+  {
+    "libraryTitle": "जवान",
+    "year": 2023,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 562,
+        "title": "Jawan",
+        "originalTitle": "जवान",
+        "year": 2023,
+        "popularity": 80,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 562,
+    "notes": "short Devanagari name with exact year"
+  },
+  {
+    "libraryTitle": "ஜெயிலர் (2023) 4K",
+    "year": 2023,
+    "kind": "movie",
+    "languageTag": "Tamil",
+    "candidates": [
+      {
+        "id": 563,
+        "title": "Jailer",
+        "originalTitle": "ஜெயிலர்",
+        "year": 2023,
+        "popularity": 70,
+        "originalLanguage": "ta"
+      }
+    ],
+    "expectedId": 563,
+    "notes": "Tamil script"
+  },
+  {
+    "libraryTitle": "Parasite (Gisaengchung)",
+    "year": 2019,
+    "kind": "movie",
+    "languageTag": "Korean",
+    "candidates": [
+      {
+        "id": 564,
+        "title": "Parasite",
+        "originalTitle": "기생충",
+        "year": 2019,
+        "popularity": 90,
+        "originalLanguage": "ko"
+      }
+    ],
+    "expectedId": 564,
+    "notes": "bracketed alternative name removed"
+  },
+  {
+    "libraryTitle": "Gisaengchung",
+    "year": 2019,
+    "kind": "movie",
+    "languageTag": "Korean",
+    "candidates": [
+      {
+        "id": 565,
+        "title": "Parasite",
+        "originalTitle": "Gisaengchung",
+        "year": 2019,
+        "popularity": 90,
+        "originalLanguage": "ko"
+      }
+    ],
+    "expectedId": 565,
+    "notes": "matches the original title"
+  },
+  {
+    "libraryTitle": "Silent Orchard Chronicle",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 570,
+        "title": "Silent Orchard Chronicle",
+        "originalTitle": "Silent Orchard Chronicle",
+        "year": 2013,
+        "popularity": 30,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 570,
+    "notes": "no year, exact distinctive name, one film"
+  },
+  {
+    "libraryTitle": "Silent Orchard Chronicles",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 571,
+        "title": "Silent Orchard Chronicle",
+        "originalTitle": "Silent Orchard Chronicle",
+        "year": 2013,
+        "popularity": 30,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 571,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: no year and the name is not exact: not guessed"
+  },
+  {
+    "libraryTitle": "Hidden Garden Voyage",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [],
+    "expectedId": null,
+    "notes": "no candidates"
+  },
+  {
+    "libraryTitle": "Hidden Garden Voyage",
+    "year": 2010,
+    "kind": "series",
+    "languageTag": "English",
+    "candidates": [],
+    "expectedId": null,
+    "notes": "no candidates (series)"
+  },
+  {
+    "libraryTitle": "Sunset Valley Tale",
+    "year": 2016,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 580,
+        "title": "Sunset Valley Tale",
+        "originalTitle": "Sunset Valley Tale",
+        "year": null,
+        "popularity": 2,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 580,
+    "notes": "TMDB lists no date: a distinctive, only-of-its-name result is taken"
+  },
+  {
+    "libraryTitle": "Sunset Valley Tale",
+    "year": 2016,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 581,
+        "title": "Sunset Valley Tale",
+        "originalTitle": "Sunset Valley Tale",
+        "year": null,
+        "popularity": 2,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 582,
+        "title": "Sunset Valley Tale",
+        "originalTitle": "Sunset Valley Tale",
+        "year": 2016,
+        "popularity": 2,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 581,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: the dated one wins"
+  },
+  {
+    "libraryTitle": "Dawn",
+    "year": 2016,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 583,
+        "title": "Dawn",
+        "originalTitle": "Dawn",
+        "year": null,
+        "popularity": 2,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 583,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: short name with no date: refused"
+  },
+  {
+    "libraryTitle": "Moonlight Road Story",
+    "year": 2018,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 590,
+        "title": "Moonlight Road Story",
+        "originalTitle": "Moonlight Road Story",
+        "year": 2018,
+        "popularity": 40,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 591,
+        "title": "Moonlight Road Story",
+        "originalTitle": "Moonlight Road Story",
+        "year": 2018,
+        "popularity": 38,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 590,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: language tag breaks a tie"
+  },
+  {
+    "libraryTitle": "Moonlight Road Story",
+    "year": 2018,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 592,
+        "title": "Moonlight Road Story",
+        "originalTitle": "Moonlight Road Story",
+        "year": 2018,
+        "popularity": 40,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 593,
+        "title": "Moonlight Road Story",
+        "originalTitle": "Moonlight Road Story",
+        "year": 2018,
+        "popularity": 38,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 592,
+    "notes": "language tag English"
+  },
+  {
+    "libraryTitle": "Moonlight Road Story",
+    "year": 2018,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 594,
+        "title": "Moonlight Road Story",
+        "originalTitle": "Moonlight Road Story",
+        "year": 2018,
+        "popularity": 40,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 595,
+        "title": "Moonlight Road Story",
+        "originalTitle": "Moonlight Road Story",
+        "year": 2018,
+        "popularity": 2,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 594,
+    "notes": "no match for the tag, a clear popularity lead"
+  },
+  {
+    "libraryTitle": "Leo (Hindi)",
+    "year": 2023,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 596,
+        "title": "Leo",
+        "originalTitle": "லியோ",
+        "year": 2023,
+        "popularity": 100,
+        "originalLanguage": "ta"
+      }
+    ],
+    "expectedId": 596,
+    "notes": "a Hindi copy of a Tamil film still matches"
+  },
+  {
+    "libraryTitle": "Vikram Vedha (Hindi) FHD",
+    "year": 2022,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 597,
+        "title": "Vikram Vedha",
+        "originalTitle": "विक्रम वेधा",
+        "year": 2022,
+        "popularity": 50,
+        "originalLanguage": "hi"
+      },
+      {
+        "id": 598,
+        "title": "Vikram Vedha",
+        "originalTitle": "விக்ரம் வேதா",
+        "year": 2017,
+        "popularity": 60,
+        "originalLanguage": "ta"
+      }
+    ],
+    "expectedId": 597,
+    "notes": "the Hindi remake by year"
+  },
+  {
+    "libraryTitle": "TELUGU | Pushpa The Rise (Telugu) FHD 2026",
+    "year": 2021,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 600,
+        "title": "Pushpa: The Rise",
+        "originalTitle": "Pushpa: The Rise",
+        "year": 2021,
+        "popularity": 60,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 600,
+    "notes": "provider prefix and quality tags"
+  },
+  {
+    "libraryTitle": "IN: Jawan (Hindi) 4K",
+    "year": 2023,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 601,
+        "title": "Jawan",
+        "originalTitle": "Jawan",
+        "year": 2023,
+        "popularity": 60,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 601,
+    "notes": "provider prefix and quality tags"
+  },
+  {
+    "libraryTitle": "NF | Stranger Things S04E01",
+    "year": 2016,
+    "kind": "series",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 602,
+        "title": "Stranger Things",
+        "originalTitle": "Stranger Things",
+        "year": 2016,
+        "popularity": 60,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 602,
+    "notes": "provider prefix and quality tags"
+  },
+  {
+    "libraryTitle": "EN - The Matrix (1999) 4K",
+    "year": 1999,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 603,
+        "title": "The Matrix",
+        "originalTitle": "The Matrix",
+        "year": 1999,
+        "popularity": 60,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 603,
+    "notes": "provider prefix and quality tags"
+  },
+  {
+    "libraryTitle": "HINDI | Animal 2023 FHD",
+    "year": 2023,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 604,
+        "title": "Animal",
+        "originalTitle": "Animal",
+        "year": 2023,
+        "popularity": 60,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 604,
+    "notes": "provider prefix and quality tags"
+  },
+  {
+    "libraryTitle": "Kabir Singh",
+    "year": 2019,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 610,
+        "title": "Kabir Singh",
+        "originalTitle": "Kabir Singh",
+        "year": 2019,
+        "popularity": 50,
+        "originalLanguage": "hi"
+      },
+      {
+        "id": 611,
+        "title": "Kabir Sing",
+        "originalTitle": "Kabir Sing",
+        "year": 2019,
+        "popularity": 1,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 610,
+    "notes": "exact beats near"
+  },
+  {
+    "libraryTitle": "Karan Arjun",
+    "year": 1995,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 612,
+        "title": "Karan Arjun",
+        "originalTitle": "Karan Arjun",
+        "year": 1995,
+        "popularity": 40,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 612,
+    "notes": "one letter, exact year"
+  },
+  {
+    "libraryTitle": "Karan Arjun",
+    "year": 2005,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 613,
+        "title": "Karan Arjun",
+        "originalTitle": "Karan Arjun",
+        "year": 1995,
+        "popularity": 40,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 613,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: transliteration only with a close year"
+  },
+  {
+    "libraryTitle": "Ram Leela",
+    "year": 2013,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 614,
+        "title": "Goliyon Ki Raasleela Ram-Leela",
+        "originalTitle": "Goliyon Ki Raasleela Ram-Leela",
+        "year": 2013,
+        "popularity": 50,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": null,
+    "notes": "a short name is not the head of a longer title"
+  },
+  {
+    "libraryTitle": "Ram-Leela",
+    "year": 2013,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 615,
+        "title": "Goliyon Ki Raasleela Ram-Leela",
+        "originalTitle": "Goliyon Ki Raasleela Ram-Leela",
+        "year": 2013,
+        "popularity": 50,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": null,
+    "notes": "short name inside a long title: refused"
+  },
+  {
+    "libraryTitle": "올드보이 (2003)",
+    "year": 2003,
+    "kind": "movie",
+    "languageTag": "Korean",
+    "candidates": [
+      {
+        "id": 9000,
+        "title": "올드보이",
+        "originalTitle": "올드보이",
+        "year": 2003,
+        "popularity": 20,
+        "originalLanguage": "ko"
+      },
+      {
+        "id": 9001,
+        "title": "올드보이",
+        "originalTitle": "올드보이",
+        "year": 2008,
+        "popularity": 60,
+        "originalLanguage": "ko"
+      }
+    ],
+    "expectedId": 9000,
+    "notes": "multilingual: Korean script, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "千と千尋の神隠し (2001)",
+    "year": 2001,
+    "kind": "movie",
+    "languageTag": "Japanese",
+    "candidates": [
+      {
+        "id": 9002,
+        "title": "千と千尋の神隠し",
+        "originalTitle": "千と千尋の神隠し",
+        "year": 2001,
+        "popularity": 20,
+        "originalLanguage": "ja"
+      },
+      {
+        "id": 9003,
+        "title": "千と千尋の神隠し",
+        "originalTitle": "千と千尋の神隠し",
+        "year": 2006,
+        "popularity": 60,
+        "originalLanguage": "ja"
+      }
+    ],
+    "expectedId": 9002,
+    "notes": "multilingual: Japanese script, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "卧虎藏龙 (2000)",
+    "year": 2000,
+    "kind": "movie",
+    "languageTag": "Chinese",
+    "candidates": [
+      {
+        "id": 9004,
+        "title": "卧虎藏龙",
+        "originalTitle": "卧虎藏龙",
+        "year": 2000,
+        "popularity": 20,
+        "originalLanguage": "zh"
+      },
+      {
+        "id": 9005,
+        "title": "卧虎藏龙",
+        "originalTitle": "卧虎藏龙",
+        "year": 2005,
+        "popularity": 60,
+        "originalLanguage": "zh"
+      }
+    ],
+    "expectedId": 9004,
+    "notes": "multilingual: Chinese script, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "الرسالة (1976)",
+    "year": 1976,
+    "kind": "movie",
+    "languageTag": "Arabic",
+    "candidates": [
+      {
+        "id": 9006,
+        "title": "الرسالة",
+        "originalTitle": "الرسالة",
+        "year": 1976,
+        "popularity": 20,
+        "originalLanguage": "ar"
+      },
+      {
+        "id": 9007,
+        "title": "الرسالة",
+        "originalTitle": "الرسالة",
+        "year": 1981,
+        "popularity": 60,
+        "originalLanguage": "ar"
+      }
+    ],
+    "expectedId": 9006,
+    "notes": "multilingual: Arabic script, right to left, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "ואלס עם באשיר (2008)",
+    "year": 2008,
+    "kind": "movie",
+    "languageTag": "Hebrew",
+    "candidates": [
+      {
+        "id": 9008,
+        "title": "ואלס עם באשיר",
+        "originalTitle": "ואלס עם באשיר",
+        "year": 2008,
+        "popularity": 20,
+        "originalLanguage": "he"
+      },
+      {
+        "id": 9009,
+        "title": "ואלס עם באשיר",
+        "originalTitle": "ואלס עם באשיר",
+        "year": 2013,
+        "popularity": 60,
+        "originalLanguage": "he"
+      }
+    ],
+    "expectedId": 9008,
+    "notes": "multilingual: Hebrew script, right to left, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "Брат 2 (2000)",
+    "year": 2000,
+    "kind": "movie",
+    "languageTag": "Russian",
+    "candidates": [
+      {
+        "id": 9010,
+        "title": "Брат 2",
+        "originalTitle": "Брат 2",
+        "year": 2000,
+        "popularity": 20,
+        "originalLanguage": "ru"
+      },
+      {
+        "id": 9011,
+        "title": "Брат 2",
+        "originalTitle": "Брат 2",
+        "year": 2005,
+        "popularity": 60,
+        "originalLanguage": "ru"
+      }
+    ],
+    "expectedId": 9010,
+    "notes": "multilingual: Cyrillic with number, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "องค์บาก (2003)",
+    "year": 2003,
+    "kind": "movie",
+    "languageTag": "Thai",
+    "candidates": [
+      {
+        "id": 9012,
+        "title": "องค์บาก",
+        "originalTitle": "องค์บาก",
+        "year": 2003,
+        "popularity": 20,
+        "originalLanguage": "th"
+      },
+      {
+        "id": 9013,
+        "title": "องค์บาก",
+        "originalTitle": "องค์บาก",
+        "year": 2008,
+        "popularity": 60,
+        "originalLanguage": "th"
+      }
+    ],
+    "expectedId": 9012,
+    "notes": "multilingual: Thai script, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "Kış Uykusu (2014)",
+    "year": 2014,
+    "kind": "movie",
+    "languageTag": "Turkish",
+    "candidates": [
+      {
+        "id": 9014,
+        "title": "Kış Uykusu",
+        "originalTitle": "Kış Uykusu",
+        "year": 2014,
+        "popularity": 20,
+        "originalLanguage": "tr"
+      },
+      {
+        "id": 9015,
+        "title": "Kış Uykusu",
+        "originalTitle": "Kış Uykusu",
+        "year": 2019,
+        "popularity": 60,
+        "originalLanguage": "tr"
+      }
+    ],
+    "expectedId": 9014,
+    "notes": "multilingual: Turkish dotless i kept or folded alike on both sides; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "El Orfanato (2007)",
+    "year": 2007,
+    "kind": "movie",
+    "languageTag": "Spanish",
+    "candidates": [
+      {
+        "id": 9016,
+        "title": "El Orfanato",
+        "originalTitle": "El Orfanato",
+        "year": 2007,
+        "popularity": 20,
+        "originalLanguage": "es"
+      },
+      {
+        "id": 9017,
+        "title": "El Orfanato",
+        "originalTitle": "El Orfanato",
+        "year": 2012,
+        "popularity": 60,
+        "originalLanguage": "es"
+      }
+    ],
+    "expectedId": 9016,
+    "notes": "multilingual: Spanish, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "Cidade de Deus (2002)",
+    "year": 2002,
+    "kind": "movie",
+    "languageTag": "Portuguese",
+    "candidates": [
+      {
+        "id": 9018,
+        "title": "Cidade de Deus",
+        "originalTitle": "Cidade de Deus",
+        "year": 2002,
+        "popularity": 20,
+        "originalLanguage": "pt"
+      },
+      {
+        "id": 9019,
+        "title": "Cidade de Deus",
+        "originalTitle": "Cidade de Deus",
+        "year": 2007,
+        "popularity": 60,
+        "originalLanguage": "pt"
+      }
+    ],
+    "expectedId": 9018,
+    "notes": "multilingual: Portuguese, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "Les Intouchables (2011)",
+    "year": 2011,
+    "kind": "movie",
+    "languageTag": "French",
+    "candidates": [
+      {
+        "id": 9020,
+        "title": "Les Intouchables",
+        "originalTitle": "Les Intouchables",
+        "year": 2011,
+        "popularity": 20,
+        "originalLanguage": "fr"
+      },
+      {
+        "id": 9021,
+        "title": "Les Intouchables",
+        "originalTitle": "Les Intouchables",
+        "year": 2016,
+        "popularity": 60,
+        "originalLanguage": "fr"
+      }
+    ],
+    "expectedId": 9020,
+    "notes": "multilingual: French, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "Das Leben der Anderen (2006)",
+    "year": 2006,
+    "kind": "movie",
+    "languageTag": "German",
+    "candidates": [
+      {
+        "id": 9022,
+        "title": "Das Leben der Anderen",
+        "originalTitle": "Das Leben der Anderen",
+        "year": 2006,
+        "popularity": 20,
+        "originalLanguage": "de"
+      },
+      {
+        "id": 9023,
+        "title": "Das Leben der Anderen",
+        "originalTitle": "Das Leben der Anderen",
+        "year": 2011,
+        "popularity": 60,
+        "originalLanguage": "de"
+      }
+    ],
+    "expectedId": 9022,
+    "notes": "multilingual: German, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "La vita è bella (1997)",
+    "year": 1997,
+    "kind": "movie",
+    "languageTag": "Italian",
+    "candidates": [
+      {
+        "id": 9024,
+        "title": "La vita è bella",
+        "originalTitle": "La vita è bella",
+        "year": 1997,
+        "popularity": 20,
+        "originalLanguage": "it"
+      },
+      {
+        "id": 9025,
+        "title": "La vita è bella",
+        "originalTitle": "La vita è bella",
+        "year": 2002,
+        "popularity": 60,
+        "originalLanguage": "it"
+      }
+    ],
+    "expectedId": 9024,
+    "notes": "multilingual: Italian accent, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "Kuch Kuch Hota Hai (1998)",
+    "year": 1998,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 9026,
+        "title": "Kuch Kuch Hota Hai",
+        "originalTitle": "Kuch Kuch Hota Hai",
+        "year": 1998,
+        "popularity": 20,
+        "originalLanguage": "hi"
+      },
+      {
+        "id": 9027,
+        "title": "Kuch Kuch Hota Hai",
+        "originalTitle": "Kuch Kuch Hota Hai",
+        "year": 2003,
+        "popularity": 60,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 9026,
+    "notes": "multilingual: Latin-script Hindi, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "Maya Bazaar (1957)",
+    "year": 1957,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 9028,
+        "title": "Maya Bazaar",
+        "originalTitle": "Maya Bazaar",
+        "year": 1957,
+        "popularity": 20,
+        "originalLanguage": "te"
+      },
+      {
+        "id": 9029,
+        "title": "Maya Bazaar",
+        "originalTitle": "Maya Bazaar",
+        "year": 1962,
+        "popularity": 60,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 9028,
+    "notes": "multilingual: Latin-script Telugu, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "Nayakan (1987)",
+    "year": 1987,
+    "kind": "movie",
+    "languageTag": "Tamil",
+    "candidates": [
+      {
+        "id": 9030,
+        "title": "Nayakan",
+        "originalTitle": "Nayakan",
+        "year": 1987,
+        "popularity": 20,
+        "originalLanguage": "ta"
+      },
+      {
+        "id": 9031,
+        "title": "Nayakan",
+        "originalTitle": "Nayakan",
+        "year": 1992,
+        "popularity": 60,
+        "originalLanguage": "ta"
+      }
+    ],
+    "expectedId": 9030,
+    "notes": "multilingual: Latin-script Tamil, exact; the same name five years later is not accepted"
+  },
+  {
+    "libraryTitle": "The Wire",
+    "year": null,
+    "kind": "series",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 9040,
+        "title": "The Wire",
+        "originalTitle": "The Wire",
+        "year": 2002,
+        "popularity": 40,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 9040,
+    "notes": "series, no year: only series of the exact name and the library language agrees"
+  },
+  {
+    "libraryTitle": "The Wire",
+    "year": null,
+    "kind": "series",
+    "languageTag": "",
+    "candidates": [
+      {
+        "id": 9041,
+        "title": "The Wire",
+        "originalTitle": "The Wire",
+        "year": 2002,
+        "popularity": 40,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 9041,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: series, no year, no language evidence: not guessed"
+  },
+  {
+    "libraryTitle": "The Wire",
+    "year": null,
+    "kind": "series",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 9042,
+        "title": "The Wire",
+        "originalTitle": "The Wire",
+        "year": 2002,
+        "popularity": 40,
+        "originalLanguage": "en"
+      },
+      {
+        "id": 9043,
+        "title": "The Wire",
+        "originalTitle": "The Wire",
+        "year": 2010,
+        "popularity": 30,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 9042,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: series, no year, namesakes: not guessed"
+  },
+  {
+    "libraryTitle": "The Wire",
+    "year": null,
+    "kind": "series",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 9044,
+        "title": "The Wire",
+        "originalTitle": "The Wire",
+        "year": 2002,
+        "popularity": 40,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 9044,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: series, no year, language disagrees: not guessed"
+  },
+  {
+    "libraryTitle": "Dark 2019",
+    "year": 2019,
+    "kind": "series",
+    "languageTag": "German",
+    "candidates": [
+      {
+        "id": 9045,
+        "title": "Dark",
+        "originalTitle": "Dark",
+        "year": 2017,
+        "popularity": 60,
+        "originalLanguage": "de"
+      }
+    ],
+    "expectedId": 9045,
+    "notes": "short series, year two out, only one of the name, language agrees"
+  },
+  {
+    "libraryTitle": "Dark 2021",
+    "year": 2021,
+    "kind": "series",
+    "languageTag": "German",
+    "candidates": [
+      {
+        "id": 9046,
+        "title": "Dark",
+        "originalTitle": "Dark",
+        "year": 2017,
+        "popularity": 60,
+        "originalLanguage": "de"
+      }
+    ],
+    "expectedId": 9046,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: short series, year four out: refused"
+  },
+  {
+    "libraryTitle": "Pushpa",
+    "year": null,
+    "kind": "series",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 9047,
+        "title": "Pushpa",
+        "originalTitle": "Pushpa",
+        "year": 2022,
+        "popularity": 40,
+        "originalLanguage": "te"
+      },
+      {
+        "id": 9048,
+        "title": "Pushpa",
+        "originalTitle": "Pushpa",
+        "year": 2019,
+        "popularity": 30,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 9047,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: series, namesakes of one language: not guessed"
+  },
+  {
+    "libraryTitle": "Jawan",
+    "year": 2023,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 9050,
+        "title": "Jawan",
+        "originalTitle": "Jawan",
+        "year": 2022,
+        "popularity": 40,
+        "originalLanguage": "te"
+      },
+      {
+        "id": 9051,
+        "title": "Jawan",
+        "originalTitle": "Jawan",
+        "year": 2005,
+        "popularity": 5,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 9050,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: film guard: a second film of the name is present, abstain"
+  },
+  {
+    "libraryTitle": "Pushpa",
+    "year": 2021,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 9052,
+        "title": "Pushpa",
+        "originalTitle": "Pushpa",
+        "year": 2023,
+        "popularity": 40,
+        "originalLanguage": "te"
+      }
+    ],
+    "expectedId": 9052,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: film guard: year two out, abstain"
+  },
+  {
+    "libraryTitle": "Jawan",
+    "year": 2023,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 9053,
+        "title": "Jawan",
+        "originalTitle": "Jawan",
+        "year": 2022,
+        "popularity": 40,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 9053,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: film guard: different-language homonym, abstain"
+  },
+  {
+    "libraryTitle": "Drishyam",
+    "year": 2014,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 9054,
+        "title": "Drishyam",
+        "originalTitle": "Drishyam",
+        "year": 2015,
+        "popularity": 40,
+        "originalLanguage": "hi"
+      },
+      {
+        "id": 9055,
+        "title": "Drishyam",
+        "originalTitle": "Drishyam",
+        "year": 2013,
+        "popularity": 30,
+        "originalLanguage": "ml"
+      }
+    ],
+    "expectedId": 9054,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: film guard: same-name remakes, abstain"
+  },
+  {
+    "libraryTitle": "Dhoom",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 9056,
+        "title": "Dhoom",
+        "originalTitle": "Dhoom",
+        "year": 2004,
+        "popularity": 40,
+        "originalLanguage": "hi"
+      },
+      {
+        "id": 9057,
+        "title": "Dhoom 2",
+        "originalTitle": "Dhoom 2",
+        "year": 2006,
+        "popularity": 60,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 9056,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: film guard: no year and a sequel (Dhoom 2) in the results, abstain"
+  },
+  {
+    "libraryTitle": "Her",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 9058,
+        "title": "Her",
+        "originalTitle": "Her",
+        "year": 2013,
+        "popularity": 50,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 9058,
+    "notes": "name only (year, language and popularity ignored): the first result with the name in result order. Was: film guard: no year, language disagrees, abstain"
+  },
+  {
+    "libraryTitle": "Drishyam 2015",
+    "year": 2015,
+    "kind": "movie",
+    "languageTag": "Hindi",
+    "candidates": [
+      {
+        "id": 9060,
+        "title": "Drishyam",
+        "originalTitle": "Drishyam",
+        "year": 2013,
+        "popularity": 5,
+        "originalLanguage": "ml"
+      },
+      {
+        "id": 9061,
+        "title": "Drishyam",
+        "originalTitle": "Drishyam",
+        "year": 2015,
+        "popularity": 90,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 9060,
+    "notes": "name only: same-name remakes, the first in result order, the year is not used"
+  },
+  {
+    "libraryTitle": "Pushpa (2021)",
+    "year": 2021,
+    "kind": "movie",
+    "languageTag": "Telugu",
+    "candidates": [
+      {
+        "id": 9062,
+        "title": "Pushpa 2: The Rule",
+        "originalTitle": "Pushpa 2: The Rule",
+        "year": 2024,
+        "popularity": 90,
+        "originalLanguage": "te"
+      },
+      {
+        "id": 9063,
+        "title": "Pushpa",
+        "originalTitle": "Pushpa",
+        "year": 1980,
+        "popularity": 1,
+        "originalLanguage": "hi"
+      }
+    ],
+    "expectedId": 9063,
+    "notes": "name only: the exact name wins whatever its year, a sequel is a different name"
+  },
+  {
+    "libraryTitle": "Oppenheimerr",
+    "year": null,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 9064,
+        "title": "Oppenheimer",
+        "originalTitle": "Oppenheimer",
+        "year": 2023,
+        "popularity": 200,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": 9064,
+    "notes": "name only: near-exact spelling accepted by the existing similarity rule"
+  },
+  {
+    "libraryTitle": "Zzyzx Qwerty",
+    "year": 2020,
+    "kind": "movie",
+    "languageTag": "English",
+    "candidates": [
+      {
+        "id": 9065,
+        "title": "Oppenheimer",
+        "originalTitle": "Oppenheimer",
+        "year": 2020,
+        "popularity": 200,
+        "originalLanguage": "en"
+      }
+    ],
+    "expectedId": null,
+    "notes": "name only: a different name is never accepted, even with the same year, language and high popularity"
+  }
+]

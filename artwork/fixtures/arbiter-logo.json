@@ -1,0 +1,21 @@
+{
+ "pick": [
+  {"ctx": {"preferredLang": "en"}, "candidates": [
+    {"source": "tmdb", "url": "t.png", "lang": "en", "width": 800, "height": 300, "likes": 0},
+    {"source": "fanart", "url": "f.png", "lang": "en", "width": 800, "height": 310, "likes": 0}],
+   "expected": "f.png", "notes": "equal language and size: fanart is the best curated source"},
+  {"ctx": {"preferredLang": "en"}, "candidates": [
+    {"source": "fanart", "url": "f.jpg", "lang": "en", "width": 800, "height": 310, "likes": 99},
+    {"source": "tmdb", "url": "t.png", "lang": "en", "width": 500, "height": 200, "likes": 0}],
+   "expected": "t.png", "notes": "a logo without transparency (not PNG) is unusable"},
+  {"ctx": {"preferredLang": "hi"}, "candidates": [
+    {"source": "fanart", "url": "f-en.png", "lang": "en", "width": 800, "height": 310, "likes": 10},
+    {"source": "tmdb", "url": "t-hi.png", "lang": "hi", "width": 600, "height": 200, "likes": 0}],
+   "expected": "t-hi.png", "notes": "the preferred language outranks the source"},
+  {"ctx": {"preferredLang": "en"}, "candidates": [
+    {"source": "fanart", "url": "small.png", "lang": "en", "width": 300, "height": 100, "likes": 0},
+    {"source": "tvdb", "url": "v.png", "lang": "en", "width": 700, "height": 250, "likes": 0}],
+   "expected": "v.png", "notes": "under 400 px wide is penalised"},
+  {"ctx": {"preferredLang": "en"}, "candidates": [{"source": "fanart", "url": "x.jpg", "lang": "en", "width": 800, "height": 310, "likes": 0}], "expected": null, "notes": "no usable logo: the plain title text is shown"}
+ ]
+}

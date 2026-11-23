@@ -1,0 +1,10 @@
+[
+ {"provenance": ["tvdb"], "onScreens": true, "expected": "Data from TheTVDB.com"},
+ {"provenance": ["tmdb", "tvdb"], "onScreens": true, "expected": "Data from TheTVDB.com"},
+ {"provenance": ["tmdb"], "onScreens": true, "expected": null},
+ {"provenance": ["fanart"], "onScreens": true, "expected": null},
+ {"provenance": ["tvmaze"], "onScreens": true, "expected": null},
+ {"provenance": ["tmdb", "fanart", "tvmaze", "playlist"], "onScreens": true, "expected": null},
+ {"provenance": [], "onScreens": true, "expected": null},
+ {"provenance": ["tvdb"], "onScreens": false, "expected": null, "notes": "after TheTVDB approves Settings/About-only credit"}
+]

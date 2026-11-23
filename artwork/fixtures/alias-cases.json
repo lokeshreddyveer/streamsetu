@@ -1,0 +1,190 @@
+{
+ "keys": [
+  [
+   "The Dark Knight",
+   "dark knight"
+  ],
+  [
+   "Amélie",
+   "amelie"
+  ],
+  [
+   "Tom & Jerry",
+   "tom and jerry"
+  ],
+  [
+   "It's Always Sunny in Philadelphia",
+   "its always sunny in philadelphia"
+  ],
+  [
+   "Les Misérables",
+   "les miserables"
+  ],
+  [
+   "బాహుబలి: ది బిగినింగ్",
+   "బాహుబలి ది బిగినింగ్"
+  ],
+  [
+   "बाहुबली: द बिगिनिंग",
+   "बाहुबली द बिगिनिंग"
+  ],
+  [
+   "パラサイト 半地下の家族",
+   "パラサイト 半地下の家族"
+  ],
+  [
+   "A",
+   "a"
+  ],
+  [
+   "The",
+   "the"
+  ],
+  [
+   "  Baahubali:  The Beginning!! ",
+   "baahubali the beginning"
+  ],
+  [
+   "AŞK-I MEMNU",
+   "ask i memnu"
+  ],
+  [
+   "Aşk-ı Memnu",
+   "ask i memnu"
+  ]
+ ],
+ "cases": [
+  {
+   "name": "Baahubali: The Beginning",
+   "series": false,
+   "expect": {
+    "id": 256740,
+    "tier": "exact"
+   }
+  },
+  {
+   "name": "బాహుబలి: ది బిగినింగ్",
+   "series": false,
+   "expect": {
+    "id": 256740,
+    "tier": "exact"
+   }
+  },
+  {
+   "name": "बाहुबली: द बिगिनिंग",
+   "series": false,
+   "expect": {
+    "id": 256740,
+    "tier": "exact"
+   }
+  },
+  {
+   "name": "パラサイト 半地下の家族",
+   "series": false,
+   "expect": {
+    "id": 496243,
+    "tier": "exact"
+   }
+  },
+  {
+   "name": "Dark",
+   "series": true,
+   "expect": {
+    "id": 70523,
+    "tier": "exact"
+   }
+  },
+  {
+   "name": "Dark",
+   "series": false,
+   "expect": {
+    "id": 99999,
+    "tier": "exact"
+   }
+  },
+  {
+   "name": "Matrix",
+   "series": false,
+   "expect": {
+    "id": 603,
+    "tier": "exact"
+   },
+   "note": "a leading article is dropped, so both films named Matrix share a key; the better ranked wins"
+  },
+  {
+   "name": "Tom and Jerry",
+   "series": true,
+   "expect": {
+    "id": 3037,
+    "tier": "exact"
+   }
+  },
+  {
+   "name": "Bahubali Beginning",
+   "series": false,
+   "expect": {
+    "id": 256740,
+    "tier": "edit1"
+   },
+   "note": "the dropped word 'the' costs one skeleton letter"
+  },
+  {
+   "name": "Baahubali The Beginnning",
+   "series": false,
+   "expect": {
+    "id": 256740,
+    "tier": "phonetic"
+   }
+  },
+  {
+   "name": "Dhoom Machaley",
+   "series": false,
+   "expect": {
+    "id": 8841,
+    "tier": "phonetic"
+   }
+  },
+  {
+   "name": "Kasauti Zindagi Kay",
+   "series": true,
+   "expect": {
+    "id": 24881,
+    "tier": "phonetic"
+   },
+   "note": "the same skeleton as two series: the better ranked wins"
+  },
+  {
+   "name": "Zindagee Naa Milegee Dobaara",
+   "series": false,
+   "expect": {
+    "id": 81188,
+    "tier": "phonetic"
+   }
+  },
+  {
+   "name": "Xyz",
+   "series": false,
+   "expect": null
+  },
+  {
+   "name": "Dhoom Machale",
+   "series": true,
+   "expect": null,
+   "note": "kinds never mix"
+  },
+  {
+   "name": "Zindagi Na Milegi Dobarak",
+   "series": false,
+   "expect": {
+    "id": 81188,
+    "tier": "edit1"
+   }
+  },
+  {
+   "name": "Dhoom Machalek",
+   "series": false,
+   "expect": null,
+   "note": "a skeleton under 6 letters is never matched one edit away"
+  }
+ ]
+}

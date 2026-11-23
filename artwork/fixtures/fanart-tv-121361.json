@@ -1,0 +1,5 @@
+{"name":"Sample Show","thetvdb_id":"121361",
+ "hdtvlogo":[{"id":"1","url":"http://assets.fanart.tv/fanart/tv/121361/hdtvlogo/a.png","lang":"en","likes":"30"}],
+ "showbackground":[{"id":"2","url":"http://assets.fanart.tv/fanart/tv/121361/showbackground/b.jpg","lang":"","likes":"9","season":"all"}],
+ "tvposter":[{"id":"3","url":"http://assets.fanart.tv/fanart/tv/121361/tvposter/c.jpg","lang":"en","likes":"4"}],
+ "seasonposter":[{"id":"4","url":"http://assets.fanart.tv/fanart/tv/121361/seasonposter/d.jpg","lang":"en","likes":"2","season":"1"},{"id":"5","url":"http://assets.fanart.tv/fanart/tv/121361/seasonposter/e.jpg","lang":"en","likes":"2","season":"all"}]}

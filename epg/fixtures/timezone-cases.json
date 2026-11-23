@@ -1,0 +1,130 @@
+{
+ "cases": [
+  {
+   "input": "20261122120000 +0100",
+   "mode": "auto",
+   "zone": null,
+   "expect": "2026-11-22T11:00:00Z"
+  },
+  {
+   "input": "20261122120000 -0500",
+   "mode": "auto",
+   "zone": null,
+   "expect": "2026-11-22T17:00:00Z"
+  },
+  {
+   "input": "20261122120000",
+   "mode": "auto",
+   "zone": null,
+   "expect": "2026-11-22T12:00:00Z"
+  },
+  {
+   "input": "20261122120000",
+   "mode": "utc",
+   "zone": null,
+   "expect": "2026-11-22T12:00:00Z"
+  },
+  {
+   "input": "202611221200 +0530",
+   "mode": "auto",
+   "zone": null,
+   "expect": "2026-11-22T06:30:00Z"
+  },
+  {
+   "input": "20261122120000 +01:00",
+   "mode": "auto",
+   "zone": null,
+   "expect": "2026-11-22T11:00:00Z"
+  },
+  {
+   "input": "20261122120000Z",
+   "mode": "auto",
+   "zone": null,
+   "expect": "2026-11-22T12:00:00Z"
+  },
+  {
+   "input": "20261122120000 UTC",
+   "mode": "auto",
+   "zone": null,
+   "expect": "2026-11-22T12:00:00Z"
+  },
+  {
+   "input": "20261122",
+   "mode": "auto",
+   "zone": null,
+   "expect": "2026-11-22T00:00:00Z"
+  },
+  {
+   "input": "20260701120000",
+   "mode": "local",
+   "zone": "Europe/London",
+   "expect": "2026-07-01T11:00:00Z"
+  },
+  {
+   "input": "20261122120000",
+   "mode": "local",
+   "zone": "Europe/London",
+   "expect": "2026-11-22T12:00:00Z"
+  },
+  {
+   "input": "20261122120000",
+   "mode": "local",
+   "zone": "Asia/Kolkata",
+   "expect": "2026-11-22T06:30:00Z"
+  },
+  {
+   "input": "20261122120000",
+   "mode": "local",
+   "zone": "America/New_York",
+   "expect": "2026-11-22T17:00:00Z"
+  },
+  {
+   "input": "20260701120000",
+   "mode": "local",
+   "zone": "America/New_York",
+   "expect": "2026-07-01T16:00:00Z"
+  },
+  {
+   "input": "20261122120000 +0200",
+   "mode": "local",
+   "zone": "America/New_York",
+   "expect": "2026-11-22T10:00:00Z"
+  },
+  {
+   "input": "20260329013000",
+   "mode": "local",
+   "zone": "Europe/London",
+   "expect": "2026-03-29T01:30:00Z"
+  },
+  {
+   "input": "20261025013000",
+   "mode": "local",
+   "zone": "Europe/London",
+   "expect": "2026-10-25T00:30:00Z"
+  },
+  {
+   "input": "not a time",
+   "mode": "auto",
+   "zone": null,
+   "expect": null
+  },
+  {
+   "input": "20261322120000",
+   "mode": "auto",
+   "zone": null,
+   "expect": null
+  },
+  {
+   "input": "2026112",
+   "mode": "auto",
+   "zone": null,
+   "expect": null
+  },
+  {
+   "input": "20261122250000",
+   "mode": "auto",
+   "zone": null,
+   "expect": null
+  }
+ ]
+}

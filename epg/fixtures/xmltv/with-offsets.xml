@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tv>
+  <channel id="a"><display-name>Alpha</display-name></channel>
+  <programme start="20261122120000 +0100" stop="20261122130000 +0100" channel="a"><title>plus one hour</title></programme>
+  <programme start="20261122120000 -0500" stop="20261122130000 -0500" channel="a"><title>minus five</title></programme>
+  <programme start="20261122120000" stop="20261122130000" channel="a"><title>no offset is utc</title></programme>
+  <programme start="202611221200 +0530" stop="202611221300 +0530" channel="a"><title>no seconds half hour zone</title></programme>
+  <programme start="20261122120000 +01:00" stop="20261122130000 +01:00" channel="a"><title>colon offset</title></programme>
+  <programme start="20261122120000Z" stop="20261122130000Z" channel="a"><title>z suffix</title></programme>
+</tv>

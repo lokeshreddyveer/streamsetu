@@ -1,0 +1,182 @@
+[
+ {
+  "input": "2019 - The Matrix",
+  "year": null,
+  "expectedClean": "The Matrix",
+  "notes": "year led by a dash"
+ },
+ {
+  "input": "TA - 2021 - Sathya Part 2",
+  "year": null,
+  "expectedClean": "Sathya Part 2",
+  "notes": "language code, then a leading year"
+ },
+ {
+  "input": "IN| 2024 - Premalu English Dubbed",
+  "year": null,
+  "expectedClean": "Premalu",
+  "notes": "country, year, dubbed"
+ },
+ {
+  "input": "JA - Chainsaw Man",
+  "year": null,
+  "expectedClean": "Chainsaw Man",
+  "notes": "Japanese code as a prefix"
+ },
+ {
+  "input": "|KO| Be With You HDCAM [YTS.MX]",
+  "year": null,
+  "expectedClean": "Be With You",
+  "notes": "release group in brackets stays gone"
+ },
+ {
+  "input": "TH|_PLS_LOVE_HD",
+  "year": null,
+  "expectedClean": "PLS LOVE",
+  "notes": "Thai code with underscores"
+ },
+ {
+  "input": "Magnum P.I. (2018).S03E17.1080p",
+  "year": null,
+  "expectedClean": "Magnum P.I",
+  "notes": "episode glued with dots"
+ },
+ {
+  "input": "BTS In the SOOP [2020] HDRip 720p DVDRip.S04E18.1080p",
+  "year": null,
+  "expectedClean": "BTS In the SOOP",
+  "notes": "episode glued after a tag"
+ },
+ {
+  "input": "JP.-.Banana.Fish Season 2 Episode 8",
+  "year": null,
+  "expectedClean": "Banana Fish",
+  "notes": "dots inside a name that has spaces"
+ },
+ {
+  "input": "JP| Dororo - 070",
+  "year": null,
+  "expectedClean": "Dororo",
+  "notes": "absolute episode number"
+ },
+ {
+  "input": "Initial D-PSA",
+  "year": null,
+  "expectedClean": "Initial D",
+  "notes": "release group PSA"
+ },
+ {
+  "input": "Wonder Woman 1984",
+  "year": null,
+  "expectedClean": "Wonder Woman 1984",
+  "notes": "a year-like title word stays"
+ },
+ {
+  "input": "Hercai [2019]-TGx Season 5 Episode 19",
+  "year": null,
+  "expectedClean": "Hercai",
+  "notes": "release group attached in the middle"
+ },
+ {
+  "input": "Where Is My Home 2019 720p-EVO.S05E16.1080p",
+  "year": 2019,
+  "expectedClean": "Where Is My Home",
+  "notes": "release group before an episode marker"
+ },
+ {
+  "input": "Ratsasan.5.1.H264",
+  "year": null,
+  "expectedClean": "Ratsasan",
+  "notes": "surround tag in a dotted name"
+ },
+ {
+  "input": "A.Story.of.Derry.5.1.BRRip",
+  "year": null,
+  "expectedClean": "A Story of Derry",
+  "notes": "surround tag in a dotted name"
+ },
+ {
+  "input": "Kammatti.Paadam.[2016].DVDRip.5.1.Hindi.Dubbed",
+  "year": null,
+  "expectedClean": "Kammatti Paadam",
+  "notes": "surround tag before language words"
+ },
+ {
+  "input": "Heat 7.1 BluRay",
+  "year": null,
+  "expectedClean": "Heat",
+  "notes": "7.1 tag"
+ },
+ {
+  "input": "[REC] [2007]",
+  "year": null,
+  "expectedClean": "REC",
+  "notes": "a name made of one bracket group"
+ },
+ {
+  "input": "[REC] WEB-DL",
+  "year": null,
+  "expectedClean": "REC",
+  "notes": "bracket title and a tag"
+ },
+ {
+  "input": "JP:.Bleach Season 1 Episode 15",
+  "year": null,
+  "expectedClean": "Bleach",
+  "notes": "dot after a language prefix"
+ },
+ {
+  "input": "Chiquititas.2013 Season 2 Episode 17",
+  "year": null,
+  "expectedClean": "Chiquititas 2013",
+  "notes": "dot glues a year"
+ },
+ {
+  "input": "ARCANE.2021 Season 4 Episode 3",
+  "year": null,
+  "expectedClean": "ARCANE 2021",
+  "notes": "dot glues a year"
+ },
+ {
+  "input": "ES:.Veneno S03E17",
+  "year": null,
+  "expectedClean": "Veneno",
+  "notes": "dot after a prefix"
+ },
+ {
+  "input": "EN.-.2003.-.NCIS S02E19",
+  "year": null,
+  "expectedClean": "NCIS",
+  "notes": "year between dots"
+ },
+ {
+  "input": "Tomorrow.x265.5.1.10bit S03E04",
+  "year": null,
+  "expectedClean": "Tomorrow",
+  "notes": "tags glued with dots"
+ },
+ {
+  "input": "Raw.5.1.2160p.[YTS.MX] 4x04",
+  "year": null,
+  "expectedClean": "Raw",
+  "notes": "tags glued with dots"
+ },
+ {
+  "input": "Some Show Season 2 Episode 5 Pilot",
+  "year": null,
+  "expectedClean": "Some Show",
+  "notes": "an episode title after the marker"
+ },
+ {
+  "input": "Some Show S02E05 Pilot",
+  "year": null,
+  "expectedClean": "Some Show",
+  "notes": "an episode title after SxxExx"
+ },
+ {
+  "input": "Some Film 2019 Hindi",
+  "year": null,
+  "expectedClean": "Some Film 2019 Hindi",
+  "notes": "year and language stay for the query tiers (the name cleaner does not guess)"
+ }
+]

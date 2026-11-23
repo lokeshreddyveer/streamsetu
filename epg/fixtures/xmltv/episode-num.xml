@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tv>
+  <channel id="s"><display-name>Series</display-name></channel>
+  <programme start="20261122200000 +0000" stop="20261122210000 +0000" channel="s"><title lang="fr">Episode ns</title><episode-num system="xmltv_ns">1.4.0/1</episode-num><episode-num system="onscreen">S02E05</episode-num></programme>
+  <programme start="20261122210000 +0000" stop="20261122220000 +0000" channel="s"><title>Episode only</title><episode-num system="xmltv_ns">.7.</episode-num></programme>
+  <programme start="20261122220000 +0000" stop="20261122230000 +0000" channel="s"><title>Onscreen</title><episode-num system="onscreen">Ep 12</episode-num></programme>
+</tv>

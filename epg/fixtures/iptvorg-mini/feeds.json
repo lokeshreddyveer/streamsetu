@@ -1,0 +1,24 @@
+[
+ {
+  "channel": "BBCOne.uk",
+  "id": "HD",
+  "is_main": true,
+  "languages": [
+   "eng"
+  ],
+  "timezones": [
+   "Europe/London"
+  ]
+ },
+ {
+  "channel": "CNN.us",
+  "id": "SD",
+  "is_main": true,
+  "languages": [
+   "eng"
+  ],
+  "timezones": [
+   "America/New_York"
+  ]
+ }
+]

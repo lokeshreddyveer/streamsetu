@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tv generator-info-name="fixture">
+  <channel id="BBCOne.uk"><display-name>BBC One</display-name><display-name>BBC 1</display-name><icon src="https://example.test/bbcone.png"/></channel>
+  <channel id="CNN.us"><display-name lang="en">CNN</display-name></channel>
+  <programme start="20261122180000 +0000" stop="20261122183000 +0000" channel="BBCOne.uk">
+    <title lang="en">Evening News</title><sub-title>Headlines</sub-title><desc lang="en">The day's news.</desc>
+    <category lang="en">News</category><icon src="https://example.test/news.jpg"/><date>2026</date>
+    <rating system="BBFC"><value>PG</value></rating>
+  </programme>
+  <programme start="20261122183000 +0000" stop="20261122190000 +0000" channel="BBCOne.uk"><title>Quiz Night</title></programme>
+  <programme start="20261122180000 +0000" stop="20261122190000 +0000" channel="CNN.us"><title lang="en">World Report</title><category>News</category></programme>
+  <programme start="20261122190000 +0000" stop="20261122180000 +0000" channel="CNN.us"><title>Stop before start (dropped)</title></programme>
+  <programme start="20261122190000 +0000" stop="20261122200000 +0000" channel="CNN.us"><title></title></programme>
+</tv>

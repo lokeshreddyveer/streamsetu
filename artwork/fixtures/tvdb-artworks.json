@@ -1,0 +1,5 @@
+{"data":{"id":121361,"artworks":[
+ {"id":1,"image":"https://artworks.thetvdb.com/p1.jpg","type":2,"language":"eng","score":100,"width":680,"height":1000},
+ {"id":2,"image":"https://artworks.thetvdb.com/b1.jpg","type":3,"language":null,"score":50,"width":1920,"height":1080},
+ {"id":3,"image":"https://artworks.thetvdb.com/l1.png","type":23,"language":"hin","score":10,"width":800,"height":310},
+ {"id":4,"image":"https://artworks.thetvdb.com/x.jpg","type":99,"language":"eng","score":1,"width":10,"height":10}]}}

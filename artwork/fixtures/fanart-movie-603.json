@@ -1,0 +1,6 @@
+{"name":"Sample Movie","tmdb_id":"603","imdb_id":"tt0000000",
+ "hdmovielogo":[{"id":"1","url":"http://assets.fanart.tv/fanart/movies/603/hdmovielogo/a.png","lang":"en","likes":"12"},{"id":"2","url":"http://assets.fanart.tv/fanart/movies/603/hdmovielogo/b.png","lang":"hi","likes":"3"}],
+ "moviebackground":[{"id":"3","url":"http://assets.fanart.tv/fanart/movies/603/moviebackground/c.jpg","lang":"","likes":"7"}],
+ "movieposter":[{"id":"4","url":"http://assets.fanart.tv/fanart/movies/603/movieposter/d.jpg","lang":"en","likes":"20"}],
+ "moviethumb":[{"id":"5","url":"http://assets.fanart.tv/fanart/movies/603/moviethumb/e.jpg","lang":"en","likes":"1"}],
+ "moviebanner":[]}

@@ -1,0 +1,798 @@
+{
+  "description" : "All time top \/ Trending this week on Trending in Your Library and genre shelves: ranking per mode (steps), remembered choice per profile and shelf (storage), TMDB list names per shelf and mode (lists, refetchHours: week* 24, others 168, 180-day cap). `ranks` = TMDB rank by item id for the shelf's own list; absent = no list cached (local ranking). Library: genre-shelves.json.",
+  "library" : [
+    {
+      "added" : 10,
+      "genres" : "Thriller, Drama",
+      "id" : "t00",
+      "key" : "thr0",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 2,
+      "rating" : "8.5",
+      "year" : 2026
+    },
+    {
+      "added" : 30,
+      "genres" : "Action \/ Thriller",
+      "id" : "t01",
+      "key" : "thr1",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 3,
+      "rating" : "8.1",
+      "year" : 2025
+    },
+    {
+      "added" : 50,
+      "genres" : "Thriller, Drama",
+      "id" : "t02",
+      "key" : "thr2",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 4,
+      "rating" : "7.9",
+      "year" : 2024
+    },
+    {
+      "added" : 70,
+      "cam" : true,
+      "genres" : "Action \/ Thriller",
+      "id" : "t03",
+      "key" : "thr3",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 0,
+      "rating" : "7.4",
+      "year" : 2023
+    },
+    {
+      "added" : 90,
+      "genres" : "Thriller, Drama",
+      "id" : "t04",
+      "key" : "thr4",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 3,
+      "rating" : "7.0",
+      "year" : 2022
+    },
+    {
+      "added" : 110,
+      "genres" : "Action \/ Thriller",
+      "id" : "t05",
+      "key" : "thr5",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 4,
+      "rating" : "6.6",
+      "restricted" : true,
+      "year" : 2021
+    },
+    {
+      "added" : 130,
+      "genres" : "Thriller, Drama",
+      "id" : "t06",
+      "key" : "thr6",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 2,
+      "rating" : "6.2",
+      "year" : 2020
+    },
+    {
+      "added" : 150,
+      "genres" : "Action \/ Thriller",
+      "id" : "t07",
+      "key" : "thr7",
+      "kind" : "movie",
+      "lang" : "English",
+      "poster" : false,
+      "q" : 3,
+      "rating" : "5.8",
+      "year" : 2019
+    },
+    {
+      "added" : 170,
+      "genres" : "Thriller, Drama",
+      "id" : "t08",
+      "key" : "thr8",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 4,
+      "rating" : "5.1",
+      "year" : 2026
+    },
+    {
+      "added" : 190,
+      "dismissed" : true,
+      "genres" : "Action \/ Thriller",
+      "id" : "t09",
+      "key" : "thr9",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 2,
+      "rating" : "4.7",
+      "year" : 2025
+    },
+    {
+      "added" : 210,
+      "genres" : "Thriller, Drama",
+      "id" : "t10",
+      "key" : "thr10",
+      "kind" : "series",
+      "lang" : "English",
+      "q" : 3,
+      "rating" : "8.8",
+      "year" : 2024
+    },
+    {
+      "added" : 230,
+      "genres" : "Action \/ Thriller",
+      "id" : "t11",
+      "key" : "thr11",
+      "kind" : "series",
+      "lang" : "English",
+      "q" : 4,
+      "rating" : "7.7",
+      "year" : 2023
+    },
+    {
+      "added" : 250,
+      "genres" : "Thriller, Drama",
+      "id" : "t12",
+      "key" : "thr12",
+      "kind" : "series",
+      "lang" : "English",
+      "lastWatched" : 2,
+      "p7" : 2,
+      "q" : 2,
+      "rating" : "6.9",
+      "watched" : true,
+      "year" : 2022
+    },
+    {
+      "added" : 270,
+      "genres" : "Action \/ Thriller",
+      "id" : "t13",
+      "key" : "thr13",
+      "kind" : "series",
+      "lang" : "English",
+      "q" : 3,
+      "rating" : "6.0",
+      "year" : 2021
+    },
+    {
+      "added" : 30,
+      "genres" : "Science Fiction",
+      "id" : "f00",
+      "key" : "sf0",
+      "kind" : "movie",
+      "rating" : "6.0",
+      "year" : 2024
+    },
+    {
+      "added" : 40,
+      "genres" : "Science Fiction",
+      "id" : "f01",
+      "key" : "sf1",
+      "kind" : "movie",
+      "rating" : "7.1",
+      "year" : 2023
+    },
+    {
+      "added" : 50,
+      "genres" : "Science Fiction",
+      "id" : "f02",
+      "key" : "sf2",
+      "kind" : "movie",
+      "rating" : "8.2",
+      "year" : 2022
+    },
+    {
+      "added" : 60,
+      "genres" : "Science Fiction",
+      "id" : "f03",
+      "key" : "sf3",
+      "kind" : "movie",
+      "rating" : "9.3",
+      "year" : 2021
+    },
+    {
+      "added" : 70,
+      "genres" : "Science Fiction",
+      "id" : "f04",
+      "key" : "sf4",
+      "kind" : "movie",
+      "rating" : "6.4",
+      "year" : 2020
+    },
+    {
+      "added" : 80,
+      "genres" : "Science Fiction",
+      "id" : "f05",
+      "key" : "sf5",
+      "kind" : "movie",
+      "rating" : "7.5",
+      "year" : 2019
+    },
+    {
+      "added" : 90,
+      "genres" : "Sci-Fi & Fantasy",
+      "id" : "f06",
+      "key" : "sf6",
+      "kind" : "series",
+      "rating" : "8.6",
+      "year" : 2018
+    },
+    {
+      "added" : 100,
+      "genres" : "Sci-Fi & Fantasy",
+      "id" : "f07",
+      "key" : "sf7",
+      "kind" : "series",
+      "rating" : "9.7",
+      "year" : 2017
+    },
+    {
+      "added" : 110,
+      "genres" : "Sci-Fi & Fantasy",
+      "id" : "f08",
+      "key" : "sf8",
+      "kind" : "series",
+      "rating" : "6.8",
+      "year" : 2016
+    },
+    {
+      "added" : 120,
+      "genres" : "Sci-Fi & Fantasy",
+      "id" : "f09",
+      "key" : "sf9",
+      "kind" : "series",
+      "rating" : "7.9",
+      "year" : 2015
+    },
+    {
+      "added" : 5,
+      "genres" : "Comedy",
+      "id" : "c00",
+      "key" : "com0",
+      "kind" : "movie",
+      "rating" : "7.0",
+      "year" : 2020
+    },
+    {
+      "added" : 6,
+      "genres" : "Comedy",
+      "id" : "c01",
+      "key" : "com1",
+      "kind" : "movie",
+      "rating" : "7.1",
+      "year" : 2021
+    },
+    {
+      "added" : 7,
+      "genres" : "Comedy",
+      "id" : "c02",
+      "key" : "com2",
+      "kind" : "movie",
+      "rating" : "7.2",
+      "year" : 2022
+    },
+    {
+      "added" : 8,
+      "genres" : "Comedy",
+      "id" : "c03",
+      "key" : "com3",
+      "kind" : "movie",
+      "rating" : "7.3",
+      "year" : 2023
+    },
+    {
+      "added" : 9,
+      "genres" : "Comedy",
+      "id" : "c04",
+      "key" : "com4",
+      "kind" : "movie",
+      "rating" : "7.4",
+      "year" : 2024
+    },
+    {
+      "added" : 10,
+      "genres" : "Comedy",
+      "id" : "c05",
+      "key" : "com5",
+      "kind" : "movie",
+      "rating" : "7.5",
+      "year" : 2025
+    },
+    {
+      "genres" : "Reality TV",
+      "id" : "r00",
+      "key" : "real0",
+      "kind" : "movie",
+      "rating" : "7.0",
+      "year" : 2025
+    },
+    {
+      "added" : 0,
+      "genres" : "Reality",
+      "id" : "r10",
+      "key" : "real10",
+      "kind" : "series",
+      "rating" : "6.0",
+      "year" : 2025
+    },
+    {
+      "added" : 4,
+      "genres" : "Reality",
+      "id" : "r11",
+      "key" : "real11",
+      "kind" : "series",
+      "rating" : "6.1",
+      "year" : 2024
+    },
+    {
+      "added" : 8,
+      "genres" : "Reality",
+      "id" : "r12",
+      "key" : "real12",
+      "kind" : "series",
+      "rating" : "6.2",
+      "year" : 2023
+    },
+    {
+      "added" : 12,
+      "genres" : "Reality",
+      "id" : "r13",
+      "key" : "real13",
+      "kind" : "series",
+      "rating" : "6.3",
+      "year" : 2022
+    },
+    {
+      "added" : 16,
+      "genres" : "Reality",
+      "id" : "r14",
+      "key" : "real14",
+      "kind" : "series",
+      "rating" : "6.4",
+      "year" : 2021
+    },
+    {
+      "added" : 20,
+      "genres" : "Reality",
+      "id" : "r15",
+      "key" : "real15",
+      "kind" : "series",
+      "rating" : "6.5",
+      "year" : 2020
+    },
+    {
+      "added" : 24,
+      "genres" : "Reality",
+      "id" : "r16",
+      "key" : "real16",
+      "kind" : "series",
+      "rating" : "6.6",
+      "year" : 2019
+    },
+    {
+      "added" : 28,
+      "genres" : "Reality",
+      "id" : "r17",
+      "key" : "real17",
+      "kind" : "series",
+      "rating" : "6.7",
+      "year" : 2018
+    }
+  ],
+  "lists" : [
+    {
+      "general" : "week",
+      "mode" : "weekly",
+      "own" : "week:thriller",
+      "shelf" : "genre:thriller"
+    },
+    {
+      "general" : "top",
+      "mode" : "allTime",
+      "own" : "top:thriller",
+      "shelf" : "genre:thriller"
+    },
+    {
+      "general" : "week",
+      "mode" : "weekly",
+      "own" : "",
+      "shelf" : "trending-library"
+    },
+    {
+      "general" : "top",
+      "mode" : "allTime",
+      "own" : "",
+      "shelf" : "trending-library"
+    }
+  ],
+  "name" : "shelf-modes",
+  "refetchHours" : {
+    "top" : 168,
+    "top:x" : 168,
+    "week:x" : 24
+  },
+  "steps" : [
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 1,
+          "drawn" : 9,
+          "groups" : 14,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 9,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 1
+        },
+        "ids" : [
+          "t06",
+          "t10",
+          "t01",
+          "t11",
+          "t02",
+          "t04",
+          "t00",
+          "t13",
+          "t08"
+        ]
+      },
+      "mode" : "weekly",
+      "profile" : "p",
+      "shelf" : "genre:thriller"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 1,
+          "drawn" : 9,
+          "groups" : 14,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 9,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 1
+        },
+        "ids" : [
+          "t01",
+          "t08",
+          "t13",
+          "t00",
+          "t02",
+          "t11",
+          "t10",
+          "t04",
+          "t06"
+        ]
+      },
+      "mode" : "allTime",
+      "profile" : "p",
+      "shelf" : "genre:thriller"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "trendingTMDB",
+          "dismissed" : 1,
+          "drawn" : 9,
+          "groups" : 14,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 9,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : true,
+          "watched" : 1
+        },
+        "ids" : [
+          "t00",
+          "t01",
+          "t02",
+          "t08",
+          "t06",
+          "t04",
+          "t11",
+          "t10",
+          "t13"
+        ]
+      },
+      "mode" : "allTime",
+      "profile" : "p",
+      "ranks" : {
+        "t00" : 3,
+        "t01" : 1,
+        "t02" : 2,
+        "t04" : 4,
+        "t06" : 5,
+        "t08" : 6,
+        "t10" : 7,
+        "t11" : 8
+      },
+      "shelf" : "genre:thriller"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "trendingTMDB",
+          "dismissed" : 1,
+          "drawn" : 9,
+          "groups" : 14,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 9,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : true,
+          "watched" : 1
+        },
+        "ids" : [
+          "t01",
+          "t02",
+          "t00",
+          "t06",
+          "t04",
+          "t08",
+          "t10",
+          "t11",
+          "t13"
+        ]
+      },
+      "mode" : "weekly",
+      "profile" : "p",
+      "ranks" : {
+        "t00" : 3,
+        "t01" : 1,
+        "t02" : 2,
+        "t04" : 4,
+        "t06" : 5,
+        "t08" : 6,
+        "t10" : 7,
+        "t11" : 8
+      },
+      "shelf" : "genre:thriller"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 0,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 0,
+          "drawn" : 10,
+          "groups" : 10,
+          "hidden" : false,
+          "noArtwork" : 0,
+          "pool" : 10,
+          "restricted" : 0,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 0
+        },
+        "ids" : [
+          "f02",
+          "f07",
+          "f04",
+          "f06",
+          "f01",
+          "f00",
+          "f09",
+          "f08",
+          "f05",
+          "f03"
+        ]
+      },
+      "mode" : "weekly",
+      "profile" : "p",
+      "shelf" : "genre:scifi"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 0,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 0,
+          "drawn" : 10,
+          "groups" : 10,
+          "hidden" : false,
+          "noArtwork" : 0,
+          "pool" : 10,
+          "restricted" : 0,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 0
+        },
+        "ids" : [
+          "f09",
+          "f05",
+          "f00",
+          "f08",
+          "f06",
+          "f03",
+          "f02",
+          "f07",
+          "f01",
+          "f04"
+        ]
+      },
+      "mode" : "allTime",
+      "profile" : "p",
+      "shelf" : "genre:scifi"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 1,
+          "drawn" : 14,
+          "groups" : 39,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 34,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 1
+        },
+        "ids" : [
+          "r16",
+          "t04",
+          "r14",
+          "r00",
+          "c00",
+          "t06",
+          "f07",
+          "r10",
+          "c03",
+          "t10",
+          "f04",
+          "r12",
+          "f00",
+          "r17"
+        ]
+      },
+      "mode" : "weekly",
+      "profile" : "p",
+      "shelf" : "trending-library"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 1,
+          "drawn" : 14,
+          "groups" : 39,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 34,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 1
+        },
+        "ids" : [
+          "t06",
+          "c05",
+          "c04",
+          "t02",
+          "f01",
+          "t04",
+          "r16",
+          "t11",
+          "c00",
+          "f02",
+          "c02",
+          "f07",
+          "r11",
+          "r10"
+        ]
+      },
+      "mode" : "allTime",
+      "profile" : "p",
+      "shelf" : "trending-library"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "trendingTMDB",
+          "dismissed" : 1,
+          "drawn" : 4,
+          "groups" : 39,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 4,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : true,
+          "watched" : 0
+        },
+        "ids" : [
+          "f01",
+          "t00",
+          "f02",
+          "f00"
+        ]
+      },
+      "mode" : "allTime",
+      "profile" : "p",
+      "ranks" : {
+        "f00" : 2,
+        "f01" : 1,
+        "f02" : 3,
+        "t00" : 4
+      },
+      "shelf" : "trending-library"
+    }
+  ],
+  "storage" : [
+    {
+      "expect" : "weekly",
+      "op" : "get",
+      "profile" : "a",
+      "shelf" : "genre:thriller"
+    },
+    {
+      "mode" : "allTime",
+      "op" : "set",
+      "profile" : "a",
+      "shelf" : "genre:thriller"
+    },
+    {
+      "expect" : "allTime",
+      "op" : "get",
+      "profile" : "a",
+      "shelf" : "genre:thriller"
+    },
+    {
+      "expect" : "weekly",
+      "op" : "get",
+      "profile" : "b",
+      "shelf" : "genre:thriller"
+    },
+    {
+      "expect" : "weekly",
+      "op" : "get",
+      "profile" : "a",
+      "shelf" : "genre:action"
+    },
+    {
+      "mode" : "weekly",
+      "op" : "set",
+      "profile" : "a",
+      "shelf" : "genre:thriller"
+    },
+    {
+      "expect" : "weekly",
+      "op" : "get",
+      "profile" : "a",
+      "shelf" : "genre:thriller"
+    }
+  ]
+}

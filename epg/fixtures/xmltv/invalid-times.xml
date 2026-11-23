@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tv>
+  <channel id="i"><display-name>Bad</display-name></channel>
+  <programme start="tomorrow" stop="later" channel="i"><title>Nope</title></programme>
+  <programme start="20261322200000" stop="20261322210000" channel="i"><title>Month 13</title></programme>
+</tv>

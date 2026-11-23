@@ -1,0 +1,1482 @@
+{
+  "constants" : {
+    "maxFromAffinity" : 3,
+    "maxShown" : 6,
+    "minTitles" : 8,
+    "rankBucket" : 3,
+    "shelfSize" : 14
+  },
+  "counts" : {
+    "action" : 3,
+    "comedy" : 6,
+    "drama" : 7,
+    "fantasy" : 4,
+    "reality" : 8,
+    "scifi" : 10,
+    "thriller" : 10
+  },
+  "description" : "Genre shelf contract (docs\/SMART-MIX.md, Genre shelves). Expected values were produced by the Swift reference and checked by hand against the rules; Kotlin and C# must reproduce them exactly. Candidate field `genres` is the raw provider text; tokenise it with `tokens` first.",
+  "library" : [
+    {
+      "added" : 10,
+      "genres" : "Thriller, Drama",
+      "id" : "t00",
+      "key" : "thr0",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 2,
+      "rating" : "8.5",
+      "year" : 2026
+    },
+    {
+      "added" : 30,
+      "genres" : "Action \/ Thriller",
+      "id" : "t01",
+      "key" : "thr1",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 3,
+      "rating" : "8.1",
+      "year" : 2025
+    },
+    {
+      "added" : 50,
+      "genres" : "Thriller, Drama",
+      "id" : "t02",
+      "key" : "thr2",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 4,
+      "rating" : "7.9",
+      "year" : 2024
+    },
+    {
+      "added" : 70,
+      "cam" : true,
+      "genres" : "Action \/ Thriller",
+      "id" : "t03",
+      "key" : "thr3",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 0,
+      "rating" : "7.4",
+      "year" : 2023
+    },
+    {
+      "added" : 90,
+      "genres" : "Thriller, Drama",
+      "id" : "t04",
+      "key" : "thr4",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 3,
+      "rating" : "7.0",
+      "year" : 2022
+    },
+    {
+      "added" : 110,
+      "genres" : "Action \/ Thriller",
+      "id" : "t05",
+      "key" : "thr5",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 4,
+      "rating" : "6.6",
+      "restricted" : true,
+      "year" : 2021
+    },
+    {
+      "added" : 130,
+      "genres" : "Thriller, Drama",
+      "id" : "t06",
+      "key" : "thr6",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 2,
+      "rating" : "6.2",
+      "year" : 2020
+    },
+    {
+      "added" : 150,
+      "genres" : "Action \/ Thriller",
+      "id" : "t07",
+      "key" : "thr7",
+      "kind" : "movie",
+      "lang" : "English",
+      "poster" : false,
+      "q" : 3,
+      "rating" : "5.8",
+      "year" : 2019
+    },
+    {
+      "added" : 170,
+      "genres" : "Thriller, Drama",
+      "id" : "t08",
+      "key" : "thr8",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 4,
+      "rating" : "5.1",
+      "year" : 2026
+    },
+    {
+      "added" : 190,
+      "dismissed" : true,
+      "genres" : "Action \/ Thriller",
+      "id" : "t09",
+      "key" : "thr9",
+      "kind" : "movie",
+      "lang" : "English",
+      "q" : 2,
+      "rating" : "4.7",
+      "year" : 2025
+    },
+    {
+      "added" : 210,
+      "genres" : "Thriller, Drama",
+      "id" : "t10",
+      "key" : "thr10",
+      "kind" : "series",
+      "lang" : "English",
+      "q" : 3,
+      "rating" : "8.8",
+      "year" : 2024
+    },
+    {
+      "added" : 230,
+      "genres" : "Action \/ Thriller",
+      "id" : "t11",
+      "key" : "thr11",
+      "kind" : "series",
+      "lang" : "English",
+      "q" : 4,
+      "rating" : "7.7",
+      "year" : 2023
+    },
+    {
+      "added" : 250,
+      "genres" : "Thriller, Drama",
+      "id" : "t12",
+      "key" : "thr12",
+      "kind" : "series",
+      "lang" : "English",
+      "lastWatched" : 2,
+      "p7" : 2,
+      "q" : 2,
+      "rating" : "6.9",
+      "watched" : true,
+      "year" : 2022
+    },
+    {
+      "added" : 270,
+      "genres" : "Action \/ Thriller",
+      "id" : "t13",
+      "key" : "thr13",
+      "kind" : "series",
+      "lang" : "English",
+      "q" : 3,
+      "rating" : "6.0",
+      "year" : 2021
+    },
+    {
+      "added" : 30,
+      "genres" : "Science Fiction",
+      "id" : "f00",
+      "key" : "sf0",
+      "kind" : "movie",
+      "rating" : "6.0",
+      "year" : 2024
+    },
+    {
+      "added" : 40,
+      "genres" : "Science Fiction",
+      "id" : "f01",
+      "key" : "sf1",
+      "kind" : "movie",
+      "rating" : "7.1",
+      "year" : 2023
+    },
+    {
+      "added" : 50,
+      "genres" : "Science Fiction",
+      "id" : "f02",
+      "key" : "sf2",
+      "kind" : "movie",
+      "rating" : "8.2",
+      "year" : 2022
+    },
+    {
+      "added" : 60,
+      "genres" : "Science Fiction",
+      "id" : "f03",
+      "key" : "sf3",
+      "kind" : "movie",
+      "rating" : "9.3",
+      "year" : 2021
+    },
+    {
+      "added" : 70,
+      "genres" : "Science Fiction",
+      "id" : "f04",
+      "key" : "sf4",
+      "kind" : "movie",
+      "rating" : "6.4",
+      "year" : 2020
+    },
+    {
+      "added" : 80,
+      "genres" : "Science Fiction",
+      "id" : "f05",
+      "key" : "sf5",
+      "kind" : "movie",
+      "rating" : "7.5",
+      "year" : 2019
+    },
+    {
+      "added" : 90,
+      "genres" : "Sci-Fi & Fantasy",
+      "id" : "f06",
+      "key" : "sf6",
+      "kind" : "series",
+      "rating" : "8.6",
+      "year" : 2018
+    },
+    {
+      "added" : 100,
+      "genres" : "Sci-Fi & Fantasy",
+      "id" : "f07",
+      "key" : "sf7",
+      "kind" : "series",
+      "rating" : "9.7",
+      "year" : 2017
+    },
+    {
+      "added" : 110,
+      "genres" : "Sci-Fi & Fantasy",
+      "id" : "f08",
+      "key" : "sf8",
+      "kind" : "series",
+      "rating" : "6.8",
+      "year" : 2016
+    },
+    {
+      "added" : 120,
+      "genres" : "Sci-Fi & Fantasy",
+      "id" : "f09",
+      "key" : "sf9",
+      "kind" : "series",
+      "rating" : "7.9",
+      "year" : 2015
+    },
+    {
+      "added" : 5,
+      "genres" : "Comedy",
+      "id" : "c00",
+      "key" : "com0",
+      "kind" : "movie",
+      "rating" : "7.0",
+      "year" : 2020
+    },
+    {
+      "added" : 6,
+      "genres" : "Comedy",
+      "id" : "c01",
+      "key" : "com1",
+      "kind" : "movie",
+      "rating" : "7.1",
+      "year" : 2021
+    },
+    {
+      "added" : 7,
+      "genres" : "Comedy",
+      "id" : "c02",
+      "key" : "com2",
+      "kind" : "movie",
+      "rating" : "7.2",
+      "year" : 2022
+    },
+    {
+      "added" : 8,
+      "genres" : "Comedy",
+      "id" : "c03",
+      "key" : "com3",
+      "kind" : "movie",
+      "rating" : "7.3",
+      "year" : 2023
+    },
+    {
+      "added" : 9,
+      "genres" : "Comedy",
+      "id" : "c04",
+      "key" : "com4",
+      "kind" : "movie",
+      "rating" : "7.4",
+      "year" : 2024
+    },
+    {
+      "added" : 10,
+      "genres" : "Comedy",
+      "id" : "c05",
+      "key" : "com5",
+      "kind" : "movie",
+      "rating" : "7.5",
+      "year" : 2025
+    },
+    {
+      "genres" : "Reality TV",
+      "id" : "r00",
+      "key" : "real0",
+      "kind" : "movie",
+      "rating" : "7.0",
+      "year" : 2025
+    },
+    {
+      "added" : 0,
+      "genres" : "Reality",
+      "id" : "r10",
+      "key" : "real10",
+      "kind" : "series",
+      "rating" : "6.0",
+      "year" : 2025
+    },
+    {
+      "added" : 4,
+      "genres" : "Reality",
+      "id" : "r11",
+      "key" : "real11",
+      "kind" : "series",
+      "rating" : "6.1",
+      "year" : 2024
+    },
+    {
+      "added" : 8,
+      "genres" : "Reality",
+      "id" : "r12",
+      "key" : "real12",
+      "kind" : "series",
+      "rating" : "6.2",
+      "year" : 2023
+    },
+    {
+      "added" : 12,
+      "genres" : "Reality",
+      "id" : "r13",
+      "key" : "real13",
+      "kind" : "series",
+      "rating" : "6.3",
+      "year" : 2022
+    },
+    {
+      "added" : 16,
+      "genres" : "Reality",
+      "id" : "r14",
+      "key" : "real14",
+      "kind" : "series",
+      "rating" : "6.4",
+      "year" : 2021
+    },
+    {
+      "added" : 20,
+      "genres" : "Reality",
+      "id" : "r15",
+      "key" : "real15",
+      "kind" : "series",
+      "rating" : "6.5",
+      "year" : 2020
+    },
+    {
+      "added" : 24,
+      "genres" : "Reality",
+      "id" : "r16",
+      "key" : "real16",
+      "kind" : "series",
+      "rating" : "6.6",
+      "year" : 2019
+    },
+    {
+      "added" : 28,
+      "genres" : "Reality",
+      "id" : "r17",
+      "key" : "real17",
+      "kind" : "series",
+      "rating" : "6.7",
+      "year" : 2018
+    }
+  ],
+  "matching" : [
+    {
+      "keys" : [
+        "scifi",
+        "fantasy"
+      ],
+      "kind" : "series",
+      "tokens" : [
+        "sci fi fantasy"
+      ]
+    },
+    {
+      "keys" : [
+        "scifi",
+        "fantasy"
+      ],
+      "kind" : "movie",
+      "tokens" : [
+        "sci fi fantasy"
+      ]
+    },
+    {
+      "keys" : [
+        "action",
+        "adventure"
+      ],
+      "kind" : "series",
+      "tokens" : [
+        "action adventure"
+      ]
+    },
+    {
+      "keys" : [
+
+      ],
+      "kind" : "movie",
+      "tokens" : [
+        "reality tv"
+      ]
+    },
+    {
+      "keys" : [
+        "reality"
+      ],
+      "kind" : "series",
+      "tokens" : [
+        "reality tv"
+      ]
+    },
+    {
+      "keys" : [
+        "war"
+      ],
+      "kind" : "series",
+      "tokens" : [
+        "war politics"
+      ]
+    },
+    {
+      "keys" : [
+
+      ],
+      "kind" : "movie",
+      "tokens" : [
+        "docudrama"
+      ]
+    },
+    {
+      "keys" : [
+        "anime"
+      ],
+      "kind" : "movie",
+      "tokens" : [
+        "anime"
+      ]
+    }
+  ],
+  "name" : "genre-shelves",
+  "placement" : [
+    {
+      "expect" : [
+        "top-week",
+        "trending",
+        "g1",
+        "for-you",
+        "g2",
+        "g3",
+        "lang-pref",
+        "g4",
+        "rediscover",
+        "g5",
+        "g6"
+      ],
+      "genres" : [
+        "g1",
+        "g2",
+        "g3",
+        "g4",
+        "g5",
+        "g6"
+      ],
+      "present" : [
+        "top-week",
+        "trending",
+        "for-you",
+        "lang-pref",
+        "rediscover"
+      ]
+    },
+    {
+      "expect" : [
+        "top-week",
+        "trending",
+        "g1",
+        "g2"
+      ],
+      "genres" : [
+        "g1",
+        "g2",
+        "g3",
+        "g4",
+        "g5",
+        "g6"
+      ],
+      "present" : [
+        "top-week",
+        "trending"
+      ]
+    },
+    {
+      "expect" : [
+        "g1",
+        "g2"
+      ],
+      "genres" : [
+        "g1",
+        "g2",
+        "g3",
+        "g4",
+        "g5",
+        "g6"
+      ],
+      "present" : [
+
+      ]
+    },
+    {
+      "expect" : [
+        "trending",
+        "g1",
+        "g2",
+        "lang-pref",
+        "g3",
+        "rediscover"
+      ],
+      "genres" : [
+        "g1",
+        "g2",
+        "g3"
+      ],
+      "present" : [
+        "trending",
+        "rediscover",
+        "lang-pref"
+      ]
+    }
+  ],
+  "select" : [
+    {
+      "counts" : {
+        "action" : 20,
+        "adventure" : 20,
+        "animation" : 20,
+        "anime" : 20,
+        "biography" : 20,
+        "comedy" : 20,
+        "crime" : 20,
+        "documentary" : 20,
+        "drama" : 20,
+        "family" : 20,
+        "fantasy" : 20,
+        "history" : 20,
+        "horror" : 20,
+        "kids" : 20,
+        "music" : 20,
+        "mystery" : 20,
+        "reality" : 20,
+        "romance" : 20,
+        "scifi" : 20,
+        "thriller" : 20,
+        "war" : 20,
+        "western" : 20
+      },
+      "dayKey" : "2026-11-02",
+      "expect" : [
+        "action",
+        "comedy",
+        "drama",
+        "thriller",
+        "scifi",
+        "horror"
+      ],
+      "profile" : "p"
+    },
+    {
+      "counts" : {
+        "action" : 20,
+        "adventure" : 20,
+        "animation" : 20,
+        "anime" : 20,
+        "biography" : 20,
+        "comedy" : 20,
+        "crime" : 20,
+        "documentary" : 20,
+        "drama" : 20,
+        "family" : 20,
+        "fantasy" : 20,
+        "history" : 20,
+        "horror" : 20,
+        "kids" : 20,
+        "music" : 20,
+        "mystery" : 20,
+        "reality" : 20,
+        "romance" : 20,
+        "scifi" : 20,
+        "thriller" : 20,
+        "war" : 20,
+        "western" : 20
+      },
+      "dayKey" : "2026-11-03",
+      "expect" : [
+        "scifi",
+        "horror",
+        "romance",
+        "crime",
+        "animation",
+        "documentary"
+      ],
+      "profile" : "p"
+    },
+    {
+      "counts" : {
+        "action" : 20,
+        "adventure" : 20,
+        "animation" : 20,
+        "anime" : 20,
+        "biography" : 20,
+        "comedy" : 20,
+        "crime" : 20,
+        "documentary" : 20,
+        "drama" : 20,
+        "family" : 20,
+        "fantasy" : 20,
+        "history" : 20,
+        "horror" : 20,
+        "kids" : 20,
+        "music" : 20,
+        "mystery" : 20,
+        "reality" : 20,
+        "romance" : 20,
+        "scifi" : 20,
+        "thriller" : 20,
+        "war" : 20,
+        "western" : 20
+      },
+      "dayKey" : "2026-11-02",
+      "expect" : [
+        "comedy",
+        "drama",
+        "thriller",
+        "scifi",
+        "horror",
+        "romance"
+      ],
+      "profile" : "p",
+      "refreshCounter" : 1
+    },
+    {
+      "affinityGenreKeys" : [
+        "horror",
+        "western",
+        "crime",
+        "comedy"
+      ],
+      "counts" : {
+        "action" : 20,
+        "adventure" : 20,
+        "animation" : 20,
+        "anime" : 20,
+        "biography" : 20,
+        "comedy" : 20,
+        "crime" : 20,
+        "documentary" : 20,
+        "drama" : 20,
+        "family" : 20,
+        "fantasy" : 20,
+        "history" : 20,
+        "horror" : 20,
+        "kids" : 20,
+        "music" : 20,
+        "mystery" : 20,
+        "reality" : 20,
+        "romance" : 20,
+        "scifi" : 20,
+        "thriller" : 20,
+        "war" : 20,
+        "western" : 20
+      },
+      "dayKey" : "2026-11-02",
+      "expect" : [
+        "horror",
+        "western",
+        "crime",
+        "comedy",
+        "drama",
+        "thriller"
+      ],
+      "profile" : "p"
+    },
+    {
+      "counts" : {
+        "action" : 20,
+        "adventure" : 20,
+        "animation" : 20,
+        "anime" : 20,
+        "biography" : 20,
+        "comedy" : 20,
+        "crime" : 20,
+        "documentary" : 20,
+        "drama" : 20,
+        "family" : 20,
+        "fantasy" : 20,
+        "history" : 20,
+        "horror" : 20,
+        "kids" : 20,
+        "music" : 20,
+        "mystery" : 20,
+        "reality" : 20,
+        "romance" : 20,
+        "scifi" : 20,
+        "thriller" : 20,
+        "war" : 20,
+        "western" : 20
+      },
+      "dayKey" : "2026-11-02",
+      "expect" : [
+        "family",
+        "fantasy",
+        "adventure",
+        "music",
+        "kids",
+        "comedy"
+      ],
+      "kids" : true,
+      "profile" : "k"
+    },
+    {
+      "counts" : {
+        "action" : 3,
+        "comedy" : 6,
+        "drama" : 7,
+        "fantasy" : 4,
+        "reality" : 8,
+        "scifi" : 10,
+        "thriller" : 10
+      },
+      "dayKey" : "2026-11-02",
+      "expect" : [
+        "thriller",
+        "scifi",
+        "reality"
+      ],
+      "profile" : "p"
+    },
+    {
+      "counts" : {
+
+      },
+      "dayKey" : "2026-11-02",
+      "expect" : [
+
+      ],
+      "profile" : "p"
+    }
+  ],
+  "steps" : [
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 1,
+          "drawn" : 9,
+          "groups" : 14,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 9,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 1
+        },
+        "ids" : [
+          "t06",
+          "t10",
+          "t01",
+          "t11",
+          "t02",
+          "t04",
+          "t00",
+          "t13",
+          "t08"
+        ]
+      },
+      "profile" : "p",
+      "shelf" : "genre:thriller"
+    },
+    {
+      "dayKey" : "2026-11-03",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 1,
+          "drawn" : 9,
+          "groups" : 14,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 9,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 1
+        },
+        "ids" : [
+          "t02",
+          "t04",
+          "t13",
+          "t11",
+          "t00",
+          "t08",
+          "t10",
+          "t01",
+          "t06"
+        ]
+      },
+      "profile" : "p",
+      "shelf" : "genre:thriller"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 1,
+          "drawn" : 9,
+          "groups" : 14,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 9,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 1
+        },
+        "ids" : [
+          "t00",
+          "t06",
+          "t11",
+          "t08",
+          "t13",
+          "t02",
+          "t01",
+          "t04",
+          "t10"
+        ]
+      },
+      "profile" : "p",
+      "refreshCounter" : 1,
+      "shelf" : "genre:thriller"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "trendingTMDB",
+          "dismissed" : 1,
+          "drawn" : 9,
+          "groups" : 14,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 9,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : true,
+          "watched" : 1
+        },
+        "ids" : [
+          "t01",
+          "t02",
+          "t00",
+          "t06",
+          "t04",
+          "t08",
+          "t10",
+          "t11",
+          "t13"
+        ]
+      },
+      "profile" : "p",
+      "ranks" : {
+        "t00" : 3,
+        "t01" : 1,
+        "t02" : 2,
+        "t04" : 4,
+        "t06" : 5,
+        "t08" : 6,
+        "t10" : 7,
+        "t11" : 8
+      },
+      "shelf" : "genre:thriller"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 0,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 0,
+          "drawn" : 10,
+          "groups" : 10,
+          "hidden" : false,
+          "noArtwork" : 0,
+          "pool" : 10,
+          "restricted" : 0,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 0
+        },
+        "ids" : [
+          "f02",
+          "f07",
+          "f04",
+          "f06",
+          "f01",
+          "f00",
+          "f09",
+          "f08",
+          "f05",
+          "f03"
+        ]
+      },
+      "profile" : "p",
+      "shelf" : "genre:scifi"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 0,
+          "caption" : "",
+          "dismissed" : 0,
+          "drawn" : 6,
+          "groups" : 6,
+          "hidden" : true,
+          "noArtwork" : 0,
+          "pool" : 6,
+          "restricted" : 0,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 0
+        },
+        "ids" : [
+
+        ]
+      },
+      "profile" : "p",
+      "shelf" : "genre:comedy"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 0,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 0,
+          "drawn" : 8,
+          "groups" : 8,
+          "hidden" : false,
+          "noArtwork" : 0,
+          "pool" : 8,
+          "restricted" : 0,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 0
+        },
+        "ids" : [
+          "r12",
+          "r16",
+          "r13",
+          "r15",
+          "r10",
+          "r11",
+          "r17",
+          "r14"
+        ]
+      },
+      "profile" : "p",
+      "shelf" : "genre:reality"
+    },
+    {
+      "dayKey" : "2026-11-02",
+      "expect" : {
+        "diag" : {
+          "camOnly" : 1,
+          "caption" : "mostWatchedHere",
+          "dismissed" : 1,
+          "drawn" : 9,
+          "groups" : 14,
+          "hidden" : false,
+          "noArtwork" : 1,
+          "pool" : 9,
+          "restricted" : 1,
+          "tier" : 0,
+          "trendMode" : false,
+          "watched" : 1
+        },
+        "ids" : [
+          "t02",
+          "t13",
+          "t08",
+          "t11",
+          "t00",
+          "t04",
+          "t10",
+          "t01",
+          "t06"
+        ]
+      },
+      "profile" : "q",
+      "shelf" : "genre:thriller"
+    }
+  ],
+  "table" : [
+    {
+      "aliases" : [
+        "action",
+        "action adventure"
+      ],
+      "key" : "action",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Action",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        28
+      ],
+      "tmdbTV" : [
+        10759
+      ]
+    },
+    {
+      "aliases" : [
+        "comedy",
+        "comedies",
+        "sitcom"
+      ],
+      "key" : "comedy",
+      "kids" : true,
+      "scope" : "both",
+      "title" : "Top Comedy",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        35
+      ],
+      "tmdbTV" : [
+        35
+      ]
+    },
+    {
+      "aliases" : [
+        "drama",
+        "dramas"
+      ],
+      "key" : "drama",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Drama",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        18
+      ],
+      "tmdbTV" : [
+        18
+      ]
+    },
+    {
+      "aliases" : [
+        "thriller",
+        "thrillers",
+        "suspense"
+      ],
+      "key" : "thriller",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Thriller",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        53
+      ],
+      "tmdbTV" : [
+
+      ]
+    },
+    {
+      "aliases" : [
+        "science fiction",
+        "sci fi",
+        "scifi",
+        "sci fi fantasy"
+      ],
+      "key" : "scifi",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Science Fiction",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        878
+      ],
+      "tmdbTV" : [
+        10765
+      ]
+    },
+    {
+      "aliases" : [
+        "horror"
+      ],
+      "key" : "horror",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Horror",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        27
+      ],
+      "tmdbTV" : [
+
+      ]
+    },
+    {
+      "aliases" : [
+        "romance",
+        "romantic",
+        "romcom"
+      ],
+      "key" : "romance",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Romance",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        10749
+      ],
+      "tmdbTV" : [
+
+      ]
+    },
+    {
+      "aliases" : [
+        "crime",
+        "gangster"
+      ],
+      "key" : "crime",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Crime",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        80
+      ],
+      "tmdbTV" : [
+        80
+      ]
+    },
+    {
+      "aliases" : [
+        "animation",
+        "animated",
+        "cartoon"
+      ],
+      "key" : "animation",
+      "kids" : true,
+      "scope" : "both",
+      "title" : "Top Animation",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        16
+      ],
+      "tmdbTV" : [
+        16
+      ]
+    },
+    {
+      "aliases" : [
+        "documentary",
+        "documentaries",
+        "docuseries"
+      ],
+      "key" : "documentary",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Documentary",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        99
+      ],
+      "tmdbTV" : [
+        99
+      ]
+    },
+    {
+      "aliases" : [
+        "family"
+      ],
+      "key" : "family",
+      "kids" : true,
+      "scope" : "both",
+      "title" : "Top Family",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        10751
+      ],
+      "tmdbTV" : [
+        10751
+      ]
+    },
+    {
+      "aliases" : [
+        "fantasy",
+        "sci fi fantasy"
+      ],
+      "key" : "fantasy",
+      "kids" : true,
+      "scope" : "both",
+      "title" : "Top Fantasy",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        14
+      ],
+      "tmdbTV" : [
+        10765
+      ]
+    },
+    {
+      "aliases" : [
+        "mystery",
+        "whodunit"
+      ],
+      "key" : "mystery",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Mystery",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        9648
+      ],
+      "tmdbTV" : [
+        9648
+      ]
+    },
+    {
+      "aliases" : [
+        "adventure",
+        "action adventure"
+      ],
+      "key" : "adventure",
+      "kids" : true,
+      "scope" : "both",
+      "title" : "Top Adventure",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        12
+      ],
+      "tmdbTV" : [
+        10759
+      ]
+    },
+    {
+      "aliases" : [
+        "war",
+        "war politics",
+        "military"
+      ],
+      "key" : "war",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top War",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        10752
+      ],
+      "tmdbTV" : [
+        10768
+      ]
+    },
+    {
+      "aliases" : [
+        "western"
+      ],
+      "key" : "western",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Western",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        37
+      ],
+      "tmdbTV" : [
+        37
+      ]
+    },
+    {
+      "aliases" : [
+        "history",
+        "historical"
+      ],
+      "key" : "history",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top History",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        36
+      ],
+      "tmdbTV" : [
+
+      ]
+    },
+    {
+      "aliases" : [
+        "music",
+        "musical",
+        "concert"
+      ],
+      "key" : "music",
+      "kids" : true,
+      "scope" : "both",
+      "title" : "Top Music",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+        10402
+      ],
+      "tmdbTV" : [
+
+      ]
+    },
+    {
+      "aliases" : [
+        "biography",
+        "biographical",
+        "biopic"
+      ],
+      "key" : "biography",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Biography",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+
+      ],
+      "tmdbTV" : [
+
+      ]
+    },
+    {
+      "aliases" : [
+        "kids",
+        "children",
+        "childrens"
+      ],
+      "key" : "kids",
+      "kids" : true,
+      "scope" : "both",
+      "title" : "Top Kids",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+
+      ],
+      "tmdbTV" : [
+        10762
+      ]
+    },
+    {
+      "aliases" : [
+        "anime"
+      ],
+      "key" : "anime",
+      "kids" : false,
+      "scope" : "both",
+      "title" : "Top Anime",
+      "tmdbLang" : "ja",
+      "tmdbMovie" : [
+        16
+      ],
+      "tmdbTV" : [
+        16
+      ]
+    },
+    {
+      "aliases" : [
+        "reality",
+        "reality tv"
+      ],
+      "key" : "reality",
+      "kids" : false,
+      "scope" : "series",
+      "title" : "Top Reality",
+      "tmdbLang" : "",
+      "tmdbMovie" : [
+
+      ],
+      "tmdbTV" : [
+        10764
+      ]
+    }
+  ],
+  "tokens" : [
+    {
+      "raw" : "Action, Thriller",
+      "tokens" : [
+        "action",
+        "thriller"
+      ]
+    },
+    {
+      "raw" : "Sci-Fi & Fantasy",
+      "tokens" : [
+        "sci fi fantasy"
+      ]
+    },
+    {
+      "raw" : "Science Fiction | Drama",
+      "tokens" : [
+        "science fiction",
+        "drama"
+      ]
+    },
+    {
+      "raw" : "Action & Adventure",
+      "tokens" : [
+        "action adventure"
+      ]
+    },
+    {
+      "raw" : "Reality TV",
+      "tokens" : [
+        "reality tv"
+      ]
+    },
+    {
+      "raw" : "",
+      "tokens" : [
+
+      ]
+    },
+    {
+      "raw" : "War & Politics; Western",
+      "tokens" : [
+        "war politics",
+        "western"
+      ]
+    }
+  ]
+}

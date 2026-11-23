@@ -1,0 +1,72 @@
+[
+ {
+  "text": "Some Film 2019 Hindi",
+  "tiers": [
+   "year",
+   "lang-tail",
+   "lang-head"
+  ],
+  "expect": [
+   "Some Film",
+   "Some Film 2019"
+  ]
+ },
+ {
+  "text": "Some Film Telugu",
+  "tiers": [
+   "year",
+   "lang-tail",
+   "lang-head"
+  ],
+  "expect": [
+   "Some Film"
+  ]
+ },
+ {
+  "text": "Telugu Some Film",
+  "tiers": [
+   "year",
+   "lang-tail",
+   "lang-head"
+  ],
+  "expect": [
+   "Some Film"
+  ]
+ },
+ {
+  "text": "2019 Some Film",
+  "tiers": [
+   "year",
+   "lang-tail",
+   "lang-head"
+  ],
+  "expect": []
+ },
+ {
+  "text": "Some Show Season 2 Episode 5 Pilot",
+  "tiers": [
+   "season"
+  ],
+  "expect": [
+   "Some Show"
+  ]
+ },
+ {
+  "text": "Hindi",
+  "tiers": [
+   "year",
+   "lang-tail",
+   "lang-head"
+  ],
+  "expect": []
+ },
+ {
+  "text": "Blade Runner 2049",
+  "tiers": [
+   "year",
+   "lang-tail",
+   "lang-head"
+  ],
+  "expect": []
+ }
+]

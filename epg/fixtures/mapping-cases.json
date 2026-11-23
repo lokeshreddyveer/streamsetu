@@ -1,0 +1,969 @@
+{
+ "options": {
+  "autoThreshold": 0.6,
+  "suggestionFloor": 0.4,
+  "fuzzyMinRatio": 0.88,
+  "fuzzyMargin": 0.05
+ },
+ "guide": [
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "BBCOne.uk",
+   "names": [
+    "BBC One"
+   ],
+   "country": "uk"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "BBCTwo.uk",
+   "names": [
+    "BBC Two"
+   ],
+   "country": "uk"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "SkySportsNews.uk",
+   "names": [
+    "Sky Sports News"
+   ],
+   "country": "uk"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "Channel4.uk",
+   "names": [
+    "Channel 4"
+   ],
+   "country": "uk"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "Channel4+1.uk",
+   "names": [
+    "Channel 4 +1"
+   ],
+   "country": "uk"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "ITV1.uk",
+   "names": [
+    "ITV1"
+   ],
+   "country": "uk"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "CNN.us",
+   "names": [
+    "CNN"
+   ],
+   "country": "us"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "ComedyCentral.uk",
+   "names": [
+    "Comedy Central"
+   ],
+   "country": "uk"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "ComedyCentral.us",
+   "names": [
+    "Comedy Central"
+   ],
+   "country": "us"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "TF1.fr",
+   "names": [
+    "TF1"
+   ],
+   "country": "fr",
+   "language": "fra"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "TelePlus.fr",
+   "names": [
+    "Tele Plus"
+   ],
+   "country": "fr",
+   "language": "fra"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "DasErste.de",
+   "names": [
+    "Das Erste",
+    "ARD"
+   ],
+   "country": "de",
+   "language": "deu"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "FunAndGames.uk",
+   "names": [
+    "Fun and Games"
+   ],
+   "country": "uk"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "AlJazeeraEnglish.qa",
+   "names": [
+    "Al-Jazeera English"
+   ],
+   "country": "qa"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "News18India.in",
+   "names": [
+    "News18 India"
+   ],
+   "country": "in",
+   "language": "hin"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "NatGeoWild.in",
+   "names": [
+    "National Geographic Wild India"
+   ],
+   "country": "in",
+   "language": "hin"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "ES1a",
+   "names": [
+    "Eurosport 1"
+   ],
+   "language": "fra"
+  },
+  {
+   "source": "provider:p1",
+   "priority": 10,
+   "id": "ES1b",
+   "names": [
+    "Eurosport 1"
+   ],
+   "language": "deu"
+  },
+  {
+   "source": "user:u1",
+   "priority": 20,
+   "id": "bbc1",
+   "names": [
+    "BBC One"
+   ],
+   "country": "uk"
+  },
+  {
+   "source": "user:u1",
+   "priority": 20,
+   "id": "only-in-user",
+   "names": [
+    "User Only Channel"
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "note": "exact tvg id in the channel's own guide",
+   "channel": {
+    "id": "c",
+    "name": "x",
+    "tvg": "BBCOne.uk",
+    "own": "provider:p1"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCOne.uk",
+    "method": "exact",
+    "confidence": 0.99
+   },
+   "id": 1
+  },
+  {
+   "note": "exact tvg id found in another source",
+   "channel": {
+    "id": "c",
+    "name": "x",
+    "tvg": "BBCOne.uk",
+    "own": "provider:p9"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCOne.uk",
+    "method": "exactOther",
+    "confidence": 0.95
+   },
+   "id": 2
+  },
+  {
+   "note": "tvg id with spaces around it",
+   "channel": {
+    "id": "c",
+    "name": "x",
+    "tvg": "  BBCOne.uk ",
+    "own": "provider:p1"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCOne.uk",
+    "method": "exact",
+    "confidence": 0.99
+   },
+   "id": 3
+  },
+  {
+   "note": "tvg id in another case",
+   "channel": {
+    "id": "c",
+    "name": "x",
+    "tvg": "bbcone.UK",
+    "own": "provider:p1"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCOne.uk",
+    "method": "normalisedID",
+    "confidence": 0.9
+   },
+   "id": 4
+  },
+  {
+   "note": "tvg id with a feed suffix",
+   "channel": {
+    "id": "c",
+    "name": "x",
+    "tvg": "BBCOne.uk@SD",
+    "own": "provider:p1"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCOne.uk",
+    "method": "normalisedID",
+    "confidence": 0.9
+   },
+   "id": 5
+  },
+  {
+   "note": "tvg id without the country suffix",
+   "channel": {
+    "id": "c",
+    "name": "x",
+    "tvg": "BBCOne",
+    "own": "provider:p1"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCOne.uk",
+    "method": "normalisedID",
+    "confidence": 0.9
+   },
+   "id": 6
+  },
+  {
+   "note": "tvg id with a different country suffix never matches by id",
+   "channel": {
+    "id": "c",
+    "name": "zzz",
+    "tvg": "CNN.uk",
+    "own": "provider:p1",
+    "country": "uk"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 7
+  },
+  {
+   "note": "provider id equals the guide id",
+   "channel": {
+    "id": "c",
+    "name": "zzz",
+    "provider": "ITV1.uk",
+    "own": "provider:p1"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "ITV1.uk",
+    "method": "provider",
+    "confidence": 0.85
+   },
+   "id": 8
+  },
+  {
+   "note": "equal name, no hints",
+   "channel": {
+    "id": "c",
+    "name": "BBC Two"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCTwo.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 9
+  },
+  {
+   "note": "country prefix and quality tag are removed",
+   "channel": {
+    "id": "c",
+    "name": "UK | BBC Two HD"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCTwo.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 10
+  },
+  {
+   "note": "bracketed country prefix",
+   "channel": {
+    "id": "c",
+    "name": "[UK] BBC Two"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCTwo.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 11
+  },
+  {
+   "note": "prefix with colon",
+   "channel": {
+    "id": "c",
+    "name": "UK: BBC Two FHD"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCTwo.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 12
+  },
+  {
+   "note": "hyphen inside a name is not a prefix",
+   "channel": {
+    "id": "c",
+    "name": "Al-Jazeera English"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "AlJazeeraEnglish.qa",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 13
+  },
+  {
+   "note": "spaced hyphen after a country code is a separator",
+   "channel": {
+    "id": "c",
+    "name": "UK - BBC Two"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCTwo.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 14
+  },
+  {
+   "note": "an unknown first word is kept",
+   "channel": {
+    "id": "c",
+    "name": "AMC | BBC Two"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 15
+  },
+  {
+   "note": "number in name",
+   "channel": {
+    "id": "c",
+    "name": "ITV1 HD"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "ITV1.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 16
+  },
+  {
+   "note": "plus one variant matches its own variant",
+   "channel": {
+    "id": "c",
+    "name": "Channel 4 +1",
+    "country": "uk"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "Channel4+1.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 17
+  },
+  {
+   "note": "base channel does not take the plus one guide",
+   "channel": {
+    "id": "c",
+    "name": "Channel 4 HD",
+    "country": "uk"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "Channel4.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 18
+  },
+  {
+   "note": "plus one without its guide is unmapped, never the base",
+   "channel": {
+    "id": "c",
+    "name": "Sky Sports News +1",
+    "country": "uk"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 19
+  },
+  {
+   "note": "ampersand reads as and",
+   "channel": {
+    "id": "c",
+    "name": "Fun & Games",
+    "country": "uk"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "FunAndGames.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 20
+  },
+  {
+   "note": "diacritics are folded",
+   "channel": {
+    "id": "c",
+    "name": "T\u00e9l\u00e9 Plus HD",
+    "country": "fr"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "TelePlus.fr",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 21
+  },
+  {
+   "note": "same name in two countries, country picks",
+   "channel": {
+    "id": "c",
+    "name": "Comedy Central",
+    "country": "us"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "ComedyCentral.us",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 22
+  },
+  {
+   "note": "same name in two countries, other country",
+   "channel": {
+    "id": "c",
+    "name": "Comedy Central",
+    "country": "gb"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "ComedyCentral.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 23
+  },
+  {
+   "note": "same name in two countries, no hint: ambiguous",
+   "channel": {
+    "id": "c",
+    "name": "Comedy Central"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "ambiguous"
+   },
+   "id": 24
+  },
+  {
+   "note": "country from the prefix picks the guide channel",
+   "channel": {
+    "id": "c",
+    "name": "US | Comedy Central"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "ComedyCentral.us",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 25
+  },
+  {
+   "note": "same name in a third country is not matched",
+   "channel": {
+    "id": "c",
+    "name": "Comedy Central",
+    "country": "de"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 26
+  },
+  {
+   "note": "language breaks a tie",
+   "channel": {
+    "id": "c",
+    "name": "Eurosport 1",
+    "language": "deu"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "ES1b",
+    "method": "name",
+    "confidence": 0.75
+   },
+   "id": 27
+  },
+  {
+   "note": "language does not break a tie it cannot",
+   "channel": {
+    "id": "c",
+    "name": "Eurosport 1",
+    "language": "eng"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "ambiguous"
+   },
+   "id": 28
+  },
+  {
+   "note": "tie without any hint is ambiguous",
+   "channel": {
+    "id": "c",
+    "name": "Eurosport 1"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "ambiguous"
+   },
+   "id": 29
+  },
+  {
+   "note": "alias from the public database",
+   "channel": {
+    "id": "c",
+    "name": "Erstes Deutsches Fernsehen",
+    "alt": [
+     "ARD"
+    ],
+    "country": "de"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "DasErste.de",
+    "method": "alias",
+    "confidence": 0.8
+   },
+   "id": 30
+  },
+  {
+   "note": "higher priority source wins for the same name",
+   "channel": {
+    "id": "c",
+    "name": "BBC One"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCOne.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 31
+  },
+  {
+   "note": "a lower priority source is used when it alone has the channel",
+   "channel": {
+    "id": "c",
+    "name": "User Only Channel"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "user:u1",
+    "xmltv": "only-in-user",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 32
+  },
+  {
+   "note": "fuzzy with the same words in another order reaches the threshold",
+   "channel": {
+    "id": "c",
+    "name": "India News18",
+    "country": "in"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "News18India.in",
+    "method": "fuzzy",
+    "confidence": 0.65
+   },
+   "id": 33
+  },
+  {
+   "note": "fuzzy below the threshold is only a suggestion",
+   "channel": {
+    "id": "c",
+    "name": "National Geographic Wild India Plus",
+    "country": "in"
+   },
+   "expect": {
+    "status": "suggested",
+    "source": "provider:p1",
+    "xmltv": "NatGeoWild.in",
+    "method": "fuzzy",
+    "maxConfidence": 0.59,
+    "minConfidence": 0.4
+   },
+   "id": 34
+  },
+  {
+   "note": "fuzzy never crosses countries",
+   "channel": {
+    "id": "c",
+    "name": "National Geographic Wild India Plus",
+    "country": "uk"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 35
+  },
+  {
+   "note": "fuzzy needs a country or language to compare",
+   "channel": {
+    "id": "c",
+    "name": "National Geographic Wild India Plus"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 36
+  },
+  {
+   "note": "fuzzy by language when the country is unknown",
+   "channel": {
+    "id": "c",
+    "name": "National Geographic Wild India Plus",
+    "language": "hin"
+   },
+   "expect": {
+    "status": "suggested",
+    "source": "provider:p1",
+    "xmltv": "NatGeoWild.in",
+    "method": "fuzzy",
+    "maxConfidence": 0.59,
+    "minConfidence": 0.4
+   },
+   "id": 37
+  },
+  {
+   "note": "too different words are not fuzzy matches",
+   "channel": {
+    "id": "c",
+    "name": "Sky Sports News Live Now",
+    "country": "uk"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 38
+  },
+  {
+   "note": "restricted channels are never matched",
+   "channel": {
+    "id": "c",
+    "name": "BBC One",
+    "tvg": "BBCOne.uk",
+    "own": "provider:p1",
+    "restricted": true
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "restricted"
+   },
+   "id": 39
+  },
+  {
+   "note": "restricted channels are never even suggested",
+   "channel": {
+    "id": "c",
+    "name": "National Geographic Wild India Plus",
+    "country": "in",
+    "restricted": true
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "restricted"
+   },
+   "id": 40
+  },
+  {
+   "note": "a manual choice wins and is never recomputed",
+   "channel": {
+    "id": "c",
+    "name": "BBC One",
+    "tvg": "BBCOne.uk",
+    "own": "provider:p1",
+    "userLock": {
+     "source": "provider:p1",
+     "xmltv": "BBCTwo.uk"
+    }
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "BBCTwo.uk",
+    "method": "user",
+    "confidence": 1.0
+   },
+   "id": 41
+  },
+  {
+   "note": "a manual choice in another source",
+   "channel": {
+    "id": "c",
+    "name": "nothing",
+    "userLock": {
+     "source": "user:u1",
+     "xmltv": "bbc1"
+    }
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "user:u1",
+    "xmltv": "bbc1",
+    "method": "user",
+    "confidence": 1.0
+   },
+   "id": 42
+  },
+  {
+   "note": "empty name and no ids",
+   "channel": {
+    "id": "c",
+    "name": ""
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 43
+  },
+  {
+   "note": "only a separator in the name",
+   "channel": {
+    "id": "c",
+    "name": "######## UK ########"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 44
+  },
+  {
+   "note": "unknown channel",
+   "channel": {
+    "id": "c",
+    "name": "Totally Unknown Channel"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 45
+  },
+  {
+   "note": "exact id beats a conflicting name",
+   "channel": {
+    "id": "c",
+    "name": "BBC Two",
+    "tvg": "ITV1.uk",
+    "own": "provider:p1"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "ITV1.uk",
+    "method": "exact",
+    "confidence": 0.99
+   },
+   "id": 46
+  },
+  {
+   "note": "quality tags only",
+   "channel": {
+    "id": "c",
+    "name": "HD"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 47
+  },
+  {
+   "note": "uppercase and punctuation",
+   "channel": {
+    "id": "c",
+    "name": "SKY SPORTS NEWS!!",
+    "country": "uk"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "SkySportsNews.uk",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 48
+  },
+  {
+   "note": "CNN in the US",
+   "channel": {
+    "id": "c",
+    "name": "CNN",
+    "country": "us"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "CNN.us",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 49
+  },
+  {
+   "note": "CNN in the UK is not the US channel",
+   "channel": {
+    "id": "c",
+    "name": "CNN",
+    "country": "gb"
+   },
+   "expect": {
+    "status": "unmapped",
+    "reason": "noCandidate"
+   },
+   "id": 50
+  },
+  {
+   "note": "USA prefix",
+   "channel": {
+    "id": "c",
+    "name": "USA | CNN HD"
+   },
+   "expect": {
+    "status": "mapped",
+    "source": "provider:p1",
+    "xmltv": "CNN.us",
+    "method": "name",
+    "confidence": 0.7
+   },
+   "id": 51
+  }
+ ]
+}

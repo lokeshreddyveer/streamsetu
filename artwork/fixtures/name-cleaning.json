@@ -1,0 +1,530 @@
+[
+ {
+  "input": "The Matrix (1999)",
+  "year": 1999,
+  "expectedClean": "The Matrix",
+  "notes": "brackets year"
+ },
+ {
+  "input": "EN - The Matrix (1999) 4K",
+  "year": null,
+  "expectedClean": "The Matrix",
+  "notes": "language prefix, 4K, bracket year"
+ },
+ {
+  "input": "|FR| Amélie [HD]",
+  "year": null,
+  "expectedClean": "Amélie",
+  "notes": "pipe prefix, accent kept"
+ },
+ {
+  "input": "TELUGU | Pushpa The Rise (Telugu) FHD 2026",
+  "year": 2021,
+  "expectedClean": "Pushpa The Rise",
+  "notes": "provider prefix, language bracket, tag + year"
+ },
+ {
+  "input": "IN: Pathaan (2023)",
+  "year": 2023,
+  "expectedClean": "Pathaan",
+  "notes": "IN: prefix"
+ },
+ {
+  "input": "IN: Jawan (Hindi) 4K",
+  "year": 2023,
+  "expectedClean": "Jawan",
+  "notes": "IN prefix, bracket language"
+ },
+ {
+  "input": "HINDI | Animal 2023 FHD",
+  "year": 2023,
+  "expectedClean": "Animal",
+  "notes": "tail year after tag"
+ },
+ {
+  "input": "Kalki 2898 AD (Telugu) [4K]",
+  "year": 2024,
+  "expectedClean": "Kalki 2898 AD",
+  "notes": "title number not a year, brackets"
+ },
+ {
+  "input": "RRR - Hindi Dubbed",
+  "year": 2022,
+  "expectedClean": "RRR",
+  "notes": "trailing language dubbed"
+ },
+ {
+  "input": "KGF Chapter 2 Hindi Dubbed",
+  "year": 2022,
+  "expectedClean": "KGF Chapter 2",
+  "notes": "dubbed after language word, number kept"
+ },
+ {
+  "input": "Baahubali 2: The Conclusion (Telugu) 1080p",
+  "year": 2017,
+  "expectedClean": "Baahubali 2: The Conclusion",
+  "notes": "colon kept, tag removed"
+ },
+ {
+  "input": "TAMIL | Leo (2023) FHD",
+  "year": 2023,
+  "expectedClean": "Leo",
+  "notes": "tamil prefix"
+ },
+ {
+  "input": "Vikram (Tamil) [Multi Audio]",
+  "year": 2022,
+  "expectedClean": "Vikram",
+  "notes": "multi audio in brackets"
+ },
+ {
+  "input": "MALAYALAM | Manjummel Boys 2024 HD",
+  "year": 2024,
+  "expectedClean": "Manjummel Boys",
+  "notes": "weak tag after year? year follows tag"
+ },
+ {
+  "input": "KANNADA | Kantara (2022) 4K",
+  "year": 2022,
+  "expectedClean": "Kantara",
+  "notes": "kannada prefix"
+ },
+ {
+  "input": "Dangal - Hindi",
+  "year": 2016,
+  "expectedClean": "Dangal",
+  "notes": "trailing language after separator"
+ },
+ {
+  "input": "3 Idiots (2009) HD",
+  "year": 2009,
+  "expectedClean": "3 Idiots",
+  "notes": "leading digit kept"
+ },
+ {
+  "input": "Wonder Woman 1984",
+  "year": 2020,
+  "expectedClean": "Wonder Woman 1984",
+  "notes": "year-like title number is kept"
+ },
+ {
+  "input": "Blade Runner 2049",
+  "year": 2017,
+  "expectedClean": "Blade Runner 2049",
+  "notes": "2049 outside year range"
+ },
+ {
+  "input": "1917 (2019)",
+  "year": 2019,
+  "expectedClean": "1917",
+  "notes": "title that is a year"
+ },
+ {
+  "input": "2012 (2009) 1080p",
+  "year": 2009,
+  "expectedClean": "2012",
+  "notes": "title that is a year, bracket year removed"
+ },
+ {
+  "input": "Se7en [1995] BluRay x264",
+  "year": 1995,
+  "expectedClean": "Se7en",
+  "notes": "release tags"
+ },
+ {
+  "input": "The.Matrix.1999.1080p.WEB-DL",
+  "year": 1999,
+  "expectedClean": "The Matrix",
+  "notes": "dotted release name"
+ },
+ {
+  "input": "Mission_Impossible_Fallout_2018",
+  "year": 2018,
+  "expectedClean": "Mission Impossible Fallout",
+  "notes": "underscores, trailing library year"
+ },
+ {
+  "input": "Matrix, The (1999)",
+  "year": 1999,
+  "expectedClean": "The Matrix",
+  "notes": "inverted article"
+ },
+ {
+  "input": "Godfather, The",
+  "year": 1972,
+  "expectedClean": "The Godfather",
+  "notes": "inverted article without brackets"
+ },
+ {
+  "input": "Alien: Covenant (2017)",
+  "year": 2017,
+  "expectedClean": "Alien: Covenant",
+  "notes": "colon after a normal word is not a prefix"
+ },
+ {
+  "input": "Spider-Man: No Way Home (2021) 4K",
+  "year": 2021,
+  "expectedClean": "Spider-Man: No Way Home",
+  "notes": "hyphen inside word kept"
+ },
+ {
+  "input": "Fast & Furious 6 (2013)",
+  "year": 2013,
+  "expectedClean": "Fast & Furious 6",
+  "notes": "ampersand kept"
+ },
+ {
+  "input": "Rocky IV",
+  "year": 1985,
+  "expectedClean": "Rocky IV",
+  "notes": "roman numeral kept"
+ },
+ {
+  "input": "Rocky V (1990) HD",
+  "year": 1990,
+  "expectedClean": "Rocky V",
+  "notes": "roman numeral kept"
+ },
+ {
+  "input": "(500) Days of Summer (2009)",
+  "year": 2009,
+  "expectedClean": "(500) Days of Summer",
+  "notes": "leading number in brackets kept"
+ },
+ {
+  "input": "Amélie (Le Fabuleux Destin d'Amélie Poulain)",
+  "year": 2001,
+  "expectedClean": "Amélie",
+  "notes": "accents kept, bracket alternative title removed"
+ },
+ {
+  "input": "Léon: The Professional (1994)",
+  "year": 1994,
+  "expectedClean": "Léon: The Professional",
+  "notes": "accent and colon"
+ },
+ {
+  "input": "Pokémon: Detective Pikachu 2019 4K",
+  "year": 2019,
+  "expectedClean": "Pokémon: Detective Pikachu",
+  "notes": "tail year after tag"
+ },
+ {
+  "input": "Crouching Tiger, Hidden Dragon (2000)",
+  "year": 2000,
+  "expectedClean": "Crouching Tiger, Hidden Dragon",
+  "notes": "comma inside kept"
+ },
+ {
+  "input": "Don’t Look Up (2021)",
+  "year": 2021,
+  "expectedClean": "Don't Look Up",
+  "notes": "curly apostrophe normalised"
+ },
+ {
+  "input": "Ocean’s Eleven – 2001",
+  "year": 2001,
+  "expectedClean": "Ocean's Eleven",
+  "notes": "en dash and curly apostrophe, trailing year equals library year"
+ },
+ {
+  "input": "Ocean's Eleven 4K – HD",
+  "year": 2001,
+  "expectedClean": "Ocean's Eleven",
+  "notes": "tags after dash"
+ },
+ {
+  "input": "AMZN | The Boys S03",
+  "year": 2022,
+  "expectedClean": "The Boys",
+  "notes": "provider prefix, season marker"
+ },
+ {
+  "input": "NF | Stranger Things S04E01",
+  "year": 2022,
+  "expectedClean": "Stranger Things",
+  "notes": "episode marker"
+ },
+ {
+  "input": "Breaking Bad Season 5",
+  "year": 2013,
+  "expectedClean": "Breaking Bad",
+  "notes": "season word and number"
+ },
+ {
+  "input": "Money Heist (La Casa de Papel) S01",
+  "year": 2017,
+  "expectedClean": "Money Heist",
+  "notes": "series with season, bracket alt title"
+ },
+ {
+  "input": "Mirzapur (2018) S02 FHD",
+  "year": 2018,
+  "expectedClean": "Mirzapur",
+  "notes": "season and tag"
+ },
+ {
+  "input": "Sacred Games - Season 2",
+  "year": 2019,
+  "expectedClean": "Sacred Games",
+  "notes": "dash then season"
+ },
+ {
+  "input": "The Family Man [Hindi] S02",
+  "year": 2021,
+  "expectedClean": "The Family Man",
+  "notes": "bracketed language, season"
+ },
+ {
+  "input": "Squid Game (Korean) (2021) 4K",
+  "year": 2021,
+  "expectedClean": "Squid Game",
+  "notes": "two bracket groups"
+ },
+ {
+  "input": "KR: Parasite (2019)",
+  "year": 2019,
+  "expectedClean": "Parasite",
+  "notes": "KR prefix"
+ },
+ {
+  "input": "बाहुबली: द बिगिनिंग (2015)",
+  "year": 2015,
+  "expectedClean": "बाहुबली: द बिगिनिंग",
+  "notes": "non-Latin script untouched"
+ },
+ {
+  "input": "ARABIC | رجل المستحيل 2023 HD",
+  "year": 2023,
+  "expectedClean": "رجل المستحيل",
+  "notes": "non-Latin kept, tail year after tag"
+ },
+ {
+  "input": "千と千尋の神隠し (2001)",
+  "year": 2001,
+  "expectedClean": "千と千尋の神隠し",
+  "notes": "CJK untouched"
+ },
+ {
+  "input": "Ширли-мырли (1995) HD",
+  "year": 1995,
+  "expectedClean": "Ширли-мырли",
+  "notes": "Cyrillic untouched"
+ },
+ {
+  "input": "ஜெயிலர் (2023) 4K",
+  "year": 2023,
+  "expectedClean": "ஜெயிலர்",
+  "notes": "Tamil script untouched"
+ },
+ {
+  "input": "Hindi Medium (2017)",
+  "year": 2017,
+  "expectedClean": "Hindi Medium",
+  "notes": "language word at the start without separator is kept"
+ },
+ {
+  "input": "English Vinglish (2012) HD",
+  "year": 2012,
+  "expectedClean": "English Vinglish",
+  "notes": "language word at the start is kept"
+ },
+ {
+  "input": "Tamil Rockers 2022",
+  "year": 2022,
+  "expectedClean": "Tamil Rockers",
+  "notes": "title with language word kept; trailing year equals library year"
+ },
+ {
+  "input": "Charlotte's Web (2006)",
+  "year": 2006,
+  "expectedClean": "Charlotte's Web",
+  "notes": "web inside title kept"
+ },
+ {
+  "input": "Cam (2018)",
+  "year": 2018,
+  "expectedClean": "Cam",
+  "notes": "single word that is a weak tag survives"
+ },
+ {
+  "input": "HD",
+  "year": null,
+  "expectedClean": "HD",
+  "notes": "never empty"
+ },
+ {
+  "input": "   The   Lion   King   (1994)   ",
+  "year": 1994,
+  "expectedClean": "The Lion King",
+  "notes": "whitespace collapsed"
+ },
+ {
+  "input": "The Lion King (2019) [1080p] [WEB-DL] [x265]",
+  "year": 2019,
+  "expectedClean": "The Lion King",
+  "notes": "many bracket groups"
+ },
+ {
+  "input": "Avatar: The Way of Water 2022 4K UHD HDR10",
+  "year": 2022,
+  "expectedClean": "Avatar: The Way of Water",
+  "notes": "tail tags and year"
+ },
+ {
+  "input": "UK | Peaky Blinders S06",
+  "year": 2022,
+  "expectedClean": "Peaky Blinders",
+  "notes": "UK prefix"
+ },
+ {
+  "input": "TOP | Oppenheimer (2023) FHD",
+  "year": 2023,
+  "expectedClean": "Oppenheimer",
+  "notes": "TOP prefix"
+ },
+ {
+  "input": "Shershaah (2021) Dual Audio",
+  "year": 2021,
+  "expectedClean": "Shershaah",
+  "notes": "dual audio at tail"
+ },
+ {
+  "input": "Drishyam 2 Malayalam Dubbed",
+  "year": 2021,
+  "expectedClean": "Drishyam 2",
+  "notes": "language then dubbed"
+ },
+ {
+  "input": "Gangubai Kathiawadi (2022) Hindi",
+  "year": 2022,
+  "expectedClean": "Gangubai Kathiawadi",
+  "notes": "hindi after bracket year, previous token is title word? kept?"
+ },
+ {
+  "input": "Tumbbad",
+  "year": 2018,
+  "expectedClean": "Tumbbad",
+  "notes": "already clean"
+ },
+ {
+  "input": "Interstellar",
+  "year": null,
+  "expectedClean": "Interstellar",
+  "notes": "already clean, no year"
+ },
+ {
+  "input": "Mr. Bean's Holiday (2007)",
+  "year": 2007,
+  "expectedClean": "Mr. Bean's Holiday",
+  "notes": "dots in spaced titles kept"
+ },
+ {
+  "input": "WALL·E (2008)",
+  "year": 2008,
+  "expectedClean": "WALL·E",
+  "notes": "middle dot kept"
+ },
+ {
+  "input": "Se7en | HD",
+  "year": 1995,
+  "expectedClean": "Se7en",
+  "notes": "trailing pipe tag"
+ },
+ {
+  "input": "Hotstar | Special Ops S02",
+  "year": 2020,
+  "expectedClean": "Special Ops",
+  "notes": "provider prefix"
+ },
+ {
+  "input": "SPANISH | El Orfanato (2007) FHD",
+  "year": 2007,
+  "expectedClean": "El Orfanato",
+  "notes": "spanish prefix, tag"
+ },
+ {
+  "input": "GERMAN | Das Boot 1981 HD",
+  "year": 1981,
+  "expectedClean": "Das Boot",
+  "notes": "german prefix, tail year after weak tag"
+ },
+ {
+  "input": "KOREAN | Oldboy (2003) 4K",
+  "year": 2003,
+  "expectedClean": "Oldboy",
+  "notes": "korean prefix"
+ },
+ {
+  "input": "JAPANESE | Spirited Away (2001) 1080p",
+  "year": 2001,
+  "expectedClean": "Spirited Away",
+  "notes": "japanese prefix"
+ },
+ {
+  "input": "TURKISH | Kis Uykusu (2014) HD",
+  "year": 2014,
+  "expectedClean": "Kis Uykusu",
+  "notes": "turkish prefix"
+ },
+ {
+  "input": "FRENCH | Intouchables (2011) FHD",
+  "year": 2011,
+  "expectedClean": "Intouchables",
+  "notes": "french prefix"
+ },
+ {
+  "input": "ITALIAN | La vita è bella (1997)",
+  "year": 1997,
+  "expectedClean": "La vita è bella",
+  "notes": "italian prefix, accent kept"
+ },
+ {
+  "input": "הפרלמנט (2020) HD",
+  "year": 2020,
+  "expectedClean": "הפרלמנט",
+  "notes": "Hebrew script untouched, right-to-left"
+ },
+ {
+  "input": "ฉลาดเกมส์โกง (2017) 4K",
+  "year": 2017,
+  "expectedClean": "ฉลาดเกมส์โกง",
+  "notes": "Thai script untouched"
+ },
+ {
+  "input": "Roma (2018) [Spanish] 4K",
+  "year": 2018,
+  "expectedClean": "Roma",
+  "notes": "bracketed language, any language"
+ },
+ {
+  "input": "The Matrix 1999 1080p-YIFY",
+  "year": 1999,
+  "expectedClean": "The Matrix",
+  "notes": "release-group suffix glued to a quality tag"
+ },
+ {
+  "input": "Inception.2010.720p.BluRay.x264-RARBG",
+  "year": 2010,
+  "expectedClean": "Inception",
+  "notes": "dots, tags, group"
+ },
+ {
+  "input": "Breaking Bad 1x02 720p",
+  "year": null,
+  "expectedClean": "Breaking Bad",
+  "notes": "1x02 episode marker"
+ },
+ {
+  "input": "Dark Season 1 Episode 2",
+  "year": null,
+  "expectedClean": "Dark",
+  "notes": "Season N Episode N tail"
+ },
+ {
+  "input": "The Boys S03E05 WEB-DL",
+  "year": null,
+  "expectedClean": "The Boys",
+  "notes": "SxxExx before a tag"
+ }
+]

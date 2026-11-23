@@ -1,0 +1,128 @@
+[
+ {
+  "tmdbAverage": 8.2,
+  "tmdbVotes": 1500,
+  "provider": "5.5",
+  "expected": 8.2,
+  "notes": "enough votes: TMDB wins over a credible provider rating"
+ },
+ {
+  "tmdbAverage": 8.2,
+  "tmdbVotes": 10,
+  "provider": "5.5",
+  "expected": 8.2,
+  "notes": "exactly the floor counts"
+ },
+ {
+  "tmdbAverage": 8.2,
+  "tmdbVotes": 9,
+  "provider": "5.5",
+  "expected": 5.5,
+  "notes": "below the floor the provider rating is used"
+ },
+ {
+  "tmdbAverage": 10.0,
+  "tmdbVotes": 2,
+  "provider": "7.4",
+  "expected": 7.4,
+  "notes": "two votes scoring 10.0 is not trusted"
+ },
+ {
+  "tmdbAverage": 10.0,
+  "tmdbVotes": 2,
+  "provider": null,
+  "expected": null,
+  "notes": "junk and no provider rating: nothing"
+ },
+ {
+  "tmdbAverage": 10.0,
+  "tmdbVotes": 2,
+  "provider": "10.0",
+  "expected": null,
+  "notes": "provider 10.0 is junk"
+ },
+ {
+  "tmdbAverage": null,
+  "tmdbVotes": null,
+  "provider": "7.0",
+  "expected": 7.0,
+  "notes": "no TMDB data: provider rating"
+ },
+ {
+  "tmdbAverage": null,
+  "tmdbVotes": null,
+  "provider": "0",
+  "expected": null,
+  "notes": "provider 0 is junk"
+ },
+ {
+  "tmdbAverage": null,
+  "tmdbVotes": null,
+  "provider": "",
+  "expected": null,
+  "notes": "empty"
+ },
+ {
+  "tmdbAverage": null,
+  "tmdbVotes": null,
+  "provider": "abc",
+  "expected": null,
+  "notes": "unreadable"
+ },
+ {
+  "tmdbAverage": 0.0,
+  "tmdbVotes": 500,
+  "provider": "6.1",
+  "expected": 6.1,
+  "notes": "TMDB average 0 is not a rating"
+ },
+ {
+  "tmdbAverage": 7.456,
+  "tmdbVotes": 300,
+  "provider": null,
+  "expected": 7.5,
+  "notes": "rounded to one decimal"
+ },
+ {
+  "tmdbAverage": 6.0,
+  "tmdbVotes": 50,
+  "provider": "11",
+  "expected": 6.0,
+  "notes": "impossible provider value ignored; TMDB used"
+ },
+ {
+  "tmdbAverage": null,
+  "tmdbVotes": null,
+  "provider": "15",
+  "expected": null,
+  "notes": "impossible provider value"
+ },
+ {
+  "tmdbAverage": 12.0,
+  "tmdbVotes": 400,
+  "provider": "6.0",
+  "expected": 6.0,
+  "notes": "impossible TMDB average ignored"
+ },
+ {
+  "tmdbAverage": 5.0,
+  "tmdbVotes": null,
+  "provider": "6.5",
+  "expected": 6.5,
+  "notes": "no vote count: not trusted"
+ },
+ {
+  "tmdbAverage": 9.1,
+  "tmdbVotes": 10000,
+  "provider": "0.0",
+  "expected": 9.1,
+  "notes": "junk provider, strong TMDB"
+ },
+ {
+  "tmdbAverage": 4.4,
+  "tmdbVotes": 12,
+  "provider": "4.0",
+  "expected": 4.4,
+  "notes": "TMDB preferred when credible even if lower"
+ }
+]

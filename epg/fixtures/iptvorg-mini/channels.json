@@ -1,0 +1,101 @@
+[
+ {
+  "id": "BBCOne.uk",
+  "name": "BBC One",
+  "alt_names": [
+   "BBC 1"
+  ],
+  "country": "UK",
+  "categories": [
+   "general"
+  ],
+  "is_nsfw": false,
+  "closed": null
+ },
+ {
+  "id": "BBCTwo.uk",
+  "name": "BBC Two",
+  "alt_names": [],
+  "country": "UK",
+  "categories": [
+   "general"
+  ],
+  "is_nsfw": false,
+  "closed": null
+ },
+ {
+  "id": "CNN.us",
+  "name": "CNN",
+  "alt_names": [],
+  "country": "US",
+  "categories": [
+   "news"
+  ],
+  "is_nsfw": false,
+  "closed": null
+ },
+ {
+  "id": "ComedyCentral.uk",
+  "name": "Comedy Central",
+  "alt_names": [],
+  "country": "UK",
+  "categories": [
+   "comedy"
+  ],
+  "is_nsfw": false,
+  "closed": null
+ },
+ {
+  "id": "ComedyCentral.us",
+  "name": "Comedy Central",
+  "alt_names": [],
+  "country": "US",
+  "categories": [
+   "comedy"
+  ],
+  "is_nsfw": false,
+  "closed": null
+ },
+ {
+  "id": "ClosedTV.uk",
+  "name": "Closed TV",
+  "alt_names": [],
+  "country": "UK",
+  "categories": [],
+  "is_nsfw": false,
+  "closed": "2020-01-01"
+ },
+ {
+  "id": "AdultExample.us",
+  "name": "Adult Example",
+  "alt_names": [],
+  "country": "US",
+  "categories": [
+   "xxx"
+  ],
+  "is_nsfw": true,
+  "closed": null
+ },
+ {
+  "id": "BlockedNews.uk",
+  "name": "Blocked News",
+  "alt_names": [],
+  "country": "UK",
+  "categories": [
+   "news"
+  ],
+  "is_nsfw": false,
+  "closed": null
+ },
+ {
+  "id": "UniqueChannel.xx",
+  "name": "Unique Channel",
+  "alt_names": [],
+  "country": null,
+  "categories": [
+   "music"
+  ],
+  "is_nsfw": false,
+  "closed": null
+ }
+]

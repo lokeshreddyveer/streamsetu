@@ -1,0 +1,24 @@
+{
+ "merge": [
+  {"existing": {"tmdb": 603}, "incoming": {"tvdb": 77, "imdb": "tt0133093"}, "incomingSource": "tmdb", "expected": {"tmdb": 603, "tvdb": 77, "imdb": "tt0133093"}, "notes": "gaps are filled"},
+  {"existing": {"tmdb": 603}, "incoming": {"tmdb": 999}, "incomingSource": "tvdb", "expected": {"tmdb": 603}, "notes": "a known id is not replaced by a lower-ranked source"},
+  {"existing": {"tmdb": 603}, "incoming": {"tmdb": 604}, "incomingSource": "playlist", "expected": {"tmdb": 604}, "notes": "the playlist's own id wins"},
+  {"existing": {}, "incoming": {"imdb": "12345"}, "incomingSource": "tmdb", "expected": {}, "notes": "a malformed imdb id is ignored"},
+  {"existing": {}, "incoming": {"tvdb": 0, "tmdb": -4, "tvmaze": 82}, "incomingSource": "tvmaze", "expected": {"tvmaze": 82}, "notes": "ids must be positive"}
+ ],
+ "queryID": [
+  {"identity": {"tmdb": 603, "imdb": "tt0133093"}, "kind": "movie", "source": "fanart", "expected": "603"},
+  {"identity": {"imdb": "tt0133093"}, "kind": "movie", "source": "fanart", "expected": "tt0133093", "notes": "movies fall back to imdb"},
+  {"identity": {"tmdb": 1399}, "kind": "series", "source": "fanart", "expected": null, "notes": "series need the tvdb id"},
+  {"identity": {"tmdb": 1399, "tvdb": 121361}, "kind": "series", "source": "fanart", "expected": "121361"},
+  {"identity": {"tvdb": 121361}, "kind": "series", "source": "tvdb", "expected": "121361"},
+  {"identity": {"tmdb": 1399}, "kind": "series", "source": "tvdb", "expected": null},
+  {"identity": {"tvdb": 121361, "imdb": "tt0944947"}, "kind": "series", "source": "tvmaze", "expected": "tvdb:121361", "notes": "lookup by tvdb first, then imdb"},
+  {"identity": {"imdb": "tt0944947"}, "kind": "series", "source": "tvmaze", "expected": "imdb:tt0944947"},
+  {"identity": {"tvmaze": 82, "tvdb": 121361}, "kind": "series", "source": "tvmaze", "expected": "82", "notes": "a stored tvmaze id is used directly"},
+  {"identity": {"tmdb": 1399}, "kind": "series", "source": "tvmaze", "expected": null}
+ ],
+ "imdb": [
+  {"input": "tt0133093", "expected": "tt0133093"}, {"input": " tt0944947 ", "expected": "tt0944947"}, {"input": "0133093", "expected": null}, {"input": "tt12", "expected": null}, {"input": null, "expected": null}
+ ]
+}
