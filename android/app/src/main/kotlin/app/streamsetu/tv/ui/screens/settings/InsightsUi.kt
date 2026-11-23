@@ -92,7 +92,7 @@ fun PrivacyReportSettings(c: AppContainer) {
         report = withContext(Dispatchers.IO) {
             fun count(sql: String) = runCatching { c.db.openHelper.readableDatabase.query(sql).use { if (it.moveToFirst()) it.getInt(0) else 0 } }.getOrDefault(0)
             PrivacyReport.make(PrivacyReport.State(
-                diagnosticsOn = false, hasTmdbKey = !c.credentials.load("tmdb.key").isNullOrBlank(), hasOpenSubtitles = !c.credentials.load("os.key").isNullOrBlank(), lanSync = c.lan.wanted,
+                diagnosticsOn = false, hasTmdbKey = c.tmdbAuth.available && (c.ui.artworkMatching.value || c.ui.tmdbTrending.value), hasOpenSubtitles = !c.credentials.load("os.key").isNullOrBlank(), lanSync = c.lan.wanted,
                 profileCount = c.profiles.profiles.value.size, historyCount = count("SELECT COUNT(*) FROM watch_log"), favoriteCount = count("SELECT COUNT(*) FROM favorites"),
                 searchCount = count("SELECT COUNT(*) FROM search_history"), playlistCount = c.sources.sources.first().count { !it.draft }))
         }

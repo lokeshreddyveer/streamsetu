@@ -63,7 +63,7 @@ data class PrivacyReport(val stored: List<Item>, val sentOut: List<Item>) {
             sentOut = listOf(
                 Item("provider", "Your IPTV provider", "Everything you play and browse goes to the provider you added. It sees what its own server serves, as with any player.", Status.ON),
                 Item("diag", "StreamSetu playback log", "After a stream fails for good: player used, timings, error codes and device model. Server names are masked. Never titles, logins or stream addresses. Deleted after 30 days.", if (s.diagnosticsOn) Status.ON else Status.OFF),
-                Item("tmdb", "The Movie Database (TMDB)", "A title and year, to fetch artwork and details. Only with your own key.", if (s.hasTmdbKey) Status.ON else Status.OFF),
+                Item("tmdb", "The Movie Database (TMDB)", "A title's name and year, to fetch artwork, cast, trailers and the weekly list: nothing else about you, and never a title in a locked, hidden or adult folder. Your own key is used if you added one, otherwise the app's built-in key. Matching and trending can be switched off in Settings.", if (s.hasTmdbKey) Status.ON else Status.OFF),
                 Item("subs", "OpenSubtitles", "Title, year and language, and your own account to sign in. Only when you ask for subtitles.", if (s.hasOpenSubtitles) Status.WHEN_YOU_ASK else Status.OFF),
                 Item("trailer", "YouTube trailers", "Only when you open a trailer.", Status.WHEN_YOU_ASK),
                 Item("podcast", "Apple podcast directory", "The words you type, when you search for a podcast.", Status.WHEN_YOU_ASK),

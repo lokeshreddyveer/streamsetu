@@ -25,6 +25,7 @@ class ArtworkAuth(private val sources: SourceRepository, private val credentials
         val now = System.currentTimeMillis()
         if (now - loadedAt > 30_000) {
             tokens = runCatching {
+                // runs on an OkHttp worker thread (an interceptor), never on the main thread, and at most every 30 s
                 runBlocking { sources.all() }.filter { it.type == SourceType.PLEX && !it.draft }.mapNotNull { s ->
                     val key = hostKey(s.address) ?: return@mapNotNull null
                     val token = credentials.load(SourceRepository.credentialRef(s.id))?.takeIf { it.isNotBlank() } ?: return@mapNotNull null

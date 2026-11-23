@@ -120,6 +120,7 @@ private fun VersionChip(v: OtherVersions.Version, poster: String?, width: Dp, tv
             Box(Modifier.padding(top = 3.dp, start = 3.dp)) {
                 Box(Modifier.size(if (tv) 48.dp else 44.dp, if (tv) 68.dp else 62.dp).clip(RoundedCornerShape(8.dp)).background(Tokens.elevated)) {
                     if (!poster.isNullOrBlank()) AsyncImage(poster, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    TileRating(v.id, Modifier.align(Alignment.BottomEnd).padding(2.dp), small = true)          // the same star as on every tile
                 }
                 if (v.current) Box(Modifier.align(Alignment.TopStart).offset((-4).dp, (-4).dp).size(18.dp).background(Tokens.accent, CircleShape), Alignment.Center) {
                     Image(Icons.Filled.Check, null, Modifier.size(12.dp), colorFilter = ColorFilter.tint(Tokens.onBright))
@@ -176,16 +177,3 @@ private fun SkeletonChip(width: Dp, tv: Boolean) {
 /** The person's audio language (Settings), as the language name the grouping uses ("ta" becomes "tamil"), or null when none is set. */
 fun preferredLanguage(c: app.streamsetu.tv.AppContainer): String? =
     c.settings.audioLanguage.value.takeIf { it.isNotBlank() }?.let { code -> java.util.Locale(code).getDisplayLanguage(java.util.Locale.ENGLISH).lowercase().takeIf { it.isNotBlank() && it != code.lowercase() } ?: code.lowercase() }
-
-/**
- * The open version under the title of a detail page, "Hindi · Dubbed · FHD", so versions that share a poster and a story can be told apart at a glance. Hidden when nothing
- * about the version is known.
- */
-@Composable
-fun VersionPill(version: OtherVersions.Version?, tv: Boolean, modifier: Modifier = Modifier) {
-    val v = version?.takeIf { it.label.isNotBlank() } ?: return
-    Row(modifier.semantics { contentDescription = "This version: " + v.label }.background(Tokens.accent.copy(alpha = 0.14f), RoundedCornerShape(50)).border(1.dp, Tokens.accent.copy(alpha = 0.45f), RoundedCornerShape(50))
-        .padding(horizontal = if (tv) 12.dp else 10.dp, vertical = if (tv) 4.dp else 3.dp), verticalAlignment = Alignment.CenterVertically) {
-        Label(v.label, if (tv) Tokens.small else 13.sp, Tokens.text, FontWeight.SemiBold)
-    }
-}

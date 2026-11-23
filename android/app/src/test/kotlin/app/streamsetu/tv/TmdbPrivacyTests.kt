@@ -28,7 +28,7 @@ class TmdbPrivacyTests {
     @After fun close() = fx.close()
 
     val urls = java.util.Collections.synchronizedList(ArrayList<String>())
-    private fun service(dir: java.io.File, clock: () -> Long = System::currentTimeMillis) = TmdbService(fx.db, { "KEY" }, fx.folders.visibility, dir, clock) { u -> urls += u; """{"results":[]}""" }
+    private fun service(dir: java.io.File, clock: () -> Long = System::currentTimeMillis) = TmdbService(fx.db, { "KEY" }, fx.folders.visibility, dir, clock) { u, _ -> urls += u; """{"results":[]}""" }
 
     @Test fun restrictedTitlesAreNeverSentToTmdb() {
         val sent = java.util.Collections.synchronizedList(ArrayList<String>())
@@ -66,7 +66,7 @@ class TmdbPrivacyTests {
 
     @Test fun aRunStoppedHalfWayStillHasEveryWrittenFillOnTheRecord() {
         val dir = tmp.newFolder(); var n = 0
-        val svc = TmdbService(fx.db, { "KEY" }, fx.folders.visibility, dir) { _ -> if (++n == 3) throw kotlinx.coroutines.CancellationException("left the screen"); """{"results":[{"poster_path":"/p.jpg","overview":"s"}]}""" }
+        val svc = TmdbService(fx.db, { "KEY" }, fx.folders.visibility, dir) { u, _ -> if (++n == 3) throw kotlinx.coroutines.CancellationException("left the screen"); """{"results":[{"title":"${java.net.URLDecoder.decode(u.substringAfter("query=").substringBefore("&"), "UTF-8")}","poster_path":"/p.jpg","overview":"s"}]}""" }
         assertTrue(runCatching { runBlocking { svc.fillMissing(50) } }.isFailure)
         val written = fx.db.openHelper.readableDatabase.query("SELECT itemId FROM overrides").use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }.toSet()
         val logged = java.io.File(dir, "filled.log").readLines().map { it.substringBefore('\t') }.toSet()
@@ -75,7 +75,7 @@ class TmdbPrivacyTests {
 
     @Test fun aNetworkFailureIsNotStoredAsNoMatchAndTheRunBacksOff() {
         val dir = tmp.newFolder(); var clock = 1_000_000_000_000L; var online = false; var calls = 0
-        val svc = TmdbService(fx.db, { "KEY" }, fx.folders.visibility, dir, { clock }) { _ -> calls++; if (!online) throw java.io.IOException("offline"); """{"results":[]}""" }
+        val svc = TmdbService(fx.db, { "KEY" }, fx.folders.visibility, dir, { clock }) { _, _ -> calls++; if (!online) throw java.io.IOException("offline"); """{"results":[]}""" }
         assertTrue(runCatching { runBlocking { svc.fillMissing(50) } }.isFailure)
         assertEquals("nothing was stored as unmatched", 0, fx.db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM overrides").use { it.moveToFirst(); it.getInt(0) })
         val after = calls
@@ -87,7 +87,7 @@ class TmdbPrivacyTests {
 
     @Test fun withoutAKeyNothingIsRequestedAndWhatWasFilledStaysUntilTheLimit() = runBlocking {
         val dir = tmp.newFolder(); var calls = 0
-        val noKey = TmdbService(fx.db, { null }, fx.folders.visibility, dir) { _ -> calls++; "{}" }
+        val noKey = TmdbService(fx.db, { null }, fx.folders.visibility, dir) { _, _ -> calls++; "{}" }
         assertTrue(runCatching { noKey.fillMissing(10) }.isFailure); assertEquals(0, calls)
         fx.db.extras().putOverride(OverrideEntity(F.OPEN_FILM_A, null, "https://image.tmdb.org/t/p/w342/a.jpg", "story"))
         java.io.File(dir, "filled.log").writeText("${F.OPEN_FILM_A}\t${System.currentTimeMillis()}\n")

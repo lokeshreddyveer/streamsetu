@@ -1,5 +1,6 @@
 package app.streamsetu.tv.ui.phone
 
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,22 +33,12 @@ import app.streamsetu.tv.ui.components.TimelineRail
 import app.streamsetu.tv.ui.components.PosterPlaceholder
 import app.streamsetu.tv.ui.components.Spinner
 import app.streamsetu.tv.ui.screens.SeriesDetailViewModel
-import app.streamsetu.tv.ui.screens.section.ratingBadge
 import app.streamsetu.tv.ui.theme.Tokens
 import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private fun minutes(ms: Long) = (ms / 60000).toInt().coerceAtLeast(0)
-
-@Composable
-private fun DetailHeader(imageUrl: String?, title: String, onBack: () -> Unit) {
-    Box(Modifier.fillMaxWidth().height(260.dp).background(Tokens.card)) {
-        if (imageUrl.isNullOrBlank()) PosterPlaceholder(title, Modifier.fillMaxSize()) else AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0x99000000), 0.4f to Color.Transparent, 1f to Tokens.background)))
-        IconTap(Icons.Filled.ArrowBack, "Back", onBack, Modifier.windowInsetsPadding(WindowInsets.statusBars).padding(start = 4.dp, top = 4.dp), filled = true)
-    }
-}
 
 @Composable
 fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
@@ -61,7 +52,9 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
     var variants by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var franchise by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var otherLanguages by remember { mutableStateOf<List<Pair<app.streamsetu.core.data.repo.OtherVersions.Version, Movie>>?>(null) }
-    val cast = app.streamsetu.tv.ui.components.rememberCast(c, movie.title, movie.year, false, movie.categoryId)
+    val tmdbState = app.streamsetu.tv.ui.components.rememberTmdbDetailsState(c, movie.id, movie.title, movie.year, false, movie.categoryId)
+    val tmdb = tmdbState.details
+    val cast = tmdb.cast
     var openVersion by remember(movie.id) { mutableStateOf<app.streamsetu.core.data.repo.OtherVersions.Version?>(null) }
     LaunchedEffect(movie.id) { openVersion = runCatching { c.search.versionOf(movie) }.getOrNull() }
     var related by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Movie>>>(emptyList()) }
@@ -79,41 +72,37 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
     val resumable = progress?.takeIf { !it.completed && it.positionMs > 30_000 }
     fun sourceName(id: String) = sources.firstOrNull { it.id == "src:$id" }?.name ?: "Connection"
 
-    Box(Modifier.fillMaxSize().background(Tokens.background)) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            item { DetailHeader(info?.backdrop?.takeIf { it.isNotBlank() } ?: movie.posterUrl, movie.title) { nav.close() } }
-            item {
-                Column(Modifier.padding(horizontal = Ph.gutter), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Label(movie.title, Ph.title, Tokens.text, FontWeight.Bold, maxLines = 3)
-                    app.streamsetu.tv.ui.components.VersionPill(openVersion, tv = false, modifier = Modifier.padding(top = 4.dp))          // "Hindi · Dubbed · FHD"
-                    Label(listOfNotNull(movie.year?.toString(), info?.duration?.takeIf { it.isNotBlank() && it != "00:00:00" }, info?.genre?.takeIf { it.isNotBlank() }, ratingBadge(movie.rating)).joinToString("  ·  "), Ph.small, Tokens.textSecondary, maxLines = 2)
-                    app.streamsetu.core.data.repo.QualityBadges.from(listOf(movie.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Ph.small, Tokens.accent, FontWeight.Bold) }
-                    app.streamsetu.tv.ui.components.FolderPath(c, app.streamsetu.core.model.ContentKind.MOVIE, movie.categoryId, phone = true) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.MOVIE, id) }
-                    if (resumable != null) {
-                        androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(4.dp).background(Tokens.elevated, RoundedCornerShape(2.dp))) { Box(Modifier.fillMaxWidth(resumable.fraction).fillMaxHeight().background(Tokens.accent, RoundedCornerShape(2.dp))) }
-                        Label("${minutes(resumable.durationMs - resumable.positionMs)} min left", Ph.caption, Tokens.textSecondary)
-                    } else if (progress?.completed == true) Label("Watched", Ph.caption, Tokens.success)
-                    Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        PillButton(if (resumable != null) "Resume" else "Play", { c.playBestMovie(movie) { play(c, nav, it) } }, Modifier.weight(1f), icon = Icons.Filled.PlayArrow, primary = true)
-                        PillButton("Privately", { c.playBestMovie(movie) { play(c, nav, it, privately = true) } }, Modifier.weight(1f), icon = Icons.Filled.VisibilityOff)
-                        if (resumable != null || progress?.completed == true) PillButton("Start over", { scope.launch { c.user.clearResumePoint(movie.id) }; c.play(MoviePlayable(movie), listOf(MoviePlayable(movie)), startOver = true); if (nav.top != Overlay.Player) nav.open(Overlay.Player) }, Modifier.weight(1f), icon = Icons.Filled.Replay)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Chip(if (movie.id in favs) "Favorited" else "Favorite", movie.id in favs, { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in favs) } }, icon = Icons.Filled.Favorite)
-                        Chip(if (movie.id in later) "In Watch Later" else "Watch Later", movie.id in later, { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in later, UserRepository.WATCH_LATER) } }, icon = Icons.Filled.Bookmark)
-                        val saved by c.downloads.items.collectAsStateWithLifecycle(); val saving = saved.firstOrNull { it.itemId == movie.id }
-                        Chip(downloadLabel(saving), saving?.state == app.streamsetu.core.data.repo.SaveState.DONE, { downloadTap(c, saving) { c.downloads.enqueue(movie) } }, icon = Icons.Filled.Download, progress = saving?.takeIf { it.state == app.streamsetu.core.data.repo.SaveState.DOWNLOADING }?.fraction)
-                        val queued by c.watchQueue.items.collectAsStateWithLifecycle(); val inQueue = queued.any { it.id == movie.id }
-                        Chip(if (inQueue) "In queue" else "Add to queue", inQueue, { if (inQueue) c.watchQueue.remove(movie.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.MOVIE, movie.id, movie.title)) }, icon = Icons.Filled.Add)
-                        Chip("Share link", false, { shareTitle(c.context, "movie", movie.title) }, icon = Icons.Filled.Share)
-                        if (variants.size > 1) Chip("Choose stream", false, { chooseOpen = true }, icon = Icons.Filled.SwapHoriz)
-                    }
-                    (info?.plot ?: movie.plot)?.takeIf { it.isNotBlank() }?.let { Label(it, Ph.body, Tokens.textSecondary, maxLines = 12, modifier = Modifier.padding(top = 4.dp)) }
-                    info?.director?.takeIf { it.isNotBlank() }?.let { Label("Director  ·  $it", Ph.small, Tokens.textSecondary, maxLines = 2) }
-                    info?.cast?.takeIf { it.isNotBlank() }?.let { Label("Cast  ·  $it", Ph.small, Tokens.textSecondary, maxLines = 4) }
-                    Label("From  ·  ${sourceName(movie.sourceId)}", Ph.caption, Tokens.textTertiary)
-                }
-            }
+    val queued by c.watchQueue.items.collectAsStateWithLifecycle()
+    val inQueue = queued.any { it.id == movie.id }
+    val saved by c.downloads.items.collectAsStateWithLifecycle(); val saving = saved.firstOrNull { it.itemId == movie.id }
+    var versionOpen by remember(movie.id) { mutableStateOf(false) }
+    var menuOpen by remember(movie.id) { mutableStateOf(false) }
+    val versionRows = otherLanguages.orEmpty()
+    val isFav = movie.id in favs; val isLater = movie.id in later
+    val hubView = app.streamsetu.tv.ui.components.rememberTitleHub(c, movie.id, false)
+    val top = app.streamsetu.tv.ui.components.TitleTop(
+        title = movie.title, logo = hubView.logo, nextEpisode = hubView.nextEpisode, backdrop = hubView.backdrop ?: info?.backdrop?.takeIf { it.isNotBlank() } ?: tmdb.backdrop, poster = movie.posterUrl,
+        meta = app.streamsetu.core.data.repo.TitlePageText.metaLine(movie.year, app.streamsetu.core.data.repo.TitlePageText.runtime(info?.duration), null, app.streamsetu.core.data.repo.TitlePageText.quality(movie.title, movie.streamRef.substringAfterLast(':', "")), tmdb.ratingOr(movie.rating)),
+        pickerLabel = app.streamsetu.core.data.repo.TitlePageText.pickerLabel(openVersion?.let { it.language ?: it.label }, versionRows.size), onPicker = { versionOpen = true },
+        playLabel = app.streamsetu.core.data.repo.TitlePageText.playMovie(resumable?.positionMs ?: 0L, resumable?.durationMs ?: 0L, resumable != null), playProgress = resumable?.fraction,
+        onPlay = { c.playBestMovie(movie) { play(c, nav, it) } }, playFocus = null,
+        actions = buildList {
+            add(app.streamsetu.tv.ui.components.TitleAction(if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, "Favourite", isFav, "Favourite, " + if (isFav) "on" else "off", "action-favourite") { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, !isFav) } })
+            add(app.streamsetu.tv.ui.components.TitleAction(if (isLater) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, "Watch Later", isLater, "Watch Later, " + if (isLater) "on" else "off", "action-later") { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, !isLater, UserRepository.WATCH_LATER) } })
+            tmdb.trailerKey?.let { k -> add(app.streamsetu.tv.ui.components.TitleAction(Icons.Filled.Movie, "Trailer", tag = "action-trailer") { app.streamsetu.tv.ui.components.openTrailer(c.context, k) }) }
+            add(app.streamsetu.tv.ui.components.TitleAction(if (saving?.state == app.streamsetu.core.data.repo.SaveState.DONE) Icons.Filled.DownloadDone else Icons.Filled.Download, downloadLabel(saving), saving?.state == app.streamsetu.core.data.repo.SaveState.DONE, downloadLabel(saving), "action-download") { downloadTap(c, saving) { c.downloads.enqueue(movie) } })
+            add(app.streamsetu.tv.ui.components.TitleAction(Icons.Filled.Share, "Share", tag = "action-share") { shareTitle(c.context, "movie", movie.title) })
+        },
+        synopsis = (info?.plot ?: movie.plot ?: tmdb.plot), genres = app.streamsetu.core.data.repo.TitlePageText.genres(info?.genre), onBack = { nav.close() }, onMenu = { menuOpen = true })
+    val rows = app.streamsetu.core.data.repo.TitlePageText.details(info?.director, info?.cast ?: tmdb.cast.take(6).joinToString(", ") { it.name }, null, null, info?.releaseDate, movie.categoryId != null)
+    val detailsAndMore: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+        if (rows.isNotEmpty()) item(key = "details") {
+            Box(Modifier.padding(horizontal = Ph.gutter)) { app.streamsetu.tv.ui.components.DetailsList(rows, false, { n -> nav.open(Overlay.Person(n, null, null, movie.title, movie.year)) }, if (movie.categoryId != null) { { app.streamsetu.tv.ui.components.FolderPath(c, ContentKind.MOVIE, movie.categoryId, phone = true) { id -> nav.close(); nav.openFolderTab(ContentKind.MOVIE, id) } } } else null) }
+        }
+        if (cast.isEmpty() && tmdbState.problem != null) item(key = "cast-problem") { app.streamsetu.tv.ui.components.TmdbProblemLine(tmdbState, tv = false) }
+        if (cast.isNotEmpty()) item(key = "cast") { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionHeader("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, false) { m -> nav.open(Overlay.Person(m.name, m.photo, m.id, movie.title, movie.year)) } } }
+        if (versionRows.size > 1) item(key = "versions") { app.streamsetu.tv.ui.components.PhoneOtherLanguages(otherLanguages, { it.posterUrl }, { m -> nav.close(); nav.open(Overlay.MovieDetail(m)) }) }
+        tmdb.trailerKey?.let { k -> item(key = "extras") { Column(Modifier.padding(horizontal = Ph.gutter), verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionHeader("Trailers & extras"); PillButton("Official trailer", { app.streamsetu.tv.ui.components.openTrailer(c.context, k) }, Modifier.fillMaxWidth().testTag("extras-trailer"), icon = Icons.Filled.Movie) } } }
             if (franchise.size > 1) item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Timeline  ·  ${franchise.size} films")
@@ -121,7 +110,7 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                         items(franchise.withIndex().toList(), key = { it.value.id }) { (i, m) ->
                             val here = m.id == movie.id
                             Column(Modifier.width(122.dp).padding(end = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                PhonePoster(m.title, m.posterUrl, { if (!here) { nav.close(); nav.open(Overlay.MovieDetail(m)) } }, Modifier.fillMaxWidth())
+                                PhonePoster(m.title, m.posterUrl, { if (!here) { nav.close(); nav.open(Overlay.MovieDetail(m)) } }, Modifier.fillMaxWidth(), itemId = m.id)
                                 TimelineRail(i, franchise.size, franchise.indexOfFirst { it.id == movie.id }.coerceAtLeast(0))
                                 Label(m.year?.toString() ?: "", Ph.small, if (here) Tokens.accent else Tokens.text, FontWeight.SemiBold)
                             }
@@ -129,18 +118,23 @@ fun PhoneMovieDetail(movie0: Movie, c: AppContainer, nav: Navigator) {
                     }
                 }
             }
-            if (cast.isNotEmpty()) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionHeader("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, false) { m -> nav.open(Overlay.Person(m.name, m.photo)) } } }
-            if (otherLanguages.let { it == null || it.size > 1 }) item { app.streamsetu.tv.ui.components.PhoneOtherLanguages(otherLanguages, { it.posterUrl }, { m -> nav.close(); nav.open(Overlay.MovieDetail(m)) }) }
             if (related.isNotEmpty()) item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("More like this")
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(related, key = { it.item.id }) { r -> val m = r.item; PhonePoster(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, Modifier.width(112.dp), subtitle = r.reason, badge = ratingBadge(m.rating)) }
+                        items(related, key = { it.item.id }) { r -> val m = r.item; PhonePoster(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, Modifier.width(112.dp), subtitle = r.reason, itemId = m.id) }
                     }
                 }
             }
-        }
     }
+    TitlePageScaffold(top, detailsAndMore)
+    if (versionOpen) Sheet("Versions", versionRows.map { (v, m) -> SheetItem(v.label, Icons.Filled.SwapHoriz, v.current) { if (!v.current) { nav.close(); nav.open(Overlay.MovieDetail(m)) } } }, onClose = { versionOpen = false })
+    if (menuOpen) Sheet(movie.title, buildList {
+        add(SheetItem("Play privately", Icons.Filled.VisibilityOff) { c.playBestMovie(movie) { play(c, nav, it, privately = true) } })
+        if (resumable != null || progress?.completed == true) add(SheetItem("Start over", Icons.Filled.Replay) { scope.launch { c.user.clearResumePoint(movie.id) }; c.play(MoviePlayable(movie), listOf(MoviePlayable(movie)), startOver = true); if (nav.top != Overlay.Player) nav.open(Overlay.Player) })
+        add(SheetItem(if (inQueue) "In queue" else "Add to queue", Icons.Filled.Add, inQueue) { if (inQueue) c.watchQueue.remove(movie.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.MOVIE, movie.id, movie.title)) })
+        if (variants.size > 1) add(SheetItem("Choose stream", Icons.Filled.SwapHoriz) { chooseOpen = true })
+    }, onClose = { menuOpen = false })
     if (chooseOpen) Sheet("Choose stream", variants.map { v -> SheetItem("${sourceName(v.sourceId)}  ·  ${v.streamRef.substringAfterLast(':', "").uppercase()}", Icons.Filled.PlayArrow, v.id == movie.id) { play(c, nav, MoviePlayable(v)) } }, onClose = { chooseOpen = false }, subtitle = "Plays only this time. Your default is unchanged.")
 }
 
@@ -158,7 +152,9 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
     var similar by remember { mutableStateOf<List<app.streamsetu.core.data.repo.SearchRepository.Suggestion<Series>>>(emptyList()) }
     LaunchedEffect(series0.id) { similar = runCatching { c.search.similarSeries(series0) }.getOrDefault(emptyList()) }
     var otherLanguages by remember { mutableStateOf<List<Pair<app.streamsetu.core.data.repo.OtherVersions.Version, Series>>?>(null) }
-    val cast = app.streamsetu.tv.ui.components.rememberCast(c, series0.title, series0.year, true, series0.categoryId)
+    val tmdbState = app.streamsetu.tv.ui.components.rememberTmdbDetailsState(c, series0.id, series0.title, series0.year, true, series0.categoryId)
+    val tmdb = tmdbState.details
+    val cast = tmdb.cast
     var openVersion by remember(series0.id) { mutableStateOf<app.streamsetu.core.data.repo.OtherVersions.Version?>(null) }
     LaunchedEffect(series0.id) { openVersion = runCatching { c.search.versionOf(series0) }.getOrNull() }
     LaunchedEffect(series0.id) { otherLanguages = runCatching { c.search.otherVersionsOf(series0, app.streamsetu.tv.ui.components.preferredLanguage(c)) }.getOrDefault(emptyList()) }
@@ -173,45 +169,44 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
     val watchedCount = episodes.count { progress[it.id]?.completed == true }
     val firstEp = episodes.minWithOrNull(compareBy({ it.season }, { it.number }))
 
-    Box(Modifier.fillMaxSize().background(Tokens.background)) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { DetailHeader(s.backdropUrl?.takeIf { it.isNotBlank() } ?: s.posterUrl, s.title) { nav.close() } }
-            item {
-                Column(Modifier.padding(horizontal = Ph.gutter), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Label(s.title, Ph.title, Tokens.text, FontWeight.Bold, maxLines = 3)
-                    app.streamsetu.tv.ui.components.VersionPill(openVersion, tv = false, modifier = Modifier.padding(top = 4.dp))          // "Hindi · Dubbed · FHD"
-                    Label(listOfNotNull(s.year?.toString(), if (seasons.isNotEmpty()) "${seasons.size} season${if (seasons.size == 1) "" else "s"}" else null, ratingBadge(s.rating), if (episodes.isNotEmpty()) (if (plan.allFinished) "All watched" else "$watchedCount of ${episodes.size} watched") else null).joinToString("  ·  "), Ph.small, Tokens.textSecondary, maxLines = 2)
-                    app.streamsetu.core.data.repo.QualityBadges.from(listOf(s.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Ph.small, Tokens.accent, FontWeight.Bold) }
-                    app.streamsetu.tv.ui.components.FolderPath(c, app.streamsetu.core.model.ContentKind.SERIES, s.categoryId, phone = true) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.SERIES, id) }
-                    if (plan.gapBefore && forward != null) Label("Episode ${forward.number - 1} is not available. The next one on offer is episode ${forward.number}.", Ph.small, Tokens.warning, maxLines = 2)
-                    Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        val ip = inProgress
-                        PillButton("Privately", { c.appScope.launch { c.playSeries(s, privately = true); kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { if (nav.top != Overlay.Player) nav.open(Overlay.Player) } } }, Modifier.weight(0.6f), icon = Icons.Filled.VisibilityOff)
-                        when {
-                            ip != null -> PillButton("Continue S${ip.season} E${ip.number}", { playEp(ip) }, Modifier.weight(1f), icon = Icons.Filled.PlayArrow, primary = true)
-                            forward != null && watchedCount > 0 -> PillButton(if (catchUp != null) "Continue Forward S${forward.season} E${forward.number}" else "Continue S${forward.season} E${forward.number}", { playEp(forward) }, Modifier.weight(1f), icon = Icons.Filled.PlayArrow, primary = true)
-                            firstEp != null && plan.allFinished -> PillButton("Watch again", { playEp(firstEp) }, Modifier.weight(1f), icon = Icons.Filled.Replay, primary = true)
-                            firstEp != null -> PillButton("Start series", { playEp(firstEp) }, Modifier.weight(1f), icon = Icons.Filled.PlayArrow, primary = true)
-                            else -> PillButton(if (loading) "Loading episodes…" else "No episodes", {}, Modifier.weight(1f), primary = true)
-                        }
-                        catchUp?.let { cu -> PillButton("Catch up S${cu.season} E${cu.number}", { playEp(cu) }, Modifier.weight(1f), icon = Icons.Filled.History) }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Chip(if (s.id in favs) "Favorited" else "Favorite", s.id in favs, { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in favs) } }, icon = Icons.Filled.Favorite)
-                        Chip(if (s.id in later) "In Watch Later" else "Watch Later", s.id in later, { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in later, UserRepository.WATCH_LATER) } }, icon = Icons.Filled.Bookmark)
-                        val queued by c.watchQueue.items.collectAsStateWithLifecycle(); val inQueue = queued.any { it.id == s.id }
-                        Chip(if (inQueue) "In queue" else "Add to queue", inQueue, { if (inQueue) c.watchQueue.remove(s.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.SERIES, s.id, s.title)) }, icon = Icons.Filled.Add)
-                        Chip("Share link", false, { shareTitle(c.context, "series", s.title) }, icon = Icons.Filled.Share)
-                    }
-                    s.plot?.takeIf { it.isNotBlank() }?.let { Label(it, Ph.body, Tokens.textSecondary, maxLines = 8, modifier = Modifier.padding(top = 4.dp)) }
-                }
-            }
-            // Other languages come right after the overview.
-            if (cast.isNotEmpty()) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionHeader("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, false) { m -> nav.open(Overlay.Person(m.name, m.photo)) } } }
-            if (otherLanguages.let { it == null || it.size > 1 }) item { app.streamsetu.tv.ui.components.PhoneOtherLanguages(otherLanguages, { it.posterUrl }, { sr -> nav.close(); nav.open(Overlay.SeriesDetail(sr)) }) }
+    val queued by c.watchQueue.items.collectAsStateWithLifecycle()
+    val inQueue = queued.any { it.id == s.id }
+    var versionOpen by remember(s.id) { mutableStateOf(false) }
+    var menuOpen by remember(s.id) { mutableStateOf(false) }
+    val versionRows = otherLanguages.orEmpty()
+    val isFav = s.id in favs; val isLater = s.id in later
+    val ip = inProgress
+    val playAction: () -> Unit = when {
+        ip != null -> { { playEp(ip) } }
+        forward != null && watchedCount > 0 -> { { playEp(forward) } }
+        firstEp != null -> { { playEp(firstEp) } }
+        else -> { {} }
+    }
+    val hubView = app.streamsetu.tv.ui.components.rememberTitleHub(c, s.id, true)
+    val top = app.streamsetu.tv.ui.components.TitleTop(
+        title = s.title, logo = hubView.logo, nextEpisode = hubView.nextEpisode, backdrop = hubView.backdrop ?: s.backdropUrl?.takeIf { it.isNotBlank() } ?: tmdb.backdrop, poster = s.posterUrl,
+        meta = app.streamsetu.core.data.repo.TitlePageText.metaLine(s.year, if (seasons.isNotEmpty()) app.streamsetu.core.model.Plurals.format("season", seasons.size) else null, null, app.streamsetu.core.data.repo.TitlePageText.quality(s.title), tmdb.ratingOr(s.rating)),
+        pickerLabel = app.streamsetu.core.data.repo.TitlePageText.pickerLabel(openVersion?.let { it.language ?: it.label }, versionRows.size), onPicker = { versionOpen = true },
+        playLabel = app.streamsetu.core.data.repo.TitlePageText.playSeries(ip?.let { it.season to it.number }, if (watchedCount > 0) forward?.let { it.season to it.number } else null, firstEp?.let { it.season to it.number }, plan.allFinished, loading), playProgress = null,
+        onPlay = playAction, playFocus = null,
+        actions = buildList {
+            add(app.streamsetu.tv.ui.components.TitleAction(if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, "Favourite", isFav, "Favourite, " + if (isFav) "on" else "off", "action-favourite") { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, !isFav) } })
+            add(app.streamsetu.tv.ui.components.TitleAction(if (isLater) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, "Watch Later", isLater, "Watch Later, " + if (isLater) "on" else "off", "action-later") { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, !isLater, UserRepository.WATCH_LATER) } })
+            tmdb.trailerKey?.let { k -> add(app.streamsetu.tv.ui.components.TitleAction(Icons.Filled.Movie, "Trailer", tag = "action-trailer") { app.streamsetu.tv.ui.components.openTrailer(c.context, k) }) }
+            add(app.streamsetu.tv.ui.components.TitleAction(Icons.Filled.Share, "Share", tag = "action-share") { shareTitle(c.context, "series", s.title) })
+        },
+        synopsis = s.plot ?: tmdb.plot, genres = emptyList(), onBack = { nav.close() }, onMenu = { menuOpen = true })
+    val rows = app.streamsetu.core.data.repo.TitlePageText.details(null, tmdb.cast.take(6).joinToString(", ") { it.name }, null, null, s.year?.toString(), s.categoryId != null)
+    val content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+        // Episodes come right after the actions, synopsis and genres, before the details and the cast.
+        item(key = "episodesHead") { Column(Modifier.padding(horizontal = Ph.gutter), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            SectionHeader("Episodes")
+            if (episodes.isNotEmpty()) Label(if (plan.allFinished) "All watched" else "$watchedCount of ${episodes.size} watched", Ph.small, if (plan.allFinished) Tokens.success else Tokens.textSecondary)
+            if (plan.gapBefore && forward != null) Label("Episode ${forward.number - 1} is not available. The next one on offer is episode ${forward.number}.", Ph.small, Tokens.warning, maxLines = 2)
+        } }
             if (loading && episodes.isEmpty()) item { Row(Modifier.padding(horizontal = Ph.gutter), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { app.streamsetu.tv.ui.components.BrandLoader(size = 30.dp); Label("Loading episodes…", Ph.body, Tokens.textSecondary) } }
             error?.let { e -> if (episodes.isEmpty()) item { Label(e, Ph.body, Tokens.danger, maxLines = 3, modifier = Modifier.padding(horizontal = Ph.gutter)) } }
-            if (seasons.size > 1) item {
+            if (seasons.size > 1) item(key = "seasons") {
                 LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(seasons.keys.toList(), key = { it }) { n -> Chip("Season $n", n == season, { season = n }) } }
             }
             items((season?.let { seasons[it] }).orEmpty().sortedBy { it.number }, key = { it.id }) { e ->
@@ -239,14 +234,47 @@ fun PhoneSeriesDetail(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigator
                     }
                 }
             }
+        if (rows.isNotEmpty()) item(key = "details") {
+            Box(Modifier.padding(horizontal = Ph.gutter)) { app.streamsetu.tv.ui.components.DetailsList(rows, false, { n -> nav.open(Overlay.Person(n, null, null, series0.title, series0.year)) }, if (s.categoryId != null) { { app.streamsetu.tv.ui.components.FolderPath(c, ContentKind.SERIES, s.categoryId, phone = true) { id -> nav.close(); nav.openFolderTab(ContentKind.SERIES, id) } } } else null) }
+        }
+        if (cast.isEmpty() && tmdbState.problem != null) item(key = "cast-problem") { app.streamsetu.tv.ui.components.TmdbProblemLine(tmdbState, tv = false) }
+        if (cast.isNotEmpty()) item(key = "cast") { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionHeader("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, false) { m -> nav.open(Overlay.Person(m.name, m.photo, m.id, series0.title, series0.year)) } } }
+        if (versionRows.size > 1) item(key = "versions") { app.streamsetu.tv.ui.components.PhoneOtherLanguages(otherLanguages, { it.posterUrl }, { sr -> nav.close(); nav.open(Overlay.SeriesDetail(sr)) }) }
+        tmdb.trailerKey?.let { k -> item(key = "extras") { Column(Modifier.padding(horizontal = Ph.gutter), verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionHeader("Trailers & extras"); PillButton("Official trailer", { app.streamsetu.tv.ui.components.openTrailer(c.context, k) }, Modifier.fillMaxWidth().testTag("extras-trailer"), icon = Icons.Filled.Movie) } } }
             if (similar.isNotEmpty()) item {
                 Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("More like this")
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(similar, key = { it.item.id }) { r -> val m = r.item; PhonePoster(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.SeriesDetail(m)) }, Modifier.width(112.dp), subtitle = r.reason, badge = ratingBadge(m.rating)) }
+                        items(similar, key = { it.item.id }) { r -> val m = r.item; PhonePoster(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.SeriesDetail(m)) }, Modifier.width(112.dp), subtitle = r.reason, itemId = m.id) }
                     }
                 }
             }
+    }
+    TitlePageScaffold(top, content)
+    if (versionOpen) Sheet("Versions", versionRows.map { (v, m) -> SheetItem(v.label, Icons.Filled.SwapHoriz, v.current) { if (!v.current) { nav.close(); nav.open(Overlay.SeriesDetail(m)) } } }, onClose = { versionOpen = false })
+    if (menuOpen) Sheet(s.title, buildList {
+        add(SheetItem("Play privately", Icons.Filled.VisibilityOff) { c.appScope.launch { c.playSeries(s, privately = true); kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { if (nav.top != Overlay.Player) nav.open(Overlay.Player) } } })
+        catchUp?.let { cu -> add(SheetItem("Catch up S${cu.season} E${cu.number}", Icons.Filled.History) { playEp(cu) }) }
+        add(SheetItem(if (inQueue) "In queue" else "Add to queue", Icons.Filled.Add, inQueue) { if (inQueue) c.watchQueue.remove(s.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.SERIES, s.id, s.title)) })
+    }, onClose = { menuOpen = false })
+}
+
+/** The page: one list, hero first. On a wide screen (a tablet, a phone on its side) the hero and the first block share a row. */
+@Composable
+internal fun TitlePageScaffold(top: app.streamsetu.tv.ui.components.TitleTop, content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Tokens.background)) {
+        val wide = maxWidth >= 840.dp
+        LazyColumn(Modifier.fillMaxSize().testTag("title-page"), contentPadding = PaddingValues(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (wide) item(key = "top") {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    app.streamsetu.tv.ui.components.TitleHero(false, top, Modifier.weight(1f), height = 420.dp)
+                    app.streamsetu.tv.ui.components.TitleBody(false, top, Modifier.weight(1f).padding(end = Ph.gutter, top = 48.dp))
+                }
+            } else {
+                item(key = "hero") { app.streamsetu.tv.ui.components.TitleHero(false, top) }
+                item(key = "top") { app.streamsetu.tv.ui.components.TitleBody(false, top, Modifier.padding(horizontal = Ph.gutter)) }
+            }
+            content()
         }
     }
 }

@@ -1,5 +1,7 @@
 package app.streamsetu.tv.ui.screens.home
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
@@ -40,7 +42,6 @@ import app.streamsetu.tv.nav.Overlay
 import app.streamsetu.tv.nav.Tab
 import app.streamsetu.tv.play
 import app.streamsetu.tv.ui.components.*
-import app.streamsetu.tv.ui.screens.section.ratingBadge
 import app.streamsetu.tv.ui.theme.Tokens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
@@ -64,6 +65,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val hasLater by vm.watchLater.select { it.isNotEmpty() }
     val hasForYou by vm.forYou.select { it != null }
     val mixShelves by vm.mix.collectAsStateWithLifecycle()
+    val mixLoading by vm.mixLoading.collectAsStateWithLifecycle()
     val hasMoreWith by vm.moreWith.select { it != null }
     val hasMovies by vm.recentMovies.select { it.isNotEmpty() }
     val hasSeries by vm.recentSeries.select { it.isNotEmpty() }
@@ -141,7 +143,9 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     }
                     "later" -> if (hasLater) railItem("Watch Later") { FavouriteRail("Watch Later", vm.watchLater, null, "w", RowKind.WATCH_LATER, c, nav, pad, longOn) }
                     "foryou" -> {
-                        mixShelves.forEach { sh -> railItem(sh.title) { MixRail(sh, vm, c, nav, pad, longOn) } }
+                        if (mixLoading && mixShelves.isEmpty()) item(key = "mix-skeleton") { app.streamsetu.tv.ui.components.HomeSkeleton(Modifier.testTag("home-skeleton")) }
+                        mixShelves.forEach { sh -> railItem(sh.id) { MixRail(sh, vm, c, nav, pad, longOn) } }
+                        if (mixShelves.any { it.genreKey != null }) railItem("Browse by Genre") { BrowseGenreRail(vm, nav, pad) }
                         if (hasForYou && mixShelves.none { it.id == app.streamsetu.core.data.smartmix.ShelfSpec.FOR_YOU }) railItem("For You") { ForYouRail(vm, c, nav, pad, longOn) }
                         if (hasMoreWith) railItem("More with") { MoreWithRail(vm, c, nav, pad, longOn) }
                     }
@@ -199,15 +203,17 @@ private fun LazyListScope.railItem(title: String, content: @Composable () -> Uni
 }
 
 @Composable
-private fun RailFrame(title: String, pad: PaddingValues, reason: String? = null, content: LazyListScope.() -> Unit) {
+private fun RailFrame(title: String, pad: PaddingValues, reason: String? = null, view: app.streamsetu.core.data.smartmix.ShelfView? = null, onView: (app.streamsetu.core.data.smartmix.ShelfView) -> Unit = {}, onSeeAll: (() -> Unit)? = null, content: LazyListScope.() -> Unit) {
     Column {
         // Each row remembers the card the remote was on (focusRestorer), so Up and Down return to it instead of whichever card is nearest.
-        // A short heading, with why it is shown (if there is a reason) in smaller type beneath it.
-        Column(Modifier.padding(start = Tokens.safeHorizontal, top = 10.dp, bottom = 4.dp)) {
+        // A short heading, with why it is shown (if there is a reason) in smaller type beneath it. A ranking shelf carries its two chips (and "See all") on the heading line at the right.
+        val rowEntry = remember { androidx.compose.ui.focus.FocusRequester() }
+        if (view != null || onSeeAll != null) app.streamsetu.tv.ui.components.ShelfHeader(title, reason, view, true, onView, onSeeAll, Modifier.padding(top = 10.dp, bottom = 4.dp), rowEntry)
+        else Column(Modifier.padding(start = Tokens.safeHorizontal, top = 10.dp, bottom = 4.dp)) {
             Label(title, Tokens.title, Tokens.text, FontWeight.SemiBold)
             if (reason != null) Label(reason, Tokens.small, Tokens.textTertiary, maxLines = 1)
         }
-        LazyRow(Modifier.railOnLeft().focusRestorer(), horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = pad, content = content)
+        LazyRow(Modifier.railOnLeft().focusRequester(rowEntry).focusRestorer(), horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = pad, content = content)
     }
 }
 
@@ -293,7 +299,31 @@ private fun ForYouRail(vm: HomeViewModel, c: AppContainer, nav: Navigator, pad: 
 @Composable
 private fun MixRail(sh: HomeViewModel.MixShelf, vm: HomeViewModel, c: AppContainer, nav: Navigator, pad: PaddingValues, longOn: (HomeTarget, RowKind) -> Unit) {
     val cards = remember(sh) { sh.items.take(RailMax) }
-    RailFrame(sh.title, pad) { items(cards, key = { sh.id + it.kind() + it.id }, contentType = { "card" }) { f -> FavCard(f, c, nav, RowKind.OTHER, longOn) } }
+    val heading = if (sh.titleSuffix != null) app.streamsetu.tv.ui.i18n.I18n.tr(sh.title) + " " + sh.titleSuffix else sh.title
+    RailFrame(heading, pad, reason = sh.caption, view = sh.view, onView = { v -> sh.view?.let { vm.setShelfView(sh.id, v) } }, onSeeAll = sh.genreKey?.let { k -> { nav.open(Overlay.Genre(k)) } }) {
+        items(cards, key = { sh.id + it.kind() + it.id }, contentType = { if (sh.tiles.containsKey(it.id)) "collection" else "card" }) { f ->
+            val tile = sh.tiles[f.id]
+            // A collection opens its lead title, whose page lists the rest of the franchise in release order.
+            if (tile != null) app.streamsetu.tv.ui.components.CollectionTile(tile.name, tile.count, when (f) { is FavItem.Mv -> f.movie.posterUrl; is FavItem.Sr -> f.series.posterUrl; else -> null }, f.id,
+                { when (f) { is FavItem.Mv -> nav.open(Overlay.MovieDetail(f.movie)); is FavItem.Sr -> nav.open(Overlay.SeriesDetail(f.series)); else -> {} } })
+            else FavCard(f, c, nav, RowKind.OTHER, longOn)
+        }
+    }
+}
+
+/** "Browse by Genre": every genre of the library with its number of titles; each opens the best rated of that genre. */
+@Composable
+private fun BrowseGenreRail(vm: HomeViewModel, nav: Navigator, pad: PaddingValues) {
+    val genres by vm.genreBrowse.collectAsStateWithLifecycle()
+    if (genres.isEmpty()) return
+    RailFrame("Browse by Genre", pad) { items(genres, key = { "g" + it.key }, contentType = { "genre" }) { g ->
+        Focusable({ nav.open(Overlay.Genre(g.key)) }, Modifier.testTag("browse-" + g.key).semantics(mergeDescendants = true) { contentDescription = app.streamsetu.tv.ui.i18n.I18n.tr("${g.name}, ${g.count} titles") }, shape = RoundedCornerShape(Tokens.radius), container = Tokens.card, focusedContainer = Tokens.focusedSurface, browse = true) { _ ->
+            Column(Modifier.width(150.dp).padding(horizontal = 14.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Label(g.name, Tokens.body, Tokens.text, FontWeight.SemiBold, maxLines = 1)
+                Label("%,d".format(g.count), Tokens.small, Tokens.textTertiary)
+            }
+        }
+    } }
 }
 
 @Composable
@@ -311,7 +341,7 @@ private fun MoviesRail(vm: HomeViewModel, nav: Navigator, pad: PaddingValues, lo
     val favIds = vm.favouriteIds.collectAsStateWithLifecycle()
     RailFrame("Recently Added Movies", pad) { items(cards, key = { "m" + it.id }, contentType = { "card" }) { m ->
         val favourite by remember(m.id) { derivedStateOf { m.id in favIds.value } }          // a favourite changes the heart on that card alone
-        PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, itemId = m.id, subtitle = m.year?.toString(), badge = if (favourite) "♥" else remember(m.rating) { ratingBadge(m.rating) }, onLongClick = { longOn(HomeTarget.Film(m), RowKind.OTHER) })
+        PosterCard(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, itemId = m.id, subtitle = m.year?.toString(), badge = if (favourite) "♥" else null, onLongClick = { longOn(HomeTarget.Film(m), RowKind.OTHER) })
     } }
 }
 
@@ -322,7 +352,7 @@ private fun SeriesRail(vm: HomeViewModel, nav: Navigator, pad: PaddingValues, lo
     val favIds = vm.favouriteIds.collectAsStateWithLifecycle()
     RailFrame("Recently Added Series", pad) { items(cards, key = { "s" + it.id }, contentType = { "card" }) { s ->
         val favourite by remember(s.id) { derivedStateOf { s.id in favIds.value } }
-        PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, itemId = s.id, subtitle = s.year?.toString(), badge = if (favourite) "♥" else remember(s.rating) { ratingBadge(s.rating) }, onLongClick = { longOn(HomeTarget.Show(s), RowKind.OTHER) })
+        PosterCard(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, itemId = s.id, subtitle = s.year?.toString(), badge = if (favourite) "♥" else null, onLongClick = { longOn(HomeTarget.Show(s), RowKind.OTHER) })
     } }
 }
 
@@ -396,8 +426,8 @@ fun ChannelCard(ch: Channel, now: String?, onClick: () -> Unit, onLong: (() -> U
 internal fun FavCard(f: FavItem, c: AppContainer, nav: Navigator, row: RowKind, longOn: (HomeTarget, RowKind) -> Unit) {
     when (f) {
         is FavItem.Ch -> ChannelCard(f.channel, null, { play(c, nav, ChannelPlayable(f.channel)) }, { longOn(HomeTarget.Live(f.channel), row) })
-        is FavItem.Mv -> PosterCard(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, itemId = f.movie.id, subtitle = f.movie.year?.toString(), badge = ratingBadge(f.movie.rating), onLongClick = { longOn(HomeTarget.Film(f.movie), row) })
-        is FavItem.Sr -> PosterCard(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, itemId = f.series.id, subtitle = f.series.year?.toString(), badge = ratingBadge(f.series.rating), onLongClick = { longOn(HomeTarget.Show(f.series), row) })
+        is FavItem.Mv -> PosterCard(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, itemId = f.movie.id, subtitle = f.movie.year?.toString(), onLongClick = { longOn(HomeTarget.Film(f.movie), row) })
+        is FavItem.Sr -> PosterCard(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, itemId = f.series.id, subtitle = f.series.year?.toString(), onLongClick = { longOn(HomeTarget.Show(f.series), row) })
     }
 }
 

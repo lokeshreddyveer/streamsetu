@@ -1,5 +1,6 @@
 package app.streamsetu.core.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -50,7 +51,11 @@ data class ChannelEntity(
     val isRadio: Boolean = false,
 )
 
-@Entity(tableName = "movies", indices = [Index("sourceId", "categoryId"), Index("title"), Index("sourceId", "addedAt"), Index("sourceId", "categoryId", "addedAt")])
+/** What TMDB said a matched title is rated (one-decimal text, only when credible), and when it was asked: a title is asked once. Removed with the rest of TMDB's data. */
+@Entity(tableName = "rating_checks", indices = [Index("checkedAt")])
+data class RatingCheckEntity(@PrimaryKey val itemId: String, val tmdbRating: String?, val checkedAt: Long)
+
+@Entity(tableName = "movies", indices = [Index("sourceId", "categoryId"), Index("title"), Index("sourceId", "addedAt"), Index("sourceId", "categoryId", "addedAt"), Index("titleSort", "id"), Index(value = ["year", "id"], orders = [Index.Order.DESC, Index.Order.ASC])])
 data class MovieEntity(
     @PrimaryKey val id: String,
     val sourceId: String,
@@ -62,9 +67,11 @@ data class MovieEntity(
     val plot: String?,
     val streamRef: String,
     val addedAt: Long,
+    /** The title in lower case, kept by the database itself (triggers made with the table and by the 11 to 12 step), so "A to Z" can be read straight from an index. Never written by the app. */
+    @ColumnInfo(defaultValue = "''") val titleSort: String = "",
 )
 
-@Entity(tableName = "series", indices = [Index("sourceId", "categoryId"), Index("title"), Index("sourceId", "addedAt"), Index("sourceId", "categoryId", "addedAt")])
+@Entity(tableName = "series", indices = [Index("sourceId", "categoryId"), Index("title"), Index("sourceId", "addedAt"), Index("sourceId", "categoryId", "addedAt"), Index("titleSort", "id"), Index(value = ["year", "id"], orders = [Index.Order.DESC, Index.Order.ASC])])
 data class SeriesEntity(
     @PrimaryKey val id: String,
     val sourceId: String,
@@ -77,6 +84,7 @@ data class SeriesEntity(
     val plot: String?,
     val providerId: String,
     val addedAt: Long = 0,
+    @ColumnInfo(defaultValue = "''") val titleSort: String = "",
 )
 
 @Entity(tableName = "episodes", indices = [Index("seriesId", "season", "number")])

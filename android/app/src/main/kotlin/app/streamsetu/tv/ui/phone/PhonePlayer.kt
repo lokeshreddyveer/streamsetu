@@ -365,7 +365,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
         Panel.SUBFIND -> {
             LaunchedEffect(Unit) {
                 subHits = null; subMessage = null
-                if (!onlineSubs.configured) { subMessage = "Add your free OpenSubtitles key, account name and password in Settings, Subtitles."; return@LaunchedEffect }
+                if (!onlineSubs.configured) { subMessage = "Add your subtitles account in Settings, Subtitles."; return@LaunchedEffect }
                 val title = (item as? EpisodePlayable)?.series?.title ?: item?.title.orEmpty()
                 val ep = item as? EpisodePlayable
                 val want = app.streamsetu.core.subtitles.SubtitleWanted(title, (item as? app.streamsetu.core.model.MoviePlayable)?.movie?.year, ep?.episode?.season, ep?.episode?.number, c.settings.subtitleLanguage.value.ifBlank { "en" },
@@ -421,7 +421,7 @@ fun PhonePlayer(c: AppContainer, onClose: () -> Unit, onMinimize: () -> Unit = o
             add(SheetItem("Picture tuning", Icons.Filled.Tune, false, "Brightness, contrast, saturation, decoding", true, true) { panel = Panel.TUNE })
             add(SheetItem("Sound", Icons.Filled.VolumeUp, false, "Volume boost, even out loudness", true, true) { panel = Panel.SOUND })
             add(SheetItem("Subtitle look", Icons.Filled.FormatSize, false, "Size, colour, position, background", true, true) { panel = Panel.SUBLOOK })
-            add(SheetItem("Find subtitles online", Icons.Filled.Subtitles, false, "From OpenSubtitles, with your free key", true, true) { panel = Panel.SUBFIND })
+            add(SheetItem("Find subtitles online", Icons.Filled.Subtitles, false, "From your subtitles account", true, true) { panel = Panel.SUBFIND })
             if (qualities.isNotEmpty()) add(SheetItem("Quality", Icons.Filled.HighQuality, false, "Choose the resolution", true, true) { panel = Panel.QUALITY })
             if (live) {
                 if (recording != null || playback.canRecord()) add(SheetItem(if (recording != null) "Stop recording" else "Record this channel", Icons.Filled.FiberManualRecord, recording != null) {

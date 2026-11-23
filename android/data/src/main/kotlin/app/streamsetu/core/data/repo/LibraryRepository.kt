@@ -25,7 +25,7 @@ class LibraryRepository(private val db: AppDatabase, context: Context, scope: Co
             val ids = members.filter { it.libraryId == l.id }.map { it.sourceId }.filter { bySource[it]?.draft == false && bySource[it]?.enabled == true }
             val ms = ids.mapNotNull { bySource[it] }
             LibraryEntry(
-                id = "lib:${l.id}", name = l.name, kind = LibraryEntry.Kind.COMBINED, sourceIds = ids, typeLabel = "Combined library · ${ms.size} connection${if (ms.size == 1) "" else "s"}",
+                id = "lib:${l.id}", name = l.name, kind = LibraryEntry.Kind.COMBINED, sourceIds = ids, typeLabel = "Combined library · ${app.streamsetu.core.model.Plurals.format("connection", ms.size)}",
                 channelCount = ms.sumOf { it.channelCount }, movieCount = ms.sumOf { it.movieCount }, seriesCount = ms.sumOf { it.seriesCount },
                 lastSyncAt = ms.maxOfOrNull { it.lastSyncAt } ?: 0, lastOpenedAt = l.lastOpenedAt,
                 health = when { ms.isEmpty() -> LibraryEntry.Health.NEVER_READ; ms.any { it.status == SyncStatus.FAILED } -> LibraryEntry.Health.LAST_READ_FAILED; else -> LibraryEntry.Health.OK },

@@ -282,6 +282,7 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
             }
             return true
         }
+        app.streamsetu.tv.ui.screens.settings.GuideFreshnessBanner(c)
         when {
             list == null -> LazyColumn(userScrollEnabled = false) { items(8) { Box(Modifier.padding(vertical = 3.dp).fillMaxWidth().height(40.dp).background(Tokens.card, RoundedCornerShape(8.dp))) } }
             hasGuide == false -> EmptyState("No guide for this connection", "The provider did not send programme information. Channels still play from Live TV.")
@@ -293,6 +294,7 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
                             row.channel.number?.let { Label("$it", Tokens.caption, Tokens.textTertiary, FontWeight.SemiBold, modifier = Modifier.width(38.dp)) }
                             ChannelLogo(row.channel.logoUrl, row.channel.name, 32.dp)
                             Label(row.channel.name, Tokens.small, Tokens.text, FontWeight.Medium, maxLines = 2, modifier = Modifier.weight(1f))
+                            app.streamsetu.tv.ui.screens.settings.GuideDot(row.programmes.isNotEmpty())
                         }
                         Box(Modifier.width(totalW).fillMaxHeight()) {
                             // A channel with no guide data is still one stop for the remote (select plays it): a row with nothing to land on makes Down search every row below it before it gives up.

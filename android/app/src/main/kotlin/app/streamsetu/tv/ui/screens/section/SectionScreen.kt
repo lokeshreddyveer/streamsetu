@@ -420,6 +420,7 @@ internal fun SectionDialogHost(dlg: SectionDialogs, title: String, vm: SectionVi
         }
         HomeMenuHost(target, rowKind, homeVm, c, nav, extra) { dlg.menuFor = null; dlg.menuRail = null }
     }
+    Box(Modifier.fillMaxSize(), Alignment.BottomCenter) { app.streamsetu.tv.ui.screens.home.ContinueUndoBar(homeVm, tv = true) }          // Undo for "Don't recommend this" and removals made from this page's menu
     addTo?.let { card ->
         var inCols by remember(card.id) { mutableStateOf<Set<String>?>(null) }
         LaunchedEffect(card.id) { inCols = vm.containing(card.id) }
@@ -467,20 +468,17 @@ private fun GridPoster(card: Card, posterWidth: androidx.compose.ui.unit.Dp, sho
     val note by remember(card.id) { derivedStateOf { seriesNote.value[card.id] } }
     val isNew by remember(card.id) { derivedStateOf { card.id in newSeries.value } }
     val isFav by remember(card.id) { derivedStateOf { card.id in favs.value } }
-    val rating = remember(card.rating) { ratingBadge(card.rating) }
     PosterCard(
         card.title, card.posterUrl, { onOpen(card) }, width = posterWidth,
         progress = p?.takeIf { !it.completed }?.fraction ?: 0f,
         itemId = card.id,
         subtitle = note ?: if (showMeta) card.year?.toString() else null,
-        badge = if (isNew) "NEW" else rating ?: if (isFav) "♥" else null,          // one badge: new episode, else rating, else favourite
+        badge = if (isNew) "NEW" else if (isFav) "♥" else null,          // one tag: new episode, else favourite (the rating star is drawn by the tile itself)
         focusRequester = if (card.id == nav.memory.recall(tab)?.id) restore else null,
         onFocusChange = { if (it) { vm.focusedId = card.id; nav.memory.remember(tab, card.id, indexById[card.id] ?: 0) } },
         onLongClick = onLong, dense = dense,
     )
 }
-
-fun ratingBadge(r: String?): String? = r?.toDoubleOrNull()?.takeIf { it > 0 }?.let { "★ %.1f".format(it) }
 
 @Composable
 private fun EmptyText(browse: Browse, noun: String, filtered: Boolean, entry: FocusRequester, onFilter: () -> Unit, onAll: () -> Unit, onFolders: () -> Unit) {

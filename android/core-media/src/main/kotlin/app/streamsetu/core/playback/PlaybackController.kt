@@ -307,7 +307,7 @@ class PlaybackController(
             matroskaTry && item.id in exoRefused && EngineKind.MPV in available -> EngineKind.MPV
             else -> EngineSelector.select(container, preference, available, item.isLive)
         }
-        android.util.Log.i("Playback", "start ${if (item.isLive) "live" else "vod"} '${item.title}' container=$container engine=${kind.label} (preference=${preference.label}) host=${runCatching { java.net.URI(url).host }.getOrNull()}")
+        android.util.Log.d("Playback", "start ${if (item.isLive) "live" else "vod"} container=$container engine=${kind.label} (preference=${preference.label})")          // never the title or the address (logcat is readable by other tools on a TV)
         val next = engineFor(kind)
         val previous = _engine.value
         if (previous != null && previous !== next) previous.stop()

@@ -330,9 +330,6 @@ class SportsPlaybackCoordinator(
     /** The hand-over was carried out: Sports lets go of the stream without stopping it. True once. */
     fun consumeHandoff(): Boolean = synchronized(lock) { val h = _state.value.handoff; if (h) _state.value = SportsPlaybackState(request = _state.value.request); h }
 
-    /** The person closed the failure message. */
-    fun dismissMessage() { _state.update { it.copy(message = null) } }
-
     // ---- what the player reports back
 
     private fun refused(r: PlayRejection, my: Int) {

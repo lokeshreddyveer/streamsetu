@@ -276,7 +276,7 @@ fun PhoneSearch(c: AppContainer, nav: Navigator) {
                     gridItems(found, key = { it.id }) { r ->
                         if (channels) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Tokens.card).clickable { open(r) }.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             ChannelLogo(r.artworkUrl, r.title, 56.dp); Label(r.title, Ph.caption, Tokens.text, FontWeight.Medium, maxLines = 2)
-                        } else PhonePoster(r.title, r.artworkUrl, { open(r) }, subtitle = r.subtitle.substringBefore(" · ").ifBlank { null })
+                        } else PhonePoster(r.title, r.artworkUrl, { open(r) }, subtitle = r.subtitle.substringBefore(" · ").ifBlank { null }, itemId = r.id.takeIf { r.kind == SearchKind.MOVIE || r.kind == SearchKind.SERIES })
                     }
                 }
             }
@@ -298,6 +298,7 @@ private fun Result(r: SearchItem, onClick: () -> Unit) {
             SearchKind.FOLDER, SearchKind.COLLECTION -> Box(Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(Tokens.elevated), Alignment.Center) { Icon(if (r.kind == SearchKind.FOLDER) Icons.Filled.Folder else Icons.Filled.Layers, Tokens.accent, 22.dp) }
             else -> Box(Modifier.width(44.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(6.dp)).background(Tokens.card)) {
                 if (r.artworkUrl.isNullOrBlank()) PosterPlaceholder(r.title, Modifier.fillMaxSize()) else AsyncImage(r.artworkUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                if (r.kind == SearchKind.MOVIE || r.kind == SearchKind.SERIES) app.streamsetu.tv.ui.components.TileRating(r.id, Modifier.align(Alignment.BottomEnd).padding(2.dp), small = true)
             }
         }
         Column(Modifier.weight(1f)) {

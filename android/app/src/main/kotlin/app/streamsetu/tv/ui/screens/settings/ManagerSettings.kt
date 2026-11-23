@@ -146,6 +146,7 @@ fun ChannelManagerSettings(c: AppContainer) {
     var health by remember { mutableStateOf<Map<String, Health>>(emptyMap()) }
     var checking by remember { mutableStateOf(false) }
     var menuFor by remember { mutableStateOf<ChannelEntity?>(null) }
+    var matchFor by remember { mutableStateOf<ChannelEntity?>(null) }
     var prompt by remember { mutableStateOf<Triple<ChannelEntity, Boolean, String>?>(null) }   // channel, true = guide id (false = name), start text
     var guideFor by remember { mutableStateOf<app.streamsetu.core.model.Source?>(null) }
     var guideText by remember { mutableStateOf("") }
@@ -182,12 +183,14 @@ fun ChannelManagerSettings(c: AppContainer) {
             SettingRow(ch.name, if (ch.epgId.isNullOrBlank()) "No guide channel" else "Guide: ${ch.epgId}", state.ifBlank { "Shown" }) { menuFor = ch }
         }
     }
+    matchFor?.let { ch -> GuideMatchDialog(c, ch, onClose = { matchFor = null }, onDone = { msg = it }) }
     menuFor?.let { ch ->
         val p = prefMap[ch.id]
         ContextMenu(ch.name, null, buildList {
             add(MenuAction(if (p?.hidden == true) "Show this channel" else "Hide this channel", if (p?.hidden == true) Icons.Filled.Visibility else Icons.Filled.VisibilityOff) { scope.launch { c.channelPrefs.setHidden(ch.id, p?.hidden != true) } })
             add(MenuAction("Rename…", Icons.Filled.Edit) { prompt = Triple(ch, false, ch.name) })
             add(MenuAction("Set the guide channel…", Icons.Filled.Schedule) { prompt = Triple(ch, true, ch.epgId.orEmpty()) })
+            add(MenuAction("Match an added guide…", Icons.Filled.Link) { matchFor = ch })
             if (p != null) add(MenuAction("Undo my changes", Icons.Filled.Restore) { scope.launch { c.db.catalog().channel(ch.id)?.let { _ -> }; c.channelPrefs.reset(ch); msg = "Changes undone. The provider's name and guide id return after the next refresh." } })
         }, onClose = { menuFor = null })
     }
@@ -225,7 +228,7 @@ fun GuideAlertsSettings(c: AppContainer) {
         words.forEach { w -> ActionRow(w, label = "Remove", confirm = false) { c.guideAlerts.remove(w) } }
         androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) { TvTextField(word, { word = it }, "Add a word to watch for", Modifier.fillMaxWidth()) }
         ActionRow("Add", label = "Add", confirm = false, enabled = word.trim().length >= 2) { msg = if (c.guideAlerts.add(word)) null else "That word is already there, or you have 20 already."; if (msg == null) word = "" }
-        ActionRow("Look now", label = "Look", confirm = false) { scope.launch { val n = c.guideAlerts.scan(c); msg = if (n == 0) "Nothing new coming up." else "$n reminder${if (n == 1) "" else "s"} set." } }
+        ActionRow("Look now", label = "Look", confirm = false) { scope.launch { val n = c.guideAlerts.scan(c); msg = if (n == 0) "Nothing new coming up." else app.streamsetu.core.model.Plurals.format("reminderSet", n) } }
         found.take(5).forEach { InfoRow("Last set up", it) }
         ResultLine(msg)
     }
@@ -258,6 +261,13 @@ fun RemindersSettings(c: AppContainer) {
     val list by c.db.extras().reminders().collectAsState(initial = emptyList())
     val time = remember { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT) }
     SettingGroup("Programme reminders", "Open the TV Guide, choose a programme that has not started, and pick Remind me. A notification arrives a minute before it starts.") {
+        var lead by remember { mutableStateOf(Reminders.leadMinutes(context)) }
+        var exact by remember { mutableStateOf(Reminders.exactWanted(context)) }
+        ChoiceRow("Remind me before", "How long before a programme starts the notification appears. Applies to reminders you set from now on and to the ones set already when the app starts.", listOf(1 to "1 minute", 5 to "5 minutes", 10 to "10 minutes", 15 to "15 minutes"), lead) { lead = it; Reminders.setLeadMinutes(context, it) }
+        ToggleRow("Notify on the minute", if (Reminders.canScheduleExact(context)) "Uses exact alarms so the notification is not delayed." else "Needs the exact alarm permission, which Android asks you to allow in its own screen. Without it a reminder can be a few minutes late.", exact) { on ->
+            exact = on; Reminders.setExactWanted(context, on)
+            if (on && !Reminders.canScheduleExact(context) && android.os.Build.VERSION.SDK_INT >= 31) runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:" + context.packageName)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        }
         if (list.isEmpty()) InfoRow("No reminders set", "")
         list.forEach { r -> ActionRow(r.title, "${r.channelName} · ${time.format(Date(r.startMs))}", "Cancel", confirm = false) { scope.launch { Reminders.cancel(c, context, r.id) } } }
     }

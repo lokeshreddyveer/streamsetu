@@ -78,7 +78,7 @@ class FixtureTest {
     @Test fun everyFixtureFileIsCovered() {
         val dir = FixtureFiles.dir(); Assume.assumeNotNull(dir)
         val covered = javaClass.declaredMethods.map { it.name }.toSet()
-        val names = dir!!.listFiles { f -> f.extension == "json" }!!.map { it.nameWithoutExtension }.filter { it != "prng" && it != "features" }
+        val names = dir!!.listFiles { f -> f.extension == "json" }!!.map { it.nameWithoutExtension }.filter { it != "prng" && it != "features" && it != "genre-shelves" && it != "shelf-modes" && it != "home-layout" }          // the genre files have their own layout and runner: GenreShelfFixtureTest (home-layout: HomeLayoutFixtureTest)
         // a new fixture added by the shared set must get a test here
         val camel = { s: String -> s.split('-').mapIndexed { i, p -> if (i == 0) p else p.replaceFirstChar { it.uppercase() } }.joinToString("") }
         val missing = names.filter { camel(it) !in covered && camel(it).replace("5Loads", "5Loads") !in covered }

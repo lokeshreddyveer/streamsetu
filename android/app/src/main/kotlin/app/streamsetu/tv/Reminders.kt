@@ -23,6 +23,17 @@ import kotlinx.coroutines.launch
  */
 object Reminders {
     const val LEAD_MS = 60_000L
+    private const val PREFS = "guidehub"
+
+    /** How long before the start the notification appears: 1, 5, 10 or 15 minutes (5 by default). */
+    fun leadMinutes(context: Context): Int = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("reminderLeadMin", 5).let { if (it in listOf(1, 5, 10, 15)) it else 5 }
+    fun setLeadMinutes(context: Context, m: Int) { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("reminderLeadMin", m).apply() }
+    fun leadMs(context: Context): Long = leadMinutes(context) * 60_000L
+
+    /** "On the minute": exact alarms. Needs the exact-alarm permission on Android 12 and later, which the person grants in the system's own screen; without it the reminder is a little late, never lost. */
+    fun exactWanted(context: Context): Boolean = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("reminderExact", false)
+    fun setExactWanted(context: Context, on: Boolean) { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("reminderExact", on).apply() }
+    fun canScheduleExact(context: Context): Boolean = Build.VERSION.SDK_INT < 31 || (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
     private const val CHANNEL = "reminders"
     const val ACTION = "app.streamsetu.REMIND"
 
@@ -30,7 +41,7 @@ object Reminders {
 
     /** False when the programme starts too soon (or already has) to remind about. */
     suspend fun schedule(c: AppContainer, context: Context, ch: Channel, p: EpgProgram): Boolean {
-        if (p.startMs - LEAD_MS <= System.currentTimeMillis()) return false
+        if (p.startMs - leadMs(context) <= System.currentTimeMillis()) return false
         val r = ReminderEntity(idOf(ch.id, p.startMs), ch.id, ch.name, p.title, p.startMs)
         c.db.extras().putReminder(r)
         arm(context, r)
@@ -43,10 +54,14 @@ object Reminders {
     }
 
     fun arm(context: Context, r: ReminderEntity) {
-        val at = (r.startMs - LEAD_MS).coerceAtLeast(System.currentTimeMillis() + 1000)
+        val at = (r.startMs - leadMs(context)).coerceAtLeast(System.currentTimeMillis() + 1000)
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pi = pending(context, r.id, r)
-        if (Build.VERSION.SDK_INT >= 23) am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi) else am.set(AlarmManager.RTC_WAKEUP, at, pi)
+        val exact = exactWanted(context) && canScheduleExact(context)
+        try {
+            if (Build.VERSION.SDK_INT >= 23) { if (exact) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi) else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi) }
+            else am.set(AlarmManager.RTC_WAKEUP, at, pi)
+        } catch (e: SecurityException) { am.set(AlarmManager.RTC_WAKEUP, at, pi) }      // the exact-alarm permission was taken away: fall back to an ordinary alarm
     }
 
     private fun pending(context: Context, id: String, r: ReminderEntity?): PendingIntent {

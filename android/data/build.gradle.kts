@@ -24,7 +24,7 @@ android {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     api(project(":core-model"))
     api(project(":core-security"))
     api(project(":core-network"))
@@ -35,5 +35,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
+    testImplementation("net.sf.kxml:kxml2:2.3.0")          // an XML pull parser on the JVM (Android has its own), so the guide decoder is tested against the shared fixtures
     testImplementation(libs.okhttp.mockwebserver)
 }

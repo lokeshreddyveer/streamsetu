@@ -96,8 +96,6 @@ class Visibility(
         fun titleOk(kind: ContentKind, folderId: String?, title: String, year: Int?) = folderOk(kind, folderId) && twins[kind]?.covers(title, year) != true
     }
 
-    suspend fun movieVisible(m: Movie, surface: Surface) = snapshot(surface).movieOk(m)
-    suspend fun seriesVisible(s: Series, surface: Surface) = snapshot(surface).seriesOk(s)
 }
 
 /** Folder names compared across playlists. */

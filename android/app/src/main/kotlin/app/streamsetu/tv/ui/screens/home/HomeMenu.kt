@@ -31,12 +31,14 @@ enum class RowKind { CONTINUE, RECENT_LIVE, FAVORITES, WATCH_LATER, EPISODES, OT
  * the same detail screens and the same lists as the rest of the app.
  */
 @Composable
-fun HomeMenuHost(tapped: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppContainer, nav: Navigator, extra: List<MenuAction> = emptyList(), onClose: () -> Unit) {
+fun HomeMenuHost(tapped: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppContainer, nav: Navigator, extra: List<MenuAction> = emptyList(), phone: Boolean = false, onClose: () -> Unit) {
     // Information, Choose source and Mark series open a second dialog after the menu. The caller clears its target the moment a choice is made, which used to drop this
     // function (and the dialog's state with it) before the dialog could show; the title is kept here until that dialog closes.
     var kept by remember { mutableStateOf<HomeTarget?>(null) }
     val target: HomeTarget = tapped ?: kept ?: return
     val scope = rememberCoroutineScope()
+    val view = androidx.compose.ui.platform.LocalView.current
+    LaunchedEffect(tapped) { if (phone && tapped != null) view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS) }          // the long press is felt on a phone
     val favs by vm.favouriteIds.collectAsState()
     val later by vm.watchLaterIds.collectAsState()
     val itemId = when (target) { is HomeTarget.Film -> target.movie.id; is HomeTarget.Show -> target.series.id; is HomeTarget.Episode -> (target.episode as? EpisodePlayable)?.episode?.id ?: target.series.id; is HomeTarget.Live -> target.channel.id }
@@ -63,31 +65,26 @@ fun HomeMenuHost(tapped: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppCon
             else -> {}
         }
     }
+    val folderId = when (target) { is HomeTarget.Film -> target.movie.categoryId; is HomeTarget.Show -> target.series.categoryId; else -> null }
     val st = TargetState(
         kind = target.kind, inContinue = row == RowKind.CONTINUE, inRecentLive = row == RowKind.RECENT_LIVE,
         isFavorite = favId in favs, isWatchLater = favId in later,
         hasResumePoint = progress?.let { !it.completed && it.positionMs > 30_000 } == true, watched = progress?.completed == true,
         hasVariants = variants.size > 1, hasGuide = guide, hasFolder = target is HomeTarget.Live && target.channel.categoryId != null,
         fromEpisodeList = row == RowKind.EPISODES, hasNextEpisode = nextEpisode != null, seriesWatched = seriesWatched,
-    )
+        canDismiss = target !is HomeTarget.Live, hasCast = c.tmdbAuth.available && target !is HomeTarget.Live, canShare = phone && target !is HomeTarget.Live,
+    ).let { s -> if (folderId != null && target !is HomeTarget.Live && target !is HomeTarget.Episode) s.copy(hasFolder = true) else s }
     val contentKind = when (target) { is HomeTarget.Film -> ContentKind.MOVIE; is HomeTarget.Show, is HomeTarget.Episode -> ContentKind.SERIES; is HomeTarget.Live -> ContentKind.CHANNEL }
     val title = when (target) { is HomeTarget.Film -> target.movie.title; is HomeTarget.Show -> target.series.title; is HomeTarget.Episode -> target.episode.title; is HomeTarget.Live -> target.channel.name }
 
-    fun label(a: HomeAction) = when (a) {
-        HomeAction.PLAY -> "Play"; HomeAction.WATCH_PRIVATELY -> "Watch privately"; HomeAction.RESUME -> "Resume"; HomeAction.START_OVER -> "Start over"; HomeAction.DETAILS -> "View details"; HomeAction.OPEN_SERIES -> "Open series"
-        HomeAction.CONTINUE_SERIES -> "Continue watching"; HomeAction.REMOVE_FROM_CONTINUE -> "Remove from Continue Watching"; HomeAction.MARK_WATCHED -> "Mark as watched"
-        HomeAction.MARK_UNWATCHED -> "Mark as unwatched"; HomeAction.FAVORITE -> "Add to Favorites"; HomeAction.UNFAVORITE -> "Remove from Favorites"
-        HomeAction.WATCH_LATER -> "Add to Watch Later"; HomeAction.REMOVE_WATCH_LATER -> "Remove from Watch Later"; HomeAction.CHOOSE_SOURCE -> "Choose source…"
-        HomeAction.INFO -> "Information"; HomeAction.WATCH_CHANNEL -> "Watch channel"; HomeAction.OPEN_GUIDE -> "Open TV Guide"; HomeAction.OPEN_CHANNEL_FOLDER -> "Open channel folder"
-        HomeAction.REMOVE_FROM_RECENT -> "Remove from Recently Watched"
-        HomeAction.PLAY_NEXT_EPISODE -> "Play next episode"; HomeAction.MARK_SERIES_WATCHED -> "Mark series as watched…"; HomeAction.MARK_SERIES_UNWATCHED -> "Mark series as unwatched…"
-    }
+    fun label(a: HomeAction) = homeActionLabel(a)
     fun icon(a: HomeAction): ImageVector = when (a) {
         HomeAction.PLAY, HomeAction.RESUME, HomeAction.WATCH_CHANNEL, HomeAction.CONTINUE_SERIES -> Icons.Filled.PlayArrow
         HomeAction.WATCH_PRIVATELY -> Icons.Filled.VisibilityOff
         HomeAction.START_OVER -> Icons.Filled.Replay; HomeAction.DETAILS, HomeAction.INFO -> Icons.Filled.Info; HomeAction.OPEN_SERIES -> Icons.Filled.VideoLibrary
         HomeAction.REMOVE_FROM_CONTINUE, HomeAction.REMOVE_FROM_RECENT, HomeAction.REMOVE_WATCH_LATER -> Icons.Filled.RemoveCircleOutline
         HomeAction.MARK_WATCHED, HomeAction.MARK_UNWATCHED -> Icons.Filled.Check; HomeAction.FAVORITE, HomeAction.UNFAVORITE -> Icons.Filled.Favorite
+        HomeAction.OPEN_FOLDER -> Icons.Filled.Folder; HomeAction.GO_TO_CAST -> Icons.Filled.Groups; HomeAction.DONT_RECOMMEND -> Icons.Filled.ThumbDown; HomeAction.SHARE -> Icons.Filled.Share
         HomeAction.PLAY_NEXT_EPISODE -> Icons.Filled.SkipNext; HomeAction.MARK_SERIES_WATCHED, HomeAction.MARK_SERIES_UNWATCHED -> Icons.Filled.Check
         HomeAction.WATCH_LATER -> Icons.Filled.Bookmark; HomeAction.CHOOSE_SOURCE -> Icons.Filled.SwapHoriz; HomeAction.OPEN_GUIDE -> Icons.Filled.CalendarMonth; HomeAction.OPEN_CHANNEL_FOLDER -> Icons.Filled.Folder
     }
@@ -115,6 +112,10 @@ fun HomeMenuHost(tapped: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppCon
             HomeAction.OPEN_GUIDE -> nav.go(Tab.GUIDE)
             HomeAction.OPEN_CHANNEL_FOLDER -> (target as? HomeTarget.Live)?.channel?.categoryId?.let { nav.openFolderTab(ContentKind.CHANNEL, it) }
             HomeAction.REMOVE_FROM_RECENT -> vm.removeFromRecent(itemId)
+            HomeAction.OPEN_FOLDER -> folderId?.let { nav.openFolderTab(contentKind, it) }
+            HomeAction.GO_TO_CAST -> when (target) { is HomeTarget.Film -> nav.open(Overlay.MovieDetail(target.movie)); is HomeTarget.Show -> nav.open(Overlay.SeriesDetail(target.series)); is HomeTarget.Episode -> nav.open(Overlay.SeriesDetail(target.series)); else -> {} }
+            HomeAction.DONT_RECOMMEND -> vm.dontRecommend(target)
+            HomeAction.SHARE -> app.streamsetu.tv.ui.phone.shareTitle(c.context, if (contentKind == ContentKind.MOVIE) "movie" else "series", when (target) { is HomeTarget.Episode -> target.series.title; else -> title })
             HomeAction.PLAY_NEXT_EPISODE -> nextEpisode?.let { play(c, nav, it, seriesQueue) }
             HomeAction.MARK_SERIES_WATCHED -> { kept = target; confirmSeries = true }
             HomeAction.MARK_SERIES_UNWATCHED -> { kept = target; confirmSeries = false }
@@ -132,7 +133,14 @@ fun HomeMenuHost(tapped: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppCon
     val orderActions = if (favId in favs) listOf(
         MenuAction("Move to front of favorites", Icons.Filled.ArrowUpward) { vm.moveFavorite(favId, contentKind, true) },
         MenuAction("Move to end of favorites", Icons.Filled.ArrowDownward) { vm.moveFavorite(favId, contentKind, false) }) else emptyList()
-    if (tapped != null && !chooser && !info && confirmSeries == null) ContextMenu(title, null, actionsFor(st).map { a -> MenuAction(label(a), icon(a)) { run(a) } } + queueActions + orderActions + extra, onClose = onClose)
+    if (tapped != null && !chooser && !info && confirmSeries == null) {
+        // One order on every screen and device: play, open, lists, queue, recommendations, share, destructive last (see [MenuGroup]).
+        val acts = actionsFor(st)
+        fun entry(a: HomeAction) = MenuAction(label(a), icon(a), danger = a.group() == MenuGroup.DESTRUCTIVE) { run(a) }
+        val entries = acts.filter { it.group() < MenuGroup.RECOMMEND }.map(::entry) + queueActions + orderActions + acts.filter { it.group() >= MenuGroup.RECOMMEND }.map(::entry) + extra
+        if (phone) app.streamsetu.tv.ui.phone.Sheet(title, entries.map { m -> app.streamsetu.tv.ui.phone.SheetItem(m.label, m.icon, enabled = m.enabled) { m.run() } }, onClose)
+        else ContextMenu(title, null, entries, onClose = onClose)
+    }
     confirmSeries?.let { watched -> ContextMenu(if (watched) "Mark every episode watched?" else "Mark every episode unwatched?", "This changes all episodes of ${title}.", listOf(MenuAction(if (watched) "Mark all watched" else "Mark all unwatched", Icons.Filled.Check) { (target as? HomeTarget.Show)?.let { vm.setSeriesWatched(it.series, watched) } }, MenuAction("Cancel", Icons.Filled.Close) {}), onClose = { confirmSeries = null; kept = null; onClose() }) }
     if (chooser) ContextMenu("Choose source", "Opens only this play. Your default is unchanged.", variants.map { v ->
         MenuAction((entries.firstOrNull { it.id == "src:${v.sourceId}" }?.name ?: "Connection") + if (v.id == itemId) "  (current)" else "", Icons.Filled.SwapHoriz) {
@@ -141,11 +149,23 @@ fun HomeMenuHost(tapped: HomeTarget?, row: RowKind, vm: HomeViewModel, c: AppCon
     }, onClose = { chooser = false; kept = null; onClose() })
     if (info) {
         val lines = when (target) {
-            is HomeTarget.Film -> listOfNotNull(target.movie.year?.toString(), target.movie.rating?.takeIf { it.isNotBlank() && it != "0" }?.let { "Rating $it" }, target.movie.plot)
-            is HomeTarget.Show -> listOfNotNull(target.series.year?.toString(), target.series.rating?.takeIf { it.isNotBlank() && it != "0" }?.let { "Rating $it" }, target.series.plot)
+            is HomeTarget.Film -> listOfNotNull(target.movie.year?.toString(), app.streamsetu.core.data.repo.DisplayRating.credibleProvider(target.movie.rating)?.let { "Rating " + java.lang.String.format(java.util.Locale.US, "%.1f", it) }, target.movie.plot)
+            is HomeTarget.Show -> listOfNotNull(target.series.year?.toString(), app.streamsetu.core.data.repo.DisplayRating.credibleProvider(target.series.rating)?.let { "Rating " + java.lang.String.format(java.util.Locale.US, "%.1f", it) }, target.series.plot)
             is HomeTarget.Episode -> listOfNotNull(target.series.title, target.episode.title)
             is HomeTarget.Live -> listOfNotNull(target.channel.number?.let { "Channel $it" }, if (guide) "Guide data available" else "No guide data")
         }
         ContextMenu(title, lines.joinToString("\n").ifBlank { "The provider sent no further details." }, listOf(MenuAction("Close", Icons.Filled.Close) {}), onClose = { info = false; kept = null; onClose() })
     }
+}
+
+/** The words of every menu item, the same on every screen and for the screen reader's own actions. */
+fun homeActionLabel(a: HomeAction): String = when (a) {
+    HomeAction.PLAY -> "Play"; HomeAction.WATCH_PRIVATELY -> "Watch privately"; HomeAction.RESUME -> "Resume"; HomeAction.START_OVER -> "Start over"; HomeAction.DETAILS -> "View details"; HomeAction.OPEN_SERIES -> "Open series"
+    HomeAction.CONTINUE_SERIES -> "Continue watching"; HomeAction.REMOVE_FROM_CONTINUE -> "Remove from Continue Watching"; HomeAction.MARK_WATCHED -> "Mark as watched"
+    HomeAction.MARK_UNWATCHED -> "Mark as unwatched"; HomeAction.FAVORITE -> "Add to Favorites"; HomeAction.UNFAVORITE -> "Remove from Favorites"
+    HomeAction.WATCH_LATER -> "Add to Watch Later"; HomeAction.REMOVE_WATCH_LATER -> "Remove from Watch Later"; HomeAction.CHOOSE_SOURCE -> "Choose source…"
+    HomeAction.INFO -> "Information"; HomeAction.WATCH_CHANNEL -> "Watch channel"; HomeAction.OPEN_GUIDE -> "Open TV Guide"; HomeAction.OPEN_CHANNEL_FOLDER -> "Open channel folder"
+    HomeAction.REMOVE_FROM_RECENT -> "Remove from Recently Watched"
+    HomeAction.OPEN_FOLDER -> "Open folder"; HomeAction.GO_TO_CAST -> "Go to cast"; HomeAction.DONT_RECOMMEND -> "Don't recommend this"; HomeAction.SHARE -> "Share"
+    HomeAction.PLAY_NEXT_EPISODE -> "Play next episode"; HomeAction.MARK_SERIES_WATCHED -> "Mark series as watched…"; HomeAction.MARK_SERIES_UNWATCHED -> "Mark series as unwatched…"
 }

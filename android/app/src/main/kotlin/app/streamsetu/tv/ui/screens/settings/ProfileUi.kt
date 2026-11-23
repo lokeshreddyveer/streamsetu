@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
@@ -29,9 +30,10 @@ fun ProfileAvatar(p: Profile, size: Int = 88) {
 @Composable
 private fun SwitchWithPin(c: AppContainer, target: Profile, onDone: (Boolean) -> Unit) {
     val owner = c.profiles.pinOwnerFor(target.id)
-    if (owner == null) { LaunchedEffect(target.id) { onDone(c.profiles.switchTo(target.id) == SwitchResult.Switched) }; return }
+    if (owner == null) { LaunchedEffect(target.id) { onDone(c.profiles.switchToAsync(target.id) == SwitchResult.Switched) }; return }
     var pin by remember { mutableStateOf<String?>(null) }
-    PinDialog(create = false, check = { c.profiles.checkPin(owner, it) }, onDone = { entered -> pin = entered; onDone(c.profiles.switchTo(target.id, entered) == SwitchResult.Switched) }, onClose = { onDone(false) })
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    PinDialog(create = false, check = { c.profiles.checkPin(owner, it) }, onDone = { entered -> pin = entered; scope.launch { onDone(c.profiles.switchToAsync(target.id, entered) == SwitchResult.Switched) } }, onClose = { onDone(false) })
 }
 
 /** "Who's watching?", shown at the start when more than one profile exists. */

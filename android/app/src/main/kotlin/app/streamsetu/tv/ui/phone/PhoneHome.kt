@@ -1,5 +1,7 @@
 package app.streamsetu.tv.ui.phone
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -34,7 +36,6 @@ import app.streamsetu.tv.ui.components.Label
 import app.streamsetu.tv.ui.components.PosterPlaceholder
 import app.streamsetu.tv.ui.screens.home.FavItem
 import app.streamsetu.tv.ui.screens.home.HomeViewModel
-import app.streamsetu.tv.ui.screens.section.ratingBadge
 import app.streamsetu.tv.ui.theme.Tokens
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
@@ -61,19 +62,10 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     val name by vm.libraryName.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<Pair<String, List<SheetItem>>?>(null) }
 
-    fun movieMenu(m: Movie) { sheet = m.title to listOf(
-        SheetItem("Play", Icons.Filled.PlayArrow) { play(c, nav, MoviePlayable(m)) },
-        SheetItem("Watch privately", Icons.Filled.VisibilityOff) { c.playBestMovie(m) { play(c, nav, it, privately = true) } },
-        SheetItem(if (m.id in favIds) "Remove from favorites" else "Add to favorites", Icons.Filled.Favorite) { vm.setFavorite(m.id, ContentKind.MOVIE, m.id !in favIds) },
-        SheetItem("Watch later", Icons.Filled.Bookmark) { vm.toggleWatchLater(m.id, ContentKind.MOVIE) },
-        SheetItem("Details", Icons.Filled.Info) { nav.open(Overlay.MovieDetail(m)) },
-    ) + queueItems(c, m.id, ContentKind.MOVIE, m.title) + favoriteOrderItems(m.id in favIds) { front -> vm.moveFavorite(m.id, ContentKind.MOVIE, front) } }
-    fun seriesMenu(s: Series) { sheet = s.title to listOf(
-        SheetItem("Open", Icons.Filled.PlayArrow) { nav.open(Overlay.SeriesDetail(s)) },
-        SheetItem("Watch privately", Icons.Filled.VisibilityOff) { c.appScope.launch { c.playSeries(s, privately = true); kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { if (nav.top != Overlay.Player) nav.open(Overlay.Player) } } },
-        SheetItem(if (s.id in favIds) "Remove from favorites" else "Add to favorites", Icons.Filled.Favorite) { vm.setFavorite(s.id, ContentKind.SERIES, s.id !in favIds) },
-        SheetItem("Watch later", Icons.Filled.Bookmark) { vm.toggleWatchLater(s.id, ContentKind.SERIES) },
-    ) + queueItems(c, s.id, ContentKind.SERIES, s.title) + favoriteOrderItems(s.id in favIds) { front -> vm.moveFavorite(s.id, ContentKind.SERIES, front) } }
+    // One menu for every tile, shared with the television (HomeMenuHost): the same items in the same order.
+    var tile by remember { mutableStateOf<Pair<app.streamsetu.tv.ui.screens.home.HomeTarget, app.streamsetu.tv.ui.screens.home.RowKind>?>(null) }
+    fun movieMenu(m: Movie) { tile = app.streamsetu.tv.ui.screens.home.HomeTarget.Film(m) to app.streamsetu.tv.ui.screens.home.RowKind.OTHER }
+    fun seriesMenu(s: Series) { tile = app.streamsetu.tv.ui.screens.home.HomeTarget.Show(s) to app.streamsetu.tv.ui.screens.home.RowKind.OTHER }
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
@@ -104,17 +96,13 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(resume, key = { "c" + it.playable.id }) { r ->
                             // The same menu from touch and hold and from the ⋯ button on the card: Play, Remove from Continue Watching, Mark as watched.
-                            val menu = { sheet = r.playable.title to buildList {
-                                add(SheetItem("Play", Icons.Filled.PlayArrow) { play(c, nav, r.playable) })
-                                add(SheetItem("Remove from Continue Watching", Icons.Filled.Close) { vm.removeFromContinue(r.playable.id) })
-                                when (val p = r.playable) {
-                                    is app.streamsetu.core.model.MoviePlayable -> add(SheetItem("Mark as watched", Icons.Filled.Check) { vm.setWatched(p.id, ContentKind.MOVIE, null, true) })
-                                    is app.streamsetu.core.model.EpisodePlayable -> add(SheetItem("Mark as watched", Icons.Filled.Check) { vm.setWatched(p.id, ContentKind.EPISODE, p.series.id, true) })
-                                    else -> {}
-                                }
-                            } }
+                            val menu = { tile = when (val p = r.playable) {
+                                is app.streamsetu.core.model.MoviePlayable -> app.streamsetu.tv.ui.screens.home.HomeTarget.Film(p.movie) to app.streamsetu.tv.ui.screens.home.RowKind.CONTINUE
+                                is app.streamsetu.core.model.EpisodePlayable -> app.streamsetu.tv.ui.screens.home.HomeTarget.Episode(p.series, p) to app.streamsetu.tv.ui.screens.home.RowKind.CONTINUE
+                                else -> null
+                            } ?: tile }
                             Box(continueItemMotion().width(240.dp).removeFromContinueAction { vm.removeFromContinue(r.playable.id) }) {
-                                PhoneWide(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, Modifier.fillMaxWidth(), progress = if (r.isNew) 0f else r.progress.fraction, badge = if (r.isNew) "NEW" else null, onLong = menu)
+                                PhoneWide(r.playable.title, r.subtitle, r.playable.artworkUrl, { play(c, nav, r.playable) }, Modifier.fillMaxWidth(), progress = if (r.isNew) 0f else r.progress.fraction, badge = if (r.isNew) "NEW" else null, onLong = menu, itemId = (r.playable as? app.streamsetu.core.model.EpisodePlayable)?.series?.id ?: r.playable.id)
                                 // A visible way to the menu, so removing does not depend on discovering touch and hold.
                                 Box(Modifier.align(Alignment.TopEnd).padding(2.dp)) { IconTap(Icons.Filled.MoreHoriz, "More options for ${r.playable.title}", menu, tint = Tokens.text, filled = true) }
                             }
@@ -126,7 +114,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Tonight on your channels")
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(tonight, key = { "t" + it.channel.id }) { l -> ChannelTile(l.channel, l.now, onLong = { sheet = l.channel.name to listOf(SheetItem("Watch privately", Icons.Filled.VisibilityOff) { play(c, nav, ChannelPlayable(l.channel), tonight.map { ChannelPlayable(it.channel) }, privately = true) }) }) { play(c, nav, ChannelPlayable(l.channel), tonight.map { ChannelPlayable(it.channel) }) } }
+                        items(tonight, key = { "t" + it.channel.id }) { l -> ChannelTile(l.channel, l.now, onLong = { tile = app.streamsetu.tv.ui.screens.home.HomeTarget.Live(l.channel) to app.streamsetu.tv.ui.screens.home.RowKind.RECENT_LIVE }) { play(c, nav, ChannelPlayable(l.channel), tonight.map { ChannelPlayable(it.channel) }) } }
                     }
                 }
             }
@@ -134,7 +122,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Recently Watched Channels")
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(live, key = { "l" + it.channel.id }) { l -> ChannelTile(l.channel, l.now, onLong = { sheet = l.channel.name to listOf(SheetItem("Watch privately", Icons.Filled.VisibilityOff) { play(c, nav, ChannelPlayable(l.channel), live.map { ChannelPlayable(it.channel) }, privately = true) }) }) { play(c, nav, ChannelPlayable(l.channel), live.map { ChannelPlayable(it.channel) }) } }
+                        items(live, key = { "l" + it.channel.id }) { l -> ChannelTile(l.channel, l.now, onLong = { tile = app.streamsetu.tv.ui.screens.home.HomeTarget.Live(l.channel) to app.streamsetu.tv.ui.screens.home.RowKind.RECENT_LIVE }) { play(c, nav, ChannelPlayable(l.channel), live.map { ChannelPlayable(it.channel) }) } }
                     }
                 }
             }
@@ -158,7 +146,8 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
             mix.forEach { sh ->
                 item(key = "mix:" + sh.id, contentType = "mixrail") {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SectionHeader(sh.title)
+                        if (sh.view != null || sh.genreKey != null) app.streamsetu.tv.ui.components.ShelfHeader(sh.title, sh.caption, sh.view, false, { v -> vm.setShelfView(sh.id, v) }, sh.genreKey?.let { k -> { nav.open(Overlay.Genre(k)) } })
+                        else SectionHeader(sh.title)
                         LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             items(sh.items, key = { sh.id + it.kind() + it.id }, contentType = { "poster" }) { f ->
                                 when (f) {
@@ -168,6 +157,15 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                                 }
                             }
                         }
+                    }
+                }
+            }
+            if (mix.any { it.genreKey != null }) item(key = "browse-genre") {
+                val genres by vm.genreBrowse.collectAsStateWithLifecycle()
+                if (genres.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionHeader("Browse by Genre")
+                    LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(genres, key = { it.key }) { g -> Chip(g.name + "  " + "%,d".format(g.count), false, { nav.open(Overlay.Genre(g.key)) }, Modifier.semantics { contentDescription = app.streamsetu.tv.ui.i18n.I18n.tr("${g.name}, ${g.count} titles") }) }
                     }
                 }
             }
@@ -190,7 +188,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Recently Added Movies", action = "See all", onAction = { nav.tab = Tab.MOVIES })
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(movies, key = { "m" + it.id }) { m -> PhonePoster(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, Modifier.width(112.dp), itemId = m.id, subtitle = m.year?.toString(), badge = if (m.id in favIds) "♥" else ratingBadge(m.rating), onLong = { movieMenu(m) }) }
+                        items(movies, key = { "m" + it.id }) { m -> PhonePoster(m.title, m.posterUrl, { nav.open(Overlay.MovieDetail(m)) }, Modifier.width(112.dp), itemId = m.id, subtitle = m.year?.toString(), badge = if (m.id in favIds) "♥" else null, onLong = { movieMenu(m) }) }
                     }
                 }
             }
@@ -198,7 +196,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Recently Added Series", action = "See all", onAction = { nav.tab = Tab.SERIES })
                     LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(series, key = { "s" + it.id }) { s -> PhonePoster(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, Modifier.width(112.dp), itemId = s.id, subtitle = s.year?.toString(), badge = if (s.id in favIds) "♥" else ratingBadge(s.rating), onLong = { seriesMenu(s) }) }
+                        items(series, key = { "s" + it.id }) { s -> PhonePoster(s.title, s.posterUrl, { nav.open(Overlay.SeriesDetail(s)) }, Modifier.width(112.dp), itemId = s.id, subtitle = s.year?.toString(), badge = if (s.id in favIds) "♥" else null, onLong = { seriesMenu(s) }) }
                     }
                 }
             }
@@ -209,6 +207,7 @@ fun PhoneHome(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
         // The top bar floats over the banner; its name is only drawn when there is no banner under it.
         PhoneTopBar("Home", showTitle = banner.isEmpty(), leading = { RoundTap(Icons.Filled.Layers, "Libraries") { c.library.close(); nav.toChooser() } }) { RoundTap(Icons.Filled.Shuffle, "Shuffle recommendations") { vm.shuffleRecommendations() }; RoundTap(Icons.Filled.Search, "Search") { nav.openSearch() } }
         sheet?.let { (t, items) -> Sheet(t, items, onClose = { sheet = null }) }
+        tile?.let { (t, r) -> app.streamsetu.tv.ui.screens.home.HomeMenuHost(t, r, vm, c, nav, phone = true) { tile = null } }
         // Undo after a removal from Continue Watching.
         app.streamsetu.tv.ui.screens.home.ContinueUndoBar(vm, tv = false, modifier = Modifier.align(Alignment.BottomCenter))
     }
@@ -221,8 +220,8 @@ private fun Rail(title: String, items: List<FavItem>, c: AppContainer, nav: Navi
         LazyRow(contentPadding = PaddingValues(horizontal = Ph.gutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             items(items, key = { it.kind() + it.id }) { f ->
                 when (f) {
-                    is FavItem.Mv -> PhonePoster(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, Modifier.width(112.dp), itemId = f.movie.id, subtitle = f.movie.year?.toString(), badge = ratingBadge(f.movie.rating), onLong = { onMovie(f.movie) })
-                    is FavItem.Sr -> PhonePoster(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, Modifier.width(112.dp), itemId = f.series.id, subtitle = f.series.year?.toString(), badge = ratingBadge(f.series.rating), onLong = { onSeries(f.series) })
+                    is FavItem.Mv -> PhonePoster(f.movie.title, f.movie.posterUrl, { nav.open(Overlay.MovieDetail(f.movie)) }, Modifier.width(112.dp), itemId = f.movie.id, subtitle = f.movie.year?.toString(), onLong = { onMovie(f.movie) })
+                    is FavItem.Sr -> PhonePoster(f.series.title, f.series.posterUrl, { nav.open(Overlay.SeriesDetail(f.series)) }, Modifier.width(112.dp), itemId = f.series.id, subtitle = f.series.year?.toString(), onLong = { onSeries(f.series) })
                     is FavItem.Ch -> ChannelTile(f.channel, null) { play(c, nav, ChannelPlayable(f.channel)) }
                 }
             }
@@ -240,19 +239,6 @@ fun ChannelTile(ch: app.streamsetu.core.model.Channel, now: String?, onLong: (()
         if (now != null) Label(now, 11.sp, Tokens.textTertiary)
     }
 }
-
-/** "Play next", "Add to queue" or "Remove from queue" for a movie or series in a long-press sheet. */
-internal fun queueItems(c: AppContainer, id: String, kind: ContentKind, title: String): List<SheetItem> =
-    if (c.watchQueue.contains(id)) listOf(SheetItem("Remove from queue", Icons.Filled.Close) { c.watchQueue.remove(id) })
-    else listOf(
-        SheetItem("Play next", Icons.Filled.SkipNext) { c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(kind, id, title), next = true) },
-        SheetItem("Add to queue", Icons.Filled.Add) { c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(kind, id, title)) })
-
-/** "Move to front" and "Move to end" for a favourite, so the order of the favourites is the person's own. */
-internal fun favoriteOrderItems(isFavorite: Boolean, move: (front: Boolean) -> Unit): List<SheetItem> =
-    if (!isFavorite) emptyList() else listOf(
-        SheetItem("Move to front of favorites", Icons.Filled.ArrowUpward) { move(true) },
-        SheetItem("Move to end of favorites", Icons.Filled.ArrowDownward) { move(false) })
 
 /** At the top of Home when there is no connection: says so and offers what plays without one, the saved downloads. */
 @Composable

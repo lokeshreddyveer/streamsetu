@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
 /** (The text index, search_fts, is a virtual table made outside Room, so dropped-table checking is off.) */
 class DatabaseMigrationTests {
     @get:Rule val helper = MigrationTestHelper(InstrumentationRegistry.getInstrumentation(), AppDatabase::class.java)
-    private val current = 11          // 11 adds the canonical identity and Smart Mix tables (raised from 10)
+    private val current = 17          // 17 gives the title sort key its accents (the schema is the same as 16); 16 adds the guide hub tables; 15 makes the two TMDB tables Room tables; 14 adds the rating checks; 13 adds the metadata hub tables; 12 adds the lower-case title and year indexes (11 added the canonical identity and Smart Mix tables)
 
     private fun SupportSQLiteDatabase.count(table: String) = query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); it.getInt(0) }
 
@@ -31,6 +31,44 @@ class DatabaseMigrationTests {
             helper.createDatabase("from$v", v).close()
             helper.runMigrationsAndValidate("from$v", current, false, *AppDatabase.MIGRATIONS).close()
         }
+    }
+
+    @Test fun versionSixteenToSeventeenFoldsAccentsInTheSortKeyAndKeepsAsciiKeysAndEveryRow() {
+        helper.createDatabase("v16", 16).apply {
+            execSQL("INSERT INTO sources (id, name, type, address, enabled, lastSyncAt, status, sortOrder, draft, channelCount, movieCount, seriesCount, lastOpenedAt) VALUES ('s','S','XTREAM','x',1,0,'OK',0,0,0,0,0,0)")
+            for ((i, t) in listOf("Zebra", "Émile", "Ørsted", "Apple", "Straße", "తెలుగు").withIndex()) execSQL("INSERT INTO movies (id, sourceId, categoryId, title, titleSort, streamRef, addedAt) VALUES ('m$i','s','c','$t',lower('$t'),'r',$i)")          // a real version 16 file holds lower(title) (set by the 11 to 12 step and its triggers); the test helper creates no triggers, so it is written here
+            close()
+        }
+        val db = helper.runMigrationsAndValidate("v16", 17, true, *AppDatabase.MIGRATIONS)
+        fun key(id: String) = db.query("SELECT titleSort FROM movies WHERE id = '$id'").use { it.moveToFirst(); it.getString(0) }
+        assertEquals("zebra", key("m0")); assertEquals("emile", key("m1")); assertEquals("orsted", key("m2")); assertEquals("apple", key("m3")); assertEquals("strasse", key("m4")); assertEquals("తెలుగు", key("m5"))
+        assertEquals(6, db.count("movies"))
+        // The triggers use the new key for rows written afterwards.
+        db.execSQL("INSERT INTO movies (id, sourceId, categoryId, title, streamRef, addedAt) VALUES ('n1','s','c','Ünal','r',9)")
+        assertEquals("unal", key("n1"))
+        db.execSQL("UPDATE movies SET title = 'Éclair' WHERE id = 'n1'")
+        assertEquals("eclair", key("n1"))
+        // Every key the SQL gives is the key Kotlin gives (so a page cursor equals the stored column).
+        for (t in listOf("Zebra", "Émile", "Ørsted", "Apple", "Straße", "తెలుగు")) assertEquals(app.streamsetu.core.model.SortKey.of(t), key("m${listOf("Zebra", "Émile", "Ørsted", "Apple", "Straße", "తెలుగు").indexOf(t)}"))
+        db.close()
+    }
+
+    @Test fun versionFourteenToFifteenKeepsTheRowsOfTheTwoTmdbTablesThatWereMadeOutsideRoom() {
+        helper.createDatabase("tmdb", 14).apply {
+            // What the older code made on first use (its own index name), with rows in it.
+            execSQL("CREATE TABLE IF NOT EXISTS tmdb_ids(itemId TEXT PRIMARY KEY NOT NULL, tmdbId INTEGER NOT NULL, tv INTEGER NOT NULL, at INTEGER NOT NULL)")
+            execSQL("CREATE INDEX IF NOT EXISTS tmdb_ids_by_id ON tmdb_ids(tmdbId, tv)")
+            execSQL("CREATE TABLE IF NOT EXISTS tmdb_genres(itemId TEXT PRIMARY KEY NOT NULL, ids TEXT NOT NULL, at INTEGER NOT NULL)")
+            execSQL("INSERT INTO tmdb_ids VALUES ('m1', 603, 0, 5), ('s1', 1396, 1, 6)"); execSQL("INSERT INTO tmdb_genres VALUES ('m1', ',28,878,', 5)")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate("tmdb", 15, true, *AppDatabase.MIGRATIONS)
+        assertEquals(2, db.count("tmdb_ids")); assertEquals(1, db.count("tmdb_genres"))
+        db.query("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='tmdb_ids' AND name NOT LIKE 'sqlite_%'").use { c -> val names = buildList { while (c.moveToNext()) add(c.getString(0)) }; assertEquals(listOf("index_tmdb_ids_tmdbId_tv"), names) }
+        // A database that never had them (a fresh version 14) gets them empty.
+        helper.createDatabase("tmdb-none", 14).close()
+        val none = helper.runMigrationsAndValidate("tmdb-none", 15, true, *AppDatabase.MIGRATIONS)
+        assertEquals(0, none.count("tmdb_ids")); assertEquals(0, none.count("tmdb_genres"))
     }
 
     @Test fun versionNineToTenRemovesPlexTokensFromEveryPictureColumnAndTheDividerChannels() {

@@ -7,7 +7,7 @@ class ServiceTest {
     private val day = "2026-11-21"
     private val now = 1_800_000_000_000L
     private fun lib(n: Int) = (0 until n).map { cand(it, kind = if (it % 3 == 0) Kind.SERIES else Kind.MOVIE, lang = listOf("Telugu", "Hindi")[it % 2], year = 2015 + it % 12, q = 1 + it % 5, backdrop = true) }
-    private fun svc(src: FakeCandidateSource, store: SmartMixStore = InMemorySmartMixStore(), tr: TrendingViewSource? = null) = SmartMixService(src, store, tr, { now })
+    private fun svc(src: FakeCandidateSource, store: SmartMixStore = InMemorySmartMixStore(), tr: TrendingViewSource? = null) = SmartMixService(src, store, tr, clock = { now })
     private fun entries(range: IntRange) = range.map { TrendingEntry(60 - it, "movie", "Title $it long", null, 2024) }
     private fun trendLib() = lib(200).mapIndexed { i, c -> if (i in 50..57) c.copy(identityKey = "title $i long", year = 2024, kind = Kind.MOVIE) else c }
 

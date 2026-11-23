@@ -1,3 +1,51 @@
-# Start-up and scrolling profile: everything in the app's own code is compiled ahead of time, so the first pass through each screen is as smooth as the tenth.
-HSPLapp/streamsetu/**->**(**)**
+# Baseline profile (hand-written; the journeys are listed below). The classes of the app are all pre-loaded (the L rule), and the methods of what a person meets first are compiled ahead of time:
+#   S = start-up (cold start to Home, the first rails), H = hot, P = after start-up (scrolling, opening pages, the player).
+# Regenerating it from a recording needs a device (a Fire TV Stick and a mid phone): see scripts/perf-gate.sh. Until then this file is the one the build uses.
 Lapp/streamsetu/**;
+
+# 1. Cold start: the application, the container and its lazy services, the database open, the opening and the shell.
+HSPLapp/streamsetu/tv/StreamSetuApp**;->**(**)**
+HSPLapp/streamsetu/tv/AppContainer**;->**(**)**
+HSPLapp/streamsetu/tv/MainActivity**;->**(**)**
+HSPLapp/streamsetu/tv/Perf**;->**(**)**
+HSPLapp/streamsetu/tv/opening/**->**(**)**
+HSPLapp/streamsetu/tv/nav/**->**(**)**
+HSPLapp/streamsetu/core/data/db/**->**(**)**
+HSPLapp/streamsetu/core/data/repo/LibraryRepository**;->**(**)**
+HSPLapp/streamsetu/core/data/repo/FolderRepository**;->**(**)**
+HSPLapp/streamsetu/core/data/repo/Visibility**;->**(**)**
+HSPLapp/streamsetu/core/settings/**->**(**)**
+HSPLapp/streamsetu/core/ui/**->**(**)**
+
+# 2. Home and its rails; the D-pad and touch moving through them.
+HSPLapp/streamsetu/tv/ui/screens/home/**->**(**)**
+HSPLapp/streamsetu/tv/ui/phone/PhoneHome**;->**(**)**
+HSPLapp/streamsetu/tv/ui/phone/PhoneApp**;->**(**)**
+HSPLapp/streamsetu/tv/ui/phone/PhoneKit**;->**(**)**
+HSPLapp/streamsetu/tv/ui/components/**->**(**)**
+HSPLapp/streamsetu/tv/ui/theme/**->**(**)**
+HSPLapp/streamsetu/core/data/repo/smartmix/**->**(**)**
+HSPLapp/streamsetu/core/data/smartmix/**->**(**)**
+
+# 3. Movies, Series, Live TV: the folder rows, the All grid, paging, the sort and the folder panel.
+HSPLapp/streamsetu/tv/ui/screens/folders/**->**(**)**
+HSPLapp/streamsetu/tv/ui/screens/section/**->**(**)**
+HSPLapp/streamsetu/tv/ui/phone/PhoneBrowse**;->**(**)**
+HSPLapp/streamsetu/tv/ui/phone/PhoneFolderRows**;->**(**)**
+HSPLapp/streamsetu/core/data/repo/BrowseRepository**;->**(**)**
+HSPLapp/streamsetu/core/data/repo/PageCache**;->**(**)**
+HSPLapp/streamsetu/core/data/repo/CatalogRepository**;->**(**)**
+
+# 4. A title page and an episode list, the cast row, the person page, search.
+HSPLapp/streamsetu/tv/ui/screens/detail/**->**(**)**
+HSPLapp/streamsetu/tv/ui/phone/PhoneDetail**;->**(**)**
+HSPLapp/streamsetu/tv/ui/screens/Person**;->**(**)**
+HSPLapp/streamsetu/tv/ui/screens/search/**->**(**)**
+HSPLapp/streamsetu/core/data/repo/SearchRepository**;->**(**)**
+HSPLapp/streamsetu/core/data/repo/Tmdb**;->**(**)**
+HSPLapp/streamsetu/core/data/repo/Artwork**;->**(**)**
+
+# 5. Opening the player and its controls.
+HSPLapp/streamsetu/tv/ui/screens/PlayerScreen**;->**(**)**
+HSPLapp/streamsetu/tv/ui/phone/PhonePlayer**;->**(**)**
+HSPLapp/streamsetu/core/playback/**->**(**)**

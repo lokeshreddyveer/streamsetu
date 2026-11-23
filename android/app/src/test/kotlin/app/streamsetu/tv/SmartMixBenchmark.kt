@@ -184,6 +184,7 @@ class SmartMixBenchmark {
             for (shelf in ShelfSpec.GLOBAL) {
                 var n = 0
                 time("  pool + engine, shelf $shelf", 1, 5) { mix.invalidate(); val b = runBlocking { mix.shelf("main", shelf) }; n = b.result.ids.size; n }
+                runBlocking { mix.source.prepare() }
                 val pool = mix.source.pool(PoolRequest("main", shelf, mix.dayKey(), emptyList(), 2000))
                 say("      $shelf: pool ${pool.size} copies, shelf ${n} titles, restricted flagged ${pool.count { it.restricted }}")
             }

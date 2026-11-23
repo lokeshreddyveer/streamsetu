@@ -3,9 +3,11 @@ package app.streamsetu.core.data.repo.smartmix
 import app.streamsetu.core.data.db.AppDatabase
 import app.streamsetu.core.data.db.Profiles
 import app.streamsetu.core.data.repo.Visibility
+import app.streamsetu.core.data.repo.TmdbGenreStore
 import app.streamsetu.core.data.smartmix.*
 import app.streamsetu.core.model.ContentKind
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private fun Kind.ck() = if (this == Kind.SERIES) ContentKind.SERIES else ContentKind.MOVIE
 
@@ -50,7 +52,30 @@ class RoomCandidateSource(
     }
 
     @Volatile private var cache: Activity? = null
-    fun invalidate() { cache = null }
+    @Volatile private var folderGenres: Map<String, List<String>>? = null
+    private val tmdbGenreStore = TmdbGenreStore(db)
+    @Volatile private var tmdbGenres: Map<String, List<Int>>? = null
+    fun invalidate() { cache = null; folderGenres = null; tmdbGenres = null }
+
+    /**
+     * The genre text of one title, in this order of precedence: its TMDB genre ids (only where TMDB details were fetched for it) as words, then the words of its folder's name. A title with
+     * neither belongs to no genre shelf. (Apple keeps one genre text field that receives TMDB's names when details were matched; the union here is the same set of words.)
+     */
+    private fun genresOf(itemId: String, folderId: String?, series: Boolean): List<String> {
+        val t = (tmdbGenres ?: tmdbGenreStore.all().also { tmdbGenres = it })[itemId]
+        val folder = genresOfFolder(folderId)
+        return if (t == null) folder else (GenreShelves.tokensForTmdb(t, series) + folder).distinct()
+    }
+
+    /** The genre words of a folder: the provider's folder name, normalised ("SCI-FI | MOVIES" gives "sci fi", "movies"). The library keeps no other genre text. */
+    private fun genresOfFolder(folderId: String?): List<String> {
+        if (folderId == null) return emptyList()
+        val m = folderGenres ?: HashMap<String, List<String>>().also { out ->
+            raw().query("SELECT id, name FROM categories", emptyArray()).use { c -> while (c.moveToNext()) out[c.getString(0)] = GenreShelves.tokens(c.getString(1).replace('&', ',').replace(" - ", ",")) }
+            folderGenres = out
+        }
+        return m[folderId] ?: emptyList()
+    }
 
     private fun raw() = db.openHelper.readableDatabase
 
@@ -58,13 +83,23 @@ class RoomCandidateSource(
 
     // ---------------------------------------------------------------- activity (signals, restrictions, dismissals)
 
-    private fun activity(): Activity {
+    /**
+     * What was read about the person's activity and restrictions is read here, once, off the caller's thread, and shared by every shelf built in the next few seconds. The blocking reads that
+     * follow ([pool], [signals], [matchCandidates]) use it; a source that was never prepared says so instead of blocking a thread on the database.
+     */
+    suspend fun prepare() {
+        if (cache?.takeIf { now() - it.at < 5_000 } != null) return
+        withContext(Dispatchers.IO) { loadActivity() }
+    }
+
+    private fun activity(): Activity = cache ?: error("RoomCandidateSource.prepare() must run before the shelves are built")
+
+    private suspend fun loadActivity(): Activity {
         val t = now()
-        cache?.takeIf { t - it.at < 5_000 }?.let { return it }
         val profile = Profiles.active(raw())
-        val snap = runBlocking { visibility.snapshot(Visibility.Surface.RECOMMEND) }
-        val restriction = Restriction(mapOf(ContentKind.MOVIE to snap.excluded(ContentKind.MOVIE), ContentKind.SERIES to snap.excluded(ContentKind.SERIES)), restrictedKeys(snap, runBlocking { db.sources().all() }.map { it.id }), snap)
-        val sources = runBlocking { db.sources().all() }
+        val snap = visibility.snapshot(Visibility.Surface.RECOMMEND)
+        val restriction = Restriction(mapOf(ContentKind.MOVIE to snap.excluded(ContentKind.MOVIE), ContentKind.SERIES to snap.excluded(ContentKind.SERIES)), restrictedKeys(snap, db.sources().all() .map { it.id }), snap)
+        val sources = db.sources().all()
         val rank = PreferredSource.rank(sources.map { PreferredSource.Info(it.id, it.enabled, it.draft, it.status == "FAILED", it.lastSyncAt, it.sortOrder) })
 
         // What was watched, by title (an episode counts for its series).
@@ -177,7 +212,7 @@ class RoomCandidateSource(
                     watched = a.watched.containsKey(key), completed = a.watched[key] == true, lastWatchedDays = a.lastDays[key],
                     plays7 = a.plays7[key] ?: 0, plays30 = a.plays30[key] ?: 0,
                     restricted = restricted, dismissed = !restricted && a.dismissed[key]?.any { o -> year == null || o == null || kotlin.math.abs(year - o) <= 1 } == true,
-                    sourceRank = a.sourceRank[c.getString(2)] ?: 0,
+                    sourceRank = a.sourceRank[c.getString(2)] ?: 0, genres = genresOf(id, folder, kind == Kind.SERIES), franchiseKey = HomeFranchise.key(key),
                 )
             }
         }
@@ -215,6 +250,9 @@ class RoomCandidateSource(
                 read(movieSelect("ci.folderKey = ?", "ORDER BY x.addedAt DESC", limit), arrayOf(k), a, into)
                 read(seriesSelect("ci.folderKey = ?", "ORDER BY x.addedAt DESC", limit), arrayOf(k), a, into)
             }
+            spec.genre != null -> addGenre(spec.genre, limit, a, into)
+            // A mood is the union of its genres: each genre contributes its own best rated titles.
+            spec.moodKeys != null -> for (key in spec.moodKeys) GenreTable.of(key)?.let { addGenre(it, limit / spec.moodKeys.size.coerceAtLeast(1), a, into) }
             request.shelfId == ShelfSpec.LANG_PREF -> {
                 val l = a.signals.preferredLang
                 if (l != null) newest(limit * 6 / 10, limit * 4 / 10, "AND ci.lang = ?", arrayOf(l))
@@ -259,6 +297,94 @@ class RoomCandidateSource(
         }
         for ((id, c) in extra) if (id !in into) out += c
         return out
+    }
+
+    /** The best rated titles of every folder of [g] (so a small genre has its titles in the pool), and the titles whose TMDB genre ids say it. */
+    private fun addGenre(g: GenreDef, limit: Int, a: Activity, into: LinkedHashMap<String, Candidate>) {
+        val withIds = (tmdbGenres ?: tmdbGenreStore.all().also { tmdbGenres = it }).filter { (_, ids) -> ids.any { it in g.tmdbMovie || it in g.tmdbTV } }.keys.take(limit)
+        byIds(withIds, a, into)
+        genreFolders(g).let { (movieFolders, seriesFolders) ->
+            for (chunk in movieFolders.chunked(300)) read(movieSelect("x.categoryId IN (${chunk.joinToString(",") { "?" }})", "ORDER BY CAST(x.rating AS REAL) DESC", 400), chunk.toTypedArray(), a, into)
+            for (chunk in seriesFolders.chunked(300)) read(seriesSelect("x.categoryId IN (${chunk.joinToString(",") { "?" }})", "ORDER BY CAST(x.rating AS REAL) DESC", 400), chunk.toTypedArray(), a, into)
+        }
+    }
+
+    /** Titles that could be shown (one per title, not CAM, with a poster) in the open library: the base of the mood floor. Restricted titles are not subtracted (the engine drops them from every row). */
+    override fun showableTotal(profileId: String): Int {
+        val src = sourceIds(); if (src.isEmpty()) return 0
+        var n = 0
+        for (table in listOf("movies", "series")) raw().query(
+            "SELECT COUNT(*) FROM (SELECT DISTINCT ci.kind, ci.identityKey FROM $table x JOIN content_identity ci ON ci.itemId = x.id WHERE x.sourceId IN (${src.joinToString(",") { "?" }}) AND ci.isCam = 0 AND x.posterUrl IS NOT NULL AND x.posterUrl != '')",
+            src.toTypedArray()).use { c -> if (c.moveToFirst()) n += c.getInt(0) }
+        return n
+    }
+
+    /** The folders (movies, series) whose name says [g]. */
+    private fun genreFolders(g: GenreDef): Pair<List<String>, List<String>> {
+        genresOfFolder("-")          // makes sure the folder table is read
+        val src = sourceIds().toSet()
+        val out = listOf(false, true).map { series ->
+            val ids = ArrayList<String>()
+            raw().query("SELECT id, sourceId FROM categories WHERE kind = ?", arrayOf(if (series) "SERIES" else "MOVIE")).use { c -> while (c.moveToNext()) if (c.getString(1) in src && GenreShelves.matches(g, folderGenres?.get(c.getString(0)).orEmpty(), series)) ids += c.getString(0) }
+            ids as List<String>
+        }
+        return out[0] to out[1]
+    }
+
+    /** Every title of the genre that may be shown, best rated first (movies and series merged); restricted and dismissed ones never. One copy per title. */
+    fun genreTitleIds(g: GenreDef, limit: Int = 400): List<String> {
+        val a = activity(); val into = LinkedHashMap<String, Candidate>()
+        val (movieFolders, seriesFolders) = genreFolders(g)
+        byIds((tmdbGenres ?: tmdbGenreStore.all().also { tmdbGenres = it }).filter { (_, ids) -> ids.any { it in g.tmdbMovie || it in g.tmdbTV } }.keys.take(limit), a, into)
+        for (chunk in movieFolders.chunked(300)) read(movieSelect("x.categoryId IN (${chunk.joinToString(",") { "?" }})", "ORDER BY CAST(x.rating AS REAL) DESC", limit), chunk.toTypedArray(), a, into)
+        for (chunk in seriesFolders.chunked(300)) read(seriesSelect("x.categoryId IN (${chunk.joinToString(",") { "?" }})", "ORDER BY CAST(x.rating AS REAL) DESC", limit), chunk.toTypedArray(), a, into)
+        val groups = IdentityGrouping.prepare(into.values.toList(), a.signals.preferredLang).groups.filter { !it.restricted && !it.dismissed && GenreShelves.matches(g, it) }
+        return groups.sortedWith { x, y -> val rx = Features.rating(x.ratingText); val ry = Features.rating(y.ratingText); if (rx != ry) ry.compareTo(rx) else SmartMixEngine.compareUtf8(x.id, y.id) }.take(limit).map { it.id }
+    }
+
+    override fun genreCounts(profileId: String): Map<String, Int> {
+        val a = activity(); genresOfFolder("-")
+        val src = sourceIds(); if (src.isEmpty()) return emptyMap()
+        val keysByGenre = HashMap<String, HashSet<String>>()
+        for ((kind, table) in listOf(Kind.MOVIE to "movies", Kind.SERIES to "series")) {
+            val folderOf = HashMap<String, List<String>>()          // folder -> genre keys (only folders that say a genre)
+            for ((folder, tokens) in folderGenres.orEmpty()) { val keys = GenreShelves.keysFor(tokens, kind == Kind.SERIES); if (keys.isNotEmpty() && !a.restriction.folderRestricted(kind, folder)) folderOf[folder] = keys }
+            if (folderOf.isEmpty()) continue
+            for (chunk in folderOf.keys.chunked(300)) raw().query(
+                "SELECT DISTINCT x.categoryId, ci.identityKey, ci.year FROM $table x JOIN content_identity ci ON ci.itemId = x.id WHERE x.sourceId IN (${src.joinToString(",") { "?" }}) AND x.categoryId IN (${chunk.joinToString(",") { "?" }}) AND ci.isCam = 0 AND x.posterUrl IS NOT NULL AND x.posterUrl != ''",
+                (src + chunk).toTypedArray()).use { c ->
+                while (c.moveToNext()) {
+                    val key = c.getString(1); val year = if (c.isNull(2)) null else c.getInt(2)
+                    if (a.restriction.keyRestricted(key, year) || a.dismissed[key]?.any { o -> year == null || o == null || kotlin.math.abs(year - o) <= 1 } == true) continue
+                    for (g in folderOf[c.getString(0)].orEmpty()) keysByGenre.getOrPut(g) { HashSet() } += kind.name + "|" + key
+                }
+            }
+        }
+        // Titles with TMDB genre ids add their genres on top of the folder's.
+        val withIds = tmdbGenres ?: tmdbGenreStore.all().also { tmdbGenres = it }
+        for ((kind, table) in listOf(Kind.MOVIE to "movies", Kind.SERIES to "series")) for (chunk in withIds.keys.chunked(300)) raw().query(
+            "SELECT x.id, x.categoryId, ci.identityKey, ci.year FROM $table x JOIN content_identity ci ON ci.itemId = x.id WHERE x.id IN (${chunk.joinToString(",") { "?" }}) AND x.sourceId IN (${src.joinToString(",") { "?" }}) AND ci.isCam = 0 AND x.posterUrl IS NOT NULL AND x.posterUrl != ''",
+            (chunk + src).toTypedArray()).use { c ->
+            while (c.moveToNext()) {
+                val key = c.getString(2); val year = if (c.isNull(3)) null else c.getInt(3)
+                if (a.restriction.folderRestricted(kind, c.getString(1)) || a.restriction.keyRestricted(key, year) || a.dismissed[key]?.any { o -> year == null || o == null || kotlin.math.abs(year - o) <= 1 } == true) continue
+                for (g in GenreShelves.keysFor(GenreShelves.tokensForTmdb(withIds[c.getString(0)].orEmpty(), kind == Kind.SERIES), kind == Kind.SERIES)) keysByGenre.getOrPut(g) { HashSet() } += kind.name + "|" + key
+            }
+        }
+        return keysByGenre.mapValues { it.value.size }
+    }
+
+    override fun affinityGenreKeys(profileId: String): List<String> {
+        val a = activity(); genresOfFolder("-")
+        val recent = a.signals.recentWatchedIdentityKeys.take(8); if (recent.isEmpty()) return emptyList()
+        val rows = ArrayList<Pair<List<String>, Boolean>>()
+        for (kind in listOf(Kind.MOVIE, Kind.SERIES)) {
+            val table = if (kind == Kind.SERIES) "series" else "movies"
+            raw().query("SELECT x.categoryId FROM $table x JOIN content_identity ci ON ci.itemId = x.id WHERE ci.kind = ? AND ci.identityKey IN (${recent.joinToString(",") { "?" }}) LIMIT 100", (listOf(kind.name) + recent).toTypedArray()).use { c ->
+                while (c.moveToNext()) { val f = c.getString(0); if (!a.restriction.folderRestricted(kind, f)) rows += genresOfFolder(f) to (kind == Kind.SERIES) }
+            }
+        }
+        return GenreShelves.affinityKeys(rows)
     }
 
     override fun matchCandidates(profileId: String): List<Candidate> = emptyList()

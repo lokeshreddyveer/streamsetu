@@ -79,7 +79,7 @@ data class ContentFilter(
         if (folderId != null && categoryId != folderId) return false
         if (language != null && app.streamsetu.core.data.repo.TitleLanguages.of(c.title, ctx.folderNames[categoryId]) != language) return false
         if (quality != null && quality !in app.streamsetu.core.data.repo.QualityBadges.from(listOf(c.title, ctx.folderNames[categoryId]), 9)) return false
-        if (minRating != null && (c.rating?.toFloatOrNull() ?: 0f) < minRating) return false
+        if (minRating != null && (app.streamsetu.core.data.repo.DisplayRating.credibleProvider(c.rating)?.toFloat() ?: 0f) < minRating) return false
         return when (status) {
             null -> true
             WatchStatus.UNWATCHED -> c.id !in ctx.watched && c.id !in ctx.partial
@@ -128,7 +128,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
 
     protected abstract fun source(b: Browse, s: SortSpec, limit: Int, offset: Int = 0): Flow<List<Card>>
     /** One page for exactly the library and restrictions in [key] (nothing here looks at what is open now), read once. */
-    protected abstract suspend fun pageOnce(key: PageKey, limit: Int, offset: Int): List<Card>
+    protected abstract suspend fun pageOnce(key: PageKey, limit: Int, offset: Int, after: Card? = null): List<Card>
     /** A plain list (a folder, All, Recently Added) depends only on the catalog and the key: it is read once and again only when the catalog is written or a picture was found. */
     private fun isPlain(key: PageKey) = !key.filterOn && !app.streamsetu.core.data.repo.orderMoves(key.browse, key.sort)
     private val catalogChanged: Flow<Pair<String, Int>> = combine(c.browse.catalogRevision(), c.artwork.filled) { rev, found -> rev to found }.distinctUntilChanged()
@@ -172,6 +172,9 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
                     // A plain list is read once for this very key (and again when the catalog changes); one that depends on what the person watched or saved keeps watching its tables.
                     // A recent page for exactly this key and this catalog revision is reused as it is (no read at all); otherwise it is read once and kept.
                     if (isPlain(key)) catalogChanged.mapLatest { rev -> pages.get(key, rev) ?: pageOnce(key, PAGE, 0).also { pages.put(key, rev, it) } }.map { head -> key to head }
+                    // A filter has to see every title, but when the order does not depend on what the person watched or saved the list is read once (and again only when the catalog is written), not
+                    // watched: a progress write every few seconds during playback no longer reads and rebuilds up to 100,000 rows. (What the filter itself reads, the person's lists, is watched elsewhere.)
+                    else if (key.filterOn && !app.streamsetu.core.data.repo.orderMoves(key.browse, key.sort)) c.browse.catalogRevision().distinctUntilChanged().mapLatest { pageOnce(key, FILTERED_LIMIT, 0) }.map { head -> key to head }
                     else source(key.browse, key.sort, if (key.filterOn) FILTERED_LIMIT else PAGE).map { head -> key to head }
                 }
                 .collect { (key, head) ->
@@ -203,7 +206,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
             try {
                 val cur = currentList.orEmpty()
                 val key = shownKey
-                val rows = runCatching { if (key != null && isPlain(key)) pageOnce(key, PAGE, cur.size) else source(k.first, k.second, PAGE, cur.size).first() }.getOrNull() ?: return@launch
+                val rows = runCatching { if (key != null && isPlain(key)) pageOnce(key, PAGE, cur.size, cur.lastOrNull()) else source(k.first, k.second, PAGE, cur.size).first() }.getOrNull() ?: return@launch
                 if (g != generation) return@launch                    // the folder, sort or list changed while this page was being read
                 val seen = cur.mapTo(HashSet()) { it.id }
                 val fresh = rows.filter { it.id !in seen }
@@ -348,7 +351,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
 @HiltViewModel
 class MoviesSectionViewModel @Inject constructor(c: AppContainer) : SectionViewModel(c, ContentKind.MOVIE) {
     override fun source(b: Browse, s: SortSpec, limit: Int, offset: Int) = c.browse.movies(b, s, limit, offset).map { l -> l.map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, movie = it) } }
-    override suspend fun pageOnce(key: PageKey, limit: Int, offset: Int) = c.browse.moviesPage(key.browse, key.sort, limit, offset, key.sources, key.restricted).map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, movie = it) }
+    override suspend fun pageOnce(key: PageKey, limit: Int, offset: Int, after: Card?) = c.browse.moviesPage(key.browse, key.sort, limit, offset, key.sources, key.restricted, after?.let { app.streamsetu.core.data.repo.PageAfter(it.id, it.title, it.year) }).map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, movie = it) }
 
     override fun setWatched(card: Card, watched: Boolean) { viewModelScope.launch { c.user.setWatched(card.id, ContentKind.MOVIE, null, watched) } }
 
@@ -368,7 +371,7 @@ class MoviesSectionViewModel @Inject constructor(c: AppContainer) : SectionViewM
 @HiltViewModel
 class SeriesSectionViewModel @Inject constructor(c: AppContainer) : SectionViewModel(c, ContentKind.SERIES) {
     override fun source(b: Browse, s: SortSpec, limit: Int, offset: Int) = c.browse.series(b, s, limit, offset).map { l -> l.map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, series = it) } }
-    override suspend fun pageOnce(key: PageKey, limit: Int, offset: Int) = c.browse.seriesPage(key.browse, key.sort, limit, offset, key.sources, key.restricted).map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, series = it) }
+    override suspend fun pageOnce(key: PageKey, limit: Int, offset: Int, after: Card?) = c.browse.seriesPage(key.browse, key.sort, limit, offset, key.sources, key.restricted, after?.let { app.streamsetu.core.data.repo.PageAfter(it.id, it.title, it.year) }).map { Card(it.id, it.title, it.posterUrl, it.year, it.rating, it.sourceId, series = it) }
 
     override fun setWatched(card: Card, watched: Boolean) {}
 

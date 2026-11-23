@@ -4,7 +4,7 @@ package app.streamsetu.core.data.smartmix
 object SmartMixEngine {
     private class Scored(val c: Candidate, val s: Int)
 
-    private class Pass(val tier: Int, val counts: IntArray, val tiny: Boolean, val items: List<Scored>, val picks: List<Int>, val diversityRelaxed: Boolean)
+    private class Pass(val tier: Int, val counts: IntArray, val tiny: Boolean, val items: List<Scored>, val picks: List<Int>, val diversityRelaxed: Boolean, val ordered: Boolean = false)
 
     private const val C_CAM = 0
     private const val C_ART = 1
@@ -31,10 +31,12 @@ object SmartMixEngine {
 
     fun weight(s: Int, sharp: Boolean): Long = if (sharp) 1L + s.toLong() * s / 100 else 1L + s
 
-    fun buildShelf(prep: Prepared, shelfId: String, ctx: Context, trendingOrdered: Boolean): ShelfResult {
-        val spec = ShelfSpec.of(shelfId)
+    fun buildShelf(prep: Prepared, shelfId: String, ctx: Context, trendingOrdered: Boolean, view: ShelfView = ShelfView.WEEKLY): ShelfResult {
+        var spec = ShelfSpec.of(shelfId, view, ctx.kids)
+        val allTime = view == ShelfView.ALL_TIME
+        val genre = spec.genre
         var restricted = 0; var dismissed = 0
-        val source: List<Candidate> = if (spec.isFolder) (prep.byFolder[spec.folderKey] ?: emptyList()) else prep.groups
+        val source: List<Candidate> = if (spec.isFolder) (prep.byFolder[spec.folderKey] ?: emptyList()) else if (genre != null) prep.groups.filter { GenreShelves.matches(genre, it) } else if (spec.isContextRow) prep.groups.filter { contextMatch(spec, it) } else prep.groups
         var base = ArrayList<Candidate>(source.size)
         for (c in source) if (c.restricted) restricted++ else base.add(c)
         if (!spec.isFolder) {
@@ -50,9 +52,12 @@ object SmartMixEngine {
 
         val need = minOf(spec.minCount, base.size)
         val trendMode = shelfId == ShelfSpec.TRENDING_LIBRARY && base.count { it.trendingRank != null } >= 3
+        // The all-time view of Trending in Your Library uses the all-time weights (and the seed "trending-library|top") whether or not titles of the list matched.
+        if (allTime && shelfId == ShelfSpec.TRENDING_LIBRARY) spec = spec.withWeights(GenreShelves.ALL_TIME_WEIGHTS)
+        val seedId = if (allTime && (shelfId == ShelfSpec.TRENDING_LIBRARY || genre != null)) "$shelfId|top" else shelfId
         var last: Pass? = null
         for (tier in 0..5) {
-            val p = pass(base, spec, ctx, trendingOrdered, trendMode, tier)
+            val p = pass(base, spec, ctx, trendingOrdered, trendMode, tier, seedId)
             last = p
             if (p.picks.size >= need) break
         }
@@ -60,7 +65,15 @@ object SmartMixEngine {
         var out: List<Candidate> = p.picks.map { p.items[it].c }
         var fallback = "none"
         var hidden = false
-        if (out.isEmpty() && shelfId != ShelfSpec.LANG_PREF) {
+        if (genre != null) {
+            // A genre shelf has no fallback: fewer than 8 titles and it is not shown.
+            if (out.size < GenreShelves.MIN_TITLES) { out = emptyList(); hidden = true }
+        } else if (spec.isContextRow) {
+            // Fresh, Movie Night, Binge and the moods have no fallback: a row that needed poster-less or CAM-only titles, or has too few, is not shown. A mood also needs its floor (1.5% of the library, at least 8).
+            val showable = base.count { !it.camOnly && it.hasPoster }
+            val floor = if (spec.moodKeys != null) HomeMoods.floor(if (ctx.libraryTotal > 0) ctx.libraryTotal else 0) else ShelfSpec.CONTEXT_MIN
+            if (p.tier >= Relax.ARTWORK || p.picks.size < ShelfSpec.CONTEXT_MIN || showable < floor) { out = emptyList(); hidden = true }
+        } else if (out.isEmpty() && shelfId != ShelfSpec.LANG_PREF) {
             var rec = base.filter { it.hasPoster || it.hasBackdrop }.sortedWith { a, b -> addedThenId(a, b) }
             fallback = "recentlyAdded"
             if (rec.isEmpty()) { rec = base.sortedWith { a, b -> compareUtf8(a.id, b.id) }; fallback = "plainLibrary" }
@@ -71,10 +84,21 @@ object SmartMixEngine {
         val d = diag {
             copy(camOnly = c[C_CAM], noArtwork = c[C_ART], watched = c[C_WATCHED], lang = c[C_LANG], notTrending = c[C_NOTREND],
                 pool = p.items.size, drawn = p.picks.size, tier = p.tier, tiny = p.tiny, hidden = hidden, fallback = fallback, diversityRelaxed = p.diversityRelaxed,
-                trendMode = trendMode,
-                caption = when (shelfId) { ShelfSpec.TOP_WEEK -> if (trendingOrdered) "trendingTMDB" else "mostWatchedHere"; ShelfSpec.TRENDING_LIBRARY -> if (trendMode) "trendingTMDB" else "mostWatchedHere"; else -> "" })
+                trendMode = trendMode || (genre != null && p.ordered),
+                caption = if (spec.isContextRow) "" else if (genre != null) (if (hidden) "" else if (p.ordered) "trendingTMDB" else "mostWatchedHere") else when (shelfId) { ShelfSpec.TOP_WEEK -> if (trendingOrdered) "trendingTMDB" else "mostWatchedHere"; ShelfSpec.TRENDING_LIBRARY -> if (trendMode) "trendingTMDB" else "mostWatchedHere"; else -> "" })
         }
         return ShelfResult(shelfId, out.map { it.id }, if (shelfId == ShelfSpec.HERO) out.map { if (it.hasBackdrop) "backdrop" else "poster" } else emptyList(), d)
+    }
+
+    /** Eligibility of the Home v2 rows (section 10.2) at the candidate level: kind, freshness, quality and the rating floor (unrated titles pass), moods by their genre keys. */
+    private fun contextMatch(spec: ShelfSpec, c: Candidate): Boolean {
+        val tenths = Features.parseTenths(c.ratingText)
+        return when (spec.id) {
+            ShelfSpec.FRESH -> c.addedDays != null && c.addedDays <= ShelfSpec.FRESH_DAYS && (tenths == null || tenths >= 55)
+            ShelfSpec.MOVIE_NIGHT -> c.kind == Kind.MOVIE && c.qualityRank >= 2 && (tenths == null || tenths >= 65)
+            ShelfSpec.BINGE -> c.kind == Kind.SERIES && (tenths == null || tenths >= 65)
+            else -> spec.moodKeys?.let { keys -> GenreShelves.keysFor(c.genres, c.kind == Kind.SERIES).any { it in keys } } ?: true
+        }
     }
 
     private fun addedThenId(a: Candidate, b: Candidate): Int {
@@ -83,7 +107,7 @@ object SmartMixEngine {
         return if (x != y) x.compareTo(y) else compareUtf8(a.id, b.id)
     }
 
-    private fun pass(base: List<Candidate>, spec: ShelfSpec, ctx: Context, trendingOrdered: Boolean, trendMode: Boolean, tier: Int): Pass {
+    private fun pass(base: List<Candidate>, spec: ShelfSpec, ctx: Context, trendingOrdered: Boolean, trendMode: Boolean, tier: Int, seedId: String): Pass {
         val id = spec.id
         val counts = IntArray(5)
         val elig = ArrayList<Candidate>(base.size)
@@ -130,13 +154,30 @@ object SmartMixEngine {
             }
             forced = order.take(spec.size).toIntArray()
         }
-        val k = minOf(spec.size, items.size)
+        val k = minOf(spec.size + maxOf(0, ctx.oversample), items.size)
         if (k == 0) return Pass(tier, counts, tiny, items, emptyList(), false)
-        val (picks, dr) = draw(items, k, spec, ctx, eff, forced)
-        return Pass(tier, counts, tiny, items, picks, dr)
+        val rng = SmartMixSeed.rng(ctx.profileId, seedId, ctx.dayKey, ctx.refreshCounter)
+        // A genre shelf follows a TMDB list when at least 6 of its titles are on it: ranks in the same bucket of 3 are shuffled by the day's stream, the buckets keep their order.
+        var ordered = false
+        if (spec.genre != null) {
+            val matched = items.indices.filter { items[it].c.trendingRank != null }.sortedWith { a, b ->
+                val ra = items[a].c.trendingRank!!; val rb = items[b].c.trendingRank!!
+                if (ra != rb) ra.compareTo(rb) else compareUtf8(items[a].c.id, items[b].c.id)
+            }
+            if (matched.size >= ShelfSpec.TRENDING_MIN_MATCHES) {
+                ordered = true
+                val drawn = HashMap<Int, ULong>(); for (i in matched) drawn[i] = rng.next()
+                forced = matched.sortedWith { a, b ->
+                    val ba = (items[a].c.trendingRank!! - 1) / GenreShelves.RANK_BUCKET; val bb = (items[b].c.trendingRank!! - 1) / GenreShelves.RANK_BUCKET
+                    if (ba != bb) ba.compareTo(bb) else if (drawn[a] != drawn[b]) drawn[a]!!.compareTo(drawn[b]!!) else compareUtf8(items[a].c.id, items[b].c.id)
+                }.take(spec.size).toIntArray()
+            }
+        }
+        val (picks, dr) = draw(items, k, spec, ctx, eff, forced, rng)
+        return Pass(tier, counts, tiny, items, picks, dr, ordered)
     }
 
-    private fun draw(items: List<Scored>, k: Int, spec: ShelfSpec, ctx: Context, relax: Int, forced: IntArray): Pair<List<Int>, Boolean> {
+    private fun draw(items: List<Scored>, k: Int, spec: ShelfSpec, ctx: Context, relax: Int, forced: IntArray, rng: Rng64): Pair<List<Int>, Boolean> {
         val size = items.size
         val intern = HashMap<String, Int>()
         fun code(s: String?): Int = if (s == null) -1 else intern.getOrPut(s) { intern.size }
@@ -149,7 +190,6 @@ object SmartMixEngine {
         }
         val div = relax < 2
         val langRule = spec.id != ShelfSpec.LANG_PREF
-        val rng = SmartMixSeed.rng(ctx.profileId, spec.id, ctx.dayKey, ctx.refreshCounter)
         val picks = ArrayList<Int>(k)
         for (i in forced) { w[i] = 0; picks.add(i) }
         var diagRelaxed = false
@@ -162,7 +202,7 @@ object SmartMixEngine {
                 if (w[i] <= 0) continue
                 if (div && np >= 2) {
                     if (franchise[i] >= 0 && franchise[a] == franchise[i] && franchise[b] == franchise[i]) continue
-                    if (genre[i] >= 0 && genre[a] == genre[i] && genre[b] == genre[i]) continue
+                    if (spec.genre == null && genre[i] >= 0 && genre[a] == genre[i] && genre[b] == genre[i]) continue
                     if (spec.mixesKinds && kind[a] == kind[i] && kind[b] == kind[i]) continue
                     if (langRule && lang[i] >= 0 && lang[a] == lang[i] && lang[b] == lang[i]) continue
                 }

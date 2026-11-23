@@ -200,7 +200,7 @@ class DownloadService : Service() {
 
     private fun show(items: List<SavedTitle>) {
         val active = items.filter { it.state == SaveState.DOWNLOADING || it.state == SaveState.QUEUED }
-        if (active.isEmpty()) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return }
+        if (active.isEmpty()) { if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE) else @Suppress("DEPRECATION") stopForeground(true); stopSelf(); return }
         val current = active.firstOrNull { it.state == SaveState.DOWNLOADING } ?: active.first()
         val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CHANNEL) else @Suppress("DEPRECATION") Notification.Builder(this)
         val n = b.setSmallIcon(android.R.drawable.stat_sys_download).setContentTitle(if (active.size > 1) "Saving ${active.size} titles" else "Saving ${current.title}")

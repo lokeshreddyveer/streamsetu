@@ -102,7 +102,7 @@ object FixtureRunner {
             st["patch"]?.jsonObject?.let { p -> l = lib.map { c -> p[c.id]?.let { applyPatch(c, it.jsonObject) } ?: c } }
             val profile = st["profile"].str()!!
             val src = FakeCandidateSource(l, Signals(st["preferredLang"].str(), affinity(st["affinity"]?.jsonObject)))
-            val svc = SmartMixService(src, store, trendingView(st["tmdb"]?.jsonObject, now), { now }, st["poolCap"].int())
+            val svc = SmartMixService(src, store, trendingView(st["tmdb"]?.jsonObject, now), clock = { now }, poolCap = st["poolCap"].int())
             val counter = st["refreshCounter"].int() ?: 0
             val day = st["dayKey"].str()!!
             val ids = LinkedHashMap<String, List<String>>(); val art = HashMap<String, List<String>>(); val diag = HashMap<String, ShelfDiagnostics>()

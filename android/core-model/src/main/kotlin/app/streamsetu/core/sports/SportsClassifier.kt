@@ -1,6 +1,5 @@
 package app.streamsetu.core.sports
 
-import java.text.Normalizer
 
 /**
  * Decides, from a guide programme and its channel alone, whether it is a real sports event, and what shape: two sides, a race session, a round of a tournament, a fight card, or (only when the
@@ -330,7 +329,7 @@ object SportsClassifier {
 
     // ---- text
 
-    fun fold(s: String): String = Normalizer.normalize(s, Normalizer.Form.NFD).replace(Regex("\\p{Mn}+"), "").lowercase()
+    fun fold(s: String): String = app.streamsetu.core.model.TextFold.accents(s)
     private fun collapse(s: String) = s.split(' ', '\t', '\n').filter { it.isNotEmpty() }.joinToString(" ").trim { it in " -–—:|·" }
     private fun tokens(s: String) = s.split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotEmpty() }
 

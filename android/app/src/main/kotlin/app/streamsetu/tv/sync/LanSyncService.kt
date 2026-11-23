@@ -19,7 +19,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
-import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -80,7 +80,7 @@ class PrefsTrust(private val context: Context) : LanTrust {
  */
 class LanSyncService(private val context: Context, private val scope: CoroutineScope, private val db: AppDatabase, private val onApplied: () -> Unit = {}) {
     data class Found(val id: String, val name: String, val host: InetAddress, val port: Int)
-    class Prompt(val digits: String, val peerName: String, internal val answer: CompletableFuture<Boolean>)
+    class Prompt(val digits: String, val peerName: String, internal val answer: Reply<Boolean>)
 
     private val prefs get() = context.getSharedPreferences("lan", Context.MODE_PRIVATE)
     private val trust = PrefsTrust(context)
@@ -199,7 +199,7 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
     @Suppress("DEPRECATION")
     private suspend fun resolve(i: NsdServiceInfo) {
         resolving.lock()
-        val done = CompletableFuture<NsdServiceInfo?>()
+        val done = Reply<NsdServiceInfo?>()
         try {
             nsd.resolveService(i, object : NsdManager.ResolveListener {
                 override fun onResolveFailed(s: NsdServiceInfo, code: Int) { done.complete(null) }
@@ -275,7 +275,7 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
 
     /** Shows the six digits and waits (up to five minutes) for the person to say whether they match the other device's. */
     private fun ask(digits: String, peerName: String): Boolean {
-        val answer = CompletableFuture<Boolean>()
+        val answer = Reply<Boolean>()
         _prompt.value?.answer?.complete(false)
         _prompt.value = Prompt(digits, peerName, answer)
         return runCatching { answer.get(5, TimeUnit.MINUTES) }.getOrDefault(false)
@@ -284,4 +284,13 @@ class LanSyncService(private val context: Context, private val scope: CoroutineS
     fun answer(matches: Boolean) { _prompt.value?.answer?.complete(matches); _prompt.value = null }
 
     companion object { const val TYPE = "_streamsetu-sync._tcp." }
+}
+
+/** A value one thread waits for and another delivers once (CompletableFuture needs Android 7; this app supports Android 5.1). The first [complete] wins. */
+class Reply<T> {
+    private val latch = CountDownLatch(1)
+    @Volatile private var value: T? = null
+    @Synchronized fun complete(v: T): Boolean { if (latch.count == 0L) return false; value = v; latch.countDown(); return true }
+    /** The delivered value; throws [java.util.concurrent.TimeoutException] when none came in time. */
+    @Suppress("UNCHECKED_CAST") fun get(timeout: Long, unit: TimeUnit): T { if (!latch.await(timeout, unit)) throw java.util.concurrent.TimeoutException(); return value as T }
 }

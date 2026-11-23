@@ -162,7 +162,7 @@ class MultiviewSession(
         scope.launch {
             val limit = capability.usableLimit()
             if (tiles.any { it.entry.channelId == entry.channelId }) { sessionMessage = "That channel is already in the Multi-View."; publish(); return@launch }
-            if (tiles.size >= limit) { sessionMessage = "This device can show $limit view${if (limit == 1) "" else "s"} at once."; publish(); return@launch }
+            if (tiles.size >= limit) { sessionMessage = "This device can show ${app.streamsetu.core.model.Plurals.format("view", limit)} at once."; publish(); return@launch }
             val profile = deps.profileId; val gen = generation
             val ch = deps.channel(entry.channelId)
             val ok = ch != null && ch.sourceId == entry.sourceId && SportsAuthorizer.refusal(deps, ch, profile) == null && deps.profileId == profile

@@ -3,6 +3,7 @@ package app.streamsetu.tv.ui.screens.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.streamsetu.core.data.repo.UserRepository
+import app.streamsetu.core.data.smartmix.HomeRowNames
 import app.streamsetu.core.model.*
 import app.streamsetu.core.sync.upcoming
 import app.streamsetu.tv.AppContainer
@@ -157,7 +158,9 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Everything watched lately, whatever it is, newest first (the "Recently Watched" shortcut). */
-    val recentWatched: StateFlow<List<FavItem>> = combine(c.user.history(120), idsAndRestrictions) { log, lib -> log to lib }.mapLatest { (log, lib) ->
+    val recentWatched: StateFlow<List<FavItem>> = combine(c.user.history(120), idsAndRestrictions) { log, lib -> log to lib }.mapLatest { (log, lib) -> watchedFrom(log, lib) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private suspend fun watchedFrom(log: List<app.streamsetu.core.data.db.WatchLogEntity>, lib: List<String>): List<FavItem> {
         val seen = HashSet<String>(); val out = ArrayList<FavItem>()
         val snap = c.folders.visibility.snapshot(app.streamsetu.core.data.repo.Visibility.Surface.HISTORY)          // display only: the history itself is untouched and the entries return when unlocked
         for (h in log) {
@@ -170,8 +173,8 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
             if (item != null && seen.add(item.id)) out += item
             if (out.size >= 60) break
         }
-        out
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        return out
+    }
 
     /** The row "For You": titles like the last few things watched, and the names of those, for the line under the heading. */
     data class ForYou(val items: List<FavItem>, val because: String)
@@ -229,7 +232,30 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
 
     // ---- Smart Mix shelves (Top This Week, Trending in Your Library, Because You Watched, Rediscover, preferred language) ----
     /** One recommendation row: its heading, the line under it, and the titles (each title once, however many copies the library holds). */
-    data class MixShelf(val id: String, val title: String, val caption: String?, val items: List<FavItem>)
+    data class MixShelf(val id: String, val title: String, val caption: String?, val items: List<FavItem>, val view: app.streamsetu.core.data.smartmix.ShelfView? = null, val genreKey: String? = null,
+        /** "Because You Watched": the title of the seed, written after the (translated) heading. */ val titleSuffix: String? = null,
+        /** Collections: the franchise name and the number of its titles, by the id of the lead title shown as the tile. */ val tiles: Map<String, CollectionInfo> = emptyMap())
+    data class CollectionInfo(val name: String, val count: Int)
+    /** One entry of the "Browse by genre" row. */
+    data class BrowseGenre(val key: String, val name: String, val count: Int)
+    private val _genreBrowse = MutableStateFlow<List<BrowseGenre>>(emptyList())
+    val genreBrowse: StateFlow<List<BrowseGenre>> = _genreBrowse
+    /** The titles each row of the last composed page holds (a view switch skips titles that are on other rows). */
+    @Volatile private var usedByRow: Map<String, List<String>> = emptyMap()
+    private val listsMutex = kotlinx.coroutines.sync.Mutex()
+
+    private val switcher = ShelfViewSwitcher(viewModelScope, { id, v -> c.shelfModes.set(c.profiles.activeId.value, id, v) }) { id, v ->
+        val profile = c.profiles.activeId.value
+        val built = runCatching { c.smartMix.shelf(profile, id, v) }.getOrNull() ?: return@ShelfViewSwitcher null
+        if (built.result.hidden || built.result.ids.isEmpty()) null else {
+            // One title per screen holds for a single-row rebuild too: titles on the other rows are skipped when enough remain (section 10.4).
+            val ordered = built.result.diagnostics.caption == "trendingTMDB"
+            val ids = app.streamsetu.core.data.smartmix.HomeCompose.single(id, built.picks, usedByRow.filterKeys { it != id }.values.flatten().toSet(), ordered).map { it.id }
+            shelfFrom(id, ids, ordered, v, false, c.smartMix.source.signals(profile).preferredLang)
+        }
+    }
+    /** The two segments of a shelf: this person's choice is kept for this profile and shelf. Only this shelf changes (see [ShelfViewSwitcher]): no Home rebuild, no skeleton, no scroll change. */
+    fun setShelfView(shelfId: String, view: app.streamsetu.core.data.smartmix.ShelfView) = switcher.switch(mix.value.firstOrNull { it.id == shelfId }, shelfId, view)
 
     /** Bumped by "Shuffle recommendations" and by the things that change what may be recommended or watched. Never starts a sync. */
     private val mixTick = MutableStateFlow(0)
@@ -239,35 +265,81 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
         viewModelScope.launch { app.streamsetu.core.data.repo.smartmix.IdentityStore.changes.collect { ch -> c.smartMix.invalidate(); if (ch.removed > 0 || ch.bulk) mixWatch.emit(Unit) } }
         viewModelScope.launch { mixWatch.collect { mixTick.value = mixTick.value + 1 } }
     }
-    val mix: StateFlow<List<MixShelf>> = combine(c.profiles.activeId, c.library.sourceIds, c.folders.restrictRev, mixTick) { p, ids, _, _ -> p to ids }.mapLatest { (profile, ids) ->
-        if (ids.isEmpty()) return@mapLatest emptyList()
+    private val _mixLoading = MutableStateFlow(true)
+    /** True from the start of a Home build until its rows are ready (and nothing is shown yet): Home draws skeleton rows of the same geometry meanwhile. */
+    val mixLoading: StateFlow<Boolean> = _mixLoading
+    /** The last 3 movies and 2 series watched (newest first), what "Because You Watched" is judged against. */
+    @Volatile private var becauseSeeds: List<app.streamsetu.core.data.repo.Similarity.Item> = emptyList()
+    @Volatile private var collectionTiles: Map<String, app.streamsetu.core.data.smartmix.HomeCollections.Group> = emptyMap()
+    private val baseMix: StateFlow<List<MixShelf>> = combine(c.profiles.activeId, c.library.sourceIds, c.folders.restrictRev, mixTick) { p, ids, _, _ -> p to ids }.mapLatest { (profile, ids) ->
+        switcher.reset()
+        if (ids.isEmpty()) { _mixLoading.value = false; return@mapLatest emptyList() }
+        _mixLoading.value = true
         titlesReady()
         c.smartMix.invalidate()
-        val built = runCatching { c.smartMix.home(profile) }.getOrDefault(emptyList())
-        val wanted = built.filter { it.result.shelfId != app.streamsetu.core.data.smartmix.ShelfSpec.HERO }
-        val all = wanted.flatMap { it.result.ids }.distinct()
+        val kids = app.streamsetu.tv.KidsLock.on
+        // Home v2: every engine row built, composed (a title once per screen), ordered by the day's context (weekday and hour of the device clock).
+        val v2 = runCatching { c.smartMix.homeV2(profile, kids) { id -> c.shelfModes.chosen(profile, id) } }.getOrNull()
+        val built = v2?.built.orEmpty()
+        val genres = built.filter { it.result.shelfId.startsWith(app.streamsetu.core.data.smartmix.GenreShelves.PREFIX) }
+        _genreBrowse.value = v2?.browse.orEmpty().map { (g, n) -> BrowseGenre(g.key, HomeRowNames.GENRES[g.key] ?: g.name, n) }
+        val rows = v2?.rows.orEmpty()
+        collectionTiles = v2?.collections.orEmpty()
+        becauseSeeds = runCatching { seedsFor(ids) }.getOrDefault(emptyList())
+        // The languages this library is mostly in (names only) are kept so Settings pickers and example searches can offer them first.
+        runCatching { app.streamsetu.core.data.repo.LibraryLanguageHint.remember(c.context, built.flatMap { it.picks }.mapNotNull { it.lang }.groupingBy { it.lowercase() }.eachCount().entries.sortedByDescending { it.value }.map { e -> e.key.replaceFirstChar { ch -> ch.uppercase() } }) }
+        val all = rows.flatMap { it.ids }.distinct()
         val movies = c.catalog.moviesByIds(all).associateBy { it.id }
         val series = c.catalog.seriesByIds(all).associateBy { it.id }
         val lang = c.smartMix.source.signals(profile).preferredLang
-        val out = wanted.mapNotNull { b ->
-            val all = b.result.ids.mapNotNull { id -> movies[id]?.let { FavItem.Mv(it) } ?: series[id]?.let { FavItem.Sr(it) } }
-            val items = withPosterFirst(all)
-            if (items.isEmpty() || !hasPoster(items.first())) return@mapNotNull null          // a row never starts with a blank tile
-            val (title, caption: String?) = when (b.result.shelfId) {
-                app.streamsetu.core.data.smartmix.ShelfSpec.TOP_WEEK -> "Top This Week" to null
-                app.streamsetu.core.data.smartmix.ShelfSpec.TRENDING_LIBRARY -> "Trending in Your Library" to null
-                app.streamsetu.core.data.smartmix.ShelfSpec.FOR_YOU -> "Because You Watched" to null
-                app.streamsetu.core.data.smartmix.ShelfSpec.REDISCOVER -> "Rediscover" to null
-                app.streamsetu.core.data.smartmix.ShelfSpec.LANG_PREF -> "In ${lang?.replaceFirstChar { it.uppercase() } ?: "your language"}" to null
-                else -> return@mapNotNull null
-            }
-            MixShelf(b.result.shelfId, title, caption, items)
-        }
+        usedByRow = rows.associate { it.id to it.ids }
+        val out = ArrayList<MixShelf>()
+        for (r in rows) shelfFrom(r.id, r.ids, r.ordered, r.view, r.quietWeek, lang, movies, series)?.let { out += it.also(switcher::remember) }
+        // This week's lists for the shelves on screen (both views) are fetched quietly after the page has drawn; a fresh list is used the next time Home builds.
+        val names = (genres.flatMap { b -> listOf(app.streamsetu.core.data.smartmix.ShelfView.WEEKLY, app.streamsetu.core.data.smartmix.ShelfView.ALL_TIME).map { app.streamsetu.core.data.smartmix.GenreShelves.listNames(b.result.shelfId, it).first } } + "top").distinct()
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { if (listsMutex.tryLock()) try { var any = false; for (n in names) if (c.tmdbLists.isStale(n) && c.tmdbLists.refresh(n)) any = true; if (any) mixTick.value = mixTick.value + 1 } finally { listsMutex.unlock() } }
         // The rows are on their way to the screen: this load counts as shown (repeat suppression moves on), only once per day and counter.
         built.forEach { b -> runCatching { c.smartMix.committed(profile, b) } }
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) { runCatching { switcher.warm(out) } }          // the other view of each switchable shelf, quietly, after Home has drawn
+        _mixLoading.value = false
         out
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** The last 3 movies and 2 series watched, as the similarity code reads them (hidden folders left out, like the For You seeds). */
+    private suspend fun seedsFor(ids: List<String>): List<app.streamsetu.core.data.repo.Similarity.Item> {
+        val seedSnap = c.folders.visibility.snapshot(app.streamsetu.core.data.repo.Visibility.Surface.SEARCH)
+        val watched = watchedFrom(c.user.history(120).first(), ids)
+        val movies = watched.filterIsInstance<FavItem.Mv>().filter { seedSnap.movieOk(it.movie) }.take(app.streamsetu.core.data.smartmix.HomeBecause.SEED_MOVIES).map { it.movie.let { m -> app.streamsetu.core.data.repo.Similarity.Item(m.id, m.title, m.year, app.streamsetu.core.data.repo.DisplayRating.credibleProvider(m.rating), m.plot, m.categoryId) } }
+        val series = watched.filterIsInstance<FavItem.Sr>().filter { seedSnap.seriesOk(it.series) }.take(app.streamsetu.core.data.smartmix.HomeBecause.SEED_SERIES).map { it.series.let { m -> app.streamsetu.core.data.repo.Similarity.Item(m.id, m.title, m.year, app.streamsetu.core.data.repo.DisplayRating.credibleProvider(m.rating), m.plot, m.categoryId) } }
+        val order = watched.map { it.id }
+        return (movies + series).sortedBy { order.indexOf(it.id) }
+    }
+    /** The shelves on Home: the base list with any shelf whose view was switched replaced in place. */
+    val mix: StateFlow<List<MixShelf>> = combine(baseMix, switcher.overrides) { base, over -> switcher.apply(base, over) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** One shelf as Home shows it: its title, its one-line subtitle, its titles (each once, a picture first). Null when it has nothing to show. [ids] are the titles composition left on this row. */
+    private suspend fun shelfFrom(id: String, ids: List<String>, ordered: Boolean, shelfView: app.streamsetu.core.data.smartmix.ShelfView?, quiet: Boolean, lang: String?, movies0: Map<String, Movie>? = null, series0: Map<String, Series>? = null): MixShelf? {
+        val movies = movies0 ?: c.catalog.moviesByIds(ids).associateBy { it.id }
+        val series = series0 ?: c.catalog.seriesByIds(ids).associateBy { it.id }
+        val rows = ids.mapNotNull { x -> movies[x]?.let { FavItem.Mv(it) } ?: series[x]?.let { FavItem.Sr(it) } }
+        var items = withPosterFirst(rows)
+        // "Because You Watched <title>" only when a seed is linked to at least 3 titles of this row; those lead the row. Otherwise "Picked for You".
+        val link = if (id == app.streamsetu.core.data.smartmix.ShelfSpec.FOR_YOU) app.streamsetu.core.data.smartmix.HomeBecause.choose(becauseSeeds, items.mapNotNull(::similarityItem)) else null
+        if (link != null) { val order = app.streamsetu.core.data.smartmix.HomeBecause.lead(items.map { it.id }, link); items = items.sortedBy { order.indexOf(it.id) } }
+        if (items.isEmpty() || !hasPoster(items.first())) return null          // a row never starts with a blank tile
+        val gd = app.streamsetu.core.data.smartmix.GenreTable.ofShelf(id)
+        val title = (if (link != null) HomeRowNames.BECAUSE_YOU_WATCHED else HomeRowNames.title(id, lang)) ?: return null
+        val tiles = if (id == app.streamsetu.core.data.smartmix.ShelfSpec.COLLECTIONS) items.mapNotNull { f -> collectionTiles[f.id]?.let { g -> f.id to CollectionInfo(g.name, g.members.size) } }.toMap() else emptyMap()
+        val view = if (gd != null || id == app.streamsetu.core.data.smartmix.ShelfSpec.TRENDING_LIBRARY) shelfView else null
+        val caption = if (view != null) (if (quiet && view == app.streamsetu.core.data.smartmix.ShelfView.ALL_TIME) HomeRowNames.QUIET_WEEK else app.streamsetu.tv.ui.components.shelfSubtitle(view, ordered)) else HomeRowNames.subtitle(id, ordered)
+        return MixShelf(id, title, caption, items, view, gd?.key, link?.seedTitle, tiles)
+    }
+
+    private fun similarityItem(f: FavItem): app.streamsetu.core.data.repo.Similarity.Item? = when (f) {
+        is FavItem.Mv -> f.movie.let { app.streamsetu.core.data.repo.Similarity.Item(it.id, it.title, it.year, app.streamsetu.core.data.repo.DisplayRating.credibleProvider(it.rating), it.plot, it.categoryId) }
+        is FavItem.Sr -> f.series.let { app.streamsetu.core.data.repo.Similarity.Item(it.id, it.title, it.year, app.streamsetu.core.data.repo.DisplayRating.credibleProvider(it.rating), it.plot, it.categoryId) }
+        is FavItem.Ch -> null
+    }
     private fun hasPoster(f: FavItem) = when (f) { is FavItem.Mv -> !f.movie.posterUrl.isNullOrBlank(); is FavItem.Sr -> !f.series.posterUrl.isNullOrBlank(); is FavItem.Ch -> true }
     /** Titles with a picture first, in their order; those without one only when there are too few with one to fill the row (and then last). */
     private fun withPosterFirst(items: List<FavItem>): List<FavItem> {
@@ -326,7 +398,7 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     }
 
     /** The last removal from Continue Watching, held in memory for about five seconds so it can be undone exactly; after that it is gone. */
-    data class ContinueUndo(val message: String, val previous: List<Pair<String, Long?>>, val stamp: Long)
+    data class ContinueUndo(val message: String, val previous: List<Pair<String, Long?>>, val stamp: Long, val custom: (suspend () -> Unit)? = null)
     private val _continueUndo = kotlinx.coroutines.flow.MutableStateFlow<ContinueUndo?>(null)
     val continueUndo: kotlinx.coroutines.flow.StateFlow<ContinueUndo?> = _continueUndo
 
@@ -334,9 +406,27 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     fun clearContinue() = viewModelScope.launch { dismissFromRecommendations(continueWatching.value.map { it.playable.id }); offerUndo("Continue Watching cleared", c.user.hideAllFromContinue(continueWatching.value.map { it.progress.itemId })) }          // the new-episode cards in the row too
 
     /** Puts back what the last removal took away, exactly as it was. */
-    fun undoContinue() = viewModelScope.launch { val u = _continueUndo.value ?: return@launch; _continueUndo.value = null; c.user.restoreContinueMarkers(u.previous); val profile = c.profiles.activeId.value; lastDismissed.forEach { c.smartMixState.undismiss(profile, it) }; lastDismissed = emptyList(); c.smartMix.invalidate(); mixTick.value = mixTick.value + 1 }
+    fun undoContinue() = viewModelScope.launch { val u = _continueUndo.value ?: return@launch; _continueUndo.value = null; u.custom?.let { it(); return@launch }; c.user.restoreContinueMarkers(u.previous); val profile = c.profiles.activeId.value; lastDismissed.forEach { c.smartMixState.undismiss(profile, it) }; lastDismissed = emptyList(); c.smartMix.invalidate(); mixTick.value = mixTick.value + 1 }
 
-    fun dismissContinueUndo() { _continueUndo.value = null }
+    /**
+     * "Don't recommend this": a marker of its own (per profile, by identity) is written and nothing else: progress, watched marks, favourites and history stay. Nothing is written for a title in a
+     * restricted folder. Undo takes the marker away.
+     */
+    fun dontRecommend(t: HomeTarget) = viewModelScope.launch {
+        val profile = c.profiles.activeId.value
+        val (id, kind, title, cat, year) = when (t) {
+            is HomeTarget.Film -> DismissArgs(t.movie.id, "MOVIE", t.movie.title, t.movie.categoryId, t.movie.year)
+            is HomeTarget.Show -> DismissArgs(t.series.id, "SERIES", t.series.title, t.series.categoryId, t.series.year)
+            is HomeTarget.Episode -> DismissArgs(t.series.id, "SERIES", t.series.title, t.series.categoryId, t.series.year)
+            is HomeTarget.Live -> return@launch
+        }
+        if (!c.smartMixState.dismiss(profile, kind, id, title, cat, year)) return@launch
+        c.smartMix.invalidate(); mixTick.value = mixTick.value + 1
+        val u = ContinueUndo("Won't recommend “$title” any more", listOf(id to null), System.nanoTime()) { c.smartMixState.undismiss(profile, id); c.smartMix.invalidate(); mixTick.value = mixTick.value + 1 }
+        _continueUndo.value = u
+        viewModelScope.launch { kotlinx.coroutines.delay(UNDO_MS); if (_continueUndo.value === u) _continueUndo.value = null }
+    }
+    private data class DismissArgs(val id: String, val kind: String, val title: String, val categoryId: String?, val year: Int?)
 
     private fun offerUndo(message: String, previous: List<Pair<String, Long?>>) {
         if (previous.isEmpty()) return
@@ -367,8 +457,6 @@ class HomeViewModel @Inject constructor(private val c: AppContainer) : ViewModel
     }
     suspend fun hasGuide(ch: Channel): Boolean = runCatching { c.epg.resolve(listOf(ch))[ch.id] != null }.getOrDefault(false)
     suspend fun progressOf(id: String): WatchProgress? = c.user.progress(id)
-
-    fun nowPlayingCatalogReady() = c.library.sourceIds.value.isNotEmpty()
 
     private fun remaining(p: WatchProgress): String {
         val left = ((p.durationMs - p.positionMs) / 60000).toInt().coerceAtLeast(0)

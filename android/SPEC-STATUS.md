@@ -35,7 +35,7 @@ Anything not listed here is not claimed.
 Library chooser and setup (Xtream, M3U, local file and folder, Plex, Jellyfin, Emby, Stalker, tuners, WebDAV), combined libraries, Home, Movies, Series, details pages, Live TV with
 preview, TV Guide, global and section search, favorites, Watch Later and collections, folder arrangement and locks with PIN, new-episode detection, channel manager, catch-up and
 start-over, scheduled recordings, saved titles, reminders, statistics, backup and restore, profiles with kids limits, Wi-Fi sync between devices, phone-assisted setup, background
-sync, screenshots, crash reports, update check, a Folders view of Movies, Series and Live TV, Smart Mix recommendations on Home, a cast row and weekly trending (with your own TMDB key), refresh-rate matching, audio and subtitle delay, Trakt, debrid links, your own AI, and the touch layout for phones and tablets.
+sync, screenshots, crash reports, update check, a Folders view of Movies, Series and Live TV, Smart Mix recommendations on Home, a cast row, automatic artwork matching and weekly trending (the details service, with the built-in key or your own), refresh-rate matching, audio and subtitle delay, the watch-history service, linked-account links, your own AI, and the touch layout for phones and tablets.
 
 ## Not built or not working
 

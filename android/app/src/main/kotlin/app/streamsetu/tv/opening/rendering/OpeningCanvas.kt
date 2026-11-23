@@ -203,30 +203,3 @@ private fun noiseTile(n: Int, seed: Int, alpha: Float): ImageBitmap {
     bmp.setPixels(px, 0, n, 0, 0, n, n)
     return bmp.asImageBitmap()
 }
-
-/**
- * The ribbon drawing on, on its own: a small reusable piece of the opening's language, for a loading state or entering the player. Still by default; [animated] draws it on
- * again and again while it is on screen.
- */
-@Composable
-fun RibbonDraw(modifier: Modifier = Modifier, animated: Boolean = false, color: Color = OpeningColors.teal, highlight: Color = OpeningColors.iceTeal) {
-    val geo = remember { TuneInGeometry() }
-    val t = if (animated) rememberInfiniteTransition(label = "ribbon").animateFloat(0f, 1f, infiniteRepeatable(tween(1600, easing = LinearEasing)), label = "t") else null
-    Spacer(modifier.drawWithCache {
-        val bounds = geo.frontPath.getBounds()
-        val s = minOf(size.width / bounds.width, size.height / bounds.height) * 0.85f
-        val ox = size.width / 2f - bounds.center.x * s; val oy = size.height / 2f - bounds.center.y * s
-        val band = Stroke(40f, cap = StrokeCap.Round); val line = Stroke(12f, cap = StrokeCap.Round)
-        val path = Path()
-        onDrawBehind {
-            val p = t?.value ?: 1f
-            val draw = app.streamsetu.tv.opening.domain.Easing.cubicInOut((p / 0.75f).coerceAtMost(1f))
-            val fade = if (p > 0.85f) 1f - (p - 0.85f) / 0.15f else 1f
-            withTransform({ translate(ox, oy); scale(s, s, Offset.Zero) }) {
-                path.rewind(); geo.frontMeasure.getSegment(0f, geo.frontMeasure.length * draw, path, true)
-                drawPath(path, color, alpha = fade, style = band)
-                drawPath(path, highlight, alpha = 0.7f * fade, style = line)
-            }
-        }
-    })
-}

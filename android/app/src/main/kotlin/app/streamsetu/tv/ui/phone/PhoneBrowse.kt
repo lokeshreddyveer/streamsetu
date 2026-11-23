@@ -37,7 +37,6 @@ import app.streamsetu.tv.ui.components.Label
 import app.streamsetu.tv.ui.components.Loading
 import app.streamsetu.tv.ui.screens.live.LiveSectionViewModel
 import app.streamsetu.tv.ui.screens.section.SectionViewModel
-import app.streamsetu.tv.ui.screens.section.ratingBadge
 import app.streamsetu.tv.ui.theme.Tokens
 
 private val shortcuts = listOf<Pair<String, Browse>>("All" to Browse.All, "Recently added" to Browse.RecentlyAdded, "Favorites" to Browse.Favorites, "Watch Later" to Browse.WatchLater, "Continue" to Browse.Continue, "Recent" to Browse.Recent)
@@ -53,6 +52,8 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
     val progress by vm.progress.collectAsStateWithLifecycle()
     val newSeries by vm.newSeries.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<Pair<String, List<SheetItem>>?>(null) }
+    var tile by remember { mutableStateOf<app.streamsetu.tv.ui.screens.home.HomeTarget?>(null) }
+    val homeVm: app.streamsetu.tv.ui.screens.home.HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     var folderSheet by remember { mutableStateOf(false) }
     val grid = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     LaunchedEffect(grid) { snapshotFlow { grid.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }.collect { last -> if (last >= (vm.cards.value?.size ?: 0) - 60) vm.loadMore() } }
@@ -100,19 +101,9 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
                         card.title, card.posterUrl, { card.movie?.let { nav.open(Overlay.MovieDetail(it)) } ?: card.series?.let { nav.open(Overlay.SeriesDetail(it)) } },
                         itemId = card.id,
                         subtitle = card.year?.toString(),
-                        badge = listOfNotNull(if (card.id in favs) "♥" else null, if (card.id in newSeries) "NEW" else ratingBadge(card.rating)).joinToString(" ").ifBlank { null },
+                        badge = listOfNotNull(if (card.id in favs) "♥" else null, if (card.id in newSeries) "NEW" else null).joinToString(" ").ifBlank { null },
                         progress = if (p != null && !p.completed) p.fraction else 0f,
-                        onLong = { sheet = card.title to buildList {
-                            add(SheetItem("Open", Icons.Filled.PlayArrow) { card.movie?.let { nav.open(Overlay.MovieDetail(it)) } ?: card.series?.let { nav.open(Overlay.SeriesDetail(it)) } })
-                            add(SheetItem("Watch privately", Icons.Filled.VisibilityOff) {
-                                card.movie?.let { m -> c.playBestMovie(m) { play(c, nav, it, privately = true) } }
-                                    ?: card.series?.let { sr -> c.appScope.launch { c.playSeries(sr, privately = true); kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { if (nav.top != Overlay.Player) nav.open(Overlay.Player) } } }
-                            })
-                            add(SheetItem(if (card.id in favs) "Remove from favorites" else "Add to favorites", Icons.Filled.Favorite) { vm.toggle(card.id, UserRepository.FAVOURITES) })
-                            add(SheetItem(if (card.id in later) "Remove from Watch Later" else "Watch Later", Icons.Filled.Bookmark) { vm.toggle(card.id, UserRepository.WATCH_LATER) })
-                            if (card.movie != null) add(SheetItem(if (p?.completed == true) "Mark as unwatched" else "Mark as watched", Icons.Filled.CheckCircle) { vm.setWatched(card, p?.completed != true) })
-                            addAll(queueItems(c, card.id, if (card.movie != null) ContentKind.MOVIE else ContentKind.SERIES, card.title))
-                        } },
+                        onLong = { tile = card.movie?.let { app.streamsetu.tv.ui.screens.home.HomeTarget.Film(it) } ?: card.series?.let { app.streamsetu.tv.ui.screens.home.HomeTarget.Show(it) } },
                     )
                 }
             }
@@ -127,6 +118,8 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
         add(SheetItem("All $title", Icons.Filled.GridView, browse == Browse.All) { vm.select(Browse.All) })
         shown.forEach { f -> add(SheetItem(f.title, if (f.pref.favorite) Icons.Filled.Star else Icons.Filled.Folder, (browse as? Browse.Folder)?.id == f.id, "%,d".format(f.count), enabled = !f.pref.locked) { vm.select(Browse.Folder(f.id)) }) }
     }, onClose = { folderSheet = false }, subtitle = "${shown.size} folders")
+    tile?.let { t -> app.streamsetu.tv.ui.screens.home.HomeMenuHost(t, app.streamsetu.tv.ui.screens.home.RowKind.OTHER, homeVm, c, nav, phone = true) { tile = null } }
+    app.streamsetu.tv.ui.screens.home.ContinueUndoBar(homeVm, tv = false, modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.BottomCenter))
     sheet?.let { (t, items) -> Sheet(t, items, onClose = { sheet = null }) }
 }
 
@@ -143,6 +136,8 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     val state = rememberLazyListState()
     var folderSheet by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<Pair<String, List<SheetItem>>?>(null) }
+    var tile by remember { mutableStateOf<app.streamsetu.tv.ui.screens.home.HomeTarget?>(null) }
+    val homeVm: app.streamsetu.tv.ui.screens.home.HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     LaunchedEffect(browse) { state.scrollToItem(0) }
     val shown = folders.filter { !it.pref.hidden }
     val folderName = (browse as? Browse.Folder)?.let { b -> folders.firstOrNull { it.id == b.id }?.title }
@@ -184,14 +179,15 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
                 val ch = g.rep
                 val program = epgIds[ch.id]?.let { now[it] }
                 Column(
-                    Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(Tokens.card).combinedClickable(onClick = { play(c, nav, ChannelPlayable(ch), list.map { ChannelPlayable(it.rep) }) }, onLongClick = { sheet = ch.name to listOf(
-                        SheetItem("Watch privately", Icons.Filled.VisibilityOff) { play(c, nav, ChannelPlayable(ch), list.map { ChannelPlayable(it.rep) }, privately = true) },
-                        SheetItem(if (ch.id in favs) "Remove from favorites" else "Add to favorites", Icons.Filled.Favorite) { vm.toggleFavourite(ch) }) }).padding(horizontal = 8.dp, vertical = 12.dp),
+                    Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(Tokens.card).combinedClickable(onClick = { play(c, nav, ChannelPlayable(ch), list.map { ChannelPlayable(it.rep) }) }, onLongClick = { tile = app.streamsetu.tv.ui.screens.home.HomeTarget.Live(ch) }).padding(horizontal = 8.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Box { ChannelLogo(ch.logoUrl, ch.name, 60.dp); if (ch.id in favs) Icon(Icons.Filled.Favorite, Tokens.gold, 14.dp, Modifier.align(Alignment.TopEnd)) }
                     Label((ch.number?.let { "$it " } ?: "") + ch.name, Ph.caption, Tokens.text, FontWeight.Medium, maxLines = 2)
-                    Label(program?.title ?: if (g.variants.size > 1) "${g.variants.size} streams" else "Live", 11.sp, Tokens.textTertiary)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        app.streamsetu.tv.ui.screens.settings.GuideDot(app.streamsetu.tv.ui.screens.settings.GuideAvailability.of(epgIds[ch.id] != null, program != null))
+                        Label(program?.title ?: if (g.variants.size > 1) "${g.variants.size} streams" else "Live", 11.sp, Tokens.textTertiary)
+                    }
                 }
             }
             if (pageFailed) item(key = "retry", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
@@ -202,5 +198,6 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
         }
     }
     if (folderSheet) Sheet("Groups", shown.map { f -> SheetItem(f.title, if (f.pref.favorite) Icons.Filled.Star else Icons.Filled.Folder, (browse as? Browse.Folder)?.id == f.id, "%,d".format(f.count), enabled = !f.pref.locked) { vm.select(Browse.Folder(f.id)) } }, onClose = { folderSheet = false }, subtitle = "${shown.size} groups")
+    tile?.let { t -> app.streamsetu.tv.ui.screens.home.HomeMenuHost(t, app.streamsetu.tv.ui.screens.home.RowKind.OTHER, homeVm, c, nav, phone = true) { tile = null } }
     sheet?.let { (t, items) -> Sheet(t, items, onClose = { sheet = null }) }
 }

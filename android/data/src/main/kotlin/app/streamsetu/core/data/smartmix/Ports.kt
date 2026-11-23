@@ -22,6 +22,12 @@ interface CandidateSource {
     fun matchCandidates(profileId: String): List<Candidate>
     /** Only the copies whose identity key is one of [names] (the folded titles of the public trending list): what a device with a large library asks for instead of every copy. */
     fun matchCandidates(profileId: String, names: Set<String>): List<Candidate> = matchCandidates(profileId).filter { it.identityKey in names }
+    /** How many titles each genre has today (see [GenreShelves.counts]): not restricted, not dismissed, not CAM-only, with a poster. */
+    fun genreCounts(profileId: String): Map<String, Int> = emptyMap()
+    /** How many titles of the open library could be shown (one per title, not CAM, with a poster): the base of a mood's floor of 1.5%. 0 = unknown (the floor is then 8). */
+    fun showableTotal(profileId: String): Int = 0
+    /** The genres of the titles watched most lately, most first (at most 3). */
+    fun affinityGenreKeys(profileId: String): List<String> = emptyList()
 }
 
 data class ShownRow(val identityKey: String, val year: Int?, val itemId: String, val loadSeq: Int)

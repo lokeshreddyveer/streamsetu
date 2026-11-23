@@ -12,302 +12,32 @@
             column="48"/>
     </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `android.app.Service#stopForeground`"
-        errorLine1="        if (active.isEmpty()) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return }"
-        errorLine2="                                ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/Downloads.kt"
-            line="202"
-            column="33"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
-        errorLine1="        _prompt.value?.answer?.complete(false); _prompt.value = null"
-        errorLine2="                               ~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
-            line="189"
-            column="32"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture()`"
-        errorLine1="        val done = CompletableFuture&lt;NsdServiceInfo?>()"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
-            line="196"
-            column="20"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
-        errorLine1="                override fun onResolveFailed(s: NsdServiceInfo, code: Int) { done.complete(null) }"
-        errorLine2="                                                                                  ~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
-            line="199"
-            column="83"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
-        errorLine1="                override fun onServiceResolved(s: NsdServiceInfo) { done.complete(s) }"
-        errorLine2="                                                                         ~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
-            line="200"
-            column="74"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#get`"
-        errorLine1="            val r = withContext(Dispatchers.IO) { runCatching { done.get(6, TimeUnit.SECONDS) }.getOrNull() } ?: return"
-        errorLine2="                                                                     ~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
-            line="202"
-            column="70"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
-        errorLine1="        _prompt.value?.answer?.complete(false); _prompt.value = null"
-        errorLine2="                               ~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
-            line="265"
-            column="32"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture()`"
-        errorLine1="        val answer = CompletableFuture&lt;Boolean>()"
-        errorLine2="                     ~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
-            line="270"
-            column="22"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
-        errorLine1="        _prompt.value?.answer?.complete(false)"
-        errorLine2="                               ~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
-            line="271"
-            column="32"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#get`"
-        errorLine1="        return runCatching { answer.get(5, TimeUnit.MINUTES) }.getOrDefault(false)"
-        errorLine2="                                    ~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
-            line="273"
-            column="37"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `java.util.concurrent.CompletableFuture#complete`"
-        errorLine1="    fun answer(matches: Boolean) { _prompt.value?.answer?.complete(matches); _prompt.value = null }"
-        errorLine2="                                                          ~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/sync/LanSyncService.kt"
-            line="276"
-            column="59"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Field requires API level 23 (current min is 22): `android.view.WindowManager.LayoutParams#preferredDisplayModeId`"
-        errorLine1="    if (fps == null) { if (attrs.preferredDisplayModeId != 0) { attrs.preferredDisplayModeId = 0; activity.window.attributes = attrs }; return }"
-        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
-            line="597"
-            column="28"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Field requires API level 23 (current min is 22): `android.view.WindowManager.LayoutParams#preferredDisplayModeId`"
-        errorLine1="    if (fps == null) { if (attrs.preferredDisplayModeId != 0) { attrs.preferredDisplayModeId = 0; activity.window.attributes = attrs }; return }"
-        errorLine2="                                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
-            line="597"
-            column="65"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getModeId`"
-        errorLine1="    fun mode(m: android.view.Display.Mode) = app.streamsetu.core.playback.DisplayMode(m.modeId, m.physicalWidth, m.physicalHeight, m.refreshRate)"
-        errorLine2="                                                                                        ~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
-            line="598"
-            column="89"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getPhysicalHeight`"
-        errorLine1="    fun mode(m: android.view.Display.Mode) = app.streamsetu.core.playback.DisplayMode(m.modeId, m.physicalWidth, m.physicalHeight, m.refreshRate)"
-        errorLine2="                                                                                                                   ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
-            line="598"
-            column="116"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getPhysicalWidth`"
-        errorLine1="    fun mode(m: android.view.Display.Mode) = app.streamsetu.core.playback.DisplayMode(m.modeId, m.physicalWidth, m.physicalHeight, m.refreshRate)"
-        errorLine2="                                                                                                  ~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
-            line="598"
-            column="99"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getRefreshRate`"
-        errorLine1="    fun mode(m: android.view.Display.Mode) = app.streamsetu.core.playback.DisplayMode(m.modeId, m.physicalWidth, m.physicalHeight, m.refreshRate)"
-        errorLine2="                                                                                                                                     ~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
-            line="598"
-            column="134"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 23 (current min is 22): `android.view.Display#getMode`"
-        errorLine1="    val current = display.mode?.let(::mode) ?: return"
-        errorLine2="                          ~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
-            line="599"
-            column="27"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 23 (current min is 22): `android.view.Display#getSupportedModes`"
-        errorLine1="    val pick = app.streamsetu.core.playback.DisplayModes.best(display.supportedModes.map(::mode), current, fps) ?: return"
-        errorLine2="                                                                      ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
-            line="600"
-            column="71"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Field requires API level 23 (current min is 22): `android.view.WindowManager.LayoutParams#preferredDisplayModeId`"
-        errorLine1="    attrs.preferredDisplayModeId = pick.id"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/PlayerScreen.kt"
-            line="601"
-            column="5"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 23 (current min is 22): `android.view.Display#getMode`"
-        errorLine1="    val mode = display?.mode"
-        errorLine2="                        ~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
-            line="269"
-            column="25"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `android.view.Display#getHdrCapabilities`"
-        errorLine1="    val hdr = remember { runCatching { display?.hdrCapabilities?.supportedHdrTypes?.map { when (it) { 1 -> &quot;Dolby Vision&quot;; 2 -> &quot;HDR10&quot;; 3 -> &quot;HLG&quot;; 4 -> &quot;HDR10+&quot;; else -> &quot;HDR&quot; } } }.getOrNull().orEmpty() }"
-        errorLine2="                                                ~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
-            line="270"
-            column="49"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `android.view.Display.HdrCapabilities#getSupportedHdrTypes`"
-        errorLine1="    val hdr = remember { runCatching { display?.hdrCapabilities?.supportedHdrTypes?.map { when (it) { 1 -> &quot;Dolby Vision&quot;; 2 -> &quot;HDR10&quot;; 3 -> &quot;HLG&quot;; 4 -> &quot;HDR10+&quot;; else -> &quot;HDR&quot; } } }.getOrNull().orEmpty() }"
-        errorLine2="                                                                 ~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
-            line="270"
-            column="66"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getPhysicalHeight`"
-        errorLine1="        InfoRow(&quot;Resolution&quot;, mode?.let { &quot;${it.physicalWidth}×${it.physicalHeight} at ${&quot;%.0f&quot;.format(it.refreshRate)} Hz&quot; } ?: &quot;unknown&quot;)"
-        errorLine2="                                                                    ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
-            line="277"
-            column="69"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getPhysicalWidth`"
-        errorLine1="        InfoRow(&quot;Resolution&quot;, mode?.let { &quot;${it.physicalWidth}×${it.physicalHeight} at ${&quot;%.0f&quot;.format(it.refreshRate)} Hz&quot; } ?: &quot;unknown&quot;)"
-        errorLine2="                                                ~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
-            line="277"
-            column="49"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 23 (current min is 22): `android.view.Display.Mode#getRefreshRate`"
-        errorLine1="        InfoRow(&quot;Resolution&quot;, mode?.let { &quot;${it.physicalWidth}×${it.physicalHeight} at ${&quot;%.0f&quot;.format(it.refreshRate)} Hz&quot; } ?: &quot;unknown&quot;)"
-        errorLine2="                                                                                                          ~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/ui/screens/settings/SettingsScreen.kt"
-            line="277"
-            column="107"/>
-    </issue>
 
-    <issue
-        id="NewApi"
-        message="Call requires API level 24 (current min is 22): `java.net.URLConnection#getContentLengthLong`"
-        errorLine1="            val total = c.contentLengthLong.takeIf { it > 0 } ?: offer.asset.size"
-        errorLine2="                          ~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/app/streamsetu/tv/update/UpdateManager.kt"
-            line="142"
-            column="27"/>
-    </issue>
 
     <issue
         id="UnusedAttribute"

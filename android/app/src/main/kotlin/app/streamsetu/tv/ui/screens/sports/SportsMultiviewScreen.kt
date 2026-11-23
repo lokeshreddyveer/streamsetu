@@ -256,7 +256,7 @@ private fun CandidateCard(cd: MultiviewCandidate, tag: String, modifier: Modifie
     Focusable({ actions.add(cd.eventId) }, Modifier.width(260.dp).testTag(tag).then(modifier), shape = RoundedCornerShape(Tokens.radiusSmall), onLongClick = { actions.chooseFeed(cd.eventId) }, scaleOnFocus = 1.0f) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Label(cd.title, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 2)
-            Label(cd.sportLabel + "  ·  " + cd.feedCount + if (cd.feedCount == 1) " feed" else " feeds", Tokens.small, Tokens.textSecondary, maxLines = 1)
+            Label(cd.sportLabel + "  ·  " + app.streamsetu.core.model.Plurals.format("feed", cd.feedCount), Tokens.small, Tokens.textSecondary, maxLines = 1)
             if (cd.chosen) Label("Added", Tokens.small, Tokens.accent, FontWeight.SemiBold)
         }
     }

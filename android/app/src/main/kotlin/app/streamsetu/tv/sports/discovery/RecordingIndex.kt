@@ -1,5 +1,6 @@
 package app.streamsetu.tv.sports.discovery
 
+import app.streamsetu.core.model.putIfMissing
 import app.streamsetu.core.data.db.SportsRecordingEntity
 import app.streamsetu.core.sports.SportsEvent
 import app.streamsetu.tv.sports.personal.SportsKeys
@@ -13,8 +14,8 @@ class RecordingIndex(val rows: List<SportsRecordingEntity>) {
     init {
         // Open requests win over ended ones, then the most recently changed.
         for (r in rows.filter { it.status != SportsRecordingStatus.CANCELLED.name }.sortedWith(compareBy({ if (isOpen(it)) 0 else 1 }, { -it.updatedAt }, { it.id }))) {
-            r.matchedEventId?.let { byEvent.putIfAbsent(it, r) }
-            bySlot.putIfAbsent(slotKey(r.identity, r.slot), r)
+            r.matchedEventId?.let { byEvent.putIfMissing(it, r) }
+            bySlot.putIfMissing(slotKey(r.identity, r.slot), r)
         }
     }
 

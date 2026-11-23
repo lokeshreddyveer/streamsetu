@@ -391,7 +391,7 @@ private fun SportsPageView(page: app.streamsetu.tv.sports.discovery.SportsPageUi
             TvButton("Close", { actions.closePageUi() }, Modifier.focusRequester(close).testTag("sports-page-close"), icon = Icons.Filled.Close)
         }
         page.note?.let { Label(it, Tokens.small, Tokens.warning, modifier = Modifier.padding(bottom = 4.dp).testTag("sports-page-note")) }
-        val meta = listOfNotNull(page.channelCount.takeIf { it > 0 }?.let { "$it channel" + if (it == 1) "" else "s" }, page.reminderCount.takeIf { it > 0 }?.let { "$it reminder" + if (it == 1) "" else "s" }).joinToString("  ·  ")
+        val meta = listOfNotNull(page.channelCount.takeIf { it > 0 }?.let { app.streamsetu.core.model.Plurals.format("channel", it) }, page.reminderCount.takeIf { it > 0 }?.let { app.streamsetu.core.model.Plurals.format("reminder", it) }).joinToString("  ·  ")
         if (meta.isNotEmpty()) Label(meta, Tokens.small, Tokens.textSecondary, modifier = Modifier.testTag("sports-page-meta"))
         if (page.catchUpLoading) Label("Loading Catch-Up…", Tokens.small, Tokens.textSecondary, modifier = Modifier.padding(top = 4.dp).testTag("sports-page-loading"))
         Spacer(Modifier.height(10.dp))

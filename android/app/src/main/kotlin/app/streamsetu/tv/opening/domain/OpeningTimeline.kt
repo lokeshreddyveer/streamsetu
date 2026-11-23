@@ -129,9 +129,6 @@ object OpeningTimeline {
         else -> -0.15f * (1f - Easing.smoothstep((t - 0.6f) / 0.4f))
     }
 
-    /** 0..1 through the exit (the match-cut, or the reduced-motion fade) at [exitMs] into it. */
-    fun exitAt(variant: OpeningVariant, exitMs: Float): Float = Easing.cubicInOut(exitMs / variant.exitMs.coerceAtLeast(1))
-
     /** The scene playing at [ms], or null past the end. */
     fun sceneAt(variant: OpeningVariant, ms: Int): Scene? = variant.scenes.firstOrNull { ms >= it.startMs && ms < it.endMs }?.scene
 }

@@ -77,7 +77,8 @@ fun PhoneApp(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                 is Overlay.SportsMultiview -> {}          // Sports is not on the phone
                 is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                 is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav)
-                is Overlay.Person -> app.streamsetu.tv.ui.screens.PersonScreen(o.name, o.photo, c, nav, tv = false)
+                is Overlay.Genre -> app.streamsetu.tv.ui.screens.GenreScreen(o.key, c, nav, tv = false)
+                is Overlay.Person -> app.streamsetu.tv.ui.screens.PersonScreen(o.name, o.photo, c, nav, tv = false, personId = o.personId, fromTitle = o.fromTitle, fromYear = o.fromYear)
             }
         }
     }

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
@@ -70,7 +71,6 @@ fun isPhoneDevice(context: Context): Boolean {
 object Ph {
     val title = 24.sp; val heading = 18.sp; val body = 15.sp; val small = 13.sp; val caption = 12.sp
     val gutter = 16.dp
-    val tabBar = 58.dp
 }
 
 @Composable
@@ -145,12 +145,23 @@ fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
 /** A poster for a grid or a row: artwork, a bar for how far you are, a small badge, and the title under it. Tap opens; touch and hold opens the menu. */
 @Composable
 fun PhonePoster(title: String, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, subtitle: String? = null, badge: String? = null, progress: Float = 0f, onLong: (() -> Unit)? = null, itemId: String? = null) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Tap(onClick, Modifier.fillMaxWidth().aspectRatio(2f / 3f).shadow(6.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Tokens.card).border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(12.dp)), onLong) {
+    app.streamsetu.tv.ui.components.ReportTileVisible(itemId, !imageUrl.isNullOrBlank())
+    // A poster without a menu of its own opens the shared one; every item of it is also a screen-reader action of the poster.
+    val shared = LocalTileMenu.current
+    val long = onLong ?: itemId?.let { id -> shared?.let { open -> { open(id) } } }
+    val source = LocalTileActions.current
+    var a11y by remember { mutableStateOf(emptyList<TileA11yAction>()) }
+    LaunchedEffect(itemId, source?.rev) { a11y = if (itemId != null && source != null) runCatching { source.load(itemId) }.getOrDefault(emptyList()) else emptyList() }
+    Column(modifier.moreOptionsAction(long, a11y.map { it.label to it.run }), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Tap(onClick, Modifier.fillMaxWidth().aspectRatio(2f / 3f).shadow(6.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Tokens.card).border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(12.dp)), long) {
             app.streamsetu.tv.ui.components.PosterArt(title, imageUrl?.takeIf { it.isNotBlank() }, Modifier.fillMaxSize(), year = subtitle?.take(4))
             val shown = if (progress > 0f) progress else itemId?.let { app.streamsetu.tv.ui.components.LocalPartialProgress.current[it] } ?: 0f
             if (shown > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(shown.coerceIn(0f, 1f)).fillMaxHeight().background(Tokens.accent)) }
-            if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).background(Color(0x99000000), RoundedCornerShape(7.dp)).border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(7.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) { Label(badge, Ph.caption, Tokens.text, FontWeight.SemiBold) }
+            // The corner: the tag first, the rating after it, so they never overlap.
+            Row(Modifier.align(Alignment.TopEnd).padding(6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (badge != null) Box(Modifier.background(Color(0x99000000), RoundedCornerShape(7.dp)).border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(7.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) { Label(badge, Ph.caption, Tokens.text, FontWeight.SemiBold) }
+                app.streamsetu.tv.ui.components.TileRating(itemId, small = true)
+            }
             if (itemId != null) app.streamsetu.tv.ui.components.LocalDownloadStatus.current[itemId]?.let { (st, f) -> DownloadBadge(st, f) }
             if (itemId != null && itemId in app.streamsetu.tv.ui.components.LocalWatched.current) WatchedTick()
         }
@@ -161,13 +172,18 @@ fun PhonePoster(title: String, imageUrl: String?, onClick: () -> Unit, modifier:
 
 /** A wide card (Continue Watching, channels). */
 @Composable
-fun PhoneWide(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, badge: String? = null, onLong: (() -> Unit)? = null) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+fun PhoneWide(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, badge: String? = null, onLong: (() -> Unit)? = null, itemId: String? = null) {
+    app.streamsetu.tv.ui.components.ReportTileVisible(itemId, !imageUrl.isNullOrBlank())
+    val source = LocalTileActions.current
+    var a11y by remember { mutableStateOf(emptyList<TileA11yAction>()) }
+    LaunchedEffect(itemId, source?.rev) { a11y = if (itemId != null && source != null) runCatching { source.load(itemId) }.getOrDefault(emptyList()) else emptyList() }
+    Column(modifier.moreOptionsAction(onLong, a11y.map { it.label to it.run }), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Tap(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f).shadow(6.dp, RoundedCornerShape(14.dp)).clip(RoundedCornerShape(14.dp)).background(Tokens.card).border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(14.dp)), onLong) {
             PosterPlaceholder(title, Modifier.fillMaxSize())
             if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).progressFill(progress, Color(0x66000000), Tokens.accent))
             if (badge != null) Box(Modifier.align(Alignment.TopStart).padding(6.dp).background(Tokens.accent, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp)) { Label(badge, Ph.caption, Color(0xFF04141A), FontWeight.Bold) }
+            app.streamsetu.tv.ui.components.TileRating(itemId, Modifier.align(Alignment.TopEnd).padding(6.dp), small = true)
         }
         Label(title, Ph.small, Tokens.text, FontWeight.Medium, modifier = Modifier.padding(horizontal = 2.dp))
         if (subtitle != null) Label(subtitle, Ph.caption, Tokens.textTertiary, modifier = Modifier.padding(horizontal = 2.dp))
@@ -351,4 +367,9 @@ fun MiniPlayer(c: app.streamsetu.tv.AppContainer, onOpen: () -> Unit) {
         IconTap(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, if (playing) "Pause" else "Play", { c.playback.togglePause() })
         IconTap(Icons.Filled.Close, "Stop", { c.playback.stop() })
     }
+}
+
+/** TalkBack: a card with a touch-and-hold menu also offers "More options" as an accessibility action, so the menu does not depend on finding the long press. */
+fun Modifier.moreOptionsAction(onLong: (() -> Unit)?, items: List<Pair<String, () -> Unit>> = emptyList()): Modifier = if (onLong == null) this else this.semantics(mergeDescendants = false) {
+    customActions = items.map { (label, run) -> androidx.compose.ui.semantics.CustomAccessibilityAction(label) { run(); true } } + androidx.compose.ui.semantics.CustomAccessibilityAction("More options") { onLong(); true }
 }

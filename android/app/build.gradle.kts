@@ -7,6 +7,8 @@ plugins {
 }
 
 import java.util.Properties
+import java.security.SecureRandom
+import java.security.MessageDigest
 
 // Signing: put the key details in android/keystore.properties (never committed): storeFile, storePassword, keyAlias, keyPassword.
 val keystoreProps = Properties().also { p -> rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { p.load(it) } }
@@ -88,7 +90,7 @@ android {
             // and the run stalls. A fresh JVM for every test class (forkEvery counts classes), four at a time: a Compose focus test went 'not idle' only when classes shared a JVM in one particular order, run the whole suite in about a minute with every test passing.
             // Each test JVM gets 1.5 GB: with 512 MB the batch that builds the whole app (AppContainerLifetimeTest) ran out of memory and the Compose tests sharing
             // its JVM then timed out.
-            all { t -> t.maxParallelForks = 4; t.setForkEvery(1L); t.maxHeapSize = "1536m" }
+            all { t -> t.maxParallelForks = 4; t.setForkEvery((project.findProperty("testForkEvery") as String?)?.toLongOrNull() ?: 8L);  /* -PtestForkEvery=1 restores one JVM per class */ t.maxHeapSize = "1536m" }
         }
     }       // the Compose UI tests run on the JVM with Robolectric
 }
@@ -98,7 +100,7 @@ dependencies {
     // gigabytes). The app never deserializes Java streams into Guava collections, but the release check (Scripts/audit-dependencies.py) rightly stops for it. 33.7.2-android is the first fixed version,
     // the same major version, so it is API compatible; remove this when media3 itself asks for 33.7.2 or later.
     constraints { implementation("com.google.guava:guava:33.7.2-android") { because("GHSA-xxph-c9ww-hj94") } }
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(project(":data"))
     implementation(project(":core-ui"))
     implementation(libs.androidx.core.ktx)
@@ -106,13 +108,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.navigation.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)
-    implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material.icons)
-    implementation(libs.tv.material)
     implementation(libs.media3.ui)
     implementation(libs.coil.compose)
     implementation(libs.play.services.cast)             // Chromecast, used on phones only (a Fire TV has no Google Play services and never starts it)
@@ -120,17 +119,18 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.androidx.navigation.compose)          // no direct import: hilt-navigation-compose (hiltViewModel) needs it, and this pins the newer version instead of the old one it asks for
     implementation(libs.workmanager)
     implementation(libs.zxing)
     testImplementation(libs.junit)
     testImplementation(libs.hilt.testing)          // runs the real Hilt graph in a test (AppContainerLifetimeTest)
     kspTest(libs.hilt.compiler)
-    testImplementation("org.json:json:20240303")
+    testImplementation(libs.test.json)
     testImplementation(platform(libs.compose.bom))
     testImplementation("androidx.compose.ui:ui-test-junit4")
-    testImplementation("org.robolectric:robolectric:4.14.1")
-    testImplementation("androidx.room:room-testing:2.6.1")
-    testImplementation("androidx.test:core:1.6.1")
+    testImplementation(libs.test.robolectric)
+    testImplementation(libs.room.testing)
+    testImplementation(libs.test.core)
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation(libs.profileinstaller)       // installs the precompiled start-up profile (ours and Compose's) so the first scroll is not the slow one
 }
@@ -142,3 +142,43 @@ gradle.taskGraph.whenReady {
         throw GradleException("No release keystore: create android/keystore.properties, or pass -PallowDebugSigned=true for a build that is only for testing and must not be distributed.")
     }
 }
+
+// The built-in service keys (optional): the TMDB read token, the fanart.tv key and the TheTVDB key. Each is read from its environment variable, or from the file named by a -P property, or
+// from the private keys folder, never from the repository, and written only as scrambled numbers (chunks XOR a random mask kept in a second file) into a generated source under build/ (ignored by git).
+// A build without a key still works: the generated code then returns nothing. A key is never printed or logged; Gradle only sees its hash (to know when to regenerate).
+fun registerBuiltInKey(label: String, obj: String, envName: String, propName: String, keyFile: String, valid: (String) -> Boolean) {
+    val genDir = layout.buildDirectory.dir("generated/streamsetu-${label.lowercase()}/kotlin")
+    val task = tasks.register("generateBuiltIn$obj") {
+        val fileProp = (project.findProperty(propName) as String?)?.let { File(it) }
+        val keysDir = File(System.getenv("STREAMSETU_KEYS_DIR")?.takeIf { it.isNotEmpty() } ?: (System.getProperty("user.home") + "/Documents/keys"))
+        val key: String = (System.getenv(envName)?.trim()?.takeIf { it.isNotEmpty() } ?: fileProp?.takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotEmpty() }
+            ?: keysDir.resolve(keyFile).takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotEmpty() } ?: "")
+            .takeIf { it.none { c -> c.isWhitespace() } && valid(it) } ?: ""
+        inputs.property("keyDigest", MessageDigest.getInstance("SHA-256").digest(key.toByteArray()).joinToString("") { "%02x".format(it) })
+        outputs.dir(genDir)
+        doLast {
+            val dir = genDir.get().asFile.resolve("app/streamsetu/tv").also { it.mkdirs() }
+            if (key.isEmpty()) {
+                dir.resolve("BuiltIn$obj.kt").writeText("package app.streamsetu.tv\n\n/** Generated. This build has no built-in $label key. */\ninternal object BuiltIn$obj { fun token(): String? = null }\n")
+                dir.resolve("BuiltIn${obj}Mask.kt").writeText("package app.streamsetu.tv\n\ninternal object BuiltIn${obj}Mask { fun mask(): IntArray = IntArray(0) }\n")
+            } else {
+                val bytes = key.toByteArray(Charsets.UTF_8)
+                val mask = ByteArray(37).also { SecureRandom().nextBytes(it) }
+                val x = ByteArray(bytes.size) { (bytes[it].toInt() xor mask[it % mask.size].toInt()).toByte() }
+                val parts = 5; val size = (x.size + parts - 1) / parts
+                val chunks = (0 until parts).map { i -> x.copyOfRange(minOf(i * size, x.size), minOf((i + 1) * size, x.size)) }
+                fun ints(b: ByteArray) = b.joinToString(", ") { (it.toInt() and 0xff).toString() }
+                val sb = StringBuilder("package app.streamsetu.tv\n\n/** Generated, not committed. Scrambled data only; put together in memory when a request is made. */\ninternal object BuiltIn$obj {\n")
+                chunks.forEachIndexed { i, c -> sb.append("    private fun c$i() = intArrayOf(${ints(c)})\n") }
+                sb.append("    fun token(): String? {\n        val m = BuiltIn${obj}Mask.mask(); if (m.isEmpty()) return null\n        val all = (c0() + c1() + c2() + c3() + c4())\n        val out = ByteArray(all.size) { (all[it] xor m[it % m.size]).toByte() }\n        return String(out, Charsets.UTF_8)\n    }\n}\n")
+                dir.resolve("BuiltIn$obj.kt").writeText(sb.toString())
+                dir.resolve("BuiltIn${obj}Mask.kt").writeText("package app.streamsetu.tv\n\ninternal object BuiltIn${obj}Mask { fun mask(): IntArray = intArrayOf(${ints(mask)}) }\n")
+            }
+        }
+    }
+    android.sourceSets.getByName("main").java.srcDir(genDir)
+    tasks.named("preBuild") { dependsOn(task) }
+}
+registerBuiltInKey("tmdb", "Tmdb", "STREAMSETU_TMDB_TOKEN", "tmdbTokenFile", "tmdb-read-token.txt") { it.startsWith("eyJ") && it.count { c -> c == '.' } == 2 }
+registerBuiltInKey("fanart", "Fanart", "STREAMSETU_FANART_KEY", "fanartKeyFile", "fanart-api-key.txt") { it.length in 24..64 }
+registerBuiltInKey("tvdb", "Tvdb", "STREAMSETU_TVDB_KEY", "tvdbKeyFile", "thetvdb-api-key.txt") { it.length in 24..64 }

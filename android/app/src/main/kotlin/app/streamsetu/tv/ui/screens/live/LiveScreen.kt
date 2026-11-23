@@ -446,6 +446,7 @@ private fun ChannelRow(grp: ChannelGroup, i: Int, vm: LiveSectionViewModel, nav:
     val playing by remember(ch.id) { derivedStateOf { playingChannel.value?.id == ch.id } }
     val favourite by remember(ch.id) { derivedStateOf { ch.id in favs.value } }
     val onNow by remember(ch.id) { derivedStateOf { epgIds.value[ch.id]?.let { id -> now.value[id] }?.title } }
+    val availability by remember(ch.id) { derivedStateOf { app.streamsetu.tv.ui.screens.settings.GuideAvailability.of(epgIds.value[ch.id] != null, epgIds.value[ch.id]?.let { id -> now.value[id] } != null) } }
     val takesRemoteBack by remember(ch.id, firstId) { derivedStateOf { ch.id == (ui.rowId ?: firstId) } }
     Focusable({ onChoose(ch) }, (if (i == 0) Modifier.focusRequester(channelEntry) else Modifier).heightIn(min = 76.ui).then(if (takesRemoteBack) Modifier.focusRequester(focusedRow) else Modifier).fillMaxWidth(), onFocus = { if (it) { ui.focusedChannel = ch; vm.focusedChannelId = ch.id; ui.rowId = ch.id; nav.memory.remember(app.streamsetu.tv.nav.Tab.LIVE, ch.id, i) } }, scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, container = if (playing) Tokens.accent.copy(alpha = 0.2f) else Tokens.card.copy(alpha = 0f), shape = RoundedCornerShape(10.dp), ringWidth = 2.5.dp, onLongClick = { onMenu(ch, grp.variants) }) { f ->
         // [number] [logo] [name over what is on]: the number has its own narrow column so names line up, and a long name wraps to two lines instead of being cut.
@@ -457,6 +458,7 @@ private fun ChannelRow(grp: ChannelGroup, i: Int, vm: LiveSectionViewModel, nav:
                 if (!app.streamsetu.tv.trace.Diag.meta) onNow?.let { title -> Label(title, Tokens.caption, Tokens.textSecondary) }
             }
             if (!app.streamsetu.tv.trace.Diag.meta && grp.variants.size > 1) Label("+${grp.variants.size - 1}", Tokens.caption, Tokens.textTertiary)
+            if (!app.streamsetu.tv.trace.Diag.meta) app.streamsetu.tv.ui.screens.settings.GuideDot(availability)
             if (!app.streamsetu.tv.trace.Diag.meta && favourite) Image(Icons.Filled.Favorite, null, Modifier.size(12.dp), colorFilter = ColorFilter.tint(Tokens.gold))
         }
     }

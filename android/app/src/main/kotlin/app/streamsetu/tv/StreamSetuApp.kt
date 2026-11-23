@@ -70,6 +70,11 @@ class AppContainer @Inject constructor(
     /** Keeps favourites, Watch Later, collections and resume points in step with the person's other devices on the same Wi-Fi. */
     val lan: app.streamsetu.tv.sync.LanSyncService by lazy { app.streamsetu.tv.sync.LanSyncService(context, appScope, db) }
 
+    /** Guides the person added, channel matching, the public channel database and guide diagnostics. */
+    val guideHub: app.streamsetu.core.data.guidehub.GuideHubService by lazy {
+        app.streamsetu.core.data.guidehub.GuideHubService(db, credentials, epg, context.filesDir, context.getSharedPreferences("guidehub", android.content.Context.MODE_PRIVATE))
+    }
+
     /** Words to watch for in the guide. */
     val guideAlerts: app.streamsetu.tv.record.GuideAlerts by lazy { app.streamsetu.tv.record.GuideAlerts(context) }
 
@@ -130,32 +135,96 @@ class AppContainer @Inject constructor(
      * Continue Watching's own data beyond knowing what was watched.
      */
     val smartMix: app.streamsetu.core.data.repo.smartmix.SmartMixHome by lazy {
-        app.streamsetu.core.data.repo.smartmix.SmartMixHome(db, folders.visibility, { library.sourceIds.value.toList() }, { app.streamsetu.tv.ui.components.preferredLanguage(this) }, trendingSource, if (Perf.lowEnd(context)) 600 else null)
+        app.streamsetu.core.data.repo.smartmix.SmartMixHome(db, folders.visibility, { library.sourceIds.value.toList() }, { app.streamsetu.tv.ui.components.preferredLanguage(this) }, trendingSource, if (Perf.lowEnd(context)) 600 else null, lists = tmdbLists)
     }
     /** "Remove from recommendations" markers and what a shelf showed, written only for titles that may be recommended. */
     val smartMixState: app.streamsetu.core.data.repo.smartmix.SmartMixState by lazy { app.streamsetu.core.data.repo.smartmix.SmartMixState(db, folders.visibility) }
     /** Where everything TMDB gave this device is kept (weekly list, cast): removed when the switch is turned off or the key is removed, and at the latest after 180 days. */
     val tmdbDir: java.io.File by lazy { java.io.File(context.filesDir, "tmdb").also { it.mkdirs() } }
-    /** The person's own TMDB key (or null). There is no bundled key. */
+    /** The person's own TMDB key or v4 token (or null). Without one the built-in read token is used when this build has one ([tmdbAuth]). */
     fun tmdbKey(): String? = credentials.load("tmdb.key")?.takeIf { it.isNotBlank() }
-    /** TMDB weekly trending for Top This Week: active only with the switch on AND the person's own key; the cache is cleared otherwise. */
+    /** Which credential TMDB requests use: the person's own, else the built-in token, else none. A built-in token TMDB refuses is set aside. */
+    val tmdbAuth: app.streamsetu.core.data.repo.TmdbAuth by lazy { app.streamsetu.core.data.repo.TmdbAuth({ tmdbKey() }, { BuiltInTmdb.token() }, tmdbDir) }
+    /** Every TMDB request, from every part of the app, shares one steady rhythm: about 22 a second with 8 at a time, 6 of them reserved for what the person sees (4 a second, 2 at a time, 2 reserved, on a low-end box); TMDB allows about 50 a second per address. */
+    val tmdbPacer by lazy { app.streamsetu.core.data.repo.RequestPacer(if (Perf.lowEnd(context)) 4 else 22, if (Perf.lowEnd(context)) 2 else 6) }
+    private val tmdbCall: app.streamsetu.core.data.repo.TmdbCall = { u, b -> tmdbPacer.acquire(); app.streamsetu.core.data.repo.tmdbHttp(u, b) }
+    /** TMDB weekly trending for Top This Week: active with the switch on and any TMDB credential; the cache is cleared otherwise. */
     val trendingSource: app.streamsetu.core.data.smartmix.TrendingProvider by lazy {
         app.streamsetu.core.data.smartmix.TrendingProvider(object : app.streamsetu.core.data.smartmix.TmdbSettings {
             override val trendingEnabled get() = ui.tmdbTrending.value
-            override val userKey get() = tmdbKey()
-        }, app.streamsetu.core.data.repo.TmdbTrendingFetcher(), app.streamsetu.core.data.repo.FileTrendingCache(java.io.File(tmdbDir, "trending.json")))
+            override val userKey get() = if (tmdbAuth.available) "in-use" else null          // only says that a credential exists; requests use [tmdbAuth]
+        }, app.streamsetu.core.data.repo.TmdbTrendingFetcher(tmdbAuth, tmdbCall), app.streamsetu.core.data.repo.FileTrendingCache(java.io.File(tmdbDir, "trending.json")))
+    }
+    /** TMDB genre ids of the titles whose TMDB details were opened (genre shelves read them before the folder names; removed with the rest of what TMDB gave). */
+    val tmdbGenres: app.streamsetu.core.data.repo.TmdbGenreStore by lazy { app.streamsetu.core.data.repo.TmdbGenreStore(db) }
+    /** TMDB's ranked lists behind the genre shelves and the all-time view (kept with the other TMDB files; the switch and the credential are the weekly list's). */
+    val tmdbLists: app.streamsetu.core.data.repo.TmdbLists by lazy { app.streamsetu.core.data.repo.TmdbLists(tmdbAuth, tmdbDir, { ui.tmdbTrending.value }, tmdbCall) }
+    /** Which view (this week or all time) each ranking shelf shows, per profile and shelf. */
+    val shelfModes: app.streamsetu.core.data.smartmix.ShelfModeStore by lazy {
+        val p = context.getSharedPreferences("smartmix_modes", android.content.Context.MODE_PRIVATE)
+        app.streamsetu.core.data.smartmix.ShelfModeStore({ p.getString(it, null) }, { k, v -> p.edit().apply { if (v == null) remove(k) else putString(k, v) }.apply() })
     }
     /** TMDB artwork and summaries: restricted titles are never sent, and what it filled is taken back on a lock or hide and after 180 days. */
-    val tmdbService: app.streamsetu.core.data.repo.TmdbService by lazy { app.streamsetu.core.data.repo.TmdbService(db, { tmdbKey() }, folders.visibility, tmdbDir) }
-    /** The cast of a title from TMDB (the cast row on detail pages); drawn only with the person's own key. */
-    val tmdbCast: app.streamsetu.core.data.repo.TmdbCast by lazy { app.streamsetu.core.data.repo.TmdbCast({ tmdbKey() }, tmdbDir) }
+    val tmdbService: app.streamsetu.core.data.repo.TmdbService by lazy { app.streamsetu.core.data.repo.TmdbService(db, { tmdbKey() }, folders.visibility, tmdbDir, auth = tmdbAuth, fetch = tmdbCall).also { it.idStore = tmdbIds; it.aliasSource = { runCatching { context.assets.open("aliases/aliases.tsv.gz").use { s -> s.readBytes() } }.getOrNull() } } }
+    /** The cast and wide picture of a title from TMDB (detail pages), fetched at once when a title opens. */
+    val tmdbCast: app.streamsetu.core.data.repo.TmdbCast by lazy { app.streamsetu.core.data.repo.TmdbCast({ tmdbKey() }, tmdbDir, tmdbCall, auth = tmdbAuth, matcher = tmdbService.matcher) }
+    /** A person's complete filmography from TMDB (the same credential and the same files as everything else TMDB: removed with them). */
+    val tmdbPeople: app.streamsetu.core.data.repo.TmdbPeople by lazy { app.streamsetu.core.data.repo.TmdbPeople(tmdbAuth, tmdbDir, tmdbCall) }
+    /** Which TMDB title each matched library item is (for the person screen's exact match). Removed with the rest of what TMDB gave. */
+    val tmdbIds: app.streamsetu.core.data.repo.TmdbIdStore by lazy { app.streamsetu.core.data.repo.TmdbIdStore(db) }
+    /** The star rating of every tile (see [app.streamsetu.core.data.repo.RatingBadges]): read for the titles on screen together, TMDB's asked once for a matched title through the express lane. */
+    val ratingBadges: app.streamsetu.core.data.repo.RatingBadges by lazy { app.streamsetu.core.data.repo.RatingBadges(db, tmdbAuth, tmdbIds, folders.visibility, tmdbCall, { ui.artworkMatching.value }, appScope) }
+    /**
+     * The extra sources (fanart.tv, TheTVDB, TVmaze) for a title the person opens: logo and wide picture, and the next episode of a series. One TMDB rhythm: the only TMDB request it makes (the
+     * ids of a series) goes through [tmdbCall], the same pacer as everything else. Only for titles that may be sent (not in a locked or hidden folder); each source follows its Settings switch.
+     */
+    val hubTitles: app.streamsetu.core.data.hub.HubTitles by lazy {
+        val store = app.streamsetu.core.data.hub.RoomHubStore(db.hub())
+        val access = listOf(app.streamsetu.core.data.hub.HubSource.FANART, app.streamsetu.core.data.hub.HubSource.TVDB, app.streamsetu.core.data.hub.HubSource.TVMAZE).associateWith { app.streamsetu.tv.hub.HubRuntime.access(this, context, it) }
+        val tvdb = app.streamsetu.core.data.hub.TVDBSession(access.getValue(app.streamsetu.core.data.hub.HubSource.TVDB), app.streamsetu.tv.hub.HubRuntime.secrets(this), app.streamsetu.core.data.hub.HubHttp)
+        val lang = settings.audioLanguage.value.takeIf { it.length == 2 }?.lowercase() ?: "en"
+        val sendable = app.streamsetu.core.data.hub.HubSendable(db, folders.visibility)
+        val hub = app.streamsetu.core.data.hub.MetadataHub(store, access, app.streamsetu.core.data.hub.HubHttp, tvdb, sendable::invoke, app.streamsetu.core.data.hub.ArtContext(lang))
+        app.streamsetu.core.data.hub.HubTitles(db, hub, store, tmdbIds, tmdbAuth, tmdbCall, sendable::invoke)
+    }
+    /** Everything TMDB gave this device is taken back (the key removed, matching switched off): files (when [files]), matched ids, genre ids, rating checks, and what the hub saved from TMDB. Off the main thread. */
+    fun clearTmdbData(files: Boolean = true) {
+        appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { if (files) app.streamsetu.core.data.repo.TmdbFiles.clear(tmdbDir) }
+            runCatching { tmdbIds.clearAll() }
+            runCatching { ratingBadges.clearAll() }
+            runCatching { db.hub().purgeSource(app.streamsetu.core.data.hub.HubSource.TMDB.key); db.hub().forgetTmdbIds() }
+        }
+    }
+    val libraryMatcher: app.streamsetu.core.data.repo.LibraryMatcher by lazy { app.streamsetu.core.data.repo.LibraryMatcher(db, folders.visibility, tmdbIds) }
+    private val artworkPool by lazy {
+        java.util.concurrent.Executors.newFixedThreadPool(if (Perf.lowEnd(context)) 2 else 4) { r -> Thread { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND); r.run() }.apply { name = "artwork-match"; isDaemon = true } }.asCoroutineDispatcher()
+    }
+    private val expressPool by lazy {
+        java.util.concurrent.Executors.newFixedThreadPool(if (Perf.lowEnd(context)) 2 else 3) { r -> Thread { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_DEFAULT); r.run() }.apply { name = "artwork-express"; isDaemon = true } }.asCoroutineDispatcher()
+    }
+    /** What to tell the person when TMDB did not work: "offline" only when there is no connection at all. */
+    fun describeTmdbProblem(e: Exception): String = app.streamsetu.core.data.repo.TmdbProblem.message(e, ArtworkPolicy.online(context), tmdbAuth.source == app.streamsetu.core.data.repo.TmdbAuth.Source.BUILT_IN)
+    /** What the person sees or opens is matched at once, apart from the bulk run ([app.streamsetu.core.data.repo.ArtworkExpress]). */
+    val artworkExpress: app.streamsetu.core.data.repo.ArtworkExpress by lazy {
+        app.streamsetu.core.data.repo.ArtworkExpress(db, tmdbService, tmdbCast, artworkEngine, folders.visibility, { ui.artworkMatching.value },
+            app.streamsetu.core.data.repo.ArtworkExpress.Config(concurrency = if (Perf.lowEnd(context)) 2 else 3), dispatcher = expressPool, scope = appScope).also { it.onStored = { artwork.filled.value++ }; it.extrasSink = { id, series, raw -> hubTitles.ingestTmdbDetails(id, series, raw) } }
+    }
+    /** Matches artwork for the whole library by itself, in the background, resuming where it stopped (see [app.streamsetu.core.data.repo.ArtworkMatchEngine]). */
+    val artworkEngine: app.streamsetu.core.data.repo.ArtworkMatchEngine by lazy {
+        app.streamsetu.core.data.repo.ArtworkMatchEngine(db, tmdbService, folders.visibility, tmdbDir, { profiles.activeId.value }, { ui.artworkMatching.value },
+            allowed = { ArtworkPolicy.allowed(context, ui.artworkMatchingCellular.value) && playback.current.value == null },
+            config = app.streamsetu.core.data.repo.ArtworkMatchEngine.Config.forDevice(Perf.lowEnd(context)), dispatcher = artworkPool,
+            pauseCause = { ArtworkPolicy.cause(context, ui.artworkMatchingCellular.value) })
+    }
 
     val profiles: app.streamsetu.tv.sync.ProfileService by lazy {
         app.streamsetu.tv.sync.ProfileService(db, context.getSharedPreferences("pin_throttle", android.content.Context.MODE_PRIVATE), beforeSwitch = {
-            // Before the tables change hands: what plays is stopped and its resume point is written (to the profile that was watching), the Wi-Fi exchange is closed, and folders the
-            // last person unlocked with the PIN lock again.
-            kotlinx.coroutines.runBlocking { kotlinx.coroutines.withTimeoutOrNull(2_000) { playback.stop(); playback.drainProgress() } }
+            // Before the tables change hands: the Wi-Fi exchange is closed, and folders the last person unlocked with the PIN lock again.
             lan.setEnabled(false); folders.lockAgain()
+        }, stopFirst = {
+            // What plays is stopped and its resume point is written (to the profile that was watching), without blocking the screen (switchToAsync).
+            kotlinx.coroutines.withTimeoutOrNull(2_000) { playback.stop(); playback.drainProgress() }
         }) { p ->
             parental.setKids(p.kids); KidsLock.on = p.kids
             lan.setEnabled(lan.wanted && profiles.isMainActive)
@@ -481,9 +550,13 @@ class AppContainer @Inject constructor(
         lan.boardSink = { nowBoard.ingest(it) }
         appScope.launch { playback.current.collect { lan.nudge() } }
         // (the Plex token cleanup is a database migration now: see AppDatabase.MIGRATION_9_10)
-        appScope.launch(kotlinx.coroutines.Dispatchers.IO) { runCatching { tmdbService.purge(); app.streamsetu.core.data.repo.TmdbFiles.purge(tmdbDir) } }          // the 180-day limit at every start, whatever the network or the key
+        appScope.launch(kotlinx.coroutines.Dispatchers.IO) { runCatching { tmdbService.purge(); app.streamsetu.core.data.repo.TmdbFiles.purge(tmdbDir); db.hub().purgeExpired(System.currentTimeMillis()) } }          // the 180-day limit at every start, whatever the network or the key
+        if (android.os.Build.FINGERPRINT != "robolectric") {          // the automatic artwork run: it follows lock and hide changes at once and never starts under the unit-test harness
+            appScope.launch { folders.restrictRev.collect { artworkEngine.onRestrictionsChanged() } }
+            appScope.launch(kotlinx.coroutines.Dispatchers.Default) { runCatching { artworkEngine.runForever() } }
+        }
         LauncherSurfaces.start(this)          // the widget and the Play-next row follow lock, hide, Kids and profile changes
-        ImageEviction.watch(appScope, db, folders, onRestricted = { added -> runCatching { smartMixState.purgeShown(added) }; runCatching { tmdbService.purge(); app.streamsetu.core.data.repo.TmdbFiles.purge(tmdbDir); tmdbDir.listFiles { f -> f.name.startsWith("cast-") }?.forEach { it.delete() } } }) { coil.Coil.imageLoader(context) }          // artwork of a folder that becomes locked, hidden or adult-blocked leaves the picture caches
+        ImageEviction.watch(appScope, db, folders, onRestricted = { added -> artworkEngine.onRestrictionsChanged(); runCatching { smartMixState.purgeShown(added) }; runCatching { added.chunked(200).forEach { db.hub().purgeFactsInFolders(it); db.hub().purgeIdentityInFolders(it) } }; runCatching { tmdbService.purge(); artworkEngine.resync(); app.streamsetu.core.data.repo.TmdbFiles.purge(tmdbDir); tmdbDir.listFiles { f -> f.name.startsWith("cast-") }?.forEach { it.delete() } } }) { coil.Coil.imageLoader(context) }          // artwork of a folder that becomes locked, hidden or adult-blocked leaves the picture caches
     }
 
     private var featuredCache: List<Playable>? = null
@@ -770,6 +843,9 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
         CatalogSyncWorker.schedule(this, hours)
         AutoBackupWorker.schedule(this, container.settings.automaticBackups.value)
         TmdbRefreshWorker.schedule(this)
+        GuideHubWorker.schedule(this)
+        container.appScope.launch { runCatching { container.guideHub.loadOverlay() } }
+        TmdbMatchWorker.schedule(this, container.ui.artworkMatching.value, container.ui.artworkMatchingCellular.value)
     }
 }
 

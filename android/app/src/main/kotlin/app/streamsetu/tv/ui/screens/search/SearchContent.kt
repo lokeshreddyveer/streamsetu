@@ -247,13 +247,15 @@ fun SearchContent(
                             Box(Modifier.size(64.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Tokens.card), Alignment.Center) { Image(Icons.Filled.Search, null, Modifier.size(30.dp), colorFilter = ColorFilter.tint(Tokens.accent)) }
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Label(if (tab == SearchTab.ALL) "Search your library" else "Search " + tab.label.lowercase(), Tokens.title, Tokens.text, FontWeight.SemiBold)
-                                Label(if (tab == SearchTab.ALL) "Channels, movies, series and episodes from every playlist. Works offline." else "Try a title, or something like \u201chindi movies 2024\u201d.", Tokens.body, Tokens.textSecondary, maxLines = 2)
+                                Label(if (tab == SearchTab.ALL) "Channels, movies, series and episodes from every playlist. Works offline." else "Try a title, or something like \u201caction movies 2024\u201d.", Tokens.body, Tokens.textSecondary, maxLines = 2)
                             }
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Eyebrow("Try searching for")
                             Row(Modifier.railOnLeft(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("hindi movies 2024", "telugu series", "news", "cricket").forEach { q -> TypeChip(q, false) { query = q } }
+                                // Examples follow the person's own languages: a library language, else the audio language in Settings, else the device's (never a fixed region).
+                                val ideas = remember(c.settings.audioLanguage.value) { app.streamsetu.core.data.repo.SearchIdeas.examples(app.streamsetu.core.data.repo.LibraryLanguageHint.read(c.context), c.settings.audioLanguage.value).filter { !it.person }.take(4) }
+                                ideas.forEach { idea -> TypeChip(idea.label, false) { query = idea.query } }
                             }
                         }
                     }
@@ -308,10 +310,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.sportsRows(items: Lis
 /** One search result, whatever it is: 48 dp artwork, a title (two lines at most), one line about it, and its kind on the right. At least 72 dp tall, the same focus frame everywhere. */
 @Composable
 internal fun SearchResultRow(x: SearchItem, extra: Modifier, onFocus: (Boolean) -> Unit, provenance: String? = null, onOpen: () -> Unit) {
-    Focusable(onOpen, extra.fillMaxWidth().widthIn(max = 860.ui).heightIn(min = 90.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = Tokens.card.copy(alpha = 0.55f), scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { _ ->          // no scale on focus in a list of results
+    Focusable(onOpen, onLongClick = tileLong(x), modifier = extra.fillMaxWidth().widthIn(max = 860.ui).heightIn(min = 90.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = Tokens.card.copy(alpha = 0.55f), scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { _ ->          // no scale on focus in a list of results
         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.size(58.ui).clip(RoundedCornerShape(8.dp)).background(Tokens.elevated), Alignment.Center) {
                 SearchArtworkFill(x)
+                if (x.kind == SearchKind.MOVIE || x.kind == SearchKind.SERIES) app.streamsetu.tv.ui.components.TileRating(x.id, Modifier.align(Alignment.TopEnd).padding(4.dp), small = true)          // the same star as on every tile
                 if (!x.artworkUrl.isNullOrBlank()) coil.compose.AsyncImage(coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current).data(x.artworkUrl).crossfade(false).build(), null, Modifier.fillMaxSize(), contentScale = if (x.kind == SearchKind.CHANNEL) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)          // no fade: a result is there when it is drawn
                 else Image(when (x.kind) { SearchKind.CHANNEL -> Icons.Filled.LiveTv; SearchKind.MOVIE -> Icons.Filled.Movie; SearchKind.SERIES -> Icons.Filled.VideoLibrary; SearchKind.EPISODE -> Icons.Filled.PlayCircle; SearchKind.PROGRAMME -> Icons.Filled.CalendarMonth; SearchKind.FOLDER -> Icons.Filled.Folder; SearchKind.COLLECTION -> Icons.Filled.Layers
                         SearchKind.SPORTS_EVENT, SearchKind.SPORTS_RECORDING -> Icons.Filled.SportsScore; SearchKind.SPORTS_TEAM -> Icons.Filled.Groups; SearchKind.SPORTS_COMPETITION -> Icons.Filled.EmojiEvents },
@@ -331,10 +334,11 @@ internal fun SearchResultRow(x: SearchItem, extra: Modifier, onFocus: (Boolean) 
 @Composable
 internal fun SearchTile(x: SearchItem, extra: Modifier, onFocus: (Boolean) -> Unit, onOpen: () -> Unit) {
     val channel = x.kind == SearchKind.CHANNEL
-    Focusable(onOpen, extra.width(if (channel) 176.ui else 150.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, focusedContainer = Color(0x24FFFFFF), scaleOnFocus = 1.05f, showRing = false, ringBand = false) { _ ->
+    Focusable(onOpen, onLongClick = tileLong(x), modifier = extra.width(if (channel) 176.ui else 150.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radius), container = Color.Transparent, focusedContainer = Color(0x24FFFFFF), scaleOnFocus = 1.05f, showRing = false, ringBand = false) { _ ->
         Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(Modifier.fillMaxWidth().aspectRatio(if (channel) 16f / 10f else 2f / 3f).clip(RoundedCornerShape(10.dp)).background(Tokens.elevated), Alignment.Center) {
                 SearchArtworkFill(x)
+                if (x.kind == SearchKind.MOVIE || x.kind == SearchKind.SERIES) app.streamsetu.tv.ui.components.TileRating(x.id, Modifier.align(Alignment.TopEnd).padding(4.dp), small = true)          // the same star as on every tile
                 if (!x.artworkUrl.isNullOrBlank()) coil.compose.AsyncImage(x.artworkUrl, null, Modifier.fillMaxSize().then(if (channel) Modifier.padding(14.dp) else Modifier), contentScale = if (channel) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
                 else if (channel) Image(Icons.Filled.LiveTv, null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(Tokens.accent)) else PosterPlaceholder(x.title, Modifier.fillMaxSize())
             }
@@ -347,10 +351,11 @@ internal fun SearchTile(x: SearchItem, extra: Modifier, onFocus: (Boolean) -> Un
 /** The title that matches what was typed best, larger than the rest, with its picture. */
 @Composable
 private fun BestMatchCard(x: SearchItem, extra: Modifier, onFocus: (Boolean) -> Unit, onOpen: () -> Unit) {
-    Focusable(onOpen, extra.fillMaxWidth().widthIn(max = 860.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radiusLarge), container = Color(0x14FFFFFF), focusedContainer = Color(0x2EFFFFFF), scaleOnFocus = 1.02f, hairline = true) { _ ->
+    Focusable(onOpen, onLongClick = tileLong(x), modifier = extra.fillMaxWidth().widthIn(max = 860.ui), onFocus = onFocus, shape = RoundedCornerShape(Tokens.radiusLarge), container = Color(0x14FFFFFF), focusedContainer = Color(0x2EFFFFFF), scaleOnFocus = 1.02f, hairline = true) { _ ->
         Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.width(84.ui).aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)).background(Tokens.elevated), Alignment.Center) {
                 SearchArtworkFill(x)
+                if (x.kind == SearchKind.MOVIE || x.kind == SearchKind.SERIES) app.streamsetu.tv.ui.components.TileRating(x.id, Modifier.align(Alignment.TopEnd).padding(4.dp), small = true)          // the same star as on every tile
                 if (!x.artworkUrl.isNullOrBlank()) coil.compose.AsyncImage(x.artworkUrl, null, Modifier.fillMaxSize(), contentScale = if (x.kind == SearchKind.CHANNEL) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
                 else PosterPlaceholder(x.title, Modifier.fillMaxSize())
             }
@@ -400,6 +405,7 @@ fun SectionSearch(c: AppContainer, kind: ContentKind, onOpen: (Card) -> Unit, on
 @Composable
 fun SearchScreen(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
     val entry = app.streamsetu.tv.ui.components.LocalContentEntry.current
+    val libraryId by c.library.activeId.collectAsState(); val profileId by c.profiles.activeId.collectAsState()
     Column(Modifier.fillMaxSize().padding(start = Tokens.safeHorizontal + 4.dp, end = Tokens.safeHorizontal, top = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Label("Search", Tokens.display, Tokens.text, FontWeight.ExtraBold)
         SearchContent(c, setOf(ContentKind.CHANNEL, ContentKind.MOVIE, ContentKind.SERIES), Modifier.fillMaxSize(), entry = entry,
@@ -411,7 +417,7 @@ fun SearchScreen(c: AppContainer, nav: app.streamsetu.tv.nav.Navigator) {
             onCollection = { id, k -> nav.openCollection(k, id) },
             onProgramme = { ch, start -> nav.openGuideAt(app.streamsetu.tv.sports.discovery.GuideTarget(ch.id, start + c.ui.epgOffsetMinutes.value * 60_000L)) },
             onSports = if (app.streamsetu.tv.sports.SportsFeature.enabled) ({ t -> nav.openSports(t) }) else null,
-            session = nav.search, sessionKey = "${c.library.activeId.value}|${c.profiles.activeId.value}|${nav.searchScope.name}",
+            session = nav.search, sessionKey = "$libraryId|$profileId|${nav.searchScope.name}",
             initialType = when (nav.searchScope) { app.streamsetu.core.data.repo.SearchTab.LIVE -> ContentKind.CHANNEL; app.streamsetu.core.data.repo.SearchTab.MOVIES -> ContentKind.MOVIE; app.streamsetu.core.data.repo.SearchTab.SERIES -> ContentKind.SERIES; else -> null },
             above = { typed, first -> rememberSearchActions(c, nav, typed, nav.search, first) })
     }
@@ -427,3 +433,7 @@ private fun SearchArtworkFill(x: SearchItem) {
     val filler = LocalArtworkFiller.current
     if (x.artworkUrl.isNullOrBlank() && (x.kind == SearchKind.MOVIE || x.kind == SearchKind.SERIES)) androidx.compose.runtime.LaunchedEffect(x.id) { filler?.invoke(x.id, false) }
 }
+
+/** Touch and hold (or hold OK) on a movie or series result opens the shared tile menu. */
+@Composable
+private fun tileLong(x: SearchItem): (() -> Unit)? { val m = app.streamsetu.tv.ui.phone.LocalTileMenu.current; return if (m != null && (x.kind == SearchKind.MOVIE || x.kind == SearchKind.SERIES)) ({ m(x.id) }) else null }

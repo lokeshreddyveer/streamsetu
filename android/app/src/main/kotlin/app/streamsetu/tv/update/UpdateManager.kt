@@ -153,7 +153,7 @@ class UpdateManager(private val context: Context, private val settings: AppSetti
             c.connectTimeout = 15_000; c.readTimeout = 30_000
             c.setRequestProperty("User-Agent", "StreamSetu/${installedVersion()}")
             if (c.responseCode != 200) throw UpdateException(UpdateFailure.NETWORK, "The download failed (${c.responseCode}). Try again later.")
-            val total = c.contentLengthLong.takeIf { it > 0 } ?: offer.asset.size
+            val total = c.contentLength.toLong().takeIf { it > 0 } ?: offer.asset.size
             actual = UpdateChecks.copyAndHash(c.inputStream, file, total, { pct -> _state.value = UpdateState.Downloading(pct) })
         } catch (e: Exception) { file.delete(); throw UpdateChecks.classify(e) } finally { c.disconnect() }
 

@@ -6,7 +6,7 @@ Read `SPEC-STATUS.md` for what is built against the specifications. Modules and 
 core-model        data classes, sorting and capability models, playback preference enums
 core-security     Android Keystore credential store
 core-network      OkHttp client, M3U / Xtream / XMLTV parsers
-core-database     Room (v11): catalog, libraries, folder arrangements, progress, the derived content identity (`content_identity`, `source_twin`), Smart Mix state (`smartmix_*`, `rec_dismissed`, `folder_recent`), plus the FTS4 search index and raw browse queries. Schemas of every version are in `schemas/`.
+core-database     Room (v15): catalog, libraries, folder arrangements, progress, the derived content identity (`content_identity`, `source_twin`), the metadata hub (`hub_identity`, `metadata_facts`), rating checks and the details-service tables (`tmdb_ids`, `tmdb_genres`, Room tables since v15), Smart Mix state (`smartmix_*`, `rec_dismissed`, `folder_recent`), plus the FTS4 search index and raw browse queries. Schemas of every version are in `schemas/`.
 core-preferences  AppSettings (playback), UiPrefs (appearance), ParentalControls (adult filter, PIN hash)
 core-media        PlaybackController (coordinator), ExoPlayer and MPV engines, recovery policy
 core-ui           motion tokens (durations, curves, scales), reduced-motion handling, frame monitor
@@ -127,7 +127,7 @@ On a Fire TV: Settings → My Fire TV → Developer Options → ADB debugging (a
 SMARTMIX_BENCH=1 runs the timing benchmark on synthetic libraries (`SmartMixBenchmark`); it measures the JVM, not a television.
 
 ## Verification status
-Unit tests (about 580 in `app`, 360 in `data`): parsers, retry policy, parental words, the privacy matrix (every surface against locked, hidden, adult and twin copies), the identity layer and its upgrade, Smart Mix, folder rows, TMDB limits, the build policy. Real-device behaviour (focus feel, memory and frame time on a stick) is checked by hand.
+Unit tests (about 580 in `app`, 360 in `data`): parsers, retry policy, parental words, the privacy matrix (every surface against locked, hidden, adult and twin copies), the identity layer and its upgrade, Smart Mix, folder rows, the details service limits, the build policy. Real-device behaviour (focus feel, memory and frame time on a stick) is checked by hand.
 
 ## In-app updates
 
@@ -146,10 +146,10 @@ Unit tests (about 580 in `app`, 360 in `data`): parsers, retry policy, parental 
 
 `data/.../smartmix` is the pure engine (integer scoring, a seeded draw, fixtures shared with the Apple apps in `smartmix/fixtures`); `data/.../repo/smartmix` holds the identity store (written beside the catalog), `RoomCandidateSource` (about 2,000 indexed copies per shelf, restriction flags filled), `RoomSmartMixStore` (profile-keyed, bounded) and `SmartMixHome`. Home shows Top This Week, Trending in Your Library, Because You Watched, Rediscover and a preferred-language row; "Shuffle recommendations" only bumps a counter (no sync). A title taken out of Continue Watching gets a `rec_dismissed` marker (progress untouched). Movies, Series and Live TV default to a Folders view (`FolderRowsModel`, 20 folders at a time, about 12 tiles each, a last "More" tile); the Grid view is a setting kept per profile on each device.
 
-## TMDB
+## The details service
 
-Only with the person's own key; no key is bundled. Artwork (`TmdbService`), the cast row (`TmdbCast`) and the weekly list (`TrendingProvider`) send a title name and year, or ask for the public list; nothing about the person. Restricted titles are never sent. Saved data is kept in `files/tmdb` and in correction rows (recorded in `filled.log`), shown for at most 30 days without a refresh, and removed after 180 days or when the title is locked. Removing the key stops every request; what was already filled stays until the 180-day limit.
+The person's own key (a v3 key as `api_key`, or a pasted v4 token as a bearer header) is used when there is one; otherwise the build's built-in read token (`TmdbAuth`; scrambled into a generated, git-ignored source by `app/build.gradle.kts` from `STREAMSETU_TMDB_TOKEN` or `-PtmdbTokenFile`; optional, builds without it work; a 401/403 for it sets it aside for 7 days). Artwork matching runs by itself in the background (`ArtworkMatchEngine`: cursor-paged queue, priority for titles on screen, ~10 requests/s with 4 at a time, 4/s with 2 on low-end boxes, backoff with Retry-After, resumes after the process dies, WorkManager `TmdbMatchWorker` continues when the app is closed). Artwork (`TmdbService`), the cast row (`TmdbCast`) and the weekly list (`TrendingProvider`) send a title name and year, or ask for the public list; nothing about the person. Restricted titles are never sent. Saved data is kept in `files/tmdb` and in correction rows (recorded in `filled.log`), shown for at most 30 days without a refresh, and removed after 180 days or when the title is locked. Switching matching off, or having no credential at all, stops every request; what was already filled stays until the 180-day limit. `scripts/check-no-secrets.sh` checks that the token is in no tracked file and no built APK.
 
 ## Network and links
 
-`network_security_config.xml` keeps cleartext allowed (providers stream over plain http) but refuses it for TMDB, OpenSubtitles and GitHub. A `streamsetu://play` link can only start a title the person could open by hand (`id=`, `q=` or `movie=`/`series=`/`channel=`); it cannot change a setting, so there is no `engine=`.
+`network_security_config.xml` keeps cleartext allowed (providers stream over plain http) but refuses it for the details service, the subtitle service and GitHub. A `streamsetu://play` link can only start a title the person could open by hand (`id=`, `q=` or `movie=`/`series=`/`channel=`); it cannot change a setting, so there is no `engine=`.

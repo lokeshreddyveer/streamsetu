@@ -242,7 +242,7 @@ fun SettingsPanel(current: Category, c: AppContainer, nav: Navigator) {
         Category.VIDEO -> VideoSettings(c)
         Category.AUDIO -> AudioSettings(c)
         Category.SUBTITLES -> SubtitleSettings(c)
-        Category.LIVE -> { LiveSettings(c); RemindersSettings(c); GuideAlertsSettings(c); ScheduledRecordingsSettings(c) }
+        Category.LIVE -> { LiveSettings(c); GuideSourcesSettings(c); RemindersSettings(c); GuideAlertsSettings(c); ScheduledRecordingsSettings(c) }
         Category.CHANNELS -> ChannelManagerSettings(c)
         Category.DEVICE -> DeviceSettings(c, nav)
         Category.STATISTICS -> { WeeklyDigestSettings(c, nav); StatisticsSettings(c) }
@@ -264,7 +264,10 @@ fun SettingsPanel(current: Category, c: AppContainer, nav: Navigator) {
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-private val languages = listOf("" to "Any", "en" to "English", "hi" to "Hindi", "te" to "Telugu", "ta" to "Tamil", "kn" to "Kannada", "ml" to "Malayalam", "ur" to "Urdu", "ar" to "Arabic", "es" to "Spanish", "fr" to "French", "de" to "German", "pt" to "Portuguese")
+// "Any", then the device's language, then the languages detected in the person's library, then every other language alphabetically (never a fixed region first).
+private val allLanguages: List<Pair<String, String>> = listOf("en" to "English", "es" to "Spanish", "fr" to "French", "de" to "German", "it" to "Italian", "pt" to "Portuguese", "nl" to "Dutch", "pl" to "Polish", "ru" to "Russian", "uk" to "Ukrainian", "tr" to "Turkish", "ar" to "Arabic", "he" to "Hebrew", "fa" to "Persian", "hi" to "Hindi", "te" to "Telugu", "ta" to "Tamil", "kn" to "Kannada", "ml" to "Malayalam", "bn" to "Bengali", "ur" to "Urdu", "zh" to "Chinese", "ja" to "Japanese", "ko" to "Korean", "th" to "Thai", "vi" to "Vietnamese", "id" to "Indonesian", "sv" to "Swedish", "el" to "Greek")
+private fun languageChoices(context: android.content.Context): List<Pair<String, String>> =
+    app.streamsetu.core.data.repo.LibraryLanguageHint.pickerOrder(allLanguages, java.util.Locale.getDefault().language, app.streamsetu.core.data.repo.LibraryLanguageHint.read(context))
 
 @Composable
 private fun connections(c: AppContainer): List<Source> = c.sources.sources.collectAsState(initial = emptyList()).value.filter { !it.draft }
@@ -353,21 +356,28 @@ fun PlaybackSettings(c: AppContainer) {
     }
 }
 
+@androidx.annotation.RequiresApi(23)
+private fun displayModeText(display: android.view.Display?): String? = runCatching { display?.mode?.let { "${it.physicalWidth}×${it.physicalHeight} at ${"%.0f".format(it.refreshRate)} Hz" } }.getOrNull()
+
+@androidx.annotation.RequiresApi(24)
+private fun displayHdrNames(display: android.view.Display?): List<String> =
+    runCatching { display?.hdrCapabilities?.supportedHdrTypes?.map { when (it) { 1 -> "Dolby Vision"; 2 -> "HDR10"; 3 -> "HLG"; 4 -> "HDR10+"; else -> "HDR" } } }.getOrNull().orEmpty()
+
 @Composable
 fun VideoSettings(c: AppContainer) {
     val s = c.settings
     val aspect by s.defaultAspect.collectAsStateWithLifecycle(); val info by s.showStreamInfo.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
     val display = remember { runCatching { (context.getSystemService(android.content.Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager).getDisplay(0) }.getOrNull() }
-    val mode = display?.mode
-    val hdr = remember { runCatching { display?.hdrCapabilities?.supportedHdrTypes?.map { when (it) { 1 -> "Dolby Vision"; 2 -> "HDR10"; 3 -> "HLG"; 4 -> "HDR10+"; else -> "HDR" } } }.getOrNull().orEmpty() }
+    val resolution = remember { if (android.os.Build.VERSION.SDK_INT >= 23) displayModeText(display) else null }          // the display's modes exist from Android 6
+    val hdr = remember { if (android.os.Build.VERSION.SDK_INT >= 24) displayHdrNames(display) else emptyList() }          // HDR capabilities from Android 7
     SettingGroup("Picture") {
         ChoiceRow("Default picture size", "Fit shows the full picture. Fill and Zoom crop the edges.", listOf("FIT" to "Fit", "FILL" to "Fill", "ZOOM" to "Zoom"), aspect) { s.setDefaultAspect(it) }
         ToggleRow("Show stream information while playing", "Shows the player, resolution and codecs during playback.", info) { s.setShowStreamInfo(it) }
         SettingRow("Quality", "Streams from IPTV providers have one quality each; adaptive streams (HLS with several levels) are chosen automatically.", "Automatic")
     }
     SettingGroup("This screen") {
-        InfoRow("Resolution", mode?.let { "${it.physicalWidth}×${it.physicalHeight} at ${"%.0f".format(it.refreshRate)} Hz" } ?: "unknown")
+        InfoRow("Resolution", resolution ?: "unknown")
         InfoRow("HDR formats the TV accepts", hdr.joinToString(", ").ifBlank { "none reported" }, "Played only when the TV, the decoder and the stream all support it.")
     }
     AdvancedGroup(c, "Decoders on this device", "Hardware decoding is used whenever the device has it.") {
@@ -380,7 +390,7 @@ fun AudioSettings(c: AppContainer) {
     val s = c.settings
     val lang by s.audioLanguage.collectAsStateWithLifecycle(); val remember by s.rememberAudioChoice.collectAsStateWithLifecycle(); val pass by s.surroundPassthrough.collectAsStateWithLifecycle()
     SettingGroup("Language") {
-        ChoiceRow("Preferred audio language", "Chosen automatically when a stream has several audio tracks. You can still switch while watching.", languages, lang) { s.setAudioLanguage(it) }
+        ChoiceRow("Preferred audio language", "Chosen automatically when a stream has several audio tracks. You can still switch while watching.", languageChoices(c.context), lang) { s.setAudioLanguage(it) }
         ToggleRow("Remember the track I choose", "The language you pick while watching becomes the preferred language.", remember) { s.setRememberAudioChoice(it) }
     }
     SettingGroup("Sound output", "Takes effect on the next stream.") {
@@ -396,7 +406,7 @@ fun SubtitleSettings(c: AppContainer) {
     val anim by ui.animation.collectAsStateWithLifecycle(); val contrast by ui.highContrastFocus.collectAsStateWithLifecycle()
     SettingGroup("Subtitles", "Style applies to the next stream.") {
         ChoiceRow("Subtitles", "Auto turns them on when the sound is not in your preferred audio language.", listOf("OFF" to "Off", "AUTO" to "Auto", "ON" to "On when available"), mode) { s.setSubtitleMode(it) }
-        ChoiceRow("Subtitle language", options = languages, value = lang) { s.setSubtitleLanguage(it) }
+        ChoiceRow("Subtitle language", options = languageChoices(c.context), value = lang) { s.setSubtitleLanguage(it) }
         ChoiceRow("Size", options = listOf("SMALL" to "Small", "MEDIUM" to "Medium", "LARGE" to "Large", "XLARGE" to "Extra large"), value = size) { s.setSubtitleSize(it) }
         ChoiceRow("Background", options = listOf("NONE" to "None", "DARK" to "Dark box"), value = bg) { s.setSubtitleBackground(it) }
         ToggleRow("Outline", "A dark edge around the letters.", outline) { s.setSubtitleOutline(it) }

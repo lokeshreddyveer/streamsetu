@@ -41,7 +41,6 @@ import app.streamsetu.tv.nav.Overlay
 import app.streamsetu.tv.play
 import app.streamsetu.tv.ui.components.*
 import app.streamsetu.tv.ui.screens.SeriesDetailViewModel
-import app.streamsetu.tv.ui.screens.section.ratingBadge
 import app.streamsetu.tv.ui.theme.Tokens
 import androidx.compose.ui.platform.testTag
 import coil.compose.AsyncImage
@@ -99,7 +98,9 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
     LaunchedEffect(movie.id, pictures) { kotlinx.coroutines.delay(400); franchise = runCatching { c.search.franchiseOf(movie) }.getOrDefault(emptyList()) }
     // The same film in other languages (or in another playlist), read off the screen's thread after the page has come in.
     var otherLanguages by remember { mutableStateOf<List<Pair<app.streamsetu.core.data.repo.OtherVersions.Version, Movie>>?>(null) }
-    val cast = app.streamsetu.tv.ui.components.rememberCast(c, movie.title, movie.year, false, movie.categoryId)
+    val tmdbState = app.streamsetu.tv.ui.components.rememberTmdbDetailsState(c, movie.id, movie.title, movie.year, false, movie.categoryId)
+    val tmdb = tmdbState.details
+    val cast = tmdb.cast
     var openVersion by remember(movie.id) { mutableStateOf<app.streamsetu.core.data.repo.OtherVersions.Version?>(null) }
     LaunchedEffect(movie.id) { openVersion = runCatching { c.search.versionOf(movie) }.getOrNull() }
     LaunchedEffect(movie.id) { kotlinx.coroutines.delay(450); otherLanguages = runCatching { c.search.otherVersionsOf(movie, app.streamsetu.tv.ui.components.preferredLanguage(c)) }.getOrDefault(emptyList()) }
@@ -114,85 +115,55 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
     val container = movie.streamRef.substringAfterLast(':', "").uppercase().takeIf { it.length in 2..4 }
     fun sourceName(id: String) = sources.firstOrNull { it.id == "src:$id" }?.name ?: "Connection"
 
+    val queued by c.watchQueue.items.collectAsState()
+    val inQueue = queued.any { it.id == movie.id }
+    var versionOpen by remember(movie.id) { mutableStateOf(false) }
+    val versionRows = otherLanguages.orEmpty()
+    val isFav = movie.id in favs; val isLater = movie.id in later
+    val hubView = app.streamsetu.tv.ui.components.rememberTitleHub(c, movie.id, false)
+    val top = app.streamsetu.tv.ui.components.TitleTop(
+        title = movie.title, logo = hubView.logo, nextEpisode = hubView.nextEpisode, backdrop = hubView.backdrop ?: info?.backdrop?.takeIf { it.isNotBlank() } ?: tmdb.backdrop, poster = movie.posterUrl,
+        meta = app.streamsetu.core.data.repo.TitlePageText.metaLine(movie.year, app.streamsetu.core.data.repo.TitlePageText.runtime(info?.duration), null, app.streamsetu.core.data.repo.TitlePageText.quality(movie.title, container), tmdb.ratingOr(movie.rating)),
+        pickerLabel = app.streamsetu.core.data.repo.TitlePageText.pickerLabel(openVersion?.let { it.language ?: it.label }, versionRows.size), onPicker = { versionOpen = true },
+        playLabel = app.streamsetu.core.data.repo.TitlePageText.playMovie(resumable?.positionMs ?: 0L, resumable?.durationMs ?: 0L, resumable != null), playProgress = resumable?.fraction,
+        onPlay = { c.playBestMovie(movie) { play(c, nav, it) } }, playFocus = first,
+        actions = buildList {
+            add(app.streamsetu.tv.ui.components.TitleAction(if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, "Favourite", isFav, "Favourite, " + if (isFav) "on" else "off", "action-favourite") { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, !isFav) } })
+            add(app.streamsetu.tv.ui.components.TitleAction(if (isLater) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, "Watch Later", isLater, "Watch Later, " + if (isLater) "on" else "off", "action-later") { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, !isLater, UserRepository.WATCH_LATER) } })
+            tmdb.trailerKey?.let { k -> add(app.streamsetu.tv.ui.components.TitleAction(Icons.Filled.Movie, "Trailer", tag = "action-trailer") { app.streamsetu.tv.ui.components.openTrailer(c.context, k) }) }
+            add(app.streamsetu.tv.ui.components.TitleAction(Icons.Filled.Share, "Share", tag = "action-share") { app.streamsetu.tv.ui.phone.shareTitle(c.context, "movie", movie.title) })
+        },
+        synopsis = (info?.plot ?: movie.plot ?: tmdb.plot), genres = app.streamsetu.core.data.repo.TitlePageText.genres(info?.genre), onMenu = { moreMenu = true })
+    val rows = app.streamsetu.core.data.repo.TitlePageText.details(info?.director, info?.cast ?: tmdb.cast.take(6).joinToString(", ") { it.name }, null, null, info?.releaseDate, movie.categoryId != null)
+    val pad = Modifier.padding(horizontal = Tokens.safeHorizontal)
     Box(Modifier.fillMaxSize().background(Tokens.background)) {
-        Backdrop(info?.backdrop?.takeIf { it.isNotBlank() }, movie.title)          // never the poster blown up to fill the screen: with no backdrop the poster is shown at its own size beside the text
-        // When the remote comes back up into the title block (Play, Watch Later, Favorite, More), the page goes back to the top, so the title is never left cut off above the screen edge.
-        val pageList = rememberLazyListState()
-        val pageScope = rememberCoroutineScope()
-        Column(Modifier.fillMaxSize().padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 56.dp)) {
-            // The title, the story and the actions stay where they are; only what is below them scrolls.
-              Row(Modifier, horizontalArrangement = Arrangement.spacedBy(28.dp), verticalAlignment = Alignment.Top) {
-                // The poster, large, as the left half of the page: a title page, not a list of buttons.
-                movie.posterUrl?.takeIf { it.isNotBlank() && info?.backdrop.isNullOrBlank() }?.let { url ->
-                    androidx.compose.foundation.layout.Box(Modifier.width(200.ui).aspectRatio(2f / 3f).clip(RoundedCornerShape(Tokens.radiusPanel)).background(Tokens.card)) {
-                        coil.compose.AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                    }
-                }
-                // The title block rises a little into place as the page opens (only a fade with reduced motion).
-                Column(Modifier.widthIn(max = 540.dp).riseIn(0), verticalArrangement = Arrangement.spacedBy(8.dp)) {          // the left 55 % of the screen
-                    Label(movie.title, Tokens.display, Tokens.text, FontWeight.Bold, maxLines = 2, modifier = Modifier.testTag("detail-title"))
-                    app.streamsetu.tv.ui.components.VersionPill(openVersion, tv = true)          // "Hindi · Dubbed · FHD": tells apart versions that share a poster and a story
-                    Label(listOfNotNull(movie.year?.toString(), info?.duration?.takeIf { it.isNotBlank() && it != "00:00:00" }, info?.genre?.takeIf { it.isNotBlank() }, ratingBadge(movie.rating)).joinToString("  ·  "), Tokens.small, Tokens.textSecondary)
-                    // One short line about the title, its story in at most four lines, then the actions: Play or Resume, Watch Later, Favorite, More. Everything else is under More.
-                    (info?.plot ?: movie.plot)?.takeIf { it.isNotBlank() }?.let { Label(it, Tokens.body, Tokens.textSecondary, maxLines = if (more) 12 else 4) }
-                    if (resumable != null) Box(Modifier.width(220.dp).height(4.dp).background(Tokens.elevated, RoundedCornerShape(2.dp))) { Box(Modifier.fillMaxWidth(resumable.fraction).fillMaxHeight().background(Tokens.accent, RoundedCornerShape(2.dp))) }
-                    Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (resumable != null) TvButton("Resume", { c.playBestMovie(movie) { play(c, nav, it) } }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
-                        else TvButton("Play", { c.playBestMovie(movie) { play(c, nav, it) } }, Modifier.focusRequester(first), icon = Icons.Filled.PlayArrow, primary = true)
-                        // The other actions are round icon buttons on this same line; the one the remote is on is named beside them.
-                        var actionHint by remember { mutableStateOf<String?>(null) }
-                        TvIconButton(if (movie.id in later) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, if (movie.id in later) "In Watch Later" else "Watch Later", { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in later, UserRepository.WATCH_LATER) } }, on = movie.id in later, onFocus = { actionHint = if (it) (if (movie.id in later) "In Watch Later" else "Watch Later") else null })
-                        TvIconButton(if (movie.id in favs) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, if (movie.id in favs) "Favorited" else "Favorite", { scope.launch { c.user.setFavourite(movie.id, ContentKind.MOVIE, movie.id !in favs) } }, on = movie.id in favs, onFocus = { actionHint = if (it) (if (movie.id in favs) "Favorited" else "Favorite") else null })
-                        QueueButtonTv(c, ContentKind.MOVIE, movie.id, movie.title, iconOnly = true, onHint = { actionHint = it })
-                        TvIconButton(Icons.Filled.MoreHoriz, "More", { moreMenu = true }, onFocus = { actionHint = if (it) "More" else null })
-                        actionHint?.let { Label(it, Tokens.small, Tokens.textSecondary) }
-                    }
-                    if (more) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        app.streamsetu.core.data.repo.QualityBadges.from(listOf(movie.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Tokens.small, Tokens.accent, FontWeight.Bold) }
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            FolderPath(c, app.streamsetu.core.model.ContentKind.MOVIE, movie.categoryId, phone = false) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.MOVIE, id) }; container?.let { Chip(it) }
-                            if (progress?.completed == true) Chip("Watched", Tokens.success) else if (resumable != null) Chip("${minutes(resumable.durationMs - resumable.positionMs)}m left", Tokens.accent)
-                        }
-                    }
-                }
-              }
-            
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = pageList, contentPadding = PaddingValues(top = 26.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-
-            if (more) item {
-                Column(Modifier.widthIn(max = 620.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    info?.director?.takeIf { it.isNotBlank() }?.let { Label("Director  ·  $it", Tokens.small, Tokens.textSecondary, maxLines = 2) }
-                    info?.cast?.takeIf { it.isNotBlank() }?.let { Label("Cast  ·  $it", Tokens.small, Tokens.textSecondary, maxLines = 4) }
-                    info?.releaseDate?.takeIf { it.isNotBlank() }?.let { Label("Released  ·  $it", Tokens.small, Tokens.textSecondary) }
-                    if (info == null) Label("The provider has no further details for this title.", Tokens.small, Tokens.textTertiary)
-                }
+        LazyColumn(Modifier.fillMaxSize(), state = rememberLazyListState(), contentPadding = PaddingValues(bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
+            item(key = "hero") { app.streamsetu.tv.ui.components.TitleHero(true, top, inset = Tokens.safeHorizontal) }
+            item(key = "top") { app.streamsetu.tv.ui.components.TitleBody(true, top, pad.widthIn(max = 720.dp)) }
+            if (rows.isNotEmpty()) item(key = "details") {
+                Box(pad.widthIn(max = 720.dp)) { app.streamsetu.tv.ui.components.DetailsList(rows, true, { n -> nav.open(Overlay.Person(n, null, null, movie.title, movie.year)) }, if (movie.categoryId != null) { { FolderPath(c, ContentKind.MOVIE, movie.categoryId, phone = false) { id -> nav.close(); nav.openFolderTab(ContentKind.MOVIE, id) } } } else null) }
             }
-            if (variants.size > 1) item {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    SectionTitle("Available from")
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { variants.forEach { v -> Chip("${sourceName(v.sourceId)}  ·  ${v.streamRef.substringAfterLast(':', "").uppercase()}", if (v.id == movie.id) Tokens.accent else Tokens.textSecondary) } }
-                }
-            }
-            if (franchise.size > 1) item { FranchiseTimeline(franchise, movie.id) { m -> nav.close(); nav.open(Overlay.MovieDetail(m)) } }
-            if (cast.isNotEmpty()) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionTitle("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, true) { m -> nav.open(Overlay.Person(m.name, m.photo)) } } }
-            if (otherLanguages.let { it == null || it.size > 1 }) item { app.streamsetu.tv.ui.components.TvOtherLanguages(otherLanguages, { it.posterUrl }) { m -> nav.close(); nav.open(Overlay.MovieDetail(m)) } }
-            if (!relatedLoaded) item { RelatedPlaceholders() }
-            if (related.isNotEmpty()) item {
-                Column {
+            if (cast.isEmpty() && tmdbState.problem != null) item(key = "cast-problem") { app.streamsetu.tv.ui.components.TmdbProblemLine(tmdbState, tv = true) }
+            if (cast.isNotEmpty()) item(key = "cast") { Column(pad, verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionTitle("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, true) { m -> nav.open(Overlay.Person(m.name, m.photo, m.id, movie.title, movie.year)) } } }
+            if (versionRows.size > 1) item(key = "versions") { Box(pad) { app.streamsetu.tv.ui.components.TvOtherLanguages(otherLanguages, { it.posterUrl }) { m -> nav.close(); nav.open(Overlay.MovieDetail(m)) } } }
+            tmdb.trailerKey?.let { k -> item(key = "extras") { Column(pad, verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionTitle("Trailers & extras"); TvButton("Official trailer", { app.streamsetu.tv.ui.components.openTrailer(c.context, k) }, Modifier.testTag("extras-trailer"), icon = Icons.Filled.Movie) } } }
+            if (franchise.size > 1) item(key = "franchise") { Box(pad) { FranchiseTimeline(franchise, movie.id) { m -> nav.close(); nav.open(Overlay.MovieDetail(m)) } } }
+            if (!relatedLoaded) item(key = "relatedSkeleton") { Box(pad) { RelatedPlaceholders() } }
+            if (related.isNotEmpty()) item(key = "related") {
+                Column(pad) {
                     SectionTitle("More like this")
-                    // Down from the buttons lands on the first poster (or the one the remote was last on), never on one in the middle; the row has room at both ends so a focused poster is not cut off.
                     val firstRelated = remember { FocusRequester() }
-                    LazyRow(Modifier.bleedStart(24.dp).focusRestorer { firstRelated }, horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(start = 32.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) { itemsIndexed(related, key = { _, r -> r.item.id }) { idx, r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, itemId = m.id, subtitle = r.reason, badge = ratingBadge(m.rating), width = 150.ui, focusRequester = if (idx == 0) firstRelated else null) } }
+                    LazyRow(Modifier.bleedStart(24.dp).focusRestorer { firstRelated }, horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(start = 32.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) { itemsIndexed(related, key = { _, r -> r.item.id }) { idx, r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, itemId = m.id, subtitle = r.reason, width = 150.ui, focusRequester = if (idx == 0) firstRelated else null) } }
                 }
             }
-        }
         }
     }
+    if (versionOpen) ContextMenu("Versions", null, versionRows.map { (v, m) -> MenuAction(v.label + if (v.current) "  (current)" else "", Icons.Filled.SwapHoriz, enabled = !v.current) { nav.close(); nav.open(Overlay.MovieDetail(m)) } }, onClose = { versionOpen = false })
     if (moreMenu) ContextMenu(movie.title, null, buildList {
         if (resumable != null || progress?.completed == true) add(MenuAction("Start Over", Icons.Filled.Replay) { scope.launch { c.user.clearResumePoint(movie.id) }; c.play(MoviePlayable(movie), listOf(MoviePlayable(movie)), startOver = true); if (nav.top != Overlay.Player) nav.open(Overlay.Player) })
         add(MenuAction("Watch privately", Icons.Filled.VisibilityOff) { c.playBestMovie(movie) { play(c, nav, it, privately = true) } })
         if (variants.size > 1) add(MenuAction("Choose Stream", Icons.Filled.SwapHoriz) { chooseOpen = true })
-        add(MenuAction(if (more) "Less information" else "More information (cast, details)", Icons.Filled.Info) { more = !more })
+        add(MenuAction(if (inQueue) "Remove from queue" else "Add to queue", if (inQueue) Icons.Filled.Check else Icons.Filled.Add) { if (inQueue) c.watchQueue.remove(movie.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.MOVIE, movie.id, movie.title)) })
         add(MenuAction("Edit title and poster", Icons.Filled.Edit) { editing = true })
     }, onClose = { moreMenu = false })
     if (editing) OverrideDialog(movie.title, overrides[movie0.id]?.posterUrl.orEmpty(), onSave = { t, p -> scope.launch { c.collections.setOverride(movie0.id, t.takeIf { it != movie0.title }, p) }; editing = false }, onReset = { scope.launch { c.collections.clearOverride(movie0.id) }; editing = false }, onClose = { editing = false })
@@ -200,7 +171,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
 }
 
 @Composable
-private fun Chip(text: String, color: Color = Tokens.textSecondary) {
+private fun StatusChip(text: String, color: Color = Tokens.textSecondary) {
     Box(Modifier.background(Tokens.elevated, RoundedCornerShape(Tokens.radiusSmall)).padding(horizontal = 10.dp, vertical = 4.dp)) { Label(text, Tokens.caption, color, FontWeight.Medium) }
 }
 
@@ -224,7 +195,9 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
     val seriesPictures by c.artwork.filled.collectAsState()
     LaunchedEffect(series0.id, seriesPictures) { kotlinx.coroutines.delay(450); similar = runCatching { c.search.similarSeries(series0) }.getOrDefault(emptyList()); similarLoaded = true }
     var otherLanguages by remember { mutableStateOf<List<Pair<app.streamsetu.core.data.repo.OtherVersions.Version, Series>>?>(null) }
-    val cast = app.streamsetu.tv.ui.components.rememberCast(c, series0.title, series0.year, true, series0.categoryId)
+    val tmdbState = app.streamsetu.tv.ui.components.rememberTmdbDetailsState(c, series0.id, series0.title, series0.year, true, series0.categoryId)
+    val tmdb = tmdbState.details
+    val cast = tmdb.cast
     var openVersion by remember(series0.id) { mutableStateOf<app.streamsetu.core.data.repo.OtherVersions.Version?>(null) }
     LaunchedEffect(series0.id) { openVersion = runCatching { c.search.versionOf(series0) }.getOrNull() }
     LaunchedEffect(series0.id) { kotlinx.coroutines.delay(450); otherLanguages = runCatching { c.search.otherVersionsOf(series0, app.streamsetu.tv.ui.components.preferredLanguage(c)) }.getOrDefault(emptyList()) }
@@ -254,59 +227,53 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
     fun playEp(e: Episode) = play(c, nav, EpisodePlayable(e, s), queue)
     val watchedCount = episodes.count { progress[it.id]?.completed == true }
 
+    val queued by c.watchQueue.items.collectAsState()
+    val inQueue = queued.any { it.id == s.id }
+    var versionOpen by remember(s.id) { mutableStateOf(false) }
+    var menuOpen by remember(s.id) { mutableStateOf(false) }
+    val versionRows = otherLanguages.orEmpty()
+    val isFav = s.id in favs; val isLater = s.id in later
+    val first0 = episodes.minWithOrNull(compareBy({ it.season }, { it.number }))
+    val ip = inProgress
+    val playAction: () -> Unit = when {
+        ip != null -> { { playEp(ip) } }
+        forward != null && watchedCount > 0 -> { { playEp(forward) } }
+        first0 != null -> { { playEp(first0) } }
+        else -> { {} }
+    }
+    val hubView = app.streamsetu.tv.ui.components.rememberTitleHub(c, s.id, true)
+    val top = app.streamsetu.tv.ui.components.TitleTop(
+        title = s.title, logo = hubView.logo, nextEpisode = hubView.nextEpisode, backdrop = hubView.backdrop ?: s.backdropUrl?.takeIf { it.isNotBlank() } ?: tmdb.backdrop, poster = s.posterUrl,
+        meta = app.streamsetu.core.data.repo.TitlePageText.metaLine(s.year, if (seasons.isNotEmpty()) app.streamsetu.core.model.Plurals.format("season", seasons.size) else null, null, app.streamsetu.core.data.repo.TitlePageText.quality(s.title), tmdb.ratingOr(s.rating)),
+        pickerLabel = app.streamsetu.core.data.repo.TitlePageText.pickerLabel(openVersion?.let { it.language ?: it.label }, versionRows.size), onPicker = { versionOpen = true },
+        playLabel = app.streamsetu.core.data.repo.TitlePageText.playSeries(ip?.let { it.season to it.number }, if (watchedCount > 0) forward?.let { it.season to it.number } else null, first0?.let { it.season to it.number }, plan.allFinished, loading), playProgress = null,
+        onPlay = playAction, playFocus = first,
+        actions = buildList {
+            add(app.streamsetu.tv.ui.components.TitleAction(if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, "Favourite", isFav, "Favourite, " + if (isFav) "on" else "off", "action-favourite") { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, !isFav) } })
+            add(app.streamsetu.tv.ui.components.TitleAction(if (isLater) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, "Watch Later", isLater, "Watch Later, " + if (isLater) "on" else "off", "action-later") { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, !isLater, UserRepository.WATCH_LATER) } })
+            tmdb.trailerKey?.let { k -> add(app.streamsetu.tv.ui.components.TitleAction(Icons.Filled.Movie, "Trailer", tag = "action-trailer") { app.streamsetu.tv.ui.components.openTrailer(c.context, k) }) }
+            add(app.streamsetu.tv.ui.components.TitleAction(Icons.Filled.Share, "Share", tag = "action-share") { app.streamsetu.tv.ui.phone.shareTitle(c.context, "series", s.title) })
+        },
+        synopsis = s.plot ?: tmdb.plot, genres = emptyList(), onMenu = { menuOpen = true })
+    val rows = app.streamsetu.core.data.repo.TitlePageText.details(null, tmdb.cast.take(6).joinToString(", ") { it.name }, null, null, s.year?.toString(), s.categoryId != null)
+    val pad = Modifier.padding(horizontal = Tokens.safeHorizontal)
     Box(Modifier.fillMaxSize().background(Tokens.background)) {
-        Backdrop(s.backdropUrl?.takeIf { it.isNotBlank() } ?: s.posterUrl, s.title)
-        val pageList = rememberLazyListState()
-        val pageScope = rememberCoroutineScope()
-        Column(Modifier.fillMaxSize().padding(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 56.dp)) {
-            // The title, the story and the actions stay where they are; only what is below them scrolls.
-                Column(Modifier.riseIn(0).widthIn(max = 760.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Label(s.title, Tokens.display, Tokens.text, FontWeight.Bold, maxLines = 2, modifier = Modifier.testTag("detail-title"))
-                    app.streamsetu.tv.ui.components.VersionPill(openVersion, tv = true)
-                    Label(listOfNotNull(s.year?.toString(), if (seasons.isNotEmpty()) "${seasons.size} season${if (seasons.size == 1) "" else "s"}" else null, ratingBadge(s.rating)).joinToString("  ·  "), Tokens.small, Tokens.textSecondary)
-                    app.streamsetu.core.data.repo.QualityBadges.from(listOf(s.title)).takeIf { it.isNotEmpty() }?.let { Label(it.joinToString("  ·  "), Tokens.small, Tokens.accent, FontWeight.Bold) }
-                    s.plot?.takeIf { it.isNotBlank() }?.let { Label(it, Tokens.body, Tokens.textSecondary, maxLines = 4) }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FolderPath(c, app.streamsetu.core.model.ContentKind.SERIES, s.categoryId, phone = false) { id -> nav.close(); nav.openFolderTab(app.streamsetu.core.model.ContentKind.SERIES, id) }
-                        if (episodes.isNotEmpty()) Chip(if (plan.allFinished) "All watched" else "$watchedCount of ${episodes.size} watched", if (plan.allFinished) Tokens.success else Tokens.textSecondary)
-                    }
+        LazyColumn(Modifier.fillMaxSize(), state = rememberLazyListState(), contentPadding = PaddingValues(bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
+            item(key = "hero") { app.streamsetu.tv.ui.components.TitleHero(true, top, inset = Tokens.safeHorizontal) }
+            item(key = "top") { app.streamsetu.tv.ui.components.TitleBody(true, top, pad.widthIn(max = 720.dp)) }
+            // Episodes come right after the actions, synopsis and genres: the season picker opens the list of that season.
+            item(key = "episodesHead") {
+                Column(pad, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SectionTitle("Episodes")
+                    if (episodes.isNotEmpty()) StatusChip(if (plan.allFinished) "All watched" else "$watchedCount of ${episodes.size} watched", if (plan.allFinished) Tokens.success else Tokens.textSecondary)
                     if (plan.gapBefore && forward != null) Label("Episode ${forward.number - 1} is not available. The next one on offer is episode ${forward.number}.", Tokens.small, Tokens.warning, maxLines = 2)
-                    Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        val ip = inProgress
-                        // One button for the main action, always the same call: its label and action change as the episodes load, but the button (and the remote on it) is never replaced.
-                        val first0 = episodes.minWithOrNull(compareBy({ it.season }, { it.number }))
-                        val main: Triple<String, androidx.compose.ui.graphics.vector.ImageVector, () -> Unit> = when {
-                            ip != null -> Triple("Continue Watching — S%02d E%02d".format(ip.season, ip.number), Icons.Filled.PlayArrow, { playEp(ip) })
-                            forward != null && watchedCount > 0 -> Triple(if (catchUp != null) "Continue Forward S${forward.season} E${forward.number}" else "Continue S${forward.season} E${forward.number}", Icons.Filled.PlayArrow, { playEp(forward) })
-                            first0 != null && plan.allFinished -> Triple("Watch Again", Icons.Filled.Replay, { playEp(first0) })
-                            first0 != null -> Triple("Start Series", Icons.Filled.PlayArrow, { playEp(first0) })
-                            else -> Triple(if (loading) "Loading episodes…" else "View Episodes", Icons.Filled.List, {})
-                        }
-                        val (mainText, mainIcon, mainAction) = main
-                        TvButton(mainText, mainAction, Modifier.focusRequester(first), icon = mainIcon, primary = true)
-                        catchUp?.let { cu -> TvButton("Catch Up S${cu.season} E${cu.number}", { playEp(cu) }, icon = Icons.Filled.History) }
-                        if (episodes.isNotEmpty() && (ip != null || watchedCount > 0) && !plan.allFinished) TvButton("Start from Beginning", { playEp(episodes.minWith(compareBy({ it.season }, { it.number }))) }, icon = Icons.Filled.Replay)
-                        // The other actions are round icon buttons on this same line; the one the remote is on is named beside them.
-                        var actionHint by remember { mutableStateOf<String?>(null) }
-                        TvIconButton(if (s.id in favs) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, if (s.id in favs) "Favorited" else "Favorite", { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in favs) } }, on = s.id in favs, onFocus = { actionHint = if (it) (if (s.id in favs) "Favorited" else "Favorite") else null })
-                        TvIconButton(if (s.id in later) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, if (s.id in later) "In Watch Later" else "Watch Later", { scope.launch { c.user.setFavourite(s.id, ContentKind.SERIES, s.id !in later, UserRepository.WATCH_LATER) } }, on = s.id in later, onFocus = { actionHint = if (it) (if (s.id in later) "In Watch Later" else "Watch Later") else null })
-                        QueueButtonTv(c, ContentKind.SERIES, s.id, s.title, iconOnly = true, onHint = { actionHint = it })
-                        if (variants.size > 1) TvIconButton(Icons.Filled.SwapHoriz, "Choose Source", { chooseOpen = true }, onFocus = { actionHint = if (it) "Choose Source" else null })
-                        TvIconButton(Icons.Filled.Edit, "Edit", { editing = true }, onFocus = { actionHint = if (it) "Edit" else null })
-                        actionHint?.let { Label(it, Tokens.small, Tokens.textSecondary) }
-                    }
+                    if (loading && episodes.isEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { app.streamsetu.tv.ui.components.BrandLoader(size = 30.dp); Label("Loading episodes…", Tokens.body, Tokens.textSecondary) }
+                    error?.let { e -> if (episodes.isEmpty()) Label(e, Tokens.body, Tokens.danger, maxLines = 2) }
                 }
-            
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = pageList, contentPadding = PaddingValues(top = 26.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-
-            if (loading && episodes.isEmpty()) item { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { app.streamsetu.tv.ui.components.BrandLoader(size = 30.dp); Label("Loading episodes…", Tokens.body, Tokens.textSecondary) } }
-            error?.let { e -> if (episodes.isEmpty()) item { Label(e, Tokens.body, Tokens.danger, maxLines = 2) } }
-            // Other languages come right after the overview (above), before the seasons.
-            if (cast.isNotEmpty()) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionTitle("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, true) { m -> nav.open(Overlay.Person(m.name, m.photo)) } } }
-            if (otherLanguages.let { it == null || it.size > 1 }) item { app.streamsetu.tv.ui.components.TvOtherLanguages(otherLanguages, { it.posterUrl }) { sr -> nav.close(); nav.open(Overlay.SeriesDetail(sr)) } }
-            if (seasons.isNotEmpty()) item {
+            }
+            if (seasons.isNotEmpty()) item(key = "seasons") {
                 // Entering the seasons from the actions above or the episodes below always lands on the open season (not on whichever chip is nearest).
-                LazyRow(Modifier.bleedStart(14.dp).focusProperties { enter = { activeSeasonChip } }, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 6.dp)) {
+                LazyRow(pad.bleedStart(14.dp).focusProperties { enter = { activeSeasonChip } }, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 6.dp)) {
                     items(seasons.keys.toList(), key = { it }) { n ->
                         Focusable({ season = n; episodesOpen = true }, if (n == season) Modifier.focusRequester(activeSeasonChip) else Modifier, shape = RoundedCornerShape(50), container = if (n == season) Tokens.accent.copy(alpha = 0.35f) else Color(0x26FFFFFF), focusedContainer = Color.White, scaleOnFocus = 1.0f, showRing = false, ringBand = false, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE) { f ->
                             // The same as the hero buttons: soft at rest, the open season tinted with the accent, and solid white with dark text where the remote is, so it is never in doubt which pill will open.
@@ -315,17 +282,32 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                     }
                 }
             }
-            if (!similarLoaded) item { RelatedPlaceholders() }
-            if (similar.isNotEmpty()) item {
-                Column(Modifier.padding(top = 10.dp)) {
+            if (rows.isNotEmpty()) item(key = "details") {
+                Box(pad.widthIn(max = 720.dp)) { app.streamsetu.tv.ui.components.DetailsList(rows, true, { n -> nav.open(Overlay.Person(n, null, null, series0.title, series0.year)) }, if (s.categoryId != null) { { FolderPath(c, ContentKind.SERIES, s.categoryId, phone = false) { id -> nav.close(); nav.openFolderTab(ContentKind.SERIES, id) } } } else null) }
+            }
+            if (cast.isEmpty() && tmdbState.problem != null) item(key = "cast-problem") { app.streamsetu.tv.ui.components.TmdbProblemLine(tmdbState, tv = true) }
+            if (cast.isNotEmpty()) item(key = "cast") { Column(pad, verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionTitle("Cast"); app.streamsetu.tv.ui.components.CastRow(cast, true) { m -> nav.open(Overlay.Person(m.name, m.photo, m.id, series0.title, series0.year)) } } }
+            if (versionRows.size > 1) item(key = "versions") { Box(pad) { app.streamsetu.tv.ui.components.TvOtherLanguages(otherLanguages, { it.posterUrl }) { sr -> nav.close(); nav.open(Overlay.SeriesDetail(sr)) } } }
+            tmdb.trailerKey?.let { k -> item(key = "extras") { Column(pad, verticalArrangement = Arrangement.spacedBy(8.dp)) { SectionTitle("Trailers & extras"); TvButton("Official trailer", { app.streamsetu.tv.ui.components.openTrailer(c.context, k) }, Modifier.testTag("extras-trailer"), icon = Icons.Filled.Movie) } } }
+            if (!similarLoaded) item(key = "similarSkeleton") { Box(pad) { RelatedPlaceholders() } }
+            if (similar.isNotEmpty()) item(key = "similar") {
+                Column(pad) {
                     SectionTitle("More like this")
                     val firstSimilar = remember { FocusRequester() }
-                    LazyRow(Modifier.bleedStart(24.dp).focusRestorer { firstSimilar }, horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(start = 32.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) { itemsIndexed(similar, key = { _, r -> r.item.id }) { idx, r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.SeriesDetail(m)) }, itemId = m.id, subtitle = r.reason, badge = ratingBadge(m.rating), width = 150.ui, focusRequester = if (idx == 0) firstSimilar else null) } }
+                    LazyRow(Modifier.bleedStart(24.dp).focusRestorer { firstSimilar }, horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(start = 32.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) { itemsIndexed(similar, key = { _, r -> r.item.id }) { idx, r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.SeriesDetail(m)) }, itemId = m.id, subtitle = r.reason, width = 150.ui, focusRequester = if (idx == 0) firstSimilar else null) } }
                 }
             }
         }
-        }
     }
+    if (versionOpen) ContextMenu("Versions", null, versionRows.map { (v, m) -> MenuAction(v.label + if (v.current) "  (current)" else "", Icons.Filled.SwapHoriz, enabled = !v.current) { nav.close(); nav.open(Overlay.SeriesDetail(m)) } }, onClose = { versionOpen = false })
+    if (menuOpen) ContextMenu(s.title, null, buildList {
+        add(MenuAction("Watch privately", Icons.Filled.VisibilityOff) { c.appScope.launch { c.playSeries(s, privately = true); kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { if (nav.top != Overlay.Player) nav.open(Overlay.Player) } } })
+        catchUp?.let { cu -> add(MenuAction("Catch Up S${cu.season} E${cu.number}", Icons.Filled.History) { playEp(cu) }) }
+        if (episodes.isNotEmpty() && (ip != null || watchedCount > 0) && !plan.allFinished) add(MenuAction("Start from Beginning", Icons.Filled.Replay) { playEp(episodes.minWith(compareBy({ it.season }, { it.number }))) })
+        add(MenuAction(if (inQueue) "Remove from queue" else "Add to queue", if (inQueue) Icons.Filled.Check else Icons.Filled.Add) { if (inQueue) c.watchQueue.remove(s.id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(ContentKind.SERIES, s.id, s.title)) })
+        if (variants.size > 1) add(MenuAction("Choose Source", Icons.Filled.SwapHoriz) { chooseOpen = true })
+        add(MenuAction("Edit title and poster", Icons.Filled.Edit) { editing = true })
+    }, onClose = { menuOpen = false })
     // A season opens its episodes in a panel from the right edge, over the page; the page does not move.
     if (episodesOpen) {
         val sheetEps = (season?.let { seasons[it] }).orEmpty().sortedBy { it.number }
@@ -370,17 +352,6 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
     if (chooseOpen) ContextMenu("Choose Source", "Opens that connection's copy of this series.", variants.map { v -> MenuAction(sourceName(v.sourceId) + if (v.id == s.id) "  (current)" else "", Icons.Filled.SwapHoriz, enabled = v.id != s.id) { nav.close(); nav.open(Overlay.SeriesDetail(v)) } }, onClose = { chooseOpen = false })
 }
 
-/** "Add to Queue" or "In Queue" on a title's page: the line of titles that play one after another. A press adds it; a press on one already there takes it out. */
-@Composable
-fun QueueButtonTv(c: AppContainer, kind: ContentKind, id: String, title: String, iconOnly: Boolean = false, onHint: (String?) -> Unit = {}) {
-    val queued by c.watchQueue.items.collectAsState()
-    val inQueue = queued.any { it.id == id }
-    val toggle = { if (inQueue) c.watchQueue.remove(id) else c.watchQueue.add(app.streamsetu.core.data.repo.QueuedTitle(kind, id, title)) }
-    val label = if (inQueue) "In Queue" else "Add to Queue"
-    if (iconOnly) TvIconButton(if (inQueue) Icons.Filled.Check else Icons.Filled.Add, label, { toggle() }, on = inQueue, onFocus = { onHint(if (it) label else null) })
-    else TvButton(label, { toggle() }, icon = if (inQueue) Icons.Filled.Check else Icons.Filled.Add)
-}
-
 
 /** The shape of the "More like this" row while it is being worked out: quiet tiles in the place the posters will take, so nothing appears or shifts later. */
 @Composable
@@ -393,13 +364,3 @@ private fun RelatedPlaceholders() {
     }
 }
 
-
-/** While the remote is anywhere in the title block (the title, the story and the buttons are one page item), the page stays at the top, so moving between the buttons never pushes the title off the screen. */
-@Composable
-private fun Modifier.keepTopWhileFocused(list: androidx.compose.foundation.lazy.LazyListState): Modifier {
-    var focused by remember { mutableStateOf(false) }
-    LaunchedEffect(focused) {
-        if (focused) snapshotFlow { list.firstVisibleItemIndex to list.firstVisibleItemScrollOffset }.collect { (i, o) -> if (i > 0 || o > 0) list.scrollToItem(0) }
-    }
-    return this.onFocusChanged { focused = it.hasFocus }
-}

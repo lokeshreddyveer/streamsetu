@@ -30,7 +30,7 @@ class RoomCandidateSourceTests {
     }
     @After fun close() = fx.close()
 
-    private fun pool(shelf: String) = source.pool(PoolRequest("main", shelf, "2026-11-21", emptyList(), 2000))
+    private fun pool(shelf: String): List<Candidate> { runBlocking { source.prepare() }; return source.pool(PoolRequest("main", shelf, "2026-11-21", emptyList(), 2000)) }
 
     @Test fun everyCopyOfARestrictedTitleIsFlaggedWhateverFolderItSitsIn() {
         for (shelf in listOf(ShelfSpec.HERO, ShelfSpec.TOP_WEEK, ShelfSpec.FOR_YOU)) {

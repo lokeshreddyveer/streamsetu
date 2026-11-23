@@ -13,7 +13,7 @@ enum class SwitchResult { Switched, NeedsPin, WrongPin, Failed }
  * Profiles: people who share one device and one playlist, each with their own favorites, collections, history and resume points (see [Profiles]). Entering an adult profile that
  * has a PIN needs it, and leaving a kids profile needs that profile's PIN. Sync on this network carries the first profile only, so it pauses while another is in use.
  */
-class ProfileService(private val db: AppDatabase, private val pinPrefs: android.content.SharedPreferences? = null, private val beforeSwitch: () -> Unit = {}, private val onSwitched: (Profile) -> Unit) {
+class ProfileService(private val db: AppDatabase, private val pinPrefs: android.content.SharedPreferences? = null, private val beforeSwitch: () -> Unit = {}, private val stopFirst: suspend () -> Unit = {}, private val onSwitched: (Profile) -> Unit) {
     private val raw get() = db.openHelper.writableDatabase
     private val _profiles = MutableStateFlow<List<Profile>>(emptyList())
     private val _active = MutableStateFlow(Profiles.MAIN)
@@ -46,6 +46,12 @@ class ProfileService(private val db: AppDatabase, private val pinPrefs: android.
         { k, v -> if (pinPrefs != null) pinPrefs.edit().apply { if (v == null) remove(k) else putString(k, v) }.apply() else if (v == null) memory.remove(k) else memory[k] = v })
     /** Wrong tries are counted per profile, and five in a row lock further tries for a minute. */
     fun checkPin(id: String, pin: String) = throttle(id).attempt { Profiles.checkPin(raw, id, pin) } == app.streamsetu.core.model.PinThrottle.Outcome.Right
+
+    /** The switch for the screen: what plays is stopped first without blocking the caller (a suspend step with its own time limit), then the tables change hands. */
+    suspend fun switchToAsync(id: String, pin: String? = null): SwitchResult {
+        if (id != _active.value && _profiles.value.any { it.id == id }) runCatching { stopFirst() }
+        return switchTo(id, pin)
+    }
 
     fun switchTo(id: String, pin: String? = null): SwitchResult {
         if (id == _active.value) return SwitchResult.Switched

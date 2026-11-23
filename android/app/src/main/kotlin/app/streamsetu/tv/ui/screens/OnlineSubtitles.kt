@@ -45,7 +45,7 @@ class OnlineSubtitles(context: Context, private val store: app.streamsetu.core.s
         val url = "/subtitles?query=$q&languages=${want.language.ifBlank { "en" }}" + (want.year?.let { "&year=$it" } ?: "") +
             (if (want.season != null && want.episode != null) "&type=episode&season_number=${want.season}&episode_number=${want.episode}" else "&type=movie")
         Http.client.newCall(builder(url).build()).execute().use { r ->
-            if (!r.isSuccessful) error(if (r.code == 401 || r.code == 403) "The API key was not accepted." else "OpenSubtitles answered ${r.code}.")
+            if (!r.isSuccessful) error(if (r.code == 401 || r.code == 403) "The API key was not accepted." else "The subtitles service answered ${r.code}.")
             val data = JSONObject(r.body?.string().orEmpty()).optJSONArray("data") ?: return emptyList()
             return (0 until data.length()).mapNotNull { i ->
                 val a = data.getJSONObject(i).optJSONObject("attributes") ?: return@mapNotNull null
@@ -66,14 +66,14 @@ class OnlineSubtitles(context: Context, private val store: app.streamsetu.core.s
     /** Downloads one subtitle and returns the local file's address, or throws a sentence saying what went wrong. */
     suspend fun download(pick: RankedSubtitle): String = withContext(Dispatchers.IO) {
         val login = Http.client.newCall(builder("/login").post(JSONObject().put("username", user).put("password", password).toString().toRequestBody(json)).build()).execute().use { r ->
-            if (!r.isSuccessful) error("OpenSubtitles did not accept the account name and password.")
+            if (!r.isSuccessful) error("The subtitles service did not accept the account name and password.")
             JSONObject(r.body?.string().orEmpty()).optString("token")
         }
         val link = Http.client.newCall(builder("/download").header("Authorization", "Bearer $login").post(JSONObject().put("file_id", pick.candidate.fileId).toString().toRequestBody(json)).build()).execute().use { r ->
-            if (!r.isSuccessful) error(if (r.code == 406) "The daily download limit of the free account is used up." else "OpenSubtitles answered ${r.code}.")
-            JSONObject(r.body?.string().orEmpty()).optString("link").ifBlank { error("OpenSubtitles sent no file.") }
+            if (!r.isSuccessful) error(if (r.code == 406) "The daily download limit of the free account is used up." else "The subtitles service answered ${r.code}.")
+            JSONObject(r.body?.string().orEmpty()).optString("link").ifBlank { error("The subtitles service sent no file.") }
         }
-        if (!link.startsWith("https://")) error("OpenSubtitles sent an address that is not secure.")
+        if (!link.startsWith("https://")) error("The subtitles service sent an address that is not secure.")
         val bytes = Http.client.newCall(Request.Builder().url(link).build()).execute().use { r ->
             if (!r.isSuccessful) error("The subtitle could not be downloaded (${r.code}).")
             SubtitleFiles.readLimited(r.body?.contentLength() ?: -1, r.body?.byteStream() ?: error("The subtitle file was empty."))

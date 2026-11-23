@@ -10,8 +10,9 @@ import java.io.File
 class TmdbExtrasTests {
     @get:Rule val tmp = TemporaryFolder()
 
-    private val search = """{"results":[{"id":603}]}"""
+    private val search = """{"results":[{"id":603,"title":"Heat","release_date":"1995-12-15","popularity":50.0}]}"""
     private val credits = """{"cast":[{"id":1,"name":"Ann Actor","character":"Neo","profile_path":"/a.jpg"},{"id":2,"name":"No Photo","character":null,"profile_path":null},{"name":"Bad"}]}"""
+    private val details = """{"backdrop_path":"/bd.jpg","credits":$credits}"""
 
     @Test fun castIsParsedWithRoundPhotoAddressesAndRoles() {
         val m = TmdbCast.parseCredits(credits)
@@ -22,18 +23,19 @@ class TmdbExtrasTests {
 
     @Test fun noKeyMeansNoRequestAndNoRow() {
         var calls = 0
-        val c = TmdbCast({ null }, tmp.newFolder(), { calls++; "{}" })
+        val c = TmdbCast({ null }, tmp.newFolder(), { _, _ -> calls++; "{}" })
         assertFalse(c.enabled); assertTrue(c.cast("Heat", 1995, false).isEmpty()); assertEquals(0, calls)
     }
 
     @Test fun castIsKeptAndNotAskedForAgainWithinThirtyDays() {
         val urls = ArrayList<String>()
         var t = 1_000_000_000_000L
-        val c = TmdbCast({ "KEY" }, tmp.newFolder(), { u -> urls += u; if ("/search/" in u) search else credits }, { t })
+        val c = TmdbCast({ "KEY" }, tmp.newFolder(), { u, _ -> urls += u; if ("/search/" in u) search else details }, { t })
         assertEquals(2, c.cast("Heat (1995)", null, false).size)
         assertEquals(2, urls.size)
         assertEquals(2, c.cast("Heat (1995)", null, false).size)
         assertEquals("served from the saved copy", 2, urls.size)
+        assertEquals("https://image.tmdb.org/t/p/w780/bd.jpg", c.details("Heat (1995)", null, false).backdrop)
         assertTrue("only the title name and year go out", urls.none { "user" in it.lowercase() || "profile" in it.lowercase() })
     }
 
@@ -49,7 +51,7 @@ class TmdbExtrasTests {
 
     @Test fun fetcherSendsOnlyTheKeyAndAsksForThePublicLists() {
         val urls = ArrayList<String>()
-        val f = TmdbTrendingFetcher { u -> urls += u; """{"results":[{"title":"X","name":"Y","release_date":"2026-01-01","first_air_date":"2026-01-01"}]}""" }
+        val f = TmdbTrendingFetcher(TmdbAuth({ "K" }), { u, _ -> urls += u; """{"results":[{"title":"X","name":"Y","release_date":"2026-01-01","first_air_date":"2026-01-01"}]}""" })
         assertNotNull(f.fetchWeekly("K"))
         assertEquals(2, urls.size)
         assertTrue(urls.all { it.startsWith("https://api.themoviedb.org/3/trending/") && it.endsWith("?api_key=K") })

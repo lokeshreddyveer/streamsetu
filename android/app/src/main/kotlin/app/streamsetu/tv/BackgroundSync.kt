@@ -67,7 +67,7 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
 }
 
 /**
- * Keeps what TMDB gave this device fresh and within its limits: nothing is fetched without the switch and the person's own key (and then everything saved is deleted); the weekly list is
+ * Keeps what TMDB gave this device fresh and within its limits: nothing is fetched without a credential (the person's own key, else the built-in token) and the weekly-list switch; the weekly list is
  * refreshed once it is a week old; anything saved is deleted after 180 days. Never runs while something plays.
  */
 class TmdbRefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -75,7 +75,7 @@ class TmdbRefreshWorker(context: Context, params: WorkerParameters) : CoroutineW
         val c = EntryPointAccessors.fromApplication(applicationContext, SyncEntryPoint::class.java).container()
         // The 180-day limit and the folder rules apply whether or not there is a key any more.
         runCatching { c.tmdbService.purge() }
-        if (c.tmdbKey() == null) { app.streamsetu.core.data.repo.TmdbFiles.clear(c.tmdbDir); return Result.success() }
+        if (!c.tmdbAuth.available) return Result.success()          // no key of the person's and no usable built-in token: nothing is asked
         app.streamsetu.core.data.repo.TmdbFiles.purge(c.tmdbDir)
         runCatching { c.tmdbService.purge() }          // what TMDB filled in: gone after 180 days, and for anything restricted since
         if (c.playback.current.value != null) return Result.success()
@@ -88,6 +88,94 @@ class TmdbRefreshWorker(context: Context, params: WorkerParameters) : CoroutineW
         fun schedule(context: Context) {
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP,
                 PeriodicWorkRequestBuilder<TmdbRefreshWorker>(12, TimeUnit.HOURS).setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).setRequiresBatteryNotLow(true).build()).build())
+        }
+    }
+}
+
+/** When the automatic artwork run may go: on any connected network (mobile data too, unless the person switched it off), with the battery not low. Android's Data Saver is not looked at. */
+object ArtworkPolicy {
+    /** The rule alone, so it can be tested. */
+    fun decide(connected: Boolean, metered: Boolean, mobileDataOk: Boolean, batteryLow: Boolean): Boolean =
+        connected && !batteryLow && (!metered || mobileDataOk)
+
+    fun online(context: Context): Boolean = runCatching {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        activeCaps(cm)
+    }.getOrDefault(true)
+    /** Whether the active network reaches the internet; below Android 6 (no active-network call) the older connection info answers. */
+    @Suppress("DEPRECATION")
+    private fun activeCaps(cm: android.net.ConnectivityManager): Boolean =
+        if (android.os.Build.VERSION.SDK_INT >= 23) cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        else cm.activeNetworkInfo?.isConnected == true
+    /** Why the bulk run is paused right now (only the bulk run: what the person looks at is never held back). */
+    fun cause(context: Context, mobileDataOk: Boolean): app.streamsetu.core.data.repo.ArtworkMatchEngine.PauseCause {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        return when {
+            !online(context) -> app.streamsetu.core.data.repo.ArtworkMatchEngine.PauseCause.OFFLINE
+            runCatching { cm.isActiveNetworkMetered }.getOrDefault(false) && !mobileDataOk -> app.streamsetu.core.data.repo.ArtworkMatchEngine.PauseCause.METERED
+            else -> app.streamsetu.core.data.repo.ArtworkMatchEngine.PauseCause.BATTERY
+        }
+    }
+
+    fun allowed(context: Context, mobileDataOk: Boolean): Boolean = runCatching {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val connected = activeCaps(cm)
+        val b = context.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+        val low = b != null && (b.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, 100) * 100 / b.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1)) < 15 && b.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0) == 0
+        decide(connected, cm.isActiveNetworkMetered, mobileDataOk, low)
+    }.getOrDefault(true)
+}
+
+/**
+ * Carries on matching artwork when the app is not open: the same run as in the app ([app.streamsetu.core.data.repo.ArtworkMatchEngine], resumed from its saved cursor), in slices of a few minutes.
+ * A slice that ends before the queue does hands over to the next one; a back-off waits for its time. It stops by itself when the switch is off or there is no credential.
+ */
+class TmdbMatchWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        val c = EntryPointAccessors.fromApplication(applicationContext, SyncEntryPoint::class.java).container()
+        if (!c.ui.artworkMatching.value || !c.tmdbAuth.available) return Result.success()
+        runCatching { c.tmdbService.purge() }
+        when (val r = c.artworkEngine.runOnce(System.currentTimeMillis() + SLICE_MS)) {
+            is app.streamsetu.core.data.repo.ArtworkMatchEngine.Result.TimeUp -> continueAfter(applicationContext, 0, c.ui.artworkMatchingCellular.value)
+            is app.streamsetu.core.data.repo.ArtworkMatchEngine.Result.Backoff -> continueAfter(applicationContext, (r.until - System.currentTimeMillis()).coerceAtLeast(60_000), c.ui.artworkMatchingCellular.value)
+            else -> {}
+        }
+        return Result.success()
+    }
+    companion object {
+        private const val NAME = "artwork-match"; private const val CONTINUE = "artwork-match-next"
+        private const val SLICE_MS = 8 * 60_000L
+        private fun constraints(cellular: Boolean) = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).setRequiresBatteryNotLow(true).build()
+        private fun continueAfter(context: Context, delayMs: Long, cellular: Boolean) {
+            WorkManager.getInstance(context).enqueueUniqueWork(CONTINUE, ExistingWorkPolicy.REPLACE, OneTimeWorkRequestBuilder<TmdbMatchWorker>().setInitialDelay(delayMs, TimeUnit.MILLISECONDS).setConstraints(constraints(cellular)).build())
+        }
+        /** Re-asserts the schedule: a periodic run every 6 hours plus one at once; off removes both. */
+        fun schedule(context: Context, on: Boolean, cellular: Boolean) {
+            val wm = WorkManager.getInstance(context)
+            if (!on) { wm.cancelUniqueWork(NAME); wm.cancelUniqueWork(CONTINUE); return }
+            wm.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.UPDATE, PeriodicWorkRequestBuilder<TmdbMatchWorker>(6, TimeUnit.HOURS).setConstraints(constraints(cellular)).build())
+            continueAfter(context, 0, cellular)
+        }
+    }
+}
+
+/**
+ * Keeps the guides the person added fresh, and the public channel database when that is on (about every six hours, on a network, battery not low). It never runs while something is
+ * playing, and a failed read keeps the guide that was there.
+ */
+class GuideHubWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        val c = EntryPointAccessors.fromApplication(applicationContext, SyncEntryPoint::class.java).container()
+        if (c.playback.current.value != null) return Result.success()
+        return if (runCatching { c.guideHub.refresh(force = false) }.isSuccess) Result.success() else Result.retry()
+    }
+
+    companion object {
+        private const val NAME = "guide-hub"
+        fun schedule(context: Context) {
+            val req = PeriodicWorkRequestBuilder<GuideHubWorker>(6, TimeUnit.HOURS)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).setRequiresBatteryNotLow(true).build()).build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, req)
         }
     }
 }

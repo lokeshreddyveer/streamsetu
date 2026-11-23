@@ -12,6 +12,12 @@ import kotlinx.coroutines.flow.*
  * The SQL is assembled from fixed pieces (never from typed text); values go in as bound arguments. Every query is limited to the open library,
  * leaves out locked folders until they are unlocked, and breaks ties by id so combined libraries keep a steady order.
  */
+/** Where the next page starts: the last title of the page before it (its id, name and year). Reading from here is a seek in an index, not a count of everything before it. */
+data class PageAfter(val id: String, val title: String, val year: Int?)
+
+/** The two whole-library orders that are read straight from an index (see MIGRATION_11_12): "A to Z" and "newest year first". Everything else keeps its own query. */
+enum class IndexPlan { NAME_ASC, YEAR_DESC, YEAR_NULLS }
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class BrowseRepository(private val db: AppDatabase, private val library: LibraryRepository, private val folders: FolderRepository, context: Context) {
     private val prefs = context.getSharedPreferences("sort", Context.MODE_PRIVATE)
@@ -49,10 +55,30 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
      * One page of Movies or Series for exactly the library, restrictions and order it is asked for: nothing here looks at the open library or the locks again, so the result belongs to the
      * request that made it (a page started before a change can never be taken for the page after it).
      */
-    suspend fun moviesPage(browse: Browse, sort: SortSpec, limit: Int, offset: Int, sources: List<String>, restricted: Set<String>): List<Movie> =
-        db.browse().moviesOnce(build(ContentKind.MOVIE, browse, sort, limit, sources, restricted, db.browse().favoriteFoldersNow(ContentKind.MOVIE.name), false, offset)).map { it.toModel() }
-    suspend fun seriesPage(browse: Browse, sort: SortSpec, limit: Int, offset: Int, sources: List<String>, restricted: Set<String>): List<Series> =
-        db.browse().seriesOnce(build(ContentKind.SERIES, browse, sort, limit, sources, restricted, db.browse().favoriteFoldersNow(ContentKind.SERIES.name), false, offset)).map { it.toModel() }
+    suspend fun moviesPage(browse: Browse, sort: SortSpec, limit: Int, offset: Int, sources: List<String>, restricted: Set<String>, after: PageAfter? = null): List<Movie> =
+        pageRows(ContentKind.MOVIE, browse, sort, limit, offset, sources, restricted, after) { q -> db.browse().moviesOnce(q).map { it.toModel() } }
+    suspend fun seriesPage(browse: Browse, sort: SortSpec, limit: Int, offset: Int, sources: List<String>, restricted: Set<String>, after: PageAfter? = null): List<Series> =
+        pageRows(ContentKind.SERIES, browse, sort, limit, offset, sources, restricted, after) { q -> db.browse().seriesOnce(q).map { it.toModel() } }
+
+    /** The index that serves this order over the whole library, or null (a folder, a filter, favourites first, a descending name, a rating: those keep their own queries). */
+    fun indexPlanFor(kind: ContentKind, browse: Browse, sort: SortSpec): IndexPlan? {
+        if (kind == ContentKind.CHANNEL || browse != Browse.All || sort.favoritesFirst || sort.unwatchedFirst) return null
+        return when { sort.field == SortField.NAME && sort.ascending -> IndexPlan.NAME_ASC; sort.field == SortField.YEAR && sort.ascending -> IndexPlan.YEAR_DESC; else -> null }
+    }
+
+    /** True when every row has its lower-case title (the triggers and the 11 to 12 step guarantee it; a database made some other way is read the old way). */
+    private suspend fun sortReady(table: String): Boolean = db.openHelper.readableDatabase.query("SELECT 1 FROM $table WHERE titleSort = '' AND title <> '' LIMIT 1").use { !it.moveToFirst() }
+
+    private suspend fun <T> pageRows(kind: ContentKind, browse: Browse, sort: SortSpec, limit: Int, offset: Int, sources: List<String>, restricted: Set<String>, after: PageAfter?, read: suspend (androidx.sqlite.db.SupportSQLiteQuery) -> List<T>): List<T> {
+        val fav = db.browse().favoriteFoldersNow(kind.name)
+        val plan = indexPlanFor(kind, browse, sort)?.takeIf { sortReady(if (kind == ContentKind.MOVIE) "movies" else "series") }
+        if (plan == null) return read(build(kind, browse, sort, limit, sources, restricted, fav, false, offset))
+        if (plan == IndexPlan.YEAR_DESC && after != null && after.year == null) return read(build(kind, browse, sort, limit, sources, restricted, fav, false, 0, IndexPlan.YEAR_NULLS, after))
+        val rows = read(build(kind, browse, sort, limit, sources, restricted, fav, false, if (after == null) offset else 0, plan, after))
+        // Newest year first: the titles with no year follow the dated ones; when a page ends inside the dated ones the rest of the page is filled from them.
+        if (plan == IndexPlan.YEAR_DESC && after?.year != null && rows.size < limit) return rows + read(build(kind, browse, sort, limit - rows.size, sources, restricted, fav, false, 0, IndexPlan.YEAR_NULLS, null))
+        return rows
+    }
 
     fun movies(browse: Browse, sort: SortSpec, limit: Int = 600, offset: Int = 0): Flow<List<Movie>> = query(ContentKind.MOVIE, browse, sort, limit, offset = offset) { (if (orderMoves(browse, sort)) db.browse().movies(it) else db.browse().moviesPlain(it)).map { l -> l.map { e -> e.toModel() } } }
     fun series(browse: Browse, sort: SortSpec, limit: Int = 600, offset: Int = 0): Flow<List<Series>> = query(ContentKind.SERIES, browse, sort, limit, offset = offset) { (if (orderMoves(browse, sort)) db.browse().series(it) else db.browse().seriesPlain(it)).map { l -> l.map { e -> e.toModel() } } }
@@ -69,7 +95,7 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
         combine(library.sourceIds, folders.restrictedIds(kind), db.browse().favoriteFolders(kind.name)) { ids, locked, favFolders -> Triple(ids, locked, favFolders) }
             .flatMapLatest { (ids, locked, favFolders) -> run(build(kind, browse, sort, limit, ids, locked, favFolders, wrap, offset)) }
 
-    private fun build(kind: ContentKind, browse: Browse, sort: SortSpec, limit: Int, sources: List<String>, locked: Set<String>, favFolders: List<String>, count: Boolean = false, offset: Int = 0): SimpleSQLiteQuery {
+    private fun build(kind: ContentKind, browse: Browse, sort: SortSpec, limit: Int, sources: List<String>, locked: Set<String>, favFolders: List<String>, count: Boolean = false, offset: Int = 0, plan: IndexPlan? = null, after: PageAfter? = null): SimpleSQLiteQuery {
         val table = when (kind) { ContentKind.MOVIE -> "movies"; ContentKind.SERIES -> "series"; else -> "channels" }
         val title = if (kind == ContentKind.CHANNEL) "x.name" else "x.title"
         val args = ArrayList<Any?>()
@@ -131,8 +157,32 @@ class BrowseRepository(private val db: AppDatabase, private val library: Library
             SortField.DURATION -> "x.rowid ASC"
         }
         order += primary; order += "x.id ASC"
+        var from = "$table x"
+        if (plan != null && !count) {
+            // Read from the index, in its own order, from where the last page ended. (The planner would otherwise prefer the source index and sort every row.)
+            order.clear()
+            when (plan) {
+                IndexPlan.NAME_ASC -> {
+                    from = "$table x INDEXED BY index_${table}_titleSort_id"
+                    if (after != null) { val k = app.streamsetu.core.model.SortKey.of(after.title); where += "x.titleSort >= ? AND (x.titleSort > ? OR x.id > ?)"; args += k; args += k; args += after.id }
+                    order += "x.titleSort ASC"; order += "x.id ASC"
+                }
+                IndexPlan.YEAR_DESC -> {
+                    from = "$table x INDEXED BY index_${table}_year_id"
+                    val y = after?.year
+                    if (after != null && y != null) { where += "x.year <= ? AND (x.year < ? OR x.id > ?)"; args += y; args += y; args += after.id }
+                    order += "x.year DESC"; order += "x.id ASC"
+                }
+                IndexPlan.YEAR_NULLS -> {
+                    from = "$table x INDEXED BY index_${table}_year_id"
+                    where += "x.year IS NULL"
+                    if (after != null && after.year == null) { where += "x.id > ?"; args += after.id }
+                    order += "x.year DESC"; order += "x.id ASC"
+                }
+            }
+        }
         val sql = if (count) "SELECT COUNT(*) FROM $table x$joins WHERE ${where.joinToString(" AND ")}"
-            else "SELECT x.* FROM $table x$joins WHERE ${where.joinToString(" AND ")} ORDER BY ${order.joinToString(", ")} LIMIT $limit OFFSET $offset"
+            else "SELECT x.* FROM $from$joins WHERE ${where.joinToString(" AND ")} ORDER BY ${order.joinToString(", ")} LIMIT $limit OFFSET $offset"
         return SimpleSQLiteQuery(sql, args.toTypedArray())
     }
 }

@@ -304,12 +304,19 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     }
     // The real size of the screen, published before anything below reads a size (the layout is scaled by it; nothing is drawn through a scaled canvas).
     androidx.compose.ui.platform.LocalConfiguration.current.let { cfg -> remember(cfg.screenWidthDp, cfg.screenHeightDp) { app.streamsetu.tv.ui.theme.UiScale.apply(cfg.screenWidthDp.toFloat(), cfg.screenHeightDp.toFloat()); true } }
+    // One shared menu behind every poster, on phones and on the television (the same items and order as the television's), and every item of it offered to the screen reader on the poster.
+    val tileMenu = app.streamsetu.tv.ui.phone.rememberTileMenu(c, nav, app.streamsetu.tv.ui.phone.isPhoneDevice(androidx.compose.ui.platform.LocalContext.current))
+    val tileFavs = tileMenu?.vm?.favouriteIds?.collectAsState()?.value; val tileLater = tileMenu?.vm?.watchLaterIds?.collectAsState()?.value
     androidx.compose.runtime.CompositionLocalProvider(
         app.streamsetu.core.ui.motion.LocalReducedMotion provides reduced,
         app.streamsetu.tv.ui.components.LocalHighContrast provides contrast,
         androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * textScale / 100f),
         // For the whole screen, the open pages and sheets included: a tile with no picture anywhere asks for its own cover.
         app.streamsetu.tv.ui.components.LocalArtworkFiller provides remember(c) { { id: String, replace: Boolean -> c.artwork.want(id, replace) } },
+        app.streamsetu.tv.ui.components.LocalRatings provides remember(c) { c.ratingBadges },
+        app.streamsetu.tv.ui.components.LocalTileVisibility provides remember(c) { { id: String, on: Boolean -> c.artworkExpress.tileVisible(id, on) } },
+        app.streamsetu.tv.ui.phone.LocalTileMenu provides tileMenu?.let { m -> { id: String -> m.openMenu(id) } },
+        app.streamsetu.tv.ui.phone.LocalTileActions provides tileMenu?.let { m -> app.streamsetu.tv.ui.phone.TileActionSource((tileFavs?.hashCode() ?: 0) * 31 + (tileLater?.hashCode() ?: 0)) { id -> m.actionsFor(id) } },
     ) {
     // A movie or series page covers the whole screen. Once it has fully faded in, the page behind it is not drawn at all (it stays alive underneath, so Back finds it exactly as it was): a Fire TV Stick's GPU
     // otherwise redraws that whole page, its big picture included, on every frame of the page above.
@@ -342,6 +349,7 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
         if (nav.top != Overlay.Player) app.streamsetu.tv.ui.components.TvMiniPlayer(c)
         // The one video surface: above the screens, below the player's controls.
         app.streamsetu.tv.ui.components.PersistentVideo(c, nav)
+        tileMenu?.let { app.streamsetu.tv.ui.phone.TileMenuHost(it, Modifier.align(Alignment.BottomCenter)) }
         androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalInOverlay provides true) {
             // A page opens with a quick fade and a slight settle, and closes with a fade. The one that is leaving cannot take the remote while it fades.
             androidx.compose.animation.AnimatedContent(
@@ -370,7 +378,8 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
                     is Overlay.SportsMultiview -> if (app.streamsetu.tv.sports.SportsFeature.enabled) app.streamsetu.tv.ui.screens.sports.SportsMultiviewScreen(c, onClose = { nav.close() }, onFullScreen = { ch -> c.multiviewFullscreenReturn = true; play(c, nav, app.streamsetu.core.model.ChannelPlayable(ch)) })
                     is Overlay.ManageLibrary -> app.streamsetu.tv.ui.screens.library.ManageLibraryDialog(o.entry, nav)
                     is Overlay.Collection -> app.streamsetu.tv.ui.screens.home.HomeCollectionScreen(o.id, c, nav, o.only)
-                    is Overlay.Person -> app.streamsetu.tv.ui.screens.PersonScreen(o.name, o.photo, c, nav, tv = true)
+                    is Overlay.Genre -> app.streamsetu.tv.ui.screens.GenreScreen(o.key, c, nav, tv = true)
+                    is Overlay.Person -> app.streamsetu.tv.ui.screens.PersonScreen(o.name, o.photo, c, nav, tv = true, personId = o.personId, fromTitle = o.fromTitle, fromYear = o.fromYear)
                 }
               }
             }

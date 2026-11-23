@@ -218,7 +218,6 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
     // The clock ticks twice a second; only the small pieces that show it redraw. These flags change rarely, so the screen does not redraw with the clock.
     val upNextVisible by remember(item?.id) { derivedStateOf { item is EpisodePlayable && duration > 0 && duration - position in 1..30_000 && c.queue.indexOfFirst { it.id == item.id }.let { it >= 0 && it < c.queue.lastIndex } } }
     val showResumed by remember(resumedFrom) { derivedStateOf { resumedFrom > 0 && position in 1..(resumedFrom + 9000) } }
-    val failedOrEnded = state is PlaybackState.Failed || state == PlaybackState.Ended
     val skip = c.settings.seekSeconds.collectAsStateWithLifecycle().value
     /** One step of a seek. A single press jumps by the skip length; holding the key makes each step 3, 6, then 12 times as long, and the player is moved at most every 150 ms so it is not flooded. */
     fun seekHeld(dir: Int, repeat: Int) {
@@ -533,7 +532,7 @@ fun PlayerScreen(c: AppContainer, onClose: () -> Unit, onMultiView: () -> Unit =
                             item { TextOption("Picture tuning", false, Modifier, "Brightness, contrast, saturation, decoding") { panel = PanelKind.TUNE_PICTURE } }
                             item { TextOption("Sound", false, Modifier, "Volume boost, even out loudness") { panel = PanelKind.SOUND } }
                             item { TextOption("Subtitle look", false, Modifier, "Size, colour, position, background") { panel = PanelKind.SUBLOOK } }
-                            item { TextOption("Find subtitles online", false, Modifier, "From OpenSubtitles, with your free key") { panel = PanelKind.SUBFIND } }
+                            item { TextOption("Find subtitles online", false, Modifier, "From your subtitles account") { panel = PanelKind.SUBFIND } }
                             if (qualities.isNotEmpty()) item { TextOption("Quality", false, Modifier, "Choose the resolution") { panel = PanelKind.QUALITY } }
                             if (!live && chapters.isNotEmpty()) item { TextOption("Chapters", false, Modifier) { panel = PanelKind.CHAPTERS } }
                             if (!live) item { TextOption("Go to time…", false, Modifier, "Type an exact time, or jump by tenths") { panel = PanelKind.JUMPTO } }
@@ -674,16 +673,6 @@ private fun SeekBar(positionOf: () -> Long, durationOf: () -> Long) {
     }
 }
 
-/** A button in the middle of the picture. No box; the icon is white with a soft dark disc behind it so it shows on any picture. */
-@Composable
-private fun Transport(icon: ImageVector, size: Int, label: String? = null, mirror: Boolean = false, flash: Boolean = false) {
-    val scale by animateFloatAsState(if (flash) 1.18f else 1f, tween(Motion.FOCUS), label = "transport")
-    Box(Modifier.size(size.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(CircleShape).background(Tokens.playerTrack), Alignment.Center) {
-        Image(icon, null, Modifier.size((size * 0.62f).dp).graphicsLayer { if (mirror) scaleX = -1f }, colorFilter = ColorFilter.tint(Color.White))
-        if (label != null) Label(label, Tokens.small, Color.White, FontWeight.Bold)
-    }
-}
-
 /** A live channel: logo, number, name, a small red LIVE mark, what is on now with a thin progress bar, and what is next. No box. */
 @Composable
 private fun LiveBanner(ch: Channel, programmes: List<EpgProgram>) {
@@ -728,7 +717,7 @@ private fun OnlineSubtitlesPanel(client: OnlineSubtitles, playback: app.streamse
         app.streamsetu.core.subtitles.SubtitleWanted(title, year, ep?.episode?.season, ep?.episode?.number, language.ifBlank { "en" }, runtimeMinutes = playback.durationMs.takeIf { it > 0 }?.let { (it / 60_000).toInt() })
     }
     LaunchedEffect(item?.id) {
-        if (!client.configured) { message = "Add your free OpenSubtitles key, account name and password in Settings, Subtitles & Accessibility."; return@LaunchedEffect }
+        if (!client.configured) { message = "Add your subtitles account in Settings, Subtitles & Accessibility."; return@LaunchedEffect }
         client.cached(want)?.let { hits = it }          // what was found last time is shown at once; the provider is asked after the panel is on screen
         runCatching { client.search(want) }.onSuccess { hits = it; message = if (it.isEmpty()) "No subtitles found for this title." else null }.onFailure { if (hits == null) message = it.message ?: "The search did not work." }
     }
@@ -746,6 +735,7 @@ private fun OnlineSubtitlesPanel(client: OnlineSubtitles, playback: app.streamse
 /** Asks the TV to run at the refresh rate that suits a video of [fps] frames a second; null gives the screen back to the system. Does nothing where the TV has no suitable mode. */
 @Suppress("DEPRECATION")
 private fun setDisplayMode(context: android.content.Context, fps: Float?) {
+    if (android.os.Build.VERSION.SDK_INT < 23) return          // display modes exist from Android 6; below that the TV keeps its own
     var ctx = context
     while (ctx is android.content.ContextWrapper && ctx !is android.app.Activity) ctx = ctx.baseContext
     val activity = ctx as? android.app.Activity ?: return

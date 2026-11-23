@@ -15,6 +15,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.streamsetu.core.data.db.PeopleIndex
+import app.streamsetu.core.data.repo.FilmTile
 import app.streamsetu.core.data.repo.SearchText
 import app.streamsetu.core.data.repo.Visibility
 import app.streamsetu.core.data.repo.smartmix.IdentityKey
@@ -59,36 +60,26 @@ suspend fun personTitles(db: app.streamsetu.core.data.db.AppDatabase, catalog: a
     groups.values.map { g -> g.first().copy(versions = g.size) }.take(limit)
 }
 
-/** A person's page: their photo and name, then their titles in this library. */
+/**
+ * A person's page: who they are (TMDB), then their whole filmography as posters, each marked "In your library" or not, with "All films" and "In your library" buttons. Nothing about the library
+ * leaves the device: TMDB gets the person id (or an exact name) only. Without a credential, or offline with nothing saved, it falls back to the titles the local cast index knows.
+ */
 @Composable
-fun PersonScreen(name: String, photo: String?, c: AppContainer, nav: Navigator, tv: Boolean) {
-    var titles by remember(name) { mutableStateOf<List<PersonTitle>?>(null) }
-    LaunchedEffect(name) { titles = runCatching { personTitles(c, name) }.getOrDefault(emptyList()) }
-    val open: (PersonTitle) -> Unit = { t -> t.movie?.let { nav.open(Overlay.MovieDetail(it)) } ?: t.series?.let { nav.open(Overlay.SeriesDetail(it)) } }
-    val back = remember { { nav.close() } }
-    androidx.activity.compose.BackHandler(onBack = back)
-    Box(Modifier.fillMaxSize().background(Tokens.background)) {
-        LazyVerticalGrid(GridCells.Adaptive(if (tv) 154.dp else 104.dp), Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = if (tv) Tokens.safeHorizontal else 16.dp, end = if (tv) Tokens.safeHorizontal else 16.dp, top = if (tv) Tokens.safeVertical else 48.dp, bottom = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (tv) Tokens.gutter else 10.dp), verticalArrangement = Arrangement.spacedBy(if (tv) Tokens.gutter else 12.dp)) {
-            item(span = { GridItemSpan(maxLineSpan) }, key = "header") {
-                Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Box(Modifier.size(if (tv) 96.dp else 72.dp).clip(CircleShape).background(Tokens.card), Alignment.Center) {
-                        if (photo.isNullOrBlank()) Label(name.take(1).uppercase(), 28.androidx(), Tokens.textSecondary, FontWeight.SemiBold) else AsyncImage(photo, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    }
-                    Column {
-                        Label(name, if (tv) Tokens.display else 22.androidx(), Tokens.text, FontWeight.Bold, maxLines = 2)
-                        Label(titles?.let { if (it.isEmpty()) "Nothing in your library yet" else "%,d in your library".format(it.size) } ?: "Looking in your library…", Tokens.small, Tokens.textSecondary)
-                    }
-                }
-            }
-            items(titles.orEmpty(), key = { it.id }, contentType = { "poster" }) { t ->
-                val sub = listOfNotNull(t.year?.toString(), if (t.versions > 1) "${t.versions} languages" else null).joinToString(" · ").ifEmpty { " " }
-                if (tv) PosterCard(t.title, t.posterUrl, { open(t) }, itemId = t.id, subtitle = sub)
-                else PhonePoster(t.title, t.posterUrl, { open(t) }, Modifier.fillMaxWidth(), itemId = t.id, subtitle = sub)
-            }
-        }
+fun PersonScreen(name: String, photo: String?, c: AppContainer, nav: Navigator, tv: Boolean, personId: Long? = null, fromTitle: String? = null, fromYear: Int? = null) {
+    val rev by c.folders.restrictRev.collectAsState("")
+    val sources by c.library.sourceIds.collectAsState()
+    val libraryOnly by c.ui.personLibraryOnly.collectAsState()
+    val actingOnly by c.ui.personActingOnly.collectAsState()
+    val uiLang by c.ui.language.collectAsState()
+    var state by remember(name, personId) { mutableStateOf(PersonPageState()) }
+    val lang = remember(uiLang) { if (uiLang == "SYSTEM") java.util.Locale.getDefault().language.ifEmpty { "en" } else uiLang }
+    var attempt by remember(name, personId) { mutableIntStateOf(0) }
+    LaunchedEffect(name, personId, rev, sources, lang, attempt) {
+        val loader = PersonPageLoader(c.tmdbPeople, c.libraryMatcher, { n -> personTitles(c, n) }, { sources }, c::describeTmdbProblem)
+        loader.load(name, personId, fromTitle, lang) { state = it }
     }
+    val open: (FilmTile) -> Unit = { t -> t.hit?.movie?.let { nav.open(Overlay.MovieDetail(it)) } ?: t.hit?.series?.let { nav.open(Overlay.SeriesDetail(it)) } }
+    val back = remember { { PersonMemory.clear(); nav.close() } }
+    androidx.activity.compose.BackHandler(onBack = back)
+    PersonContent(name, photo, state, tv, libraryOnly, { c.ui.setPersonLibraryOnly(it) }, open, kids = app.streamsetu.tv.KidsLock.on, actingOnly = actingOnly, onActingOnly = { c.ui.setPersonActingOnly(it) }, onRetry = { attempt++ })
 }
-
-private fun Int.androidx() = androidx.compose.ui.unit.TextUnit(this.toFloat(), androidx.compose.ui.unit.TextUnitType.Sp)

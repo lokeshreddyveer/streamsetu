@@ -1,5 +1,6 @@
 package app.streamsetu.core.podcast
 
+import app.streamsetu.core.model.putIfMissing
 import java.io.ByteArrayInputStream
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -49,8 +50,8 @@ object PodcastParser {
             val parent = path.getOrNull(path.size - 2)
             if (inItem) {
                 when (name) {
-                    "title", "itunes:summary", "pubDate", "itunes:duration", "guid" -> item.putIfAbsent(name, value)
-                    "description" -> item.putIfAbsent(name, value)
+                    "title", "itunes:summary", "pubDate", "itunes:duration", "guid" -> item.putIfMissing(name, value)
+                    "description" -> item.putIfMissing(name, value)
                     "item" -> {
                         inItem = false
                         val url = enclosure; val t = item["title"]

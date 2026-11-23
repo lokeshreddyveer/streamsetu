@@ -40,7 +40,10 @@ sealed interface Overlay {
     /** A full list behind a Home shortcut: "favorites", "later", "recent" or "continue". */
     data class Collection(val id: String, val only: String? = null) : Overlay
     /** A person from a cast row: their titles in this library. */
-    data class Person(val name: String, val photo: String?) : Overlay
+    /** A person's page. [personId] is the TMDB id when the cast list gave one; [fromTitle]/[fromYear] is the title they were tapped from (it picks the right person when only the name is known). */
+    /** Every title of one genre in this library, best rated first (the genre shelf's "See all" and the "Browse by genre" row). */
+    data class Genre(val key: String) : Overlay
+    data class Person(val name: String, val photo: String?, val personId: Long? = null, val fromTitle: String? = null, val fromYear: Int? = null) : Overlay
 }
 
 /**

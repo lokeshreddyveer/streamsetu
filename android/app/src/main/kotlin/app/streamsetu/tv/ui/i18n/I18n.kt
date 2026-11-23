@@ -30,9 +30,10 @@ object I18n {
         else runCatching {
             val root = JSONObject(context.assets.open("i18n/$use.json").bufferedReader().use { it.readText() })
             strings = root.getJSONObject("strings").let { o -> o.keys().asSequence().associateWith { o.getString(it) } }
-            templates = root.getJSONObject("templates").let { o -> o.keys().asSequence().map { k -> templateRegex(k) to o.getString(k) }.toList() }
+            templates = root.getJSONObject("templates").let { o -> o.keys().asSequence().sortedByDescending { k -> k.replace("{}", "").length }.map { k -> templateRegex(k) to o.getString(k) }.toList() }          // the most specific template first ("{} · {} versions ▾" before "{} versions ▾"), so the order never depends on the file
         }.onFailure { strings = emptyMap(); templates = emptyList() }
         active = use
+        app.streamsetu.core.model.Plurals.language = use
         revision++
     }
 

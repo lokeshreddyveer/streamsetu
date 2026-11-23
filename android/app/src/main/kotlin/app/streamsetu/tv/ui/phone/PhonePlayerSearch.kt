@@ -99,7 +99,15 @@ fun PhonePlayerSearch(c: AppContainer, initialTab: SearchTab = SearchTab.ALL, on
             }
             val found = results.flat(tab)
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
-                if (q.isBlank()) item { Label("Type a title, a channel or something like “hindi movies 2024”.", Ph.body, Tokens.textSecondary, modifier = Modifier.padding(Ph.gutter)) }
+                if (q.isBlank()) item {
+                    // Examples in the person's own language: a library language, else the audio language in Settings, else the device's.
+                    val audioLang by c.settings.audioLanguage.collectAsState()
+                    val ideas = remember(audioLang) { app.streamsetu.core.data.repo.SearchIdeas.examples(app.streamsetu.core.data.repo.LibraryLanguageHint.read(c.context), audioLang).filter { !it.person }.take(3) }
+                    Column(Modifier.padding(Ph.gutter), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Label("Type a title, a channel or something like “action movies 2024”.", Ph.body, Tokens.textSecondary)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ideas.forEach { idea -> Chip(idea.label, false, { q = idea.query }) } }
+                    }
+                }
                 else if (failed) item { Label("Search could not be completed. Tap to try again.", Ph.body, Tokens.accent, modifier = Modifier.fillMaxWidth().clickable { retry++ }.padding(Ph.gutter)) }
                 else if (found.isEmpty()) item { Label(if (busy) "Searching…" else "No results. Try fewer letters or another spelling.", Ph.body, Tokens.textSecondary, modifier = Modifier.padding(Ph.gutter)) }
                 items(found, key = { it.id }) { r ->

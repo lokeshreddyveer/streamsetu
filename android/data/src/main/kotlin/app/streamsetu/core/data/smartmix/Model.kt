@@ -42,6 +42,8 @@ data class Candidate(
     val sourceRank: Int = 0,
     /** Set on a group representative: every member is CAM/TS. */
     val camOnly: Boolean = false,
+    /** The provider's genre text as normalised tokens (see [GenreShelves.tokens]); empty when the title has none. */
+    val genres: List<String> = emptyList(),
 )
 
 data class Affinity(
@@ -62,6 +64,12 @@ data class Context(
     val affinity: Affinity = Affinity.NONE,
     /** Test/low-end override of the candidate pool cap. */
     val poolCap: Int? = null,
+    /** Extra picks drawn after the normal ones (Home uses 10, fixtures 0); the first `size` picks are the same with and without. */
+    val oversample: Int = 0,
+    /** A Kids profile: moods draw from kid-safe genres only. */
+    val kids: Boolean = false,
+    /** Showable titles in the pool: a mood needs at least [HomeMoods.floor] matching titles (0 = the plain minimum of 8). */
+    val libraryTotal: Int = 0,
 )
 
 /** Counts only: never a title, id or address. Field names are the shared fixture names. */
@@ -115,8 +123,15 @@ data class ShelfSpec(
     val minCount: Int,
     val mixesKinds: Boolean = false,
     val folderKey: String? = null,
+    val genre: GenreDef? = null,
+    /** Mood rows: the union of genre keys (see [HomeMoods]). */
+    val moodKeys: List<String>? = null,
 ) {
     val isFolder get() = folderKey != null
+    /** Rows of Home v2 that are built like genre rows and have no fallback: below the minimum, or only at tier 4 or 5, they are hidden. */
+    val isContextRow get() = id == FRESH || id == MOVIE_NIGHT || id == BINGE || moodKeys != null
+    /** The same shelf with other weights (the all-time view of Trending in Your Library when nothing matched). */
+    fun withWeights(w: Weights) = ShelfSpec(id, w, sharp, pool, size, minCount, mixesKinds, folderKey, genre, moodKeys)
 
     companion object {
         const val HERO = "hero"
@@ -126,10 +141,27 @@ data class ShelfSpec(
         const val TOP_WEEK = "top-week"
         const val TRENDING_LIBRARY = "trending-library"
         const val TRENDING_MIN_MATCHES = 6
+        const val FRESH = "fresh"
+        const val MOVIE_NIGHT = "movie-night"
+        const val BINGE = "binge"
+        /** Not an engine shelf: the collections row is built by [HomeCollections]. */
+        const val COLLECTIONS = "collections"
+        /** Days a title counts as freshly added. */
+        const val FRESH_DAYS = 14
+        /** Context rows are hidden below this many titles. */
+        const val CONTEXT_MIN = 6
 
         val GLOBAL = listOf(HERO, FOR_YOU, REDISCOVER, LANG_PREF, TOP_WEEK, TRENDING_LIBRARY)
 
-        fun of(shelfId: String): ShelfSpec = when {
+        val CONTEXT = listOf(FRESH, MOVIE_NIGHT, BINGE)
+
+        fun of(shelfId: String, view: ShelfView = ShelfView.WEEKLY, kids: Boolean = false): ShelfSpec = when {
+            shelfId == COLLECTIONS -> ShelfSpec(shelfId, Weights(10, 15, 10, 10, 5, 40, 0, 10), true, 2000, 14, 6)
+            shelfId == FRESH -> ShelfSpec(shelfId, Weights(0, 50, 10, 5, 10, 15, 0, 10), true, 2000, 14, CONTEXT_MIN, mixesKinds = true)
+            shelfId == MOVIE_NIGHT -> ShelfSpec(shelfId, Weights(10, 0, 20, 10, 35, 15, 0, 10), true, 2000, 14, CONTEXT_MIN)
+            shelfId == BINGE -> ShelfSpec(shelfId, Weights(5, 5, 10, 10, 35, 25, 0, 10), true, 2000, 14, CONTEXT_MIN)
+            HomeMoods.of(shelfId) != null -> ShelfSpec(shelfId, GenreShelves.WEEKLY_WEIGHTS, true, 2000, 14, CONTEXT_MIN, mixesKinds = true, moodKeys = HomeMoods.genreKeys(HomeMoods.of(shelfId)!!, kids))
+            GenreTable.ofShelf(shelfId) != null -> ShelfSpec(shelfId, if (view == ShelfView.ALL_TIME) GenreShelves.ALL_TIME_WEIGHTS else GenreShelves.WEEKLY_WEIGHTS, true, 2000, GenreShelves.SHELF_SIZE, GenreShelves.MIN_TITLES, mixesKinds = true, genre = GenreTable.ofShelf(shelfId))
             shelfId.startsWith("folder:") -> ShelfSpec(shelfId, Weights(10, 25, 30, 20, 0, 0, 0, 15), false, 200, 12, 1, folderKey = shelfId.substring(7))
             shelfId == HERO -> ShelfSpec(shelfId, Weights(10, 10, 15, 15, 5, 10, 20, 15), true, 2000, 12, 3, mixesKinds = true)
             shelfId == FOR_YOU -> ShelfSpec(shelfId, Weights(5, 5, 10, 15, 5, 10, 40, 10), true, 2000, 14, 6)

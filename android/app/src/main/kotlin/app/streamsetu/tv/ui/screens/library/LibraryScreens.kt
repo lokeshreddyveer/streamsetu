@@ -71,7 +71,6 @@ private fun healthColor(e: LibraryEntry) = when (e.health) {
 private fun lastSync(ms: Long) = if (ms <= 0) "Never" else DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(ms))
 
 private val Gold = Color(0xFFF6A72D)
-private val Amber = Color(0xFFFFBE62)
 private val Night = Color(0xFF05080D)
 private val Slate = Color(0xFFA9B6C8)
 
@@ -259,63 +258,7 @@ private fun StatTile(icon: ImageVector, title: String, n: Int, modifier: Modifie
     }
 }
 
-/** The main action: a wide white pill that glows gold when the remote is on it. */
-@Composable
-private fun BigPill(text: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = Color(0xFFDDE3EA), focusedContainer = Color.White, ring = Gold, scaleOnFocus = 1.03f) { _ ->
-        Row(Modifier.fillMaxWidth().padding(vertical = 13.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Image(icon, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Tokens.onBright)); Spacer(Modifier.width(10.dp)); Label(text, Tokens.title, Tokens.onBright, FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun GhostPill(text: String, icon: ImageVector, onClick: () -> Unit) {
-    Focusable(onClick, Modifier, shape = RoundedCornerShape(50), container = Tokens.pick(Color(0x66101011), Tokens.card), focusedContainer = Tokens.pick(Color(0xFF222224), Tokens.focusedSurface), ring = Gold, hairline = true, scaleOnFocus = 1.04f) { f ->
-        Row(Modifier.padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f) Gold else Tokens.text)); Label(text, Tokens.row, Tokens.text, FontWeight.Medium)
-        }
-    }
-}
-
-@Composable
-private fun QuickTile(title: String, sub: String, icon: ImageVector, bg: Color, tint: Color, modifier: Modifier, onClick: () -> Unit) {
-    Focusable(onClick, modifier, shape = RoundedCornerShape(14.dp), container = Tokens.pick(Color(0xFF121213), Tokens.card), focusedContainer = Tokens.pick(Tokens.focusedSurface, Tokens.focusedSurface), ring = Gold, hairline = true, scaleOnFocus = 1.03f) { _ ->
-        Row(Modifier.padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            IconTile(icon, bg, tint, 38)
-            Column { Label(title, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = 1); Label(sub, Tokens.caption, Tokens.textSecondary, maxLines = 1) }
-        }
-    }
-}
-
 private fun typeOf(e: LibraryEntry) = SourceType.fromLabel(e.typeLabel)
-
-@Composable
-private fun LibraryTile(e: LibraryEntry, isInitial: Boolean, initialFocus: FocusRequester, nav: Navigator, vm: LibraryViewModel, onPreview: () -> Unit, onFocused: () -> Unit) {
-    val (tileBg, tileTint) = when {
-        e.kind == LibraryEntry.Kind.COMBINED -> Color(0xFF2A2A2C) to Color.White
-        e.kind == LibraryEntry.Kind.UNFINISHED -> Color(0xFF4A3A14) to Gold
-        e.typeLabel == "M3U URL" -> Color(0xFF3A2A66) to Color(0xFFA48BFF)
-        e.typeLabel == "Local M3U file" -> Color(0xFF14463A) to Color(0xFF3DDCA8)
-        else -> Color(0xFF1B3A5C) to Color(0xFF4DA3FF)
-    }
-    Focusable(
-        onClick = { if (e.kind == LibraryEntry.Kind.UNFINISHED) nav.base = Base.Setup(typeOf(e), e.sourceIds.first()) else vm.open(e) { nav.enterLibrary() } },
-        modifier = (if (isInitial) Modifier.focusRequester(initialFocus) else Modifier).width(240.dp).height(190.dp),
-        scaleOnFocus = 1.06f, container = Tokens.pick(Color(0xFF0E1218), Tokens.card), focusedContainer = Tokens.pick(Color(0xFF1A1F27), Tokens.focusedSurface), ring = Gold, shape = RoundedCornerShape(22.dp), hairline = true,
-        onFocus = { if (it) { onPreview(); onFocused() } },
-        onLongClick = { nav.open(Overlay.ManageLibrary(e)) },
-    ) { _ ->
-        Column(Modifier.fillMaxSize().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            IconTile(typeIcon(e), tileBg, tileTint, 64)
-            Label(e.name, Tokens.title, Tokens.text, FontWeight.SemiBold, maxLines = 1, modifier = Modifier.padding(top = 12.dp))
-            Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (e.kind != LibraryEntry.Kind.COMBINED) Box(Modifier.size(8.dp).background(healthColor(e), CircleShape))
-                Label(if (e.kind == LibraryEntry.Kind.COMBINED) "Combined" else if (e.kind == LibraryEntry.Kind.UNFINISHED) "Unfinished" else e.typeLabel, Tokens.caption, Tokens.textSecondary, maxLines = 1)
-            }
-        }
-    }
-}
 
 /**
  * Shown when there is no working library yet: the ways to connect as tiles, each opening the connection form for its kind. The television and the phone each get their own layout
@@ -717,16 +660,6 @@ private fun ManagePanel(title: String, onClose: () -> Unit, content: @Composable
     }
 }
 
-@Composable
-private fun MenuRow(title: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Focusable(onClick, modifier.fillMaxWidth(), scaleOnFocus = 1.0f) { _ ->
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Image(icon, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Tokens.accent))
-            Label(title, Tokens.row, Tokens.text)
-        }
-    }
-}
-
 /** Shows a QR code; the phone types the connection; the TV shows what arrived (never the password) and the person approves it. Then the form is filled in, ready to test. */
 @Composable
 fun PhoneSetupDialog(onFilled: (SourceType, LibraryViewModel.Form) -> Unit, onClose: () -> Unit) {
@@ -776,27 +709,6 @@ private fun QrCode(text: String, modifier: Modifier) {
     }
 }
 
-
-/** A dark mountain horizon under a warm sunset, drawn here so it needs no picture file. */
-@Composable
-private fun HeroArt(modifier: Modifier) {
-    androidx.compose.foundation.Canvas(modifier) {
-        val w = size.width; val h = size.height
-        drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF05080D), Color(0xFF1A1420), Color(0xFF6B3A1E), Color(0xFFF08A2E)), startY = 0f, endY = h * 0.62f))
-        drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0xCCFFC56B), Color(0x00FFC56B)), center = androidx.compose.ui.geometry.Offset(w * 0.78f, h * 0.55f), radius = h * 0.5f), radius = h * 0.5f, center = androidx.compose.ui.geometry.Offset(w * 0.78f, h * 0.55f))
-        fun ridge(color: Color, base: Float, amp: Float, seed: Int) {
-            val path = androidx.compose.ui.graphics.Path().apply {
-                moveTo(0f, h)
-                var x = 0f
-                lineTo(0f, h * base)
-                while (x < w) { x += w / 14f; val k = ((x / w * 11f + seed) * 1.7f); lineTo(x, h * base - h * amp * (0.5f + 0.5f * kotlin.math.sin(k) * kotlin.math.cos(k * 0.6f))) }
-                lineTo(w, h); close()
-            }
-            drawPath(path, color)
-        }
-        ridge(Color(0xFF2A1A18), 0.80f, 0.16f, 1); ridge(Color(0xFF140E10), 0.88f, 0.12f, 4); ridge(Color(0xFF07090D), 0.95f, 0.08f, 7)
-    }
-}
 
 
 /** The opening animation: the wordmark rises into place and a soft light crosses it once, then it fades out into the library screen. Any key skips it. */

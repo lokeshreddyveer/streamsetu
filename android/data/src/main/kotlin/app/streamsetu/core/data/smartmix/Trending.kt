@@ -28,7 +28,7 @@ class InMemoryTrendingCache : TrendingCacheStore {
 interface TmdbSettings {
     /** "Use TMDB weekly trending": ON by default. Only effective together with [userKey]. */
     val trendingEnabled: Boolean
-    /** The person's OWN key. There is no bundled key: blank/null means local mix only. */
+    /** Null means no TMDB credential at all (local mix only); any other value only says one exists: requests use the credential in use (the person's own key, else the built-in token). */
     val userKey: String?
 }
 
@@ -40,13 +40,13 @@ class TrendingView(val status: String, val entries: List<TrendingEntry>?) {
 }
 
 object TrendingPolicy {
-    const val DAY_MS = 86_400_000L
+    const val DAY_MS = app.streamsetu.core.data.repo.TmdbFiles.DAY_MS
     /** Quiet refresh once the cached list is a week old (it is a weekly list). */
     const val REFRESH_AFTER_DAYS = 7
     /** Used for Top This Week only while at most 30 days old. */
     const val DISPLAY_DAYS = 30
     /** Stored TMDB data is purged after 180 days at the latest (6 month limit). */
-    const val MAX_DAYS = 180
+    const val MAX_DAYS = app.streamsetu.core.data.repo.TmdbFiles.MAX_DAYS
     const val RETRY_AFTER_FAILURE_MS = 3_600_000L
 
     fun view(enabled: Boolean, keyPresent: Boolean, cacheAgeDays: Int?, entries: List<TrendingEntry>?): TrendingView {

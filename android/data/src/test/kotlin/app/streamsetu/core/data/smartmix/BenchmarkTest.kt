@@ -24,7 +24,7 @@ class BenchmarkTest {
         var coldAll = 0L
         val all = ArrayList<Long>()
         for (i in 0 until 13) {
-            val svc = SmartMixService(src, InMemorySmartMixStore(), view, { now })
+            val svc = SmartMixService(src, InMemorySmartMixStore(), view, clock = { now })
             val t = System.nanoTime()
             for (sh in ShelfSpec.GLOBAL) svc.build("main", sh, "2026-11-21")
             val d = System.nanoTime() - t
@@ -37,7 +37,7 @@ class BenchmarkTest {
         val b = ArrayList<Long>()
         var coldB = 0L
         for (i in 0 until 23) {
-            val svc = SmartMixService(src2, InMemorySmartMixStore(), view, { now })
+            val svc = SmartMixService(src2, InMemorySmartMixStore(), view, clock = { now })
             val t = System.nanoTime()
             for (sh in ShelfSpec.GLOBAL) svc.build("main", sh, "2026-11-21")
             val d = System.nanoTime() - t

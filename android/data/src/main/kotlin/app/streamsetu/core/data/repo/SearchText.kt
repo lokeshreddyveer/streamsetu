@@ -1,14 +1,11 @@
 package app.streamsetu.core.data.repo
 
-import java.text.Normalizer
-
 /** Pure text rules for search, kept apart from the database so they can be tested without a device. */
 object SearchText {
-    private val marks = Regex("\\p{Mn}+")
 
     /** Lower case, accents removed, anything that is not a letter or digit becomes a space. */
     private val SPACES = Regex("\\s+")
-    fun normalize(s: String): String = Normalizer.normalize(s, Normalizer.Form.NFD).replace(marks, "").lowercase()
+    fun normalize(s: String): String = app.streamsetu.core.model.TextFold.accents(s)
         .map { if (it.isLetterOrDigit()) it else ' ' }.joinToString("").trim().replace(SPACES, " ")
 
     fun tokens(s: String): List<String> = normalize(s).split(' ').filter { it.isNotEmpty() }

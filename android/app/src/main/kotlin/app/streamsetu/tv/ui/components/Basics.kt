@@ -17,6 +17,9 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.shape.CircleShape
@@ -515,13 +518,50 @@ fun artworkRequest(context: android.content.Context, url: String, widthPx: Int, 
 
 /** Asks for the picture of a title that has none (or whose picture failed): provided once at the top of the app. The second argument says the title had a picture that did not load. */
 val LocalArtworkFiller = androidx.compose.runtime.compositionLocalOf<((String, Boolean) -> Unit)?> { null }
+/** A tile without a picture is on screen (true) or gone (false): the express lane matches what is on screen first. */
+val LocalTileVisibility = androidx.compose.runtime.compositionLocalOf<((String, Boolean) -> Unit)?> { null }
+
+/** The ratings of the titles on screen (see [app.streamsetu.core.data.repo.RatingBadges]). */
+val LocalRatings = androidx.compose.runtime.compositionLocalOf<app.streamsetu.core.data.repo.RatingBadges?> { null }
+
+/**
+ * The star rating of a tile: the one look on every title tile of every screen (theme tokens, small, in the corner of the poster, never focusable on its own, read out as "Rated 7.5 out of 10").
+ * Shown only for a number the shared rule ([app.streamsetu.core.data.repo.DisplayRating]) accepts.
+ */
+@Composable
+fun RatingBadge(value: Double, modifier: Modifier = Modifier, small: Boolean = false) {
+    val text = String.format(java.util.Locale.US, "%.1f", value)
+    Row(modifier.background(Tokens.chipScrim, RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp).semantics(mergeDescendants = true) { contentDescription = "Rated $text out of 10" },
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        androidx.compose.foundation.Image(Icons.Filled.Star, null, Modifier.size(if (small) 9.dp else 11.dp), colorFilter = ColorFilter.tint(Tokens.gold))
+        Label(text, if (small) 10.sp else Tokens.caption, Tokens.text, FontWeight.SemiBold, maxLines = 1)
+    }
+}
+
+/** The rating badge of the title [itemId], read from the batch the screen's tiles ask for together (nothing per tile). Draws nothing when there is no credible rating. */
+@Composable
+fun TileRating(itemId: String?, modifier: Modifier = Modifier, small: Boolean = false) {
+    val src = LocalRatings.current ?: return
+    if (itemId == null) return
+    LaunchedEffect(itemId) { src.want(itemId) }
+    val all = src.values.collectAsState()
+    val v by remember(itemId) { derivedStateOf { all.value[itemId] } }
+    v?.let { RatingBadge(it, modifier, small) }
+}
+
+/** Reports a poster-less tile to the express lane for as long as it is composed. */
+@Composable
+fun ReportTileVisible(itemId: String?, hasPicture: Boolean) {
+    val sink = LocalTileVisibility.current
+    if (itemId != null && !hasPicture && sink != null) DisposableEffect(itemId) { sink(itemId, true); onDispose { sink(itemId, false) } }
+}
 
 /** True while a list has been scrolling for a moment (a held key), not for a single step. */
 val LocalFastScroll = androidx.compose.runtime.compositionLocalOf<State<Boolean>?> { null }
 
 /** The request for a card of the given size, built once for that picture and size. */
 @Composable
-private fun rememberArtwork(url: String?, width: Dp, heightPerWidth: Pair<Int, Int>, corner: Dp): Any? {
+internal fun rememberArtwork(url: String?, width: Dp, heightPerWidth: Pair<Int, Int>, corner: Dp): Any? {
     if (url.isNullOrBlank()) return null
     val context = androidx.compose.ui.platform.LocalContext.current
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -537,6 +577,7 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
                /** For a dense wall of posters on a small TV box: focus is a ring and a fill only (no scale, no clip). */
                dense: Boolean = false) {
     var cardFocused by remember { mutableStateOf(false) }
+    ReportTileVisible(itemId, !imageUrl.isNullOrBlank())
     Column(modifier.width(width).captionInView(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Focusable(onClick, (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).fillMaxWidth().aspectRatio(2f / 3f), container = if (imageUrl.isNullOrBlank()) Tokens.card else Color.Transparent, focusedContainer = if (imageUrl.isNullOrBlank()) Tokens.focusedSurface else Color.Transparent,
             clipContent = imageUrl.isNullOrBlank(), scaleOnFocus = if (dense) 1.0f else app.streamsetu.core.ui.motion.Motion.POSTER_FOCUS_SCALE, ringWidth = 2.5.dp, style = if (dense) TvFocusStyle.DENSE else TvFocusStyle.CARD, browse = true, onFocus = { cardFocused = it; onFocusChange(it) }, onLongClick = onLongClick, ringBand = true) { _ ->
@@ -547,7 +588,11 @@ fun PosterCard(title: String, imageUrl: String?, onClick: () -> Unit, modifier: 
             else PosterArt(title, rememberArtwork(imageUrl, width, 3 to 2, Tokens.radius), Modifier.fillMaxSize(), year = subtitle?.take(4), onError = { if (itemId != null) filler?.invoke(itemId, true) })
             val shown = if (progress > 0f) progress else itemId?.let { LocalPartialProgress.current[it] } ?: 0f
             if (shown > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Tokens.progressTrack)) { Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(Tokens.accent)) }
-            if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).background(Tokens.chipScrim, RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Tokens.text, FontWeight.SemiBold) }
+            // The corner: the tag (new, favourite, series, 4K) first, the rating after it, so they never overlap.
+            Row(Modifier.align(Alignment.TopEnd).padding(5.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (badge != null) Box(Modifier.background(Tokens.chipScrim, RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) { Label(badge, Tokens.caption, Tokens.text, FontWeight.SemiBold) }
+                TileRating(itemId)
+            }
             if (itemId != null) LocalDownloadStatus.current[itemId]?.let { (st, f) -> DownloadBadge(st, f) }
             if (itemId != null && itemId in LocalWatched.current) WatchedTick()
             // The title appears over the picture only for the poster the remote is on, so a wall of posters stays clean (the picture already carries its own title).
@@ -593,7 +638,9 @@ fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: 
 }
 
 @Composable
-fun ChannelLogo(url: String?, name: String, size: Dp = 30.dp) {
+fun ChannelLogo(url0: String?, name: String, size: Dp = 30.dp) {
+    // A channel with no logo of its own may have one from the public channel database (an overlay; the playlist's own logo always wins).
+    val url = if (url0.isNullOrBlank()) app.streamsetu.core.data.guidehub.GuideOverlay.logoForName(name) else url0
     Box(Modifier.size(size).clip(RoundedCornerShape(Tokens.radius)).background(Tokens.elevated), Alignment.Center) {
         if (url.isNullOrBlank()) Label(name.take(2).uppercase(), Tokens.row, Tokens.textTertiary, FontWeight.Bold)
         else AsyncImage(rememberArtwork(url, size - 10.dp, 1 to 1, 0.dp), name, Modifier.fillMaxSize().padding(5.dp), contentScale = ContentScale.Fit)

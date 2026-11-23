@@ -227,23 +227,43 @@ fun AppearanceSettings(c: AppContainer) {
             app.streamsetu.tv.opening.startup.StartupCoordinator.replayFullNextLaunch(context); replayAsked = true
         }
     }
-    SettingGroup("Artwork from TMDB", "Fills missing artwork and descriptions using your TMDB API key.") {
+    SettingGroup("Artwork from TMDB", "Pictures, summaries and cast come from TMDB. It works without a key: the app has its own. Your own free key is optional and is used instead.") {
         var tmdbKey by remember { mutableStateOf(c.credentials.load("tmdb.key").orEmpty()) }
-        var working by remember { mutableStateOf(false) }; var status by remember { mutableStateOf<String?>(null) }
+        var testing by remember { mutableStateOf(false) }; var testResult by remember { mutableStateOf<String?>(null) }
         val scope = rememberCoroutineScope()
-        val tmdb = remember { c.tmdbService }
+        val auth = c.tmdbAuth; val tmdbCtx = androidx.compose.ui.platform.LocalContext.current
         val trendingOn by c.ui.tmdbTrending.collectAsState()
-        TvTextField(tmdbKey, { tmdbKey = it.trim(); if (tmdbKey.isEmpty()) { c.credentials.delete("tmdb.key"); app.streamsetu.core.data.repo.TmdbFiles.clear(c.tmdbDir) }          // removing the key stops every TMDB request; what TMDB already filled stays until the 180-day limit (or a lock) takes it back
- else c.credentials.save("tmdb.key", tmdbKey) }, "TMDB API key", Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), secret = true)
-        ToggleRow("Weekly trending (Top This Week)", "Uses TMDB's public weekly list to order Top This Week, matched on this device. Works only with your own key; nothing about you is sent. Turn it off and the saved list is deleted.", trendingOn && tmdbKey.isNotBlank(), enabled = tmdbKey.isNotBlank(), reason = "Enter your TMDB API key first.") {
-            c.ui.setTmdbTrending(it); if (!it) app.streamsetu.core.data.repo.TmdbFiles.clear(c.tmdbDir); c.smartMix.invalidate()
+        val matchOn by c.ui.artworkMatching.collectAsState()
+        val cellularOn by c.ui.artworkMatchingCellular.collectAsState()
+        val progress by c.artworkEngine.progress.collectAsState()
+        val using = when (if (tmdbKey.isNotBlank()) (if (app.streamsetu.core.data.repo.TmdbAuth.isToken(tmdbKey)) app.streamsetu.core.data.repo.TmdbAuth.Source.OWN_TOKEN else app.streamsetu.core.data.repo.TmdbAuth.Source.OWN_KEY) else auth.source) {
+            app.streamsetu.core.data.repo.TmdbAuth.Source.OWN_KEY, app.streamsetu.core.data.repo.TmdbAuth.Source.OWN_TOKEN -> "Your own key"
+            app.streamsetu.core.data.repo.TmdbAuth.Source.BUILT_IN -> "The built-in key"
+            null -> if (auth.builtInRefused) "None: the built-in key is not working; add your own free key to keep artwork" else "None"
+        }
+        InfoRow("Key in use", using)
+        TvTextField(tmdbKey, { tmdbKey = it.trim(); testResult = null
+            if (tmdbKey.isEmpty()) { c.credentials.delete("tmdb.key"); if (!auth.available) c.clearTmdbData() } else c.credentials.save("tmdb.key", tmdbKey)
+            c.artworkEngine.kick() }, "Your own TMDB key (optional)", Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), secret = true)
+        if (tmdbKey.isNotBlank()) ActionRow("Remove key", "Goes back to the built-in key when this build has one.", "Remove", confirm = false) {
+            tmdbKey = ""; testResult = null; c.credentials.delete("tmdb.key"); if (!auth.available) c.clearTmdbData(); c.artworkEngine.kick()
+        }
+        ActionRow("Test key", testResult ?: "Asks TMDB whether the key in use is accepted.", if (testing) "Testing…" else "Test", confirm = false, enabled = !testing && auth.available, reason = "There is no key to test.") {
+            testing = true; testResult = "Testing…"
+            scope.launch { testResult = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { c.tmdbService.test() }.getOrDefault("That did not work.") }; testing = false }
+        }
+        ToggleRow("Match artwork in the background", "Finds missing pictures and summaries for your whole library by itself, a little at a time, and carries on where it stopped. Sends a title's name and year to TMDB; never a title in a locked, hidden or adult folder.", matchOn, enabled = auth.available || matchOn, reason = "Add your own free TMDB key first.") {
+            c.ui.setArtworkMatching(it); if (!it) c.clearTmdbData(files = false); app.streamsetu.tv.TmdbMatchWorker.schedule(tmdbCtx, it, cellularOn); c.artworkEngine.kick()
+        }
+        ToggleRow("Use mobile data", "On: matching also runs on mobile data. Off: it waits for Wi-Fi or another network that is not metered.", cellularOn, enabled = matchOn) { c.ui.setArtworkMatchingCellular(it); app.streamsetu.tv.TmdbMatchWorker.schedule(tmdbCtx, matchOn, it); c.artworkEngine.kick() }
+        InfoRow("Artwork matching", "", progress.line(auth.builtInRefused && !auth.available))
+        ActionRow("Match now", "Starts or resumes the run at once, even on mobile data. You never have to press it.", "Match now", confirm = false, enabled = matchOn && auth.available, reason = "Turn on background matching first.") { c.artworkEngine.matchAnyway() }
+        ToggleRow("Weekly trending (Top This Week)", "Uses TMDB's public weekly list to order Top This Week, matched on this device. Nothing about you is sent. Turn it off and the saved list is deleted.", trendingOn && auth.available, enabled = auth.available, reason = "No TMDB key is available.") {
+            c.ui.setTmdbTrending(it); if (!it) c.appScope.launch(kotlinx.coroutines.Dispatchers.IO) { app.streamsetu.core.data.repo.TmdbFiles.clear(c.tmdbDir) }; c.smartMix.invalidate()
         }
         TmdbNotice()
-        ActionRow("Fetch missing artwork now", status ?: "Looks up to 150 titles at a time. Run it again for more.", if (working) "Working…" else "Fetch", confirm = false, enabled = !working && tmdbKey.isNotBlank(), reason = "Enter your TMDB API key first.") {
-            working = true; status = "Starting…"
-            scope.launch { status = runCatching { tmdb.fillMissing(150) { d, t -> status = "$d of $t looked up…" } }.fold({ "Found artwork for $it titles." }, { it.message ?: "That did not work." }); working = false }
-        }
     }
+    HubSourcesGroup(c)
     SettingGroup("Browsing") {
         val rev by ui.folderViewRev.collectAsState()
         val profile = c.profiles.activeId.value
@@ -401,9 +421,9 @@ fun AboutSettings(c: AppContainer) {
         InfoRow("Stored on this device", "Connections, favorites, history, progress", "Logins are encrypted with the Android Keystore.")
         InfoRow("Crash and usage reports", "Off", "None are collected or sent.")
     }
-    SettingGroup("TMDB") { TmdbNotice() }
+    ServiceCredits()
     SettingGroup("Open-source software") {
-        listOf("AndroidX Media3 (ExoPlayer)" to "Apache 2.0", "mpv and libmpv for Android" to "LGPL 2.1 or later", "OkHttp and Retrofit" to "Apache 2.0", "Coil" to "Apache 2.0", "Room, Compose, WorkManager" to "Apache 2.0", "Hilt and Dagger" to "Apache 2.0", "Kotlin and kotlinx" to "Apache 2.0").forEach { (n, l) -> InfoRow(n, l) }
+        listOf("AndroidX Media3 (ExoPlayer)" to "Apache 2.0", "mpv and libmpv for Android" to "LGPL 2.1 or later", "FFmpeg, libplacebo (with mpv)" to "LGPL 2.1 or later", "libass (with mpv)" to "ISC", "dav1d (with mpv)" to "BSD 2-clause", "OkHttp" to "Apache 2.0", "Coil" to "Apache 2.0", "Room, Compose, WorkManager" to "Apache 2.0", "Hilt and Dagger" to "Apache 2.0", "Kotlin and kotlinx" to "Apache 2.0").forEach { (n, l) -> InfoRow(n, l) }
     }
     SettingGroup("Support") {
         InfoRow("Something wrong?", "Export a diagnostic report", "Settings, Diagnostics. It contains no logins or provider addresses, so it is safe to share.")
@@ -462,4 +482,4 @@ fun TmdbNotice() {
 }
 
 const val TMDB_NOTICE = "This product uses the TMDB API but is not endorsed or certified by TMDB."
-const val TMDB_PRIVACY = "TMDB is used only with your own free API key, and no key is built into the app. Matching artwork, and opening a title's cast, sends that title's name and year to TMDB; a title in a locked or hidden folder, or with a copy in one, is never sent. Looking up a person by name (Ask) sends that name and nothing else. Weekly trending requests TMDB's public list: nothing about you, your history, your profile or this device is sent, and the list is matched here on this device. Saved lists and details, and the posters, summaries and ratings TMDB filled in, are kept for at most 180 days and then removed; anything your playlist provided itself is never touched. Turn the switch off, or remove the key, and the saved list is deleted."
+const val TMDB_PRIVACY = "TMDB is used with your own free key when you add one, and otherwise with a key built into the app. Matching artwork, opening a title's cast or trailer, and the weekly list send TMDB a title's name and year, nothing else about you; a title in a locked, hidden or adult folder, or with a copy in one, is never sent. You can switch matching and trending off in Settings. Looking up a person by name (Ask) sends that name and nothing else. Weekly trending requests TMDB's public list: nothing about you, your history, your profile or this device is sent, and the list is matched here on this device. Saved lists and details, and the posters, summaries and ratings TMDB filled in, are kept for at most 180 days and then removed; anything your playlist provided itself is never touched. Turn the trending switch off and the saved list is deleted."

@@ -51,7 +51,7 @@ object Facts {
         if (minutes <= 0) return null
         return if (minutes >= 60) "${minutes / 60} h" + (if (minutes % 60 != 0) " ${minutes % 60} min" else "") else "$minutes min"
     }
-    fun rating(raw: String?): String? = raw?.toDoubleOrNull()?.takeIf { it > 0 }?.let { "★ %.1f".format(it) }
+    fun rating(raw: String?): String? = app.streamsetu.core.data.repo.DisplayRating.starText(raw)
 }
 
 /** One slide of a featured banner. Everything shown comes from the catalog or the provider; nothing is made up. */
@@ -104,6 +104,13 @@ fun FeaturedBanner(
     val items = remember(candidates, failed) {
         val withPicture = candidates.filter { !it.imageUrl.isNullOrBlank() }
         withPicture.filter { it.id !in failed }.ifEmpty { withPicture.ifEmpty { candidates } }
+    }
+    // Hero candidates that have no picture are matched first (the express lane), so a banner is not left without one.
+    val tileSink = LocalTileVisibility.current
+    DisposableEffect(candidates, tileSink) {
+        val blank = candidates.filter { it.imageUrl.isNullOrBlank() }.take(12).map { it.id }
+        if (tileSink != null) blank.forEach { tileSink(it, true) }
+        onDispose { if (tileSink != null) blank.forEach { tileSink(it, false) } }
     }
     if (items.isEmpty()) return
     val probeContext = LocalContext.current

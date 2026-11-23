@@ -15,7 +15,7 @@ class BuildPolicyTests {
         assertTrue(manifest.contains("android:networkSecurityConfig=\"@xml/network_security_config\"")); assertTrue(manifest.contains("android:usesCleartextTraffic=\"true\""))
         assertTrue("base config keeps cleartext for provider streams", Regex("""<base-config cleartextTrafficPermitted="true"""").containsMatchIn(nsc))
         val own = nsc.substringAfter("<domain-config cleartextTrafficPermitted=\"false\">").substringBefore("</domain-config>")
-        for (d in listOf("themoviedb.org", "tmdb.org", "opensubtitles.com", "api.github.com")) assertTrue("$d must be https only", own.contains(">$d<"))
+        for (d in listOf("themoviedb.org", "tmdb.org", "fanart.tv", "thetvdb.com", "tvmaze.com", "opensubtitles.com", "trakt.tv", "api.github.com", "iptv-org.github.io")) assertTrue("$d must be https only", own.contains(">$d<"))
         for (d in listOf("raw.githubusercontent.com", "githubusercontent.com", ">github.com<")) assertFalse("$d must stay open to a person's own playlist", own.contains(d))
     }
 

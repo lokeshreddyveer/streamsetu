@@ -1,5 +1,6 @@
 package app.streamsetu.core.sync
 
+import app.streamsetu.core.model.putIfMissing
 import kotlinx.coroutines.ensureActive
 import app.streamsetu.core.data.db.AppDatabase
 import app.streamsetu.core.data.db.EpgEntity
@@ -18,7 +19,16 @@ class EpgService(private val db: AppDatabase) {
     @Volatile var generation = 0
         private set
 
-    suspend fun refresh(source: Source, fallbackUrl: String?, headers: Map<String, String> = emptyMap()): Int = withContext(Dispatchers.IO) {
+    /** Reads the playlist's guide and records what happened (Settings > Guide shows it). */
+    suspend fun refresh(source: Source, fallbackUrl: String?, headers: Map<String, String> = emptyMap()): Int {
+        val kept = try { refreshInner(source, fallbackUrl, headers) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+            runCatching { app.streamsetu.core.data.guidehub.GuideHubRecorder.providerRead(db, source.id, source.name, 0, e.message ?: "The guide could not be read.") }; throw e
+        }
+        if (source.epgUrl != null || fallbackUrl != null) runCatching { app.streamsetu.core.data.guidehub.GuideHubRecorder.providerRead(db, source.id, source.name, kept, null) }
+        return kept
+    }
+
+    private suspend fun refreshInner(source: Source, fallbackUrl: String?, headers: Map<String, String>): Int = withContext(Dispatchers.IO) {
         val url = source.epgUrl ?: fallbackUrl ?: return@withContext 0
         val now = System.currentTimeMillis()
         var kept = 0
@@ -26,7 +36,7 @@ class EpgService(private val db: AppDatabase) {
         val names = LinkedHashMap<String, String>()
         // Old programmes go first and new ones are written as they are read, a chunk at a time, so a very large guide never has to fit in memory.
         db.epg().prune(now - 3600_000)
-        fun flush() { if (batch.isNotEmpty()) { val part = batch.toList(); batch.clear(); kotlinx.coroutines.runBlocking { db.epg().put(part) } } }
+        fun flush() { if (batch.isNotEmpty()) { val part = batch.toList(); batch.clear(); kotlinx.coroutines.runBlocking { db.epg().put(part) } } }          // the parser callback runs inside withContext(IO) above, so this never blocks the main thread
         Http.get(url, source.userAgent, headers) { resp ->
             val raw = java.io.BufferedInputStream(resp.body!!.byteStream())
             // Gzip is recognised by its first two bytes, not by the file name: many providers serve it without a ".gz" suffix.
@@ -36,7 +46,7 @@ class EpgService(private val db: AppDatabase) {
             val counted = GuideLimits.CountingStream(raw)
             val input = GuideLimits.Guard(if (gzipped) GZIPInputStream(counted) else counted, counted, gzipped, System.currentTimeMillis())
             var seen = 0
-            XmltvParser.parse(input, now - 3600_000, now + 48 * 3600_000, onChannel = { id, name -> if (names.size < GuideLimits.MAX_CHANNELS) names.putIfAbsent(name, id) }) { p ->
+            XmltvParser.parse(input, now - 3600_000, now + 48 * 3600_000, onChannel = { id, name -> if (names.size < GuideLimits.MAX_CHANNELS) names.putIfMissing(name, id) }) { p ->
                 if (++seen > GuideLimits.MAX_PROGRAMMES) throw java.io.IOException("The guide has more programmes than this app reads (${GuideLimits.MAX_PROGRAMMES}).")
                 batch += EpgEntity(EpgIds.scope(source.id, p.channelEpgId), p.startMs, p.endMs, p.title, p.description); kept++
                 if (batch.size >= CHUNK) flush()
@@ -88,20 +98,22 @@ class EpgService(private val db: AppDatabase) {
     /** Call after the guide table has changed (a refresh does): the next lookup reads it afresh and every earlier match is dropped. */
     fun guideChanged() { cache = null; generation++ }
 
-    private class Lookup(val ids: Set<String>, val rawToStored: Map<String, String>, val byName: Map<String, String>, val byNameInSource: Map<String, String>)
+    private class Lookup(val ids: Set<String>, val rawToStored: Map<String, String>, val byName: Map<String, String>, val byNameInSource: Map<String, String>, val guideMap: Map<String, String> = emptyMap())
     @Volatile private var cache: Lookup? = null
 
     private suspend fun lookup(): Lookup = cache ?: run {
         val ids = db.extras().epgIdsWithProgrammes().toSet()
         val rawToStored = HashMap<String, String>()
-        ids.forEach { rawToStored.putIfAbsent(EpgIds.raw(it), it) }
+        ids.forEach { rawToStored.putIfMissing(EpgIds.raw(it), it) }
         val byName = HashMap<String, String>(); val byNameInSource = HashMap<String, String>()
         db.extras().epgChannels().forEach {
             if (it.epgId !in ids) return@forEach
-            byName.putIfAbsent(it.nameNorm, it.epgId)
-            EpgIds.source(it.epgId)?.let { src -> byNameInSource.putIfAbsent(src + "\u0001" + it.nameNorm, it.epgId) }
+            byName.putIfMissing(it.nameNorm, it.epgId)
+            EpgIds.source(it.epgId)?.let { src -> byNameInSource.putIfMissing(src + "\u0001" + it.nameNorm, it.epgId) }
         }
-        Lookup(ids, rawToStored, byName, byNameInSource).also { cache = it }
+        // The channel-to-guide map of the guide hub (a manual choice or an automatic match to an added guide): used first when the guide has programmes for it.
+        val hubMap = runCatching { db.guideHub().guideMap().sortedByDescending { it.locked }.associate { it.channelId to EpgIds.scope(it.guideSourceId, it.xmltvId) } }.getOrDefault(emptyMap())
+        Lookup(ids, rawToStored, byName, byNameInSource, hubMap).also { cache = it }
     }
 
     /**
@@ -123,6 +135,7 @@ class EpgService(private val db: AppDatabase) {
             val scoped = own?.let { EpgIds.scope(ch.sourceId, it) }
             val name = app.streamsetu.core.data.repo.SearchText.normalize(stripQuality(ch.name))
             val found = when {
+                l.guideMap[ch.id]?.let { it in l.ids } == true -> l.guideMap[ch.id]
                 scoped != null && scoped in l.ids -> scoped
                 own != null && own in l.ids -> own                       // a guide stored before ids were scoped
                 own != null && l.rawToStored[own] != null -> l.rawToStored[own]

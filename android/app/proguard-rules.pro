@@ -11,3 +11,10 @@
 -keepattributes SourceFile,LineNumberTable
 -dontwarn org.slf4j.**
 -dontwarn javax.annotation.**
+
+# Release builds carry no debug, verbose or info log lines (they can name titles, hosts and states, and logcat is readable over adb). Warnings and errors stay for crash notes.
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}

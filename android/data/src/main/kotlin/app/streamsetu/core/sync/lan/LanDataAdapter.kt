@@ -1,5 +1,6 @@
 package app.streamsetu.core.sync.lan
 
+import app.streamsetu.core.model.putIfMissing
 import android.content.ContentValues
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.json.JsonObject
@@ -44,7 +45,7 @@ class LanDataAdapter(
     private fun sources(db: SupportSQLiteDatabase): Sources {
         val keyOf = HashMap<String, String>(); val idOf = LinkedHashMap<String, String>()
         db.query("SELECT id, address FROM sources WHERE draft = 0 AND address != '' ORDER BY enabled DESC, sortOrder").use { c ->
-            while (c.moveToNext()) { val key = SourceKey.of(c.getString(1)); keyOf[c.getString(0)] = key; idOf.putIfAbsent(key, c.getString(0)) }
+            while (c.moveToNext()) { val key = SourceKey.of(c.getString(1)); keyOf[c.getString(0)] = key; idOf.putIfMissing(key, c.getString(0)) }
         }
         return Sources(keyOf, idOf)
     }

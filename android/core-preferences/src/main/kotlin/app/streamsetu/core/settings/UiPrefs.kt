@@ -32,10 +32,27 @@ class UiPrefs(context: Context) {
     val projectorMode: StateFlow<Boolean> = _projectorMode
     fun setProjectorMode(enabled: Boolean) { prefs.edit().putBoolean("projectorMode", enabled).apply(); _projectorMode.value = enabled }
 
-    // TMDB weekly trending (Top This Week): on by default, but it does anything only with the person's own TMDB key. Nothing about the person is ever sent.
+    // The person page: "All films" (false) or "In your library" (true), the last choice, kept on this device only.
+    private val _personLibraryOnly = flow(prefs.getBoolean("personLibraryOnly", false))
+    val personLibraryOnly: StateFlow<Boolean> = _personLibraryOnly
+    fun setPersonLibraryOnly(v: Boolean) { prefs.edit().putBoolean("personLibraryOnly", v).apply(); _personLibraryOnly.value = v }
+    // "Acting only" on the person page (leaves out voice, narration and cameo credits), on this device only.
+    private val _personActingOnly = flow(prefs.getBoolean("personActingOnly", false))
+    val personActingOnly: StateFlow<Boolean> = _personActingOnly
+    fun setPersonActingOnly(v: Boolean) { prefs.edit().putBoolean("personActingOnly", v).apply(); _personActingOnly.value = v }
+
+    // TMDB weekly trending (Top This Week): on by default; it works with the person's own TMDB key or the app's built-in one. Nothing about the person is ever sent.
     private val _tmdbTrending = flow(prefs.getBoolean("tmdbTrending", true))
     val tmdbTrending: StateFlow<Boolean> = _tmdbTrending
     fun setTmdbTrending(v: Boolean) { prefs.edit().putBoolean("tmdbTrending", v).apply(); _tmdbTrending.value = v }
+
+    // Matching artwork in the background: on by default (it works with the built-in token or the person's own key), on any network by default, mobile data included (a switch turns that off).
+    private val _artworkMatching = flow(prefs.getBoolean("artworkMatching", true))
+    val artworkMatching: StateFlow<Boolean> = _artworkMatching
+    fun setArtworkMatching(v: Boolean) { prefs.edit().putBoolean("artworkMatching", v).apply(); _artworkMatching.value = v }
+    private val _artworkMatchingCellular = flow(prefs.getBoolean("artworkMatchingCellular", true))
+    val artworkMatchingCellular: StateFlow<Boolean> = _artworkMatchingCellular
+    fun setArtworkMatchingCellular(v: Boolean) { prefs.edit().putBoolean("artworkMatchingCellular", v).apply(); _artworkMatchingCellular.value = v }
 
     // Folders or Grid for Movies, Series and Live TV: remembered for each profile on each device. Kept in a file of its own that no backup or sync reads, so a phone and a TV may differ.
     private val viewPrefs = context.getSharedPreferences("folder_view", Context.MODE_PRIVATE)
@@ -48,7 +65,7 @@ class UiPrefs(context: Context) {
 
     companion object {
         /** Preference keys that describe this device's screen or output, and so are never exported or synchronised. */
-        val DEVICE_ONLY = setOf("projectorMode")
+        val DEVICE_ONLY = setOf("projectorMode", "personLibraryOnly", "personActingOnly")
     }
 
     private val _theme = flow(prefs.getString("theme", "AMOLED") ?: "AMOLED")

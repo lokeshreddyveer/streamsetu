@@ -129,8 +129,6 @@ interface CatalogDao {
     /** The first titles of one folder, newest first (a folder row's tiles): uses (sourceId, categoryId, addedAt). */
     @Query("SELECT id, sourceId, categoryId, title, year, rating, addedAt, posterUrl FROM movies WHERE sourceId = :source AND categoryId = :folder ORDER BY addedAt DESC LIMIT :limit")
     suspend fun movieFolderHead(source: String, folder: String, limit: Int): List<CandidateRow>
-    @Query("SELECT id, sourceId, categoryId, title, year, rating, addedAt, posterUrl FROM series WHERE sourceId = :source AND categoryId = :folder ORDER BY addedAt DESC LIMIT :limit")
-    suspend fun seriesFolderHead(source: String, folder: String, limit: Int): List<CandidateRow>
 
     // Movies
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putMovies(list: List<MovieEntity>)
@@ -318,9 +316,31 @@ interface ExtrasDao {
     @Query("SELECT * FROM movies WHERE (posterUrl IS NULL OR posterUrl = '') AND id NOT IN (SELECT itemId FROM overrides) LIMIT :n") suspend fun moviesWithoutPoster(n: Int): List<MovieEntity>
     @Query("SELECT * FROM series WHERE (posterUrl IS NULL OR posterUrl = '') AND id NOT IN (SELECT itemId FROM overrides) LIMIT :n") suspend fun seriesWithoutPoster(n: Int): List<SeriesEntity>
 
+    // The background matching queue: read in pages by id (a cursor), so nothing but one page is ever in memory and restricted titles never block the pages behind them.
+    // "No poster" comes first; "has a poster but no summary" is a second pass. A title with a correction row (found or remembered as not found) is never listed again.
+    @Query("SELECT * FROM movies WHERE id > :after AND (posterUrl IS NULL OR posterUrl = '') AND id NOT IN (SELECT itemId FROM overrides) ORDER BY id LIMIT :n") suspend fun moviesNoPosterAfter(after: String, n: Int): List<MovieEntity>
+    @Query("SELECT * FROM series WHERE id > :after AND (posterUrl IS NULL OR posterUrl = '') AND id NOT IN (SELECT itemId FROM overrides) ORDER BY id LIMIT :n") suspend fun seriesNoPosterAfter(after: String, n: Int): List<SeriesEntity>
+    @Query("SELECT * FROM movies WHERE id > :after AND posterUrl IS NOT NULL AND posterUrl <> '' AND (plot IS NULL OR plot = '') AND id NOT IN (SELECT itemId FROM overrides) ORDER BY id LIMIT :n") suspend fun moviesNoPlotAfter(after: String, n: Int): List<MovieEntity>
+    @Query("SELECT * FROM series WHERE id > :after AND posterUrl IS NOT NULL AND posterUrl <> '' AND (plot IS NULL OR plot = '') AND id NOT IN (SELECT itemId FROM overrides) ORDER BY id LIMIT :n") suspend fun seriesNoPlotAfter(after: String, n: Int): List<SeriesEntity>
+    @Query("SELECT COUNT(*) FROM movies WHERE (posterUrl IS NULL OR posterUrl = '' OR plot IS NULL OR plot = '') AND id NOT IN (SELECT itemId FROM overrides)") suspend fun countMoviesToMatch(): Int
+    @Query("SELECT COUNT(*) FROM series WHERE (posterUrl IS NULL OR posterUrl = '' OR plot IS NULL OR plot = '') AND id NOT IN (SELECT itemId FROM overrides)") suspend fun countSeriesToMatch(): Int
+    @Query("SELECT COUNT(*) FROM movies WHERE (posterUrl IS NULL OR posterUrl = '') AND id NOT IN (SELECT itemId FROM overrides)") suspend fun countMoviesNoPoster(): Int
+    @Query("SELECT COUNT(*) FROM series WHERE (posterUrl IS NULL OR posterUrl = '') AND id NOT IN (SELECT itemId FROM overrides)") suspend fun countSeriesNoPoster(): Int
+    @Query("SELECT itemId FROM overrides WHERE itemId IN (:ids)") suspend fun overrideIdsAmong(ids: List<String>): List<String>
+
+    // Ratings: what a tile shows is read for many titles at once (never one query per tile)
+    @Query("SELECT id, rating FROM movies WHERE id IN (:ids)") suspend fun movieRatings(ids: List<String>): List<RatingRow>
+    @Query("SELECT id, rating FROM series WHERE id IN (:ids)") suspend fun seriesRatings(ids: List<String>): List<RatingRow>
+    @Query("SELECT * FROM rating_checks WHERE itemId IN (:ids)") suspend fun ratingChecks(ids: List<String>): List<RatingCheckEntity>
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putRatingCheck(r: RatingCheckEntity)
+    @Query("DELETE FROM rating_checks WHERE checkedAt < :cutoff") suspend fun clearRatingChecksBefore(cutoff: Long)
+    @Query("DELETE FROM rating_checks WHERE itemId IN (:ids)") suspend fun clearRatingChecks(ids: List<String>)
+    @Query("DELETE FROM rating_checks") suspend fun clearAllRatingChecks()
+
     // Overrides
     @Query("SELECT * FROM overrides") fun overrides(): Flow<List<OverrideEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putOverride(o: OverrideEntity)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putOverrides(list: List<OverrideEntity>)
     @Query("DELETE FROM overrides WHERE itemId = :id") suspend fun clearOverride(id: String)
     /** Takes back what TMDB filled in: only a correction that holds no title of the person's own (their hand-made ones always have a title or a picture they chose). */
     @Query("DELETE FROM overrides WHERE itemId = :id AND title IS NULL AND (posterUrl IS NULL OR posterUrl = '' OR posterUrl LIKE 'https://image.tmdb.org/%')") suspend fun clearTmdbOverride(id: String)
@@ -420,6 +440,8 @@ interface IdentityDao {
     @Query("DELETE FROM source_twin WHERE sourceA = :sourceId OR sourceB = :sourceId") suspend fun clearTwinsOf(sourceId: String)
     @Query("SELECT itemId, inHash FROM content_identity WHERE sourceId = :sourceId AND kind = :kind") suspend fun hashes(sourceId: String, kind: String): List<IdentityHash>
     @Query("SELECT * FROM content_identity WHERE itemId IN (:ids)") suspend fun byItemIds(ids: List<String>): List<ContentIdentityEntity>
+    /** The rows of one kind with one of these identity keys, in these playlists (the person page matches a filmography against the library with it). */
+    @Query("SELECT * FROM content_identity WHERE kind = :kind AND identityKey IN (:keys) AND sourceId IN (:sources)") suspend fun byKeys(kind: String, keys: List<String>, sources: List<String>): List<ContentIdentityEntity>
     @Query("SELECT COUNT(*) FROM content_identity WHERE identVer = :ver") suspend fun derivedCount(ver: Int): Int
     @Query("SELECT COUNT(*) FROM content_identity") suspend fun identityTotal(): Int
     /** Movies with no identity row, or one made by an older rule: the work of the background fill (a small batch at a time). */
@@ -440,16 +462,18 @@ interface IdentityDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putDismissed(row: RecDismissedEntity)
     @Query("DELETE FROM rec_dismissed WHERE profileId = :profile AND itemId = :itemId") suspend fun undismiss(profile: String, itemId: String)
     @Query("SELECT * FROM rec_dismissed WHERE profileId = :profile") suspend fun dismissed(profile: String): List<RecDismissedEntity>
-    @Query("DELETE FROM rec_dismissed WHERE profileId = :profile") suspend fun clearDismissed(profile: String)
 
     // What shelves showed
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putShown(rows: List<SmartMixShownEntity>)
     @Query("SELECT * FROM smartmix_shown WHERE profileId = :profile") suspend fun shown(profile: String): List<SmartMixShownEntity>
     @Query("DELETE FROM smartmix_shown WHERE itemId IN (:ids)") suspend fun deleteShownItems(ids: List<String>)
     @Query("DELETE FROM smartmix_shown WHERE identityKey IN (:keys)") suspend fun deleteShownKeys(keys: List<String>)
-    @Query("DELETE FROM smartmix_shown WHERE profileId = :profile") suspend fun clearShown(profile: String)
+
     @Query("SELECT * FROM smartmix_state WHERE profileId = :profile AND shelfId = :shelf") suspend fun state(profile: String, shelf: String): SmartMixStateEntity?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putState(row: SmartMixStateEntity)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putRecent(row: FolderRecentEntity)
     @Query("SELECT * FROM folder_recent WHERE profileId = :profile") suspend fun recent(profile: String): List<FolderRecentEntity>
 }
+
+/** An item's id and the rating its own row holds (the provider's, or the one TMDB filled). */
+data class RatingRow(val id: String, val rating: String?)

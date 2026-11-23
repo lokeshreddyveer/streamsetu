@@ -11,8 +11,9 @@ import androidx.room.RoomDatabase
         LibraryEntity::class, LibraryMemberEntity::class, FolderPrefEntity::class,
         NewEpisodeEntity::class, CatalogFingerprintEntity::class, CollectionEntity::class, CollectionItemEntity::class, OverrideEntity::class, EpgChannelEntity::class,
         WatchTimeEntity::class, ChannelPrefEntity::class, ReminderEntity::class, SportsFollowEntity::class, SportsReminderEntity::class, SportsRecordingEntity::class,
-        ContentIdentityEntity::class, SourceTwinEntity::class, RecDismissedEntity::class, SmartMixShownEntity::class, SmartMixStateEntity::class, FolderRecentEntity::class],
-    version = 11,
+        RatingCheckEntity::class, ContentIdentityEntity::class, SourceTwinEntity::class, RecDismissedEntity::class, SmartMixShownEntity::class, SmartMixStateEntity::class, FolderRecentEntity::class, HubIdentityEntity::class, MetadataFactEntity::class, TmdbIdEntity::class, TmdbGenreEntity::class,
+        GuideSourceEntity::class, GuideDiagnosticsEntity::class, ChannelGuideMapEntity::class, ChannelEnrichmentEntity::class],
+    version = 17,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,11 +27,91 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun extras(): ExtrasDao
     abstract fun sports(): SportsDao
     abstract fun identity(): IdentityDao
+    abstract fun hub(): HubDao
+    abstract fun guideHub(): GuideHubDao
 
     companion object {
-        /** Adds drafts and cached counts to playlists, combined libraries, and folder arrangements. Nothing existing is touched. */
         /** Every step from the first version to the current one, in order. There is no destructive fallback: a database that cannot be upgraded is never emptied. */
-        val MIGRATIONS: Array<androidx.room.migration.Migration> get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+        val MIGRATIONS: Array<androidx.room.migration.Migration> get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+
+        /**
+         * "A to Z" and "Newest year" over the whole library read straight from an index: a lower-case copy of the title (kept by two triggers, so no write path has to know about it) with an
+         * index on it, and an index on the year, for movies and series. Additive: nothing existing is changed. The copy is filled in here with one statement per table, and the triggers keep it right.
+         */
+        val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                for (t in listOf("movies", "series")) {
+                    db.execSQL("ALTER TABLE $t ADD COLUMN titleSort TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("UPDATE $t SET titleSort = lower(title)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_${t}_titleSort_id ON $t (titleSort, id)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_${t}_year_id ON $t (year DESC, id ASC)")
+                }
+                ensureSortTriggers(db)
+            }
+        }
+
+        /** The metadata hub: two new, empty tables (the crosswalk of ids across services, and the saved facts with source, quality and expiry). Additive; nothing existing is touched. */
+        val MIGRATION_12_13 = object : androidx.room.migration.Migration(12, 13) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS hub_identity (itemId TEXT NOT NULL, tmdbId INTEGER, tvdbId INTEGER, imdbId TEXT, tvmazeId INTEGER, kind TEXT, resolvedAt INTEGER NOT NULL DEFAULT 0, missUntil INTEGER, PRIMARY KEY(itemId))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS metadata_facts (itemId TEXT NOT NULL, field TEXT NOT NULL, value TEXT, source TEXT NOT NULL, quality REAL NOT NULL DEFAULT 0, fetchedAt INTEGER NOT NULL, expiresAt INTEGER NOT NULL, missUntil INTEGER, failCount INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(itemId, field))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_metadata_facts_expiresAt ON metadata_facts (expiresAt)")
+            }
+        }
+
+        /** What TMDB said a matched title is rated, and when it was asked (once: a title with nothing credible is not asked again). One new, empty table; nothing existing is touched. */
+        val MIGRATION_13_14 = object : androidx.room.migration.Migration(13, 14) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS rating_checks (itemId TEXT NOT NULL, tmdbRating TEXT, checkedAt INTEGER NOT NULL, PRIMARY KEY(itemId))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_rating_checks_checkedAt ON rating_checks (checkedAt)")
+            }
+        }
+
+        /**
+         * The two TMDB tables (which TMDB title an item is, and its TMDB genres) were made on first use with CREATE TABLE IF NOT EXISTS, outside Room. They are Room tables now, with the same columns, so a
+         * database that has them keeps its rows; only the index gets its Room name. Additive. (Version 16 is reserved for the Live TV guide work on Android.)
+         */
+        val MIGRATION_14_15 = object : androidx.room.migration.Migration(14, 15) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS tmdb_ids (itemId TEXT NOT NULL, tmdbId INTEGER NOT NULL, tv INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(itemId))")
+                db.execSQL("DROP INDEX IF EXISTS tmdb_ids_by_id")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_tmdb_ids_tmdbId_tv ON tmdb_ids (tmdbId, tv)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS tmdb_genres (itemId TEXT NOT NULL, ids TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(itemId))")
+            }
+        }
+
+        /** The guide hub (Live TV guide sources, per-source diagnostics, the channel-to-guide map and the public channel database overlay): four new, empty tables. Additive; nothing existing is touched. */
+        val MIGRATION_15_16 = object : androidx.room.migration.Migration(15, 16) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS guide_sources (id TEXT NOT NULL, kind TEXT NOT NULL, name TEXT NOT NULL, urlRef TEXT, enabled INTEGER NOT NULL DEFAULT 1, priority INTEGER NOT NULL DEFAULT 20, refreshHours INTEGER NOT NULL DEFAULT 6, tzMode TEXT NOT NULL DEFAULT 'auto', tzZone TEXT, offsetMinutes INTEGER NOT NULL DEFAULT 0, etag TEXT, lastModified TEXT, createdAt INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(id))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS guide_diagnostics (guideSourceId TEXT NOT NULL, lastAttempt INTEGER NOT NULL, lastSuccess INTEGER, outcome TEXT NOT NULL, httpStatus INTEGER, bytes INTEGER, channels INTEGER NOT NULL DEFAULT 0, mapped INTEGER NOT NULL DEFAULT 0, programmesSeen INTEGER NOT NULL DEFAULT 0, programmesKept INTEGER NOT NULL DEFAULT 0, droppedPast INTEGER NOT NULL DEFAULT 0, droppedFuture INTEGER NOT NULL DEFAULT 0, droppedInvalid INTEGER NOT NULL DEFAULT 0, fileFirstStart INTEGER, fileLastStop INTEGER, truncated INTEGER NOT NULL DEFAULT 0, error TEXT, windowEnd INTEGER, PRIMARY KEY(guideSourceId))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS channel_guide_map (channelId TEXT NOT NULL, guideSourceId TEXT NOT NULL, xmltvId TEXT NOT NULL, method TEXT NOT NULL, confidence REAL NOT NULL DEFAULT 1, reason TEXT, locked INTEGER NOT NULL DEFAULT 0, updatedAt INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(channelId, guideSourceId))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_channel_guide_map_guideSourceId_xmltvId ON channel_guide_map (guideSourceId, xmltvId)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS channel_enrichment (channelId TEXT NOT NULL, dbId TEXT, logoUrl TEXT, categoryKey TEXT, country TEXT, language TEXT, matchedBy TEXT, confidence REAL NOT NULL DEFAULT 0, fetchedAt INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(channelId))")
+            }
+        }
+
+        /**
+         * The sort key learns accents: titleSort was lower(title), and SQLite's lower() changes only A to Z, so "Émile" sorted after "Z". The two triggers are made again with the key of [app.streamsetu.core.model.SortKey]
+         * (lower-case, Latin accents folded) and only the rows that have a non-ASCII character are updated (one statement per table; ASCII titles keep the very same key, so nothing else changes). Additive: no column,
+         * table or index changes, so the Room schema is the same as version 16.
+         */
+        val MIGRATION_16_17 = object : androidx.room.migration.Migration(16, 17) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                ensureSortTriggers(db)
+                for (t in listOf("movies", "series")) for (q in app.streamsetu.core.model.SortKey.updateStatements(t, "title", "title GLOB '${app.streamsetu.core.model.SortKey.NON_ASCII_GLOB}'")) db.execSQL(q)
+            }
+        }
+
+        /** The triggers that keep titleSort equal to the sort key of the title (see [app.streamsetu.core.model.SortKey]). Safe to run again; made with a new database and by the 11 to 12 step. */
+        fun ensureSortTriggers(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            for (t in listOf("movies", "series")) {
+                val body = app.streamsetu.core.model.SortKey.updateStatements(t, "NEW.title", "rowid = NEW.rowid").joinToString("; ")
+                db.execSQL("DROP TRIGGER IF EXISTS ${t}_titlesort_ai"); db.execSQL("DROP TRIGGER IF EXISTS ${t}_titlesort_au")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS ${t}_titlesort_ai AFTER INSERT ON $t BEGIN $body; END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS ${t}_titlesort_au AFTER UPDATE OF title ON $t BEGIN $body; END")
+            }
+        }
 
         /**
          * Canonical content identity and the Smart Mix state: six new, empty tables and two indexes for the folder queries. Nothing existing is touched and nothing is filled in here (a pass over
@@ -175,7 +256,7 @@ abstract class AppDatabase : RoomDatabase() {
                 .setTransactionExecutor(java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "room-tx").apply { isDaemon = true } })
                 .apply { if (logQueries) setQueryCallback({ sql, _ -> android.util.Log.i("SQL", sql.replace('\n', ' ').take(110)) }, java.util.concurrent.Executors.newSingleThreadExecutor()) }
                 .addCallback(object : RoomDatabase.Callback() {
-                    override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db); PeopleIndex.create(db); LanLog.create(db); Profiles.create(db) }
+                    override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) { SearchIndex.create(db); PeopleIndex.create(db); LanLog.create(db); Profiles.create(db); ensureSortTriggers(db) }
                     // Opening a database runs no schema statements: the text index, people index, LAN log and profile tables are made when the database is created, and by the 9 to 10 step for one that already exists.
                 })
                 .build()

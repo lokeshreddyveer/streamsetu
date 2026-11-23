@@ -53,7 +53,7 @@ object SettingsRegistry {
     /** The function that draws each part of a page, and the page it belongs to (used to check the list against the code). */
     val pageFunctions: Map<String, Category> = mapOf(
         "PlaybackSettings" to Category.PLAYBACK, "AppDnsGroup" to Category.PLAYBACK, "VideoSettings" to Category.VIDEO, "AudioSettings" to Category.AUDIO, "SubtitleSettings" to Category.SUBTITLES,
-        "LiveSettings" to Category.LIVE, "RemindersSettings" to Category.LIVE, "GuideAlertsSettings" to Category.LIVE, "ScheduledRecordingsSettings" to Category.LIVE, "GuideSettingsContent" to Category.LIVE,
+        "LiveSettings" to Category.LIVE, "RemindersSettings" to Category.LIVE, "GuideSourcesSettings" to Category.LIVE, "GuideAlertsSettings" to Category.LIVE, "ScheduledRecordingsSettings" to Category.LIVE, "GuideSettingsContent" to Category.LIVE,
         "ChannelManagerSettings" to Category.CHANNELS, "DeviceSettings" to Category.DEVICE, "WeeklyDigestSettings" to Category.STATISTICS, "StatisticsSettings" to Category.STATISTICS,
         "LibrarySettings" to Category.LIBRARIES, "FolderResets" to Category.LIBRARIES, "SearchSettings" to Category.SEARCH, "FavouriteSettings" to Category.FAVOURITES, "AppearanceSettings" to Category.APPEARANCE,
         "PrivacySettings" to Category.PRIVACY, "PrivacyReportSettings" to Category.PRIVACY, "ViewingLimitSettings" to Category.PRIVACY, "PodcastSettings" to Category.PODCASTS,
