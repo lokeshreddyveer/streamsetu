@@ -10,27 +10,41 @@ A native player for the IPTV playlists and media servers you already have. It ru
 
 > StreamSetu is a player only. It provides **no channels, movies, series or subscriptions** and does not ship or link to any content. You bring your own legally obtained playlist or login.
 
+<p align="center"><img src="docs/screenshots/mac-slideshow.gif" alt="StreamSetu on Mac: Home, Live TV, Movies and Series in turn" width="100%"><br><sub>Mac</sub></p>
+
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/screenshots/mac-slideshow.gif" alt="StreamSetu on Mac: Home, Live TV, Movies and Series in turn" width="100%"></td>
     <td width="50%" valign="top"><img src="docs/screenshots/firetv-home-sidebar.png" alt="StreamSetu on Fire TV: Home with the sidebar" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/firetv-live-channels.png" alt="StreamSetu on Fire TV: Live TV with folders, channels and a live preview" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Mac</sub></td>
-    <td align="center"><sub>Fire TV and Android TV</sub></td>
+    <td align="center" colspan="2"><sub>Fire TV and Android TV</sub></td>
   </tr>
 </table>
 
 <table>
   <tr>
-    <td width="28%" valign="top"><img src="docs/screenshots/iphone-home.png" alt="StreamSetu on iPhone: Home" width="100%"></td>
-    <td width="44%" valign="top"><img src="docs/screenshots/ipad-home.png" alt="StreamSetu on iPad: Home with the sidebar" width="100%"></td>
-    <td width="28%" valign="top"><img src="docs/screenshots/android-home.png" alt="StreamSetu on an Android phone: Home" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/ios-home.png" alt="StreamSetu on iPhone: Home" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/ios-live.png" alt="StreamSetu on iPhone: Live TV channel grid" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/ios-movies.png" alt="StreamSetu on iPhone: Movies" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/ios-series.png" alt="StreamSetu on iPhone: Series" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub>iPhone</sub></td>
-    <td align="center"><sub>iPad</sub></td>
-    <td align="center"><sub>Android phone</sub></td>
+    <td align="center" colspan="4"><sub>iPhone</sub></td>
+  </tr>
+</table>
+
+<p align="center"><img src="docs/screenshots/ipad-home.png" alt="StreamSetu on iPad: Home with the sidebar" width="45%"><br><sub>iPad</sub></p>
+
+<table>
+  <tr>
+    <td width="25%" valign="top"><img src="docs/screenshots/android-home.png" alt="StreamSetu on an Android phone: Home" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/android-live.png" alt="StreamSetu on an Android phone: Live TV channel grid" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/android-movies.png" alt="StreamSetu on an Android phone: Movies" width="100%"></td>
+    <td width="25%" valign="top"><img src="docs/screenshots/android-series.png" alt="StreamSetu on an Android phone: Series" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="4"><sub>Android phone</sub></td>
   </tr>
 </table>
 
