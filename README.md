@@ -40,7 +40,7 @@
 
 ### 📱 iPad
 
-<p align="center"><img src="docs/screenshots/ipad-home.png" alt="StreamSetu on iPad: Home with the sidebar" width="50%"><br><sub><a href="docs/SCREENSHOTS.md#ipad">All iPad screenshots →</a></sub></p>
+<p align="center"><img src="docs/screenshots/ipad-row.gif" alt="StreamSetu on iPad, from the opening screen to Home, Live TV, Guide, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#ipad">All iPad screenshots →</a></sub></p>
 
 All pictures for every app: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
 

@@ -160,9 +160,32 @@ Touch layout for phones and tablets.
 
 ## iPad
 
-The sidebar and the full Home screen.
+From the opening screen to Series, with the sidebar open on the big screen.
 
-<p align="center"><img src="screenshots/ipad-home.png" alt="StreamSetu on iPad: Home with the sidebar" width="50%"></p>
+<p align="center"><img src="screenshots/ipad-row.gif" alt="StreamSetu on iPad, from the opening screen to Home, Live TV, Guide, Movies and Series" width="100%"></p>
+
+### All screens, in order
+
+<table>
+  <tr>
+    <td width="25%" valign="top" align="center"><img src="screenshots/ipad-00-start.png" alt="StreamSetu on iPad: Opening screen: choose how to connect" width="100%"><br><sub><b>1</b> &nbsp;Opening screen: choose how to connect</sub></td>
+    <td width="25%" valign="top" align="center"><img src="screenshots/ipad-01-xtream.png" alt="StreamSetu on iPad: Xtream Codes" width="100%"><br><sub><b>2</b> &nbsp;Xtream Codes</sub></td>
+    <td width="25%" valign="top" align="center"><img src="screenshots/ipad-02-media-server.png" alt="StreamSetu on iPad: Media server" width="100%"><br><sub><b>3</b> &nbsp;Media server</sub></td>
+    <td width="25%" valign="top" align="center"><img src="screenshots/ipad-home.png" alt="StreamSetu on iPad: Home" width="100%"><br><sub><b>4</b> &nbsp;Home</sub></td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" align="center"><img src="screenshots/ipad-live.png" alt="StreamSetu on iPad: Live TV" width="100%"><br><sub><b>5</b> &nbsp;Live TV</sub></td>
+    <td width="25%" valign="top" align="center"><img src="screenshots/ipad-guide.png" alt="StreamSetu on iPad: TV Guide" width="100%"><br><sub><b>6</b> &nbsp;TV Guide</sub></td>
+    <td width="25%" valign="top" align="center"><img src="screenshots/ipad-movies.png" alt="StreamSetu on iPad: Movies" width="100%"><br><sub><b>7</b> &nbsp;Movies</sub></td>
+    <td width="25%" valign="top" align="center"><img src="screenshots/ipad-menu.png" alt="StreamSetu on iPad: Movies: title menu" width="100%"><br><sub><b>8</b> &nbsp;Movies: title menu</sub></td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" align="center"><img src="screenshots/ipad-title.png" alt="StreamSetu on iPad: Title page" width="100%"><br><sub><b>9</b> &nbsp;Title page</sub></td>
+    <td width="25%" valign="top" align="center"><img src="screenshots/ipad-series.png" alt="StreamSetu on iPad: Series" width="100%"><br><sub><b>10</b> &nbsp;Series</sub></td>
+    <td width="25%"></td>
+    <td width="25%"></td>
+  </tr>
+</table>
 
 <p align="right"><sub><a href="#streamsetu-screenshots">↑ Back to the top</a></sub></p>
 
