@@ -1,14 +1,26 @@
-<p align="center">
-  <img src="branding/firetv/app-icon-1280x720.png" alt="StreamSetu: a silver television with a play button, wrapped in a teal ribbon" width="720">
-</p>
+<div align="center">
 
-# StreamSetu
+<img src="macos/Resources/Branding/BrandSymbol.png" alt="StreamSetu logo: a silver television with a play button, wrapped in a teal ribbon" width="180">
 
-**Your streams. One home.**
+<h1>StreamSetu</h1>
 
-A native player for the IPTV playlists and media servers you already have. It runs on **Mac, iPhone and iPad, Android phones and tablets, Fire TV and Android TV** and Windows, keeps everything on your own device, and needs no account.
+<h3>Your streams. One home.</h3>
 
+<p>A native player for the IPTV playlists and media servers you already have,<br>on Mac, iPhone, iPad, Android, Fire TV, Android TV and Windows.</p>
+
+[![Latest release](https://img.shields.io/github/v/release/lokeshreddyveer/streamsetu?style=flat-square&label=release&color=0f766e&labelColor=475569)](https://github.com/lokeshreddyveer/streamsetu/releases)
+[![Platforms](https://img.shields.io/badge/platforms-Mac%20%C2%B7%20iOS%20%C2%B7%20Android%20%C2%B7%20TV%20%C2%B7%20Windows-0f766e?style=flat-square&labelColor=475569)](#-download)
+[![Licence](https://img.shields.io/badge/licence-source%20available%2C%20all%20rights%20reserved-0f766e?style=flat-square&labelColor=475569)](#-licence)
+[![Privacy](https://img.shields.io/badge/privacy-no%20account%20%C2%B7%20no%20ads%20%C2%B7%20no%20analytics-0f766e?style=flat-square&labelColor=475569)](#-privacy)
+
+**[⬇️ Download](#-download)** &nbsp;·&nbsp; **[✨ Features](#-features)** &nbsp;·&nbsp; **[🖼️ Screenshots](#%EF%B8%8F-screenshots)** &nbsp;·&nbsp; **[🔒 Privacy](#-privacy)** &nbsp;·&nbsp; **[💬 Support](#-support)**
+
+</div>
+
+> [!NOTE]
 > StreamSetu is a player only. It provides **no channels, movies, series or subscriptions** and does not ship or link to any content. You bring your own legally obtained playlist or login.
+
+## 🖼️ Screenshots
 
 <p align="center"><img src="docs/screenshots/mac-slideshow.gif" alt="StreamSetu on Mac: Home, Live TV, Movies and Series in turn" width="100%"><br><sub>Mac</sub><br><sub><a href="docs/SCREENSHOTS.md#mac">All Mac screenshots</a></sub></p>
 
@@ -50,11 +62,11 @@ A native player for the IPTV playlists and media servers you already have. It ru
 
 All pictures for every app: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
 
-## Download
+## ⬇️ Download
 
 | Platform | What to get | Notes |
 |---|---|---|
-| **iPhone and iPad** | [Download on the App Store](https://apps.apple.com/us/app/stream-setu/id6821526110), or [join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 1.4 (build 78) | The App Store has the released version. TestFlight gets new builds first and is open to the first 100 testers; after that, ask for an invitation at contact@lokeshreddy.dev. |
+| **iPhone and iPad** | [Download on the App Store](https://apps.apple.com/us/app/stream-setu/id6821526110), or [join the TestFlight](https://testflight.apple.com/join/wYZ3vysQ), version 1.4 (build 79) | The App Store has the released version. TestFlight gets new builds first and is open to the first 100 testers; after that, ask for an invitation at contact@lokeshreddy.dev. |
 | **Mac** | [`StreamSetu-2.18.0.dmg`](../../releases/download/2026.11.23/StreamSetu-2.18.0.dmg), one release holds every app | Signed and notarized by Apple. Updates itself. Apple silicon and Intel. |
 | **Fire TV and Android TV** | [`streamsetu-tv-0.27.0.apk`](../../releases/download/2026.11.23/streamsetu-tv-0.27.0.apk) | Signed with the StreamSetu release key (new in 0.26.0: uninstall an older copy first). Remote layout. Android 5.1 or later. |
 | **Android phone and tablet** | [`StreamSetu-Android-0.27.0.apk`](../../releases/download/2026.11.23/StreamSetu-Android-0.27.0.apk) | Signed with the same key. Touch layout. Android 5.1 or later. |
@@ -66,20 +78,75 @@ Every download is on the [Releases](../../releases) page with its SHA-256 checks
 
 **Android phone or tablet:** download the APK on the phone, open it, allow installs from your browser or files app when asked, then open StreamSetu.
 
-## What it does
+## ✨ Features
 
-- **Connects to what you have:** Xtream logins, M3U links and files, Jellyfin, Emby, Plex, HDHomeRun, TVHeadend, Enigma2, WebDAV and local video files (Stalker portals on Mac, Android and Fire TV).
-- **Live TV, the TV Guide and catch-up**, with groups, channel numbers, favourites and your own folders; Multi-View on the apps that have it.
-- **Movies and series** with resume, next episode and best-version-first.
-- **Fast search** across channels, films, series and the guide.
-- **Two players:** Apple's AVPlayer or Android's ExoPlayer for the common formats, and mpv for MKV, AVI, RTSP and unusual codecs.
-- **Your data stays with you:** no ads, no analytics, no account. iCloud and Wi-Fi sync are optional. Optional **App DNS** (encrypted DNS for StreamSetu only, not a VPN).
-- **Streaming services in the Mac app:** a Services menu opens ten streaming services' own sites inside StreamSetu, each with its own icon in a themed panel. Pin the ones you use to the top bar and move them left or right; switching service stops the sound of the one you left. Each service keeps its own sign-in and data, separate from the others, and **Clear Data** in Settings or the right-click menu on a pinned service clears just that one. If a service does not load, a message says why. An optional page setting for one service (off by default, asked first) can skip its video ads and community-marked sponsor segments. You sign in with your own account, and StreamSetu does not sell or include any service.
-- **Optional extras:** the Setu assistant, the watch-history service, the details service artwork (built-in key, or your own), recording and reminders.
+The full table for every app is in [docs/FEATURES.md](docs/FEATURES.md).
 
-The full feature table for every app is in [docs/FEATURES.md](docs/FEATURES.md).
+### 🔌 Bring what you have
 
-## Read more
+| | |
+|---|---|
+| 🔑 **Xtream logins** | Sign in once and your live TV, movies and series appear. |
+| 📄 **M3U links and files** | Use a link, or a file from the device. |
+| 🗄️ **Media servers** | Jellyfin, Emby and Plex, next to your playlists. |
+| 📡 **Tuners and receivers** | HDHomeRun, TVHeadend and Enigma2. |
+| 📁 **Files and shares** | WebDAV and local video files. |
+| 🌐 **Stalker portals** | On Mac, Android and Fire TV. |
+
+### 📺 Watch
+
+| | |
+|---|---|
+| 📡 **Live TV** | Groups, channel numbers, favourites and your own folders. |
+| 🗓️ **TV Guide and catch-up** | See what is on, and go back to what you missed. |
+| 🎬 **Movies and series** | Resume where you stopped, jump to the next episode, best version first. |
+| 🔍 **Fast search** | One search across channels, films, series and the guide. |
+| 🪟 **Multi-View** | Watch several channels at once, on the apps that have it. |
+
+### ⚙️ Players
+
+| | |
+|---|---|
+| 🍎 **Native player** | Apple's AVPlayer on Apple devices, ExoPlayer on Android. Best for common formats. |
+| 🎞️ **mpv** | For MKV, AVI, RTSP and unusual codecs. |
+
+### 🔒 Your data
+
+| | |
+|---|---|
+| 🙈 **Private by design** | No ads, no analytics, no account. |
+| ☁️ **Optional sync** | iCloud or Wi-Fi sync, only if you turn it on. |
+| 🛡️ **App DNS** | Optional encrypted DNS for StreamSetu only. It is not a VPN. |
+
+### 🧩 Extras
+
+| | |
+|---|---|
+| 🤖 **Setu assistant** | Optional help inside the app. |
+| 🕘 **Watch history and artwork** | Optional watch-history service and details service artwork (built-in key, or your own). |
+| ⏺️ **Recording and reminders** | Record, and get reminded before a programme starts. |
+
+### 🍏 Streaming services in the Mac app
+
+A Services menu opens ten streaming services' own sites inside StreamSetu, each with its own icon in a themed panel.
+
+- Pin the ones you use to the top bar and move them left or right.
+- Switching service stops the sound of the one you left.
+- Each service keeps its own sign-in and data, separate from the others. **Clear Data** in Settings, or the right-click menu on a pinned service, clears just that one.
+- If a service does not load, a message says why.
+- An optional page setting for one service (off by default, asked first) can skip its video ads and community-marked sponsor segments.
+- You sign in with your own account. StreamSetu does not sell or include any service.
+
+## 🔒 Privacy
+
+- No ads, no analytics and no account.
+- Your playlists, logins and history stay on your device.
+- iCloud and Wi-Fi sync are optional.
+- A diagnostic report (Settings → Diagnostics) contains no logins or provider addresses and is safe to attach to a message.
+
+Read the [Privacy policy](legal/privacy.md) and the [Terms](legal/terms.md).
+
+## 📚 Read more
 
 | | |
 |---|---|
@@ -91,10 +158,10 @@ The full feature table for every app is in [docs/FEATURES.md](docs/FEATURES.md).
 | [Releasing](docs/RELEASING.md) · [Release security](docs/RELEASE-SECURITY.md) | How downloads are made and checked |
 | [Privacy policy](legal/privacy.md) · [Terms](legal/terms.md) | Legal |
 
-## Support
+## 💬 Support
 
-contact@lokeshreddy.dev. A diagnostic report (Settings → Diagnostics) contains no logins or provider addresses and is safe to attach.
+Write to contact@lokeshreddy.dev. A diagnostic report (Settings → Diagnostics) contains no logins or provider addresses and is safe to attach.
 
-## Licence
+## 📜 Licence
 
 The source is published so it can be read. Unless a licence file says otherwise, all rights in StreamSetu's own code and artwork are reserved by the author. StreamSetu uses third-party software under its own licences, including AndroidX Media3 (Apache 2.0), mpv/libmpv (LGPL 2.1 or later, GPL in some builds), OkHttp, Retrofit, Coil, Hilt, Room, ZXing and Sparkle.

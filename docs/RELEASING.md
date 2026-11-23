@@ -21,8 +21,8 @@ Signing material is never in the repository: the Mac Developer ID certificate an
 
 ## Test builds (not releases)
 
-A sideload test APK is built with a name that cannot be mistaken for a release and a version code above the last release, for example `0.27.0-test` with code `261` (the last release is 0.26.0, code 260):
+A sideload test APK is built with a name that cannot be mistaken for a release and a version code above the last release, for example `0.28.0-test` with code `263` (the last release is 0.27.0, code 262):
 
-    cd android && ./gradlew :app:assembleRelease -PappVersionName=0.27.0-test -PappVersionCode=261
+    cd android && ./gradlew :app:assembleRelease -PappVersionName=0.28.0-test -PappVersionCode=263
 
 It is signed with the normal release key (`android/keystore.properties`), scanned with `Scripts/check-no-secrets.sh`, and checked with `apksigner verify`. It is never copied into `android/dist`, never published, and never listed in the update feed. A real release uses `android/build-release.sh <version> <code>` and a code above every test build.
