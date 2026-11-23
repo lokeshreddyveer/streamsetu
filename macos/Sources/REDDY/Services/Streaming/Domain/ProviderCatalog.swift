@@ -16,14 +16,14 @@ enum ProviderCatalog {
     /// Unverified (nine new services): embedded identically in every build, external links blocked with a notice.
     private static func unverified(id: ProviderID, name: String, home: String, store: StaticString, rules: [HostRule], cookies: [String],
                                    auth: CapabilityStatus = .manualVerificationRequired, authNote: String? = nil, mode: AuthenticationMode = .signInInApp,
-                                   region: RegionNote, terms: String? = nil, release: String? = nil) -> ProviderDefinition {
+                                   region: RegionNote, terms: String? = nil, release: String? = nil, userAgent: UserAgentProfile = .safari) -> ProviderDefinition {
         ProviderDefinition(
             id: id, displayName: name, homeURL: url(home), availability: .unverified, distributionAuthorization: .unresolved, termsNote: terms,
             externalLinks: .blockWithNotice, platforms: [.macOS], storeIdentity: StoreIdentity(store),
             urlPolicy: ProviderURLPolicy(hostRules: rules, inAppSchemes: https),
             capabilities: CapabilityMatrix(websiteLoading: record(.enabledForTesting, .none), authentication: record(auth, .researchSnippet, authNote),
                                            protectedPlayback: record(.manualVerificationRequired, .none), distribution: CapabilityRecord(.unverified)),
-            authentication: mode, sessionCookieDomains: cookies, zoomDefault: 1.0, zoomDefaultsKey: "streaming.zoom.\(id.rawValue)", regionNote: region, releaseNote: release)
+            authentication: mode, sessionCookieDomains: cookies, zoomDefault: 1.0, zoomDefaultsKey: "streaming.zoom.\(id.rawValue)", regionNote: region, releaseNote: release, userAgentProfile: userAgent)
     }
 
     static let netflix = ProviderDefinition(
@@ -33,7 +33,8 @@ enum ProviderCatalog {
         urlPolicy: ProviderURLPolicy(hostRules: [site("netflix.com")], inAppSchemes: https),
         capabilities: CapabilityMatrix(websiteLoading: record(.ownerVerified, .ownerCheck), authentication: record(.ownerVerified, .ownerCheck),
                                        protectedPlayback: record(.ownerVerified, .ownerCheck), distribution: CapabilityRecord(.unverified)),
-        authentication: .signInInApp, sessionCookieDomains: ["netflix.com"], zoomDefault: 0.85, zoomDefaultsKey: "netflix.pageZoom", regionNote: .countryVariants, releaseNote: nil)
+        authentication: .signInInApp, sessionCookieDomains: ["netflix.com"], zoomDefault: 0.85, zoomDefaultsKey: "netflix.pageZoom", regionNote: .countryVariants, releaseNote: nil,
+        userAgentProfile: .safari)
 
     static let primevideo = unverified(
         id: "primevideo", name: "Prime Video", home: "https://www.primevideo.com/", store: "e19483cc-c942-4b44-8aec-edc4a6a4c7dc",

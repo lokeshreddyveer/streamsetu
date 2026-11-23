@@ -8,7 +8,7 @@ extension ProviderDefinition {
         ProviderDefinition(id: id, displayName: displayName, homeURL: homeURL, availability: availability, distributionAuthorization: distributionAuthorization,
                            termsNote: termsNote, externalLinks: externalLinks, platforms: platforms, storeIdentity: storeIdentity, urlPolicy: urlPolicy,
                            capabilities: capabilities, authentication: authentication, sessionCookieDomains: sessionCookieDomains, zoomDefault: zoomDefault,
-                           zoomDefaultsKey: zoomDefaultsKey, regionNote: regionNote, releaseNote: releaseNote)
+                           zoomDefaultsKey: zoomDefaultsKey, regionNote: regionNote, releaseNote: releaseNote, userAgentProfile: userAgentProfile)
     }
 }
 
@@ -121,7 +121,7 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
         return ServiceWebModel(definition: definition)
     }
 
-    static func makeConfiguration(dataStore: WKWebsiteDataStore) -> WKWebViewConfiguration { ServiceWebViewFactory.makeConfiguration(dataStore: dataStore) }
+    static func makeConfiguration(dataStore: WKWebsiteDataStore, userAgent: UserAgentProfile = .safari) -> WKWebViewConfiguration { ServiceWebViewFactory.makeConfiguration(dataStore: dataStore, userAgent: userAgent) }
 
     // MARK: web view
 

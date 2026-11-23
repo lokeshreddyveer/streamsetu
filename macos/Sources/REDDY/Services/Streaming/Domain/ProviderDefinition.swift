@@ -43,6 +43,9 @@ struct StoreIdentity: Equatable, Sendable {
     }
 }
 
+/// How the embedded service identifies itself. `.safari` sets only WebKit's application-name part so the default string reads as Safari; `.webKitDefault` changes nothing.
+enum UserAgentProfile: String, Sendable { case webKitDefault, safari }
+
 /// Configuration only: no credentials, no tokens, no behaviour.
 struct ProviderDefinition: Equatable, Sendable, Identifiable {
     let id: ProviderID
@@ -63,6 +66,7 @@ struct ProviderDefinition: Equatable, Sendable, Identifiable {
     let zoomDefaultsKey: String
     let regionNote: RegionNote?
     let releaseNote: String?
+    var userAgentProfile: UserAgentProfile = .safari
 
     var presentation: ServiceAvailability.Presentation { availability.presentation }
 }

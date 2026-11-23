@@ -34,10 +34,10 @@ import AppKit
         return cond()
     }
 
-    @Test func configurationHasNoScriptsNoBridgeNoUserAgentChange() throws {
+    @Test func configurationHasNoScriptsNoBridgeAndOnlyTheSafariApplicationName() throws {
         let c = NetflixWebModel.makeConfiguration(dataStore: .nonPersistent())
         #expect(c.userContentController.userScripts.isEmpty)
-        #expect(c.applicationNameForUserAgent == nil)
+        #expect(c.applicationNameForUserAgent == SafariUserAgent.applicationName)
         #expect(c.preferences.isElementFullscreenEnabled)
         #expect(!c.preferences.javaScriptCanOpenWindowsAutomatically)
         #expect(c.preferences.isFraudulentWebsiteWarningEnabled)
@@ -45,7 +45,7 @@ import AppKit
         #expect((v.customUserAgent ?? "").isEmpty)
         // no message handler can have been registered: adding the same name twice would only be legal if none existed, so check by removing a never-added one is a no-op; the code has no addScriptMessageHandler call
         let src = try ServiceSources.runtime()
-        for forbidden in ["addScriptMessageHandler", "WKUserScript", "evaluateJavaScript", "customUserAgent", "applicationNameForUserAgent =", "cookie.value", "cookie.name", "$0.value", "$0.name", "WKContentRuleList", "limitsNavigationsToAppBoundDomains"] { #expect(!src.contains(forbidden), "\(forbidden)") }
+        for forbidden in ["addScriptMessageHandler", "WKUserScript", "evaluateJavaScript", "customUserAgent", "cookie.value", "cookie.name", "$0.value", "$0.name", "WKContentRuleList", "limitsNavigationsToAppBoundDomains"] { #expect(!src.contains(forbidden), "\(forbidden)") }
     }
 
     @Test func nothingIsCreatedUntilTheServiceIsShown() async throws {

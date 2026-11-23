@@ -40,11 +40,37 @@ private final class ClosureMenuItem: NSMenuItem {
     @objc private func fire() { run() }
 }
 
-/// Makes the web views. One recipe for every service: plain WebKit, no user scripts, no message handlers (so no bridge to the app), no
-/// application or agent string, and the page is never read. Only a service the registry presents as embedded gets a web view.
+/// The application-name part that makes WebKit's own default user agent read as Safari
+/// ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/<N> Safari/605.1.15"). Only this part is set;
+/// the rest of the string is WebKit's. The version comes from the Safari installed on this Mac, read once.
+enum SafariUserAgent {
+    /// Newest Safari known when written (a public format reference: Safari 26 sends "Version/26.x Safari/605.1.15"); used only if the installed one cannot be read.
+    static let fallbackVersion = "27.2"
+    static let suffix = "Safari/605.1.15"
+
+    /// Pure: a Safari version string in, the application name out. A value that is not a plain dotted number falls back.
+    static func applicationName(forSafariVersion v: String?) -> String {
+        let t = (v ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let ok = !t.isEmpty && t.split(separator: ".", omittingEmptySubsequences: false).allSatisfy { !$0.isEmpty && $0.allSatisfy(\.isASCII) && $0.allSatisfy(\.isNumber) }
+        let parts = t.split(separator: ".").prefix(2).joined(separator: ".")
+        return "Version/\(ok ? parts : fallbackVersion) \(suffix)"
+    }
+
+    static func installedVersion(paths: [String] = ["/System/Cryptexes/App/System/Applications/Safari.app", "/Applications/Safari.app"]) -> String? {
+        for p in paths { if let v = Bundle(path: p)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String { return v } }
+        return nil
+    }
+
+    /// Computed once.
+    static let applicationName: String = applicationName(forSafariVersion: installedVersion())
+}
+
+/// Makes the web views. One recipe for every service: plain WebKit, no user scripts, no message handlers (so no bridge to the app), the
+/// application name follows the provider's userAgentProfile, and the page is never read. Only a service the registry presents as embedded gets a web view.
 @MainActor struct ServiceWebViewFactory {
-    static func makeConfiguration(dataStore: WKWebsiteDataStore) -> WKWebViewConfiguration {
+    static func makeConfiguration(dataStore: WKWebsiteDataStore, userAgent: UserAgentProfile = .safari) -> WKWebViewConfiguration {
         let c = WKWebViewConfiguration()
+        if userAgent == .safari { c.applicationNameForUserAgent = SafariUserAgent.applicationName }
         c.websiteDataStore = dataStore
         c.preferences.isElementFullscreenEnabled = true               // the site's own full-screen button
         c.preferences.javaScriptCanOpenWindowsAutomatically = false
@@ -56,7 +82,7 @@ private final class ClosureMenuItem: NSMenuItem {
 
     func makeWebView(definition: ProviderDefinition, dataStore: WKWebsiteDataStore, zoom: Double) -> ServiceWebView {
         assert(definition.presentation == .embedded, "only an embedded service gets a web view")
-        let v = ServiceWebView(frame: .zero, configuration: Self.makeConfiguration(dataStore: dataStore))
+        let v = ServiceWebView(frame: .zero, configuration: Self.makeConfiguration(dataStore: dataStore, userAgent: definition.userAgentProfile))
         v.allowsBackForwardNavigationGestures = true
         v.allowsMagnification = false          // no pinch zoom; the size is the page zoom
         v.pageZoom = CGFloat(zoom)
