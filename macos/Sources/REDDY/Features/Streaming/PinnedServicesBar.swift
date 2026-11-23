@@ -16,6 +16,12 @@ struct ServicesNavigationBinding {
     var togglePin: (ProviderID) -> Void = { _ in }
     /// Moves a pinned id to an index of the pinned list.
     var move: (ProviderID, Int) -> Void = { _, _ in }
+    /// Reload works only for the service on screen, and only when it has a live web view.
+    var canReload: (ProviderID) -> Bool = { _ in false }
+    var reload: (ProviderID) -> Void = { _ in }
+    /// Clear Data works for a service shown inside the app. The callback asks first (the shared confirmation) and clears only that service.
+    var canClearData: (ProviderID) -> Bool = { _ in false }
+    var clearData: (ProviderID) -> Void = { _ in }
 
     static var empty: ServicesNavigationBinding { ServicesNavigationBinding() }
 
@@ -27,22 +33,21 @@ struct ServicesNavigationBinding {
 }
 
 extension ServiceAvailability {
-    /// The badge word for a service row; `registered` services are never listed.
-    var badgeTitle: String? {
-        switch self { case .available: "Available"; case .unverified: "Unverified"; case .disabled: "Disabled"; case .registered: nil }
-    }
+    /// The badge word for a service row: only a service that cannot be opened has one.
+    var badgeTitle: String? { self == .disabled ? "Disabled" : nil }
 }
 
 /// The accessible name and value of a service control, in one place so the bar, the menu and the tests agree.
 enum ServiceAccessibility {
-    static func openLabel(_ id: ProviderID, availability: ServiceAvailability, active: Bool, pinned: Bool) -> String {
+    static func openLabel(_ id: ProviderID, availability: ServiceAvailability, active: Bool, pinned: Bool, position: Int? = nil) -> String {
         var parts = [id.title]
         if let b = availability.badgeTitle { parts.append(b) }
+        if let n = position { parts.append("position \(n)") }
         if active { parts.append("open now") }
         if pinned { parts.append("pinned") }
         return parts.joined(separator: ", ")
     }
-    static func pinLabel(_ id: ProviderID, pinned: Bool) -> String { pinned ? "Unpin \(id.title) from the top bar" : "Pin \(id.title) to the top bar" }
+    static func pinLabel(_ id: ProviderID, pinned: Bool) -> String { pinned ? "Unpin \(id.title)" : "Pin \(id.title)" }
 }
 
 /// The pinned services as a row of items, with everything a pinned item can do besides open: a context menu (Pin/Unpin, Move Left/Right),
@@ -77,19 +82,20 @@ private struct PinnedItemBehaviour: ViewModifier {
     let id: ProviderID
     let nav: ServicesNavigationBinding
     let disabled: Bool
+    @State private var open = false
 
     func body(content: Content) -> some View {
         content
             .contextMenu {
-                Button("Open \(id.title)") { nav.select(id) }.disabled(disabled).atlas("control.services.open")
-                Divider()
-                Button("Unpin from Top Bar") { nav.togglePin(id) }.atlas("control.services.pin")
-                Button("Move Left") { nav.moveLeft(id) }.disabled(!nav.canMoveLeft(id)).atlas("control.services.move")
-                Button("Move Right") { nav.moveRight(id) }.disabled(!nav.canMoveRight(id)).atlas("control.services.move")
-            }.atlas("control.services.pin")
+                ServicePillActions(id: id, nav: nav, inPopover: false)
+            }.atlas("control.services.pillmenu")
+            .simultaneousGesture(TapGesture(count: 2).onEnded { open = true })
+            .popover(isPresented: $open, arrowEdge: .bottom) { ServicePillActions(id: id, nav: nav, inPopover: true, dismiss: { open = false }) }
+            .accessibilityAction(named: Text("Reload")) { if nav.canReload(id) { nav.reload(id) } }
             .accessibilityAction(named: Text("Unpin from Top Bar")) { nav.togglePin(id) }
             .accessibilityAction(named: Text("Move Left")) { nav.moveLeft(id) }
             .accessibilityAction(named: Text("Move Right")) { nav.moveRight(id) }
+            .accessibilityAction(named: Text("Clear Data…")) { if nav.canClearData(id) { nav.clearData(id) } }
             .draggable(PinnedServiceDrag(id: id.rawValue))
             .dropDestination(for: PinnedServiceDrag.self) { items, _ in
                 guard let raw = items.first?.id, nav.pinned.contains(ProviderID(unchecked: raw)), let target = nav.pinned.firstIndex(of: id) else { return false }
@@ -101,10 +107,95 @@ private struct PinnedItemBehaviour: ViewModifier {
 private struct UnpinnedItemBehaviour: ViewModifier {
     let id: ProviderID
     let nav: ServicesNavigationBinding
+    @State private var open = false
     func body(content: Content) -> some View {
         content
-            .contextMenu { Button("Pin to Top Bar") { nav.togglePin(id) }.atlas("control.services.pin") }.atlas("control.services.pin")
+            .contextMenu { ServicePillActions(id: id, nav: nav, inPopover: false) }.atlas("control.services.pillmenu")
+            .simultaneousGesture(TapGesture(count: 2).onEnded { open = true })
+            .popover(isPresented: $open, arrowEdge: .bottom) { ServicePillActions(id: id, nav: nav, inPopover: true, dismiss: { open = false }) }
+            .accessibilityAction(named: Text("Reload")) { if nav.canReload(id) { nav.reload(id) } }
             .accessibilityAction(named: Text("Pin to Top Bar")) { nav.togglePin(id) }
+            .accessibilityAction(named: Text("Clear Data…")) { if nav.canClearData(id) { nav.clearData(id) } }
+    }
+}
+
+/// One entry of a service pill's menu.
+struct ServicePillItem: Equatable {
+    enum Kind: Equatable { case reload, pin, unpin, moveLeft, moveRight, clearData }
+    let kind: Kind
+    let enabled: Bool
+    var title: String {
+        switch kind {
+        case .reload: "Reload"
+        case .pin: "Pin to Top Bar"
+        case .unpin: "Unpin from Top Bar"
+        case .moveLeft: "Move Left"
+        case .moveRight: "Move Right"
+        case .clearData: "Clear Data…"
+        }
+    }
+    var atlas: String {
+        switch kind {
+        case .reload: "control.nav.service.reload"
+        case .pin, .unpin: "control.services.pillmenu"
+        case .moveLeft, .moveRight: "control.services.move"
+        case .clearData: "control.services.clearData"
+        }
+    }
+
+    /// The menu of one pill, for its current state: Reload, Pin or Unpin, Move Left and Move Right (pinned only), Clear Data. There is no
+    /// Open item: a single click on the pill already opens the service.
+    static func items(for id: ProviderID, nav: ServicesNavigationBinding) -> [ServicePillItem] {
+        let pinned = nav.isPinned(id)
+        var list = [ServicePillItem(kind: .reload, enabled: nav.canReload(id)),
+                    ServicePillItem(kind: pinned ? .unpin : .pin, enabled: true)]
+        if pinned {
+            list.append(ServicePillItem(kind: .moveLeft, enabled: nav.canMoveLeft(id)))
+            list.append(ServicePillItem(kind: .moveRight, enabled: nav.canMoveRight(id)))
+        }
+        list.append(ServicePillItem(kind: .clearData, enabled: nav.canClearData(id)))
+        return list
+    }
+}
+
+/// The actions of a service pill in the top bar. The right-click menu and the double-click popover show this same list, so a double click can
+/// never change a pin by itself.
+struct ServicePillActions: View {
+    let id: ProviderID
+    let nav: ServicesNavigationBinding
+    var inPopover: Bool
+    var dismiss: () -> Void = {}
+
+    var body: some View {
+        let items = ServicePillItem.items(for: id, nav: nav)
+        ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+            if item.kind == .clearData || (index == 1 && inPopover) { Divider() }
+            action(item).atlas(item.atlas)
+        }
+    }
+
+    private func run(_ item: ServicePillItem) {
+        switch item.kind {
+        case .reload: nav.reload(id)
+        case .pin, .unpin: nav.togglePin(id)
+        case .moveLeft: nav.moveLeft(id)
+        case .moveRight: nav.moveRight(id)
+        case .clearData: nav.clearData(id)
+        }
+    }
+
+    @ViewBuilder private func action(_ item: ServicePillItem) -> some View {
+        if inPopover {
+            Button { run(item); dismiss() } label: {
+                Text(item.title.loc).foregroundStyle(item.kind == .clearData ? ColorTokens.danger : ColorTokens.textPrimary)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 10).padding(.vertical, 5).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).disabled(!item.enabled).frame(width: 170).atlas("control.services.pillmenu")
+        } else if item.kind == .clearData {
+            Button(role: .destructive) { run(item) } label: { Text(item.title.loc) }.disabled(!item.enabled).atlas("control.services.pillmenu")
+        } else {
+            Button { run(item) } label: { Text(item.title.loc) }.disabled(!item.enabled).atlas("control.services.pillmenu")
+        }
     }
 }
 

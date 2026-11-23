@@ -174,15 +174,28 @@ import AppKit
         #expect(items.map(\.identifier) == ["tab.Home", "tab.Live TV", "tab.Movies", "tab.Series", "tab.TV Guide", "tab.Netflix"])
     }
 
-    @Test("Services list: filter, recents without duplicates, keyboard order")
+    @Test("Services list: one list, no repeated service, filter, keyboard order")
     func menuModel() {
         var nav = ServicesNavigationBinding(); nav.recents = [.hulu, .netflix, .hulu, .peacock]
         let model = ServicesMenuModel(nav: nav)
         #expect(model.recents(filter: "") == [.hulu, .netflix, .peacock])
         #expect(model.recents(filter: "hu").isEmpty)
-        #expect(model.all(filter: "").count == 10)
-        #expect(model.all(filter: "PRIME") == [.primevideo])
-        #expect(model.entries(filter: "").count == 13 && Set(model.entries(filter: "").map(\.id)).count == 13)
+        #expect(model.more(filter: "PRIME") == [.primevideo])
+        let e = model.entries(filter: "")
+        #expect(e.count == 10 && Set(e.map(\.provider)).count == 10 && Set(e.map(\.id)).count == 10 && !e.contains { $0.provider == .jiohotstar }, "JioHotstar is on hold and not listed")
+        // pinned services leave Recent and keep bar order with their position
+        nav.pinned = [.peacock, .netflix]
+        let m2 = ServicesMenuModel(nav: nav), e2 = m2.entries(filter: "")
+        #expect(e2.prefix(2).map(\.provider) == [.peacock, .netflix] && e2.prefix(2).map(\.position) == [1, 2])
+        #expect(m2.recents(filter: "") == [.hulu])
+        #expect(e2.count == 10 && Set(e2.map(\.provider)).count == 10)
+        #expect(m2.entries(filter: "net").map(\.provider) == [.netflix])
+    }
+
+    @Test("Only a disabled service carries a badge")
+    func badges() {
+        #expect(ServiceAvailability.disabled.badgeTitle == "Disabled")
+        #expect(ServiceAvailability.available.badgeTitle == nil && ServiceAvailability.unverified.badgeTitle == nil)
     }
 
     @Test("Pin toggle does not select; move callbacks respect the ends")
@@ -197,9 +210,10 @@ import AppKit
 
     @Test("Accessible names carry state")
     func accessibility() {
-        #expect(ServiceAccessibility.openLabel(.hulu, availability: .unverified, active: true, pinned: true) == "Hulu, Unverified, open now, pinned")
-        #expect(ServiceAccessibility.pinLabel(.hulu, pinned: false) == "Pin Hulu to the top bar")
-        #expect(ServiceAccessibility.pinLabel(.hulu, pinned: true) == "Unpin Hulu from the top bar")
+        #expect(ServiceAccessibility.openLabel(.hulu, availability: .unverified, active: true, pinned: true) == "Hulu, open now, pinned")
+        #expect(ServiceAccessibility.openLabel(.hulu, availability: .disabled, active: false, pinned: false) == "Hulu, Disabled")
+        #expect(ServiceAccessibility.pinLabel(.hulu, pinned: false) == "Pin Hulu")
+        #expect(ServiceAccessibility.pinLabel(.hulu, pinned: true) == "Unpin Hulu")
     }
 
     /// Switching the active service recolours only inside the navigation capsule (same tolerance as the Netflix-only bar).
@@ -239,4 +253,16 @@ import AppKit
 @Suite("Search focus policy") struct SearchFocusPolicyTests {
     @Test func searchBoxCannotTakeFocusWhileATitleIsOpen() { #expect(!SearchFocusPolicy.allowsFocus(titleOpen: true)) }
     @Test func commandKStillFocusesWhenNoTitleIsOpen() { #expect(SearchFocusPolicy.allowsFocus(titleOpen: false)) }
+}
+
+@Suite("Service pill reload") @MainActor struct ServicePillReloadTests {
+    @Test("Reload goes through the binding and is off by default")
+    func reloadCallbacks() {
+        var reloaded: [ProviderID] = []
+        var nav = ServicesNavigationBinding()
+        #expect(!nav.canReload(.hulu))
+        nav.canReload = { $0 == .hulu }; nav.reload = { reloaded.append($0) }
+        #expect(nav.canReload(.hulu) && !nav.canReload(.netflix))
+        nav.reload(.hulu); #expect(reloaded == [.hulu])
+    }
 }

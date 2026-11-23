@@ -176,14 +176,11 @@ struct TopBarMenuRow: Equatable {
     var servicesItem: TopBarItem
     var tabPadding: CGFloat
 
-    /// The small Pin button beside an active service that is not pinned.
-    static let chipPinWidth: CGFloat = 26
-
     var items: [TopBarItem] { leading + pinned + (chip.map { [$0] } ?? []) + [servicesItem] }
     var selectedIdentifier: String? { items.first(where: \.selected)?.identifier }
     /// Width of the whole navigation capsule.
     var width: CGFloat {
-        items.reduce(0) { $0 + $1.width(tabPadding: tabPadding) } + (chip == nil ? 0 : Self.chipPinWidth) + 2 * TopBarMetrics.navGroupPadding
+        items.reduce(0) { $0 + $1.width(tabPadding: tabPadding) } + 2 * TopBarMetrics.navGroupPadding
     }
     func item(for id: ProviderID) -> TopBarItem? { (pinned + (chip.map { [$0] } ?? [])).first { $0.kind == .service(id) } }
 
@@ -199,7 +196,7 @@ struct TopBarMenuRow: Equatable {
         let services = TopBarItem(kind: .servicesMenu, title: "Services", identifier: "tab.Services", label: "Services", selected: false, atlas: "control.services.menu", glyph: "square.grid.2x2")
         var widths: [ProviderID: CGFloat] = [:]
         for id in Set(state.servicesNav.pinned).union(active.map { [$0] } ?? []) {
-            widths[id] = serviceItem(id, active: active).width(tabPadding: m.tabPadding) + ((active == id && !state.servicesNav.isPinned(id)) ? chipPinWidth : 0)
+            widths[id] = serviceItem(id, active: active).width(tabPadding: m.tabPadding)
         }
         let leadingW = leading.reduce(0) { $0 + $1.width(tabPadding: m.tabPadding) }
         let budget = m.centerBudget(width: state.width, brandWidth: brandWidth) - 2 * TopBarMetrics.navGroupPadding - leadingW
@@ -207,6 +204,11 @@ struct TopBarMenuRow: Equatable {
         return TopBarMenuRow(leading: leading, pinned: plan.inline.map { serviceItem($0, active: active) }, chip: plan.temporaryChip.map { serviceItem($0, active: active) },
                              overflow: plan.overflow, servicesItem: services, tabPadding: m.tabPadding)
     }
+}
+
+private struct ServicesAnchorKey: PreferenceKey {
+    static var defaultValue: Anchor<CGRect>? { nil }
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) { value = value ?? nextValue() }
 }
 
 /// The persistent top bar, owned by the root shell. Left: brand. Centre: the five tabs. Right: search and account.
@@ -234,6 +236,7 @@ struct ReddyTopBar: View {
     @State private var accountHover = false
     @State private var dismissRegion = SearchDismissRegion()
     @State private var servicesOpen = false
+    @State private var servicesRegion = SearchDismissRegion()
     private var metrics: TopBarMetrics { TopBarMetrics.metrics(for: state.width) }
 
     var body: some View {
@@ -251,6 +254,27 @@ struct ReddyTopBar: View {
             Rectangle().fill(LinearGradient(colors: [ColorTokens.line.opacity(0.25), ColorTokens.line, ColorTokens.line.opacity(0.25)], startPoint: .leading, endPoint: .trailing)).frame(height: 1)
         }
         .shadow(color: .black.opacity(0.22), radius: 10, y: 3)
+        .overlayPreferenceValue(ServicesAnchorKey.self) { anchor in servicesPanel(anchor) }
+        .background(SearchOutsideClickMonitor(region: servicesRegion, isActive: servicesOpen, onOutsideClick: { servicesOpen = false }))
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in servicesOpen = false }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in servicesOpen = false }
+    }
+
+    /// The Services list: an in-window panel under the Services item with its own opaque themed surface (a system popover is see-through).
+    /// It grows from the item (scale 0.97 and fade, spring), or only fades when Reduce Motion is on.
+    private func servicesPanel(_ anchor: Anchor<CGRect>?) -> some View {
+        GeometryReader { g in
+            if servicesOpen, let anchor {
+                let r = g[anchor]
+                let w = ServicesDropdown.width
+                let x = min(max(8, r.midX - w / 2), max(8, g.size.width - w - 8))
+                ServicesDropdown(nav: state.servicesNav, openDisabled: state.servicesDisabled, maxListHeight: Self.dropdownListHeight(), dismiss: { servicesOpen = false })
+                    .background(SearchRegionAnchor(region: servicesRegion, isPanel: true))
+                    .transition(reduceMotion ? .opacity : .scale(scale: 0.97, anchor: UnitPoint(x: min(max((r.midX - x) / w, 0), 1), y: 0)).combined(with: .opacity))
+                    .offset(x: x, y: r.maxY + 8)
+            }
+        }
+        .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.86), value: servicesOpen)
     }
 
     private var headerBackground: some View {
@@ -278,6 +302,12 @@ struct ReddyTopBar: View {
 
     /// The Services menu variant: the same capsule and item style, with the pinned services in order, the active service when it is not pinned
     /// (with a Pin button), and one Services item that opens the list. The plan comes from the real window width; what does not fit stays in the list.
+    /// The list may be as tall as the window allows (room for the bar, the filter and the legend), between a short scrolling list and 400 points.
+    private static func dropdownListHeight() -> CGFloat {
+        let h = NSApp.keyWindow?.contentView?.bounds.height ?? 800
+        return min(400, max(160, h - 190))
+    }
+
     private var menuNav: some View {
         let row = TopBarMenuRow.make(for: state)
         let navBinding = state.servicesNav
@@ -291,23 +321,13 @@ struct ReddyTopBar: View {
                 }
             }
             if let chip = row.chip, case .service(let id) = chip.kind {
-                HStack(spacing: 0) {
-                    navItem(chip, selected: true) { activate(chip) }.disabled(state.servicesDisabled)
-                    Button { navBinding.togglePin(id) } label: {
-                        Image(systemName: "pin").font(.system(size: 11, weight: .medium)).frame(width: TopBarMenuRow.chipPinWidth, height: TopBarMetrics.navItemHeight).contentShape(Rectangle())
-                    }
-                    .buttonStyle(NavButtonStyle()).foregroundStyle(ColorTokens.textSecondary)
-                    .help(Text("Pin to the top bar"))
-                    .accessibilityLabel(Text(ServiceAccessibility.pinLabel(id, pinned: false)))
-                    .atlas("control.services.pin")
-                }
-                .unpinnedActiveBehaviour(id, nav: navBinding)
+                navItem(chip, selected: true) { activate(chip) }.disabled(state.servicesDisabled)
+                    .unpinnedActiveBehaviour(id, nav: navBinding)
                 .transition(NavTransition.item)
             }
             navItem(row.servicesItem, selected: false) { servicesOpen.toggle() }
-                .popover(isPresented: $servicesOpen, arrowEdge: .bottom) {
-                    ServicesDropdown(nav: navBinding, openDisabled: state.servicesDisabled, dismiss: { servicesOpen = false })
-                }
+                .anchorPreference(key: ServicesAnchorKey.self, value: .bounds) { $0 }
+                .background(SearchRegionAnchor(region: servicesRegion, isPanel: false))
                 .accessibilityValue(Text(servicesOpen ? "expanded" : "collapsed"))
                 .accessibilityHint(Text(row.overflow.isEmpty ? "Opens the list of streaming services" : "Opens the list of streaming services, including \(row.overflow.count) more pinned"))
         }

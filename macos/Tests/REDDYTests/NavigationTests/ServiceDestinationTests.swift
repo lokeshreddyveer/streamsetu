@@ -110,7 +110,7 @@ import AppKit
 
     // MARK: platforms (the iPhone and iPad value is injected here; ios/StreamSetuTests runs the real one)
 
-    @Test func theMacHasTheTenServicesAndNothingElseDoes() {
+    @Test func theMacHasTheElevenServicesAndNothingElseDoes() {
         #expect(ServiceCapabilities.macOS.externalServices.count == 10 && ServiceCapabilities.macOS.externalServices.first == .netflix)
         #expect(ServiceCapabilities.none.externalServices.isEmpty)
         #expect(ServiceCapabilities.current == .macOS)          // this test target is the Mac
@@ -149,7 +149,7 @@ import AppKit
     }
 
     @Test func everyListedServiceCanBeSelectedAndRestored() {
-        for id in ProviderID.allCases {
+        for id in ProviderID.allCases where id != .jiohotstar {
             var s = DestinationState(capabilities: .macOS)
             let sel = s.select(id); #expect(sel); #expect(s.active == .service(id)); #expect(!s.navExpanded)
             #expect(DestinationState(rawValue: TopLevelDestination.service(id).rawValue, capabilities: .macOS).activeService == id)
@@ -179,8 +179,20 @@ import AppKit
         #expect(!nav.select(.netflix)); #expect(hosts.map[.netflix]!.events == ["n:show"])
     }
 
+    @Test func aServiceOnHoldIsRefusedByEveryRouteAndNeverGetsAHost() {
+        let hosts = Hosts(); hosts.map = [.netflix: SpyHost("n"), .jiohotstar: SpyHost("j")]
+        let nav = ServiceNavigation(capabilities: .macOS); nav.hosts = hosts
+        #expect(!nav.select(.jiohotstar) && nav.activeService == nil)
+        #expect(hosts.map[.jiohotstar]!.events.isEmpty, "never shown, so no web view is made")
+        nav.select(.netflix)
+        #expect(!nav.select(.jiohotstar) && nav.activeService == .netflix && hosts.map[.netflix]!.events == ["n:show"], "a refused selection changes and hides nothing")
+        #expect(!nav.capabilities.externalServices.contains(.jiohotstar))
+        #expect(ProviderCatalog.jiohotstar.id == .jiohotstar && ProviderCatalog.all.count == 11, "the definition and its store identity remain")
+    }
+
     @Test func deepLinksAreValidatedAgainstTheRegistry() {
-        for id in ProviderID.allCases { #expect(DeepLink.parse(URL(string: "streamsetu://open?tab=\(id.rawValue)")!, capabilities: .macOS) == .openService(id)) }
+        for id in ProviderID.allCases where id != .jiohotstar { #expect(DeepLink.parse(URL(string: "streamsetu://open?tab=\(id.rawValue)")!, capabilities: .macOS) == .openService(id)) }
+        #expect(DeepLink.parse(URL(string: "streamsetu://open?tab=jiohotstar")!, capabilities: .macOS) == nil, "on hold: no deep link reaches it")
         let only = ServiceCapabilities(externalServices: [.netflix])
         #expect(DeepLink.parse(URL(string: "streamsetu://open?tab=hulu")!, capabilities: only) == nil)
         #expect(DeepLink.parse(URL(string: "streamsetu://open?tab=unknownservice")!, capabilities: .macOS) == nil)
