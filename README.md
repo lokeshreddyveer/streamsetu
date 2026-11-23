@@ -32,7 +32,7 @@
 
 ### 📱 iPhone
 
-<p align="center"><img src="docs/screenshots/iphone-strip.png" alt="StreamSetu on iPhone: Home, Live TV, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#iphone">All iPhone screenshots →</a></sub></p>
+<p align="center"><img src="docs/screenshots/iphone-row.gif" alt="StreamSetu on iPhone, from the launch screen to Series and Settings" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#iphone">All iPhone screenshots →</a></sub></p>
 
 ### 📱 iPad
 
@@ -40,7 +40,7 @@
 
 ### 🤖 Android phone and tablet
 
-<p align="center"><img src="docs/screenshots/android-strip.png" alt="StreamSetu on an Android phone: Home, Live TV, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#android-phone">All Android phone screenshots →</a></sub></p>
+<p align="center"><img src="docs/screenshots/android-row.png" alt="StreamSetu on an Android phone: Home, Live TV, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#android-phone">All Android phone screenshots →</a></sub></p>
 
 All pictures for every app: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
 
