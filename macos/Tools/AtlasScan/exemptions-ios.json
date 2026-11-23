@@ -1,0 +1,269 @@
+{
+  "approvedCount" : 44,
+  "exemptions" : [
+    {
+      "file" : "ios/StreamSetu/Player/CatchUpSheet.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "CatchUpSheet.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerParts.swift",
+      "kind" : "Button",
+      "reason" : "Items of the folder menu; the menu button is marked",
+      "symbol" : "ChannelSidePanel.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerParts.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "PlayerOptionsSheet.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerParts.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "EpisodeListSheet.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerParts.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "StreamInfoChips.pictureChip"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerParts.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "StreamInfoChips.audioChip"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerParts.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "StreamInfoChips.subtitleChip"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerParts.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "StreamInfoChips.speedChip"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerParts.swift",
+      "kind" : "onTapGesture",
+      "reason" : "Dim backdrop of the gesture tour; Got it is the marked control",
+      "symbol" : "GestureTour.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerScreen.swift",
+      "kind" : "onTapGesture",
+      "reason" : "Invisible area that closes the channel list when tapped; the list itself is marked",
+      "symbol" : "PlayerScreen.sidePanel"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerScreen.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "PlayerScreen.moreMenu"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerScreen.swift",
+      "kind" : "Menu",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "PlayerScreen.moreMenu"
+    },
+    {
+      "file" : "ios/StreamSetu/Player/PlayerScreen.swift",
+      "kind" : "Button",
+      "reason" : "Picture in Picture item of the player menu (marked as Player menu); not a separate control",
+      "symbol" : "PlayerScreen.pipButton"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/AddPlaylistSheet.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "AddPlaylistSheet.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/CollectionsView.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "CollectionMenu.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/CollectionsView.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "CollectionsView.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/CollectionsView.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "CollectionDetailView.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/DetailView.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "DetailView.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/DetailView.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a swipe or press-and-hold menu; the row carries the Atlas marker for that gesture",
+      "symbol" : "DetailView.episodes"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/FolderRowsView.swift",
+      "kind" : "Button",
+      "reason" : "Second More button on the live folder row; same entry as the marked folder More button",
+      "symbol" : "LiveRowCell.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/GuideView.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "GuideView.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/GuideView.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "ProgrammeSheet.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/LibraryView.swift",
+      "kind" : "Picker",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "LibraryView.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/LibraryView.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "LibraryView.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/ListTools.swift",
+      "kind" : "Picker",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "ListToolsModifier.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/ListTools.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "ListToolsModifier.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/LiveTVView.swift",
+      "kind" : "Button",
+      "reason" : "Swipe-action button; the row carries the Atlas marker for the gesture",
+      "symbol" : "LiveTVView.list"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/LiveTVView.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items or an alert button for rename, new group or go to number",
+      "symbol" : "LiveTVView.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/MoreView.swift",
+      "kind" : "Button",
+      "reason" : "Swipe action or confirm button for clearing history; the clear button is marked",
+      "symbol" : "HistoryView.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/MoreView.swift",
+      "kind" : "Button",
+      "reason" : "Keep Apple's Player, the cancel choice of the MPV warning alert",
+      "symbol" : "PlaybackSettingsView.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/MoreView.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a swipe or press-and-hold menu; the row carries the Atlas marker for that gesture or an alert button",
+      "symbol" : "PlaylistsView.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/MultiViewScreen.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items or an alert button",
+      "symbol" : "MultiViewScreen.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/MultiViewScreen.swift",
+      "kind" : "Picker",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items or an alert button",
+      "symbol" : "MultiViewScreen.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/MultiViewScreen.swift",
+      "kind" : "Menu",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items or an alert button",
+      "symbol" : "MultiViewScreen.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/MultiViewScreen.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a swipe or press-and-hold menu; the row carries the Atlas marker for that gesture",
+      "symbol" : "MultiViewScreen.tile"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/MultiViewScreen.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "MVPicker.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/PlaylistDetailView.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "EditLoginSheet.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Screens/WatchLaterView.swift",
+      "kind" : "Button",
+      "reason" : "Item inside a pop-up menu; the button that opens the menu carries the Atlas marker and the entry lists the items",
+      "symbol" : "QueueButton.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Settings/BackupView.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "BackupView.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Settings/ChannelManagerView.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "ChannelEditSheet.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Settings/ParentalView.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "UnlockSheet.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Settings/ParentalView.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "SetPINSheet.body"
+    },
+    {
+      "file" : "ios/StreamSetu/Settings/ParentalView.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "RemovePINSheet.body"
+    },
+    {
+      "file" : "ios/StreamSetu/StreamSetuApp.swift",
+      "kind" : "Button",
+      "reason" : "Cancel, Done or confirm button of an alert or sheet; it only dismisses or confirms the action started by a marked control",
+      "symbol" : "FailureView.body"
+    }
+  ]
+}

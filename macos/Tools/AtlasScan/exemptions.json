@@ -1,0 +1,677 @@
+{
+  "approvedCount" : 112,
+  "exemptions" : [
+    {
+      "file" : "macos/Sources/REDDY/Application/RootView.swift",
+      "kind" : "onTapGesture",
+      "reason" : "invisible layer that closes the open menu when you click anywhere else",
+      "symbol" : "MainShell.overlays"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Application/RootView.swift",
+      "kind" : "onTapGesture",
+      "reason" : "dark backdrop behind a dialog; clicking it closes the dialog",
+      "symbol" : "MainShell.scrim"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Application/RootView.swift",
+      "kind" : "Button",
+      "reason" : "confirm button in the library-recovery alert; the alert is shown by the app, not chosen by the person",
+      "symbol" : "RootView.content"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Application/RootView.swift",
+      "kind" : "PrimaryButton",
+      "reason" : "buttons of the library-recovery screen shown only when the library is damaged",
+      "symbol" : "RootView.content"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Application/RootView.swift",
+      "kind" : "SecondaryButton",
+      "reason" : "buttons of the library-recovery screen shown only when the library is damaged",
+      "symbol" : "RootView.content"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Application/TrafficLights.swift",
+      "kind" : "Button",
+      "reason" : "the window's red, yellow and green buttons, which macOS users already know",
+      "symbol" : "TrafficLights.light"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Buttons/ReddyButtons.swift",
+      "kind" : "Button",
+      "reason" : "generic icon button style used all over the app; the control that uses it is marked where it is placed",
+      "symbol" : "IconButton.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Buttons/ReddyButtons.swift",
+      "kind" : "Button",
+      "reason" : "generic button style used all over the app; the control that uses it is marked where it is placed",
+      "symbol" : "PrimaryButton.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Buttons/ReddyButtons.swift",
+      "kind" : "Button",
+      "reason" : "generic button style used all over the app; the control that uses it is marked where it is placed",
+      "symbol" : "SecondaryButton.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Cards/Cards.swift",
+      "kind" : "Button",
+      "reason" : "generic poster card; the poster menu and what it opens are declared in the poster menu entry",
+      "symbol" : "ReddyPosterCard.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Cards/Cards.swift",
+      "kind" : "Button",
+      "reason" : "generic See All link on a shelf; the shelf that uses it is its own entry",
+      "symbol" : "ReddyRail.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Cards/Cards.swift",
+      "kind" : "Button",
+      "reason" : "generic section header link; the shelf that uses it is its own entry",
+      "symbol" : "SectionHeader.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Dialogs/ReddyDialog.swift",
+      "kind" : "Button",
+      "reason" : "close button of the generic dialog frame",
+      "symbol" : "ReddyDialog.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Dialogs/ReddyDialog.swift",
+      "kind" : "keyboardShortcut",
+      "reason" : "Escape shortcut of the dialog close button",
+      "symbol" : "ReddyDialog.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/EmptyStates/EmptyStateView.swift",
+      "kind" : "PrimaryButton",
+      "reason" : "optional call-to-action of an empty-page message; the page that shows it is declared",
+      "symbol" : "EmptyStateView.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Navigation/PageChrome.swift",
+      "kind" : "Button",
+      "reason" : "clear button inside the page's filter field",
+      "symbol" : "InlineSearchField.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Navigation/PageChrome.swift",
+      "kind" : "Button",
+      "reason" : "one item per sort choice inside the Sort menu, which is marked",
+      "symbol" : "SortMenu.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Navigation/ReddyTopBar.swift",
+      "kind" : "Button",
+      "reason" : "clear button inside the top search box",
+      "symbol" : "ReddyTopBar.searchBox"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/ExternalPlayerMenu.swift",
+      "kind" : "Button",
+      "reason" : "one item per installed player inside the Open In menu, which is marked",
+      "symbol" : "ExternalPlayerMenu.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerControlsOverlay.swift",
+      "kind" : "Button",
+      "reason" : "item inside the engine menu, which is marked",
+      "symbol" : "PlayerControlsOverlay.engineMenu"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerControlsOverlay.swift",
+      "kind" : "Button",
+      "reason" : "item inside the Queue menu, which is marked as one control",
+      "symbol" : "PlayerControlsOverlay.queueMenu"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerControlsOverlay.swift",
+      "kind" : "Menu",
+      "reason" : "one submenu per queued title inside the Queue menu, which is marked",
+      "symbol" : "PlayerControlsOverlay.queueMenu"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerControlsOverlay.swift",
+      "kind" : "Button",
+      "reason" : "item inside the Sleep Timer menu, which is marked",
+      "symbol" : "PlayerControlsOverlay.sleepMenu"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerControlsOverlay.swift",
+      "kind" : "Button",
+      "reason" : "item inside the speed menu, which is marked",
+      "symbol" : "PlayerControlsOverlay.speedMenu"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerControlsOverlay.swift",
+      "kind" : "Button",
+      "reason" : "item inside the player's overflow menu, which is marked as one control",
+      "symbol" : "PlayerOverflowMenu.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerControlsOverlay.swift",
+      "kind" : "Menu",
+      "reason" : "submenu inside the player's overflow menu, which is marked as one control",
+      "symbol" : "PlayerOverflowMenu.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerControlsOverlay.swift",
+      "kind" : "Button",
+      "reason" : "item inside the player's title menu, which is marked as one control",
+      "symbol" : "PlayerTitleItems.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerControlsOverlay.swift",
+      "kind" : "Toggle",
+      "reason" : "item inside the player's title menu, which is marked as one control",
+      "symbol" : "PlayerTitleItems.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerControlsOverlay.swift",
+      "kind" : "Button",
+      "reason" : "item inside the player's More Tools menu, which is marked as one control",
+      "symbol" : "PlayerToolItems.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerControlsOverlay.swift",
+      "kind" : "Toggle",
+      "reason" : "item inside the player's More Tools menu, which is marked as one control",
+      "symbol" : "PlayerToolItems.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerMenus.swift",
+      "kind" : "Button",
+      "reason" : "item inside the player's pop-up menu, which is marked as one control",
+      "symbol" : "ReddyAudioMenu.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerMenus.swift",
+      "kind" : "Button",
+      "reason" : "item inside the player's pop-up menu, which is marked as one control",
+      "symbol" : "ReddyQualityMenu.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerMenus.swift",
+      "kind" : "Button",
+      "reason" : "item inside the player's pop-up menu, which is marked as one control",
+      "symbol" : "ReddySubtitleMenu.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/PlayerControls/PlayerMenus.swift",
+      "kind" : "Button",
+      "reason" : "item inside the player's pop-up menu, which is marked as one control",
+      "symbol" : "ReddyVideoSizeMenu.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Search/SearchField.swift",
+      "kind" : "Button",
+      "reason" : "clear button inside a search field",
+      "symbol" : "SearchField.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Sidebar/ReddySidebar.swift",
+      "kind" : "Button",
+      "reason" : "item of the sidebar folder menu, which is declared as one entry",
+      "symbol" : "ReddySidebar.folderMenu"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Sidebar/ReddySidebar.swift",
+      "kind" : "Button",
+      "reason" : "clear button inside the sidebar folder filter",
+      "symbol" : "ReddySidebar.footer"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/StartScreen/StartScreenStyle.swift",
+      "kind" : "Button",
+      "reason" : "generic segmented control used by the first-run screens; the screen that uses it is declared",
+      "symbol" : "StartSegmented.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/DesignSystem/Components/Toasts/ToastCenter.swift",
+      "kind" : "Button",
+      "reason" : "action button of a short notice; the notice is made by the action that caused it",
+      "symbol" : "ToastHost.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/CommandCenter/Views/CommandCenterView.swift",
+      "kind" : "SecondaryButton",
+      "reason" : "Cancel in a sheet",
+      "symbol" : "AssignGuideSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/CommandCenter/Views/CommandCenterView.swift",
+      "kind" : "SecondaryButton",
+      "reason" : "Cancel in a sheet",
+      "symbol" : "CategorySheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/CommandCenter/Views/CommandCenterView.swift",
+      "kind" : "Button",
+      "reason" : "item of the channel row menu, which is declared as one entry",
+      "symbol" : "ChannelRow.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/CommandCenter/Views/CommandCenterView.swift",
+      "kind" : "PrimaryButton",
+      "reason" : "Cancel and Save buttons of a small prompt sheet",
+      "symbol" : "TextPromptSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/CommandCenter/Views/CommandCenterView.swift",
+      "kind" : "SecondaryButton",
+      "reason" : "Cancel and Save buttons of a small prompt sheet",
+      "symbol" : "TextPromptSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/CommandCenter/Views/FoldersPane.swift",
+      "kind" : "Button",
+      "reason" : "item inside the folder sort menu, which is marked",
+      "symbol" : "FoldersPane.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Files/FilesView.swift",
+      "kind" : "Button",
+      "reason" : "Cancel in the Add Server sheet",
+      "symbol" : "AddServerForm.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Files/FilesView.swift",
+      "kind" : "Button",
+      "reason" : "Remove item of the source menu, which is declared as one entry",
+      "symbol" : "FilesView.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Files/PodcastsView.swift",
+      "kind" : "Button",
+      "reason" : "Unfollow item of the podcast menu, which is declared as one entry",
+      "symbol" : "PodcastsView.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Home/Views/HomeScreen.swift",
+      "kind" : "Button",
+      "reason" : "item inside the Clear menu, which is marked",
+      "symbol" : "ClearMenu.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Home/Views/HomeScreen.swift",
+      "kind" : "Button",
+      "reason" : "items of the collection menu, which is declared as one entry",
+      "symbol" : "CollectionsPage.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Home/Views/HomeScreen.swift",
+      "kind" : "Button",
+      "reason" : "item inside the Language filter menu, which is marked",
+      "symbol" : "DiscoverPage.toolbar"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Home/Views/HomeScreen.swift",
+      "kind" : "Button",
+      "reason" : "Remove Entry item of the history menu, which is declared as one entry",
+      "symbol" : "HistoryRow.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Home/Views/HomeScreen.swift",
+      "kind" : "Button",
+      "reason" : "item of the Recently Watched channel menu, which is declared as one entry",
+      "symbol" : "RecentlyWatchedPage.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Home/Views/HomeScreen.swift",
+      "kind" : "Button",
+      "reason" : "confirm button in a clear-history dialog; the Clear button that opens it carries the id",
+      "symbol" : "WatchHistoryPage.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Home/Views/StatisticsPage.swift",
+      "kind" : "Button",
+      "reason" : "confirm button of the reset dialog; the Reset button that opens it carries the id",
+      "symbol" : "StatisticsPage.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/LiveTV/Views/LiveTVScreen.swift",
+      "kind" : "Button",
+      "reason" : "item inside the Streams menu, which is marked",
+      "symbol" : "LiveTVScreen.channelHeader"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/LiveTV/Views/LiveTVScreen.swift",
+      "kind" : "Button",
+      "reason" : "clear button inside the Live TV search field",
+      "symbol" : "LiveToolbar.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Movies/Views/MovieDetailView.swift",
+      "kind" : "Button",
+      "reason" : "item inside the movie page More menu, which is marked as one control",
+      "symbol" : "MovieDetailView.moreMenu"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Opening/OpeningView.swift",
+      "kind" : "Button",
+      "reason" : "Continue button of the What's New card; it only closes the card",
+      "symbol" : "WhatsNewView.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Opening/OpeningView.swift",
+      "kind" : "keyboardShortcut",
+      "reason" : "Return shortcut of the What's New Continue button",
+      "symbol" : "WhatsNewView.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Player/Views/MultiViewWindow.swift",
+      "kind" : "Button",
+      "reason" : "Save button of the name-this-set alert",
+      "symbol" : "MultiViewWindow.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Player/Views/MultiViewWindow.swift",
+      "kind" : "Button",
+      "reason" : "item inside the Sets menu, which is marked",
+      "symbol" : "MultiViewWindow.toolbar"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Player/Views/MultiViewWindow.swift",
+      "kind" : "Menu",
+      "reason" : "Delete a Set submenu inside the Sets menu, which is marked",
+      "symbol" : "MultiViewWindow.toolbar"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Player/Views/MultiViewWindow.swift",
+      "kind" : "Button",
+      "reason" : "item of the Multi-View tile menu, which is declared as one entry",
+      "symbol" : "TileView.menu"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Series/Views/EpisodeCard.swift",
+      "kind" : "Button",
+      "reason" : "item of the episode menu, which is declared as one entry",
+      "symbol" : "EpisodeCard.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Series/Views/SeriesDetailView.swift",
+      "kind" : "Button",
+      "reason" : "one item per season inside the season picker, which is marked",
+      "symbol" : "SeriesDetailView.seasonPicker"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Components/SettingsComponents.swift",
+      "kind" : "Button",
+      "reason" : "generic async button; the settings row it sits in (atlas: argument) carries the id",
+      "symbol" : "AsyncActionButton.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Components/SettingsComponents.swift",
+      "kind" : "Button",
+      "reason" : "folds a settings group open or closed; the group title is its own label and there is nothing to explain",
+      "symbol" : "SettingsDisclosure.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/AdvancedSettingsPage.swift",
+      "kind" : "Button",
+      "reason" : "confirm button in the reset dialog; the row that opens the dialog carries the id",
+      "symbol" : "AdvancedSettingsPage.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/AdvancedSettingsPage.swift",
+      "kind" : "keyboardShortcut",
+      "reason" : "Escape shortcut of the Done button in the legal sheet",
+      "symbol" : "AdvancedSettingsPage.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/AdvancedSettingsPage.swift",
+      "kind" : "Button",
+      "reason" : "Done closes the licenses sheet; the sheet is declared as its own screen",
+      "symbol" : "LicensesSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/AdvancedSettingsPage.swift",
+      "kind" : "keyboardShortcut",
+      "reason" : "Escape shortcut of the Done button in the licenses sheet",
+      "symbol" : "LicensesSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/GeneralSettingsPage.swift",
+      "kind" : "keyboardShortcut",
+      "reason" : "Return shortcut of the Apply button for the custom theme colours",
+      "symbol" : "ThemePicker.editor"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/LanPairView.swift",
+      "kind" : "Button",
+      "reason" : "Done closes the pairing sheet",
+      "symbol" : "LanPairView.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/LanSyncGroup.swift",
+      "kind" : "Button",
+      "reason" : "one item per trusted device inside the Forget a Device menu, which is marked",
+      "symbol" : "LanSyncGroup.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/LibrarySettingsPage.swift",
+      "kind" : "Button",
+      "reason" : "confirm button in the restore dialog; the Restore Backup button that opens it carries the id",
+      "symbol" : "LibrarySettingsPage.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/ParentalViews.swift",
+      "kind" : "SecondaryButton",
+      "reason" : "Cancel in a PIN dialog",
+      "symbol" : "ParentalSettingsGroup.promptSheet"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/ParentalViews.swift",
+      "kind" : "SecondaryButton",
+      "reason" : "Cancel in a PIN dialog",
+      "symbol" : "SetPINSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/ParentalViews.swift",
+      "kind" : "SecondaryButton",
+      "reason" : "Cancel in a PIN dialog",
+      "symbol" : "UnlockDialog.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Settings/Views/PlaybackSettingsPage.swift",
+      "kind" : "Button",
+      "reason" : "confirm button in the restore-defaults dialog; the button that opens it carries the id",
+      "symbol" : "PlaybackSettingsPage.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/ContextMenus.swift",
+      "kind" : "Button",
+      "reason" : "item inside the Add to Collection menu, which is marked",
+      "symbol" : "CollectionMenu.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/TileMenu.swift",
+      "kind" : "Button",
+      "reason" : "item of the shared channel menu, which is declared by the channel menu entries",
+      "symbol" : "ChannelMenuContent.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/TileMenu.swift",
+      "kind" : "Button",
+      "reason" : "item of the shared poster menu, which is declared by the poster menu entries",
+      "symbol" : "TileMenuContent.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/TileMenu.swift",
+      "kind" : "Button",
+      "reason" : "item of the shared poster menu, which is declared by the poster menu entries",
+      "symbol" : "TileMenuModifier.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/TrailerSection.swift",
+      "kind" : "IconButton",
+      "reason" : "close button of the trailer viewer",
+      "symbol" : "TrailerSection.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/AssistantView.swift",
+      "kind" : "Button",
+      "reason" : "item inside the Setu model menu, which is marked",
+      "symbol" : "AssistantChatView.modelMenu"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/AssistantView.swift",
+      "kind" : "Menu",
+      "reason" : "one submenu per AI service inside the Setu model menu, which is marked",
+      "symbol" : "AssistantChatView.modelMenu"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/AssistantView.swift",
+      "kind" : "Button",
+      "reason" : "Confirm and Cancel buttons of a Setu proposal, which is part of the Setu screen",
+      "symbol" : "AssistantChatView.proposalButton"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/DownloadViews.swift",
+      "kind" : "Button",
+      "reason" : "item inside the download state menu, which is marked",
+      "symbol" : "DownloadButton.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/LibraryFilterMenus.swift",
+      "kind" : "Button",
+      "reason" : "item inside a library filter menu, which is marked",
+      "symbol" : "LibraryFilterMenus.choice"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/OnlineSubtitleSheet.swift",
+      "kind" : "Button",
+      "reason" : "Cancel and Go buttons of the Go to Time sheet",
+      "symbol" : "GoToTimeSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/OnlineSubtitleSheet.swift",
+      "kind" : "Button",
+      "reason" : "Close button of the subtitle search sheet",
+      "symbol" : "OnlineSubtitleSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/PersonPage.swift",
+      "kind" : "Button",
+      "reason" : "Close button of the film info sheet",
+      "symbol" : "FilmInfoSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/PersonPage.swift",
+      "kind" : "keyboardShortcut",
+      "reason" : "Escape shortcut of the Close button of the film info sheet",
+      "symbol" : "FilmInfoSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/PersonPage.swift",
+      "kind" : "onTapGesture",
+      "reason" : "dark backdrop behind the person sheet; clicking it closes the sheet",
+      "symbol" : "PersonOverlays.panel"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/PersonPage.swift",
+      "kind" : "Picker",
+      "reason" : "sort and type choices inside the filter menu on the person page, which is marked",
+      "symbol" : "PersonPage.controls"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/PersonSheet.swift",
+      "kind" : "Button",
+      "reason" : "Back button of the person sheet",
+      "symbol" : "PersonSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/PersonSheet.swift",
+      "kind" : "keyboardShortcut",
+      "reason" : "Escape shortcut of the Back button of the person sheet",
+      "symbol" : "PersonSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/PlayerSearchSheet.swift",
+      "kind" : "Button",
+      "reason" : "clear button inside the player search field",
+      "symbol" : "PlayerSearchSheet.header"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/ProfileViews.swift",
+      "kind" : "Button",
+      "reason" : "Cancel and Add buttons of the Add Profile sheet",
+      "symbol" : "AddProfileSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/ProfileViews.swift",
+      "kind" : "Button",
+      "reason" : "Back and Continue buttons of the profile PIN prompt",
+      "symbol" : "ProfilePicker.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/ProfileViews.swift",
+      "kind" : "Button",
+      "reason" : "OK and Cancel buttons of the profile PIN prompt",
+      "symbol" : "ProfilesList.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/ProfileViews.swift",
+      "kind" : "Button",
+      "reason" : "buttons of the viewing-limit block screen",
+      "symbol" : "ViewingBlockOverlay.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/ProfileViews.swift",
+      "kind" : "Button",
+      "reason" : "Cancel and Save buttons of the viewing limits sheet",
+      "symbol" : "ViewingLimitsSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Shared/Views/TitlePageParts.swift",
+      "kind" : "Button",
+      "reason" : "item inside the version menu, which is marked",
+      "symbol" : "VersionPickerLine.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Sources/Views/AddSourceForm.swift",
+      "kind" : "Button",
+      "reason" : "confirm button of the plain-http alert; the Add button that opens it carries the id",
+      "symbol" : "AddSourceForm.actionRow"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Sources/Views/PlaylistManager.swift",
+      "kind" : "Button",
+      "reason" : "confirm button of the remove-playlist dialog; the Remove button that opens it carries the id",
+      "symbol" : "PlaylistSectionView.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Sources/Views/PlaylistManager.swift",
+      "kind" : "Button",
+      "reason" : "one item per header preset inside the Presets menu, which is marked",
+      "symbol" : "PlaylistSectionView.requestHeaders"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Sources/Views/SourcesView.swift",
+      "kind" : "PrimaryButton",
+      "reason" : "Cancel and Save buttons of the Edit Playlist sheet",
+      "symbol" : "EditSourceSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/Sources/Views/SourcesView.swift",
+      "kind" : "SecondaryButton",
+      "reason" : "Cancel and Save buttons of the Edit Playlist sheet",
+      "symbol" : "EditSourceSheet.body"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/TVGuide/Components/GuideRow.swift",
+      "kind" : "Button",
+      "reason" : "item of the guide programme menu, which is declared as one entry",
+      "symbol" : "GuideRow.block"
+    },
+    {
+      "file" : "macos/Sources/REDDY/Features/TVGuide/Views/GuideScreen.swift",
+      "kind" : "Button",
+      "reason" : "one item per day inside the Day menu, which is marked",
+      "symbol" : "GuideScreen.toolbar"
+    }
+  ]
+}

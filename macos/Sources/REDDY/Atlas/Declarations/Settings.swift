@@ -1,0 +1,322 @@
+import Foundation
+
+/// Settings Setu knows about. The typed catalogue (`AppSettingsCatalog`) still owns reading and writing for the settings it can change; this file adds what Setu needs on top.
+///
+/// Three parts:
+/// - `notes`: extra words and a clearer first sentence for each catalogue entry whose path and behaviour are already right.
+/// - `extra`: entries with no catalogue row, and full replacements (same id) for catalogue rows whose breadcrumb was wrong (Profiles, iCloud, Sync on this network, Integrations, Subscriptions,
+///   Guide alerts, Maintenance, Advanced audio, Troubleshooting) or that had no value reader (App lock, Proxy, VPN, iCloud, Sync on this network).
+/// - `exempt`: stored values that are not preferences, with the reason.
+enum AtlasSettings {
+    // MARK: notes on catalogue entries
+
+    private static func n(_ aliases: [String], summary: String? = nil, detail: String? = nil, related: [String] = [], platforms: AtlasPlatforms? = nil, reviewed: Bool = false) -> AtlasSettingNote {
+        AtlasSettingNote(aliases: aliases, summary: summary, detail: detail, related: related, platforms: platforms, reviewed: reviewed)
+    }
+
+    /// Keyed by the catalogue id ("hardwareDecoding").
+    static let notes: [String: AtlasSettingNote] = [
+        // General
+        "clickBehavior": n(["single click or double click", "click once to play a channel", "double click to play", "click behaviour", "open channels with", "how do i make double click play"],
+                           summary: "Chooses whether one click or a double click starts a channel.", related: ["setting.resumeLastChannel"], reviewed: true),
+        "collapseDuplicates": n(["duplicate channels", "merge duplicates", "hd and 4k copies of a channel", "group quality variants", "streams menu", "same movie shown twice", "why do i see duplicates"],
+                                related: ["setting.bestVersionFirst"], reviewed: true),
+        "hideEmptyFolders": n(["hide empty categories", "empty folders", "empty groups", "why are there empty folders", "blank categories"], related: ["screen.settings.channelManager"], reviewed: true),
+        "defaultLibrarySort": n(["sort movies", "sort order for movies", "sort series", "newest first", "default sorting", "top rated first", "a to z"], summary: "Sets how Movies and Series are sorted when you open them.",
+                                detail: "Choices are Recently added, Title A to Z, Newest first and Top rated.", related: ["setting.defaultChannelSort"], reviewed: true),
+        "defaultChannelSort": n(["channel order", "sort channels", "alphabetical channels", "provider order", "channel sort"], summary: "Sets whether channels follow the playlist's order or are sorted by name.",
+                                detail: "Choices are Provider order, Alphabetical and Recently added.", related: ["setting.defaultLibrarySort"], reviewed: true),
+        "rememberFolders": n(["remember last folder", "remember the folder i was in", "why does it open the first category every time", "remember folders", "return to my folder"],
+                             summary: "Brings you back to the folder you were in when you return to a tab.", detail: "When it is off, a tab always opens its first sidebar item.", reviewed: true),
+        "resumeLastChannel": n(["start on the last channel", "resume last channel", "open last channel on launch", "play last channel at start", "launch playback"], related: ["setting.clickBehavior"], reviewed: true),
+        "remindersEnabled": n(["programme reminders", "reminders", "notifications", "notify me before a show", "stop the reminders", "bell on programmes"], related: ["setting.keywordAlerts"], reviewed: true),
+        // Appearance
+        "theme": n(["change the theme", "dark mode", "light mode", "appearance", "colour scheme", "custom theme colours", "make it light", "app look"],
+                   summary: "Picks the colour theme for the whole app, sidebar included.", detail: "Every theme is dark, so there is no light mode. The Custom theme lets you choose your own colours.",
+                   related: ["setting.accent", "setting.customTheme"], reviewed: true),
+        "accent": n(["accent colour", "accent color", "app colour", "make the buttons blue", "highlight colour", "button colour", "selected tab colour"], related: ["setting.theme"], reviewed: true),
+        "density": n(["compact", "extra compact", "show more posters", "grid size", "layout density", "card size", "make the grid smaller"],
+                     detail: "Choices are Comfortable, Compact and Extra Compact.", reviewed: true),
+        "language": n(["app language", "change the language", "hindi", "telugu", "translate the app", "what languages does it support", "interface language"],
+                      detail: "Choices are System, English, Hindi and Telugu.", reviewed: true),
+        "reduceMotion": n(["turn off animations", "less motion", "stop the app moving", "animations make me dizzy", "reduce animation", "disable transitions"], reviewed: true),
+        "highContrast": n(["high contrast", "increase contrast", "make text easier to read", "stronger outlines", "accessibility contrast"], reviewed: true),
+        "sidebarLaunch": n(["sidebar at launch", "start with sidebar collapsed", "hide the sidebar", "collapse sidebar", "sidebar expanded"], reviewed: true),
+        // Playback: video
+        "hardwareDecoding": n(["hw decode", "gpu decoding", "hardware acceleration", "videotoolbox", "software decoding", "video has artifacts", "harware decoding"],
+                              detail: "Choices are Automatic, Enabled where supported and Software decoding. It applies to streams MPV plays; Apple's player decides for itself.", related: ["setting.enginePreference"], reviewed: true),
+        "videoQuality": n(["video quality", "stream quality", "data saver", "lower quality to save data", "highest quality", "resolution preference", "vidoe quality"],
+                          detail: "Choices are Automatic, Highest available, Balanced and Data saver. Scaling quality is a different setting.", related: ["setting.renderingProfile"], reviewed: true),
+        "liveRewind": n(["rewind live tv", "pause live tv", "live pause", "timeshift", "go back a few minutes on a live channel", "live rewind"], related: ["setting.enginePreference"], reviewed: true),
+        "bufferingMode": n(["stop buffering", "buffer setting", "low latency", "live tv is behind", "stutter", "lag", "stability buffering", "bufering mode"],
+                           detail: "Choices are Automatic, Low latency (live), Standard and Large buffer.", related: ["diag.playback", "setting.enginePreference"], reviewed: true),
+        // Playback: audio and subtitles
+        "preferredAudioLanguage": n(["audio language", "default audio language", "dub", "dubbed", "sound language", "always play hindi audio", "audio langauge"], related: ["setting.preferredSubtitleLanguage"], reviewed: true),
+        "preferredSubtitleLanguage": n(["subtitle language", "default subtitle language", "make subtitles english", "caption language", "subtitel language"], related: ["setting.subtitlesByDefault", "setting.autoSubtitles"], reviewed: true),
+        "subtitlesByDefault": n(["subtitles always on", "show subtitles automatically", "turn on subtitles all the time", "subs always on", "captions on by default", "turn off subtitles by default"],
+                                related: ["setting.preferredSubtitleLanguage"], reviewed: true),
+        "autoSubtitles": n(["fetch subtitles", "download subtitles", "opensubtitles", "automatic subtitles", "get subtitles online", "subtitles when none exist"], related: ["setting.preferredSubtitleLanguage"], reviewed: true),
+        "subtitleSize": n(["subtitles too small", "make subtitles bigger", "caption size", "bigger subtitles", "text size of subtitles", "large subtitles"],
+                          detail: "From 60% to 200% in steps of 10. The default is 100%.", related: ["setting.subtitleBackground", "setting.subtitleColor"], reviewed: true),
+        "subtitleBackground": n(["black box behind subtitles", "subtitle background", "subtitle opacity", "box behind captions"], detail: "From 0% (no box) to 100% (solid). The default is 50%.", reviewed: true),
+        "subtitleColor": n(["subtitle colour", "subtitle color", "yellow subtitles", "caption colour", "make subtitles yellow"], reviewed: true),
+        "subtitleOutline": n(["subtitle outline", "subtitle shadow", "subtitles hard to read on bright scenes", "outline on captions"], reviewed: true),
+        "subtitlePosition": n(["move subtitles higher", "subtitle height", "where subtitles appear", "raise subtitles", "subtitle vertical position", "subtitles too low"],
+                              detail: "The default is 0%, the bottom edge.", related: ["setting.subtitleSize"], reviewed: true),
+        // Playback: behaviour
+        "autoPlayNextEpisode": n(["autoplay next episode", "binge mode", "next episode starts by itself", "stop the next episode starting", "auto play next", "play next automatically"], reviewed: true),
+        "rememberPosition": n(["remember where i stopped", "resume point", "resume position", "playback position", "does it remember where i stopped", "continue watching not working"],
+                              related: ["setting.resumeAutomatically", "diag.continueEmpty"], reviewed: true),
+        "resumeAutomatically": n(["resume without asking", "stop asking me to resume", "continue where i left off", "start from the beginning", "resume automaticaly", "auto resume"],
+                                 related: ["setting.rememberPosition"], reviewed: true),
+        "bestVersionFirst": n(["prefer the 4k copy", "why does it pick a different copy of the movie", "best quality copy first", "duplicate versions of a film", "1080p or 4k first", "best version"],
+                              related: ["setting.collapseDuplicates"], reviewed: true),
+        "renderingProfile": n(["rendering profile", "video scaling", "scaling quality", "mac fans are loud in 4k", "gpu load", "performance mode", "set video scaling to performance"],
+                              detail: "Performance is the cheapest and suits older Macs and 4K. Balanced is recommended. High quality uses the most graphics power.", related: ["setting.videoQuality"], reviewed: true),
+        "toneMapping": n(["tonemapping", "tone mapping", "hdr looks washed out", "dull hdr colours", "hdr looks grey", "hdr colours wrong"],
+                         detail: "Choices are Automatic, BT.2390, Hable, Mobius, Reinhard and Clip.", reviewed: true),
+        "deinterlace": n(["comb lines", "interlaced lines", "combing artifacts", "interlacing", "lines on a sports channel", "turn on deinterlace for live tv"],
+                         detail: "Choices are Automatic, On and Off.", reviewed: true),
+        "enginePreference": n(["mpv or avplayer", "switch the player engine", "player engine", "video wont play in avplayer", "codec problems", "which player", "mpv"],
+                              related: ["diag.engine", "diag.playback"], reviewed: true),
+        // Library
+        "catalogRefresh": n(["playlist refresh interval", "how often does it refresh", "auto refresh playlists", "update playlist every 6 hours", "refresh frequency", "playlist update schedule"],
+                            detail: "Choices are Manual, Every 6 hours, Every 12 hours and Every 24 hours. The default is every 12 hours.", related: ["setting.refreshOnOpen"], reviewed: true),
+        "refreshOnOpen": n(["refresh when the app opens", "stop it refreshing every time i open it", "update on launch", "refresh on open", "refresh at startup"], related: ["setting.catalogRefresh"], reviewed: true),
+        "guideRefresh": n(["tv guide refresh", "epg update frequency", "how often does the guide update", "xmltv refresh", "guide update interval"],
+                          detail: "Choices are Manual, Every 6 hours, Every 12 hours and Every 24 hours. The default is every 6 hours.", related: ["diag.guide"], reviewed: true),
+        "guideRetentionDays": n(["how long does it keep the guide", "past programmes kept", "keep old programmes", "guide history length", "scroll back in the guide"],
+                                detail: "Choices are 3 hours, 1 day, 3 days and 7 days. The default is 1 day.", reviewed: true),
+        "guideHoursVisible": n(["show more hours in the guide", "hours in the tv guide", "guide window width", "epg hours", "how wide is the guide"],
+                               detail: "Choices are 2, 3, 4 or 6 hours. The default is 3. It is also the Hours visible menu at the top of the TV Guide.", reviewed: true),
+        "autoBackup": n(["automatic backup", "weekly backup", "back up my library automatically", "turn on auto backup", "what does auto backup save"],
+                        detail: "Export Backup lets you choose what goes in: playlists, collections, favorites, preferences, and viewing history with resume points. It never contains passwords.", reviewed: true),
+        // Explained, not changed by Setu
+        "parental": n(["parental controls", "kids mode", "lock adult channels", "lock a folder", "set a pin", "restrict content", "how do i set up parental controls"],
+                      related: ["setting.parentalPin", "setting.profiles"], reviewed: true),
+        "tmdb": n(["tmdb key", "wrong artwork", "posters are wrong", "artwork matching", "missing posters", "fix wrong artwork", "movie database key", "actor filmography"],
+                  related: ["setting.castReading", "diag.artwork"], reviewed: true),
+        "castReading": n(["search by actor", "cast search", "read cast now", "director search", "find movies by actor", "cast and directors"], related: ["diag.castSearch"], reviewed: true),
+        "recordings": n(["record live tv", "recordings", "dvr", "scheduled recording", "where are my recordings", "record a channel"], related: ["diag.recording"], reviewed: true),
+        "downloads": n(["download movies", "watch offline", "save for offline", "delete a download after watching", "downloads"], related: ["diag.downloads"], reviewed: true),
+    ]
+
+    // MARK: entries with no catalogue row, and corrected replacements
+
+    private static func setting(_ id: String, _ title: String, _ summary: String, path: [String], reach: AtlasReach? = nil, aliases: [String] = [], detail: String? = nil, related: [String] = [], platforms: AtlasPlatforms = .all,
+                                safety: AtlasSafety = .read, guideOnly: Bool = false, value: AtlasValueReader? = nil, reviewed: Bool = false) -> AtlasEntry {
+        let r = reach ?? (path.first == "Settings" && path.count > 1 ? .settingsPage(path[1]) : .none)
+        return AtlasEntry.make(id, .setting, title, summary, path: path, reach: r, aliases: aliases, detail: detail, platforms: platforms, related: related, safety: safety, guideOnly: guideOnly, reviewed: reviewed, value: value)
+    }
+    private static func toggle(_ key: String, default d: String = "off") -> AtlasValueReader { AtlasValueReader(kind: .toggle, settingKey: key, options: ["on", "off"], defaultValue: d) }
+    private static func choice(_ key: String, _ options: [String], default d: String? = nil) -> AtlasValueReader { AtlasValueReader(kind: .choice, settingKey: key, options: options, defaultValue: d) }
+
+    static let extra: [AtlasEntry] = replacements + saved + playlist + storage + elsewhere
+
+    /// Same id as a catalogue row: replaces it (see `Atlas.merge`). Used where the catalogue breadcrumb is wrong or the row has no value reader.
+    private static let replacements: [AtlasEntry] = [
+        setting("setting.audioProcessing", "Volume normalization", "Evens out loud and quiet parts of the sound.",
+                path: ["Settings", "Playback", "Advanced audio"], aliases: ["night mode for audio", "normalise audio", "normalize volume", "make loud scenes quieter", "dialogue too quiet at night", "loudness", "volume levelling"],
+                detail: "Off, Standard (evens out loudness) or Night Mode (quieter loud parts, easier on neighbours). It needs the MPV engine and applies to streams MPV plays. On iPhone and iPad it is the Loudness picker in the player.",
+                related: ["setting.stereoDownmix", "setting.enginePreference"], safety: .change, value: choice("audioProcessing", ["Off", "Standard", "Night Mode"], default: "Off"), reviewed: true),
+        setting("setting.stereoDownmix", "Downmix to stereo", "Mixes 5.1 and 7.1 sound down to two channels, for speakers and headphones.",
+                path: ["Settings", "Playback", "Advanced audio"], aliases: ["downmix", "5.1 to stereo", "sound is too quiet on stereo speakers", "surround to stereo", "dialogue too quiet", "stereo mixdown"],
+                detail: "Only MPV can do this; Apple's player chooses by output device. It applies from the next stream you start.", related: ["setting.audioProcessing"], safety: .change, value: toggle("stereoDownmix"), reviewed: true),
+        setting("setting.showDiagnosticsOverlay", "Show stream information", "Puts a small overlay on the picture with resolution, bitrate and dropped frames.",
+                path: ["Settings", "Playback", "Troubleshooting"], aliases: ["stream info on the video", "show bitrate and dropped frames", "debug overlay on the player", "diagnostics overlay", "stats overlay", "video stats"],
+                detail: "On iPhone and iPad the matching switch is Show stream details on the picture, in the player's Options.", related: ["diag.playback"], safety: .change, value: toggle("showDiagnosticsOverlay"), reviewed: true),
+        setting("setting.appLock", "App lock", "Asks for Touch ID or your Mac password when StreamSetu opens, after the screen sleeps, or after 30 seconds away.",
+                path: ["Settings", "Privacy", "App lock"], aliases: ["lock the app", "put a password on streamsetu", "touch id to open the app", "face id", "passcode", "aplock", "require touch id"],
+                detail: "A stream that is playing keeps playing. It is off by default and needs a password set on this Mac. Setu cannot change it; use the switch in Settings. On iPhone and iPad, the lock uses Face ID, Touch ID or the device passcode.",
+                related: ["setting.parental"], safety: .never, guideOnly: true, value: toggle("appLock"), reviewed: true),
+        setting("setting.proxy", "Proxy", "Sends the app's network requests, and streams played by MPV, through an HTTP or SOCKS5 proxy you run.",
+                path: ["Settings", "Privacy", "Proxy"], aliases: ["use a proxy", "socks proxy", "http proxy", "route streams through a proxy", "tunnel", "proxy server"],
+                detail: "Covers playlist, guide, artwork and detail requests. MPV supports HTTP proxies only, and Apple's player ignores it. The address needs a host and a port from 1 to 65535. Setu cannot change it. On iPhone and iPad it is under More, Proxy.",
+                related: ["setting.proxyHost", "setting.proxyPort", "setting.appDNS", "setting.vpn"], safety: .never, guideOnly: true, value: choice("proxyKind", ["Off", "HTTP", "SOCKS5"], default: "Off"), reviewed: true),
+        setting("setting.vpn", "VPN", "StreamSetu does not run a VPN. It only notices that one is connected and can pause playback if the VPN drops.",
+                path: ["Settings", "Privacy", "VPN"], aliases: ["vpn kill switch", "pause when vpn drops", "streams stop when my vpn drops", "pause playback if vpn disconnects", "vpn pause", "vpn drops"],
+                detail: "The switch is Pause if the VPN drops, and it only acts while something is playing. The app cannot confirm that its own traffic goes through the VPN. Setu cannot change it. On iPhone and iPad it is under More, VPN.",
+                related: ["setting.proxy", "setting.appDNS", "diag.vpnPause"], safety: .never, guideOnly: true, value: toggle("vpnPause"), reviewed: true),
+        setting("setting.icloudSync", "iCloud sync", "Keeps playlists, favourites, collections, watch history, resume points, folder organisation and settings the same on your other devices, through your own private iCloud.",
+                path: ["Settings", "Library", "iCloud"], aliases: ["icloud sync", "sync my favourites between mac and iphone", "sync devices", "cloud sync", "what is synced with icloud", "sync with icloud"],
+                detail: "It needs the same Apple ID on every device and is off by default. The channels, movies and series themselves are downloaded separately on each device. Sync now and Erase iCloud Data are buttons in the same group. Setu cannot change it. On iPhone and iPad it is under More, iCloud Sync.",
+                related: ["setting.syncLogins", "setting.lanSync", "diag.sync"], safety: .never, guideOnly: true, value: toggle("iCloudSync"), reviewed: true),
+        setting("setting.lanSync", "Sync on this network", "Devices on the same Wi-Fi share favourites, Watch Later, collections and resume points directly with each other.",
+                path: ["Settings", "Library", "Sync on this network"], aliases: ["sync between my devices without icloud", "pair my iphone with my mac", "wifi sync", "local sync", "lan sync", "sync on this network"],
+                detail: "There is no account and no server, and nothing leaves your network. Pair each device once with Add a Device. It works between Mac, iPhone, iPad, Android phones and Fire TV. Setu cannot change it. On iPhone and iPad it is under More, Sync on this network.",
+                related: ["setting.icloudSync", "diag.sync"], safety: .never, guideOnly: true, value: toggle("lanSync"), reviewed: true),
+        setting("setting.profiles", "Profiles", "Gives each person their own favourites, collections, watch history and resume points; everyone shares the same playlists.",
+                path: ["Settings", "Library", "Profiles"], aliases: ["add another profile", "switch profile", "separate favourites for my wife", "kids profile", "user accounts", "who is watching"],
+                detail: "A kids profile keeps the folders you locked in Privacy hidden and needs its PIN to leave. The assistant is switched off in a kids profile. On iPhone and iPad it is under More, Profiles.",
+                related: ["setting.parental", "diag.profileFavourites"], reviewed: true),
+        setting("setting.integrations", "Trakt, Debrid and AI", "Connects your own Trakt, debrid and AI accounts. Each uses your own keys, stored in the Keychain and sent only to that service.",
+                path: ["Settings", "Library"], aliases: ["trakt", "debrid", "real-debrid", "alldebrid", "premiumize", "ai assistant key", "connect trakt", "integrations"],
+                detail: "On the Mac these are three groups on the Library page: Trakt, Debrid and AI assistant. Trakt marks what you watch and can add your Trakt watchlist to Watch Later. Debrid plays a link from a file host through your debrid account. The AI assistant is optional; Setu answers app questions without it. On iPhone and iPad they are under More, Trakt, Debrid and AI.",
+                related: ["setting.aiProvider", "setting.trakt", "setting.debrid"], reviewed: true),
+        setting("setting.subscriptions", "Subscriptions", "Shows when each provider account ends and how many streams it allows, for providers that report it (Xtream).",
+                path: ["Settings", "Library", "Subscriptions"], aliases: ["subscription expiry", "when does my subscription end", "provider account status", "max connections", "expiry date"],
+                detail: "The app asks each provider at most twice a day, and warns you from a week before one ends. Check Now asks again. On iPhone and iPad it is under More, Subscriptions and Alerts.",
+                related: ["setting.keywordAlerts", "diag.source"], reviewed: true),
+        setting("setting.keywordAlerts", "Guide alerts", "Watches the guide for words you add, such as a sport, a team or a show, and reminds you a minute before a matching programme starts.",
+                path: ["Settings", "Library", "Guide alerts"], aliases: ["alert me when a show is added", "get notified about a keyword", "keyword alerts", "notify me about a team", "watch the guide for a word"],
+                detail: "It looks at programmes coming up in the next day and a half, and reminds you once. You can keep up to 20 words. It needs Programme reminders to be on. Look Now runs the check at once. On iPhone and iPad it is under More, Subscriptions and Alerts.",
+                related: ["setting.remindersEnabled"], reviewed: true),
+        setting("setting.maintenance", "Maintenance and reset", "Shows storage use, checks the database, rebuilds the search index and clears caches.",
+                path: ["Settings", "Library", "Maintenance"], aliases: ["clear the cache", "how much space does the app use", "free up space", "storage", "rebuild the search index", "reset settings", "clear artwork cache", "verify database"],
+                detail: "Turn on Show maintenance tools to see Storage, Database and Search index. Reset buttons are in Settings, Advanced; each does one thing and none removes your playlists. Remove all playlists and data cannot be undone. Setu cannot do these. On iPhone and iPad it is under More, Storage and Maintenance.",
+                related: ["diag.searchEmpty"], safety: .never, guideOnly: true, reviewed: true),
+        setting("setting.parentalPin", "Parental PIN", "The PIN that locks folders. Set, change or remove it in Settings; Setu never sees or changes it.",
+                path: ["Settings", "Privacy", "Parental controls"], aliases: ["set a pin", "change pin", "remove pin", "forgot my pin", "pin for locked folders"],
+                detail: "A PIN is four to eight digits and stays on this Mac. While locked, a folder's channels, movies and series are missing from every list and search. Right-click a folder in the sidebar, or use the Channel manager's Folders tab, to lock it.",
+                related: ["setting.parental", "setting.parentalUnlock", "diag.lockedHidden"], safety: .never, guideOnly: true, reviewed: true),
+        setting("setting.parentalUnlock", "Unlock lasts", "How long locked folders stay visible after you enter the PIN, before they lock again by themselves.",
+                path: ["Settings", "Privacy", "Parental controls"], aliases: ["how long does the pin unlock last", "auto lock folders", "lock again after", "unlock timeout"],
+                detail: "Choices are 5, 15, 30, 60 or 120 minutes. Lock Now locks at once.", related: ["setting.parentalPin"], safety: .never, guideOnly: true, reviewed: true),
+    ]
+
+    /// Saved settings (AppSettings) that had no catalogue row.
+    private static let saved: [AtlasEntry] = [
+        setting("setting.customTheme", "Custom theme colours", "Sets your own background, accent and text colours, and how glossy the app looks, for the Custom theme.",
+                path: ["Settings", "Appearance", "Theme"], aliases: ["custom theme", "make my own theme", "pick theme colours", "theme editor", "gloss"],
+                detail: "Choose the Custom theme to edit the colours, then press Apply. Revert drops your edits and Start Again goes back to the standard colours. Setu can pick a named theme but cannot edit custom colours.", related: ["setting.theme"], safety: .read, reviewed: true),
+        setting("setting.syncLogins", "Sync logins", "Moves playlist logins and your TMDB key between your devices through iCloud Keychain, end-to-end encrypted by Apple.",
+                path: ["Settings", "Library", "iCloud"], aliases: ["does sync include my passwords", "should logins sync to icloud", "sync passwords", "sync playlist logins", "icloud keychain"],
+                detail: "It is on by default but only does anything while iCloud sync is on. Turn it off to enter logins on each device. Setu cannot change it.",
+                related: ["setting.icloudSync"], safety: .never, guideOnly: true, value: toggle("syncLogins", default: "on"), reviewed: true),
+        setting("setting.proxyHost", "Proxy address", "The host name or IP address of the proxy.",
+                path: ["Settings", "Privacy", "Proxy"], aliases: ["proxy host", "proxy server address", "proxy ip"], detail: "It only shows once the proxy type is not Off.",
+                related: ["setting.proxy", "setting.proxyPort"], safety: .never, guideOnly: true, reviewed: true),
+        setting("setting.proxyPort", "Proxy port", "The port number of the proxy, from 1 to 65535.",
+                path: ["Settings", "Privacy", "Proxy"], aliases: ["proxy port number"], detail: "The proxy only counts as active when it has a type, a host and a valid port.",
+                related: ["setting.proxy", "setting.proxyHost"], safety: .never, guideOnly: true, reviewed: true),
+        setting("setting.appDNS", "App DNS", "Looks up server names through an encrypted DNS service, for StreamSetu's own traffic only. It is not a VPN.",
+                path: ["Settings", "Privacy", "App DNS"], aliases: ["what is app dns", "change dns for the app", "my provider is blocked", "dns over https", "doh", "dns blocking", "cloudflare dns", "can i change dns"],
+                detail: "Providers are Cloudflare, Google, Quad9, AdGuard, Control D or Custom. It can fix DNS blocking; it cannot get past IP blocking, routing problems or geographic limits. Local devices can keep using the system DNS. Test App DNS checks your playlist and guide servers. Setu cannot change it. On iPhone and iPad it is under More, App DNS.",
+                related: ["setting.proxy", "setting.vpn", "diag.source"], safety: .never, guideOnly: true,
+                value: choice("appDNS", ["Cloudflare", "Google", "Quad9", "AdGuard", "Control D", "Custom"], default: "Cloudflare"), reviewed: true),
+        setting("setting.volume", "Volume", "The player's volume. It is remembered between plays.",
+                path: ["Player", "Volume"], reach: AtlasReach.none, aliases: ["player volume", "turn the volume up", "default volume", "mute"],
+                detail: "It is set with the volume control in the player, from 0 to 100%. Setu can raise, lower or mute what is playing from the chat; that is a player action, not a saved setting.",
+                related: ["setting.audioProcessing"], value: AtlasValueReader(kind: .number, settingKey: "volume", options: [], defaultValue: "100%"), reviewed: true),
+        setting("setting.audioOutputUID", "Audio output device", "Chooses which speakers or headphones the sound goes to. System default follows macOS.",
+                path: ["Settings", "Playback", "Audio", "Output device"], aliases: ["output device", "choose speakers", "sound goes to the wrong speaker", "headphones", "airpods", "audio device"],
+                detail: "The menu lists the output devices on this Mac. Setu cannot read that list, so it points you to the menu.", related: ["diag.noSound"], platforms: .mac, reviewed: true),
+        setting("setting.picture", "Picture adjustments", "Brightness, contrast, saturation, gamma and hue, applied to every stream MPV plays.",
+                path: ["Settings", "Playback", "Advanced video", "Picture"], aliases: ["brightness", "contrast", "saturation", "gamma", "hue", "picture settings", "colour balance", "reset picture"],
+                detail: "Each runs from -100 to 100. Adjust them from the player's picture button; Reset Picture in Settings puts them back. They need the MPV engine.", related: ["setting.toneMapping", "setting.enginePreference"], platforms: .mac, reviewed: true),
+        setting("setting.engineForKind", "Player engine for live, movies or past programmes", "Chooses a different player engine for live TV, for movies and series, or for past programmes.",
+                path: ["Settings", "Playback", "Player engine"], aliases: ["different engine for live tv", "mpv for live only", "engine for movies", "engine per type"],
+                detail: "Each of the three menus can say Use the engine above. A playlist's or channel's own choice still comes first.", related: ["setting.enginePreference", "setting.playlistEngine"], platforms: .all, safety: .read, reviewed: true),
+        setting("setting.defaultVideoSize", "Default video size", "Chooses whether the picture is fitted, filled, shown at original size or stretched.",
+                path: ["Settings", "Playback", "Video"], aliases: ["fit or fill", "video size", "crop to fill the window", "stretch video", "original size"],
+                detail: "Fit keeps the whole picture, Fill crops to fill the window, Original Size does not scale and Stretch ignores the aspect ratio.", related: ["setting.defaultAspect"], platforms: .mac, reviewed: true),
+        setting("setting.defaultAspect", "Default aspect ratio", "Overrides the stream's own aspect ratio for everything.",
+                path: ["Settings", "Playback", "Video"], aliases: ["aspect ratio", "16:9", "4:3", "wrong shape", "squashed picture"],
+                detail: "Each channel or title can set its own from the player's Video menu.", related: ["setting.defaultVideoSize"], platforms: .mac, reviewed: true),
+        setting("setting.rememberPerTitle", "Remember settings for each title", "Brings back the audio language, subtitles, speed and timing you used the last time you played the same title or channel.",
+                path: ["Settings", "Playback", "Remembered choices"], aliases: ["remember audio and subtitles per title", "per title settings", "remember my choices", "remembered choices"], platforms: .all, reviewed: true),
+        setting("setting.opening", "Opening", "Chooses whether StreamSetu plays its opening when it starts.",
+                path: ["Settings", "Appearance", "Appearance"], reach: .settingsPage("Appearance"), aliases: ["startup animation", "intro animation", "replay the full story", "turn off the opening", "launch animation"],
+                detail: "Automatic plays the full story the first time and a short version after that. Off skips it, though What's New still shows after an update. Replay the Full Story plays it again.",
+                related: ["setting.reduceMotion"], platforms: .all, reviewed: true),
+        setting("setting.opensubtitlesKey", "OpenSubtitles account and key", "Your own free OpenSubtitles account and API key, used to fetch subtitles online.",
+                path: ["Settings", "Playback", "Subtitles online"], aliases: ["opensubtitles login", "subtitle api key", "opensubtitles key", "subtitle account"],
+                detail: "They stay in the Keychain on this device and are sent only to OpenSubtitles when you ask for subtitles. Setu never reads or changes keys.", related: ["setting.autoSubtitles"], safety: .never, guideOnly: true, reviewed: true),
+        setting("setting.downloadsDeleteWatched", "Delete a download after I have watched it", "Removes a saved movie or episode once you have watched it to the end, so the device does not fill up.",
+                path: ["Settings", "Library", "Downloads"], aliases: ["delete downloads after watching", "auto delete downloads", "clean up watched downloads"], detail: "It is off by default. On iPhone and iPad it is the Delete after watching switch at the top of the Downloads screen.",
+                related: ["setting.downloads", "diag.downloads"], reviewed: true),
+        setting("setting.downloadsWifiOnly", "Downloads only on Wi-Fi", "Keeps downloads off mobile data and hotspots.",
+                path: ["Downloads", "Only on Wi-Fi"], reach: AtlasReach.none, aliases: ["download on mobile data", "wifi only downloads", "cellular downloads", "downloads wont start on mobile data"],
+                detail: "It is on by default. It is the Only on Wi-Fi switch at the top of the Downloads screen.", related: ["setting.downloads", "diag.downloads"], platforms: [.iPhone, .iPad], reviewed: true),
+        setting("setting.artworkBackground", "Match artwork in the background", "Fills in posters, summaries, years and ratings your playlist lacks, using TMDB, in the background.",
+                path: ["Settings", "Library", "Artwork and details"], aliases: ["match artwork", "fetch posters", "stop matching artwork", "artwork in the background", "match now"],
+                detail: "Match now starts it at once, and Use mobile data or hotspots lets it run off Wi-Fi. Only the title and year are sent.", related: ["setting.tmdb", "setting.tmdbKey", "diag.artwork"], reviewed: true),
+        setting("setting.tmdbKey", "TMDB key", "Your own free TMDB key, used instead of the one built into the app. It is optional.",
+                path: ["Settings", "Library", "Artwork and details"], aliases: ["where do i set my tmdb key", "paste tmdb key", "tmdb api key", "own tmdb key"],
+                detail: "Paste the key and press Save; Remove puts back the built-in key. A TMDB key also lets the app look up an actor's full filmography. Setu never reads or changes keys.",
+                related: ["setting.tmdb", "setting.artworkBackground"], safety: .never, guideOnly: true, reviewed: true),
+        setting("setting.notificationPermission", "Notification permission", "Shows whether macOS lets StreamSetu send reminders, and where to allow it.",
+                path: ["Settings", "General", "Notifications"], aliases: ["allow notifications", "notifications denied", "reminders dont show", "macos notification permission"],
+                detail: "If it says denied, reminders cannot arrive even with Programme reminders on. Use Open Notification Settings, or System Settings, Notifications. If it has not been asked yet, press Allow Notifications.", related: ["setting.remindersEnabled"], platforms: .mac, reviewed: true),
+    ]
+
+    /// Per-playlist options. They live in the Playlists window, not in Settings.
+    private static let playlist: [AtlasEntry] = [
+        setting("setting.playlistEngine", "Player engine for one playlist", "Gives one playlist its own player engine, for a provider whose streams fail or stutter in the default one.",
+                path: ["Settings", "Library", "Manage", "Playlists", "Connection"], reach: .modal("playlists"), aliases: ["engine for one playlist", "use mpv for this provider", "playlist specific player", "provider needs mpv"],
+                detail: "Choose Use app setting to follow the app-wide choice. It beats the app-wide and per-kind choices.", related: ["setting.enginePreference", "setting.playlistBuffering"], platforms: .all, reviewed: true),
+        setting("setting.playlistBuffering", "Buffering for one playlist", "Gives one playlist its own buffering mode.",
+                path: ["Settings", "Library", "Manage", "Playlists", "Connection"], reach: .modal("playlists"), aliases: ["buffer for one provider", "playlist buffering", "stutter on one provider only"],
+                detail: "It applies to the next stream you start. Use app setting follows Settings, Playback, Buffering.", related: ["setting.bufferingMode", "setting.playlistEngine"], platforms: .all, reviewed: true),
+        setting("setting.userAgent", "User-Agent and headers for one playlist", "Makes one playlist present itself as another player, or send extra headers such as a Referer, for providers that refuse the default.",
+                path: ["Settings", "Library", "Manage", "Playlists", "Connection", "Advanced connection"], reach: .modal("playlists"), aliases: ["custom user agent", "change user agent", "referer header", "provider blocks the app", "pretend to be vlc", "playlist headers"],
+                detail: "Presets are in a menu. Leave the User-Agent empty for the default. Passwords and cookies cannot be added here. The next connection uses the change.", related: ["diag.source"], platforms: .all, reviewed: true),
+        setting("setting.guideShift", "Guide time shift", "Moves one playlist's guide earlier or later when its programmes are hours off.",
+                path: ["Settings", "Library", "Manage", "Playlists", "Guide"], reach: .modal("playlists"), aliases: ["guide times are wrong", "guide is hours off", "epg offset", "shift the guide", "programme times wrong"],
+                detail: "Steps are 30 minutes, up to 12 hours either way. Changing it refreshes that playlist's guide at once.", related: ["diag.guide", "setting.catchupClock"], platforms: .mac, reviewed: true),
+        setting("setting.catchupClock", "Catch-up provider's clock", "Sets the time zone your Xtream provider uses, so catch-up programmes start at the right moment.",
+                path: ["Settings", "Library", "Manage", "Playlists", "Guide"], reach: .modal("playlists"), aliases: ["catch up starts at the wrong time", "catchup offset", "past programme plays wrong part", "provider time zone"],
+                detail: "It only shows for Xtream playlists. Use this Mac's time zone sets it from the Mac.", related: ["setting.guideShift"], platforms: .mac, reviewed: true),
+    ]
+
+    /// The @AppStorage keys: each is written by a visible control.
+    private static let storage: [AtlasEntry] = [
+        setting("setting.storage.ipadFoldersLive", "Folder column in Live TV", "Shows or hides the folder column beside the channel list on iPad.",
+                path: ["Live TV", "Folders"], reach: AtlasReach.none, aliases: ["hide folders on ipad", "folder sidebar on ipad", "show categories column"],
+                detail: "It is the Hide folders button (sidebar icon) in the toolbar. Movies and Series keep their own copy of the same choice. It is remembered on this device.", platforms: [.iPad], reviewed: true),
+        setting("setting.storage.liveChannelListCollapsed", "Hide the channel list", "Hides or shows the channel list next to the picture in Live TV.",
+                path: ["Live TV", "Toolbar", "Hide channel list"], reach: AtlasReach.none, aliases: ["hide channel list", "show channel list", "collapse channels", "bigger live picture"],
+                detail: "It is a button in the Live TV toolbar. Dragging the divider changes the list width, which is also remembered.", related: ["setting.storage.liveChannelListWidth"], platforms: .mac, reviewed: true),
+        setting("setting.storage.liveChannelListWidth", "Width of the channel list", "How wide the channel list is in Live TV. Drag the divider to change it.",
+                path: ["Live TV", "Divider"], reach: AtlasReach.none, aliases: ["resize channel list", "wider channel list", "channel list width"],
+                detail: "The default is 300 points.", related: ["setting.storage.liveChannelListCollapsed"], platforms: .mac, reviewed: true),
+        setting("setting.storage.liveTVTiles", "Channels as tiles or a list", "Switches Live TV between small tiles and a plain list.",
+                path: ["Live TV", "Show as list or tiles"], reach: AtlasReach.none, aliases: ["channel tiles", "show channels as a list", "grid of channels", "list view for live tv"],
+                detail: "Tiles are the default. It is the list or grid button at the top of Live TV, and it is a choice for this device.", platforms: [.iPhone, .iPad], reviewed: true),
+        setting("setting.storage.playerControlSeconds", "Hide controls after", "How long the player's controls stay on screen before they hide.",
+                path: ["Player", "Options", "Controls"], reach: AtlasReach.none, aliases: ["controls disappear too fast", "how long controls stay", "hide controls after", "player controls timeout"],
+                detail: "Choices are 3 s, 5 s, 8 s or Never. Open Options in the player to change it.", platforms: [.iPhone, .iPad], reviewed: true),
+        setting("setting.storage.playerFillScreen", "Fit or fill the screen", "Remembers whether the picture is fitted or fills the screen, for the next video.",
+                path: ["Player", "Options", "Picture", "Size"], reach: AtlasReach.none, aliases: ["fill the screen", "remove black bars", "zoom to fill", "fit or fill", "crop video"],
+                detail: "Fit shows the whole picture; Fill crops it. Each title also remembers its own choice, and the last choice is used for a title you have not set.", platforms: [.iPhone, .iPad], reviewed: true),
+        setting("setting.storage.playerLeftHanded", "Left-handed layout", "Moves the channel side panel and swaps the double-tap skip sides in the player.",
+                path: ["Player", "Options", "Controls"], reach: AtlasReach.none, aliases: ["left handed mode", "swap sides", "left hand player", "move the channel panel"],
+                detail: "It is the Left-handed layout switch in the player's Options.", platforms: [.iPhone, .iPad], reviewed: true),
+        setting("setting.storage.playerStreamInfo", "Stream details on the picture", "Shows small chips with the stream's details over the picture while the controls are hidden.",
+                path: ["Player", "Options", "Controls"], reach: AtlasReach.none, aliases: ["show stream details", "stream info chips", "hide the info on the video", "resolution on screen"],
+                detail: "It is the Show stream details on the picture switch in the player's Options. It is on by default.", related: ["setting.showDiagnosticsOverlay"], platforms: [.iPhone, .iPad], reviewed: true),
+        setting("setting.storage.playerTourSeen", "Player quick tour", "Remembers that you have seen the quick tour of the player's gestures, so it is not shown again.",
+                path: ["Player"], reach: AtlasReach.none, aliases: ["quick tour", "player gestures tour", "show the tour again", "gesture help"],
+                detail: "The tour appears a couple of seconds into the first video. Tap anywhere to close it. It cannot be reopened from a setting.", platforms: [.iPhone, .iPad], reviewed: true),
+    ]
+
+    /// Controls that keep their state somewhere other than AppSettings.
+    private static let elsewhere: [AtlasEntry] = [
+        setting("setting.aiProvider", "AI assistant provider", "Chooses the AI service for harder requests in search and Setu, and holds its key. It is optional.",
+                path: ["Settings", "Library", "AI assistant"], aliases: ["ai key", "choose an ai", "apple intelligence", "gemini key", "openai key", "ollama address", "add an api key for the assistant"],
+                detail: "The choices are Apple Intelligence on the device, Gemini, Groq, NVIDIA, OpenRouter, Claude, OpenAI, Ollama Cloud or your own Ollama. Setu answers questions about the app with none of them. Keys stay in the Keychain. Setu never reads or changes keys. On iPhone and iPad it is under More, Trakt, Debrid and AI.",
+                related: ["setting.integrations", "setting.askAIJudge"], safety: .never, guideOnly: true, reviewed: true),
+        setting("setting.trakt", "Trakt", "Marks what you watch on Trakt and can add your Trakt watchlist to Watch Later, using your own free Trakt app keys.",
+                path: ["Settings", "Library", "Trakt"], aliases: ["trakt sign in", "trakt scrobble", "import trakt watchlist", "connect trakt", "trakt client id"],
+                detail: "Nothing is sent for a Watch Privately play or in a kids profile. Setu never reads or changes keys or sign-in.", related: ["setting.integrations"], safety: .never, guideOnly: true, reviewed: true),
+        setting("setting.debrid", "Debrid", "Plays a link from a file host through your own debrid account (Real-Debrid, AllDebrid or Premiumize).",
+                path: ["Settings", "Library", "Debrid"], aliases: ["real-debrid token", "alldebrid", "premiumize", "play a debrid link", "debrid api token"],
+                detail: "The token stays in the Keychain and is sent only to the service you choose. Setu never reads or changes tokens.", related: ["setting.integrations"], safety: .never, guideOnly: true, reviewed: true),
+        setting("setting.scheduledRecordings", "Scheduled recordings", "Lists the recordings you set up for later and lets you remove them or stop a repeat.",
+                path: ["Settings", "Library", "Recordings"], aliases: ["scheduled recording", "record a programme later", "stop repeating recording", "cancel a recording", "recording list"],
+                detail: "The list only appears once you have scheduled one. A scheduled recording opens its own connection to your provider, and the app has to be open at that time. The Mac stays awake while it records.",
+                related: ["setting.recordings", "diag.recording"], platforms: .mac, reviewed: true),
+        setting("setting.askAIJudge", "Let the AI pick the best of the matches", "When an AI is connected, lets it choose the best match from search results and say why.",
+                path: ["Settings", "Library", "AI assistant"], aliases: ["ai judge", "ai picks best match", "explain why a title matched"], detail: "It is on by default and only matters when an AI is set up. On iPhone and iPad it is in the same AI assistant section, under More, Trakt, Debrid and AI.",
+                related: ["setting.aiProvider"], reviewed: true),
+    ]
+
+    // MARK: not preferences
+
+    /// Stored values that are not preferences, each with the reason Setu has no entry. The coverage test reads this list.
+    static let exempt: [String: String] = [
+        "sidebarWasCollapsed": "State the sidebar records for itself, used only when Sidebar at launch is Remember last state. Not something anyone sets.",
+        "lastAutoBackup": "A timestamp the automatic backup writes. Not a preference.",
+        "lastChannelID": "The live channel last played, written by playback. Not a preference; Resume the last channel is the setting that reads it.",
+    ]
+}
