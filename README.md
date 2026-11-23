@@ -12,7 +12,7 @@ A native player for the IPTV playlists and media servers you already have. It ru
 
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/screenshots/mac-slideshow.gif" alt="StreamSetu on Mac: Home, Live TV, Movies and Series in turn" width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/mac-home.png" alt="StreamSetu on Mac: Home" width="100%"></td>
     <td width="50%" valign="top"><img src="docs/screenshots/firetv-home-sidebar.png" alt="StreamSetu on Fire TV: Home with the sidebar" width="100%"></td>
   </tr>
   <tr>
