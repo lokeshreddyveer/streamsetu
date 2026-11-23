@@ -15,7 +15,7 @@ APP_DIR = "StreamSetu"
 PROJECT = "StreamSetu"
 BUNDLE_ID = "app.streamsetu.ios"
 DEPLOYMENT = "18.0"
-VERSION = "1.3"
+VERSION = "1.4"
 BUILD = "1"  # placeholder for local builds only: ios/Scripts/testflight.sh overrides CURRENT_PROJECT_VERSION with the real build number (stored in ~/Library/Application Support/StreamSetuRenew/testflight/last-build)
 
 

@@ -231,6 +231,7 @@ Services/SyncScheduler.swift
 Utilities/AudioDevices.swift
 Utilities/CollectionExtensions.swift
 Utilities/DurationFormatter.swift
+Utilities/LatestLoad.swift
 Utilities/Locked.swift
 Utilities/OffMain.swift
 Utilities/Logger.swift
@@ -451,3 +452,6 @@ Data/Repositories/SQLiteGuideProgrammes.swift
 Features/TVGuide/Components/GuideFreshnessBanner.swift
 Services/Guide/GuideReminders.swift
 Features/TVGuide/Components/GuideRemindersList.swift
+Application/ScreenRetention.swift
+Utilities/PerfProbe.swift
+Services/PageSnapshotCache.swift
