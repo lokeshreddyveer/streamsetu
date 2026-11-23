@@ -22,43 +22,25 @@
 
 ## 🖼️ Screenshots
 
-<p align="center"><img src="docs/screenshots/mac-slideshow.gif" alt="StreamSetu on Mac: Home, Live TV, Movies and Series in turn" width="100%"><br><sub>Mac</sub><br><sub><a href="docs/SCREENSHOTS.md#mac">All Mac screenshots</a></sub></p>
+### 🖥️ Mac
 
-<table>
-  <tr>
-    <td width="50%" valign="top"><img src="docs/screenshots/firetv-home-sidebar.png" alt="StreamSetu on Fire TV: Home with the sidebar" width="100%"></td>
-    <td width="50%" valign="top"><img src="docs/screenshots/firetv-live-channels.png" alt="StreamSetu on Fire TV: Live TV with folders, channels and a live preview" width="100%"></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2"><sub>Fire TV and Android TV</sub><br><sub><a href="docs/SCREENSHOTS.md#fire-tv-and-android-tv">All Fire TV and Android TV screenshots</a></sub></td>
-  </tr>
-</table>
+<p align="center"><img src="docs/screenshots/mac-slideshow.gif" alt="StreamSetu on Mac, from the opening screen to Home, Live TV, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#mac">All Mac screenshots →</a></sub></p>
 
-<table>
-  <tr>
-    <td width="25%" valign="top"><img src="docs/screenshots/ios-home.png" alt="StreamSetu on iPhone: Home" width="100%"></td>
-    <td width="25%" valign="top"><img src="docs/screenshots/ios-live.png" alt="StreamSetu on iPhone: Live TV channel grid" width="100%"></td>
-    <td width="25%" valign="top"><img src="docs/screenshots/ios-movies.png" alt="StreamSetu on iPhone: Movies" width="100%"></td>
-    <td width="25%" valign="top"><img src="docs/screenshots/ios-series.png" alt="StreamSetu on iPhone: Series" width="100%"></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="4"><sub>iPhone</sub><br><sub><a href="docs/SCREENSHOTS.md#iphone">All iPhone screenshots</a></sub></td>
-  </tr>
-</table>
+### 📺 Fire TV and Android TV
 
-<p align="center"><img src="docs/screenshots/ipad-home.png" alt="StreamSetu on iPad: Home with the sidebar" width="45%"><br><sub>iPad</sub><br><sub><a href="docs/SCREENSHOTS.md#ipad">All iPad screenshots</a></sub></p>
+<p align="center"><img src="docs/screenshots/firetv-slideshow.gif" alt="StreamSetu on Fire TV: Home with the sidebar, Live TV, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#fire-tv-and-android-tv">All Fire TV and Android TV screenshots →</a></sub></p>
 
-<table>
-  <tr>
-    <td width="25%" valign="top"><img src="docs/screenshots/android-home.png" alt="StreamSetu on an Android phone: Home" width="100%"></td>
-    <td width="25%" valign="top"><img src="docs/screenshots/android-live.png" alt="StreamSetu on an Android phone: Live TV channel grid" width="100%"></td>
-    <td width="25%" valign="top"><img src="docs/screenshots/android-movies.png" alt="StreamSetu on an Android phone: Movies" width="100%"></td>
-    <td width="25%" valign="top"><img src="docs/screenshots/android-series.png" alt="StreamSetu on an Android phone: Series" width="100%"></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="4"><sub>Android phone</sub><br><sub><a href="docs/SCREENSHOTS.md#android-phone">All Android phone screenshots</a></sub></td>
-  </tr>
-</table>
+### 📱 iPhone
+
+<p align="center"><img src="docs/screenshots/iphone-strip.png" alt="StreamSetu on iPhone: Home, Live TV, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#iphone">All iPhone screenshots →</a></sub></p>
+
+### 📱 iPad
+
+<p align="center"><img src="docs/screenshots/ipad-home.png" alt="StreamSetu on iPad: Home with the sidebar" width="50%"><br><sub><a href="docs/SCREENSHOTS.md#ipad">All iPad screenshots →</a></sub></p>
+
+### 🤖 Android phone and tablet
+
+<p align="center"><img src="docs/screenshots/android-strip.png" alt="StreamSetu on an Android phone: Home, Live TV, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#android-phone">All Android phone screenshots →</a></sub></p>
 
 All pictures for every app: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
 
