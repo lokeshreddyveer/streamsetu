@@ -47,11 +47,13 @@ import Foundation
         #expect(reg.definitions.dropFirst().allSatisfy { $0.capabilities.protectedPlayback.status == .manualVerificationRequired })
     }
 
-    @Test func unverifiedSignInHostsAreDeclaredButInactive() {
+    @Test func signInHostsAreActiveExceptTheGuesses() {
         func rule(_ id: ProviderID, _ suffix: String) -> HostRule? { reg.definition(for: id)?.urlPolicy.hostRules.first { $0.suffix == suffix } }
-        for (id, s) in [(ProviderID.primevideo, "amazon.com"), (.appletv, "appleid.apple.com"), (.appletv, "idmsa.apple.com")] {
-            #expect(rule(id, s)?.role == .auth && rule(id, s)?.active == false, Comment(rawValue: s))
-        }
+        let active: [(ProviderID, String)] = [(.primevideo, "amazon.com"), (.primevideo, "amazon.in"), (.disneyplus, "disneyid.com"), (.disneyplus, "jiohotstar.com"),
+            (.disneyplus, "hotstar.com"), (.hulu, "disneyid.com"), (.hbomax, "auth.max.com"), (.appletv, "appleid.apple.com"), (.appletv, "idmsa.apple.com"), (.appletv, "account.apple.com")]
+        for (id, s) in active { #expect(rule(id, s)?.role == .auth && rule(id, s)?.active == true, Comment(rawValue: s)) }
+        for (id, s) in [(ProviderID.hulu, "disneyplus.com"), (.paramountplus, "cbs.com")] { #expect(rule(id, s)?.role == .auth && rule(id, s)?.active == false, Comment(rawValue: s)) }
+        for def in reg.definitions { for r in def.urlPolicy.hostRules { #expect(r.suffix.contains(".") && !r.suffix.contains("*") && r.suffix != "com") } }
         #expect(rule(.youtube, "youtu.be")?.role == .redirectOnly && rule(.hbomax, "max.com")?.role == .redirectOnly)
         #expect(reg.definition(for: .youtube)?.urlPolicy.hostRules.contains { $0.suffix.contains("google") } == false)
     }

@@ -33,16 +33,35 @@ import Foundation
         }
     }
 
-    @Test func inactiveSignInHostsBehaveAsBlockedUntilConfirmed() {
-        #expect(d(policy(.appletv), "https://appleid.apple.com/auth") == .openExternally)
-        #expect(d(policy(.appletv), "https://idmsa.apple.com/") == .openExternally)
-        #expect(d(policy(.primevideo), "https://www.amazon.com/ap/signin") == .openExternally)
-        #expect(!policy(.appletv).isAllowedHost("appleid.apple.com"))
-        var p = policy(.appletv)          // flipping the one flag is the whole change
-        p.hostRules = p.hostRules.map { var r = $0; if r.suffix == "appleid.apple.com" { r.active = true }; return r }
-        #expect(d(p, "https://appleid.apple.com/auth") == .allowInApp)
-        #expect(d(p, "https://idmsa.apple.com/") == .openExternally)
+    @Test func signInStartHostsPassAsMainFrameHTTPSOnly() {
+        let starts: [(ProviderID, String)] = [
+            (.primevideo, "https://www.amazon.com/ap/signin"), (.primevideo, "https://www.amazon.in/ap/signin"),
+            (.disneyplus, "https://www.disneyplus.com/login"), (.disneyplus, "https://www.jiohotstar.com/login"), (.disneyplus, "https://www.hotstar.com/in"),
+            (.disneyplus, "https://disneyid.com/login"), (.hulu, "https://auth.hulu.com/web/login"), (.hulu, "https://disneyid.com/login"),
+            (.hbomax, "https://auth.max.com/login"), (.hbomax, "https://play.hbomax.com/signIn"), (.peacock, "https://www.peacocktv.com/signin"),
+            (.peacock, "https://oauth.id.peacocktv.com/x"), (.paramountplus, "https://www.paramountplus.com/account/signin/"),
+            (.appletv, "https://appleid.apple.com/auth"), (.appletv, "https://idmsa.apple.com/"), (.appletv, "https://account.apple.com/sign-in"),
+            (.crunchyroll, "https://sso.crunchyroll.com/login")]
+        for (id, u) in starts {
+            #expect(d(policy(id), u) == .allowInApp, Comment(rawValue: u))
+            #expect(d(policy(id), u.replacingOccurrences(of: "https://", with: "http://")) != .allowInApp, Comment(rawValue: u))
+            #expect(d(policy(id), u.replacingOccurrences(of: "https://", with: "https://u:p@")) == .block)
+            #expect(d(policy(id), "https://" + (URL(string: u)!.host!) + ".evil.test/") == .openExternally, Comment(rawValue: u))
+        }
+        #expect(d(policy(.primevideo), "https://evilamazon.com/ap/signin") == .openExternally)
+        #expect(d(policy(.primevideo), "https://amazon.com.evil.test/ap/signin") == .openExternally)
+        #expect(d(policy(.primevideo), "https://www.amazon.com@evil.test/") == .block)
+        #expect(d(policy(.primevideo), "http://www.amazon.com/ap/signin") != .allowInApp)
+        #expect(d(policy(.primevideo), "https://www.amazon.co.uk/ap/signin") == .openExternally)
+        #expect(d(policy(.appletv), "https://www.apple.com/") == .openExternally)
+        #expect(d(policy(.hulu), "https://www.disneyplus.com/login") == .openExternally)       // still a guess: blocked, host shown in the notice
+        #expect(d(policy(.paramountplus), "https://www.cbs.com/") == .openExternally)
     }
+
+    @Test func youtubeStaysWithoutGoogleSignIn() {
+        for h in ["accounts.google.com", "google.com", "accounts.youtube.com.evil.test"] { #expect(d(policy(.youtube), "https://\(h)/signin") == .openExternally) }
+    }
+
 
     @Test func redirectOnlyHostsAreReachedByRedirectNeverByLink() {
         for (id, host) in [(ProviderID.youtube, "youtu.be"), (.hbomax, "max.com")] {
