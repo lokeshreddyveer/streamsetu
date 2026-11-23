@@ -62,51 +62,99 @@ Every download is on the [Releases](../../releases) page with its SHA-256 checks
 
 ## ✨ Features
 
-The full table for every app is in [docs/FEATURES.md](docs/FEATURES.md).
+The full table, app by app, is in [docs/FEATURES.md](docs/FEATURES.md). Where a feature is on some apps only, it says which.
 
-### 🔌 Bring what you have
+### 🔌 Connections
 
 | | |
 |---|---|
-| 🔑 **Xtream logins** | Sign in once and your live TV, movies and series appear. |
-| 📄 **M3U links and files** | Use a link, or a file from the device. |
+| 🔑 **Xtream Codes, M3U and files** | Sign in with Xtream Codes, use an M3U link, or open an M3U file from the device. |
 | 🗄️ **Media servers** | Jellyfin, Emby and Plex, next to your playlists. |
 | 📡 **Tuners and receivers** | HDHomeRun, TVHeadend and Enigma2. |
-| 📁 **Files and shares** | WebDAV and local video files. |
-| 🌐 **Stalker portals** | On Mac, Android and Fire TV. |
+| 📁 **Files and shares** | WebDAV servers and local video files. |
+| 🌐 **Stalker and Ministra portals** | On Mac, Android phone and tablet, Fire TV and Android TV. |
+| 🧰 **Per-connection settings** | A custom User-Agent, extra request headers and a proxy for each connection. |
+| 🛡️ **App DNS** | Encrypted DNS for StreamSetu only, from a public provider or your own. It is not a VPN. |
+| 🗃️ **All playlists together** | Keep several connections and browse them as one combined library. |
 
 ### 📺 Watch
 
 | | |
 |---|---|
-| 📡 **Live TV** | Groups, channel numbers, favourites and your own folders. |
-| 🗓️ **TV Guide and catch-up** | See what is on, and go back to what you missed. |
-| 🎬 **Movies and series** | Resume where you stopped, jump to the next episode, best version first. |
-| 🔍 **Fast search** | One search across channels, films, series and the guide. |
-| 🪟 **Multi-View** | Watch several channels at once, on the apps that have it. |
+| 📡 **Live TV** | Groups, channel numbers, favourites, and a channel that stops working tries the same channel in your other playlists. |
+| 🗓️ **TV Guide and catch-up** | An XMLTV guide, past programmes through catch-up, and a live programme that began a while ago can start from its beginning. |
+| 📻 **Radio mode** | Listen to radio channels as audio. |
+| 🎬 **Movies and series** | Resume where you stopped, Up Next, and the best version first: 4K, then 1080p, never a cinema recording first, with the next best tried if one does not play. |
+| 🪟 **Multi-View** | Watch several channels at once. It warns before opening more streams than your provider allows. |
+| 🖼️ **Picture in Picture and casting** | Picture in Picture on every app except Fire TV and Android TV. AirPlay on Mac, iPhone and iPad, and casting on Android phones. |
+| 🎧 **Sound in the background** | Sound keeps playing with lock-screen controls and a mini player on iPhone, iPad and Android phone, and with a small now-playing box while you browse. |
+| ⏭️ **Skip intro, recap and credits** | One tap to skip, plus a sleep timer and go to an exact time. |
+| 🔎 **Search from the player** | Search the whole catalog without leaving the video, with All, Movies, Series and Live TV. |
+| 💬 **Subtitles and sound** | Subtitles from a file or from the subtitle service with your own free key, fetched on their own when a title has none in your language. Size, colour, position and background, and subtitle and sound timing. |
+| 🎚️ **Picture and volume** | Brightness, contrast, saturation and gamma, a volume boost above 100%, and a choice of resolution when a stream offers several. |
+| 🧠 **Remembered settings** | Audio, subtitles, speed and timing are remembered for each title or channel. |
+| 📊 **Stats overlay** | Decoder, bitrate, buffer and dropped frames, and a picture of the current frame saved on request. |
+| 👆 **Gestures** | Swipe to change channel on iPhone and iPad, and double-tap skip, brightness and volume on iPhone, iPad and Android phone. |
+| 🔁 **Another app** | Play a stream in another player app, or share a channel, movie or series as a link. |
+| 🎞️ **Player engines** | Apple's AVPlayer or Android's ExoPlayer for common formats, and mpv for MKV, AVI, RTSP and unusual codecs. Choose a different engine for Live TV, movies, series and past programmes. |
 
-### ⚙️ Players
-
-| | |
-|---|---|
-| 🍎 **Native player** | Apple's AVPlayer on Apple devices, ExoPlayer on Android. Best for common formats. |
-| 🎞️ **mpv** | For MKV, AVI, RTSP and unusual codecs. |
-
-### 🔒 Your data
-
-| | |
-|---|---|
-| 🙈 **Private by design** | No ads, no analytics, no account. |
-| ☁️ **Optional sync** | iCloud or Wi-Fi sync, only if you turn it on. |
-| 🛡️ **App DNS** | Optional encrypted DNS for StreamSetu only. It is not a VPN. |
-
-### 🧩 Extras
+### 🗂️ Your library
 
 | | |
 |---|---|
-| 🤖 **Setu assistant** | Optional help inside the app. |
-| 🕘 **Watch history and artwork** | Optional watch-history service and details service artwork (built-in key, or your own). |
-| ⏺️ **Recording and reminders** | Record, and get reminded before a programme starts. |
+| ⭐ **Favourites and history** | Favourites in your own order, Watch Later, Recently Watched and Continue Watching, with a green tick on watched titles and a bar on started ones. |
+| 🗂️ **Collections and folders** | Collections of your own. Folders you can reorder, hide, rename and lock with a PIN. A Folders view shows one row per folder. |
+| 🔍 **Search that works offline** | Search by title, actor or director, or by a sentence such as "telugu movies 2024 unwatched". |
+| 🧩 **Filters and smart lists** | Filter by language, quality, rating, decade and watch status. Smart lists show Unwatched, Unwatched favourites and Added in 30 days (Mac, iPhone and iPad); smart collections of your own on Fire TV and Android TV. |
+| 🆕 **New episodes** | A badge on series you watch, and the next episode of your series on Tonight. |
+| 📥 **Queue** | Play Next and Add to Queue. |
+| 🏷️ **Quality and sound badges** | 4K, HDR, Dolby Vision, Atmos and 5.1 on movie and series pages. |
+| 📚 **Title pages** | Reworked pages for movies and series, with a cast row and photos, a person screen with their titles in your library, other languages and versions, an "In folder" link, and the same stars on a title everywhere. |
+| 🎯 **Suggestions** | A For You row, Smart Mix Home rows (Top This Week, Trending in Your Library, Because You Watched, Rediscover), genre shelves, a timeline of a film's whole franchise, and More like this, each with its reason. Don't Recommend This keeps a title out. |
+| 🖼️ **Artwork and details** | Better matching of titles to artwork and details from the details service, which works out of the box and can be turned off. Designed tiles for titles with no poster. |
+| 🌙 **Tonight** | What is on now and next on your favourite channels, what is set to record, and the next episode of your series. |
+| 🔔 **Guide alerts and reminders** | Add a word such as a sport, a team or a show and get a reminder when a programme with it is coming up, and set reminders for programmes. |
+| ⏺️ **Recording** | Record a live channel and schedule a recording from the TV Guide on Mac, Android and TV. Record a programme every week on Mac while the app is open. |
+| ⬇️ **Downloads** | Watch without a connection, with a progress ring, and an Offline Home that shows the downloads that still play. They can delete themselves after you watch them. |
+| 🎙️ **Podcasts** | Search, follow and play, with your place kept. |
+| 📈 **Your week and your usual time** | Time watched and the most watched title each week, an optional Sunday evening notification, and a one-tap play for what you often put on around the same hour. |
+| 📋 **Channel tools** | Hide, rename and check channels, a Channel Manager and a health check. Watch statistics, and subscription end dates for playlists that report them. |
+| 🙈 **Watch Privately** | Play one title, series or channel without leaving history, resume points, statistics or anything to sync. |
+| 🔐 **Locked and hidden folders** | Left out of counts, search, recommendations, widgets, Watch Next, cast and similar titles, and never sent to the details service. |
+| 📱 **Widgets and SharePlay** | A Continue Watching widget and a download Live Activity on iPhone, and SharePlay to watch a film or a live channel together over FaceTime on iPhone and iPad. |
+
+### 👪 Profiles and control
+
+| | |
+|---|---|
+| 👤 **Profiles** | Up to four people on one device, each with their own favourites, collections, history and resume points, and PINs. |
+| 🧒 **Kids profile** | Keeps locked folders hidden, with viewing limits: minutes a day and night hours, and the profile's PIN adds time. |
+| 🛂 **Parental controls** | Restrict what each profile can see. |
+| 🧾 **Privacy report** | What is kept on the device and what can leave it, with each item's current state. |
+| 🎨 **Look and feel** | Themes and accent colours, screen reader labels, an opening where the television tunes in (Automatic or Off, and a still picture with Reduce Motion), and Hindi and Telugu on the main screens. |
+
+### 🤖 Assistant and search
+
+| | |
+|---|---|
+| 🤖 **Setu assistant** | A chat bubble on Mac, iPhone and iPad that finds something to watch, answers about your screen, settings and playback problems, and offers actions you tap to confirm. It is hidden in kids mode. |
+| 🔌 **Bring your own AI** | Use Apple Intelligence where it is available, a hosted service with your own key, or a server on your network. Each shows its price and free limit. |
+| ✨ **Ask from the search box** | Ask AI when a request finds nothing, and use commands: go to a screen, play, resume, last channel, add or remove a favourite or Watch Later. |
+| 🗣️ **Sort and filter words** | "Top rated telugu movies", "newest series", "comedy not horror", and moods such as "date night" or "something short". |
+| 🕘 **Watch-history and linked accounts** | Tell the watch-history service what you watch and copy your watchlist into Watch Later, and play linked-account links with your own token. |
+
+### ☁️ Sync and updates
+
+| | |
+|---|---|
+| ☁️ **iCloud sync** | Between your Apple devices. |
+| 📶 **Sync on this network** | Over Wi-Fi with no account, and see what is playing on your other devices with Play here. |
+| 💾 **Backup and restore** | Including automatic weekly backups. |
+| 🔄 **Refresh** | Playlists refresh when the app opens, and while the app is closed on iPhone, iPad, Android and TV. |
+| 🗣️ **Siri, Shortcuts and Spotlight** | Siri and Shortcuts on iPhone and iPad, and Spotlight finds StreamSetu's screens and settings on Mac and iPhone. |
+| 🔗 **Links** | `streamsetu://` links play a channel or a movie, search, open a tab, a screen or a setting, pause, resume and set the sleep timer (play and search on Android and TV). |
+| 📺 **Android TV home** | A Continue Watching row on the Android TV home screen. |
+| ⬆️ **Updates** | The Mac updates itself. iPhone and iPad update through the App Store or TestFlight. Android and TV check for a new version and ask before installing. |
 
 ### 🍏 Streaming services in the Mac app
 
