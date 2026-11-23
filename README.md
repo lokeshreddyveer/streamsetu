@@ -74,7 +74,7 @@ Every download is on the [Releases](../../releases) page with its SHA-256 checks
 - **Fast search** across channels, films, series and the guide.
 - **Two players:** Apple's AVPlayer or Android's ExoPlayer for the common formats, and mpv for MKV, AVI, RTSP and unusual codecs.
 - **Your data stays with you:** no ads, no analytics, no account. iCloud and Wi-Fi sync are optional. Optional **App DNS** (encrypted DNS for StreamSetu only, not a VPN).
-- **Streaming services in the Mac app:** a Services menu that can be pinned to the top bar opens a streaming service's own site inside the app. You sign in with your own account, and StreamSetu does not sell or include any service.
+- **Streaming services in the Mac app:** a Services menu opens ten streaming services' own sites inside StreamSetu, each with its own icon in a themed panel. Pin the ones you use to the top bar and move them left or right; switching service stops the sound of the one you left. Each service keeps its own sign-in and data, separate from the others, and **Clear Data** in Settings or the right-click menu on a pinned service clears just that one. If a service does not load, a message says why. An optional page setting for one service (off by default, asked first) can skip its video ads and community-marked sponsor segments. You sign in with your own account, and StreamSetu does not sell or include any service.
 - **Optional extras:** the Setu assistant, the watch-history service, the details service artwork (built-in key, or your own), recording and reminders.
 
 The full feature table for every app is in [docs/FEATURES.md](docs/FEATURES.md).
