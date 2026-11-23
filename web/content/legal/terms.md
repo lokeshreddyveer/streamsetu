@@ -1,6 +1,6 @@
 # Terms of Use
 
-Last updated: 31 October 2026
+Last updated: 22 November 2026
 
 By using StreamSetu you agree to these terms.
 

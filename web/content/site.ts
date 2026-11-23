@@ -18,8 +18,8 @@ export const platforms = [
 
 export const highlights = [
   { title: "Everything in one library", text: "Add as many playlists and servers as you like and see them as one library. A film that sits in two of them is one film to you." },
-  { title: "Find it in a second", text: "Search runs on your own device, so it is quick and works offline. Type \"hindi movies 2024\" and it understands." },
-  { title: "Nothing leaves your device", text: "No account to make, nothing to sign in to, no ads and no tracking. Your library, logins and history stay on your device. The few optional extras that contact someone else, such as iCloud sync, TMDB artwork or subtitles, are off until you turn them on, and the privacy policy lists each one." },
+  { title: "Find it in a second", text: "Search runs on your own device, so it is quick and works offline. Type \"action movies 2024\" and it understands." },
+  { title: "Nothing leaves your device", text: "No account to make, nothing to sign in to, no ads and no tracking. Your library, logins and history stay on your device. The few optional extras that contact someone else, such as iCloud sync, artwork lookups or subtitles, are off until you turn them on, and the privacy policy lists each one." },
 ];
 
 export const features = [
@@ -28,11 +28,11 @@ export const features = [
   { title: "Search that understands you", text: "One search over channels, movies, series, episodes and the guide. It fixes a misspelt word and works without a connection. It is also inside the player." },
   { title: "A player with depth", text: "Audio and subtitle choices, speed, picture size, timing, a sleep timer, go to an exact time, Skip Intro, picture tuning, volume boost and a stats overlay for those who like the numbers." },
   { title: "Remembers your choices", text: "Audio language, subtitles, speed and timing come back the next time you play the same title or channel." },
-  { title: "Subtitles from OpenSubtitles", text: "Use your own free key to search and download subtitles without leaving the player." },
+  { title: "Online subtitles", text: "Use your own free key to search and download subtitles without leaving the player." },
   { title: "Multi-View", text: "Watch up to four live channels side by side, with the sound on one at a time." },
   { title: "Folders, favourites and lists", text: "Sort the provider's folders your way, lock one with a PIN, keep favourites, Watch Later and collections, and clear any of them in one go." },
   { title: "A smarter Home", text: "Top This Week, Trending in Your Library, Because You Watched and Rediscover, picked from your own library, with a Shuffle button. Movies, Series and Live TV open as one row per folder, and a title shows its other languages and versions." },
-  { title: "Cast and privacy", text: "A cast row with photos (with your own free TMDB key) and a page for each person. Locked and hidden folders stay out of search, recommendations, widgets and anything sent to TMDB." },
+  { title: "Cast and privacy", text: "A cast row with photos (from an online details service) and a page for each person. Locked and hidden folders stay out of search, recommendations, widgets and anything sent to an online service." },
   { title: "Hindi and Telugu", text: "The main screens are available in Hindi and Telugu as well as English." },
 ];
 

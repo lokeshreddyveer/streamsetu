@@ -51,6 +51,8 @@ More detail is in [`android/ARCHITECTURE.md`](../android/ARCHITECTURE.md), and w
 |---|---|---|
 | Android, debug | `cd android && ./gradlew :app:assembleDebug` | JDK 17, Android SDK |
 | Android, tests | `cd android && ./gradlew :app:testDebugUnitTest :data:testDebugUnitTest :core-network:testDebugUnitTest :core-media:testDebugUnitTest` | same |
+
+Android test JVMs are reused for 8 test classes (faster, about 45 percent). `-PtestForkEvery=1` gives one fresh JVM per class, the slow, strictest setting; use it to investigate a suspected order-dependent failure.
 | Android, signed release | `cd android && ./build-release.sh 0.13.0 130` (version name, version code) | your own `android/keystore.properties`, storeFile, storePassword, keyAlias, keyPassword. Without it the APK is debug-signed and for testing only. |
 | Mac, tests | `cd macos && Scripts/run-tests.sh` | Xcode command line tools |
 | Mac, release | `cd macos && Scripts/release-signed.sh 2.8.0 280` (builds, signs, notarizes) | libmpv in `macos/third_party/`, not in this repository, a Developer ID certificate, a notarization profile |

@@ -18,7 +18,7 @@ and works offline for browsing.
 - **Live extras:** channel numbers (type to jump), several named favourite lists, sleep timer, radio mode, live rewind, catch-up, multi-view (up to four channels), automatic fallback to another quality variant
 - **Per-playlist control:** guide time shift, custom User-Agent and headers, engine and buffering overrides
 - **Add anywhere:** drop an M3U file or link on the window, or open a `streamsetu://add?url=…` link; `streamsetu://play?channel=…` and friends for Shortcuts
-- **Insight:** viewing statistics (computed locally), artwork and summaries from TMDB with your own API key
+- **Insight:** viewing statistics (computed locally), artwork and summaries from the details service from the details service (a built-in key, or your own)
 - **Look:** 25 themes plus a custom theme editor, 21 accents
 - **Private:** no accounts, no server; logins are kept in an encrypted vault bound to this Mac; local automatic backups
 

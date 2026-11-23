@@ -49,10 +49,10 @@ Logins and tokens (Keychain), artwork (disk cache under `~/Library/Caches/REDDY`
 
 - **v5** `folder_order`: the order the person arranged sidebar folders in.
 - **v6** `locked_categories` (folders behind the parental PIN) and `channels.archive_days` (catch-up depth the provider offers).
-- **v7** `metadata_matches`: which movies and series were looked up on TMDB (`tmdb_id` NULL = no confident match; retried after 30 days).
+- **v7** `metadata_matches`: which movies and series were looked up on the details service (`tmdb_id` NULL = no confident match; retried after 30 days).
 
 - **v8** iCloud sync: a change log filled by triggers, the record of what was synced, and the sync engine's state.
-- **v9** `title_details`: what TMDB told us about a title (cast, trailers, recommendations), kept so the page opens at once and offline. Nothing from TMDB is kept longer than 180 days (see v20).
+- **v9** `title_details`: what the details service told us about a title (cast, trailers, recommendations), kept so the page opens at once and offline. Nothing from the details service is kept longer than 180 days (see v20).
 - **v10** the sync triggers rebuilt with an upsert that an outer statement cannot override.
 - **v11** `new_episodes`: episodes that appeared in a series being watched after its episode list was stored.
 - **v12** `people` and `people_done`: who is in each title (cast, directors), so a person can be searched for.
@@ -63,6 +63,27 @@ Logins and tokens (Keychain), artwork (disk cache under `~/Library/Caches/REDDY`
 - **v17** viewing sessions travel through iCloud (triggers for `playback_sessions`; existing sessions are queued).
 - **v18** `catalog_fingerprints`: what was last written for each playlist, so an unchanged provider answer writes nothing.
 - **v19** content identity and Smart Mix: `content_identity` (the same title across playlists, languages and qualities shares an `identity_key`; derived, never written to a playlist row), `source_twin` (playlists that mirror each other), `rec_dismissed` ("don't recommend this"; separate from Continue Watching, which it never touches), `smartmix_shown`, `smartmix_state`, `folder_recent`, and the indexes for folder reads. The launch migration builds only the small indexes (about 0.16 s on a 185,000-title library); four expression indexes for the newest and best-rated pools are built in the background after launch (`SchemaV19.ensureQueryIndexes`).
-- **v20** `metadata_matches.filled`: which values TMDB filled into a movie or series row (and what they were), so the 180-day limit takes back exactly those and never what the playlist provided.
+- **v20** `metadata_matches.filled`: which values the details service filled into a movie or series row (and what they were), so the 180-day limit takes back exactly those and never what the playlist provided.
+- **v21** `continue_hidden`: "Remove from Continue Watching" writes only this marker; progress, resume position, watched state and history are never touched. Personal data (travels with the profile).
+- **v22** `provider_ids`: the details service and IMDb ids the playlist itself lists (an exact match for artwork, no search).
+- **v23** `rating_checks`: titles whose the details service rating was looked up once (found or not), so they are not asked about again until the record expires.
+- **v24** the metadata hub: `hub_identity` (the id crosswalk, with `miss_until`: a service did not know the title's ids, cleared when new ids arrive) and `metadata_facts` (single facts with source, quality, expiry, `miss_until` and `fail_count`). Purged on expiry, when a folder is locked or hidden, and per service when it is switched off.
+- **v25** the guide hub: a registry of guide sources, per-source channels and programmes, the channel-to-guide map, overrides, public channel-database enrichment, field provenance and diagnostics. Additive; the `epg_*` tables keep working.
 
 `playback_sessions` keeps the latest 20,000 sessions; the statistics page is computed from it and nothing else.
+
+## Metadata and identity tables: who owns what
+
+Two places hold things learned from the details service and two families hold ids. Each has one job; nothing is stored in both with the same meaning.
+
+| Table | Job | Lifetime |
+|---|---|---|
+| `title_details` (v9) | The whole the details service details reply for a title (cast, trailers, similar, rating and votes) as one JSON blob, plus person pages (`person:` keys). The title page reads it as it is (`maxAge: .infinity`); it is refreshed when older than `Retention.detailsRefresh`. | `Retention.maxKeep` (180 days); people `Retention.personKeepDays` (30 days) |
+| `metadata_facts` (v24) | Single facts from several services (logo, backdrop, translations, next episode), each with its source, quality and expiry, so a worse value never replaces a better one. Written only through `HubStore`. | per source, `HubPolicy.keep` (the episode-data service 7 days, others 180) |
+| `provider_ids` (v22) | The details service and IMDb ids the playlist itself lists. Kept as the playlist wrote them. | until the title is removed |
+| `hub_identity` (v24) | The one crosswalk every feature reads: the details, episode-data, imdb and schedule ids per title. `ProviderIDStore.save` mirrors the playlist's ids into it in the same transaction; the artwork matcher's queue reads `provider_ids` first, then `hub_identity`. | until purged (`HubStore.purge`) |
+| `content_identity` (v19) | A different thing: the derived key that says two playlist rows are the same title (languages and qualities of one film). Not an id from a service. | rebuilt when `IdentityKey.version` changes |
+| `metadata_matches` (v7) | The artwork matcher's own result (`tmdb_id`, what it filled, when). | `Retention.maxKeep` |
+
+Purging: `AppContainer` always calls `MetadataMatchService.purgeStored*` (title_details, matches) together with `HubStore.purge` (facts, crosswalk) for folders that become locked, hidden or removed. Every retention number is in `Retention` (Data/Cache/CachePolicy.swift).
+Migrations here are additive only; the next free number is noted in the migrator.

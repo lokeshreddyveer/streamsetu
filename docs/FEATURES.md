@@ -16,7 +16,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | WebDAV server and local video files | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Custom User-Agent per connection | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Extra request headers per connection, and a proxy | ✓ | ✓ | ✓ | ✓ | ✓ |
-| App DNS: encrypted DNS (Cloudflare, Google, Quad9, AdGuard, Control D or your own) for StreamSetu only, no VPN | ✓ (not yet for MPV) | ✓ | ✓ | ✓ | ✓ |
+| App DNS: encrypted DNS (Cloudflare, Google, Quad9, AdGuard or your own) for StreamSetu only, no VPN | ✓ (not yet for MPV) | ✓ | ✓ | ✓ | ✓ |
 | **Watching** | | | | | |
 | Live TV with groups and channel numbers | ✓ | ✓ | ✓ | ✓ | ✓ |
 | TV Guide, XMLTV | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -33,7 +33,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Search the whole catalog from inside the player, with All, Movies, Series and Live TV | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Go to an exact time | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Remembered audio, subtitles, speed and timing for each title or channel | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Subtitles from OpenSubtitles, with your own free key | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Subtitles from the subtitle service, with your own free key | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Picture tuning, brightness, contrast, saturation, gamma | ✓ | ✓ | ✓ | ✓ with mpv | ✓ with mpv |
 | Volume boost above 100% | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Subtitle size, colour, position and background in the player | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -66,7 +66,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | For You row and a timeline of a film's whole franchise | ✓ | ✓ | ✓ | ✓ | ✓ |
 | A different player engine for Live TV, movies, series and past programmes | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Quality and sound badges on movie and series pages (4K, HDR, Dolby Vision, Atmos, 5.1) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Subtitles fetched by themselves when a title has none in your language, with your OpenSubtitles account | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Subtitles fetched by themselves when a title has none in your language, with your subtitle service account | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Green tick on watched titles and a bar on started ones | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Filter Movies and Series by language, quality, rating, decade and watch status, in the Sort menu on Mac, iPhone and iPad and in the Filter panel on TV (which also has a box to find a filter by name and can narrow by connection) | ✓ | ✓ | ✓ | – | ✓ |
 | "In folder …" on a movie or series page, showing where it sits and opening that folder (useful after a search) | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -75,12 +75,12 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Smart Mix Home: Top This Week, Trending in Your Library, Because You Watched, Rediscover and a row in your preferred language, with a Shuffle recommendations button that never starts a sync | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Folders view for Movies, Series and Live TV: one row per folder, 20 at a time, a More tile, a Grid switch; a locked folder shows only its name and a lock | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Other languages and versions of a title, as a row on its page | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Cast row with photos (your own free TMDB key; monograms without one) and a person screen with their titles in your library | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Weekly trending from TMDB (on by default, works only with your own TMDB key, saved for at most 180 days), with the TMDB logo and notice in About | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Cast row with photos (the details service; monograms when it is off) and a person screen with their titles in your library | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Weekly trending from the details service (on by default with the built-in key or your own, saved for at most 180 days), with the details service logo and notice in About | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Don't Recommend This; remove a title from Continue Watching and keep its history (Android marks it) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Three quick taps on a tab refresh the library | – | ✓ | – | – | – |
 | Designed tiles for titles with no poster, and pictures that fail to load try again | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Locked and hidden folders left out of counts, search, recommendations, widgets, Watch Next, cast and similar titles, and never sent to TMDB | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Locked and hidden folders left out of counts, search, recommendations, widgets, Watch Next, cast and similar titles, and never sent to the details service | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Play a stream in another app (VLC, MX Player, IINA, Infuse and others) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Profiles: up to four people on one device, each with their own favourites, collections, history and resume points, a kids profile that keeps locked folders hidden, and PINs | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Tonight: what is on now and next on your favourite channels, what is set to record, and the next episode of your series | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -111,7 +111,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | All playlists together, Apple / Combined libraries, Android | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Hide, rename and check channels, Channel Manager, health check | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Watch statistics | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Artwork and details from TMDB, your own API key | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Artwork and details from the details service (built-in key, your own optional) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Parental controls | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Themes and accent colours | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Screen reader labels | ✓ | ✓ | ✓ | ✓ phone | – |
@@ -119,13 +119,14 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | **More like this** | | | | | |
 | Suggestions under a movie or series by franchise, director, genre, cast and story, each with its reason | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Assistant and your own services** | | | | | |
-| Setu, an assistant in a chat bubble: finds something to watch, answers about your screen, settings and playback problems, and offers actions you tap to confirm (new: tried on the Mac first; on iPhone and iPad the button is switched off for now) | ✓ | – | – | – | – |
+| Streaming services inside the app: a Services menu (can be pinned to the top bar) that opens each provider's own site in the app; sign-in and data are the provider's, and you can clear a service's data (new, not yet verified; Mac only) | ✓ | – | – | – | – |
+| Setu, an assistant in a chat bubble: finds something to watch, answers about your screen, settings and playback problems, and offers actions you tap to confirm (new; on iPhone and iPad it opens as a bottom sheet or popover; hidden in kids mode) | ✓ | ✓ | – | – | – |
 | Bring your own AI: Apple Intelligence, Gemini, OpenRouter, Claude, OpenAI, Groq, NVIDIA, Ollama Cloud, or Ollama on your network, with each one's price and free limit shown | ✓ | ✓ | ✓ | ✓ without Apple Intelligence | ✓ without Apple Intelligence |
 | Ask AI from the search box when a request finds nothing | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Search box commands: go to a screen, play, resume, last channel, add or remove a favourite or Watch Later | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Sort and filter words in the search box ("top rated telugu movies", "newest series", "comedy not horror"), and moods ("date night", "something short") | ✓ | ✓ | ✓ | some words | some words |
-| Trakt: tells Trakt what you watch and copies your watchlist into Watch Later, with your own Trakt app keys | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Debrid: play Real-Debrid, AllDebrid and Premiumize links with your own token (magnet links are not accepted on iPhone and iPad) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| The watch-history service: tells the watch-history service what you watch and copies your watchlist into Watch Later, with your own app keys | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Linked accounts: play linked-account links with your own token (magnet links are not accepted on iPhone and iPad) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Sync and updates** | | | | | |
 | iCloud sync between your Apple devices | ✓ | ✓ | ✓ | – | – |
 | Sync on this network (Wi-Fi, no account) | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -133,7 +134,8 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Refresh playlists when the app opens | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Refresh while the app is closed | – | ✓ iOS decides when | ✓ iOS decides when | ✓ | ✓ |
 | Siri and Shortcuts | – use Open URL links | ✓ | ✓ | – | – |
-| `streamsetu://` links: play a channel or movie, search, open a tab, pause, resume, sleep | ✓ | ✓ | ✓ | play and search | play and search |
+| Spotlight finds StreamSetu's screens and settings ("hardware decoding"); on iPhone and iPad, "Ask StreamSetu" in Siri and Shortcuts answers a how-to question on the device, and "Open a Setting" jumps to a screen. Locks, kids and hidden-folder settings are never indexed | ✓ (Spotlight only) | ✓ | – | – | – |
+| `streamsetu://` links: play a channel or movie, search, open a tab, open a screen or setting (`atlas?id=`), pause, resume, sleep | ✓ | ✓ | ✓ | play and search | play and search |
 | "Continue watching" row on the Android TV home screen | – | – | – | – | ✓ Android TV; not Fire TV |
 | Updates itself | ✓ Sparkle | App Store, TestFlight | App Store, TestFlight | ✓ checks GitHub, asks before installing | ✓ checks GitHub, asks before installing |
 

@@ -60,7 +60,8 @@ Every download is on the [Releases](../../releases) page with its SHA-256 checks
 - **Fast search** across channels, films, series and the guide.
 - **Two players:** Apple's AVPlayer or Android's ExoPlayer for the common formats, and mpv for MKV, AVI, RTSP and unusual codecs.
 - **Your data stays with you:** no ads, no analytics, no account. iCloud and Wi-Fi sync are optional. Optional **App DNS** (encrypted DNS for StreamSetu only, not a VPN).
-- **Optional extras:** the Setu assistant, Trakt, TMDB artwork with your own key, recording and reminders.
+- **Streaming services in the Mac app (new, Mac only, not yet verified):** a Services menu that can be pinned to the top bar opens a provider's own site inside the app. You sign in with your own account, StreamSetu does not sell or include any service, and nothing is claimed to work until it has been checked.
+- **Optional extras:** the Setu assistant, the watch-history service, the details service artwork (built-in key, or your own), recording and reminders.
 
 The full feature table for every app is in [docs/FEATURES.md](docs/FEATURES.md).
 

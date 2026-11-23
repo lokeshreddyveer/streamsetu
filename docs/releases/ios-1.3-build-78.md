@@ -1,5 +1,7 @@
 # iPhone and iPad 1.3, build 78
 
+> **Later change (unreleased builds):** this note says some details-service features need your own key. Newer builds ship with a built-in key, so the details service artwork, cast photos and weekly trending work by default, and you can turn them off in Settings (Artwork and Details). See the Privacy Policy.
+
 What changed since the App Store version 1.2 (build 77):
 
 **A new look and a new opening**
@@ -15,14 +17,14 @@ What changed since the App Store version 1.2 (build 77):
 
 **Movie and series pages**
 - **Other languages and versions.** If the same film or series is in your library in another language, a row shows each version. Tap one to open that version.
-- **Cast.** A row of round photos with each person's name and role. Tap a person to see their films and series in your library. Photos need a free TMDB key (Settings > Artwork and Details).
+- **Cast.** A row of round photos with each person's name and role. Tap a person to see their films and series in your library. Photos need a free the details service key (Settings > Artwork and Details).
 - **Don't Recommend This.** A title in Continue Watching can be kept out of your recommendations. Your watching history is not touched.
 
 **Privacy**
 - **Locked and hidden folders stay private everywhere:** counts, search, recommendations, the widget, cast and similar titles. Locking a folder takes effect straight away.
-- **Nothing from a locked or hidden folder is ever sent to TMDB,** and the details saved for it are removed when you lock it.
-- **TMDB.** The TMDB logo and notice are in About. Weekly trending is on by default but only works once you add your own TMDB key. Saved TMDB details are removed after 180 days.
-- **The app's downloads, including subtitles from OpenSubtitles, follow your proxy setting.**
+- **Nothing from a locked or hidden folder is ever sent to the details service,** and the details saved for it are removed when you lock it.
+- **The details service.** The details service logo and notice are in About. Weekly trending is on by default but only works once you add your own key. Saved details-service details are removed after 180 days.
+- **The app's downloads, including subtitles from the subtitle service, follow your proxy setting.**
 
 **Smaller fixes**
 - The empty Favourites screen is laid out properly.

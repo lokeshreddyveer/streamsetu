@@ -11,9 +11,22 @@ StreamSetu is built with software from other people. Thank you to everyone who m
 
 The source code of the LGPL and GPL components is available from the project sites above. The versions used by this app are available on request at the contact address on the Privacy Policy.
 
+## Updates and build tools
+
+- **Sparkle** (Mac app only, for self-updates). Copyright (c) 2006-2013 Andy Matuschak, (c) 2009-2013 Elgato Labs, (c) 2011-2014 Kornel Lesiński and others. Released under the MIT licence: permission is granted, free of charge, to use, copy, modify, merge, publish, distribute, sublicense and sell copies of the software, provided the copyright notice and this permission notice are included in all copies. The software is provided "as is", without warranty of any kind. https://sparkle-project.org
+- **swift-syntax** (Apache 2.0) is used only as a build-time tool dependency. It is not part of the app you install.
+
 ## Services and data
 
-- **The Movie Database (TMDB).** This product uses the TMDB API but is not endorsed or certified by TMDB. https://www.themoviedb.org
+
+- **The Movie Database (TMDB).** This product uses the TMDB API but is not endorsed or certified by TMDB. The TMDB logo is shown in Settings, under Credits. https://www.themoviedb.org
+- **fanart.tv.** Artwork from fanart.tv. https://fanart.tv
+- **TheTVDB.** Metadata provided by TheTVDB.com. Please consider adding missing information or subscribing. https://thetvdb.com
+- **TVmaze.** Episode and schedule data from TVmaze (https://www.tvmaze.com), licensed under Creative Commons Attribution-ShareAlike 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). TVmaze text is not included in shared exports.
+- **iptv-org.** Channel logos and genres from the iptv-org public channel database. https://github.com/iptv-org
+- **Wikidata.** Aliases: Wikidata, CC0. Alternative titles in many languages come from Wikidata, released to the public domain under CC0. https://www.wikidata.org
+- **OpenSubtitles.** Subtitles from OpenSubtitles. https://www.opensubtitles.com
+- **Wikipedia** text is used under CC BY-SA, with a link to the article.
 - **Apple iTunes Search API** and **iCloud**, used under Apple's terms.
 - **YouTube** embedded player, used under YouTube's terms.
 

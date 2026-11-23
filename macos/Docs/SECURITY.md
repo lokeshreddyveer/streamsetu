@@ -10,7 +10,7 @@
   XML external entities disabled; images validated with ImageIO and capped in pixel count; no remote path ever reaches
   the file system.
 - **Network:** App Transport Security allows arbitrary loads because IPTV providers commonly use plain http, but the services StreamSetu itself talks to
-  (its problem-report server, TMDB, OpenSubtitles, Trakt, GitHub, Wikipedia and the AI providers) are listed as exception domains that require HTTPS. Saving a login for a plain-http
+  (its problem-report server, the details service, the subtitle service, the watch-history service, GitHub, the encyclopedia service and the AI providers) are listed as exception domains that require HTTPS. Saving a login for a plain-http
   server that is not on the local network asks first. A redirect to another host, port or scheme repeats the request without the logins we sent (RedirectPolicy).
 - **No accounts, no analytics.** There is no tracking. A problem report (a masked playback log, versions, device model and a random install number) is sent only if the person says yes;
   the privacy manifest declares exactly that, and docs/DIAGNOSTICS-PRIVACY.md lists the fields.
@@ -21,4 +21,4 @@
 
 ## Credentials and keys
 
-Playlist logins and the optional TMDB API key are stored in `LocalCredentialStore`: AES-GCM with a key derived (HKDF) from a random stored key and this Mac's hardware identifier, so a copied vault is unreadable elsewhere. Backups never contain passwords, full playlist addresses or the TMDB key. The TMDB key is sent only to api.themoviedb.org, and errors never include request addresses.
+Playlist logins and the optional details-service API key are stored in `LocalCredentialStore`: AES-GCM with a key derived (HKDF) from a random stored key and this Mac's hardware identifier, so a copied vault is unreadable elsewhere. Backups never contain passwords, full playlist addresses or the details service key. The details service key is sent only to that service's own https host, and errors never include request addresses.

@@ -34,7 +34,7 @@ code) must sit inside `#if os(macOS)`. After editing a shared file run `Scripts/
 Live TV (numbers, named lists, hide/rename), TV Guide (timeline, reminders, catch-up), Movies and Series, search, favourites and
 collections, history, a full player (Picture in Picture, AirPlay, sleep timer, tracks, speed, swipe-to-zap, catch-up, radio
 mode), Multi-View, per-playlist settings (login, guide address and time shift, catch-up clock, buffering, User-Agent and headers,
-channel health check), themes and a custom theme editor, parental controls, statistics, TMDB artwork, backup and restore with
+channel health check), themes and a custom theme editor, parental controls, statistics, the details service artwork, backup and restore with
 automatic backups, folder ordering, storage and maintenance, diagnostics, and Shortcuts/Siri actions ("Play BBC One in StreamSetu").
 
 ## Not in this version

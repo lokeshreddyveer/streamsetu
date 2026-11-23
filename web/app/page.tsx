@@ -11,7 +11,7 @@ import { downloads, latest } from "@/lib/releases";
 const player = [
   { title: "Picture", items: ["Brightness, contrast, saturation and gamma", "Deinterlace, hardware or software decoding", "Fit, fill and zoom", "A resolution picker for streams that offer several"] },
   { title: "Sound", items: ["Volume boost up to 150%", "Even out loud and quiet scenes", "Audio timing in small steps", "Picture and sound timing, together or apart"] },
-  { title: "Subtitles", items: ["Size, colour, position and background", "Timing, earlier or later", "From a file, or from OpenSubtitles", "Remembered for each title"] },
+  { title: "Subtitles", items: ["Size, colour, position and background", "Timing, earlier or later", "From a file, or searched online", "Remembered for each title"] },
 ];
 
 export default function Home() {
@@ -88,7 +88,7 @@ export default function Home() {
           <Reveal className="head left">
             <p className="kicker">Search</p>
             <h2>Type what you mean</h2>
-            <p>One search covers channels, movies, series, episodes and the guide. It reads the way you talk: "hindi movies 2024" gives Hindi films from 2024. A misspelt word is fixed from the titles in your own library, and it all works offline.</p>
+            <p>One search covers channels, movies, series, episodes and the guide. It reads the way you talk: "action movies 2024" gives action films from 2024. A misspelt word is fixed from the titles in your own library, and it all works offline.</p>
             <p>Search is inside the player too, with a menu for All, Movies, Series or Live TV.</p>
           </Reveal>
           <Reveal delay={120}><SearchDemo /></Reveal>

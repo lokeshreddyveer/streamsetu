@@ -36,9 +36,9 @@
 - **Collections** of your own, and a shortcut row for Favorites, Watch Later, Recently Watched and Continue Watching.
 - **Channel Manager** (Settings): hide channels, rename them, tie one to another guide channel, and check which channels answer (a channel that does not answer in time is never counted as dead). Your changes survive a refresh of the playlist.
 - **Statistics**: how long you watched, by day and hour, and your most watched channels, movies and series. It stays on the device and can be cleared.
-- **Artwork from TMDB**: with your own free API key, pictures and descriptions your provider left out are filled in.
+- **Artwork from the details service**: with your own free API key, pictures and descriptions your provider left out are filled in.
 - **Themes and accent colours**, and **Hindi and Telugu** for the main screens (Settings, Appearance, Language). Text that has no translation yet stays in English; titles and descriptions always come from your provider.
-- **Search** runs on a local text index, so it works offline. It reads queries the way you mean them ("hindi movies 2024" is Hindi titles from 2024), fixes a misspelt word from the words in your own library when nothing matches and says what it searched for, and groups results as Live TV, Movies, Series, Episodes, TV Guide programmes, Folders and Collections. It keeps recent searches for each screen. The iPhone, iPad, Mac, Android phone and Fire TV apps all search this way.
+- **Search** runs on a local text index, so it works offline. It reads queries the way you mean them ("action movies 2024" is action titles from 2024), fixes a misspelt word from the words in your own library when nothing matches and says what it searched for, and groups results as Live TV, Movies, Series, Episodes, TV Guide programmes, Folders and Collections. It keeps recent searches for each screen. The iPhone, iPad, Mac, Android phone and Fire TV apps all search this way.
 - **Sorting** only offers orders the catalog can truly support (recently added, A–Z, release year, rating, recently watched, new episodes first…), remembered per section and per folder.
 
 ## Playback you can trust
@@ -56,17 +56,17 @@
 - Smooth, restrained motion with one shared set of timings; reduced-motion is respected.
 - Optional soft **interface sounds**, off until you turn them on in Settings. Five sets of original tones (Signature, Wood, Crystal, Soft, Arcade) plus Minimal; they never touch the TV's volume.
 
-## Assistant, Trakt and debrid
+## Assistant, the watch-history service and linked-account
 
 - **Setu** (Mac, iPhone and iPad) is a chat opened from a round button at the bottom right. It answers from your own library and from the app's own numbers, and everything it suggests is a button you tap. A tick appears only when the action worked; when it did not, it says why. It is switched off in a kids profile. On iPhone and iPad it is new and has not yet been tried on a device.
 - **Your own AI.** You choose the service and add your own key. The key is kept in the system's secure storage and sent only to that service. Only the words you type are sent, plus, if you leave the eye button on, the name of the screen, what is playing and a few library counts. Playlist addresses, logins and tokens are never sent.
-- **Trakt and debrid** use your own accounts and keys, and do nothing until you sign in.
+- **The watch-history service and linked-account** use your own accounts and keys, and do nothing until you sign in.
 - The AI answers from what the model knows. It has no live web search.
 
 ## Privacy and safety
 
 - The Android apps can check GitHub for a newer release (Settings, About, Updates). It is on by default, runs once a day, and only when nothing is playing. A failed update says what went wrong, and a version that failed to install is not offered again every day. Only the public release list is requested, and nothing about you is sent. A downloaded file is used only if its checksum matches the release notes and it is signed with the same key as the installed app, and the system installer always asks you to confirm. You can turn the check off.
-- No account, no advertising, no analytics, no crash reporting sent anywhere. The only exceptions are services you set up yourself: your AI, Trakt, a debrid service, TMDB and OpenSubtitles, each with your own key and each told only what it needs.
+- No account, no advertising, no analytics, no crash reporting sent anywhere. The only exceptions are services you set up yourself: your AI, the watch-history service, a linked-account service, the details service and the subtitle service, each with your own key and each told only what it needs.
 - Logins live in the system's secure storage (Android Keystore, Apple Keychain) and are never shown, logged or exported.
 - Diagnostic reports and backups remove addresses, user names, passwords and tokens.
 - Folder locks are a real PIN lock: the PIN is stored only as a salted hash, and locked titles are also left out of search and banners.
