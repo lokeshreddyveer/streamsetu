@@ -55,7 +55,7 @@ enum AssistantDiagnostics {
         if e.playing || e.failure != nil { observed.append("engine \(e.engine.rawValue)") }
         if e.container != .unknown { observed.append("stream type \(e.container.rawValue.uppercased())") }
         if e.width > 0 { observed.append("picture \(e.width)×\(e.height)") }
-        if e.stalls > 0 { observed.append("\(e.stalls) stall\(e.stalls == 1 ? "" : "s") (\(Int(e.stallSeconds)) s)") }
+        if e.stalls > 0 { observed.append("\(Localized.plural(e.stalls, one: "%@ stall", other: "%@ stalls")) (\(Int(e.stallSeconds)) s)") }
         if e.droppedFrames > 0 { observed.append("\(e.droppedFrames) dropped frames") }
         if e.observedMbps > 0 { observed.append(String(format: "download speed seen %.1f Mbit/s", e.observedMbps)) }
         if !e.timeline.isEmpty { observed.append("recent: " + e.timeline.suffix(5).joined(separator: " → ")) }
@@ -157,7 +157,7 @@ enum AssistantDiagnostics {
         if e.state.contains("buffering") || e.state.contains("reconnecting") {
             return .init(what: "The stream is starting or reconnecting.", why: "It has not had a chance to settle yet. Live streams can take several seconds to begin.", cause: .fine, observed: observed, next: ["Give it ten seconds, then ask again."])
         }
-        return .init(what: "The stream looks healthy.", why: "It is playing with \(e.stalls) stall\(e.stalls == 1 ? "" : "s") and no sign of trouble.", cause: .fine, observed: observed,
+        return .init(what: "The stream looks healthy.", why: "It is playing with \(Localized.plural(e.stalls, one: "%@ stall", other: "%@ stalls")) and no sign of trouble.", cause: .fine, observed: observed,
                      next: e.stalls > 0 ? ["If you still see hiccups, say what you see (picture, sound or buffering) and I will dig in."] : [])
     }
 

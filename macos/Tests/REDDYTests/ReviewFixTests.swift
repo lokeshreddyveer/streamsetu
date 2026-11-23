@@ -62,7 +62,7 @@ import Foundation
         #expect(p.items.map(\.id) == [ids["Plain Film"]!], "locked, hidden and twin-of-locked titles are left out, and so are they from the count: \(p.total)")
         #expect(p.total >= 1 && p.total <= 2)
         _ = try await svc.run()
-        #expect(calls.value.count == 1)
+        #expect((1...4).contains(calls.value.count), "only the one open title is looked up (a title that is not found is tried up to four ways)")
     }
 
     @Test func detailsOfARestrictedTitleAreNeverSentOrKept() async throws {
@@ -234,9 +234,9 @@ import Foundation
 
     @Test func headerTextReadsNaturally() {
         let r = FolderRowsModel.Row(id: "1", name: "ENGLISH | 4K", display: "English · 4K", count: 1058, locked: false, sourceID: UUID())
-        #expect(r.countText == "(1,058)" && r.accessibilityTitle == "English 4K, 1,058 titles")
+        #expect(r.countText == "(1,058)" && r.accessibilityTitle(.title) == "English 4K, 1,058 titles" && r.accessibilityTitle(.channel) == "English 4K, 1,058 channels")
         let l = FolderRowsModel.Row(id: "2", name: "X", display: "Adult", count: 0, locked: true, sourceID: UUID())
-        #expect(l.accessibilityTitle == "Adult, locked folder")
+        #expect(l.accessibilityTitle(.channel) == "Adult, locked folder")
     }
 
     @Test func homeShelvesCarryNoCategoryCaption() throws {

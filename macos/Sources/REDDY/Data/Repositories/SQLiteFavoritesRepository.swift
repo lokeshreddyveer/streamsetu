@@ -43,7 +43,7 @@ final class SQLiteFavoritesRepository: FavoritesRepository {
         try db.read { c in
             try c.query("""
                 SELECT c.id, c.name, c.created_at, (SELECT COUNT(*) FROM collection_items i WHERE i.collection_id=c.id)
-                FROM collections c ORDER BY c.name COLLATE NOCASE
+                FROM collections c ORDER BY c.name COLLATE SETU_LOCALE
                 """) { CatalogCollection(id: $0.string(0), name: $0.string(1), createdAt: $0.date(2), itemCount: $0.int(3)) }
         }
     }

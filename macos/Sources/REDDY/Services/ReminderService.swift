@@ -16,7 +16,7 @@ final class ReminderService: @unchecked Sendable {
     static func identifier(_ programID: Int64) -> String { "reddy.reminder.\(programID)" }
 
     @discardableResult
-    func schedule(program: EPGProgram, channelName: String, leadTime: TimeInterval = 60) async -> Bool {
+    func schedule(program: EPGProgram, channelName: String, leadTime: TimeInterval = ReminderService.leadTime()) async -> Bool {
         guard let center, program.start.timeIntervalSinceNow > leadTime, await requestAuthorization() else { return false }
         let content = UNMutableNotificationContent()
         content.title = program.title

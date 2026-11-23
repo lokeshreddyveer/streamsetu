@@ -68,14 +68,14 @@ struct RestorePlan: Sendable {
 
     var summary: [String] {
         var l: [String] = []
-        if !newSources.isEmpty { l.append("\(newSources.count) playlist\(newSources.count == 1 ? "" : "s") to add (they will need their login or address)") }
-        if !duplicateSources.isEmpty { l.append("\(duplicateSources.count) playlist\(duplicateSources.count == 1 ? "" : "s") already here, skipped") }
-        if !unsupportedSources.isEmpty { l.append("\(unsupportedSources.count) local file playlist\(unsupportedSources.count == 1 ? "" : "s") can't be restored: add the file again") }
-        if collectionCount > 0 { l.append("\(collectionCount) collection\(collectionCount == 1 ? "" : "s")") }
-        if favoriteCount > 0 { l.append("\(favoriteCount) favorite\(favoriteCount == 1 ? "" : "s")") }
-        if preferenceCount > 0 { l.append("\(preferenceCount) preference\(preferenceCount == 1 ? "" : "s")") }
-        if historyCount > 0 { l.append("\(historyCount) history entr\(historyCount == 1 ? "y" : "ies")") }
-        if organisationCount > 0 { l.append("\(organisationCount) folder, hidden-item and rename setting\(organisationCount == 1 ? "" : "s")") }
+        if !newSources.isEmpty { l.append("\(Localized.plural(newSources.count, one: "%@ playlist", other: "%@ playlists")) to add (they will need their login or address)") }
+        if !duplicateSources.isEmpty { l.append("\(Localized.plural(duplicateSources.count, one: "%@ playlist", other: "%@ playlists")) already here, skipped") }
+        if !unsupportedSources.isEmpty { l.append("\(Localized.plural(unsupportedSources.count, one: "%@ local file playlist", other: "%@ local file playlists")) can't be restored: add the file again") }
+        if collectionCount > 0 { l.append("\(Localized.plural(collectionCount, one: "%@ collection", other: "%@ collections"))") }
+        if favoriteCount > 0 { l.append("\(Localized.plural(favoriteCount, one: "%@ favorite", other: "%@ favorites"))") }
+        if preferenceCount > 0 { l.append("\(Localized.plural(preferenceCount, one: "%@ preference", other: "%@ preferences"))") }
+        if historyCount > 0 { l.append("\(Localized.plural(historyCount, one: "%@ history entry", other: "%@ history entries"))") }
+        if organisationCount > 0 { l.append("\(Localized.plural(organisationCount, one: "%@ folder, hidden-item and rename setting", other: "%@ folder, hidden-item and rename settings"))") }
         return l
     }
 }
@@ -84,12 +84,12 @@ struct RestoreResult: Sendable, Equatable {
     var sourcesAdded = 0, sourcesSkipped = 0, collections = 0, favorites = 0, preferences = 0, history = 0, organised = 0
     var summary: String {
         var p: [String] = []
-        if sourcesAdded > 0 { p.append("\(sourcesAdded) playlist\(sourcesAdded == 1 ? "" : "s") added") }
-        if collections > 0 { p.append("\(collections) collection\(collections == 1 ? "" : "s")") }
-        if favorites > 0 { p.append("\(favorites) favorite\(favorites == 1 ? "" : "s")") }
-        if preferences > 0 { p.append("\(preferences) preference\(preferences == 1 ? "" : "s")") }
-        if history > 0 { p.append("\(history) history entr\(history == 1 ? "y" : "ies")") }
-        if organised > 0 { p.append("\(organised) folder and channel setting\(organised == 1 ? "" : "s")") }
+        if sourcesAdded > 0 { p.append("\(Localized.plural(sourcesAdded, one: "%@ playlist", other: "%@ playlists")) added") }
+        if collections > 0 { p.append("\(Localized.plural(collections, one: "%@ collection", other: "%@ collections"))") }
+        if favorites > 0 { p.append("\(Localized.plural(favorites, one: "%@ favorite", other: "%@ favorites"))") }
+        if preferences > 0 { p.append("\(Localized.plural(preferences, one: "%@ preference", other: "%@ preferences"))") }
+        if history > 0 { p.append("\(Localized.plural(history, one: "%@ history entry", other: "%@ history entries"))") }
+        if organised > 0 { p.append("\(Localized.plural(organised, one: "%@ folder and channel setting", other: "%@ folder and channel settings"))") }
         return p.isEmpty ? "Nothing new to restore." : "Restored " + p.joined(separator: ", ") + "."
     }
 }

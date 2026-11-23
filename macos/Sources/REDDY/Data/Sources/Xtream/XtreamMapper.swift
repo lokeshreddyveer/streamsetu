@@ -88,6 +88,26 @@ struct XtreamMapper: Sendable {
         return out
     }
 
+    /// The ids a provider lists beside its movies and series (when it does).
+    func providerIDs(movies dtos: [XtreamVODDTO]) -> [String: ProviderIDs] {
+        var out: [String: ProviderIDs] = [:]
+        for d in dtos {
+            guard let pid = d.stream_id?.nonEmpty else { continue }
+            let ids = ProviderIDs(tmdb: ProviderIDs.tmdb(d.tmdb?.nonEmpty ?? d.tmdb_id?.nonEmpty), imdb: ProviderIDs.imdb(d.imdb?.nonEmpty ?? d.imdb_id?.nonEmpty))
+            if !ids.isEmpty { out[ItemID.make(source: source.id, kind: .movie, provider: pid)] = ids }
+        }
+        return out
+    }
+    func providerIDs(series dtos: [XtreamSeriesDTO]) -> [String: ProviderIDs] {
+        var out: [String: ProviderIDs] = [:]
+        for d in dtos {
+            guard let pid = d.series_id?.nonEmpty else { continue }
+            let ids = ProviderIDs(tmdb: ProviderIDs.tmdb(d.tmdb?.nonEmpty ?? d.tmdb_id?.nonEmpty), imdb: ProviderIDs.imdb(d.imdb?.nonEmpty ?? d.imdb_id?.nonEmpty))
+            if !ids.isEmpty { out[ItemID.make(source: source.id, kind: .series, provider: pid)] = ids }
+        }
+        return out
+    }
+
     func movieDetail(_ dto: XtreamVODInfoDTO) -> MovieDetail {
         let i = dto.info
         let rel = i?.releasedate?.nonEmpty ?? i?.release_date?.nonEmpty

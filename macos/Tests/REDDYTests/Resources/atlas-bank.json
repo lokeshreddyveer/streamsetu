@@ -1,0 +1,5719 @@
+{
+ "version": 1,
+ "locale": "en",
+ "note": "Seed bank. Each question lists the atlas ids that count as a correct top answer. Targets: MRR@10 >= 0.80, recall@1 >= 0.65, recall@3 >= 0.85 (typo and slang subsets reported separately). Questions tagged heldout (q372 onward) were written after tuning began and are never used to choose weights, synonyms or thresholds; their misses are not listed in the report.",
+ "count": 511,
+ "entries": [
+  {
+   "id": "q001",
+   "q": "where is hardware decoding",
+   "expected": [
+    "setting.hardwareDecoding"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q002",
+   "q": "how do i turn off hardware acceleration",
+   "expected": [
+    "setting.hardwareDecoding"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q003",
+   "q": "what does hardware decoding do",
+   "expected": [
+    "setting.hardwareDecoding"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q004",
+   "q": "video has artifacts, should I use software decoding",
+   "expected": [
+    "setting.hardwareDecoding"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q005",
+   "q": "harware decoding setting",
+   "expected": [
+    "setting.hardwareDecoding"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q006",
+   "q": "hw decode on or off",
+   "expected": [
+    "setting.hardwareDecoding"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q007",
+   "q": "how do i make video quality lower to save data",
+   "expected": [
+    "setting.videoQuality"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q008",
+   "q": "where do i change stream quality",
+   "expected": [
+    "setting.videoQuality"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q009",
+   "q": "what does data saver do",
+   "expected": [
+    "setting.videoQuality"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q010",
+   "q": "set video quality to highest",
+   "expected": [
+    "setting.videoQuality"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q011",
+   "q": "vidoe quality option",
+   "expected": [
+    "setting.videoQuality"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q012",
+   "q": "how do i stop buffering",
+   "expected": [
+    "setting.bufferingMode"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q013",
+   "q": "where is the buffer setting",
+   "expected": [
+    "setting.bufferingMode"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q014",
+   "q": "what is low latency mode",
+   "expected": [
+    "setting.bufferingMode"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q015",
+   "q": "live tv is behind, make it faster",
+   "expected": [
+    "setting.bufferingMode"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q016",
+   "q": "what does stability buffering mean",
+   "expected": [
+    "setting.bufferingMode"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q017",
+   "q": "bufering mode",
+   "expected": [
+    "setting.bufferingMode"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q018",
+   "q": "can i rewind live tv",
+   "expected": [
+    "setting.liveRewind"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q019",
+   "q": "where do i turn on live pause",
+   "expected": [
+    "setting.liveRewind"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q020",
+   "q": "how do i go back a few minutes on a live channel",
+   "expected": [
+    "setting.liveRewind"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q021",
+   "q": "what is live rewind",
+   "expected": [
+    "setting.liveRewind"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q022",
+   "q": "how do i change the audio language",
+   "expected": [
+    "setting.preferredAudioLanguage"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q023",
+   "q": "set default audio to telugu",
+   "expected": [
+    "setting.preferredAudioLanguage"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q024",
+   "q": "where do i pick my sound language",
+   "expected": [
+    "setting.preferredAudioLanguage"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q025",
+   "q": "always play hindi audio",
+   "expected": [
+    "setting.preferredAudioLanguage"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q026",
+   "q": "audio langauge",
+   "expected": [
+    "setting.preferredAudioLanguage"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q027",
+   "q": "how do i set my subtitle language",
+   "expected": [
+    "setting.preferredSubtitleLanguage"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q028",
+   "q": "where is the subtitle language setting",
+   "expected": [
+    "setting.preferredSubtitleLanguage"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q029",
+   "q": "make subtitles english by default",
+   "expected": [
+    "setting.preferredSubtitleLanguage"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q030",
+   "q": "subtitel language",
+   "expected": [
+    "setting.preferredSubtitleLanguage"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q031",
+   "q": "how do i turn on subtitles all the time",
+   "expected": [
+    "setting.subtitlesByDefault"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q032",
+   "q": "show subtitles automatically",
+   "expected": [
+    "setting.subtitlesByDefault"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q033",
+   "q": "where do i turn off subtitles by default",
+   "expected": [
+    "setting.subtitlesByDefault"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q034",
+   "q": "subs always on",
+   "expected": [
+    "setting.subtitlesByDefault"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q035",
+   "q": "how do i make subtitles bigger",
+   "expected": [
+    "setting.subtitleSize"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q036",
+   "q": "subtitles too small",
+   "expected": [
+    "setting.subtitleSize"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q037",
+   "q": "change caption size",
+   "expected": [
+    "setting.subtitleSize"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q038",
+   "q": "where is subtitle size",
+   "expected": [
+    "setting.subtitleSize"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q039",
+   "q": "what happens if i set subtitle size to large",
+   "expected": [
+    "setting.subtitleSize"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q040",
+   "q": "change subtitle colour",
+   "expected": [
+    "setting.subtitleColor"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q041",
+   "q": "how do i make subtitles yellow",
+   "expected": [
+    "setting.subtitleColor"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q042",
+   "q": "subtitle color setting",
+   "expected": [
+    "setting.subtitleColor"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q043",
+   "q": "can i add an outline to subtitles",
+   "expected": [
+    "setting.subtitleOutline"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q044",
+   "q": "subtitles hard to read on bright scenes",
+   "expected": [
+    "setting.subtitleOutline"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q045",
+   "q": "subtitle outline",
+   "expected": [
+    "setting.subtitleOutline"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q046",
+   "q": "put a black box behind subtitles",
+   "expected": [
+    "setting.subtitleBackground"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q047",
+   "q": "subtitle background setting",
+   "expected": [
+    "setting.subtitleBackground"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q048",
+   "q": "move subtitles higher",
+   "expected": [
+    "setting.subtitlePosition"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q049",
+   "q": "where do i change where subtitles appear",
+   "expected": [
+    "setting.subtitlePosition"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q050",
+   "q": "how do i stop the next episode starting by itself",
+   "expected": [
+    "setting.autoPlayNextEpisode"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q051",
+   "q": "turn on autoplay next episode",
+   "expected": [
+    "setting.autoPlayNextEpisode"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q052",
+   "q": "binge mode setting",
+   "expected": [
+    "setting.autoPlayNextEpisode"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q053",
+   "q": "where is auto play next",
+   "expected": [
+    "setting.autoPlayNextEpisode"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q054",
+   "q": "does it remember where i stopped",
+   "expected": [
+    "setting.rememberPosition"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q055",
+   "q": "where do i turn off remember position",
+   "expected": [
+    "setting.rememberPosition"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q056",
+   "q": "resume point setting",
+   "expected": [
+    "setting.rememberPosition"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q057",
+   "q": "how do i make it resume without asking",
+   "expected": [
+    "setting.resumeAutomatically"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q058",
+   "q": "stop asking me to resume",
+   "expected": [
+    "setting.resumeAutomatically"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q059",
+   "q": "resume automaticaly",
+   "expected": [
+    "setting.resumeAutomatically"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q060",
+   "q": "what does best version first do",
+   "expected": [
+    "setting.bestVersionFirst"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q061",
+   "q": "why does it pick a different copy of the movie",
+   "expected": [
+    "setting.bestVersionFirst"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q062",
+   "q": "prefer 4k copy setting",
+   "expected": [
+    "setting.bestVersionFirst"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q063",
+   "q": "what is the rendering profile",
+   "expected": [
+    "setting.renderingProfile"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q064",
+   "q": "my mac fans are loud while playing 4k",
+   "expected": [
+    "setting.renderingProfile"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q065",
+   "q": "set video scaling to performance",
+   "expected": [
+    "setting.renderingProfile"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q066",
+   "q": "video scaling quality",
+   "expected": [
+    "setting.renderingProfile"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q067",
+   "q": "what is tone mapping",
+   "expected": [
+    "setting.toneMapping"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q068",
+   "q": "hdr looks washed out",
+   "expected": [
+    "setting.toneMapping"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q069",
+   "q": "how do i fix dull hdr colors",
+   "expected": [
+    "setting.toneMapping"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q070",
+   "q": "tonemaping",
+   "expected": [
+    "setting.toneMapping"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q071",
+   "q": "video has comb lines",
+   "expected": [
+    "setting.deinterlace"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q072",
+   "q": "what does deinterlacing do",
+   "expected": [
+    "setting.deinterlace"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q073",
+   "q": "turn on deinterlace for live tv",
+   "expected": [
+    "setting.deinterlace"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q074",
+   "q": "interlaced lines on sports channel",
+   "expected": [
+    "setting.deinterlace"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q075",
+   "q": "night mode for audio",
+   "expected": [
+    "setting.audioProcessing"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q076",
+   "q": "how do i make loud scenes quieter",
+   "expected": [
+    "setting.audioProcessing"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q077",
+   "q": "what does normalise audio do",
+   "expected": [
+    "setting.audioProcessing"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q078",
+   "q": "dialogue too quiet at night",
+   "expected": [
+    "setting.audioProcessing"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q079",
+   "q": "sound is too quiet on stereo speakers",
+   "expected": [
+    "setting.stereoDownmix"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q080",
+   "q": "what does downmix do",
+   "expected": [
+    "setting.stereoDownmix"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q081",
+   "q": "5.1 to stereo setting",
+   "expected": [
+    "setting.stereoDownmix"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q082",
+   "q": "how do i show stream info on the video",
+   "expected": [
+    "setting.showDiagnosticsOverlay"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q083",
+   "q": "show bitrate and dropped frames",
+   "expected": [
+    "setting.showDiagnosticsOverlay"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q084",
+   "q": "debug overlay on player",
+   "expected": [
+    "setting.showDiagnosticsOverlay"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q085",
+   "q": "what is the diagnostics overlay",
+   "expected": [
+    "setting.showDiagnosticsOverlay"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q086",
+   "q": "should i use mpv or avplayer",
+   "expected": [
+    "setting.enginePreference"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q087",
+   "q": "how do i switch the player engine",
+   "expected": [
+    "setting.enginePreference"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q088",
+   "q": "what is the difference between mpv and avplayer",
+   "expected": [
+    "setting.enginePreference"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q089",
+   "q": "video wont play in avplayer",
+   "expected": [
+    "setting.enginePreference"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q090",
+   "q": "where is the engine setting",
+   "expected": [
+    "setting.enginePreference"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q091",
+   "q": "how often does it refresh my playlist",
+   "expected": [
+    "setting.catalogRefresh"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q092",
+   "q": "make playlist update every 6 hours",
+   "expected": [
+    "setting.catalogRefresh"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q093",
+   "q": "where do i set auto refresh",
+   "expected": [
+    "setting.catalogRefresh"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q094",
+   "q": "playlist refresh interval",
+   "expected": [
+    "setting.catalogRefresh"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q095",
+   "q": "refresh when the app opens",
+   "expected": [
+    "setting.refreshOnOpen"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q096",
+   "q": "stop it refreshing every time i open it",
+   "expected": [
+    "setting.refreshOnOpen"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q097",
+   "q": "what does refresh on open do",
+   "expected": [
+    "setting.refreshOnOpen"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q098",
+   "q": "how often does the tv guide update",
+   "expected": [
+    "setting.guideRefresh"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q099",
+   "q": "where do i change guide refresh",
+   "expected": [
+    "setting.guideRefresh"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q100",
+   "q": "epg update frequency",
+   "expected": [
+    "setting.guideRefresh"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q101",
+   "q": "show more hours in the tv guide",
+   "expected": [
+    "setting.guideHoursVisible"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q102",
+   "q": "how wide is the guide window",
+   "expected": [
+    "setting.guideHoursVisible"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q103",
+   "q": "how long does it keep the guide",
+   "expected": [
+    "setting.guideRetentionDays"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q104",
+   "q": "how many days of past programmes are kept",
+   "expected": [
+    "setting.guideRetentionDays"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q105",
+   "q": "how do i back up my library automatically",
+   "expected": [
+    "setting.autoBackup"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q106",
+   "q": "turn on auto backup",
+   "expected": [
+    "setting.autoBackup"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q107",
+   "q": "where is automatic backup",
+   "expected": [
+    "setting.autoBackup"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q108",
+   "q": "what does auto backup save",
+   "expected": [
+    "setting.autoBackup"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q109",
+   "q": "how do i lock the app",
+   "expected": [
+    "setting.appLock"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q110",
+   "q": "put a password on streamsetu",
+   "expected": [
+    "setting.appLock"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q111",
+   "q": "use touch id to open the app",
+   "expected": [
+    "setting.appLock"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q112",
+   "q": "where is app lock",
+   "expected": [
+    "setting.appLock"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q113",
+   "q": "aplock",
+   "expected": [
+    "setting.appLock"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q114",
+   "q": "how do i change the theme",
+   "expected": [
+    "setting.theme"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q115",
+   "q": "switch to dark mode",
+   "expected": [
+    "setting.theme"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q116",
+   "q": "how do i make it light",
+   "expected": [
+    "setting.theme"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q117",
+   "q": "where is the appearance setting",
+   "expected": [
+    "setting.theme",
+    "screen.settings.appearance.appearance"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q118",
+   "q": "custom theme colours",
+   "expected": [
+    "setting.theme"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q119",
+   "q": "change the accent colour",
+   "expected": [
+    "setting.accent"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q120",
+   "q": "how do i make the buttons blue",
+   "expected": [
+    "setting.accent"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q121",
+   "q": "where do i pick a colour for the app",
+   "expected": [
+    "setting.accent"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q122",
+   "q": "make the grid more compact",
+   "expected": [
+    "setting.density"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q123",
+   "q": "show more posters on screen",
+   "expected": [
+    "setting.density"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q124",
+   "q": "how do i change the layout density",
+   "expected": [
+    "setting.density"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q125",
+   "q": "what is extra compact",
+   "expected": [
+    "setting.density"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q126",
+   "q": "turn off animations",
+   "expected": [
+    "setting.reduceMotion"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q127",
+   "q": "stop the app moving so much",
+   "expected": [
+    "setting.reduceMotion"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q128",
+   "q": "reduce motion setting",
+   "expected": [
+    "setting.reduceMotion"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q129",
+   "q": "animations make me dizzy",
+   "expected": [
+    "setting.reduceMotion"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q130",
+   "q": "make text easier to read",
+   "expected": [
+    "setting.highContrast"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q131",
+   "q": "high contrast mode",
+   "expected": [
+    "setting.highContrast"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q132",
+   "q": "increase contrast",
+   "expected": [
+    "setting.highContrast"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q133",
+   "q": "single click or double click to play",
+   "expected": [
+    "setting.clickBehavior"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q134",
+   "q": "how do i make double click play",
+   "expected": [
+    "setting.clickBehavior"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q135",
+   "q": "click once to play a channel",
+   "expected": [
+    "setting.clickBehavior"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q136",
+   "q": "what is click behaviour",
+   "expected": [
+    "setting.clickBehavior"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q137",
+   "q": "why do i see duplicate movies",
+   "expected": [
+    "setting.collapseDuplicates"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q138",
+   "q": "merge duplicate titles",
+   "expected": [
+    "setting.collapseDuplicates"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q139",
+   "q": "what does collapse duplicates do",
+   "expected": [
+    "setting.collapseDuplicates"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q140",
+   "q": "same movie shown twice",
+   "expected": [
+    "setting.collapseDuplicates"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q141",
+   "q": "hide empty categories",
+   "expected": [
+    "setting.hideEmptyFolders"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q142",
+   "q": "why are there empty folders",
+   "expected": [
+    "setting.hideEmptyFolders"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q143",
+   "q": "what does hide empty folders do",
+   "expected": [
+    "setting.hideEmptyFolders"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q144",
+   "q": "sort movies by newest",
+   "expected": [
+    "setting.defaultLibrarySort"
+   ],
+   "intent": "whats-new",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q145",
+   "q": "default sort order for movies",
+   "expected": [
+    "setting.defaultLibrarySort"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q146",
+   "q": "where do i change sorting",
+   "expected": [
+    "setting.defaultLibrarySort"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q147",
+   "q": "why does it open the first category every time",
+   "expected": [
+    "setting.rememberFolders"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q148",
+   "q": "remember the last folder i was in",
+   "expected": [
+    "setting.rememberFolders"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q149",
+   "q": "what does remember folders do",
+   "expected": [
+    "setting.rememberFolders"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q150",
+   "q": "start on the last channel i watched",
+   "expected": [
+    "setting.resumeLastChannel"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q151",
+   "q": "how do i make live tv resume the last channel",
+   "expected": [
+    "setting.resumeLastChannel"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q152",
+   "q": "resume last chanel",
+   "expected": [
+    "setting.resumeLastChannel"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q153",
+   "q": "turn off programme reminders",
+   "expected": [
+    "setting.remindersEnabled"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q154",
+   "q": "how do i get notified before a show",
+   "expected": [
+    "setting.remindersEnabled"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q155",
+   "q": "where are notifications settings",
+   "expected": [
+    "setting.remindersEnabled"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q156",
+   "q": "stop the reminders",
+   "expected": [
+    "setting.remindersEnabled"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q157",
+   "q": "sync my favourites between mac and iphone",
+   "expected": [
+    "setting.iCloudSync"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q158",
+   "q": "how do i turn on icloud sync",
+   "expected": [
+    "setting.iCloudSync"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q159",
+   "q": "where is icloud sync",
+   "expected": [
+    "setting.iCloudSync"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q160",
+   "q": "what is synced with icloud",
+   "expected": [
+    "setting.iCloudSync"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q161",
+   "q": "does sync include my passwords",
+   "expected": [
+    "setting.syncLogins"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q162",
+   "q": "should logins sync to icloud",
+   "expected": [
+    "setting.syncLogins"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q163",
+   "q": "what happens if i sync logins",
+   "expected": [
+    "setting.syncLogins"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q164",
+   "q": "sync between my devices without icloud",
+   "expected": [
+    "setting.lanSync"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q165",
+   "q": "how do i pair my iphone with my mac",
+   "expected": [
+    "setting.lanSync"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q166",
+   "q": "what is sync on this network",
+   "expected": [
+    "setting.lanSync"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q167",
+   "q": "wifi sync setup",
+   "expected": [
+    "setting.lanSync"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q168",
+   "q": "how do i use a proxy",
+   "expected": [
+    "setting.proxyKind"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q169",
+   "q": "where do i set a socks proxy",
+   "expected": [
+    "setting.proxyKind"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q170",
+   "q": "can i route streams through a proxy",
+   "expected": [
+    "setting.proxyKind"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q171",
+   "q": "what does the proxy setting do",
+   "expected": [
+    "setting.proxyKind"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q172",
+   "q": "what is app dns",
+   "expected": [
+    "setting.appDNS"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q173",
+   "q": "my provider is blocked, can i change dns",
+   "expected": [
+    "setting.appDNS"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q174",
+   "q": "where do i set dns for the app",
+   "expected": [
+    "setting.appDNS"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q175",
+   "q": "streams stop when my vpn drops",
+   "expected": [
+    "setting.vpnPause"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q176",
+   "q": "what does vpn pause do",
+   "expected": [
+    "setting.vpnPause"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q177",
+   "q": "pause playback if vpn disconnects",
+   "expected": [
+    "setting.vpnPause"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q178",
+   "q": "vpn kill switch",
+   "expected": [
+    "setting.vpnPause"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q179",
+   "q": "change the app language",
+   "expected": [
+    "setting.language"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q180",
+   "q": "where do i set the language",
+   "expected": [
+    "setting.language"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q181",
+   "q": "what languages does it support",
+   "expected": [
+    "setting.language"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q182",
+   "q": "where is discover",
+   "expected": [
+    "screen.home.discover"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q183",
+   "q": "what is on the discover page",
+   "expected": [
+    "screen.home.discover"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q184",
+   "q": "how do i get recommendations",
+   "expected": [
+    "screen.home.discover"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q185",
+   "q": "shuffle recommendations",
+   "expected": [
+    "screen.home.discover"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q186",
+   "q": "what is tonight",
+   "expected": [
+    "screen.home.tonight"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q187",
+   "q": "where do i see what to watch tonight",
+   "expected": [
+    "screen.home.tonight"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q188",
+   "q": "tonite page",
+   "expected": [
+    "screen.home.tonight"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo",
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q189",
+   "q": "where is continue watching",
+   "expected": [
+    "screen.home.continueWatching"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q190",
+   "q": "how do i resume what i was watching",
+   "expected": [
+    "screen.home.continueWatching"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q191",
+   "q": "find my unfinished movies",
+   "expected": [
+    "screen.home.continueWatching"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q192",
+   "q": "where are my favourites",
+   "expected": [
+    "screen.home.favorites"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q193",
+   "q": "how do i see the things i hearted",
+   "expected": [
+    "screen.home.favorites"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how",
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q194",
+   "q": "favorites list",
+   "expected": [
+    "screen.home.favorites"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q195",
+   "q": "where is watch later",
+   "expected": [
+    "screen.home.watchLater"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q196",
+   "q": "how do i save something for later",
+   "expected": [
+    "screen.home.watchLater"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q197",
+   "q": "my watchlist",
+   "expected": [
+    "screen.home.watchLater"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q198",
+   "q": "how do i make a collection",
+   "expected": [
+    "screen.home.collections",
+    "recipe.makeCollection"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q199",
+   "q": "where are my collections",
+   "expected": [
+    "screen.home.collections"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q200",
+   "q": "group movies into a list",
+   "expected": [
+    "screen.home.collections"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q201",
+   "q": "how much have i watched",
+   "expected": [
+    "screen.home.statistics"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q202",
+   "q": "where are my viewing stats",
+   "expected": [
+    "screen.home.statistics"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q203",
+   "q": "watch time statistics",
+   "expected": [
+    "screen.home.statistics"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q204",
+   "q": "where are live channels",
+   "expected": [
+    "screen.liveTV"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q205",
+   "q": "open live tv",
+   "expected": [
+    "screen.liveTV"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q206",
+   "q": "how do i find a channel",
+   "expected": [
+    "screen.liveTV"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q207",
+   "q": "channel list",
+   "expected": [
+    "screen.liveTV"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q208",
+   "q": "where is the tv guide",
+   "expected": [
+    "screen.guide"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q209",
+   "q": "open the epg",
+   "expected": [
+    "screen.guide"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q210",
+   "q": "what is on now",
+   "expected": [
+    "screen.guide"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q211",
+   "q": "tv gide",
+   "expected": [
+    "screen.guide"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q212",
+   "q": "where are my movies",
+   "expected": [
+    "screen.movies"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q213",
+   "q": "open movies",
+   "expected": [
+    "screen.movies"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q214",
+   "q": "show all films",
+   "expected": [
+    "screen.movies"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q215",
+   "q": "where are my tv shows",
+   "expected": [
+    "screen.series"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q216",
+   "q": "open series",
+   "expected": [
+    "screen.series"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q217",
+   "q": "where do i find episodes",
+   "expected": [
+    "screen.series"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q218",
+   "q": "how do i search",
+   "expected": [
+    "screen.search"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q219",
+   "q": "where is search",
+   "expected": [
+    "screen.search"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q220",
+   "q": "search for an actor",
+   "expected": [
+    "screen.search",
+    "recipe.searchByActor"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q221",
+   "q": "search comands like open movies",
+   "expected": [
+    "screen.search"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q222",
+   "q": "where are my downloads",
+   "expected": [
+    "screen.downloads"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q223",
+   "q": "how do i watch offline",
+   "expected": [
+    "screen.downloads"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q224",
+   "q": "saved for offline",
+   "expected": [
+    "screen.downloads"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q225",
+   "q": "how do i watch several channels at once",
+   "expected": [
+    "screen.multiview"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q226",
+   "q": "what is multi-view",
+   "expected": [
+    "screen.multiview"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q227",
+   "q": "open multiview",
+   "expected": [
+    "screen.multiview"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q228",
+   "q": "split screen live tv",
+   "expected": [
+    "screen.multiview"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q229",
+   "q": "where are jellyfin and plex",
+   "expected": [
+    "screen.filesAndServers"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q230",
+   "q": "how do i play files from a server",
+   "expected": [
+    "screen.filesAndServers"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q231",
+   "q": "files and servers window",
+   "expected": [
+    "screen.filesAndServers"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q232",
+   "q": "play videos stored on my iphone",
+   "expected": [
+    "screen.onYourDevice"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q233",
+   "q": "where is on your device",
+   "expected": [
+    "screen.onYourDevice"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q234",
+   "q": "local videos",
+   "expected": [
+    "screen.onYourDevice"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q235",
+   "q": "where are my playlists",
+   "expected": [
+    "screen.playlists"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q236",
+   "q": "how do i see my sources",
+   "expected": [
+    "screen.playlists"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q237",
+   "q": "manage providers",
+   "expected": [
+    "screen.playlists"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q238",
+   "q": "how do i add a playlist",
+   "expected": [
+    "screen.addPlaylist"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q239",
+   "q": "where do i enter my m3u link",
+   "expected": [
+    "screen.addPlaylist"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q240",
+   "q": "add a source",
+   "expected": [
+    "screen.addPlaylist"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q241",
+   "q": "add playlsit",
+   "expected": [
+    "screen.addPlaylist"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q242",
+   "q": "how do i connect trakt",
+   "expected": [
+    "screen.integrations"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q243",
+   "q": "where do i add real-debrid",
+   "expected": [
+    "screen.integrations"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q244",
+   "q": "where do i put my ai key",
+   "expected": [
+    "screen.integrations"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q245",
+   "q": "trakt and debrid",
+   "expected": [
+    "screen.integrations"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q246",
+   "q": "how do i set up parental controls",
+   "expected": [
+    "screen.settings.parental"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q247",
+   "q": "lock adult channels",
+   "expected": [
+    "screen.settings.parental"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q248",
+   "q": "kids mode",
+   "expected": [
+    "screen.settings.parental",
+    "recipe.kidsProfile"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q249",
+   "q": "where is parental",
+   "expected": [
+    "screen.settings.parental"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q250",
+   "q": "how do i add another profile",
+   "expected": [
+    "screen.settings.profiles"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q251",
+   "q": "switch profile",
+   "expected": [
+    "screen.settings.profiles"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q252",
+   "q": "separate favourites for my wife",
+   "expected": [
+    "screen.settings.profiles"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q253",
+   "q": "where are profiles",
+   "expected": [
+    "screen.settings.profiles"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q254",
+   "q": "what does the app send about me",
+   "expected": [
+    "screen.settings.privacyReport"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q255",
+   "q": "where is the privacy report",
+   "expected": [
+    "screen.settings.privacyReport"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q256",
+   "q": "does it track me",
+   "expected": [
+    "screen.settings.privacyReport"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q257",
+   "q": "how do i hide channels",
+   "expected": [
+    "screen.settings.channelManager",
+    "context.tile.hideChannel"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q258",
+   "q": "reorder channels",
+   "expected": [
+    "screen.settings.channelManager"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q259",
+   "q": "rename a channel",
+   "expected": [
+    "screen.settings.channelManager"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q260",
+   "q": "channel manager",
+   "expected": [
+    "screen.settings.channelManager"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q261",
+   "q": "posters are wrong",
+   "expected": [
+    "screen.settings.artwork",
+    "recipe.fixWrongArtwork"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q262",
+   "q": "how do i fix wrong artwork",
+   "expected": [
+    "screen.settings.artwork",
+    "recipe.fixWrongArtwork"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q263",
+   "q": "where do i set my tmdb key",
+   "expected": [
+    "screen.settings.artwork",
+    "setting.tmdbKey",
+    "setting.tmdb"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q264",
+   "q": "artwork matching",
+   "expected": [
+    "screen.settings.artwork",
+    "setting.artworkBackground"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q265",
+   "q": "how do i restore a backup",
+   "expected": [
+    "screen.settings.backup"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q266",
+   "q": "export my library",
+   "expected": [
+    "screen.settings.backup"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q267",
+   "q": "where is backup and restore",
+   "expected": [
+    "screen.settings.backup"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q268",
+   "q": "how much space does the app use",
+   "expected": [
+    "screen.settings.storage"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q269",
+   "q": "clear the cache",
+   "expected": [
+    "screen.settings.storage",
+    "control.settings.clearArtworkCache",
+    "control.ios.storage.clearTemp"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q270",
+   "q": "where is storage",
+   "expected": [
+    "screen.settings.storage"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q271",
+   "q": "free up space",
+   "expected": [
+    "screen.settings.storage"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q272",
+   "q": "alert me when a show is added",
+   "expected": [
+    "screen.settings.keywordAlerts"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q273",
+   "q": "how do i get notified about a keyword",
+   "expected": [
+    "screen.settings.keywordAlerts"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q274",
+   "q": "keyword alerts",
+   "expected": [
+    "screen.settings.keywordAlerts"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q275",
+   "q": "what are the keyboard shortcuts",
+   "expected": [
+    "screen.shortcuts"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q276",
+   "q": "show me all hotkeys",
+   "expected": [
+    "screen.shortcuts"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q277",
+   "q": "where is the shortcut list",
+   "expected": [
+    "screen.shortcuts"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q278",
+   "q": "how do i report a bug",
+   "expected": [
+    "screen.feedback"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q279",
+   "q": "send feedback",
+   "expected": [
+    "screen.feedback"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q280",
+   "q": "contact the developer",
+   "expected": [
+    "screen.feedback"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q281",
+   "q": "what is command k",
+   "expected": [
+    "menu.navigate.search"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q282",
+   "q": "keyboard shortcut for search",
+   "expected": [
+    "menu.navigate.search"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q283",
+   "q": "how do i jump to search fast",
+   "expected": [
+    "menu.navigate.search"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q284",
+   "q": "search inside this screen only",
+   "expected": [
+    "menu.navigate.searchThisScreen"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q285",
+   "q": "what does cmd f do",
+   "expected": [
+    "menu.navigate.searchThisScreen"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q286",
+   "q": "shortcut to add a playlist",
+   "expected": [
+    "menu.file.addPlaylist"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q287",
+   "q": "what does command n do",
+   "expected": [
+    "menu.file.addPlaylist"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q288",
+   "q": "shortcut to refresh playlists",
+   "expected": [
+    "menu.file.refreshAll"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q289",
+   "q": "how do i refresh everything",
+   "expected": [
+    "menu.file.refreshAll"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q290",
+   "q": "how do i set a sleep timer",
+   "expected": [
+    "menu.playback.sleepTimer"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q291",
+   "q": "stop playing after 30 minutes",
+   "expected": [
+    "menu.playback.sleepTimer"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q292",
+   "q": "fall asleep to tv",
+   "expected": [
+    "menu.playback.sleepTimer"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q293",
+   "q": "sleep timmer",
+   "expected": [
+    "menu.playback.sleepTimer"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q294",
+   "q": "go back to the previous channel",
+   "expected": [
+    "menu.playback.lastChannel"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q295",
+   "q": "what is last channel",
+   "expected": [
+    "menu.playback.lastChannel"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q296",
+   "q": "switch between two channels",
+   "expected": [
+    "menu.playback.lastChannel"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q297",
+   "q": "shortcut for next channel",
+   "expected": [
+    "menu.playback.nextChannel"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q298",
+   "q": "channel up key",
+   "expected": [
+    "menu.playback.nextChannel"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q299",
+   "q": "shortcut for multi-view",
+   "expected": [
+    "menu.playback.openMultiView"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q300",
+   "q": "how do i refresh quickly on iphone",
+   "expected": [
+    "gesture.ios.tabTripleTap"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q301",
+   "q": "what happens if i tap a tab three times",
+   "expected": [
+    "gesture.ios.tabTripleTap"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q302",
+   "q": "refresh the library from the tab bar",
+   "expected": [
+    "gesture.ios.tabTripleTap"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q303",
+   "q": "pull down to refresh",
+   "expected": [
+    "gesture.ios.pullToRefresh"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q304",
+   "q": "how do i refresh live tv on iphone",
+   "expected": [
+    "gesture.ios.pullToRefresh"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q305",
+   "q": "swipe a channel to favourite it",
+   "expected": [
+    "gesture.ios.swipeFavourite"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q306",
+   "q": "how do i favourite a channel on iphone",
+   "expected": [
+    "gesture.ios.swipeFavourite"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q307",
+   "q": "double tap to skip 10 seconds",
+   "expected": [
+    "gesture.player.doubleTapSeek"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q308",
+   "q": "how do i skip forward on iphone",
+   "expected": [
+    "gesture.player.doubleTapSeek",
+    "menu.playback.skipForward"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q309",
+   "q": "double tap on the player",
+   "expected": [
+    "gesture.player.doubleTapSeek"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q310",
+   "q": "what does holding the player do",
+   "expected": [
+    "gesture.player.hold"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q311",
+   "q": "long press on the video",
+   "expected": [
+    "gesture.player.hold"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q312",
+   "q": "what is in the long press menu on a movie",
+   "expected": [
+    "context.tile.menu"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q313",
+   "q": "right click a poster",
+   "expected": [
+    "context.tile.menu"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q314",
+   "q": "how do i mark a movie as watched",
+   "expected": [
+    "context.tile.menu"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q315",
+   "q": "add to collection from the poster",
+   "expected": [
+    "context.tile.menu"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q316",
+   "q": "right click a channel",
+   "expected": [
+    "context.channel.menu"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q317",
+   "q": "how do i add a channel to favourites",
+   "expected": [
+    "context.channel.menu"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q318",
+   "q": "what does the channel menu have",
+   "expected": [
+    "context.channel.menu"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q319",
+   "q": "can siri play a channel",
+   "expected": [
+    "intent.playChannel"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q320",
+   "q": "hey siri watch a channel on streamsetu",
+   "expected": [
+    "intent.playChannel"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q321",
+   "q": "shortcut to play channel",
+   "expected": [
+    "intent.playChannel"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q322",
+   "q": "can i ask setu from spotlight",
+   "expected": [
+    "intent.askSetu"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q323",
+   "q": "ask setu shortcut",
+   "expected": [
+    "intent.askSetu",
+    "menu.help.askSetu"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q324",
+   "q": "how do i add xtream codes",
+   "expected": [
+    "recipe.addXtream"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q325",
+   "q": "xtream login setup",
+   "expected": [
+    "recipe.addXtream"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q326",
+   "q": "add my iptv provider with username and password",
+   "expected": [
+    "recipe.addXtream"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q327",
+   "q": "xstream setup",
+   "expected": [
+    "recipe.addXtream"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q328",
+   "q": "how do i add an m3u link",
+   "expected": [
+    "recipe.addM3U"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q329",
+   "q": "load a playlist from a url",
+   "expected": [
+    "recipe.addM3U"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q330",
+   "q": "import m3u file",
+   "expected": [
+    "recipe.addM3U",
+    "recipe.addM3UFile"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q331",
+   "q": "how do i connect jellyfin",
+   "expected": [
+    "recipe.addJellyfin"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q332",
+   "q": "add emby server",
+   "expected": [
+    "recipe.addEmby"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q333",
+   "q": "plex setup",
+   "expected": [
+    "recipe.addPlex",
+    "guide.addingPlex"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q334",
+   "q": "add my media server",
+   "expected": [
+    "recipe.addJellyfin"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q335",
+   "q": "why is it buffering",
+   "expected": [
+    "recipe.fixBuffering"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q336",
+   "q": "stream keeps freezing",
+   "expected": [
+    "recipe.fixBuffering"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q337",
+   "q": "channel lags and stutters",
+   "expected": [
+    "recipe.fixBuffering"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q338",
+   "q": "video stops every few seconds",
+   "expected": [
+    "recipe.fixBuffering"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q339",
+   "q": "why is my tv guide empty",
+   "expected": [
+    "recipe.fixEmptyGuide"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q340",
+   "q": "epg not showing",
+   "expected": [
+    "recipe.fixEmptyGuide"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q341",
+   "q": "guide times are wrong by hours",
+   "expected": [
+    "recipe.fixEmptyGuide",
+    "recipe.shiftGuideTimes"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q342",
+   "q": "no programme info",
+   "expected": [
+    "recipe.fixEmptyGuide"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q343",
+   "q": "posters show the wrong movie",
+   "expected": [
+    "recipe.fixWrongArtwork"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q344",
+   "q": "title page has wrong picture",
+   "expected": [
+    "recipe.fixWrongArtwork"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q345",
+   "q": "how do i get subtitles for a movie",
+   "expected": [
+    "recipe.setupSubtitles"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q346",
+   "q": "download subtitles online",
+   "expected": [
+    "recipe.setupSubtitles",
+    "screen.settings.playback.subtitlesOnline",
+    "setting.opensubtitlesKey"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q347",
+   "q": "add my own srt",
+   "expected": [
+    "recipe.setupSubtitles",
+    "control.ios.player.addSubtitle"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q348",
+   "q": "how do i record a channel",
+   "expected": [
+    "recipe.record"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q349",
+   "q": "schedule a recording",
+   "expected": [
+    "recipe.record",
+    "setting.scheduledRecordings"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q350",
+   "q": "where are my recordings",
+   "expected": [
+    "recipe.record",
+    "screen.recordings"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "where"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q351",
+   "q": "make a safe profile for my kids",
+   "expected": [
+    "recipe.kidsProfile"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q352",
+   "q": "kids can only see some channels",
+   "expected": [
+    "recipe.kidsProfile"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q353",
+   "q": "moving to a new mac",
+   "expected": [
+    "recipe.moveToNewDevice"
+   ],
+   "intent": "whats-new",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q354",
+   "q": "how do i transfer everything to my new phone",
+   "expected": [
+    "recipe.moveToNewDevice"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "how"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q355",
+   "q": "why wont this play",
+   "expected": [
+    "diag.playback"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q356",
+   "q": "black screen when i play",
+   "expected": [
+    "diag.playback"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q357",
+   "q": "no sound on this channel",
+   "expected": [
+    "diag.playback",
+    "diag.noSound"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q358",
+   "q": "playback error",
+   "expected": [
+    "diag.playback"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q359",
+   "q": "is my playlist working",
+   "expected": [
+    "diag.source"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q360",
+   "q": "provider says expired",
+   "expected": [
+    "diag.source"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q361",
+   "q": "login rejected 401",
+   "expected": [
+    "diag.source"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q362",
+   "q": "server down?",
+   "expected": [
+    "diag.source"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q363",
+   "q": "what is new in this version",
+   "expected": [
+    "meta.whatsNew"
+   ],
+   "intent": "whats-new",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q364",
+   "q": "what changed",
+   "expected": [
+    "meta.whatsNew"
+   ],
+   "intent": "whats-new",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q365",
+   "q": "new features",
+   "expected": [
+    "meta.whatsNew"
+   ],
+   "intent": "whats-new",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q366",
+   "q": "what can i do on this screen",
+   "expected": [
+    "meta.canDoHere"
+   ],
+   "intent": "what-can-i-do-here",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q367",
+   "q": "help me here",
+   "expected": [
+    "meta.canDoHere"
+   ],
+   "intent": "what-can-i-do-here",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q368",
+   "q": "what can you do",
+   "expected": [
+    "meta.canDoHere"
+   ],
+   "intent": "what-can-i-do-here",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q369",
+   "q": "does setu send my data anywhere",
+   "expected": [
+    "meta.privacySetu"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q370",
+   "q": "is the assistant private",
+   "expected": [
+    "meta.privacySetu"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q371",
+   "q": "does setu need internet",
+   "expected": [
+    "meta.privacySetu"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q372",
+   "q": "yo how do i get subs on",
+   "expected": [
+    "setting.subtitlesByDefault",
+    "recipe.setupSubtitles"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "slang",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q373",
+   "q": "subs not showing wtf",
+   "expected": [
+    "diag.subtitlesMissing"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "slang",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q374",
+   "q": "pic is all black what do i do",
+   "expected": [
+    "diag.blackScreen"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q375",
+   "q": "no audio on the stream pls help",
+   "expected": [
+    "diag.noSound"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "slang",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q376",
+   "q": "tv guide is blank, ugh",
+   "expected": [
+    "diag.guide"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q377",
+   "q": "my channels are gone",
+   "expected": [
+    "diag.channelsEmpty"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q378",
+   "q": "how do i yeet a folder from the sidebar",
+   "expected": [
+    "recipe.hideFolders"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "slang",
+    "heldout"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q379",
+   "q": "gimme the keyboard shortcuts",
+   "expected": [
+    "guide.keyboard"
+   ],
+   "intent": "shortcut-for",
+   "tags": [
+    "slang"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q380",
+   "q": "make it dark mode lol",
+   "expected": [
+    "recipe.changeTheme",
+    "setting.theme"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q381",
+   "q": "stuff keeps stuttering",
+   "expected": [
+    "recipe.fixBuffering",
+    "diag.playback",
+    "guide.playbackProblems"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "slang",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q382",
+   "q": "how to binge without it saving history",
+   "expected": [
+    "recipe.watchPrivately"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q383",
+   "q": "where do i dump my m3u",
+   "expected": [
+    "recipe.addM3UFile",
+    "guide.addingAnM3uLink"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q384",
+   "q": "can i watch 4 channels at once",
+   "expected": [
+    "recipe.multiView",
+    "screen.multiview"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "slang",
+    "heldout"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q385",
+   "q": "ctrl z my sort order",
+   "expected": [
+    "setting.defaultChannelSort"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q386",
+   "q": "posters are busted",
+   "expected": [
+    "diag.artwork"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "slang"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q387",
+   "q": "subtilte size",
+   "expected": [
+    "setting.subtitleSize"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "typo",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q388",
+   "q": "bakcup my stuff",
+   "expected": [
+    "recipe.backupRestore",
+    "screen.settings.backup"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q389",
+   "q": "how do i chnage the theem",
+   "expected": [
+    "recipe.changeTheme",
+    "setting.theme"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q390",
+   "q": "parantal controls pin",
+   "expected": [
+    "setting.parental",
+    "setting.parentalPin"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "typo",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q391",
+   "q": "slepp timer",
+   "expected": [
+    "recipe.sleepTimer",
+    "menu.playback.sleepTimer"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q392",
+   "q": "addd a playlst",
+   "expected": [
+    "guide.addingAPlaylistOrSource",
+    "screen.addPlaylist"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q393",
+   "q": "hardwre decodng",
+   "expected": [
+    "setting.hardwareDecoding"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "typo",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q394",
+   "q": "whre is the proxxy",
+   "expected": [
+    "setting.proxy"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q395",
+   "q": "downlods wont start",
+   "expected": [
+    "diag.downloads"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q396",
+   "q": "icloud syng",
+   "expected": [
+    "setting.icloudSync",
+    "recipe.icloudSync"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q397",
+   "q": "remindrs dont show up",
+   "expected": [
+    "diag.reminders"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q398",
+   "q": "multi veiw",
+   "expected": [
+    "recipe.multiView",
+    "screen.multiview"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "typo"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q399",
+   "q": "keybord shorcuts",
+   "expected": [
+    "guide.keyboard",
+    "recipe.keyboardOnly"
+   ],
+   "intent": "shortcut-for",
+   "tags": [
+    "typo",
+    "heldout"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q400",
+   "q": "wher is statistcs",
+   "expected": [
+    "screen.shortcut.statistics",
+    "screen.ios.statistics"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "typo"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q401",
+   "q": "fix gide times",
+   "expected": [
+    "recipe.shiftGuideTimes",
+    "setting.guideShift"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "typo",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q402",
+   "q": "subtitles kaise on kare",
+   "expected": [
+    "setting.subtitlesByDefault",
+    "recipe.setupSubtitles"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "hinglish",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q403",
+   "q": "guide khali kyu hai",
+   "expected": [
+    "diag.guide"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "hinglish"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q404",
+   "q": "playlist kaise add kare",
+   "expected": [
+    "guide.addingAPlaylistOrSource",
+    "screen.addPlaylist"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "hinglish"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q405",
+   "q": "sound nahi aa raha",
+   "expected": [
+    "diag.noSound"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "hinglish",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q406",
+   "q": "backup kaise lu",
+   "expected": [
+    "recipe.backupRestore",
+    "screen.settings.backup"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "hinglish"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q407",
+   "q": "theme change karna hai",
+   "expected": [
+    "recipe.changeTheme",
+    "setting.theme"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "hinglish"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q408",
+   "q": "kids ke liye pin lagana hai",
+   "expected": [
+    "setting.parental",
+    "setting.parentalPin"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "hinglish",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q409",
+   "q": "video buffer ho raha hai",
+   "expected": [
+    "recipe.fixBuffering",
+    "diag.playback",
+    "guide.playbackProblems"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "hinglish"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q410",
+   "q": "channel list kaha hai",
+   "expected": [
+    "screen.tab.liveTV",
+    "screen.liveTV.channelList"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "hinglish"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q411",
+   "q": "search me kuch nahi mil raha",
+   "expected": [
+    "diag.searchEmpty"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "hinglish",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q412",
+   "q": "sleep timer kaise lagate hain",
+   "expected": [
+    "recipe.sleepTimer"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "hinglish"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q413",
+   "q": "audio language kaise badle",
+   "expected": [
+    "recipe.chooseAudioLanguage",
+    "setting.preferredAudioLanguage"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "hinglish"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q414",
+   "q": "download kaise kare",
+   "expected": [
+    "recipe.download",
+    "guide.recordingAndDownloads"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "hinglish",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q415",
+   "q": "folder hide karna hai",
+   "expected": [
+    "recipe.hideFolders"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "hinglish"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q416",
+   "q": "icloud sync on kaise kare",
+   "expected": [
+    "recipe.icloudSync",
+    "setting.icloudSync"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "hinglish"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q417",
+   "q": "what happens if i turn on parental controls",
+   "expected": [
+    "setting.parental"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q418",
+   "q": "what happens if i clear my history",
+   "expected": [
+    "control.settings.clearHistory",
+    "control.ios.history.clear"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q419",
+   "q": "what happens if i delete a download after watching",
+   "expected": [
+    "setting.downloadsDeleteWatched"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q420",
+   "q": "what happens if i turn off hardware decoding",
+   "expected": [
+    "setting.hardwareDecoding"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q421",
+   "q": "what happens if i enable the vpn pause",
+   "expected": [
+    "setting.vpn",
+    "setting.vpnPause"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q422",
+   "q": "what happens when i lock a folder",
+   "expected": [
+    "context.sidebar.folderLock",
+    "setting.parental"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q423",
+   "q": "what happens if icloud sync is on and i add a playlist",
+   "expected": [
+    "setting.icloudSync"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q424",
+   "q": "what happens if the guide time shift is wrong",
+   "expected": [
+    "setting.guideShift",
+    "recipe.shiftGuideTimes"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q425",
+   "q": "what happens if i reset all preferences",
+   "expected": [
+    "control.settings.resetAllPreferences"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q426",
+   "q": "what happens if i remove everything",
+   "expected": [
+    "control.settings.removeEverything",
+    "control.ios.storage.removeEverything"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "what-if",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q427",
+   "q": "how do i add a playlist and then refresh it",
+   "expected": [
+    "recipe.refreshPlaylist",
+    "guide.addingAPlaylistOrSource"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q428",
+   "q": "how do i set up subtitles and pick a language",
+   "expected": [
+    "recipe.setupSubtitles",
+    "setting.preferredSubtitleLanguage"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q429",
+   "q": "how do i back up and move to a new device",
+   "expected": [
+    "recipe.backupRestore",
+    "guide.backupAndSync"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q430",
+   "q": "how do i add a guide address and fix the times",
+   "expected": [
+    "recipe.addGuideAddress",
+    "recipe.shiftGuideTimes"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q431",
+   "q": "how do i make a collection and add a movie to it",
+   "expected": [
+    "recipe.makeCollection",
+    "guide.collections"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q432",
+   "q": "how do i switch the player engine and try again",
+   "expected": [
+    "recipe.switchEngine"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q433",
+   "q": "how do i pair two devices and sync my lists",
+   "expected": [
+    "recipe.lanSyncPair",
+    "setting.lanSync"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q434",
+   "q": "how do i record a show and find it later",
+   "expected": [
+    "setting.recordings",
+    "guide.recordingAndDownloads",
+    "screen.recordings"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q435",
+   "q": "how do i hide a folder then unhide it",
+   "expected": [
+    "recipe.hideFolders"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi",
+    "heldout"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q436",
+   "q": "how do i add an xtream login and check the channels",
+   "expected": [
+    "guide.addingXtream",
+    "control.ios.playlist.checkChannels"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q437",
+   "q": "how do i save a movie for later and find it again",
+   "expected": [
+    "recipe.favoritesWatchLater",
+    "guide.favoritesAndWatchLater"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q438",
+   "q": "how do i change the theme and then the accent colour",
+   "expected": [
+    "recipe.changeTheme",
+    "setting.customTheme"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "multi",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q439",
+   "q": "where is the sidebar launch option",
+   "expected": [
+    "setting.sidebarLaunch"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q440",
+   "q": "where do i set the channel order",
+   "expected": [
+    "setting.defaultChannelSort"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q441",
+   "q": "where can i find recordings",
+   "expected": [
+    "screen.recordings",
+    "setting.recordings"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q442",
+   "q": "where are podcasts",
+   "expected": [
+    "screen.podcasts"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "mac"
+  },
+  {
+   "id": "q443",
+   "q": "where is the tonight plan",
+   "expected": [
+    "screen.tonight",
+    "screen.shortcut.tonight"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q444",
+   "q": "where is the channel manager",
+   "expected": [
+    "screen.settings.channelManager",
+    "screen.channelManager.channels"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q445",
+   "q": "where do i see playlist health",
+   "expected": [
+    "screen.playlist.health",
+    "screen.ios.playlist.health"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q446",
+   "q": "where is the app dns setting",
+   "expected": [
+    "setting.appDNS"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q447",
+   "q": "where is the user agent for a playlist",
+   "expected": [
+    "setting.userAgent"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q448",
+   "q": "where do i find the licenses",
+   "expected": [
+    "screen.settings.advanced.licenses"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "mac"
+  },
+  {
+   "id": "q449",
+   "q": "where is the privacy policy",
+   "expected": [
+    "screen.settings.advanced.legal",
+    "guide.privacyAndSafety"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q450",
+   "q": "where is the volume setting",
+   "expected": [
+    "setting.volume"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q451",
+   "q": "where do i pick the audio output device",
+   "expected": [
+    "setting.audioOutputUID"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "mac"
+  },
+  {
+   "id": "q452",
+   "q": "where is the opening animation setting",
+   "expected": [
+    "setting.opening",
+    "screen.opening"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q453",
+   "q": "where do i see my watch history on iphone",
+   "expected": [
+    "screen.ios.history"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "ios"
+  },
+  {
+   "id": "q454",
+   "q": "where is the more tab",
+   "expected": [
+    "screen.ios.tab.more"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "ios"
+  },
+  {
+   "id": "q455",
+   "q": "where do i find files and servers",
+   "expected": [
+    "screen.ios.filesAndServers",
+    "screen.filesAndServers"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q456",
+   "q": "where is the downloads page on iphone",
+   "expected": [
+    "screen.ios.downloads"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "ios"
+  },
+  {
+   "id": "q457",
+   "q": "where is the mini player",
+   "expected": [
+    "screen.ios.miniPlayer"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "ios"
+  },
+  {
+   "id": "q458",
+   "q": "where do i find crash reports",
+   "expected": [
+    "screen.ios.settings.crashReports",
+    "control.settings.crashReports"
+   ],
+   "intent": "where-is",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q459",
+   "q": "what does the guide time zone setting do",
+   "expected": [
+    "setting.guide.timeZoneMode"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q460",
+   "q": "what does fill missing logos do",
+   "expected": [
+    "setting.guide.enrichLogos"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q461",
+   "q": "what does the public channel database do",
+   "expected": [
+    "setting.guide.publicDatabase"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q462",
+   "q": "what is the guide warning",
+   "expected": [
+    "setting.guide.freshness"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q463",
+   "q": "what does remember settings for each title mean",
+   "expected": [
+    "setting.rememberPerTitle"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q464",
+   "q": "what is the default video size for",
+   "expected": [
+    "setting.defaultVideoSize"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q465",
+   "q": "what is the player quick tour",
+   "expected": [
+    "setting.storage.playerTourSeen"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "ios"
+  },
+  {
+   "id": "q466",
+   "q": "what does left handed layout do",
+   "expected": [
+    "setting.storage.playerLeftHanded"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "ios"
+  },
+  {
+   "id": "q467",
+   "q": "what does stream details on the picture show",
+   "expected": [
+    "setting.storage.playerStreamInfo"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "ios"
+  },
+  {
+   "id": "q468",
+   "q": "what is catch up clock",
+   "expected": [
+    "setting.catchupClock"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q469",
+   "q": "what does debrid do",
+   "expected": [
+    "setting.debrid",
+    "guide.traktDebridAndAi"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q470",
+   "q": "what is trakt for",
+   "expected": [
+    "setting.trakt",
+    "guide.traktDebridAndAi"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q471",
+   "q": "what does let the ai pick the best of the matches do",
+   "expected": [
+    "setting.askAIJudge"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q472",
+   "q": "what is the notification permission for",
+   "expected": [
+    "setting.notificationPermission",
+    "diag.reminders"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q473",
+   "q": "what does downloads only on wifi do",
+   "expected": [
+    "setting.downloadsWifiOnly"
+   ],
+   "intent": "what-does",
+   "tags": [],
+   "platform": "ios"
+  },
+  {
+   "id": "q474",
+   "q": "what is match artwork in the background",
+   "expected": [
+    "setting.artworkBackground"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q475",
+   "q": "how do i turn on picture in picture",
+   "expected": [
+    "recipe.airplayAndPip"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q476",
+   "q": "how do i airplay to my tv",
+   "expected": [
+    "recipe.airplayAndPip"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q477",
+   "q": "how do i use siri to pause",
+   "expected": [
+    "recipe.siriShortcuts",
+    "intent.pausePlayback"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q478",
+   "q": "how do i add a plex server",
+   "expected": [
+    "recipe.addPlex",
+    "guide.addingPlex"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q479",
+   "q": "how do i add an hdhomerun tuner",
+   "expected": [
+    "recipe.addHDHomeRun",
+    "guide.addingStalkerOrHdhomerun"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q480",
+   "q": "how do i add a stalker portal",
+   "expected": [
+    "recipe.addStalker",
+    "guide.addingStalkerOrHdhomerun"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q481",
+   "q": "how do i paste an address and let the app figure it out",
+   "expected": [
+    "recipe.pasteAnyAddress"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q482",
+   "q": "how do i reorder my channels",
+   "expected": [
+    "recipe.reorderChannels"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q483",
+   "q": "how do i search by actor",
+   "expected": [
+    "recipe.searchByActor",
+    "setting.castReading"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q484",
+   "q": "how do i use the app with only the keyboard",
+   "expected": [
+    "recipe.keyboardOnly",
+    "guide.keyboard"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "mac"
+  },
+  {
+   "id": "q485",
+   "q": "how do i report a bug",
+   "expected": [
+    "recipe.reportProblem",
+    "screen.feedback"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q486",
+   "q": "how do i check for updates",
+   "expected": [
+    "recipe.updateApp",
+    "control.settings.checkForUpdates"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q487",
+   "q": "how do i continue where i stopped",
+   "expected": [
+    "recipe.continueWatching",
+    "screen.shortcut.continueWatching"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q488",
+   "q": "how do i change the volume boost",
+   "expected": [
+    "control.ios.player.volumeBoost"
+   ],
+   "intent": "how-do-i",
+   "tags": [],
+   "platform": "ios"
+  },
+  {
+   "id": "q489",
+   "q": "how do i skip back 10 seconds",
+   "expected": [
+    "shortcut.player.seekArrows",
+    "shortcut.player.seekJL"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q490",
+   "q": "how do i go full screen",
+   "expected": [
+    "shortcut.player.fullscreen"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "mac"
+  },
+  {
+   "id": "q491",
+   "q": "how do i mute",
+   "expected": [
+    "shortcut.player.mute"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "mac"
+  },
+  {
+   "id": "q492",
+   "q": "how do i open the channel list in the player",
+   "expected": [
+    "shortcut.player.channelList"
+   ],
+   "intent": "shortcut-for",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q493",
+   "q": "how do i type a channel number",
+   "expected": [
+    "shortcut.player.numberEntry"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "mac"
+  },
+  {
+   "id": "q494",
+   "q": "how do i close a dialog with the keyboard",
+   "expected": [
+    "shortcut.dialog.escape"
+   ],
+   "intent": "shortcut-for",
+   "tags": [],
+   "platform": "mac"
+  },
+  {
+   "id": "q495",
+   "q": "why do subtitles not line up with the sound",
+   "expected": [
+    "diag.subtitlesOutOfSync"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q496",
+   "q": "why does hdr look dull",
+   "expected": [
+    "diag.hdrWashed"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q497",
+   "q": "why is live tv behind",
+   "expected": [
+    "diag.liveBehind"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q498",
+   "q": "why does a title keep disappearing from my library",
+   "expected": [
+    "diag.lockedHidden"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q499",
+   "q": "why is search by actor empty",
+   "expected": [
+    "diag.castSearch"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q500",
+   "q": "why does my recording not start",
+   "expected": [
+    "diag.recording"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q501",
+   "q": "why does playback stop when the vpn drops",
+   "expected": [
+    "diag.vpnPause",
+    "setting.vpnPause"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q502",
+   "q": "why cant i use pip or airplay",
+   "expected": [
+    "diag.noPipAirplay"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q503",
+   "q": "why is continue watching empty",
+   "expected": [
+    "diag.continueEmpty"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q504",
+   "q": "why are my favourites missing after i switched profile",
+   "expected": [
+    "diag.profileFavourites"
+   ],
+   "intent": "why-broken",
+   "tags": [
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q505",
+   "q": "why is sync not working between my devices",
+   "expected": [
+    "diag.sync"
+   ],
+   "intent": "why-broken",
+   "tags": [],
+   "platform": "both"
+  },
+  {
+   "id": "q506",
+   "q": "and on iphone",
+   "expected": [
+    "screen.ios.tab.settings"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "followup"
+   ],
+   "platform": "ios"
+  },
+  {
+   "id": "q507",
+   "q": "what are the choices for buffering mode",
+   "expected": [
+    "setting.bufferingMode"
+   ],
+   "intent": "what-does",
+   "tags": [
+    "followup",
+    "heldout"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q508",
+   "q": "how do i change it back to default",
+   "expected": [
+    "control.settings.restorePlaybackDefaults"
+   ],
+   "intent": "how-do-i",
+   "tags": [
+    "followup"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q509",
+   "q": "show me the proxy setting",
+   "expected": [
+    "setting.proxy"
+   ],
+   "intent": "where-is",
+   "tags": [
+    "followup"
+   ],
+   "platform": "both"
+  },
+  {
+   "id": "q510",
+   "q": "is there a shortcut for that search",
+   "expected": [
+    "menu.navigate.search",
+    "screen.search"
+   ],
+   "intent": "shortcut-for",
+   "tags": [
+    "followup",
+    "heldout"
+   ],
+   "platform": "mac"
+  },
+  {
+   "id": "q511",
+   "q": "turn it off for this playlist only",
+   "expected": [
+    "setting.playlistEngine",
+    "setting.playlistBuffering"
+   ],
+   "intent": "set-value",
+   "tags": [
+    "followup"
+   ],
+   "platform": "both"
+  }
+ ]
+}

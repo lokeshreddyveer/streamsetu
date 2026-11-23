@@ -71,7 +71,7 @@ struct IdentityResolver: Sendable {
             WHERE ci.kind = ? AND ci.identity_key = ?
             """, [head.0, head.1]) { r in
             Raw(member: IdentityMember(itemID: r.string(0), sourceID: r.uuid(1) ?? UUID(), language: r.optString(2), qualityRank: r.int(3), isCam: r.bool(4), year: r.optInt(5), addedAt: r.double(8)),
-                duration: r.optDouble(6), rating: r.optString(7).flatMap(Double.init), folder: r.optString(9), enabled: r.bool(10))
+                duration: r.optDouble(6), rating: RatingRule.credible(r.optString(7)), folder: r.optString(9), enabled: r.bool(10))
         }
         guard let me = raws.first(where: { $0.member.itemID == itemID }) else { return nil }
         let group = raws.filter { $0.member.itemID == itemID || Self.same(me, $0, key: head.1) }

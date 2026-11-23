@@ -7,6 +7,7 @@ struct WeeklyDigestCard: View {
     @State private var loaded = false
     @State private var notify = false
     @State private var note: String?
+    @Environment(\.atlasScreen) private var screenID          // the card sits on Statistics on every platform: its switch belongs to whichever Statistics entry the page declares
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -14,7 +15,7 @@ struct WeeklyDigestCard: View {
             Text(digest.headline).font(.title3.weight(.bold))
             if loaded, digest.lines.isEmpty { Text("Watch something and your week fills in here.").font(.callout).foregroundStyle(.secondary) }
             ForEach(digest.lines, id: \.self) { Text($0).font(.callout).foregroundStyle(.secondary) }
-            Toggle("Send me this on Sunday evening", isOn: Binding(get: { notify }, set: { change($0) })).font(.callout).padding(.top, 4)
+            Toggle("Send me this on Sunday evening", isOn: Binding(get: { notify }, set: { change($0) })).font(.callout).padding(.top, 4).atlasOptional(screenID ?? "screen.shortcut.statistics").atlasCovers("screen.shortcut.statistics")
             if let note { Text(note).font(.caption).foregroundStyle(.orange) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -123,8 +124,8 @@ struct UsualEveningRow: View {
                         Spacer()
                         Image(systemName: "play.fill")
                     }.contentShape(Rectangle())
-                }.buttonStyle(.plain)
-                Toggle("Remind me ten minutes before", isOn: Binding(get: { remind }, set: { change($0) })).font(.callout)
+                }.buttonStyle(.plain).atlas("screen.shortcut.tonight")
+                Toggle("Remind me ten minutes before", isOn: Binding(get: { remind }, set: { change($0) })).font(.callout).atlas("screen.shortcut.tonight")
                 if let note { Text(note).font(.caption).foregroundStyle(.orange) }
             }
             .padding(14).frame(maxWidth: .infinity, alignment: .leading)
@@ -188,7 +189,7 @@ struct NowPlayingStrip: View {
                             Text("Playing on \(e.deviceName)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Spacer(minLength: 8)
-                        Button("Play here") { container.takeOver(e) }.buttonStyle(.bordered).controlSize(.small)
+                        Button("Play here") { container.takeOver(e) }.buttonStyle(.bordered).controlSize(.small).atlas("control.home.nowPlayingElsewhere")
                     }
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(ColorTokens.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))

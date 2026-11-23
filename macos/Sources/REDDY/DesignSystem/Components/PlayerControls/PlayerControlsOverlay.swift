@@ -54,7 +54,7 @@ struct PlayerControlsOverlay: View {
                     guard playback.videoLayout.zoom > 1 else { return }
                     playback.panVideo(by: CGSize(width: v.translation.width - lastDrag.width, height: v.translation.height - lastDrag.height), container: size)
                     lastDrag = v.translation
-                }.onEnded { _ in lastDrag = .zero })
+                }.onEnded { _ in lastDrag = .zero }).atlas("control.player.surface")
             statusLayer.animation(BrandMotion.emphasized, value: failureShown)
             if !playback.numberEntry.isEmpty { numberBadge.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(24).allowsHitTesting(false).transition(.opacity) }
             if playback.repeatedBuffering, !dismissedBufferingHint {
@@ -69,7 +69,7 @@ struct PlayerControlsOverlay: View {
             if playback.state.isPlaying, let button = skipButton {
                 Button { button.action() } label: { Label(button.title, systemImage: "forward.end.fill").font(.system(size: 13, weight: .semibold)).padding(.horizontal, 14).padding(.vertical, 9) }
                     .buttonStyle(.plain).foregroundStyle(.white).background(.black.opacity(0.65), in: Capsule()).overlay(Capsule().strokeBorder(.white.opacity(0.3)))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(.bottom, 110).padding(.trailing, 16).transition(.opacity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(.bottom, 110).padding(.trailing, 16).transition(.opacity).atlas("control.player.skipButton")
             }
             VStack(spacing: 0) {
                 topBar
@@ -126,12 +126,12 @@ struct PlayerControlsOverlay: View {
                 Text("This stream keeps buffering").font(.system(size: 12, weight: .semibold))
                 Text("Your connection or the provider can't keep up. A bigger buffer or the other player may help.").font(.system(size: 11)).foregroundStyle(.white.opacity(0.7))
             }
-            Button("Use bigger buffer") { dismissedBufferingHint = true; playback.useStabilityBufferingForThisPlaylist() }.buttonStyle(.bordered).controlSize(.small)
+            Button("Use bigger buffer") { dismissedBufferingHint = true; playback.useStabilityBufferingForThisPlaylist() }.buttonStyle(.bordered).controlSize(.small).atlas("control.player.bufferingHint")
             if let alt = playback.availableEngines.first(where: { $0 != playback.activeEngine }) {
-                Button("Try \(alt.rawValue)") { dismissedBufferingHint = true; playback.switchEngine(alt) }.buttonStyle(.bordered).controlSize(.small)
+                Button("Try \(alt.rawValue)") { dismissedBufferingHint = true; playback.switchEngine(alt) }.buttonStyle(.bordered).controlSize(.small).atlas("control.player.bufferingHint")
             }
-            Button { AssistantLauncher.shared.ask("Why does this stream keep buffering? Diagnose it.") } label: { Label("Ask Setu", systemImage: "sparkles") }.buttonStyle(.bordered).controlSize(.small)
-            Button { dismissedBufferingHint = true } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .bold)) }.buttonStyle(.plain).foregroundStyle(.white.opacity(0.7))
+            Button { AssistantLauncher.shared.ask("Why does this stream keep buffering? Diagnose it.") } label: { Label("Ask Setu", systemImage: "sparkles") }.buttonStyle(.bordered).controlSize(.small).atlas("control.player.bufferingHint")
+            Button { dismissedBufferingHint = true } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .bold)) }.buttonStyle(.plain).foregroundStyle(.white.opacity(0.7)).accessibilityLabel("Dismiss this hint").help("Dismiss this hint").atlas("control.player.bufferingHint")
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
         .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -155,13 +155,13 @@ struct PlayerControlsOverlay: View {
                 HStack {
                     // A missing login is fixed by entering it again, not by retrying: that comes first.
                     if e.kind == .loginMissing, appState != nil, let id = playback.current?.sourceID, let source = try? container?.catalog.source(id: id) {
-                        PrimaryButton(title: "Edit Login", symbol: "key") { editingSource = source }
+                        PrimaryButton(title: "Edit Login", symbol: "key") { editingSource = source }.atlas("control.player.errorCard")
                     }
-                    PrimaryButton(title: "Try again", symbol: "arrow.clockwise") { playback.retryNow() }
+                    PrimaryButton(title: "Try again", symbol: "arrow.clockwise") { playback.retryNow() }.atlas("control.player.errorCard")
                     if let alt = playback.availableEngines.first(where: { $0 != playback.activeEngine }) {
-                        SecondaryButton(title: "Use \(alt.rawValue)") { playback.switchEngine(alt) }
+                        SecondaryButton(title: "Use \(alt.rawValue)") { playback.switchEngine(alt) }.atlas("control.player.errorCard")
                     }
-                    SecondaryButton(title: "Ask Setu", symbol: "sparkles") { AssistantLauncher.shared.ask("Why did this fail? Diagnose it and tell me what to do.") }
+                    SecondaryButton(title: "Ask Setu", symbol: "sparkles") { AssistantLauncher.shared.ask("Why did this fail? Diagnose it and tell me what to do.") }.atlas("control.player.errorCard")
                 }
             }.padding(Spacing.xl).background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: LayoutTokens.radiusLarge))
             .transition(.move(edge: .bottom).combined(with: .opacity))          // the error card rises into place
@@ -169,7 +169,7 @@ struct PlayerControlsOverlay: View {
             if playback.upNext != nil {
                 VStack(spacing: Spacing.sm) {
                     Text("Up next").font(Typography.caption).foregroundStyle(.white.opacity(0.7))
-                    PrimaryButton(title: "Play next episode", symbol: "forward.end.fill") { playback.playNextEpisode() }
+                    PrimaryButton(title: "Play next episode", symbol: "forward.end.fill") { playback.playNextEpisode() }.atlas("menu.playback.nextEpisode")
                 }.padding(Spacing.xl).background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: LayoutTokens.radiusLarge))
             }
         default: EmptyView()
@@ -185,7 +185,7 @@ struct PlayerControlsOverlay: View {
     /// Top region: what is playing. One line, never wider than the video.
     private var topBar: some View {
         HStack(spacing: 10) {
-            if let onClose { IconButton(symbol: "chevron.down", help: "Back", action: onClose) }
+            if let onClose { IconButton(symbol: "chevron.down", help: "Back", action: onClose).atlas("control.player.back") }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
                     Text(playback.title).font(Typography.heading).lineLimit(1).truncationMode(.tail)
@@ -205,7 +205,7 @@ struct PlayerControlsOverlay: View {
             }
             .layoutPriority(1)
             Spacer(minLength: 8)
-            IconButton(symbol: "magnifyingglass", help: "Search the catalog") { showSearch = true; visible = true }
+            IconButton(symbol: "magnifyingglass", help: "Search the catalog") { showSearch = true; visible = true }.atlas("control.player.search")
         }
         .padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 24)
         .background(LinearGradient(colors: [.black.opacity(0.75), .clear], startPoint: .top, endPoint: .bottom))
@@ -262,26 +262,26 @@ struct PlayerControlsOverlay: View {
             case .compact: overflowMenu(includeTracks: true)
             }
             IconButton(symbol: isFullscreenPlayer ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
-                       help: isFullscreenPlayer ? "Exit full screen" : "Full screen", action: onToggleFullscreen)
+                       help: isFullscreenPlayer ? "Exit full screen" : "Full screen", action: onToggleFullscreen).atlas("shortcut.player.fullscreen")
         }
         .fixedSize(horizontal: true, vertical: false)
     }
 
     private var transport: some View {
         HStack(spacing: 6) {
-            if playback.isCatchup { Button { playback.goLiveFromCatchup() } label: { Label("Back to live", systemImage: "dot.radiowaves.left.and.right").font(.system(size: 12, weight: .semibold)).padding(.horizontal, 12).frame(height: 30).background(ColorTokens.accentDefault, in: Capsule()) }.buttonStyle(.plain).help("Return to the live stream") }
-            if playback.isLive, isFullscreenPlayer, playback.queue.count > 1 { IconButton(symbol: "list.bullet", help: "Channels and guide (Tab)", active: playback.showChannelSwitcher) { playback.toggleChannelSwitcher() } }
-            if playback.isLive { IconButton(symbol: "backward.end.fill", help: "Previous channel") { playback.previousChannelInList() } }
+            if playback.isCatchup { Button { playback.goLiveFromCatchup() } label: { Label("Back to live", systemImage: "dot.radiowaves.left.and.right").font(.system(size: 12, weight: .semibold)).padding(.horizontal, 12).frame(height: 30).background(ColorTokens.accentDefault, in: Capsule()) }.buttonStyle(.plain).help("Return to the live stream").atlas("control.player.backToLive") }
+            if playback.isLive, isFullscreenPlayer, playback.queue.count > 1 { IconButton(symbol: "list.bullet", help: "Channels and guide (Tab)", active: playback.showChannelSwitcher) { playback.toggleChannelSwitcher() }.atlas("control.player.channelPanel") }
+            if playback.isLive { IconButton(symbol: "backward.end.fill", help: "Previous channel") { playback.previousChannelInList() }.atlas("menu.playback.previousChannel") }
             if playback.liveRewindAvailable {
-                IconButton(symbol: "gobackward.10", help: "Back 10 seconds") { playback.rewindLive(by: 10) }
+                IconButton(symbol: "gobackward.10", help: "Back 10 seconds") { playback.rewindLive(by: 10) }.atlas("menu.playback.skipBack")
                 livePill
             }
-            else { IconButton(symbol: "gobackward.10", help: "Back 10 seconds") { playback.seek(by: -10) } }
-            IconButton(symbol: playback.state == .playing || playback.state == .buffering ? "pause.fill" : "play.fill", help: "Play / Pause", size: 38) { playback.togglePause() }
-            if playback.isLive { IconButton(symbol: "forward.end.fill", help: "Next channel") { playback.nextChannel() } }
+            else { IconButton(symbol: "gobackward.10", help: "Back 10 seconds") { playback.seek(by: -10) }.atlas("menu.playback.skipBack") }
+            IconButton(symbol: playback.state == .playing || playback.state == .buffering ? "pause.fill" : "play.fill", help: "Play / Pause", size: 38) { playback.togglePause() }.atlas("menu.playback.playPause")
+            if playback.isLive { IconButton(symbol: "forward.end.fill", help: "Next channel") { playback.nextChannel() }.atlas("menu.playback.nextChannel") }
             else {
-                IconButton(symbol: "goforward.10", help: "Forward 10 seconds") { playback.seek(by: 10) }
-                if playback.upNext != nil { IconButton(symbol: "forward.end.alt.fill", help: "Next episode") { playback.playNextEpisode() } }
+                IconButton(symbol: "goforward.10", help: "Forward 10 seconds") { playback.seek(by: 10) }.atlas("menu.playback.skipForward")
+                if playback.upNext != nil { IconButton(symbol: "forward.end.alt.fill", help: "Next episode") { playback.playNextEpisode() }.atlas("menu.playback.nextEpisode") }
             }
         }
     }
@@ -293,7 +293,7 @@ struct PlayerControlsOverlay: View {
             Button { playback.goToLiveEdge() } label: {
                 Text("−\(Int(behind) / 60):\(String(format: "%02d", Int(behind) % 60)) · Go live").font(.system(size: 11, weight: .semibold)).padding(.horizontal, 10).frame(height: 26)
                     .background(Color.white.opacity(0.14), in: Capsule())
-            }.buttonStyle(.plain).help("Jump to the live broadcast")
+            }.buttonStyle(.plain).help("Jump to the live broadcast").atlas("control.player.goLive")
         } else {
             HStack(spacing: 5) { Circle().fill(ColorTokens.live).frame(width: 7, height: 7); Text("LIVE").font(.system(size: 11, weight: .bold)).tracking(0.5) }.padding(.horizontal, 6)
         }
@@ -328,7 +328,7 @@ struct PlayerControlsOverlay: View {
     @ViewBuilder private var extras: some View {
         if !playback.isLive { speedMenu }
         if playback.availableEngines.count > 1 { engineMenu }
-        if playback.activeEngine == .avPlayer, PiPManager.shared.isSupported { IconButton(symbol: "pip.enter", help: "Picture in Picture") { PiPManager.shared.toggle() } }
+        if playback.activeEngine == .avPlayer, PiPManager.shared.isSupported { IconButton(symbol: "pip.enter", help: "Picture in Picture") { PiPManager.shared.toggle() }.atlas("control.player.pip") }
         if playback.activeEngine == .avPlayer { AirPlayButton().frame(width: 32, height: 32) }
         extrasMenu
         sleepMenu
@@ -336,8 +336,8 @@ struct PlayerControlsOverlay: View {
         if hasTools { toolsMenu }
         if playback.canRecord || playback.recording != nil { recordChip }
         if !playback.isLive, let q = container?.watchQueue, !q.items.isEmpty { queueMenu(q) }
-        if playback.screenshotSupported { IconButton(symbol: "camera", help: "Save screenshot") { saveScreenshot() } }
-        IconButton(symbol: "info.circle", help: "Stream info", active: showDiagnostics) { showDiagnostics.toggle() }
+        if playback.screenshotSupported { IconButton(symbol: "camera", help: "Save screenshot") { saveScreenshot() }.atlas("control.player.screenshot") }
+        IconButton(symbol: "info.circle", help: "Stream info", active: showDiagnostics) { showDiagnostics.toggle() }.atlas("setting.showDiagnosticsOverlay")
     }
 
     /// The same controls gathered into one menu when the row is narrow. It is its own (equatable) view on purpose: this overlay
@@ -376,7 +376,7 @@ struct PlayerControlsOverlay: View {
                 }
             } else { chip("record.circle") }
         }
-        .buttonStyle(.plain).help(playback.recording != nil ? "Stop recording" : "Record this channel").accessibilityLabel(playback.recording != nil ? "Stop recording" : "Record this channel")
+        .buttonStyle(.plain).help(playback.recording != nil ? "Stop recording" : "Record this channel").accessibilityLabel(playback.recording != nil ? "Stop recording" : "Record this channel").atlas("control.player.record")
     }
 
     /// What is lined up to play next: each title can be taken out, or played now.
@@ -392,12 +392,12 @@ struct PlayerControlsOverlay: View {
             }
             Button("Clear Queue", role: .destructive) { q.clear() }
         } label: { chip("list.bullet") }
-            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Up next: \(q.items.count) in the queue").accessibilityLabel("Queue")
+            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Up next: \(q.items.count) in the queue").accessibilityLabel("Queue").atlas("control.player.queue")
     }
 
     private var toolsMenu: some View {
         Menu { toolItems } label: { chip("wand.and.stars") }
-            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Chapters, repeat, frame step, volume boost").accessibilityLabel("More tools")
+            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Chapters, repeat, frame step, volume boost").accessibilityLabel("More tools").atlas("control.player.tools")
     }
 
     private var toolItems: some View { PlayerToolItems(playback: playback, loopA: $loopA, loopB: $loopB) }
@@ -418,8 +418,8 @@ struct PlayerControlsOverlay: View {
         HStack(spacing: 10) {
             Image(systemName: "arrow.clockwise.circle")
             Text("Resumed at \(DurationFormatter.clock(at))").font(Typography.bodyMedium)
-            Button("Start over") { playback.seek(to: 0); withAnimation { resumedAt = nil } }.buttonStyle(.plain).foregroundStyle(ColorTokens.accentDefault).font(Typography.bodyMedium)
-            Button { withAnimation { resumedAt = nil } } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .bold)) }.buttonStyle(.plain).foregroundStyle(.white.opacity(0.7))
+            Button("Start over") { playback.seek(to: 0); withAnimation { resumedAt = nil } }.buttonStyle(.plain).foregroundStyle(ColorTokens.accentDefault).font(Typography.bodyMedium).atlas("control.player.resumeCard")
+            Button { withAnimation { resumedAt = nil } } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .bold)) }.buttonStyle(.plain).foregroundStyle(.white.opacity(0.7)).accessibilityLabel("Dismiss").help("Dismiss").atlas("control.player.resumeCard")
         }
         .foregroundStyle(.white).padding(.horizontal, 14).padding(.vertical, 8).background(.black.opacity(0.72), in: Capsule())
     }
@@ -430,8 +430,8 @@ struct PlayerControlsOverlay: View {
                 Text("Up next").font(Typography.caption).foregroundStyle(.white.opacity(0.7))
                 Text("S\(e.seasonNumber) E\(e.episodeNumber) · \(e.title)").font(Typography.bodyMedium).lineLimit(1)
             }
-            PrimaryButton(title: "Play now", symbol: "play.fill") { playback.playNextEpisode() }
-            Button { upNextDismissedFor = playback.current?.itemID } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .bold)) }.buttonStyle(.plain).foregroundStyle(.white.opacity(0.7))
+            PrimaryButton(title: "Play now", symbol: "play.fill") { playback.playNextEpisode() }.atlas("control.player.upNextCard")
+            Button { upNextDismissedFor = playback.current?.itemID } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .bold)) }.buttonStyle(.plain).foregroundStyle(.white.opacity(0.7)).accessibilityLabel("Dismiss").help("Dismiss").atlas("control.player.upNextCard")
         }
         .foregroundStyle(.white).padding(.horizontal, 14).padding(.vertical, 10).background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
@@ -440,7 +440,7 @@ struct PlayerControlsOverlay: View {
 
     @ViewBuilder private func volume(slider width: CGFloat?) -> some View {
         HStack(spacing: 6) {
-            IconButton(symbol: playback.isMuted || playback.volume == 0 ? "speaker.slash.fill" : playback.volume < 0.5 ? "speaker.wave.1.fill" : "speaker.wave.2.fill", help: playback.isMuted ? "Unmute" : "Mute") { playback.isMuted.toggle() }
+            IconButton(symbol: playback.isMuted || playback.volume == 0 ? "speaker.slash.fill" : playback.volume < 0.5 ? "speaker.wave.1.fill" : "speaker.wave.2.fill", help: playback.isMuted ? "Unmute" : "Mute") { playback.isMuted.toggle() }.atlas("setting.volume")
             if let width {
                 Slider(value: Binding(get: { playback.isMuted ? 0 : playback.volume }, set: { playback.volume = $0; playback.isMuted = false }), in: 0...1)
                     .frame(width: width).controlSize(.small).accessibilityLabel("Volume")
@@ -463,7 +463,7 @@ struct PlayerControlsOverlay: View {
 
     private var extrasMenu: some View {
         Menu { extrasItems } label: { chip("slider.horizontal.3") }
-            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Go to a time, subtitles online, remembered settings").accessibilityLabel("Title options")
+            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Go to a time, subtitles online, remembered settings").accessibilityLabel("Title options").atlas("control.player.extras")
     }
 
     private var sleepMenu: some View {
@@ -479,12 +479,12 @@ struct PlayerControlsOverlay: View {
             Image(systemName: playback.sleepTimer == nil ? "moon.zzz" : "moon.zzz.fill").font(.system(size: 14, weight: .semibold)).frame(width: 32, height: 32)
                 .background(Color.white.opacity(0.08), in: Circle()).foregroundStyle(playback.sleepTimer == nil ? ColorTokens.textPrimary : ColorTokens.accentDefault)
         }
-        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Sleep timer").accessibilityLabel("Sleep timer")
+        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Sleep timer").accessibilityLabel("Sleep timer").atlas("menu.playback.sleepTimer")
     }
 
     private var pictureButton: some View {
         IconButton(symbol: "slider.horizontal.3", help: "Picture: brightness, contrast, colour", active: !playback.picture.isDefault) { showPicture.toggle() }
-            .popover(isPresented: $showPicture, arrowEdge: .top) { ReddyPicturePanel(picture: playback.picture) { playback.setPicture($0) } }
+            .popover(isPresented: $showPicture, arrowEdge: .top) { ReddyPicturePanel(picture: playback.picture) { playback.setPicture($0) } }.atlas("setting.picture")
     }
 
     /// Opens a file chooser for a subtitle file and hands the choice to the player.
@@ -513,7 +513,7 @@ struct PlayerControlsOverlay: View {
                 }
             }
         } label: { Image(systemName: "cpu").font(.system(size: 14, weight: .semibold)).frame(width: 32, height: 32).background(Color.white.opacity(0.08), in: Circle()) }
-        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Player engine")
+        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Player engine").atlas("control.player.engineSwitch")
     }
 
     private var speedMenu: some View {
@@ -524,7 +524,7 @@ struct PlayerControlsOverlay: View {
         } label: {
             Text(playback.rate == 1 ? "1×" : "\(playback.rate.formatted())×").font(Typography.captionMedium).frame(width: 40, height: 32).background(Color.white.opacity(0.08), in: Capsule())
         }
-        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Playback speed")
+        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("Playback speed").atlas("control.player.speed")
     }
 
     // MARK: helpers
@@ -647,7 +647,7 @@ private struct PlayerOverflowMenu: View, Equatable {
             if playback.screenshotSupported { Button("Save Screenshot", action: saveScreenshot) }
             Button(showsStreamInfo ? "Hide Stream Info" : "Show Stream Info", action: toggleStreamInfo)
         } label: { PlayerChip(symbol: "ellipsis") }
-        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("More controls").accessibilityLabel("More controls")
+        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().help("More controls").accessibilityLabel("More controls").atlas("control.player.overflow")
     }
 }
 

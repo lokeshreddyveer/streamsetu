@@ -197,6 +197,16 @@ final class SQLiteSmartMixCandidateSource: SmartMixCandidateSource, @unchecked S
                                         chunk.map { $0 as (any SQLConvertible)? } + argsSource, { $0.string(0) }))
                     }
                 }
+                // The best-rated titles of every genre, so a small genre still has its titles in the pool (genre shelves). One scan per kind, bucketed here.
+                let genreRows = try c.query("SELECT t.id, t.genre FROM \(k.table) t WHERE t.genre IS NOT NULL AND t.genre <> ''\(ok)\(srcClause) ORDER BY CAST(COALESCE(NULLIF(t.rating,''),'0') AS REAL) DESC, t.id LIMIT 12000",
+                                            argsSource, { ($0.string(0), $0.string(1)) })
+                var perGenre: [String: Int] = [:]
+                let skind: SMKind = k.kind == "movie" ? .movie : .series
+                for (id, g) in genreRows {
+                    var take = false
+                    for key in SMGenres.keys(genres: SMGenres.tokens(g), kind: skind) where perGenre[key, default: 0] < SMGenres.poolPerGenre { perGenre[key, default: 0] += 1; take = true }
+                    if take { add([id]) }
+                }
                 poolIDs[k.kind] = ordered
             }
         }
@@ -233,6 +243,8 @@ final class SQLiteSmartMixCandidateSource: SmartMixCandidateSource, @unchecked S
                     cand.restricted = (cat.map { badCats.contains($0) } ?? false) || hiddenItems.contains(cand.id) || isRestrictedKey(k.kind, cand.key, cand.year)
                         || isRestrictedTitle(r.optString(13), cand.year)
                     cand.dismissed = dismissedIDs.contains(cand.id) || isDismissedKey(k.kind, cand.key, cand.year)
+                    cand.genres = SMGenres.tokens(r.optString(12))
+                    cand.franchise = SMFranchise.key(identityKey: cand.key)
                     if let g = r.optString(12)?.split(separator: ",").first.map({ $0.trimmingCharacters(in: .whitespaces).lowercased() }), !g.isEmpty { cand.genre = g }
                     if let s = sig[cand.id] {
                         cand.watched = true

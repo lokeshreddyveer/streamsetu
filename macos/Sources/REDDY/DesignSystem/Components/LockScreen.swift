@@ -11,7 +11,7 @@ struct LockScreen: View {
                 Image(systemName: "lock.fill").font(.system(size: 44, weight: .light)).foregroundStyle(ColorTokens.accentDefault)
                 Text("StreamSetu is locked").font(.title3.weight(.semibold)).foregroundStyle(ColorTokens.textPrimary)
                 Button { Task { await lock.unlock() } } label: { Label("Unlock with \(lock.method)", systemImage: "faceid").padding(.horizontal, 6) }
-                    .buttonStyle(.borderedProminent).controlSize(.large).disabled(lock.isAuthenticating)
+                    .buttonStyle(.borderedProminent).controlSize(.large).disabled(lock.isAuthenticating).atlas("setting.appLock")
             }
         }
         .task { await lock.unlock() }

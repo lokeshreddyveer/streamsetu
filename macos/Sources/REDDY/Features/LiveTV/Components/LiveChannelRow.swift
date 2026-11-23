@@ -29,10 +29,11 @@ struct LiveChannelRow: View {
                 }
             }
             Spacer(minLength: 4)
+            GuideDot(availability: nowNext == nil ? .none : (nowNext?.contains { $0.isLive() } == true ? .nowNext : .mappedEmpty))
             if isPlaying { Image(systemName: "waveform").font(.system(size: 11)).foregroundStyle(accent) }
             Button(action: onFavorite) { Image(systemName: isFavorite ? "heart.fill" : "heart").font(.system(size: 11)).foregroundStyle(isFavorite ? accent : ColorTokens.textSecondary).frame(width: 22, height: 22).contentShape(Rectangle()) }.accessibilityLabel(isFavorite ? "Remove from favorites" : "Add to favorites")
                 .buttonStyle(.plain).opacity(isFavorite || hovering ? 1 : 0)
-                .accessibilityLabel(isFavorite ? "Remove \(channel.name) from favorites" : "Add \(channel.name) to favorites")
+                .accessibilityLabel(isFavorite ? "Remove \(channel.name) from favorites" : "Add \(channel.name) to favorites").atlas("control.liveTV.favorite")
         }
         .padding(.horizontal, 10).frame(height: density.channelRowHeight)
         .background(isPlaying || isSelected ? Color.white.opacity(0.05) : hovering ? Color.white.opacity(0.03) : .clear, in: RoundedRectangle(cornerRadius: LayoutTokens.radiusSmall, style: .continuous))

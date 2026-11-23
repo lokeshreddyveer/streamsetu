@@ -2,7 +2,7 @@ import Foundation
 
 /// Conservative normalization for search and grouping. Display text is only cleaned, never rewritten.
 enum MetadataNormalizer {
-    static let qualityTokens: Set<String> = ["hd", "fhd", "uhd", "4k", "sd", "hevc", "h265", "h264", "1080p", "720p", "2160p", "50fps", "60fps"]
+    static let qualityTokens = TitleVocabulary.channelQualityTokens
 
     /// "Café  Zürich+ HD" -> "cafe zurich plus hd"
     static func normalize(_ s: String) -> String {

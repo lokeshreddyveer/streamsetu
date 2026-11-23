@@ -262,18 +262,6 @@ struct StartBusyRing: View {
     }
 }
 
-/// Press feel for tiles: a little smaller and dimmer while held, springing back on release. With motion off it only dims.
-struct StartPressStyle: ButtonStyle {
-    @Environment(\.startMotion) private var motion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed && motion ? 0.97 : 1)
-            .brightness(configuration.isPressed ? -0.05 : 0)
-            .animation(motion ? .spring(response: 0.32, dampingFraction: 0.82) : .linear(duration: 0.1), value: configuration.isPressed)
-    }
-}
-
 /// A short horizontal shake, used on the form card when connecting fails.
 struct StartShake: GeometryEffect {
     var animatableData: CGFloat
@@ -392,7 +380,7 @@ struct StartSegmented<Item: Hashable>: View {
                         }
                         .contentShape(Capsule())
                 }
-                .buttonStyle(StartPressStyle())
+                .buttonStyle(.brandPress)
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }

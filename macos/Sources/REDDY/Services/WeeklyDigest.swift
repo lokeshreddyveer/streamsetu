@@ -47,7 +47,7 @@ struct WeeklyDigest: Equatable, Sendable {
         if let c = comparison { out.append(c) }
         if let t = topTitle { out.append("Most watched: \(t)") }
         if let h = busiestHour, thisWeek > 0 { out.append("You mostly watch around \(Self.hour(h))") }
-        if seriesWithNewEpisodes > 0 { out.append(seriesWithNewEpisodes == 1 ? "New episodes are waiting in 1 series" : "New episodes are waiting in \(seriesWithNewEpisodes) series") }
+        if seriesWithNewEpisodes > 0 { out.append(Localized.plural(seriesWithNewEpisodes, one: "New episodes are waiting in %@ series", other: "New episodes are waiting in %@ series")) }
         out.append(contentsOf: subscriptionNotes)
         return out
     }

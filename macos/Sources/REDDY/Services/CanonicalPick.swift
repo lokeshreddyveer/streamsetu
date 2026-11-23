@@ -43,7 +43,7 @@ enum PreferredSource {
             if a.sortOrder != b.sortOrder { return a.sortOrder < b.sortOrder }
             return a.id.uuidString.lowercased().utf8.lexicographicallyPrecedes(b.id.uuidString.lowercased().utf8)
         }
-        return Dictionary(uniqueKeysWithValues: ordered.enumerated().map { ($1.id, $0) })
+        return Dictionary(ordered.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { a, _ in a })
     }
 }
 

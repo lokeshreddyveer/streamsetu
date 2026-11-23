@@ -18,9 +18,9 @@ struct AdvancedSettingsPage: View {
             SettingsGroup(title: "Diagnostics", footer: "The report names playlists by host only. Passwords, tokens and stream addresses are removed before it is shown.") {
                 SettingsActions {
                     AsyncActionButton(title: "Generate Report", symbol: "doc.text.magnifyingglass", busyTitle: "Generating…") { if let c = container { await vm.generate(c) } }
-                    Button { vm.copy() } label: { Label("Copy", systemImage: "doc.on.doc") }.disabled(vm.report.isEmpty)
-                    Button { vm.save() } label: { Label("Save…", systemImage: "square.and.arrow.down") }.disabled(vm.report.isEmpty)
-                    Button { vm.revealLogs() } label: { Label("Reveal Logs", systemImage: "list.bullet.rectangle") }
+                    Button { vm.copy() } label: { Label("Copy", systemImage: "doc.on.doc") }.disabled(vm.report.isEmpty).atlas("control.settings.copyReport")
+                    Button { vm.save() } label: { Label("Save…", systemImage: "square.and.arrow.down") }.disabled(vm.report.isEmpty).atlas("control.settings.saveReport")
+                    Button { vm.revealLogs() } label: { Label("Reveal Logs", systemImage: "list.bullet.rectangle") }.atlas("control.settings.revealLogs")
                 }
                 if vm.report.isEmpty {
                     Text("Copy and Save become available after you generate a report.").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary).padding(.horizontal, 14).padding(.bottom, 10)
@@ -32,17 +32,17 @@ struct AdvancedSettingsPage: View {
             }
 
             SettingsGroup(title: "Reset", footer: "Each button does exactly one thing. None of them removes your playlists.") {
-                resetRow("Reset appearance", "Accent, density, animation and sidebar.", "Reset") { if let c = container { vm.resetAppearance(c) } }
-                resetRow("Reset playback preferences", "Engine, decoding, quality, buffering, audio and subtitles.", "Reset") { if let c = container { vm.resetPlayback(c) } }
-                resetRow("Clear viewing history", "Watch history, Recently Watched and resume points. Favorites stay.", "Clear…") { confirm = .history }
-                resetRow("Clear search history", "The list of recent searches.", "Clear") { if let c = container { vm.clearSearchHistory(c) } }
-                resetRow("Clear artwork cache", "Downloaded posters and logos. They are fetched again when needed.", "Clear") { if let c = container { Task { await vm.clearArtwork(c) } } }
-                resetRow("Reset all preferences", "Every setting returns to its default. Library data is not touched.", "Reset…", divider: false) { confirm = .allPreferences }
+                resetRow("Reset appearance", atlas: "control.settings.resetAppearance", "Accent, density, animation and sidebar.", "Reset") { if let c = container { vm.resetAppearance(c) } }
+                resetRow("Reset playback preferences", atlas: "control.settings.resetPlayback", "Engine, decoding, quality, buffering, audio and subtitles.", "Reset") { if let c = container { vm.resetPlayback(c) } }
+                resetRow("Clear viewing history", atlas: "control.settings.clearHistory", "Watch history, Recently Watched and resume points. Favorites stay.", "Clear…") { confirm = .history }
+                resetRow("Clear search history", atlas: "control.settings.clearSearchHistory", "The list of recent searches.", "Clear") { if let c = container { vm.clearSearchHistory(c) } }
+                resetRow("Clear artwork cache", atlas: "control.settings.clearArtworkCache", "Downloaded posters and logos. They are fetched again when needed.", "Clear") { if let c = container { Task { await vm.clearArtwork(c) } } }
+                resetRow("Reset all preferences", atlas: "control.settings.resetAllPreferences", "Every setting returns to its default. Library data is not touched.", "Reset…", divider: false) { confirm = .allPreferences }
                 MessageLine(message: vm.resetMessage)
             }
 
             SettingsGroup(title: "Remove everything", footer: "This cannot be undone. Export a backup first if you may want your favorites and collections again. Your provider accounts are not affected, and nothing belonging to other apps is touched.") {
-                SettingsRow(title: "Remove all playlists and data", detail: "Deletes everything listed in the confirmation, from this Mac only.", divider: false) {
+                SettingsRow(title: "Remove all playlists and data", atlas: "control.settings.removeEverything", detail: "Deletes everything listed in the confirmation, from this Mac only.", divider: false) {
                     Button("Remove All Sources and Data…", role: .destructive) { confirmRemoveAll = true }
                         .disabled(container?.parental.isRestricting == true)
                 }
@@ -52,6 +52,7 @@ struct AdvancedSettingsPage: View {
             }
 
             aboutGroup
+            SettingsGroup(title: "Credits") { TMDBAttribution() }
         }
         .task { if let c = container { await vm.loadAbout(c) } }
         .confirmationDialog(confirm == .history ? "Clear viewing history?" : "Reset all preferences?", isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }), titleVisibility: .visible) {
@@ -74,8 +75,8 @@ struct AdvancedSettingsPage: View {
         .sheet(isPresented: $vm.showLicenses) { LicensesSheet(libraries: vm.about.bundledLibraries) }
     }
 
-    private func resetRow(_ title: String, _ detail: String, _ button: String, divider: Bool = true, action: @escaping () -> Void) -> some View {
-        SettingsRow(title: title, detail: detail, divider: divider) { Button(button, action: action) }
+    private func resetRow(_ title: String, atlas: String, _ detail: String, _ button: String, divider: Bool = true, action: @escaping () -> Void) -> some View {
+        SettingsRow(title: title, atlas: atlas, detail: detail, divider: divider) { Button(button, action: action) }
     }
 
     private var aboutGroup: some View {
@@ -87,15 +88,15 @@ struct AdvancedSettingsPage: View {
             SettingsValueRow(title: "MPV version", value: vm.about.mpvVersion ?? "Not installed")
             SettingsValueRow(title: "FFmpeg version", value: vm.about.ffmpegVersion ?? "Not installed")
             SettingsValueRow(title: "Database schema", value: "v\(vm.about.schemaVersion)")
-            SettingsRow(title: "Updates", detail: AppUpdater.shared.isAvailable ? "StreamSetu checks for new versions by itself and asks before installing one." : "Automatic updates are not part of this build.") {
+            SettingsRow(title: "Updates", atlas: "control.settings.checkForUpdates", detail: AppUpdater.shared.isAvailable ? "StreamSetu checks for new versions by itself and asks before installing one." : "Automatic updates are not part of this build.") {
                 Button("Check for Updates…") { AppUpdater.shared.checkForUpdates() }.disabled(!AppUpdater.shared.isAvailable)
             }
             SettingsActions {
-                Button { WindowManager.revealInFinder(StorageService.applicationSupport) } label: { Label("Show Data Folder", systemImage: "folder") }
-                Button { NSWorkspace.shared.open(CrashReports.folder) } label: { Label("Crash Reports (\(CrashReports.list().count))", systemImage: "ladybug") }
-                Button { legal = .privacy } label: { Label("Privacy Policy", systemImage: "hand.raised") }
-                Button { legal = .terms } label: { Label("Terms of Use", systemImage: "doc.text") }
-                Button { vm.showLicenses = true } label: { Label("View Licenses", systemImage: "doc.plaintext") }
+                Button { WindowManager.revealInFinder(StorageService.applicationSupport) } label: { Label("Show Data Folder", systemImage: "folder") }.atlas("control.settings.showDataFolder")
+                Button { NSWorkspace.shared.open(CrashReports.folder) } label: { Label("Crash Reports (\(CrashReports.list().count))", systemImage: "ladybug") }.atlas("control.settings.crashReports")
+                Button { legal = .privacy } label: { Label("Privacy Policy", systemImage: "hand.raised") }.atlas("screen.settings.advanced.legal")
+                Button { legal = .terms } label: { Label("Terms of Use", systemImage: "doc.text") }.atlas("screen.settings.advanced.legal")
+                Button { vm.showLicenses = true } label: { Label("View Licenses", systemImage: "doc.plaintext") }.atlas("screen.settings.advanced.licenses")
             }
         }
     }

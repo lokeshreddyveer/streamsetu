@@ -12,7 +12,7 @@ private final class FakeTMDB: @unchecked Sendable {
 }
 
 private func json(_ results: String) -> Data { Data("{\"results\":[\(results)]}".utf8) }
-private let matrix = #"{"id":603,"title":"The Matrix","original_title":"The Matrix","overview":"A hacker learns the truth.","poster_path":"/p.jpg","backdrop_path":"/b.jpg","release_date":"1999-03-30","vote_average":8.2}"#
+private let matrix = #"{"id":603,"title":"The Matrix","original_title":"The Matrix","overview":"A hacker learns the truth.","poster_path":"/p.jpg","backdrop_path":"/b.jpg","release_date":"1999-03-30","vote_average":8.2,"vote_count":5000}"#
 
 @Suite("TMDB artwork matching") struct MetadataMatchTests {
     private func setup(key: String? = "0123456789abcdef0123456789abcdef", fake: FakeTMDB) throws -> (MetadataMatchService, DatabaseManager, PlaylistSource, InMemoryCredentialStore) {
@@ -31,7 +31,7 @@ private let matrix = #"{"id":603,"title":"The Matrix","original_title":"The Matr
         let fake = FakeTMDB { _ in json(matrix) }
         let (svc, db, src, _) = try setup(fake: fake)
         var bare = TestSupport.movie(src, "1", "The Matrix", year: 1999)
-        var owned = TestSupport.movie(src, "2", "The Matrix"); owned.posterURL = "http://provider/poster.jpg"
+        var owned = TestSupport.movie(src, "2", "The Matrix"); owned.posterURL = "http://provider/poster.jpg"; owned.overview = "Provider summary."
         bare.overview = nil
         try add(db, src, [bare, owned])
         let out = try await svc.run()
@@ -45,7 +45,7 @@ private let matrix = #"{"id":603,"title":"The Matrix","original_title":"The Matr
 
     @Test func aWrongOrDistantMatchIsRefusedAndNotRetriedImmediately() async throws {
         let other = #"{"id":9,"title":"Matrix Reloaded","poster_path":"/x.jpg","release_date":"2003-05-15"}"#
-        let wrongYear = #"{"id":10,"title":"The Matrix","poster_path":"/y.jpg","release_date":"2021-12-01"}"#
+        let wrongYear = #"{"id":10,"title":"Gladiator","poster_path":"/y.jpg","release_date":"1999-12-01"}"#          // a different name is refused whatever its year
         let fake = FakeTMDB { _ in json(other + "," + wrongYear) }
         let (svc, db, src, _) = try setup(fake: fake)
         let m = TestSupport.movie(src, "1", "The Matrix", year: 1999)
@@ -55,7 +55,7 @@ private let matrix = #"{"id":603,"title":"The Matrix","original_title":"The Matr
         #expect(try SQLiteCatalogRepository(db: db).movie(id: m.id)?.posterURL == nil)
         let second = try await svc.run()
         #expect(second.looked == 0, "a lookup that found nothing waits before it is repeated")
-        #expect(fake.requests.count == 1)
+        #expect(fake.requests.count == 1, "one search; a short first page is not searched again; then it is remembered")
     }
 
     @Test func providerTitlesAreCleanedBeforeSearching() async throws {
@@ -66,7 +66,7 @@ private let matrix = #"{"id":603,"title":"The Matrix","original_title":"The Matr
         let url = try #require(fake.requests.first?.url)
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         #expect(items.first { $0.name == "query" }?.value == "The Matrix")
-        #expect(items.first { $0.name == "year" }?.value == "1999")
+        #expect(items.first { $0.name == "year" } == nil, "the first search has no year; the choice is made from the answer")
         #expect(TitleCleaner.query("|FR| Amélie [HD]", year: nil).text == "Amélie")
     }
 

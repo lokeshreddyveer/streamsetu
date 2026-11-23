@@ -10,8 +10,6 @@ struct FranchiseTimeline: View {
     var onOpen: (LibraryItem) -> Void = { _ in }
     @Environment(\.container) private var container
     @State private var films: [LibraryItem] = []
-    /// The film being opened on the iPhone and iPad.
-    @State private var opened: LibraryItem?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -37,7 +35,6 @@ struct FranchiseTimeline: View {
                 films = await Task.detached { service.franchise(of: movie) }.value
             }
         }
-        .opensTitle($opened)
     }
 
 
@@ -79,9 +76,10 @@ struct FranchiseTimeline: View {
         let art = ArtworkImage(url: film.posterURL, kind: .poster, contentMode: .fill, symbol: "film").frame(width: poster, height: poster * 1.5)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(here ? Color.accentColor : .white.opacity(0.08), lineWidth: here ? 2 : 1))
+            .ratingBadge(film.credibleRating)
         if here { art }
-        else if useLinks { Button { opened = film } label: { art }.buttonStyle(.plain) }
-        else { Button { onOpen(film) } label: { art }.buttonStyle(.plain) }
+        else if useLinks { NavigationLink(value: film) { art }.buttonStyle(.plain).atlas("control.title.franchise") }
+        else { Button { onOpen(film) } label: { art }.buttonStyle(.plain).atlas("control.title.franchise") }
     }
 
     private var summary: String {

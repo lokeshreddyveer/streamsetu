@@ -16,7 +16,10 @@ struct ReddyApp: App {
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)
         .commands {
-            MenuCommands(router: coordinator.router, playback: coordinator.container?.playback, state: coordinator.state, lock: coordinator.container?.appLock)
+            MenuCommands(router: coordinator.router, playback: coordinator.container?.playback, state: coordinator.state, lock: coordinator.container?.appLock,
+                         services: coordinator.services,
+                         activeCommands: coordinator.services.activeService.flatMap { coordinator.hosts.model(for: $0) },
+                         servicePins: ServiceHubWiring.menuPinning())
         }
 
         Window("StreamSetu Player", id: "player") {
@@ -33,17 +36,17 @@ struct ReddyApp: App {
         }
 
         Window("Keyboard Shortcuts", id: "shortcuts") {
-            if let c = coordinator.container { ShortcutsView().reddyTheme(c.settings).scrollIndicators(.hidden).lockedBehind(c.appLock) }
+            if let c = coordinator.container { ShortcutsView().atlasScreen("screen.shortcuts").reddyTheme(c.settings).scrollIndicators(.hidden).lockedBehind(c.appLock) }
         }
         .windowResizability(.contentSize)
 
         Window("Multi-View", id: "multiview") {
-            if let c = coordinator.container { MultiViewWindow(model: c.multiView).reddyTheme(c.settings).environment(\.artwork, c.artwork).scrollIndicators(.hidden).lockedBehind(c.appLock) }
+            if let c = coordinator.container { MultiViewWindow(model: c.multiView).atlasScreen("screen.multiview").reddyTheme(c.settings).environment(\.artwork, c.artwork).scrollIndicators(.hidden).lockedBehind(c.appLock) }
         }
 
         Settings {
             if let c = coordinator.container, let s = coordinator.state {
-                SettingsView().id(c.settings.themeKey).environment(c.settings).environment(s).environment(coordinator.router).environment(\.container, c).environment(\.artwork, c.artwork).lockedBehind(c.appLock)
+                SettingsView().id(c.settings.themeKey).environment(c.settings).environment(s).environment(coordinator.router).environment(\.container, c).environment(\.artwork, c.artwork).environment(\.streamingServicesActions, ServiceHubWiring.settingsActions(coordinator)).lockedBehind(c.appLock).atlasShowMeHost()
             } else { Text("Opening…").padding() }
         }
     }

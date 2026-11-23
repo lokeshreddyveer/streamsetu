@@ -1,13 +1,25 @@
 import SwiftUI
 import Observation
 
+/// The UserDefaults keys that more than one file reads, written once so a rename cannot desync them.
+enum DefaultsKey {
+    /// "Reduce animation" (AppSettings.reduceMotion, saved under "settings.reducemotion"); BrandMotion and the opening read it directly.
+    static let reduceMotion = "settings.reducemotion"
+    /// Ask: let the AI pick the best of the matches (default on).
+    static let askAIJudge = "askai.judge"
+    /// The iPhone's launch timings, written by the app and shown in More.
+    static let startupTimings = "startup.timings"
+    /// The playlist the person is looking at ("all" or a source id).
+    static let activePlaylist = "activePlaylist"
+}
+
 /// User preferences, persisted in UserDefaults under "settings.<key>" (see `SettingsMigrator` for versioning).
 /// Nothing secret lives here. Every property has a default, is validated on load, is saved as it changes, and is read by
 /// the part of the app it controls; there are no stored-but-unused preferences.
 @MainActor @Observable
 final class AppSettings {
     private let d: UserDefaults
-    private func save(_ v: Any?, _ k: String) { d.set(v, forKey: "settings." + k) }
+    private func save(_ v: Any?, _ k: String) { d.set(v, forKey: "settings." + k) }          // "settings.reducemotion" is DefaultsKey.reduceMotion
 
     // MARK: General
     var theme: AppTheme { didSet { save(theme.rawValue, "theme"); ThemeStore.current = theme } }
@@ -33,7 +45,7 @@ final class AppSettings {
     /// Refresh playlists that are more than an hour old each time the app is opened, whatever the schedule says.
     var refreshOnOpen: Bool { didSet { save(refreshOnOpen, "refreshonopen") } }
     /// The language of the app's own wording: the device's, English, Hindi or Telugu.
-    var language: AppLanguage { didSet { save(language.rawValue, "language") } }
+    var language: AppLanguage { didSet { save(language.rawValue, "language"); Localized.language.value = language } }
     /// Start the channel that was playing when REDDY was last closed. Off by default: nothing plays until asked.
     /// Keep a rewindable buffer for live TV so it can be paused and wound back (MPV).
     var liveRewind: Bool { didSet { save(liveRewind, "liverewind") } }
@@ -215,7 +227,9 @@ final class AppSettings {
         rememberFolders = bool("rememberfolders", true)
         remindersEnabled = bool("reminders", true)
         refreshOnOpen = bool("refreshonopen", true)
-        language = get("language", AppLanguage.system)
+        let lang: AppLanguage = get("language", AppLanguage.system)
+        language = lang
+        Localized.language.value = lang
         resumeLastChannel = bool("resumelast", false)
         autoBackup = bool("autobackup", true)
         lastAutoBackup = defaults.object(forKey: "settings.lastautobackup") as? Date

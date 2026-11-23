@@ -127,6 +127,7 @@ import AppKit
             guard let item = load(id) else { return .failed("“\(title)” is no longer in your library.") }
             guard c.assistantAccessAllowed(categoryID: item.categoryID) else { return .failed("“\(title)” is in a locked folder. Unlock restricted content first.") }
             return toggle(item, later: later, on: on)
+        case .openAtlas(let id): return AtlasOpener.open(id, container: c, router: router, state: state)
         default: return .failed("That is not something this screen can run.")
         }
 

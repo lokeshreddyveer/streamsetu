@@ -44,7 +44,7 @@ final class LibrarySettingsViewModel {
     func clearTemporary(_ c: AppContainer) async {
         let m = c.maintenance
         let r = await Task.detached { m.clearTemporaryFiles() }.value
-        storageMessage = .init(text: r.files == 0 ? "No temporary files to clear." : "Cleared \(r.files) temporary file\(r.files == 1 ? "" : "s") (\(ByteCountFormatter.string(fromByteCount: r.bytes, countStyle: .file))).")
+        storageMessage = .init(text: r.files == 0 ? "No temporary files to clear." : "Cleared \(Localized.plural(r.files, one: "%@ temporary file", other: "%@ temporary files")) (\(ByteCountFormatter.string(fromByteCount: r.bytes, countStyle: .file))).")
         await refresh(c)
     }
 

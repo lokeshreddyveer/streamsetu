@@ -40,6 +40,8 @@ struct AssistantContext: Sendable, Equatable {
         /// A particular title or channel, by its own id, so what is offered is exactly what runs.
         case playItem(id: String, isChannel: Bool, title: String)
         case toggleList(id: String, kind: ContentKind, watchLater: Bool, on: Bool, title: String)
+        /// Takes the person to any screen, page or window the atlas knows by id. Rechecked against the atlas when tapped.
+        case openAtlas(id: String)
     }
     let id = UUID()
     let kind: Kind
@@ -59,11 +61,12 @@ struct AssistantContext: Sendable, Equatable {
         case .syncGuide: "Refresh the TV guide"
         case .copyReport: "Copy a redacted problem report"
         case .playItem(_, _, let t): "Play “\(t)”"
+        case .openAtlas(let id): "Open “\(Atlas.entry(id)?.title ?? id)”"
         case .toggleList(_, _, let later, let on, let t): on ? "Add “\(t)” to \(later ? "Watch Later" : "Favorites")" : "Remove “\(t)” from \(later ? "Watch Later" : "Favorites")"
         }
     }
     var symbol: String {
-        switch kind { case .command(let c): c.symbol; case .setting: "gearshape"; case .playback(let a): AssistantPlayback.symbol(a); case .refresh: "arrow.clockwise"; case .retry: "arrow.clockwise"; case .engine: "gearshape.2"; case .track(let a, _, _): a ? "speaker.wave.2" : "captions.bubble"; case .syncGuide: "calendar.badge.clock"; case .copyReport: "doc.on.clipboard"; case .playItem: "play.fill"; case .toggleList(_, _, let later, _, _): later ? "bookmark" : "heart" }
+        switch kind { case .command(let c): c.symbol; case .setting: "gearshape"; case .playback(let a): AssistantPlayback.symbol(a); case .refresh: "arrow.clockwise"; case .retry: "arrow.clockwise"; case .engine: "gearshape.2"; case .track(let a, _, _): a ? "speaker.wave.2" : "captions.bubble"; case .syncGuide: "calendar.badge.clock"; case .copyReport: "doc.on.clipboard"; case .playItem: "play.fill"; case .toggleList(_, _, let later, _, _): later ? "bookmark" : "heart"; case .openAtlas: "arrow.up.forward.app" }
     }
 }
 
@@ -167,7 +170,7 @@ enum AssistantText {
         """ : """
         How you work:
         - You have tools. Use them rather than guessing. Never say a title is in their library unless search_library or check_library returned it.
-        - A request that DESCRIBES titles ("best horror movies", "netflix top movies in india", "marvel in order", "films like athadu", "award-winning telugu movies", "movies based on true stories", an actor's or director's films) is not a name. Do NOT search for those words. Choose 8 to 15 real titles that fit, from your own knowledge (use web_lookup first if you are unsure), in the order you recommend them, each with its year, and call check_library ONCE with them. Then recommend only what it says is in their library; add what is not in one short line. Never say "there is no title called ..." about a description. Judge fit yourself: a title is not a good "thriller" just because its name contains the word.
+        - A request that DESCRIBES titles ("best horror movies", "netflix top movies in brazil", "marvel in order", "films like parasite", "award-winning korean movies", "movies based on true stories", an actor's or director's films) is not a name. Do NOT search for those words. Choose 8 to 15 real titles that fit, from your own knowledge (use web_lookup first if you are unsure), in the order you recommend them, each with its year, and call check_library ONCE with them. Then recommend only what it says is in their library; add what is not in one short line. Never say "there is no title called ..." about a description. Judge fit yourself: a title is not a good "thriller" just because its name contains the word.
         - Whenever the person types or asks about a name (a show, film, channel, actor), call search_everything FIRST: live channels, series and movies all count, in every playlist. Never answer from the TV guide alone, and never say something is not available until search_everything has come back empty.
         - Asked for films by an actor or director: call search_library first (it reads an on-device cast index). If it says the cast is only partly read, or finds little, name that person's best-known films from your own \
         memory and check them with check_library, then recommend only what is there. Mention a missing film only briefly.

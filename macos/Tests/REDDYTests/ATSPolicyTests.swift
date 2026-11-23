@@ -16,7 +16,7 @@ import Foundation
 
     /// Hosts of fixed https:// addresses written in the app's source: the services it contacts. Documentation links and examples are not services.
     private func serviceHosts() throws -> Set<String> {
-        let notServices: Set<String> = ["example.com", "mpv.io", "ffmpeg.org", "nas.local", "host", "www.youtube.com", "youtube.com", "ai.google.dev", "www.apple.com"]   // links opened in the browser, never fetched by the app
+        let notServices: Set<String> = ["example.com", "mpv.io", "ffmpeg.org", "nas.local", "host", "www.youtube.com", "youtube.com", "ai.google.dev", "www.apple.com", "creativecommons.org", "sparkle-project.org", "www.netflix.com", "netflix.com", "www.wikidata.org"]   // links opened in the browser (including licence texts in the legal screen), never fetched by the app
         var hosts = Set<String>()
         let e = try #require(FileManager.default.enumerator(at: Self.repo.appendingPathComponent("macos/Sources"), includingPropertiesForKeys: nil))
         let rx = try NSRegularExpression(pattern: #"https://([a-z0-9][a-z0-9.-]*\.[a-z]{2,})"#)
@@ -46,5 +46,17 @@ import Foundation
     @Test func bothPlatformsHoldTheSameServices() throws {
         let mac = Set(try ats("macos/Configuration/Info.plist").domains.keys), ios = Set(try ats("ios/StreamSetu/Info.plist").domains.keys)
         #expect(mac == ios, "difference: \(mac.symmetricDifference(ios).sorted())")
+    }
+
+    /// Every embedded service's address is held to HTTPS by its own exception entry, so a page of one can never be loaded over plain HTTP.
+    @Test(arguments: ["macos/Configuration/Info.plist", "ios/StreamSetu/Info.plist"])
+    func everyStreamingServiceHostIsHTTPSOnly(plist: String) throws {
+        let (_, domains) = try ats(plist)
+        for d in ProviderCatalog.all where d.id != .netflix {          // the original service keeps its existing arrangement
+            let host = try #require(d.homeURL.host)
+            let entry = domains.keys.first { host == $0 || host.hasSuffix("." + $0) }
+            #expect(entry != nil, "\(d.id.rawValue): \(host) has no HTTPS-only entry in \(plist)")
+            if let entry { #expect(domains[entry]?["NSExceptionAllowsInsecureHTTPLoads"] as? Bool == false) }
+        }
     }
 }

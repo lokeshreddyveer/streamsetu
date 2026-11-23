@@ -124,6 +124,7 @@ import Foundation
         let a = try Device(), b = try Device()
         let id = try a.history.beginSession(itemID: "m-2", engine: "mpv")
         try ship(a, to: b)                                                                                   // still running when it was sent
+        Thread.sleep(forTimeInterval: 0.02)   // a change is stamped to the millisecond: ending in the same one as the send would tie with it (a real session never ends that instantly)
         try a.history.endSession(id: id, outcome: "ok", error: nil)
         try a.db.write { try $0.execute("UPDATE playback_sessions SET ended_at = started_at + 600 WHERE id = ?", [id]) }
         try ship(a, to: b)

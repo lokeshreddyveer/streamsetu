@@ -20,17 +20,9 @@ enum IdentityKey {
     static let version = 1
 
     private static let articles: Set<String> = ["the", "a", "an"]
-    private static let noise: Set<String> = ["hd", "fhd", "uhd", "4k", "sd", "hdcam", "cam", "webrip", "web", "dl", "bluray", "dvdrip", "hevc", "x264", "x265", "h264", "h265",
-                                             "dubbed", "dub", "multi", "sub", "subs", "eng", "season", "episode"]
-    /// The words a title or folder uses for a language, with the name shown for it.
-    static let languageNames: [String: String] = {
-        var out: [String: String] = [:]
-        for w in ["english", "hindi", "tamil", "telugu", "kannada", "malayalam", "urdu", "punjabi", "bengali", "marathi", "gujarati", "arabic", "spanish",
-                  "french", "german", "korean", "japanese", "chinese", "turkish", "russian", "italian", "portuguese", "thai", "indonesian", "odia",
-                  "assamese", "nepali", "sinhala", "persian", "hebrew", "vietnamese", "tagalog", "malay", "pashto"] { out[w] = w.capitalized }
-        out["bangla"] = "Bengali"; out["farsi"] = "Persian"; out["filipino"] = "Tagalog"; out["oriya"] = "Odia"; out["odiya"] = "Odia"
-        return out
-    }()
+    private static let noise = TitleVocabulary.identityNoise
+    /// The words a title or folder uses for a language, with the name shown for it (the identity rule's frozen subset of TitleVocabulary).
+    static let languageNames: [String: String] = TitleVocabulary.languageNames.filter { TitleVocabulary.identityLanguageWords.contains($0.key) }
 
     private static let posix = Locale(identifier: "en_US_POSIX")
 
@@ -53,7 +45,8 @@ enum IdentityKey {
 
 enum IdentityDerive {
     private static let tagPattern = try! NSRegularExpression(pattern: #"[\(\[]\s*([A-Za-z]+)\s*[\)\]]"#)
-    private static let yearInTitle = try! NSRegularExpression(pattern: #"(?<![0-9])((?:19|20)[0-9]{2})(?![0-9])"#)
+    /// A 19xx or 20xx written in a title; the one pattern every year-in-title reader uses.
+    static let yearInTitle = try! NSRegularExpression(pattern: #"(?<![0-9])((?:19|20)[0-9]{2})(?![0-9])"#)
     private static let cinemaCopy = try! NSRegularExpression(pattern: #"\b(cam|hdcam|hd-cam|camrip|ts|hdts|telesync|tc|telecine)\b"#, options: .caseInsensitive)
     private static let subtitleWords: Set<String> = ["subtitles", "subtitle", "subs", "sub", "subbed"]
 

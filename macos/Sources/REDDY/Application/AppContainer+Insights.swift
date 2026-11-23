@@ -142,7 +142,7 @@ extension AppContainer {
         var lib = AskLibrary(catalog: catalog.recommendationView, people: index, history: historyRepo)
         lib.request = request
         lib.taste = await Task.detached { [catalog = catalog.recommendationView, historyRepo] in TasteProfile.learn(history: historyRepo, catalog: catalog, people: index) }.value
-        if useAI, config.isReady, settings.defaultsStore.object(forKey: "askai.judge") as? Bool ?? true {
+        if useAI, config.isReady, settings.defaultsStore.object(forKey: DefaultsKey.askAIJudge) as? Bool ?? true {
             lib.judge = { system, prompt in try? await AIClient(config: config).ask(system: system, prompt: prompt) }
         }
         if metadata.hasKey { let m = metadata; lib.filmography = { name in try? await m.filmography(of: name) } }

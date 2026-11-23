@@ -20,21 +20,21 @@ struct AppearanceSettingsPage: View {
                     AccentPicker(selection: $s.accent)
                 }
                 .padding(.vertical, 2)
-                SettingsRow(title: "Language", detail: "The language of the app's own wording. Titles and descriptions come from your playlists and stay as they are. Some text is still in English.") {
+                SettingsRow(title: "Language", atlas: "setting.language", detail: "The language of the app's own wording. Titles and descriptions come from your playlists and stay as they are. Some text is still in English.") {
                     Picker("Language", selection: $s.language) { ForEach(AppLanguage.allCases) { Text($0.label).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Density", detail: "Card size in grids, and row height in channel lists and the sidebar.") {
+                SettingsRow(title: "Density", atlas: "setting.density", detail: "Card size in grids, and row height in channel lists and the sidebar.") {
                     Picker("Density", selection: $s.density) { ForEach(LayoutDensity.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Opening", detail: "What plays when StreamSetu starts. Automatic: the full story the first time, a short version after that. What's New still shows after an update when it is off.") {
+                SettingsRow(title: "Opening", atlas: "setting.opening", detail: "What plays when StreamSetu starts. Automatic: the full story the first time, a short version after that. What's New still shows after an update when it is off.") {
                     HStack(spacing: 8) {
                         Button("Replay the Full Story") { OpeningCoordinator.shared.replayFullStory() }
                         Picker("Opening", selection: $opening) { ForEach(OpeningPreference.allCases) { Text($0.label.loc).tag($0.rawValue) } }.pickerStyle(.menu).fixedSize()
                     }
                 }
-                SettingsRow(title: "Reduce animation", detail: "Turns off transitions and hover animation throughout the app.") { Toggle("Reduce animation", isOn: $s.reduceMotion) }
-                SettingsRow(title: "Increase contrast", detail: "Brighter text and stronger outlines. Also follows the system Increase Contrast setting.") { Toggle("Increase contrast", isOn: $s.highContrast) }
-                SettingsRow(title: "Sidebar at launch", detail: "The sidebar can always be collapsed from its header.", divider: false) {
+                SettingsRow(title: "Reduce animation", atlas: "setting.reduceMotion", detail: "Turns off transitions and hover animation throughout the app.") { Toggle("Reduce animation", isOn: $s.reduceMotion) }
+                SettingsRow(title: "Increase contrast", atlas: "setting.highContrast", detail: "Brighter text and stronger outlines. Also follows the system Increase Contrast setting.") { Toggle("Increase contrast", isOn: $s.highContrast) }
+                SettingsRow(title: "Sidebar at launch", atlas: "setting.sidebarLaunch", detail: "The sidebar can always be collapsed from its header.", divider: false) {
                     Picker("Sidebar at launch", selection: $s.sidebarLaunch) { ForEach(SidebarLaunch.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
             }

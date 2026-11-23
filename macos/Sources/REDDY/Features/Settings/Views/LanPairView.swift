@@ -13,8 +13,8 @@ struct LanPairView: View {
                     Text("Does \(p.peerName) show the same number?").multilineTextAlignment(.center)
                     Text(p.digits).font(.system(size: 44, weight: .semibold, design: .monospaced)).kerning(4)
                     HStack(spacing: 12) {
-                        Button("They Match") { service.answer(true) }.buttonStyle(.borderedProminent)
-                        Button("They Don't", role: .destructive) { service.answer(false) }
+                        Button("They Match") { service.answer(true) }.buttonStyle(.borderedProminent).atlas("control.settings.lanPairConfirm")
+                        Button("They Don't", role: .destructive) { service.answer(false) }.atlas("control.settings.lanPairConfirm")
                     }
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -28,7 +28,7 @@ struct LanPairView: View {
                     ForEach(fresh) { f in
                         Button { Task { await service.pair(with: f) } } label: {
                             HStack { Image(systemName: "laptopcomputer.and.iphone"); Text(f.name); Spacer(); Text("Pair").foregroundStyle(.secondary) }.contentShape(Rectangle())
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(.plain).atlas("control.settings.lanPairDevice")
                     }
                 }
                 if let m = service.pairingMessage { Text(m).font(.callout).foregroundStyle(.secondary) }

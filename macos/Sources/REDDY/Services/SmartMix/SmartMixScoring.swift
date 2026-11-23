@@ -107,17 +107,35 @@ enum SmartMixScoring {
     static let langPref = Shelf(w: [15, 15, 25, 0, 5, 15, 15, 10], sharp: true, pool: 2000, size: 14, minCount: 6, mixesKinds: false)
     static let topWeek = Shelf(w: [10, 15, 10, 10, 5, 40, 0, 10], sharp: true, pool: 2000, size: 14, minCount: 6, mixesKinds: false)
     static let trendingLibrary = Shelf(w: [10, 15, 10, 10, 5, 40, 0, 10], sharp: true, pool: 2000, size: 14, minCount: 3, mixesKinds: false)
+    /// Genre shelves: best rated, recent and popular first; no affinity (the genre is the topic), fresh keeps repeat suppression.
+    static let genre = Shelf(w: [15, 10, 10, 5, 25, 25, 0, 10], sharp: true, pool: 2000, size: SMGenres.shelfSize, minCount: SMGenres.minTitles, mixesKinds: true)
+    /// Weights of the all-time view (genre shelves and Trending in Your Library) when TMDB has no list to follow: rating first.
+    static let allTimeWeights = [5, 0, 15, 5, 50, 15, 0, 10]
     static let folder = Shelf(w: [10, 25, 30, 20, 0, 0, 0, 15], sharp: false, pool: 200, size: 12, minCount: 1, mixesKinds: false)
+
+    static func shelf(_ id: String, mode: SMShelfMode) -> Shelf {
+        let base = shelf(id)
+        guard mode == .allTime, SMShelf.isGenre(id) || id == SMShelf.trendingLibrary else { return base }
+        return Shelf(w: allTimeWeights, sharp: base.sharp, pool: base.pool, size: base.size, minCount: base.minCount, mixesKinds: base.mixesKinds)
+    }
+
+    static let fresh = Shelf(w: [0, 50, 10, 5, 10, 15, 0, 10], sharp: true, pool: 2000, size: 14, minCount: 6, mixesKinds: true)
+    static let movieNight = Shelf(w: [10, 0, 20, 10, 35, 15, 0, 10], sharp: true, pool: 2000, size: 14, minCount: 6, mixesKinds: false)
+    static let binge = Shelf(w: [5, 5, 10, 10, 35, 25, 0, 10], sharp: true, pool: 2000, size: 14, minCount: 6, mixesKinds: false)
+    static let mood = Shelf(w: [15, 10, 10, 5, 25, 25, 0, 10], sharp: true, pool: 2000, size: 14, minCount: 6, mixesKinds: true)
 
     static func shelf(_ id: String) -> Shelf {
         switch id {
+        case SMShelf.fresh: return fresh
+        case SMShelf.movieNight: return movieNight
+        case SMShelf.binge: return binge
         case SMShelf.hero: return hero
         case SMShelf.forYou: return forYou
         case SMShelf.rediscover: return rediscover
         case SMShelf.langPref: return langPref
         case SMShelf.topWeek: return topWeek
         case SMShelf.trendingLibrary: return trendingLibrary
-        default: return folder
+        default: return SMShelf.isGenre(id) ? genre : (SMShelf.isMood(id) ? mood : folder)
         }
     }
 

@@ -39,8 +39,8 @@ struct StatisticsPage: View {
     private var controls: some View {
         HStack(spacing: 10) {
             Picker("Range", selection: $range) { ForEach(Range.allCases) { Text($0.rawValue).tag($0) } }
-                .pickerStyle(.segmented).labelsHidden().fixedSize()
-            Button { confirmReset = true } label: { Label("Reset", systemImage: "trash") }.disabled(stats?.isEmpty ?? true)
+                .pickerStyle(.segmented).labelsHidden().fixedSize().atlas("screen.shortcut.statistics")
+            Button { confirmReset = true } label: { Label("Reset", systemImage: "trash") }.disabled(stats?.isEmpty ?? true).atlas("screen.shortcut.statistics")
         }
     }
 

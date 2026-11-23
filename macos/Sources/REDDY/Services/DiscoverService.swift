@@ -30,9 +30,42 @@ struct DiscoverShelf: Identifiable, Sendable {
     let id: String
     let title: String
     /// What the shelf is really based on. Never claims chart data, provider affiliation or availability.
-    let caption: String
+    var caption: String
     var items: [LibraryItem]
     var ranked = false
+    /// Smart Mix shelf id and view for the shelves that have the "All time top / Trending this week" pair in their header (nil = no pair).
+    var smartID: String? = nil
+    var mode: SMShelfMode? = nil
+    /// Genre shelf key (`SMGenres.table`): "See all" opens that genre.
+    var genre: String? = nil
+    /// The Collections row: franchise tiles (each opens its titles). `items` holds each franchise's lead title.
+    var collections: [CollectionTile] = []
+}
+
+/// One franchise of the Collections row.
+struct CollectionTile: Identifiable, Sendable {
+    let id: String                 // franchise key
+    let name: String
+    let lead: LibraryItem
+    let members: [LibraryItem]     // release order
+    let count: Int
+}
+
+extension DiscoverContent {
+    /// Swaps one shelf (matched by id) and leaves everything else exactly as it was: the section-local view switch.
+    func replacingShelf(_ new: DiscoverShelf) -> DiscoverContent {
+        var out = self
+        if let i = out.shelves.firstIndex(where: { $0.id == new.id }) { out.shelves[i] = new }
+        return out
+    }
+}
+
+/// One entry of the "Browse by genre" row.
+struct BrowseGenre: Identifiable, Sendable, Equatable {
+    var key: String
+    var title: String
+    var count: Int
+    var id: String { key }
 }
 
 struct DiscoverContent: Sendable {
@@ -40,6 +73,8 @@ struct DiscoverContent: Sendable {
     var shelves: [DiscoverShelf]
     /// The order the engine chose for the slideshow (empty: the slideshow follows the shelves, as before).
     var heroOrder: [LibraryItem] = []
+    /// Every genre with enough titles (the "Browse by genre" row), in the table order.
+    var browseGenres: [BrowseGenre] = []
 }
 
 /// Builds the Discover page from the playlist's own data. Shelves that have nothing to show are omitted.
@@ -69,6 +104,7 @@ final class DiscoverService: Sendable {
     static let indianKeywords: Set<String> = ["indian", "india", "hindi", "telugu", "tamil", "malayalam", "kannada", "bengali", "marathi", "punjabi", "gujarati", "bollywood", "tollywood"]
 
     func build(sourceID: UUID?, now: Date = Date(), smart: SmartMixHomeResult? = nil) throws -> DiscoverContent {
+        let sp = SmoothSignpost.begin("HomeLoad"); defer { SmoothSignpost.end(sp, "HomeLoad") }
         let size = 14
         func items(_ movies: [Movie], _ series: [Series]) -> [LibraryItem] { movies.map { .movie($0) } + series.map { .series($0) } }
         var shelves: [DiscoverShelf] = []
@@ -102,9 +138,9 @@ final class DiscoverService: Sendable {
         if let cast = try castShelf(sourceID: sourceID, size: size) { shelves.append(cast) }
 
         let legacyTop = smart == nil || smart?.shelves.isEmpty == true
-        let topMovies = legacyTop ? try catalog.movies(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { (Double($0.rating ?? "") ?? 0) > 0 }.prefix(size) : []
+        let topMovies = legacyTop ? try catalog.movies(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { RatingRule.credible($0.rating) != nil }.prefix(size) : []
         if !topMovies.isEmpty { shelves.append(DiscoverShelf(id: "top-movies", title: "Top Movies This Week", caption: "Ranked by your provider's ratings · not a chart", items: items(Array(topMovies), []), ranked: true)) }
-        let topShows = legacyTop ? try catalog.series(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { (Double($0.rating ?? "") ?? 0) > 0 }.prefix(size) : []
+        let topShows = legacyTop ? try catalog.series(VODQuery(sourceID: sourceID, sort: .rating, limit: size * 3)).filter { RatingRule.credible($0.rating) != nil }.prefix(size) : []
         if !topShows.isEmpty { shelves.append(DiscoverShelf(id: "top-shows", title: "Top Shows This Week", caption: "Ranked by your provider's ratings · not a chart", items: items([], Array(topShows)), ranked: true)) }
 
         // Provider and regional shelves come from categories that really exist in this playlist.
@@ -124,7 +160,7 @@ final class DiscoverService: Sendable {
             ?? recentSeries.first { $0.backdropURL != nil || $0.posterURL != nil }.map { LibraryItem.series($0) }
             ?? recentMovies.first.map { LibraryItem.movie($0) } ?? recentSeries.first.map { LibraryItem.series($0) }
         let first = smart?.heroOrder.first
-        return DiscoverContent(hero: first ?? hero, shelves: shelves, heroOrder: smart?.heroOrder ?? [])
+        return DiscoverContent(hero: first ?? hero, shelves: shelves, heroOrder: smart?.heroOrder ?? [], browseGenres: (smart?.genreIndex ?? []).compactMap { g in SMGenres.byKey[g.key].map { BrowseGenre(key: g.key, title: $0.title, count: g.count) } })
     }
 
     /// Titles like the last few things that were watched here, skipping everything already watched. nil until there is enough to go on.

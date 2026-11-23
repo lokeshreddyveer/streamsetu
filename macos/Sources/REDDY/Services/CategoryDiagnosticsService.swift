@@ -34,7 +34,7 @@ final class CategoryDiagnosticsService: Sendable {
 
     /// From the numbers recorded by the last sync, plus live counts from the database.
     func report(sourceID: UUID, hideEmpty: Bool) throws -> [CategoryDiagnosticRow] {
-        let stats = Dictionary(uniqueKeysWithValues: try catalog.categoryStats(sourceID: sourceID).map { ($0.kind, $0) })
+        let stats = Dictionary(try catalog.categoryStats(sourceID: sourceID).map { ($0.kind, $0) }, uniquingKeysWith: { a, _ in a })
         return try Self.kinds.map { k in
             let s = stats[k]
             return try row(sourceID: sourceID, kind: k, hideEmpty: hideEmpty, provider: s?.providerCount, parsed: s?.parsedCount,

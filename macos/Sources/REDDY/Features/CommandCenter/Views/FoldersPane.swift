@@ -85,9 +85,9 @@ struct FoldersPane: View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Picker("Type", selection: $kind) { Text("Live TV").tag(ContentKind.channel); Text("Movies").tag(ContentKind.movie); Text("Series").tag(ContentKind.series) }
-                    .pickerStyle(.segmented).labelsHidden().frame(width: 240)
+                    .pickerStyle(.segmented).labelsHidden().frame(width: 240).atlas("control.commandCenter.folderScope")
                 if state.sources.count > 1 {
-                    Picker("Playlist", selection: $sourceID) { ForEach(state.sources) { Text($0.name).tag(UUID?.some($0.id)) } }.pickerStyle(.menu).labelsHidden().fixedSize()
+                    Picker("Playlist", selection: $sourceID) { ForEach(state.sources) { Text($0.name).tag(UUID?.some($0.id)) } }.pickerStyle(.menu).labelsHidden().fixedSize().atlas("control.commandCenter.folderScope")
                 }
                 InlineSearchField(text: $query, prompt: "Find a folder").frame(maxWidth: 240)
                 Spacer()
@@ -95,7 +95,7 @@ struct FoldersPane: View {
                 Menu {
                     Button("Sort A–Z") { if let c = container { vm.sortAlphabetically(c, state) } }
                     Button("Back to provider order") { if let c = container { vm.resetToProviderOrder(c, state, sourceID: sourceID, kind: kind) } }
-                } label: { Label("Order", systemImage: "arrow.up.arrow.down") }.menuStyle(.button).fixedSize()
+                } label: { Label("Order", systemImage: "arrow.up.arrow.down") }.menuStyle(.button).fixedSize().atlas("control.commandCenter.folderSort")
             }.padding(.horizontal, 20).padding(.vertical, 10)
             Text("Drag a folder, or use the arrows, to put it where you want it in the sidebar. Hidden folders stay in your library.")
                 .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20).padding(.bottom, 8)
@@ -152,10 +152,10 @@ private struct FolderRow: View {
             }
             if let lock {
                 Button { onLock(!lock) } label: { Image(systemName: lock ? "lock.fill" : "lock.open").font(.system(size: 12)) }
-                    .buttonStyle(.plain).foregroundStyle(lock ? ColorTokens.warning : ColorTokens.textTertiary).help(lock ? "Locked with PIN — click to unlock" : "Lock with PIN").accessibilityLabel(lock ? "Unlock folder \(folder.name)" : "Lock folder \(folder.name)")
+                    .buttonStyle(.plain).foregroundStyle(lock ? ColorTokens.warning : ColorTokens.textTertiary).help(lock ? "Locked with PIN — click to unlock" : "Lock with PIN").accessibilityLabel(lock ? "Unlock folder \(folder.name)" : "Lock folder \(folder.name)").atlas("context.sidebar.folderLock")
             }
             Button { onHide(!hidden) } label: { Label(hidden ? "Hidden" : "Visible", systemImage: hidden ? "eye.slash.fill" : "eye").labelStyle(.iconOnly).font(.system(size: 13)) }
-                .buttonStyle(.plain).foregroundStyle(hidden ? ColorTokens.warning : ColorTokens.textSecondary).help(hidden ? "Hidden from the sidebar — click to show" : "Hide from the sidebar").accessibilityLabel(hidden ? "Show folder \(folder.name) in the sidebar" : "Hide folder \(folder.name) from the sidebar")
+                .buttonStyle(.plain).foregroundStyle(hidden ? ColorTokens.warning : ColorTokens.textSecondary).help(hidden ? "Hidden from the sidebar — click to show" : "Hide from the sidebar").accessibilityLabel(hidden ? "Show folder \(folder.name) in the sidebar" : "Hide folder \(folder.name) from the sidebar").atlas("control.commandCenter.folderHide")
         }
         .padding(.horizontal, 10).frame(height: 40).opacity(hidden ? 0.5 : 1)
         .background(hovering ? Color.white.opacity(0.04) : .clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -165,6 +165,6 @@ private struct FolderRow: View {
 
     private func arrow(_ symbol: String, _ help: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) { Image(systemName: symbol).font(.system(size: 11, weight: .semibold)).frame(width: 24, height: 24).contentShape(Rectangle()) }
-            .buttonStyle(.plain).foregroundStyle(ColorTokens.textSecondary).help(help).accessibilityLabel(help)
+            .buttonStyle(.plain).foregroundStyle(ColorTokens.textSecondary).help(help).accessibilityLabel(help).atlas("control.commandCenter.folderMove")
     }
 }

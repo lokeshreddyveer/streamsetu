@@ -151,6 +151,12 @@ final class CommandCenterViewModel {
     func assignGuide(_ xmltvID: String?, channel: Channel, _ c: AppContainer) {
         if xmltvID != nil { mapped.insert(channel.id) } else { mapped.remove(channel.id) }
         refilter()
+        if let x = xmltvID, x.hasPrefix("hub|") {      // a channel of a guide the person added: "hub|<guide source>|<id>"
+            let p = x.split(separator: "|", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+            if p.count == 3 { enqueue { try? SQLiteGuideRepository(db: c.db).setUserMapping(channelID: channel.id, guideSourceID: p[1], xmltvID: p[2]) } }
+            say("Guide matched"); return
+        }
+        if xmltvID == nil { enqueue { try? SQLiteGuideRepository(db: c.db).clearUserMappings(channelID: channel.id) } }
         enqueue { try? XMLTVChannelMatcher(db: c.db).setUserMapping(channelID: channel.id, sourceID: channel.sourceID, xmltvID: xmltvID) }
         say(xmltvID == nil ? "Guide match removed" : "Guide matched")
     }

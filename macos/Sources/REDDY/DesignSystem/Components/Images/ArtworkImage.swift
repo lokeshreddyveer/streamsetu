@@ -20,10 +20,20 @@ struct ArtworkImage: View {
     /// A title with no usable picture gets a designed tile instead of a bare symbol: the app's gradient in a colour taken from the title, the title itself, and a short detail ("2022 · 4K"). The real picture fades in over it.
     var tile: ArtworkTile.Content? = nil
     @Environment(\.artwork) private var artwork
-    @State private var image: CGImage?
+    @State private var loaded: CGImage?
+    @State private var loadedURL: String?
     @State private var failed = false
+    /// Whether the last picture arrived after the tile was already showing a placeholder; only then does it fade in.
+    @State private var fades = false
+
+    /// A picture already in memory paints in the first frame (no placeholder flash, no fade); otherwise whatever has been loaded for this address.
+    private var image: CGImage? {
+        if loadedURL == url, let loaded { return loaded }
+        return url.nilIfEmpty == nil ? nil : artwork?.cachedImage(url, kind: kind)
+    }
 
     var body: some View {
+        let image = image
         ZStack {
             if showsPlaceholder {
                 if let tile { ArtworkTile(content: tile) }
@@ -39,14 +49,17 @@ struct ArtworkImage: View {
             } else if showsPlaceholder, !failed, url.nilIfEmpty != nil { LoadingShimmer() }
         }
         .clipped()
-        .animation(.smooth(duration: 0.35), value: image != nil)
+        .animation(fades ? .smooth(duration: 0.35) : nil, value: image != nil)
         .task(id: url) {
             failed = false
-            image = nil
-            guard let artwork, url.nilIfEmpty != nil else { return }
+            guard let artwork, url.nilIfEmpty != nil else { loaded = nil; loadedURL = nil; return }
+            if let hit = artwork.cachedImage(url, kind: kind) { fades = false; loaded = hit; loadedURL = url; return }
+            loaded = nil; loadedURL = nil; fades = true
+            let sp = SmoothSignpost.begin("TileImageLoad")
             let img = await artwork.image(url, kind: kind)
+            SmoothSignpost.end(sp, "TileImageLoad")
             if Task.isCancelled { return }
-            image = img; failed = img == nil
+            loaded = img; loadedURL = url; failed = img == nil
         }
     }
 }
@@ -56,6 +69,8 @@ struct ArtworkTile: View {
     struct Content: Hashable, Sendable {
         var title: String
         var detail: String?
+        /// False on a card that prints the title under the picture: the tile then shows only the detail and a quiet symbol, so the title is never printed twice.
+        var showsTitle = true
         /// "2022 · 4K" from a year and a quality label; nil when there is neither.
         static func detail(year: Int?, quality: String?) -> String? {
             let s = [year.map(String.init), quality].compactMap { $0 }.joined(separator: " · ")
@@ -82,12 +97,12 @@ struct ArtworkTile: View {
             let small = g.size.width < 72
             ZStack(alignment: .bottomLeading) {
                 LinearGradient(colors: scheme == .light ? [color(0.80, 0.30), color(0.64, 0.30)] : [color(0.29, 0.25), color(0.08, 0.28)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                Circle().strokeBorder(Color.white.opacity(scheme == .light ? 0.35 : 0.10), lineWidth: 1)
-                    .frame(width: g.size.width * 0.86, height: g.size.width * 0.86)
-                    .position(x: g.size.width * 0.58, y: g.size.height * 0.30)
                 if small {
                     Text(String(content.title.first { $0.isLetter || $0.isNumber } ?? "·").uppercased()).font(.system(size: g.size.width * 0.42, weight: .semibold))
                         .foregroundStyle(.primary.opacity(0.7)).frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if !content.showsTitle {
+                    Image(systemName: "film").font(.system(size: g.size.width * 0.28, weight: .ultraLight)).foregroundStyle(.primary.opacity(0.28)).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if let d = content.detail { Text(d).font(.system(.caption2)).foregroundStyle(.secondary).lineLimit(1).padding(10) }
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(content.title).font(.system(.footnote, design: .default).weight(.semibold)).lineLimit(4).minimumScaleFactor(0.75).multilineTextAlignment(.leading)
@@ -125,12 +140,14 @@ struct ChannelLogo: View {
     let url: String?
     let name: String
     var size: CGFloat = 44
+    /// The playlist's logo, else one from the public channel database (an overlay), else the initials.
+    private var shownURL: String? { url.nilIfEmpty ?? GuideLogoOverlay.logo(forName: name) }
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.2, style: .continuous).fill(Color.white.opacity(0.05))
-            ArtworkImage(url: url, kind: .logo, contentMode: .fit, symbol: "tv")
+            ArtworkImage(url: shownURL, kind: .logo, contentMode: .fit, symbol: "tv")
                 .padding(size * 0.1)
-                .overlay { if url.nilIfEmpty == nil { Text(initials).font(.system(size: size * 0.34, weight: .semibold)).foregroundStyle(ColorTokens.textSecondary) } }
+                .overlay { if shownURL.nilIfEmpty == nil { Text(initials).font(.system(size: size * 0.34, weight: .semibold)).foregroundStyle(ColorTokens.textSecondary) } }
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.2, style: .continuous))

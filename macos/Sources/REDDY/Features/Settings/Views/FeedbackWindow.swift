@@ -17,14 +17,14 @@ struct FeedbackWindow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.lg) {
             Text("Send Feedback").font(Typography.title)
-            Picker("", selection: $kind) { ForEach(FeedbackKind.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).labelsHidden()
+            Picker("", selection: $kind) { ForEach(FeedbackKind.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).labelsHidden().atlas("control.feedback.kind")
             TextEditor(text: $text).font(Typography.body).frame(height: 160).padding(6)
                 .background(ColorTokens.card, in: RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(ColorTokens.border))
             Text(kind == .problem ? "What went wrong, and what were you doing? The more detail, the easier it is to fix." : "What would you like StreamSetu to do?")
                 .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
             if kind == .problem {
                 Toggle("Include diagnostics (version, Mac, playlist hosts, counts, recent playback errors; never logins or full stream addresses)", isOn: $includeDiagnostics)
-                    .font(Typography.caption)
+                    .font(Typography.caption).atlas("control.feedback.includeDiagnostics")
                 if includeDiagnostics, let diagnostics {
                     DisclosureGroup("See what is included") {
                         ScrollView { Text(diagnostics).font(Typography.mono).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(height: 140)
@@ -33,18 +33,18 @@ struct FeedbackWindow: View {
             }
             VStack(alignment: .leading, spacing: 4) {
                 Toggle("Share playback logs automatically", isOn: $shareAutomatically)
-                    .onChange(of: shareAutomatically) { _, on in DiagnosticsUploader.shared.isEnabled = on }
+                    .onChange(of: shareAutomatically) { _, on in DiagnosticsUploader.shared.isEnabled = on }.atlas("control.feedback.shareAutomatically")
                 Text("Off until you turn it on. When it is on and a stream fails for good, StreamSetu sends the recent playback log to the developer: what was tried, which player, error codes, your app and macOS version and Mac model. Server names are replaced with server-1, server-2… Never logins, passwords, playlist names, titles or stream addresses. Kept for 30 days.")
                     .font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
-                SecondaryButton(title: sharingNow ? "Sending…" : "Send My Log Now", symbol: "paperplane") { sendLogNow() }.disabled(sharingNow)
+                SecondaryButton(title: sharingNow ? "Sending…" : "Send My Log Now", symbol: "paperplane") { sendLogNow() }.disabled(sharingNow).atlas("control.feedback.sendLog")
             }
             if let note { Text(note).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary) }
             HStack {
                 Text("Opens your mail app, addressed to \(FeedbackMessage.address). Nothing is sent until you press Send there.").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
                 Spacer()
-                SecondaryButton(title: "Clear Playback Log", symbol: "trash") { PlaybackLog.shared.clear(); Task { await loadDiagnostics() }; note = "Playback log cleared." }
-                SecondaryButton(title: "Copy", symbol: "doc.on.doc") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(message.fullText, forType: .string); note = "Copied." }
-                PrimaryButton(title: "Send by Email", symbol: "envelope") { send() }
+                SecondaryButton(title: "Clear Playback Log", symbol: "trash") { PlaybackLog.shared.clear(); Task { await loadDiagnostics() }; note = "Playback log cleared." }.atlas("control.feedback.sendLog")
+                SecondaryButton(title: "Copy", symbol: "doc.on.doc") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(message.fullText, forType: .string); note = "Copied." }.atlas("control.feedback.sendEmail")
+                PrimaryButton(title: "Send by Email", symbol: "envelope") { send() }.atlas("control.feedback.sendEmail")
             }
         }
         .padding(Spacing.section).frame(width: 560).background(ColorTokens.background)

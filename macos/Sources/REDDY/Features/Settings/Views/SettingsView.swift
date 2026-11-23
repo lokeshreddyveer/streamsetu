@@ -17,17 +17,19 @@ struct SettingsView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            GeneralSettingsPage().tabItem { Label("General", systemImage: "gearshape") }.tag(SettingsTab.general)
-            AppearanceSettingsPage().tabItem { Label("Appearance", systemImage: "paintbrush") }.tag(SettingsTab.appearance)
-            PlaybackSettingsPage().tabItem { Label("Playback", systemImage: "play.rectangle") }.tag(SettingsTab.playback)
-            LibrarySettingsPage(vm: library).tabItem { Label("Library", systemImage: "books.vertical") }.tag(SettingsTab.library)
-            PrivacySettingsPage().tabItem { Label("Privacy", systemImage: "hand.raised") }.tag(SettingsTab.privacy)
-            AdvancedSettingsPage(vm: advanced).tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }.tag(SettingsTab.advanced)
+            GeneralSettingsPage().atlasScreen("screen.settings.general").tabItem { Label("General", systemImage: "gearshape") }.tag(SettingsTab.general)
+            AppearanceSettingsPage().atlasScreen("screen.settings.appearance").tabItem { Label("Appearance", systemImage: "paintbrush") }.tag(SettingsTab.appearance)
+            PlaybackSettingsPage().atlasScreen("screen.settings.playback").tabItem { Label("Playback", systemImage: "play.rectangle") }.tag(SettingsTab.playback)
+            LibrarySettingsPage(vm: library).atlasScreen("screen.settings.library").tabItem { Label("Library", systemImage: "books.vertical") }.tag(SettingsTab.library)
+            PrivacySettingsPage().atlasScreen("screen.settings.privacy").tabItem { Label("Privacy", systemImage: "hand.raised") }.tag(SettingsTab.privacy)
+            AdvancedSettingsPage(vm: advanced).atlasScreen("screen.settings.advanced").tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }.tag(SettingsTab.advanced)
         }
         .overlay(alignment: .topTrailing) {
             Button { AssistantLauncher.shared.ask("I need help with a setting or a problem. What can you check?"); AssistantLauncher.bringMainWindowForward() } label: { Label("Ask Setu", systemImage: "sparkles").font(.callout) }
-                .buttonStyle(.bordered).controlSize(.small).padding(.top, 6).padding(.trailing, 10).help("Ask the assistant about a setting, or to diagnose a problem")
+                .buttonStyle(.bordered).controlSize(.small).padding(.top, 6).padding(.trailing, 10).help("Ask the assistant about a setting, or to diagnose a problem").atlas("screen.assistant")
         }
+        .onAppear { if let t = AtlasNavRequests.shared.takeSettingsTab(), let st = SettingsTab(rawValue: t) { tab = st } }
+        .onChange(of: AtlasNavRequests.shared.settingsTab) { _, t in if let t, let st = SettingsTab(rawValue: t) { tab = st; _ = AtlasNavRequests.shared.takeSettingsTab() } }
         .frame(width: 720)
         .frame(minHeight: 520, idealHeight: 760, maxHeight: 900)
         .reddyTheme(settings)

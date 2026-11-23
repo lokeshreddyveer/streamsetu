@@ -120,7 +120,7 @@ struct OnYourDeviceView: View {
     var body: some View {
         VStack(spacing: 0) {
             Picker("Show", selection: $tab) { ForEach(Tab.allCases) { Text($0.rawValue).tag($0) } }
-                .pickerStyle(.segmented).labelsHidden().padding(.horizontal, 16).padding(.vertical, 10)
+                .pickerStyle(.segmented).labelsHidden().padding(.horizontal, 16).padding(.vertical, 10).atlas("screen.onYourDevice")
             content.animation(.easeInOut(duration: 0.2), value: tab)
         }
         .navigationTitle("On Your Device")
@@ -139,7 +139,7 @@ struct OnYourDeviceView: View {
 
     @ViewBuilder private var content: some View {
         switch tab {
-        case .files: FilesView()
+        case .files: FilesView().atlasScreen("screen.filesAndServers")
         case .videos, .pictures:
             switch library.access {
             case .unknown: BrandLoader(size: 40).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -151,7 +151,7 @@ struct OnYourDeviceView: View {
                         if library.access == .limited { Text("StreamSetu can see only the photos you chose. Change this in Settings > Privacy > Photos.").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.bottom, 6) }
                         LazyVGrid(columns: columns, spacing: 3) {
                             ForEach(Array(items.enumerated()), id: \.element.localIdentifier) { i, asset in
-                                Thumb(asset: asset).onTapGesture { open(asset, index: i) }
+                                Thumb(asset: asset).onTapGesture { open(asset, index: i) }.atlas("screen.onYourDevice")
                             }
                         }.padding(.horizontal, 3)
                     }
@@ -172,7 +172,7 @@ struct OnYourDeviceView: View {
             Image(systemName: "lock.fill").font(.system(size: 36)).foregroundStyle(.secondary)
             Text("Photos access is off").font(.headline)
             Text("Allow StreamSetu to see your photos and videos to browse them here. They stay on this device; nothing is copied or sent.").font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Button("Open Settings") { NotificationPermission.openPhotosSettings() }.buttonStyle(.borderedProminent)
+            Button("Open Settings") { NotificationPermission.openPhotosSettings() }.buttonStyle(.borderedProminent).atlas("screen.onYourDevice")
         }.padding(30).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -215,7 +215,7 @@ private struct PictureViewer: View {
             VStack {
                 HStack {
                     Spacer()
-                    Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").font(.title).symbolRenderingMode(.palette).foregroundStyle(.white, .black.opacity(0.4)) }.buttonStyle(.plain)
+                    Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").font(.title).symbolRenderingMode(.palette).foregroundStyle(.white, .black.opacity(0.4)) }.buttonStyle(.plain).accessibilityLabel("Close picture").help("Close picture").atlas("screen.onYourDevice")
                 }.padding(14)
                 Spacer()
                 Text("\(index + 1) of \(assets.count)").font(.caption).foregroundStyle(.white.opacity(0.8)).padding(.bottom, 14)
@@ -237,7 +237,7 @@ private struct PictureViewer: View {
     @ViewBuilder private func step(_ symbol: String, _ by: Int) -> some View {
         let target = index + by
         if assets.indices.contains(target) {
-            Button { go(by) } label: { Image(systemName: symbol).font(.title2.weight(.semibold)).foregroundStyle(.white).padding(10).background(.black.opacity(0.35), in: Circle()) }.buttonStyle(.plain)
+            Button { go(by) } label: { Image(systemName: symbol).font(.title2.weight(.semibold)).foregroundStyle(.white).padding(10).background(.black.opacity(0.35), in: Circle()) }.buttonStyle(.plain).accessibilityLabel("Show another picture").help("Show another picture").atlas("screen.onYourDevice")
         } else { Color.clear.frame(width: 44, height: 44) }
     }
 

@@ -27,14 +27,14 @@ struct SavedLoginsGroup: View {
                             Button {
                                 do { kept = try store.startFreshVault(); failed = nil; self.problem = nil }
                                 catch { failed = error.localizedDescription }
-                            } label: { Label("Start a New Set and Keep the Old File", systemImage: "arrow.counterclockwise") }
+                            } label: { Label("Start a New Set and Keep the Old File", systemImage: "arrow.counterclockwise") }.atlas("control.settings.savedLoginsNewSet")
                         }
                         if let failed { Text(failed).font(.callout).foregroundStyle(.red) }
                     }
                 } else if let kept {
                     SettingsGroup(title: "Saved logins", footer: "A new set was started. The old file was kept whole in this folder.") {
                         #if os(macOS)
-                        SettingsActions { Button { NSWorkspace.shared.activateFileViewerSelecting([kept]) } label: { Label("Show the Kept File", systemImage: "folder") } }
+                        SettingsActions { Button { NSWorkspace.shared.activateFileViewerSelecting([kept]) } label: { Label("Show the Kept File", systemImage: "folder") }.atlas("control.settings.savedLoginsNewSet") }
                         #endif
                     }
                 }
@@ -49,6 +49,7 @@ struct PrivacySettingsPage: View {
         SettingsPage {
             SavedLoginsGroup()
             PrivacyReportGroup()
+            StreamingServicesSettingsSection()
             ParentalSettingsGroup()
             AppLockSettingsGroup()
             ProxySettingsGroup()

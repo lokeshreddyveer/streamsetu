@@ -152,4 +152,39 @@ import AppKit
         func env<V: View>(_ v: V) -> some View { v.environment(sc.container.settings).environment(sc.state).environment(sc.router).environment(\.container, sc.container).environment(\.artwork, sc.container.artwork).reddyTheme(sc.container.settings) }
         try await capture(env(GeneralSettingsPage()).frame(width: 660), size: CGSize(width: 660, height: 620), settle: 0.8, name: "settings-general-themes")
     }
+
+    /// The person screen from a saved filmography (no network): in two themes.
+    @Test func personPage() async throws {
+        defer { ThemeStore.current = .obsidian }
+        for t in [AppTheme.obsidian, .liquidGlass] {
+            let sc = try scene()
+            sc.container.settings.theme = t
+            let lang = MetadataMatchService.tmdbLanguage(for: sc.container.settings.language)
+            let credits = (0..<14).map { i in FilmCredit(tmdbID: i + 1, isSeries: i % 5 == 4, title: ["Pokiri", "Dookudu", "Okkadu", "Athadu", "Businessman", "Sarkaru Vaari Paata", "Maharshi"][i % 7] + (i >= 7 ? " \(i)" : ""),
+                                                          originalTitle: nil, date: "\(2024 - i)-03-01", posterPath: nil, overview: "A story.", rating: i % 3 == 0 ? nil : 6.5 + Double(i % 3), votes: 100, popularity: Double(20 - i), role: nil) }
+            let file = PersonFile(profile: PersonProfile(tmdbID: 9, name: "Mahesh Babu", biography: "Ghattamaneni Mahesh Babu is an Indian actor and film producer known for his work in Telugu cinema. He has received several awards, including nine Nandi Awards and five Filmfare Awards South, and is one of the most followed actors in the industry.", birthday: "1975-08-09", placeOfBirth: "Chennai, Tamil Nadu, India", department: "Acting"), credits: credits, language: lang, fetchedAt: Date().timeIntervalSince1970)
+            try sc.container.db.write { try $0.execute("INSERT OR REPLACE INTO title_details(item_id, json, fetched_at) VALUES(?,?,?)", ["person:9:\(lang)", String(decoding: try JSONEncoder().encode(file), as: UTF8.self), Date().timeIntervalSince1970]) }
+            let v = PersonPage(route: PersonRoute(name: "Mahesh Babu", tmdbID: 9)).environment(sc.container.settings).environment(sc.state).environment(sc.router).environment(\.container, sc.container).environment(\.artwork, sc.container.artwork).reddyTheme(sc.container.settings).background(ColorTokens.background)
+            try await capture(v, size: CGSize(width: 760, height: 900), settle: 1.5, name: "person-\(t.rawValue.lowercased().replacingOccurrences(of: " ", with: "-"))")
+        }
+    }
+
+    /// The title pages: a movie, a series and a movie with no backdrop, in two themes.
+    @Test func titlePages() async throws {
+        defer { ThemeStore.current = .obsidian }
+        for t in [AppTheme.obsidian, .liquidGlass] {
+            let sc = try scene()
+            sc.container.settings.theme = t
+            let tag = t.rawValue.lowercased().replacingOccurrences(of: " ", with: "-")
+            func env<V: View>(_ v: V) -> some View { v.environment(sc.container.settings).environment(sc.state).environment(sc.router).environment(\.container, sc.container).environment(\.artwork, sc.container.artwork).reddyTheme(sc.container.settings).background(ColorTokens.background) }
+            var movie = try #require(try sc.container.catalog.movies(VODQuery(limit: 3)).first)
+            movie.overview = "A retired navigator takes one last crossing, and the sea remembers every debt he left behind. A long synopsis so that the three-line limit and the More button are both visible on the page."
+            movie.backdropURL = nil; movie.posterURL = "https://example.invalid/p.jpg"
+            try await capture(env(MovieDetailView(movie: movie)), size: CGSize(width: 860, height: 640), settle: 1.2, name: "title-movie-\(tag)")
+            var bare = movie; bare.posterURL = nil
+            try await capture(env(MovieDetailView(movie: bare)), size: CGSize(width: 860, height: 640), settle: 1.2, name: "title-nobackdrop-\(tag)")
+            let series = try #require(try sc.container.catalog.series(VODQuery(limit: 3)).first)
+            try await capture(env(SeriesDetailView(series: series)), size: CGSize(width: 880, height: 680), settle: 1.2, name: "title-series-\(tag)")
+        }
+    }
 }

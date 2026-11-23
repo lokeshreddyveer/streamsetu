@@ -16,7 +16,7 @@ struct OnlineSubtitleSheet: View {
                 if let message { Text(message).foregroundStyle(.secondary) }
                 else if hits == nil { HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Searching…").foregroundStyle(.secondary) } }
                 ForEach(hits ?? []) { h in
-                    Button { pick(h) } label: { HStack { Image(systemName: "captions.bubble"); Text(h.label).lineLimit(2); Spacer() }.contentShape(Rectangle()) }.buttonStyle(.plain).disabled(working)
+                    Button { pick(h) } label: { HStack { Image(systemName: "captions.bubble"); Text(h.label).lineLimit(2); Spacer() }.contentShape(Rectangle()) }.buttonStyle(.plain).disabled(working).atlas("setting.autoSubtitles")
                 }
             }.listStyle(.plain)
         }
@@ -28,7 +28,7 @@ struct OnlineSubtitleSheet: View {
 
     private func search() async {
         guard let c = container else { return }
-        guard account.isComplete else { message = "Add your free OpenSubtitles key, account name and password in Settings, Playback."; return }
+        guard account.isComplete else { message = "Add your free subtitle account details in Settings, Playback."; return }
         let title = c.playback.currentSeries?.title ?? c.playback.title
         let language = c.settings.subtitleLanguages.first ?? "en"
         do {

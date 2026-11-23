@@ -29,6 +29,8 @@ enum ColorTokens {
     static var border: Color { line }
     static var lineStrong: Color { Color.white.opacity(contrast ? 0.55 : 0.14) }
     static var borderStrong: Color { lineStrong }
+    /// The star of a rating badge (the same on every tile, Mac and iPhone).
+    static let starRating = Color.yellow
     static let glassEdge = Color(hex: 0xE3E8F0, opacity: 0.17)
 
     /// Strength of the top-lit sheen, and of the bright top-edge hairline, for the current theme.

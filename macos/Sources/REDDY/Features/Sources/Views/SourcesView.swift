@@ -21,7 +21,7 @@ struct EditSourceSheet: View {
             HStack {
                 TextField("Guide (XMLTV) address — optional", text: $guide).textFieldStyle(.roundedBorder)
                 #if os(macOS)
-                SecondaryButton(title: "From File…", symbol: "doc") { chooseGuideFile() }
+                SecondaryButton(title: "From File…", symbol: "doc") { chooseGuideFile() }.atlas("screen.playlist.connection")
                 #endif
             }
             if source.type.hasLogin {
@@ -32,7 +32,7 @@ struct EditSourceSheet: View {
             }
             if source.type == .m3uRemote {
                 Text("Sign-in for this link").font(Typography.captionMedium).foregroundStyle(ColorTokens.textSecondary)
-                Picker("", selection: $authKind) { ForEach(HTTPAuthKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.labelsHidden()
+                Picker("", selection: $authKind) { ForEach(HTTPAuthKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.labelsHidden().atlas("screen.playlist.connection")
                 if authKind == .basic { TextField("Username", text: $authUser).textFieldStyle(.roundedBorder) }
                 if authKind != .none { SecureField(authKind == .basic ? "Password" : "Token", text: $authSecret).textFieldStyle(.roundedBorder) }
                 Text("Kept encrypted with the playlist's address, and sent with every request to it. Leave the password or token blank to keep the saved one.").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
@@ -105,11 +105,11 @@ struct CategoryCheck: View {
                 if let origin = rows.first?.origin { Text(origin).font(Typography.caption).foregroundStyle(ColorTokens.textTertiary) }
                 if let error { Text(error).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
                 HStack {
-                    SecondaryButton(title: checking ? "Checking…" : "Check with provider", symbol: "arrow.triangle.2.circlepath") { Task { await liveCheck() } }.disabled(checking)
+                    SecondaryButton(title: checking ? "Checking…" : "Check with provider", symbol: "arrow.triangle.2.circlepath") { Task { await liveCheck() } }.disabled(checking).atlas("screen.playlist.health")
                     SecondaryButton(title: "Copy report", symbol: "doc.on.doc") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(CategoryDiagnosticsService.text(rows, playlist: source.name), forType: .string)
-                    }.disabled(rows.isEmpty)
+                    }.disabled(rows.isEmpty).atlas("screen.playlist.health")
                 }
             }.padding(.top, 6)
         } label: { Text("Folders check").font(Typography.captionMedium).foregroundStyle(ColorTokens.textSecondary) }

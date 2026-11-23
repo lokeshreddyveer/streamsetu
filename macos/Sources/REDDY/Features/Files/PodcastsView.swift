@@ -18,7 +18,7 @@ struct PodcastsView: View {
                 Section("Following") {
                     ForEach(subscriptions) { s in
                         NavigationLink { PodcastDetailView(show: s) } label: { PodcastRow(show: s) }
-                            .contextMenu { Button("Unfollow", role: .destructive) { service?.unsubscribe(s.feedURL); reload() } }
+                            .contextMenu { Button("Unfollow", role: .destructive) { service?.unsubscribe(s.feedURL); reload() } }.atlas("context.podcasts.show")
                     }
                     .onDelete { idx in idx.map { subscriptions[$0] }.forEach { service?.unsubscribe($0.feedURL) }; reload() }
                 }
@@ -27,7 +27,7 @@ struct PodcastsView: View {
                 TextField("Search shows, or paste a feed address", text: $term).onSubmit { search() }
                 if searching { HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Looking…").foregroundStyle(.secondary) } }
                 ForEach(found) { s in
-                    NavigationLink { PodcastDetailView(show: s) } label: { PodcastRow(show: s) }
+                    NavigationLink { PodcastDetailView(show: s) } label: { PodcastRow(show: s) }.atlas("screen.podcasts")
                 }
                 if let message { Text(message).foregroundStyle(.secondary) }
             } header: { Text("Find a show") } footer: { Text("Search uses Apple's public podcast directory. Nothing about you is sent besides the words you search for.") }
@@ -63,7 +63,7 @@ private struct PodcastRow: View {
     let show: PodcastSubscription
     var body: some View {
         HStack(spacing: 12) {
-            AsyncImage(url: show.artwork) { img in img.resizable().scaledToFill() } placeholder: { Rectangle().fill(.quaternary).overlay(Image(systemName: "mic.fill").foregroundStyle(.secondary)) }
+            ArtworkImage(url: show.artwork?.absoluteString, kind: .poster, contentMode: .fill, symbol: "mic.fill")
                 .frame(width: 52, height: 52).clipShape(RoundedRectangle(cornerRadius: 10))
             VStack(alignment: .leading, spacing: 2) {
                 Text(show.title).lineLimit(2)
@@ -92,7 +92,7 @@ struct PodcastDetailView: View {
                                 Text([e.published.map { $0.formatted(date: .abbreviated, time: .omitted) }, e.duration.map(Self.length)].compactMap { $0 }.joined(separator: "  ·  ")).font(.caption).foregroundStyle(.secondary)
                                 if !e.summary.isEmpty { Text(e.summary).font(.caption).foregroundStyle(.secondary).lineLimit(3).multilineTextAlignment(.leading) }
                             }.contentShape(Rectangle())
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(.plain).atlas("control.podcasts.play")
                     }
                 } header: { Text("\(feed.episodes.count) episodes") }
             } else if let error {
@@ -103,7 +103,7 @@ struct PodcastDetailView: View {
         }
         .navigationTitle(show.title)
         .toolbar {
-            ToolbarItem { Button(following ? "Unfollow" : "Follow") { toggle() }.disabled(feed == nil && !following) }
+            ToolbarItem { Button(following ? "Unfollow" : "Follow") { toggle() }.disabled(feed == nil && !following).atlas("control.podcasts.follow") }
         }
         .task {
             following = container?.podcasts.isSubscribed(show.feedURL) ?? false

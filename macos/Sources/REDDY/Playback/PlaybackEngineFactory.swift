@@ -19,8 +19,7 @@ final class PlaybackEngineFactory {
     func engine(_ kind: PlaybackEngineKind) -> any PlaybackEngine {
         switch kind {
         case .avPlayer:
-            if av == nil { av = AVPlayerEngine() }
-            return av!
+            return avEngine
         case .mpv:
             #if os(macOS) || STREAMSETU_MPV
             if mpv == nil { mpv = MPVPlayerEngine() }
@@ -31,7 +30,10 @@ final class PlaybackEngineFactory {
         }
     }
 
-    var avEngine: AVPlayerEngine { engine(.avPlayer) as! AVPlayerEngine }
+    var avEngine: AVPlayerEngine {
+        if let av { return av }
+        let made = AVPlayerEngine(); av = made; return made
+    }
     #if os(macOS) || STREAMSETU_MPV
     var mpvEngine: MPVPlayerEngine? { MPVPlayerEngine.isAvailable ? (engine(.mpv) as? MPVPlayerEngine) : nil }
     #endif

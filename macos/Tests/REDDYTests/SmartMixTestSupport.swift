@@ -19,7 +19,7 @@ enum SMFixtures {
 
     static var allCaseNames: [String] {
         let files = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
-        return files.filter { $0.hasSuffix(".json") }.map { String($0.dropLast(5)) }.filter { $0 != "prng" && $0 != "features" }.sorted()
+        return files.filter { $0.hasSuffix(".json") }.map { String($0.dropLast(5)) }.filter { !["prng", "features", "genre-shelves", "shelf-modes", "home-layout"].contains($0) }.sorted()
     }
 
     static func candidate(_ d: [String: Any]) -> SMCandidate {
@@ -35,6 +35,7 @@ enum SMFixtures {
         c.folder = d["folder"] as? String
         c.franchise = d["franchise"] as? String
         c.genre = d["genre"] as? String
+        if let v = d["genres"] as? String { c.genres = SMGenres.tokens(v) }
         if let v = d["poster"] as? Bool { c.poster = v }
         if let v = d["backdrop"] as? Bool { c.backdrop = v }
         if let v = d["watched"] as? Bool { c.watched = v }

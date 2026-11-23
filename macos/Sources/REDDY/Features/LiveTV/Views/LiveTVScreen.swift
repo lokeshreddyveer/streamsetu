@@ -9,8 +9,6 @@ struct LiveTVScreen: View {
     @State private var vm = LiveTVViewModel()
     @AppStorage("live.channelListWidth") private var storedListWidth: Double = 300
     @AppStorage("live.channelListCollapsed") private var listCollapsed = false
-    @State private var viewMode: FolderViewMode = .folders
-    private var showsFolders: Bool { viewMode == .folders && filter == .all && vm.search.isEmpty && vm.listID == nil }
 
     private var playback: PlaybackCoordinator? { container?.playback }
     private var currentChannel: Channel? { playback?.currentChannel }
@@ -23,11 +21,6 @@ struct LiveTVScreen: View {
             LiveToolbar(label: folderLabel, listCollapsed: $listCollapsed, search: Binding(get: { vm.search }, set: { vm.search = $0; if let c = container { vm.scheduleSearch(c) } }),
                         count: vm.channels.count, searching: !vm.search.isEmpty, focusToken: router.focusSearch,
                         lists: vm.lists, activeListID: Binding(get: { vm.listID }, set: { vm.listID = $0 }))
-            if filter == .all {
-                Picker("View", selection: Binding(get: { viewMode }, set: { viewMode = $0; FolderViewMode.save($0, .channel, profile: container?.profiles.activeID ?? "main") })) {
-                    Label("Folders", systemImage: "folder").tag(FolderViewMode.folders); Label("List", systemImage: "list.bullet").tag(FolderViewMode.grid)
-                }.pickerStyle(.segmented).labelsHidden().fixedSize().accessibilityLabel("Folders or channel list")
-            }
             LiveSplit(listWidth: $storedListWidth, collapsed: $listCollapsed) {
                 channelColumn
             } player: {
@@ -36,7 +29,6 @@ struct LiveTVScreen: View {
             .surface(radius: 10)
         }
         .padding(.horizontal, LayoutTokens.gutter).padding(.top, 10).padding(.bottom, 12)
-        .onAppear { viewMode = FolderViewMode.load(.channel, profile: container?.profiles.activeID ?? "main") }
         .task(id: taskKey) {
             vm.sourceID = state.activeSourceID; vm.filter = filter
             if let c = container { await vm.reload(c) }
@@ -59,8 +51,6 @@ struct LiveTVScreen: View {
         VStack(spacing: 0) {
             if !state.hasLibrary {
                 EmptyStateView(symbol: "list.bullet.rectangle", title: "No playlist", message: "Add a playlist to watch live TV.", actionTitle: "Add playlist") { router.modal = .addPlaylist }
-            } else if showsFolders {
-                LiveFolderColumn(play: { play($0) }, currentID: currentChannel?.id)
             } else if vm.loading {
                 VStack(spacing: 6) { ForEach(0..<9, id: \.self) { _ in SkeletonBlock(height: 40, radius: 7) } }.padding(.horizontal, 8)
                 Spacer()
@@ -81,7 +71,7 @@ struct LiveTVScreen: View {
                             .task { if let c = container { vm.want(ch.id, c) } }
                             .contextMenu { ChannelContextMenu(channel: ch, onPlay: { play(ch) }, onChanged: { if let c = container { Task { await vm.reload(c) } } }) }
                             .accessibilityLabel("\(ch.name)\(vm.nowNext[ch.id]?.first(where: { $0.isLive() }).map { ", now \($0.title)" } ?? "")")
-                            .accessibilityAddTraits(currentChannel?.id == ch.id ? .isSelected : [])
+                            .accessibilityAddTraits(currentChannel?.id == ch.id ? .isSelected : []).atlas("context.liveTV.channel")
                         }
                     }
                     .padding(.horizontal, 6).padding(.vertical, 6)
@@ -141,13 +131,13 @@ struct LiveTVScreen: View {
         HStack(spacing: 8) {
             Button { state.toggleFavorite(ch.id, kind: .channel) } label: {
                 Label(state.isFavorite(ch.id) ? "Favorited" : "Favorite", systemImage: state.isFavorite(ch.id) ? "heart.fill" : "heart")
-            }.buttonStyle(SecondaryButtonStyle())
-            Button { router.navigate(.guide, .shortcut(.allChannels)) } label: { Label("TV Guide", systemImage: "calendar") }.buttonStyle(SecondaryButtonStyle())
-            Button { playback?.isFullscreen = true } label: { Label("Full screen", systemImage: "arrow.up.left.and.arrow.down.right") }.buttonStyle(SecondaryButtonStyle())
+            }.buttonStyle(SecondaryButtonStyle()).atlas("control.liveTV.favorite")
+            Button { router.navigate(.guide, .shortcut(.allChannels)) } label: { Label("TV Guide", systemImage: "calendar") }.buttonStyle(SecondaryButtonStyle()).atlas("screen.tab.guide")
+            Button { playback?.isFullscreen = true } label: { Label("Full screen", systemImage: "arrow.up.left.and.arrow.down.right") }.buttonStyle(SecondaryButtonStyle()).atlas("control.liveTV.fullScreen")
             if vm.variants.count > 1 {
                 Menu {
                     ForEach(vm.variants, id: \.variant.id) { v in Button { play(v.variant) } label: { Label(v.label, systemImage: v.variant.id == ch.id ? "checkmark" : "") } }
-                } label: { Label("Streams", systemImage: "square.stack.3d.up") }.menuStyle(.button).buttonStyle(SecondaryButtonStyle()).fixedSize()
+                } label: { Label("Streams", systemImage: "square.stack.3d.up") }.menuStyle(.button).buttonStyle(SecondaryButtonStyle()).fixedSize().atlas("control.liveTV.streams")
             }
             Spacer(minLength: 0)
         }
@@ -198,19 +188,19 @@ struct LiveToolbar: View {
                 Image(systemName: listCollapsed ? "sidebar.left" : "sidebar.squares.left").font(.system(size: 13)).frame(width: 28, height: 28).contentShape(Rectangle())
             }
             .buttonStyle(.plain).foregroundStyle(ColorTokens.textSecondary).help(listCollapsed ? "Show channel list" : "Hide channel list")
-            .accessibilityLabel(listCollapsed ? "Show channel list" : "Hide channel list")
+            .accessibilityLabel(listCollapsed ? "Show channel list" : "Hide channel list").atlas("setting.storage.liveChannelListCollapsed")
             if !lists.isEmpty || activeListID != nil {
                 Menu {
                     Button { activeListID = nil } label: { Label("Everything in this view", systemImage: activeListID == nil ? "checkmark" : "") }
                     Divider()
                     ForEach(lists) { l in Button { activeListID = l.id } label: { Label("\(l.name) (\(l.itemCount))", systemImage: activeListID == l.id ? "checkmark" : "") } }
                 } label: { Label(activeListID == nil ? "Lists" : "List on", systemImage: "list.star") }
-                    .menuStyle(.button).fixedSize().help("Your own channel lists, like Sports or Kids")
+                    .menuStyle(.button).fixedSize().help("Your own channel lists, like Sports or Kids").atlas("control.liveTV.listFilter")
             }
             Spacer(minLength: 8)
             Text(label).font(Typography.rowMedium).lineLimit(1).truncationMode(.tail).frame(maxWidth: 200, alignment: .trailing)
             Rectangle().fill(ColorTokens.line).frame(width: 1, height: 14)
-            Text(searching ? "\(count.formatted()) match\(count == 1 ? "" : "es")" : "\(count.formatted()) channel\(count == 1 ? "" : "s")")
+            Text(verbatim: searching ? Localized.plural(count, one: "%@ match", other: "%@ matches") : Localized.plural(count, one: "%@ channel", other: "%@ channels"))
                 .font(Typography.caption).monospacedDigit().foregroundStyle(ColorTokens.textSecondary).lineLimit(1)
         }
         .padding(.horizontal, 10).padding(.vertical, 8)

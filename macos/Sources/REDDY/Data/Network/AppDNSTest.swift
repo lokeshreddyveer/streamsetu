@@ -48,7 +48,7 @@ enum AppDNSTest {
             let usable = addresses.filter { AppDNSLocality.acceptsAnswer(for: host, address: $0, sourceIsLocal: false) }
             let ok = !usable.isEmpty && line.rcode == 0
             if line.error == nil || !addresses.isEmpty { answered += 1 }
-            let detail = ok ? "Resolved · \(usable.count) address\(usable.count == 1 ? "" : "es")" : (!addresses.isEmpty ? "Refused: a public name pointed at a private address" : (line.rcode == 3 ? "Not found" : (line.error ?? "No address")))
+            let detail = ok ? "Resolved · \(Localized.plural(usable.count, one: "%@ address", other: "%@ addresses"))" : (!addresses.isEmpty ? "Refused: a public name pointed at a private address" : (line.rcode == 3 ? "Not found" : (line.error ?? "No address")))
             rows.append(.init(label: label, host: host, resolved: ok, detail: detail))
             if !config.enabled {                                   // with App DNS on the device lookup would itself go through App DNS, so it is not a fair comparison
                 let sys = await systemResolves(host)

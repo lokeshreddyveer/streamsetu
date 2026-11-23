@@ -1,22 +1,36 @@
 import Foundation
+import os
 
-/// Local SQLite database: one serialized writer and one reader (WAL), so UI reads
-/// are never blocked by a long catalog import. Everything stays on this Mac.
+/// Local SQLite database: one serialized writer and a small pool of read-only connections (WAL), so UI reads
+/// are never blocked by a long catalog import, nor by another long read (a broad search, a Smart Mix build).
+/// Everything stays on this device.
 final class DatabaseManager: @unchecked Sendable {
     let path: String
     private let writer: Connection
-    private let reader: Connection
+    private struct Reader { let connection: Connection; let queue: DispatchQueue }
+    private let readers: [Reader]
+    /// How many reads each connection is running or has waiting; a new read goes to the least busy one.
+    private let load = OSAllocatedUnfairLock(initialState: [Int]())
     private let writeQueue = DispatchQueue(label: "app.reddy.db.write")
-    private let readQueue = DispatchQueue(label: "app.reddy.db.read")
+    static let defaultReaderCount = 3
 
-    init(path: String) throws {
+    init(path: String, readerCount: Int = DatabaseManager.defaultReaderCount) throws {
         self.path = path
         writer = try Connection(path: path, readOnly: false)
         try writer.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON; PRAGMA temp_store=MEMORY; PRAGMA busy_timeout=5000;")
         try DatabaseMigrator.migrate(writer)
-        reader = try Connection(path: path, readOnly: true)
-        try reader.exec("PRAGMA busy_timeout=5000; PRAGMA query_only=ON;")
+        var pool: [Reader] = []
+        for i in 0..<max(1, readerCount) {
+            let c = try Connection(path: path, readOnly: true)
+            try c.exec("PRAGMA busy_timeout=5000; PRAGMA query_only=ON; PRAGMA cache_size=-32768; PRAGMA mmap_size=268435456; PRAGMA temp_store=MEMORY;")
+            pool.append(Reader(connection: c, queue: DispatchQueue(label: "app.reddy.db.read.\(i)", qos: .userInitiated)))
+        }
+        readers = pool
+        let n = pool.count
+        load.withLock { $0 = Array(repeating: 0, count: n) }
     }
+
+    var readerCount: Int { readers.count }
 
     /// `~/Library/Application Support/REDDY/Database/reddy.sqlite` (override with REDDY_DB for tests).
     static func standard() throws -> DatabaseManager {
@@ -26,7 +40,14 @@ final class DatabaseManager: @unchecked Sendable {
     }
 
     func read<T>(_ body: (Connection) throws -> T) throws -> T {
-        try readQueue.sync { try body(reader) }
+        let i = load.withLock { l -> Int in
+            let k = l.indices.min { l[$0] < l[$1] } ?? 0
+            l[k] += 1
+            return k
+        }
+        defer { load.withLock { $0[i] -= 1 } }
+        let r = readers[i]
+        return try r.queue.sync { try body(r.connection) }
     }
 
     /// Runs `body` in one transaction. Throwing rolls everything back.

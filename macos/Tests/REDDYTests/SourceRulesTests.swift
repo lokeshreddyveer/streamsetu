@@ -15,6 +15,50 @@ import Foundation
     /// Anything that sends a request goes through the app's own client (proxy, network settings), never the system's shared session. Nothing is allowed to be an exception today.
     static let sharedSessionAllowList: Set<String> = []
 
+    /// Every folder header (Movies, Series, Live TV; iPhone, iPad, Mac) is drawn by FolderHeaderLabel: nobody prints a folder's display name or count by hand.
+    @Test func folderHeadersAllGoThroughTheSharedLabel() throws {
+        let iosRoot = Self.sourcesRoot.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("ios/StreamSetu")
+        var files = [Self.sourcesRoot.appendingPathComponent("Features/Movies/Views/FolderRowsSection.swift")]
+        if FileManager.default.fileExists(atPath: iosRoot.path) { files.append(iosRoot.appendingPathComponent("Screens/FolderRowsView.swift")) }
+        var offenders: [String] = []
+        for f in files {
+            let text = try String(contentsOf: f, encoding: .utf8)
+            #expect(text.contains("FolderHeaderLabel("), "\(f.lastPathComponent) must draw its folder header with FolderHeaderLabel")
+            for (i, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() where !line.trimmingCharacters(in: .whitespaces).hasPrefix("//") {
+                if line.contains("Text(row.display)") || line.contains("row.countText") || line.contains("row.count.formatted()") || line.contains("\\(row.display) ·") { offenders.append("\(f.lastPathComponent):\(i + 1)") }
+            }
+        }
+        #expect(offenders.isEmpty, "folder name or count printed by hand at \(offenders)")
+    }
+
+    /// The Mac Live TV is the plain channel column: no Folders/List switch, no folders mode.
+    @Test func macLiveTVHasNoFoldersMode() throws {
+        let dir = Self.sourcesRoot.appendingPathComponent("Features/LiveTV")
+        #expect(!FileManager.default.fileExists(atPath: dir.appendingPathComponent("Views/LiveFolderColumn.swift").path))
+        let en = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
+        for case let f as URL in en! where f.pathExtension == "swift" {
+            let text = try String(contentsOf: f, encoding: .utf8)
+            for bad in ["FolderViewMode", "LiveFolderColumn", "FolderRowsModel", "Folders or channel list", "showsFolders"] {
+                #expect(!text.contains(bad), "\(f.lastPathComponent) mentions \(bad)")
+            }
+        }
+    }
+
+    /// The sidebar's Live TV folder list is separate from the screen: it still builds, and selecting a folder makes the screen list that folder's channels.
+    @Test @MainActor func sidebarLiveTVFolderListStillBuildsAndSelects() {
+        let sid = UUID()
+        let cats = [CatalogCategory(id: "c1", sourceID: sid, kind: .channel, providerID: "1", name: "News", sortOrder: 0, itemCount: 4),
+                    CatalogCategory(id: "c2", sourceID: sid, kind: .channel, providerID: "2", name: "Sports", sortOrder: 1, itemCount: 2)]
+        let entries = SidebarModel.folders(cats)
+        #expect(SidebarModel.categoryKind(for: .liveTV) == .channel)
+        #expect(entries.map(\.title) == ["News", "Sports"] && entries.map(\.count) == [4, 2])
+        let router = AppRouter()
+        router.navigate(.liveTV)
+        router.select(entries[1].selection)
+        #expect(router.selection == .folder("c2"))
+        #expect(LiveFilter(router.selection) == .category("c2"))
+    }
+
     @Test func noCodePathUsesTheSystemSharedSession() throws {
         var offenders: [String] = []
         for f in swiftFiles() {

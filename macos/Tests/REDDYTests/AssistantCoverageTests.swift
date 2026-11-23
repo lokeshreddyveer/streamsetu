@@ -61,7 +61,7 @@ import Foundation
         var withMenus = Set<String>()
         let e = FileManager.default.enumerator(at: Self.sources, includingPropertiesForKeys: nil)
         while let next = e?.nextObject() {
-            guard let u = next as? URL, u.pathExtension == "swift" else { continue }
+            guard let u = next as? URL, u.pathExtension == "swift", !u.path.contains("/Atlas/") else { continue }
             if let t = try? String(contentsOf: u, encoding: .utf8), t.contains(".contextMenu") || t.contains("contextMenu(") { withMenus.insert(u.path.replacingOccurrences(of: Self.sources.path + "/", with: "")) }
         }
         #expect(withMenus == Set(AssistantCoverage.contextMenus.keys), "context menus: \(withMenus.symmetricDifference(Set(AssistantCoverage.contextMenus.keys)).sorted())")

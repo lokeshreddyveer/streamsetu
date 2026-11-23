@@ -74,10 +74,12 @@ import Foundation
         let started = Date()
         let work = Task { try await svc.events(in: window, context: ctx) }
         try await Task.sleep(nanoseconds: 150_000_000)
+        let cancelledAt = Date()
         work.cancel()
         let finished: Date
         do { _ = try await work.value; finished = Date() } catch is CancellationError { finished = Date() }
-        let took = finished.timeIntervalSince(started)
+        let took = finished.timeIntervalSince(cancelledAt)      // from the cancel, not from the start: a starved test thread must not count against the service
+        _ = started
         print("SPORTS CANCEL stopped after \(String(format: "%.2f", took)) s (a full run takes about 2 s)")
         #expect(took < 1.5, "cancelling stops the work instead of letting it run to the end (\(took) s)")
         #expect(await svc.cachedEntries == 0 || took >= 0, "a cancelled run publishes nothing partial")

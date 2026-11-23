@@ -23,7 +23,7 @@ import Foundation
         var t: [AITool] = [
             AITool(name: "search_everything", help: "Search EVERYTHING for a name or title the way the app's search box does: live channels, movies, series, episodes and the TV guide, across all playlists. Use this first whenever the person types or asks about a name (a show, film, channel or actor), even a misspelt or run-together one.", params: [s("query", "The name or title")]),
             AITool(name: "search_library", help: "Find titles in the person's own library from a plain request: genre, language, year, mood, a person, 'unwatched', 'under 2 hours', 'top rated'. Also reads the cast index.", params: [s("query", "The request in plain words"), o("kind", "movies, series or any")]),
-            AITool(name: "check_library", help: "THE BRIDGE FROM A DESCRIPTION TO WHAT THEY HAVE. Give it the real titles you have chosen (from your own knowledge, or from web_lookup) for a request like 'best horror movies', 'Netflix top movies', 'Marvel in order', 'films like Athadu' or an actor's films. Put them in the order you recommend them, each as 'Title (Year)' (add alternate spellings after ' / '). It matches every one against the app's own search and returns which are in the library (shown to the person as cards, in your order) and which are not.", params: [.init(name: "titles", kind: .strings, help: "Titles in recommended order, like 'Pokiri (2006)' or 'Drishyam (2013) / Drushyam'")]),
+            AITool(name: "check_library", help: "THE BRIDGE FROM A DESCRIPTION TO WHAT THEY HAVE. Give it the real titles you have chosen (from your own knowledge, or from web_lookup) for a request like 'best horror movies', 'Netflix top movies', 'Marvel in order', 'films like Athadu' or an actor's films. Put them in the order you recommend them, each as 'Title (Year)' (add alternate spellings after ' / '). It matches every one against the app's own search and returns which are in the library (shown to the person as cards, in your order) and which are not.", params: [.init(name: "titles", kind: .strings, help: "Titles in recommended order, like 'Parasite (2019)' or 'Drishyam (2013) / Drushyam'")]),
             AITool(name: "title_details", help: "Plot, genre, rating and cast of a title in the library.", params: [s("title", "The title")]),
             AITool(name: "tv_guide", help: "What is on TV: a programme name (finds when it airs) or a channel name (what is on it now and next).", params: [s("query", "Programme or channel")]),
             AITool(name: "diagnose_playback", help: "Work out why the current stream is buffering, failing, silent or not starting, from the player's real numbers and its last error. Separates app, provider, network, credential, format and device causes, and offers the fix.", params: []),
@@ -36,7 +36,7 @@ import Foundation
             AITool(name: "find_help", help: "How-to knowledge about the app's features (search, favourites, recording, playlists, privacy, fixing playback…).", params: [s("topic", "What they want to do")]),
             AITool(name: "change_setting", help: "Offer to change one setting. Use find_setting first for the exact id and value. The person taps to confirm.", params: [s("id", "Setting id"), s("value", "New value: on, off, or one of its options")]),
             AITool(name: "control_playback", help: "Offer a button to control what is playing.", params: [.init(name: "action", kind: .oneOf(AssistantPlayback.actions), help: "The action")]),
-            AITool(name: "open_screen", help: "Offer a button to go to a screen, optionally with a filter sentence for Movies, Series or Live TV (e.g. 'top rated telugu').", params: [.init(name: "target", kind: .oneOf(CommandTarget.allCases.map(\.rawValue)), help: "Screen"), o("filter", "Filter words")]),
+            AITool(name: "open_screen", help: "Offer a button to go to a screen, optionally with a filter sentence for Movies, Series or Live TV (e.g. 'top rated spanish'). For any other screen, Settings page, menu item or window, pass atlas_id from find_setting or find_help.", params: [.init(name: "target", kind: .oneOf(CommandTarget.allCases.map(\.rawValue)), help: "Screen", required: false), o("filter", "Filter words"), o("atlas_id", "Id of any screen, page or window from find_setting or find_help (overrides target)")]),
             AITool(name: "play_title", help: "Offer a button to play a movie, series or channel from the library.", params: [s("title", "Title or channel")]),
             AITool(name: "retry_playback", help: "Offer a button to restart the current stream.", params: []),
             AITool(name: "switch_engine", help: "Offer a button to switch the player engine for what is playing.", params: [.init(name: "engine", kind: .oneOf(["mpv", "avPlayer", "automatic"]), help: "Engine")]),
@@ -140,11 +140,11 @@ import Foundation
             let report = c.diagnostics.report(playback: c.playback.current == nil ? nil : c.playback.title, engines: c.playback.availableEngines.map(\.rawValue))
             propose(.copyReport(report)); return "A report is ready with logins, addresses and tokens removed (\(report.count) characters). Offered a button to copy it."
         case "find_setting":
-            let hits = AppSettingsCatalog.search(str("query"), limit: 5)
-            return hits.isEmpty ? "No matching setting. Try find_help." : hits.map { AppSettingsCatalog.describe($0, c.settings) }.joined(separator: "\n")
+            let found = AtlasAssistant.findSettings(str("query"), settings: c.settings)
+            return found.isEmpty ? "No matching setting. Try find_help." : found
         case "find_help":
-            let hits = AppGuide.search(str("topic"), limit: 2)
-            return hits.isEmpty ? "No how-to article for that." : hits.map { "\($0.title): \($0.body)" }.joined(separator: "\n\n")
+            let found = AtlasAssistant.findHelp(str("topic"))
+            return found.isEmpty ? "No how-to article for that." : found
         case "web_lookup": return await WikipediaLookup.summary(of: str("topic")) ?? "Wikipedia had nothing on that."
         case "web_titles": return await WikipediaLookup.titles(of: str("person")) ?? "Wikipedia had no filmography page for that."
         case "watch_stats": return stats(str("period"))
@@ -161,6 +161,11 @@ import Foundation
             guard c.playback.current != nil else { return "Nothing is playing, so there is nothing to control." }
             propose(.playback(act)); return "Offered: \(AssistantPlayback.title(act)). The person must tap the button."
         case "open_screen":
+            let atlasID = str("atlas_id")
+            if !atlasID.isEmpty {
+                guard let e = Atlas.entry(atlasID), e.reach != .none, AtlasAssistant.visible(e) else { return "That id is not a place I can open. Use find_setting or find_help." }
+                propose(.openAtlas(id: e.id)); return "Offered: open \(e.title) (\(e.path.joined(separator: " > "))). The person must tap the button."
+            }
             guard let t = CommandTarget(rawValue: str("target")) else { return "Unknown screen." }
             let f = str("filter")
             propose(.command(.init(kind: .go(t, library: f.isEmpty ? nil : f)))); return "Offered: open \(t.title). The person must tap the button."
@@ -275,9 +280,9 @@ import Foundation
 
     /// A provider's rating on a ten-point scale. Some playlists give a percentage (57 means 5.7) and some give nonsense; neither may outrank a real 9.
     nonisolated static func tenPointRating(_ raw: String?) -> Double {
-        guard let raw, let v = Double(raw.trimmingCharacters(in: .whitespaces)), v.isFinite, v > 0 else { return 0 }
-        if v <= 10 { return v }
-        return v <= 100 ? v / 10 : 0
+        if let v = RatingRule.credible(raw) { return v }
+        guard let raw, let v = Double(raw.trimmingCharacters(in: .whitespaces)), v.isFinite, v > 10 else { return 0 }
+        return v <= 100 ? v / 10 : 0          // a percentage (57 means 5.7); a bare 10 or 0 is junk and counts for nothing
     }
 
     /// A name typed on its own (a show, a channel, a film) is answered at once from the app's own search, the way the search box does it, with no model to wait for. Returns nil when it is not a
@@ -536,6 +541,9 @@ import Foundation
             return reply("StreamSetu is a player: it does not provide channels, playlists or IPTV subscriptions, and I can’t recommend where to get them. You add sources you are entitled to use (Settings → Library → Manage), and I can help with that, with finding things in them, or with playback problems.")
         }
         if let evidence = await preload(intent, text: text) { return reply(evidence) }
+        // Questions about the app itself: Setu's own index answers with no model.
+        var talk = AtlasConversation()
+        if let r = AtlasAssistant.reply(text, conversation: &talk, container: container) { proposals.append(contentsOf: r.proposals); return reply(r.text) }
         // "turn on subtitles by default", "disable reminders"
         if let m = text.range(of: #"(?i)\b(turn|switch|set|enable|disable)\b"#, options: .regularExpression) {
             let verb = String(text[m]).lowercased()
@@ -552,7 +560,7 @@ import Foundation
             if !es.isEmpty || !gs.isEmpty {
                 var parts = es.map { "\($0.title) — \($0.detail) Now: \($0.read?(container.settings) ?? "—"). Find it at \($0.path)." }
                 parts += gs.map(\.body)
-                return reply(parts.joined(separator: "\n\n") + "\n\n(Add an AI in Settings → Integrations for open conversation.)")
+                return reply(parts.joined(separator: "\n\n") + "\n\n(Add an AI in Settings → Library (Trakt, Debrid and AI) for open conversation.)")
             }
         }
         // Anything else: a name or a request. Search everything for it, and read it as a request too.
@@ -560,7 +568,7 @@ import Foundation
         let asked = await searchLibrary(text, kind: "")
         let hadEverywhere = !everywhere.hasPrefix("Nothing named")
         let hadRequest = lastAnswer?.results.isEmpty == false && !asked.hasPrefix("Nothing")
-        var say = hadEverywhere ? "Here is what I found for “\(text)”:\n\n" + everywhere : hadRequest ? (lastAnswer?.note ?? "Here is what I found.") : "I did not find anything for that in any playlist. With an AI connected (Settings → Integrations) I can answer open questions too."
+        var say = hadEverywhere ? "Here is what I found for “\(text)”:\n\n" + everywhere : hadRequest ? (lastAnswer?.note ?? "Here is what I found.") : "I did not find anything for that in any playlist. " + AtlasAssistant.fallbackText(for: text) + " With an AI connected (Settings → Library (Trakt, Debrid and AI)) I can answer open questions too."
         if hadEverywhere && lastAnswer?.results.isEmpty == false { say += "\n\nPosters are below." }
         var r = reply(say)
         r.answer = lastAnswer

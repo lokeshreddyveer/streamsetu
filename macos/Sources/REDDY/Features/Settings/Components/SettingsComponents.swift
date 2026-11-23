@@ -36,6 +36,8 @@ struct SettingsGroup<Content: View>: View {
 /// One row: the label and its explanation on the left, the control on the right. `note` explains why a control is unavailable.
 struct SettingsRow<Control: View>: View {
     let title: String
+    /// The Atlas id of the setting this row holds, so Show me can point at the row. Draws nothing.
+    var atlas: String?
     var detail: String?
     var note: String?
     var divider = true
@@ -51,6 +53,7 @@ struct SettingsRow<Control: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             control.labelsHidden().layoutPriority(1)
         }
+        .atlasOptional(atlas)
     }
 }
 
@@ -119,8 +122,13 @@ struct AsyncActionButton: View {
 struct SettingsActions<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
-        HStack(spacing: 8) { content; Spacer(minLength: 0) }
-            .buttonStyle(.bordered)
+        // In one row when they fit; otherwise one above the other, so no label is cut short ("Show…", "Privac…").
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { content; Spacer(minLength: 0) }
+            VStack(alignment: .leading, spacing: 8) { content }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .lineLimit(1)
+        .buttonStyle(.bordered)
     }
 }
 

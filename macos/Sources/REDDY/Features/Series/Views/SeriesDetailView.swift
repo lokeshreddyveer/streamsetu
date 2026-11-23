@@ -7,109 +7,112 @@ struct SeriesDetailView: View {
     @Environment(AppRouter.self) private var router
     @State private var vm = SeriesDetailViewModel()
     @State private var person: PersonRoute?
+    @State private var model = TitlePageModel()
+    @State private var hub = TitleHubModel()
+    @State private var art: HeroArtwork
+    @State private var focusedResume = false
+
+    init(series: Series) {
+        self.series = series
+        _art = State(initialValue: HeroArtwork.preloaded(backdrop: series.backdropURL, poster: series.posterURL))
+    }
 
     private var s: Series { vm.detail?.series ?? series }
+    private var item: LibraryItem { .series(s) }
+
+    private var playLabel: TitlePageLogic.PlayLabel {
+        guard let t = vm.resumeTarget else { return TitlePageLogic.playLabel(resume: nil) }
+        return TitlePageLogic.playLabel(episode: (t.seasonNumber, t.episodeNumber), resume: TitlePageLogic.resume(vm.progress[t.id]), startedSeries: !vm.progress.isEmpty)
+    }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.xl) {
-                ZStack(alignment: .topTrailing) {
-                    ZStack(alignment: .bottomLeading) {
-                        ArtworkImage(url: s.backdropURL ?? s.posterURL, kind: .backdrop, symbol: "rectangle.stack").frame(height: 260).frame(maxWidth: .infinity).clipped()
-                        LinearGradient(colors: [.clear, ColorTokens.background], startPoint: .top, endPoint: .bottom)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(s.title).font(Typography.display).lineLimit(2)
-                            VersionPill(item: .series(s))
-                            Text([s.releaseYear.flatMap { s.title.contains(String($0)) ? nil : String($0) }, s.genre ?? s.categoryName, vm.detail.map { "\($0.seasons.count) season\($0.seasons.count == 1 ? "" : "s")" }].compactMap { $0 }.joined(separator: " · "))
-                                .font(Typography.bodyMedium).foregroundStyle(ColorTokens.textSecondary)
-                            QualityBadgeRow(texts: [s.title, s.categoryName])
-                            FolderPathButton(name: s.categoryName) { if let id = s.categoryID { router.series = nil; router.openFolder(.series, categoryID: id) } }
-                        }.padding(Spacing.section)
-                    }
-                    IconButton(symbol: "xmark", help: "Close") { router.closeDetail() }.padding(Spacing.lg)
-                }
-                VStack(alignment: .leading, spacing: Spacing.lg) {
-                    if let o = s.overview { Text(o).font(Typography.body).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true) }
-                    HStack {
-                        if let t = vm.resumeTarget, let c = container {
-                            let p = vm.progress[t.id]
-                            PrimaryButton(title: playTitle(t, p), symbol: "play.fill") { c.playback.play(episode: t, series: s); router.closeDetail() }
-                        }
-                        FavoriteButton(isFavorite: state.isFavorite(s.id)) { state.toggleFavorite(s.id, kind: .series) }
-            WatchLaterButton(isSaved: state.isWatchLater(s.id)) { state.toggleWatchLater(s.id, kind: .series) }
-                        Menu { CollectionMenu(itemID: s.id, kind: .series) } label: { Label("My List", systemImage: "plus") }.menuStyle(.button).buttonStyle(SecondaryButtonStyle()).fixedSize()
-                        Spacer()
-                        if let d = vm.detail, d.seasons.count > 0 {
-                            Menu {
-                                ForEach(d.seasons) { se in Button { vm.selectedSeason = se.number } label: { Label(se.name ?? "Season \(se.number)", systemImage: se.number == vm.selectedSeason ? "checkmark" : "") } }
-                            } label: { Label("Season \(vm.selectedSeason)", systemImage: "list.number") }.menuStyle(.button).buttonStyle(SecondaryButtonStyle()).fixedSize()
-                        }
-                    }
-                    TrailerSection(itemID: s.id, title: s.title, year: s.releaseYear, isSeries: true)
-                    CastSection(item: .series(s)) { person = PersonRoute(name: $0) }
-                    OtherLanguagesRow(item: .series(s)) { PlayActions.open($0, router: router) }
-                    if vm.loading && vm.detail == nil { ForEach(0..<5, id: \.self) { _ in SkeletonBlock(height: 72, radius: 10) } }
-                    else if let e = vm.error, vm.detail == nil { EmptyStateView(symbol: "exclamationmark.triangle", title: "Couldn't load episodes", message: e, actionTitle: "Try Again") { Task { if let c = container { await vm.load(series, c) } } }.frame(height: 220) }
-                    else if vm.episodesInSeason.isEmpty { Text("No episodes available.").foregroundStyle(ColorTokens.textSecondary) }
-                    else {
-                        LazyVStack(spacing: Spacing.sm) {
+        MacTitlePage(
+            item: item, model: model, hub: hub, art: art, ownOverview: s.overview,
+            play: playLabel, playEnabled: vm.resumeTarget != nil,
+            onPlay: { if let t = vm.resumeTarget, let c = container { c.playback.play(episode: t, series: s); router.closeDetail() } },
+            onClose: { router.closeDetail() },
+            onOpenVersion: { PlayActions.open($0, router: router) },
+            onOpenFolder: s.categoryID.map { id in { router.series = nil; router.openFolder(.series, categoryID: id) } },
+            person: $person,
+            actions: { actionButtons },
+            more: { CollectionMenu(itemID: s.id, kind: .series) },
+            middle: { episodesSection },
+            tail: { EmptyView() }
+        )
+        .onAppear { model.update(item, seasons: vm.detail?.seasons.count) }
+        .task(id: series.id) { await model.load(.series(series), container: container) }
+        .task(id: series.id) { if let c = container { await vm.load(series, c) } }
+        .task(id: series.id) { if let c = container { hub.open(itemID: series.id, isSeries: true, container: c) } }
+        .onDisappear { hub.close() }
+        .onChange(of: vm.detail?.series) { _, _ in model.update(item, seasons: vm.detail?.seasons.count) }
+        .onChange(of: vm.detail?.seasons.count) { _, n in model.update(item, seasons: n) }
+        .onMetadataLanded(for: series.id) { if let c = container { Task { await vm.load(series, c) } } }          // a backdrop or summary filled in after the page opened
+    }
+
+    @ViewBuilder private var actionButtons: some View {
+        let fav = state.isFavorite(s.id), later = state.isWatchLater(s.id)
+        HeroCircleButton(symbol: fav ? "heart.fill" : "heart", help: fav ? "Remove from Favourites" : "Add to Favourites", active: fav) { state.toggleFavorite(s.id, kind: .series) }
+            .accessibilityValue(fav ? "On" : "Off")
+        HeroCircleButton(symbol: later ? "bookmark.fill" : "bookmark", help: later ? "Remove from Watch Later" : "Add to Watch Later", active: later) { state.toggleWatchLater(s.id, kind: .series) }
+            .accessibilityValue(later ? "On" : "Off")
+        if let link = DeepLink.link(series: s.title) {
+            ShareLink(item: link, subject: Text(s.title), message: Text("Open “\(s.title)” in StreamSetu")) { Image(systemName: "square.and.arrow.up") }
+                .buttonStyle(HeroCircleStyle()).help("Share").accessibilityLabel("Share")
+        }
+    }
+
+    // MARK: episodes
+
+    @ViewBuilder private var episodesSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            TitleSectionHeader(title: "Episodes", count: vm.episodesInSeason.isEmpty ? nil : "\(vm.episodesInSeason.count)")
+            seasonPicker
+            if vm.loading && vm.detail == nil {
+                FadingHScroll { HStack(alignment: .top, spacing: 14) { ForEach(0..<4, id: \.self) { _ in EpisodeCardSkeleton() } }.padding(.vertical, 4) }
+            } else if let e = vm.error, vm.detail == nil {
+                EmptyStateView(symbol: "exclamationmark.triangle", title: "Couldn't load episodes", message: e, actionTitle: "Try Again") { Task { if let c = container { await vm.load(series, c) } } }.frame(height: 200)
+            } else if vm.episodesInSeason.isEmpty {
+                Text("No episodes available.").foregroundStyle(ColorTokens.textSecondary)
+            } else {
+                ScrollViewReader { proxy in
+                    FadingHScroll {
+                        LazyHStack(alignment: .top, spacing: 14) {
                             ForEach(vm.episodesInSeason) { ep in
-                                EpisodeRow(episode: ep, series: s, progress: vm.progress[ep.id], onPlay: { container?.playback.play(episode: ep, series: s); router.closeDetail() },
-                                           onToggleWatched: { watched in if let c = container { vm.markWatched(ep, s, c, watched: watched) } })
-                                    .contextMenu {
-                                        Button("Play") { container?.playback.play(episode: ep, series: s); router.closeDetail() }
-                                        Button("Watch Privately", systemImage: "eye.slash") { container?.playback.play(episode: ep, series: s, privately: true); router.closeDetail() }
-                                    }
+                                EpisodeCard(episode: ep, series: s, progress: vm.progress[ep.id], isNext: vm.resumeTarget?.id == ep.id,
+                                            onPlay: { container?.playback.play(episode: ep, series: s); router.closeDetail() },
+                                            onToggleWatched: { watched in if let c = container { vm.markWatched(ep, s, c, watched: watched) } },
+                                            onPlayPrivately: { container?.playback.play(episode: ep, series: s, privately: true); router.closeDetail() })
+                                    .id(ep.id)
                             }
-                        }
+                        }.padding(.vertical, 4).padding(.horizontal, 1)
                     }
-                    SimilarSection(item: .series(s))
-                }.padding(.horizontal, Spacing.section).padding(.bottom, Spacing.section)
-            }
-        }
-        .frame(width: 880, height: 680).background(ColorTokens.background)
-        .task { if let c = container { await vm.load(series, c) } }
-        .sheet(item: $person) { p in PersonSheet(person: p) { person = nil } }
-    }
-
-    private func playTitle(_ e: Episode, _ p: WatchProgress?) -> String {
-        if let p, !p.completed, p.positionSeconds > 30 { return "Resume S\(e.seasonNumber) E\(e.episodeNumber)" }
-        return vm.progress.isEmpty ? "Play S\(e.seasonNumber) E\(e.episodeNumber)" : "Play Next · S\(e.seasonNumber) E\(e.episodeNumber)"
-    }
-}
-
-struct EpisodeRow: View {
-    let episode: Episode
-    var series: Series?
-    let progress: WatchProgress?
-    var onPlay: () -> Void
-    var onToggleWatched: (Bool) -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        HStack(spacing: Spacing.lg) {
-            ZStack {
-                ArtworkImage(url: episode.imageURL, kind: .still, symbol: "play.rectangle").frame(width: 150, height: 84)
-                Image(systemName: "play.fill").foregroundStyle(.white).opacity(hovering ? 1 : 0)
-            }.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("\(episode.episodeNumber). \(episode.title)").font(Typography.bodyMedium).lineLimit(1)
-                    Spacer()
-                    if let series { DownloadButton(itemID: episode.id, compact: true) { $0.enqueue(episode: episode, series: series) }.buttonStyle(.plain).menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().foregroundStyle(ColorTokens.textSecondary) }
-                    if let d = episode.durationSeconds, d > 0 { Text(DurationFormatter.short(d)).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary) }
-                    if progress?.completed == true { Label("Watched", systemImage: "checkmark.circle.fill").font(Typography.caption).foregroundStyle(ColorTokens.success).labelStyle(.iconOnly) }
+                    // The rail opens at the episode Play will start, once.
+                    .task(id: vm.episodesInSeason.count) {
+                        guard !focusedResume, let t = vm.resumeTarget, t.seasonNumber == vm.selectedSeason, vm.episodesInSeason.contains(where: { $0.id == t.id }) else { return }
+                        focusedResume = true
+                        proxy.scrollTo(t.id, anchor: .leading)
+                    }
                 }
-                if let o = episode.overview { Text(o).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).lineLimit(2) }
-                if let p = progress, !p.completed, p.positionSeconds > 5 { ProgressBar(fraction: p.fraction).frame(maxWidth: 220) }
             }
         }
-        .padding(Spacing.md).background(hovering ? ColorTokens.card : .clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .contentShape(Rectangle()).onHover { hovering = $0 }.onTapGesture(perform: onPlay)
-        .contextMenu {
-            Button("Play", action: onPlay)
-            if progress?.completed == true { Button("Mark as Unwatched") { onToggleWatched(false) } } else { Button("Mark as Watched") { onToggleWatched(true) } }
-            if progress != nil { Button("Reset Progress") { onToggleWatched(false) } }
+    }
+
+    @ViewBuilder private var seasonPicker: some View {
+        if let d = vm.detail, d.seasons.count > 1 {
+            if TitlePageLogic.seasonsAsChips(d.seasons.count) {
+                FadingHScroll {
+                    HStack(spacing: 8) {
+                        ForEach(d.seasons) { se in
+                            TitleChoiceChip(text: se.name ?? "Season \(se.number)", selected: se.number == vm.selectedSeason) { vm.selectedSeason = se.number }
+                                .accessibilityAddTraits(se.number == vm.selectedSeason ? .isSelected : [])
+                        }
+                    }.padding(.vertical, 3).padding(.horizontal, 1)
+                }
+            } else {
+                Menu {
+                    ForEach(d.seasons) { se in Button { vm.selectedSeason = se.number } label: { Label(se.name ?? "Season \(se.number)", systemImage: se.number == vm.selectedSeason ? "checkmark" : "") } }
+                } label: { Label("Season \(vm.selectedSeason)", systemImage: "list.number") }.menuStyle(.button).buttonStyle(SecondaryButtonStyle()).fixedSize().atlas("control.series.seasonPicker")
+            }
         }
     }
 }

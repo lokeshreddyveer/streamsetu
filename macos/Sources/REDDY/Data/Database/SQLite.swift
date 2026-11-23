@@ -99,6 +99,24 @@ final class Connection {
             throw DatabaseError(message: msg, code: rc)
         }
         handle = h
+        Self.registerCollations(on: h)
+    }
+
+    /// `COLLATE SETU_LOCALE`: case-, accent- and width-insensitive, numbers in order ("Part 2" before "Part 10"), in the device's language. SQLite's own
+    /// NOCASE folds only ASCII, so lists in other scripts or with accents ("Émile" lands after "Zed") sort wrongly with it. Use it for lists a person reads
+    /// that are short (folders, collections, guide names); large title and channel lists keep NOCASE until they get a stored sort key (see docs/COLLATION.md).
+    static let localeCollationName = "SETU_LOCALE"
+
+    static func localeCompare(_ a: String, _ b: String, locale: Locale = .current) -> ComparisonResult {
+        a.compare(b, options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive, .numeric], range: nil, locale: locale)
+    }
+
+    private static func registerCollations(on h: OpaquePointer) {
+        _ = sqlite3_create_collation_v2(h, localeCollationName, SQLITE_UTF8, nil, { (_: UnsafeMutableRawPointer?, lenA: Int32, ptrA: UnsafeRawPointer?, lenB: Int32, ptrB: UnsafeRawPointer?) -> Int32 in
+            let a = String(decoding: UnsafeRawBufferPointer(start: ptrA, count: Int(lenA)), as: UTF8.self)
+            let b = String(decoding: UnsafeRawBufferPointer(start: ptrB, count: Int(lenB)), as: UTF8.self)
+            switch Connection.localeCompare(a, b) { case .orderedAscending: return -1; case .orderedDescending: return 1; case .orderedSame: return 0 }
+        }, nil)
     }
 
     deinit { sqlite3_close_v2(handle) }

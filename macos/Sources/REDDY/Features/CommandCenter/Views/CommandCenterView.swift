@@ -35,7 +35,7 @@ struct ChannelCommandCenterView: View {
             }
         }
         .confirmationDialog("Restore provider defaults for \(vm.selection.count) channel(s)?", isPresented: $confirmRestore) {
-            Button("Restore Defaults", role: .destructive) { if let c = container { vm.restore(ids: Array(vm.selection), c); bump(); Task { await vm.load(c, force: true) } } }
+            Button("Restore Defaults", role: .destructive) { if let c = container { vm.restore(ids: Array(vm.selection), c); bump(); Task { await vm.load(c, force: true) } } }.atlas("control.commandCenter.restoreDefaults")
         } message: { Text("Renames, category changes, guide matches and hidden state are removed for the selection.") }
     }
 
@@ -53,7 +53,7 @@ struct ChannelCommandCenterView: View {
                 Text("Rename, regroup, hide and reorder locally. Nothing here changes your provider.").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
             }
             Spacer()
-            Picker("View", selection: $tab) { ForEach(Tab.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).labelsHidden().frame(width: 190)
+            Picker("View", selection: $tab) { ForEach(Tab.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).labelsHidden().frame(width: 190).atlas("control.commandCenter.tabs")
         }.padding(.horizontal, 20).padding(.vertical, 14)
     }
 }
@@ -85,7 +85,7 @@ private struct ChannelsPane: View {
                 InlineSearchField(text: $vm.search, prompt: "Search channels or folders").frame(maxWidth: 320)
                 if state.sources.count > 1 {
                     Picker("Playlist", selection: $vm.sourceID) { Text("All playlists").tag(UUID?.none); ForEach(state.sources) { Text($0.name).tag(UUID?.some($0.id)) } }
-                        .pickerStyle(.menu).labelsHidden().fixedSize()
+                        .pickerStyle(.menu).labelsHidden().fixedSize().atlas("control.commandCenter.playlistFilter")
                 }
                 Spacer()
                 Text(summary).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
@@ -112,7 +112,7 @@ private struct ChannelsPane: View {
         return HStack(spacing: 8) {
             Button { n == 0 || !vm.allMatchingSelected ? vm.selectAllMatching() : vm.clearSelection() } label: {
                 Image(systemName: vm.allMatchingSelected ? "checkmark.square.fill" : n > 0 ? "minus.square.fill" : "square").font(.system(size: 15))
-            }.buttonStyle(.plain).help(vm.allMatchingSelected ? "Clear selection" : "Select all \(vm.matchCount.formatted()) shown")
+            }.buttonStyle(.plain).help(vm.allMatchingSelected ? "Clear selection" : "Select all \(vm.matchCount.formatted()) shown").atlas("control.commandCenter.selectAll")
             Text(n == 0 ? "Select channels to edit them" : "\(n.formatted()) selected").font(Typography.rowMedium).foregroundStyle(n == 0 ? ColorTokens.textSecondary : ColorTokens.textPrimary)
             Spacer()
             if let m = vm.message { Text(m).font(Typography.caption).foregroundStyle(ColorTokens.success).transition(.opacity) }
@@ -137,7 +137,7 @@ private struct ChannelsPane: View {
 
     private func bar(_ title: String, _ symbol: String, _ enabled: Bool, _ action: @escaping () -> Void) -> some View {
         Button(action: action) { Label(title, systemImage: symbol).labelStyle(.titleAndIcon) }
-            .buttonStyle(SecondaryButtonStyle()).disabled(!enabled).opacity(enabled ? 1 : 0.4)
+            .buttonStyle(SecondaryButtonStyle()).disabled(!enabled).opacity(enabled ? 1 : 0.4).atlas("control.commandCenter.bulkAction")
     }
 
     private var list: some View {
@@ -183,10 +183,10 @@ private struct ChannelRow: View {
             if vm.hasGuide(channel.id) { Image(systemName: "calendar").font(.system(size: 11)).foregroundStyle(ColorTokens.success).help("Has a guide") }
             Button { if let c = container { vm.setHidden(!hidden, ids: [channel.id], c) } } label: { Image(systemName: hidden ? "eye.slash.fill" : "eye").font(.system(size: 12)) }
                 .buttonStyle(.plain).foregroundStyle(hidden ? ColorTokens.warning : ColorTokens.textTertiary).help(hidden ? "Hidden — click to show" : "Hide").accessibilityLabel(hidden ? "Show channel" : "Hide channel")
-                .opacity(hovering || hidden ? 1 : 0.55)
+                .opacity(hovering || hidden ? 1 : 0.55).atlas("control.commandCenter.hide")
             Button { _ = state.toggleFavorite(channel.id, kind: .channel) } label: { Image(systemName: fav ? "heart.fill" : "heart").font(.system(size: 12)) }
                 .buttonStyle(.plain).foregroundStyle(fav ? ColorTokens.live : ColorTokens.textTertiary).help(fav ? "Remove from favorites" : "Add to favorites").accessibilityLabel(fav ? "Remove from favorites" : "Add to favorites")
-                .opacity(hovering || fav ? 1 : 0.55)
+                .opacity(hovering || fav ? 1 : 0.55).atlas("control.commandCenter.favorite")
         }
         .padding(.horizontal, 10).frame(height: 46)
         .opacity(hidden ? 0.5 : 1)
@@ -204,7 +204,7 @@ private struct ChannelRow: View {
             Button(fav ? "Remove from favorites" : "Add to favorites") { _ = state.toggleFavorite(channel.id, kind: .channel) }
             Divider()
             Button("Restore provider defaults") { vm.selection = [channel.id]; confirmRestore = true }
-        }
+        }.atlas("context.commandCenter.channel")
     }
 }
 
@@ -222,7 +222,7 @@ private struct FilterChip: View {
             .font(Typography.captionMedium).padding(.horizontal, 11).frame(height: 26)
             .background(on ? Color.accentColor.opacity(0.9) : Color.white.opacity(0.06), in: Capsule())
             .foregroundStyle(on ? .white : ColorTokens.textSecondary)
-        }.buttonStyle(.plain).animation(AnimationTokens.quick, value: on)
+        }.buttonStyle(.plain).animation(AnimationTokens.quick, value: on).atlas("control.commandCenter.filterChip")
     }
 }
 
@@ -262,20 +262,20 @@ struct CategorySheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Move \(count) channel\(count == 1 ? "" : "s") to a folder").font(Typography.heading)
+            Text(verbatim: Localized.plural(count, one: "Move %@ channel to a folder", other: "Move %@ channels to a folder")).font(Typography.heading)
             InlineSearchField(text: $query, prompt: "Search folders or type a new name")
             ScrollView {
                 LazyVStack(spacing: 2) {
                     ForEach(matches, id: \.self) { name in
                         Button { onDone(name); dismiss() } label: { HStack { Image(systemName: "folder").foregroundStyle(ColorTokens.textSecondary); Text(name).font(Typography.row); Spacer() }.padding(.horizontal, 10).frame(height: 32).contentShape(Rectangle()) }
-                            .buttonStyle(.plain).hoverHighlight()
+                            .buttonStyle(.plain).hoverHighlight().atlas("control.commandCenter.moveToFolder")
                     }
                 }
             }.frame(height: 220)
             HStack {
                 let new = query.trimmingCharacters(in: .whitespaces)
                 if !new.isEmpty, !existing.contains(where: { $0.caseInsensitiveCompare(new) == .orderedSame }) {
-                    PrimaryButton(title: "Create “\(new)”", symbol: "plus") { onDone(new); dismiss() }
+                    PrimaryButton(title: "Create “\(new)”", symbol: "plus") { onDone(new); dismiss() }.atlas("control.commandCenter.moveToFolder")
                 }
                 Spacer(); SecondaryButton(title: "Cancel") { dismiss() }
             }
@@ -291,10 +291,16 @@ struct AssignGuideSheet: View {
     @State private var guide: [(id: String, name: String)] = []
     @State private var query = ""
     @State private var loaded = false
+    @State private var added: [(source: String, id: String, name: String)] = []
 
     private var results: [(id: String, name: String)] {
         let q = MetadataNormalizer.normalize(query.isEmpty ? channel.name : query)
         return Array(guide.filter { MetadataNormalizer.normalize($0.name).contains(q) || $0.id.lowercased().contains(q) }.prefix(200))
+    }
+
+    private var addedResults: [(source: String, id: String, name: String)] {
+        let q = MetadataNormalizer.normalize(query.isEmpty ? channel.name : query)
+        return Array(added.filter { MetadataNormalizer.normalize($0.name).contains(q) || $0.id.lowercased().contains(q) }.prefix(100)).map { (source: $0.source, id: $0.id, name: $0.name) }
     }
 
     var body: some View {
@@ -303,20 +309,24 @@ struct AssignGuideSheet: View {
             Text("Pick the guide channel that carries this channel's schedule. Automatic matching never overrides your choice.").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
             InlineSearchField(text: $query, prompt: "Search guide channels")
             if !loaded { BrandLoader(size: 40).frame(maxWidth: .infinity).frame(height: 240) }
-            else if results.isEmpty { Text(guide.isEmpty ? "This playlist has no guide data yet." : "No guide channel matches.").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).frame(maxWidth: .infinity).frame(height: 240) }
+            else if results.isEmpty && addedResults.isEmpty { Text(guide.isEmpty && added.isEmpty ? "This playlist has no guide data yet." : "No guide channel matches.").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).frame(maxWidth: .infinity).frame(height: 240) }
             else {
                 ScrollView {
                     LazyVStack(spacing: 2) {
+                        ForEach(addedResults, id: \.id) { g in
+                            Button { onDone("hub|\(g.source)|\(g.id)"); dismiss() } label: { HStack { Text(g.name).font(Typography.row); Spacer(); Text("Added guide").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary) }.padding(.horizontal, 10).padding(.vertical, 6) }
+                                .buttonStyle(.plain).hoverHighlight().atlas("control.commandCenter.matchGuide")
+                        }
                         ForEach(results, id: \.id) { g in
                             Button { onDone(g.id); dismiss() } label: { HStack { Text(g.name).font(Typography.row); Spacer(); Text(g.id).font(Typography.mono).foregroundStyle(ColorTokens.textTertiary).lineLimit(1) }.padding(.horizontal, 10).frame(height: 32).contentShape(Rectangle()) }
-                                .buttonStyle(.plain).hoverHighlight()
+                                .buttonStyle(.plain).hoverHighlight().atlas("control.commandCenter.matchGuide")
                         }
                     }
                 }.frame(height: 240)
             }
-            HStack { SecondaryButton(title: "Remove match") { onDone(nil); dismiss() }; Spacer(); SecondaryButton(title: "Cancel") { dismiss() } }
+            HStack { SecondaryButton(title: "Remove match") { onDone(nil); dismiss() }.atlas("control.commandCenter.matchGuide"); Spacer(); SecondaryButton(title: "Cancel") { dismiss() } }
         }
         .padding(22).frame(width: 520).background(ColorTokens.background)
-        .task { if let c = container { guide = await Task.detached { (try? c.epgRepo.guideChannels(sourceID: channel.sourceID)) ?? [] }.value }; loaded = true }
+        .task { if let c = container { guide = await Task.detached { (try? c.epgRepo.guideChannels(sourceID: channel.sourceID)) ?? [] }.value; added = (try? SQLiteGuideRepository(db: c.db).addedGuideChannels()) ?? [] }; loaded = true }
     }
 }

@@ -7,10 +7,10 @@ struct DataSummary: Equatable, Sendable {
 
     var removeAllLines: [String] {
         [
-            "\(playlists) playlist\(playlists == 1 ? "" : "s") and their saved logins (StreamSetu's own Keychain items only)",
+            "\(Localized.plural(playlists, one: "%@ playlist", other: "%@ playlists")) and their saved logins (StreamSetu's own Keychain items only)",
             "\(channels.formatted()) channels, \(movies.formatted()) movies and \(series.formatted()) series downloaded from them",
-            "\(favorites) favorite\(favorites == 1 ? "" : "s") and \(collections) collection\(collections == 1 ? "" : "s")",
-            "\(historyEntries) history entr\(historyEntries == 1 ? "y" : "ies") and \(resumePoints) resume point\(resumePoints == 1 ? "" : "s")",
+            "\(Localized.plural(favorites, one: "%@ favorite", other: "%@ favorites")) and \(Localized.plural(collections, one: "%@ collection", other: "%@ collections"))",
+            "\(Localized.plural(historyEntries, one: "%@ history entry", other: "%@ history entries")) and \(Localized.plural(resumePoints, one: "%@ resume point", other: "%@ resume points"))",
             "Search history (\(searchTerms)), hidden items, renamed channels, the artwork cache and the program guide",
         ]
     }
@@ -56,7 +56,7 @@ final class DataResetService: @unchecked Sendable {
             try c.exec("""
                 DELETE FROM favorites; DELETE FROM collection_items; DELETE FROM collections; DELETE FROM hidden_items;
                 DELETE FROM metadata_overrides; DELETE FROM watch_history; DELETE FROM recently_watched; DELETE FROM watch_progress;
-                DELETE FROM search_history; DELETE FROM video_layouts;
+                DELETE FROM search_history; DELETE FROM video_layouts; DELETE FROM continue_hidden;
                 DELETE FROM rec_dismissed; DELETE FROM smartmix_shown; DELETE FROM smartmix_state; DELETE FROM folder_recent;
                 """)
         }

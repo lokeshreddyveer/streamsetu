@@ -19,7 +19,7 @@ struct CollectionMenu: View {
                     state.toasts.show("Added to \(col.name)", symbol: "square.stack.fill")
                 }
             } }
-        }
+        }.atlas("context.tile.collection")
     }
 }
 
@@ -45,48 +45,12 @@ struct ChannelContextMenu: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button("Play", action: onPlay)
-        Button("Watch Privately", systemImage: "eye.slash") { container?.playback.play(channel: channel, privately: true) }
-        Button(state.isFavorite(channel.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(channel.id, kind: .channel); onChanged() }
-        CollectionMenu(itemID: channel.id, kind: .channel)
-        ShareLinkButton(link: DeepLink.link(channel: channel.name), name: channel.name)
-        Button("Add to Multi-View") {
+        ChannelMenuContent(channel: channel, onPlay: onPlay, onMultiView: {
             guard let mv = container?.multiView else { return }
             switch mv.add(channel) {
             case .added, .alreadyShown: openWindow(id: "multiview")
             case .full: state.toasts.show("Multi-View is full (4 channels)", symbol: "rectangle.split.2x2")
             }
-        }
-        Divider()
-        Button("Hide Channel") { try? container?.favoritesRepo.hide(channel.id, kind: "channel"); state.catalogVersion += 1; onChanged() }
-    }
-}
-
-/// "Play Next" and "Add to Queue" (or "Remove from Queue") for a title, in its context menu.
-struct QueueMenu: View {
-    let item: LibraryItem
-    @Environment(\.container) private var container
-    @Environment(AppState.self) private var state
-    var body: some View {
-        if let q = container?.watchQueue {
-            if q.contains(item.id) {
-                Button("Remove from Queue") { q.remove(item.id) }
-            } else {
-                Button("Play Next") { q.add(item, next: true); state.toasts.show("“\(item.title)” plays next", symbol: "text.line.first.and.arrowtriangle.forward") }
-                Button("Add to Queue") { q.add(item); state.toasts.show("Added “\(item.title)” to the queue", symbol: "text.badge.plus") }
-            }
-        }
-    }
-}
-
-/// "Move to Front" and "Move to End" for a title that is a favourite: the order the favourites are shown in is the person's own.
-struct FavoriteOrderMenu: View {
-    let item: LibraryItem
-    @Environment(AppState.self) private var state
-    var body: some View {
-        if state.isFavorite(item.id) {
-            Button("Move to Front of Favorites") { state.moveFavorite(item.id, kind: item.kind, toFront: true) }
-            Button("Move to End of Favorites") { state.moveFavorite(item.id, kind: item.kind, toFront: false) }
-        }
+        }, onChanged: onChanged)          // the one shared builder (TileMenu.entries, kind .channel)
     }
 }

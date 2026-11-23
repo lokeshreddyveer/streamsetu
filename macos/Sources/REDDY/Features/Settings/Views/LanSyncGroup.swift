@@ -10,7 +10,7 @@ struct LanSyncGroup: View {
         @Bindable var s = settings
         let lan = container?.lan
         SettingsGroup(title: "Sync on this network", footer: "Devices on the same Wi-Fi share favourites, Watch Later, collections and resume points directly with each other. No account and no server; nothing leaves your network. Pair each device once.") {
-            SettingsRow(title: "Sync on this network", detail: "Works between Mac, iPhone, iPad, Android phones and Fire TV.") {
+            SettingsRow(title: "Sync on this network", atlas: "setting.lanSync", detail: "Works between Mac, iPhone, iPad, Android phones and Fire TV.") {
                 Toggle("Sync on this network", isOn: $s.lanSync).labelsHidden()
                     .onChange(of: s.lanSync) { _, on in container?.lan.setEnabled(on) }
             }
@@ -20,10 +20,10 @@ struct LanSyncGroup: View {
                     SettingsValueRow(title: p.name, value: lan.found.contains { $0.id == p.id } ? "On this network" : "Not here now")
                 }
                 SettingsActions {
-                    Button { adding = true } label: { Label("Add a Device…", systemImage: "plus") }
-                    Button { Task { await lan.syncNow() } } label: { Label("Sync Now", systemImage: "arrow.triangle.2.circlepath") }
+                    Button { adding = true } label: { Label("Add a Device…", systemImage: "plus") }.atlas("control.settings.lanAddDevice")
+                    Button { Task { await lan.syncNow() } } label: { Label("Sync Now", systemImage: "arrow.triangle.2.circlepath") }.atlas("control.settings.lanSyncNow")
                     if !lan.trusted.isEmpty {
-                        Menu("Forget a Device") { ForEach(lan.trusted, id: \.id) { p in Button(p.name, role: .destructive) { lan.forget(p) } } }
+                        Menu("Forget a Device") { ForEach(lan.trusted, id: \.id) { p in Button(p.name, role: .destructive) { lan.forget(p) } } }.atlas("control.settings.lanForget")
                     }
                 }
             }

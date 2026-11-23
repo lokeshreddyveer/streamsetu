@@ -17,7 +17,7 @@ struct ChannelSwitcherPanel: View {
                 Spacer()
                 Text("↑ ↓  choose   ⏎  watch   esc  close").font(.caption).foregroundStyle(.white.opacity(0.55))
                 Button { playback.closeChannelSwitcher() } label: { Image(systemName: "xmark").font(.system(size: 11, weight: .bold)).frame(width: 24, height: 24).background(Color.white.opacity(0.1), in: Circle()) }
-                    .buttonStyle(.plain).help("Close").accessibilityLabel("Close channel list")
+                    .buttonStyle(.plain).help("Close").accessibilityLabel("Close channel list").atlas("control.player.channelPanel")
             }
             .padding(.horizontal, 16).padding(.vertical, 12)
             Divider().overlay(Color.white.opacity(0.12))
@@ -81,7 +81,7 @@ struct ChannelSwitcherPanel: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain).foregroundStyle(.white)
-        .accessibilityLabel("\(ch.name)\(now.map { ", now \($0.title)" } ?? "")").accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityLabel("\(ch.name)\(now.map { ", now \($0.title)" } ?? "")").accessibilityAddTraits(selected ? .isSelected : []).atlas("control.player.channelPanel")
     }
 
     private func loadGuide() async {

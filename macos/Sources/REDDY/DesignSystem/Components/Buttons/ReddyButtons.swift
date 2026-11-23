@@ -77,19 +77,3 @@ struct IconButton: View {
         .accessibilityLabel(help.isEmpty ? symbol : help)
     }
 }
-
-struct WatchLaterButton: View {
-    let isSaved: Bool
-    let toggle: () -> Void
-    var body: some View {
-        IconButton(symbol: isSaved ? "bookmark.fill" : "bookmark", help: isSaved ? "Remove from Watch Later" : "Add to Watch Later", active: isSaved, action: toggle)
-    }
-}
-
-struct FavoriteButton: View {
-    let isFavorite: Bool
-    let toggle: () -> Void
-    var body: some View {
-        IconButton(symbol: isFavorite ? "heart.fill" : "heart", help: isFavorite ? "Remove from Favorites" : "Add to Favorites", active: isFavorite, action: toggle)
-    }
-}

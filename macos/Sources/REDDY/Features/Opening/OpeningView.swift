@@ -23,7 +23,7 @@ struct OpeningOverlay: View {
         }
         .animation(.easeInOut(duration: 0.35), value: coordinator.showsWhatsNew)
         // Reduce Motion is the system's setting or the app's own "Reduce animation".
-        .onAppear { coordinator.start(reduceMotion: reduceMotion || UserDefaults.standard.bool(forKey: "settings.reducemotion")) }
+        .onAppear { coordinator.start(reduceMotion: reduceMotion || UserDefaults.standard.bool(forKey: DefaultsKey.reduceMotion)) }
     }
 }
 

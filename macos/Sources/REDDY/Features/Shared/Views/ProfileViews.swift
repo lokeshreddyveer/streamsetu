@@ -42,7 +42,7 @@ struct ProfilePicker: View {
                         ForEach(service.profiles) { p in
                             Button { choose(p) } label: {
                                 VStack(spacing: 10) { ProfileAvatar(profile: p); Text(p.name).font(.system(size: 16, weight: .medium)); if p.hasPIN && p.kind == .adult { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.secondary) } }
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(.plain).atlas("setting.profiles")
                         }
                     }
                 }
@@ -79,9 +79,9 @@ struct AddProfileSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("New profile").font(.title2.weight(.semibold))
             TextField("Name", text: $name).textFieldStyle(.roundedBorder)
-            Toggle("Kids profile", isOn: $kids)
+            Toggle("Kids profile", isOn: $kids).atlas("setting.profiles")
             Text(kids ? "Folders you locked in Privacy stay hidden, and leaving this profile needs its PIN." : "").font(.caption).foregroundStyle(.secondary)
-            if !kids { Toggle("Ask for a PIN to open this profile", isOn: $usePIN) }
+            if !kids { Toggle("Ask for a PIN to open this profile", isOn: $usePIN).atlas("setting.profiles") }
             if kids || usePIN { SecureField("PIN (4 to 8 digits)", text: $pin).textFieldStyle(.roundedBorder) }
             if failed { Text("Check the name (it must be new) and the PIN (4 to 8 digits).").font(.callout).foregroundStyle(.red) }
             HStack { Spacer(); Button("Cancel") { dismiss() }; Button("Add") { add() }.buttonStyle(.borderedProminent).disabled(name.trimmingCharacters(in: .whitespaces).isEmpty) }
@@ -116,7 +116,7 @@ struct ProfilesList: View {
                         if p.kind == .kids, let limits = container?.viewingLimits { Text(ViewingLimits.summary(limits.limit(for: p.id))).font(.caption2).foregroundStyle(.tertiary) }
                     }
                     Spacer()
-                    if p.kind == .kids, !service.leavingNeedsPIN, container != nil { Button("Limits…") { limitsFor = p } }
+                    if p.kind == .kids, !service.leavingNeedsPIN, container != nil { Button("Limits…") { limitsFor = p }.atlas("setting.profiles") }
                     if p.id != service.activeID {
                         Button("Switch") { tap(p) }
                         if p.id != ProfileService.mainID { Button("Remove", role: .destructive) { removing = p } }
@@ -168,8 +168,8 @@ struct ViewingLimitsSheet: View {
             Text("Viewing limits for \(profile.name)").font(.title2.weight(.semibold))
             Picker("Time each day", selection: $limit.dailyMinutes) {
                 ForEach(Self.choices, id: \.self) { m in Text(m == 0 ? "No limit" : (m % 60 == 0 ? "\(m / 60) hour\(m == 60 ? "" : "s")" : "\(m) minutes")).tag(m) }
-            }
-            Toggle("No watching at night", isOn: $limit.bedtimeOn)
+            }.atlas("setting.profiles")
+            Toggle("No watching at night", isOn: $limit.bedtimeOn).atlas("setting.profiles")
             if limit.bedtimeOn {
                 DatePicker("From", selection: Binding(get: { date(limit.bedtimeStart) }, set: { limit.bedtimeStart = minutes($0) }), displayedComponents: .hourAndMinute)
                 DatePicker("Until", selection: Binding(get: { date(limit.bedtimeEnd) }, set: { limit.bedtimeEnd = minutes($0) }), displayedComponents: .hourAndMinute)

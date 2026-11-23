@@ -13,14 +13,14 @@ struct SubscriptionsGroup: View {
                     SettingsValueRow(title: r.name, value: r.status.summary(), tone: r.status.level() == .fine ? .normal : .warning)
                     if let m = r.status.maxConnections { SettingsValueRow(title: "   Streams at once", value: "\(m)") }
                 }
-                SettingsActions { Button { Task { await service.refresh(force: true); load(service) } } label: { Label(service.checking ? "Checking…" : "Check Now", systemImage: "arrow.clockwise") } }
+                SettingsActions { Button { Task { await service.refresh(force: true); load(service) } } label: { Label(service.checking ? "Checking…" : "Check Now", systemImage: "arrow.clockwise") }.atlas("setting.subscriptions") }
             }
             .task { load(service); await service.refresh(); load(service) }
         }
     }
 
     private func load(_ service: AccountStatusService) {
-        let names = Dictionary(uniqueKeysWithValues: ((try? container?.catalog.sources()) ?? []).map { ($0.id, $0.name) })
+        let names = Dictionary(((try? container?.catalog.sources()) ?? []).map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
         rows = service.statuses.compactMap { id, st in names[id].map { ($0, st) } }.sorted { $0.name < $1.name }
     }
 }

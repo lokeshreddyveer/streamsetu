@@ -66,16 +66,12 @@ private struct FolderRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                if row.locked { Image(systemName: "lock.fill").font(.system(size: 12)).foregroundStyle(ColorTokens.textSecondary) }
-                Text(row.display).font(.system(size: 16, weight: .semibold)).tracking(-0.2).lineLimit(1).truncationMode(.tail)
-                    .accessibilityAddTraits(.isHeader).accessibilityLabel(row.accessibilityTitle)
-                // The count is quiet: smaller, dim, in brackets, on the name's baseline, and it never wraps or gets cut before the name does.
-                if !row.locked { Text(row.countText).font(.system(size: 12)).foregroundStyle(ColorTokens.textTertiary).lineLimit(1).fixedSize().layoutPriority(1) }
+                FolderHeaderLabel(row: row, noun: .title, nameSize: 16, countSize: 12, tracking: -0.2).accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 8)
                 Button(action: open) {
                     HStack(spacing: 3) { Text(row.locked ? "Open" : "See all"); Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold)) }
                 }.buttonStyle(.plain).font(Typography.captionMedium).foregroundStyle(ColorTokens.textSecondary)
-                    .accessibilityLabel(row.locked ? "Open \(row.spokenName), asks for the PIN" : "See all in \(row.spokenName)")
+                    .accessibilityLabel(row.locked ? "Open \(row.spokenName), asks for the PIN" : "See all in \(row.spokenName)").atlas("screen.folderRows")
             }
             if !row.locked { tiles }
         }
@@ -107,6 +103,6 @@ private struct FolderRowView: View {
             .frame(width: 130, height: 190).background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain).focusable().onKeyPress(.return) { open(); return .handled }
-        .accessibilityLabel("More in \(row.display)")
+        .accessibilityLabel("More in \(row.display)").atlas("screen.folderRows")
     }
 }

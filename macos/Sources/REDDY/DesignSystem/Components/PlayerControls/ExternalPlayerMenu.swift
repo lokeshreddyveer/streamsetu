@@ -22,7 +22,7 @@ struct ExternalPlayerMenu: View {
                     UIPasteboard.general.string = url.absoluteString
                     #endif
                 }
-            } label: { Label("Play in Another App", systemImage: "arrow.up.forward.app") }
+            } label: { Label("Play in Another App", systemImage: "arrow.up.forward.app") }.atlas("control.player.externalPlayer")
         }
     }
 }

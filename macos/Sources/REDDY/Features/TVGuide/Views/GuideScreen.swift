@@ -23,6 +23,7 @@ struct GuideScreen: View {
         VStack(spacing: 0) {
             toolbar
             Rectangle().fill(ColorTokens.line).frame(height: 1)
+            GuideFreshnessBanner()
             if !state.hasLibrary {
                 EmptyStateView(symbol: "list.bullet.rectangle", title: "No playlist", message: "Add a playlist to see its guide.", actionTitle: "Add playlist") { router.modal = .addPlaylist }
             } else if vm.loading { LoadingView(label: "Loading guide…") }
@@ -48,18 +49,18 @@ struct GuideScreen: View {
             Text("TV Guide").font(.system(size: 23, weight: .semibold)).tracking(-0.6).lineLimit(1).accessibilityAddTraits(.isHeader)
                 .layoutPriority(-1)                               // the title gives way, so the controls are never pushed off the edge
             Spacer(minLength: 8)
-            IconButton(symbol: "chevron.left", help: "Earlier", size: 28) { vm.shift(hours: -vm.hours / 2) }
+            IconButton(symbol: "chevron.left", help: "Earlier", size: 28) { vm.shift(hours: -vm.hours / 2) }.atlas("screen.guide.grid")
             Menu {
                 ForEach(0..<7, id: \.self) { i in
                     let d = GuideViewModel.evening(daysFromNow: i)
                     Button(i == 0 ? "Today" : i == 1 ? "Tomorrow" : d.formatted(.dateTime.weekday(.wide).day().month(.abbreviated))) { vm.jump(toDay: i) }
                 }
-            } label: { Label(vm.dayLabel, systemImage: "calendar") }.menuStyle(.button).fixedSize()
-            IconButton(symbol: "chevron.right", help: "Later", size: 28) { vm.shift(hours: vm.hours / 2) }
-            Button { vm.jumpToNow() } label: { Label("Now", systemImage: "clock") }.fixedSize()
+            } label: { Label(vm.dayLabel, systemImage: "calendar") }.menuStyle(.button).fixedSize().atlas("screen.guide.grid")
+            IconButton(symbol: "chevron.right", help: "Later", size: 28) { vm.shift(hours: vm.hours / 2) }.atlas("screen.guide.grid")
+            Button { vm.jumpToNow() } label: { Label("Now", systemImage: "clock") }.fixedSize().atlas("screen.guide.grid")
             Picker("Hours visible", selection: Binding(get: { settings.guideHoursVisible }, set: { settings.guideHoursVisible = $0 })) {
                 Text("2h").tag(2.0); Text("3h").tag(3.0); Text("4h").tag(4.0); Text("6h").tag(6.0)
-            }.pickerStyle(.segmented).frame(width: 140).labelsHidden()
+            }.pickerStyle(.segmented).frame(width: 140).labelsHidden().atlas("setting.guideHoursVisible")
         }
         .padding(.horizontal, LayoutTokens.gutter).padding(.vertical, 10)
     }

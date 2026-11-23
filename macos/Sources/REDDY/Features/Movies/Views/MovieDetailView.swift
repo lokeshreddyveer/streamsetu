@@ -5,90 +5,65 @@ struct MovieDetailView: View {
     @Environment(\.container) private var container
     @Environment(AppState.self) private var state
     @Environment(AppRouter.self) private var router
-    @Environment(\.reddyAccent) private var accent
     @State private var detail: Movie?
-    @State private var progress: WatchProgress?
-    @State private var loading = true
     @State private var person: PersonRoute?
+    @State private var model = TitlePageModel()
+    @State private var hub = TitleHubModel()
+    @State private var art: HeroArtwork
+
+    init(movie: Movie) {
+        self.movie = movie
+        _art = State(initialValue: HeroArtwork.preloaded(backdrop: movie.backdropURL, poster: movie.posterURL))     // a title seen before has its picture in the first frame
+    }
 
     private var m: Movie { detail ?? movie }
+    private var item: LibraryItem { .movie(m) }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                ZStack(alignment: .topTrailing) {
-                    ZStack(alignment: .bottomLeading) {
-                        ArtworkImage(url: m.backdropURL ?? m.posterURL, kind: .backdrop, symbol: "film").frame(height: 300).frame(maxWidth: .infinity).clipped()
-                        LinearGradient(colors: [.clear, ColorTokens.background], startPoint: .top, endPoint: .bottom)
-                    }
-                    IconButton(symbol: "xmark", help: "Close") { router.closeDetail() }.padding(Spacing.lg)
-                }
-                HStack(alignment: .top, spacing: Spacing.xl) {
-                    ArtworkImage(url: m.posterURL, kind: .poster, symbol: "film").frame(width: 150, height: 225)
-                        .clipShape(RoundedRectangle(cornerRadius: LayoutTokens.radius, style: .continuous)).shadow(radius: 12).offset(y: -60)
-                    VStack(alignment: .leading, spacing: Spacing.md) {
-                        Text(m.title).font(Typography.display).lineLimit(3)
-                        VersionPill(item: .movie(m))
-                        metaLine
-                        QualityBadgeRow(texts: [m.title, m.categoryName])
-                        FolderPathButton(name: m.categoryName) { if let id = m.categoryID { router.movie = nil; router.openFolder(.movies, categoryID: id) } }
-                        if let o = m.overview { Text(o).font(Typography.body).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true) }
-                        else if loading { SkeletonBlock(height: 14); SkeletonBlock(width: 280, height: 14) }
-                        actions
-                        TrailerSection(itemID: m.id, title: m.title, year: m.releaseYear, isSeries: false)
-                        if let p = progress, !p.completed, p.positionSeconds > 30 {
-                            HStack { ProgressBar(fraction: p.fraction).frame(width: 220); Text("\(DurationFormatter.short(p.durationSeconds - p.positionSeconds)) left").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary) }
-                        }
-                        Text("Audio and subtitle tracks appear in the player once the movie starts.").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
-                    }.padding(.top, Spacing.lg)
-                    .staggeredAppear(1)          // the title and what follows rise in just after the poster
-                }
-                .padding(.horizontal, Spacing.section).padding(.bottom, Spacing.md)
-                FranchiseTimeline(currentID: m.id, movie: m) { PlayActions.open($0, router: router) }.padding(.horizontal, Spacing.section).padding(.bottom, Spacing.md)
-                CastSection(item: .movie(m)) { person = PersonRoute(name: $0) }.padding(.horizontal, Spacing.section).padding(.bottom, Spacing.md)
-                OtherLanguagesRow(item: .movie(m)) { PlayActions.open($0, router: router) }.padding(.horizontal, Spacing.section).padding(.bottom, Spacing.md)
-                SimilarSection(item: .movie(m)).padding(.horizontal, Spacing.section).padding(.bottom, Spacing.section)
-            }
-        }
-        .frame(width: 860, height: 640).background(ColorTokens.background)
-        .task { await load() }
-        .sheet(item: $person) { p in PersonSheet(person: p) { person = nil } }
+        MacTitlePage(
+            item: item, model: model, hub: hub, art: art, ownOverview: m.overview,
+            play: TitlePageLogic.playLabel(resume: TitlePageLogic.resume(model.progress)),
+            onPlay: { container?.playback.play(movie: m); router.closeDetail() },
+            onClose: { router.closeDetail() },
+            onOpenVersion: { PlayActions.open($0, router: router) },
+            onOpenFolder: m.categoryID.map { id in { router.movie = nil; router.openFolder(.movies, categoryID: id) } },
+            person: $person,
+            actions: { actionButtons },
+            more: { moreMenu },
+            middle: { EmptyView() },
+            tail: { FranchiseTimeline(currentID: m.id, movie: m) { PlayActions.open($0, router: router) } }
+        )
+        .onAppear { model.update(item); model.reloadProgress(container) }          // one indexed row: cheap enough to be in the first frame, so Resume never flashes in late
+        .task(id: movie.id) { await model.load(.movie(movie), container: container) }
+        .task(id: movie.id) { await refreshDetail() }
+        .task(id: movie.id) { if let c = container { hub.open(itemID: movie.id, isSeries: false, container: c) } }
+        .onDisappear { hub.close() }
+        .onChange(of: detail) { _, _ in model.update(item) }
+        .onMetadataLanded(for: movie.id) { Task { await refreshDetail() } }
     }
 
-    private var metaLine: some View {
-        let year = m.releaseYear.flatMap { m.title.contains(String($0)) ? nil : String($0) }      // not twice: "Only Me (2026) · 2026"
-        let duration = m.durationSeconds.flatMap { $0 > 0 ? DurationFormatter.short($0) : nil }
-        return HStack(spacing: 8) {
-            Text([year, duration, m.genre ?? m.categoryName].compactMap { $0 }.joined(separator: " · ")).lineLimit(1)
-            if let r = m.rating, let v = Double(r), v > 0 { Label(String(format: "%.1f", v), systemImage: "star.fill").foregroundStyle(ColorTokens.warning) }
-        }.font(Typography.bodyMedium).foregroundStyle(ColorTokens.textSecondary)
-    }
-
-    private var actions: some View {
-        HStack {
-            if let p = progress, !p.completed, p.positionSeconds > 30 {
-                PrimaryButton(title: "Resume \(DurationFormatter.clock(p.positionSeconds))", symbol: "play.fill") { container?.playback.play(movie: m); router.closeDetail() }
-                SecondaryButton(title: "Start Over", symbol: "gobackward") { container?.playback.play(movie: m, resume: false); router.closeDetail() }
-            } else {
-                PrimaryButton(title: "Play", symbol: "play.fill") { container?.playback.play(movie: m); router.closeDetail() }
-            }
-            FavoriteButton(isFavorite: state.isFavorite(m.id)) { state.toggleFavorite(m.id, kind: .movie) }
-            WatchLaterButton(isSaved: state.isWatchLater(m.id)) { state.toggleWatchLater(m.id, kind: .movie) }
-            Menu { CollectionMenu(itemID: m.id, kind: .movie) } label: { Label("My List", systemImage: "plus") }.menuStyle(.button).buttonStyle(SecondaryButtonStyle()).fixedSize()
-            Menu { Button("Watch Privately", systemImage: "eye.slash") { container?.playback.play(movie: m, privately: true); router.closeDetail() } } label: { Image(systemName: "ellipsis") }.menuStyle(.button).buttonStyle(SecondaryButtonStyle()).fixedSize().help("More")
-            DownloadButton(itemID: m.id) { $0.enqueue(movie: m) }.menuStyle(.button).buttonStyle(SecondaryButtonStyle()).fixedSize()
-            if progress != nil {
-                IconButton(symbol: "checkmark.circle", help: "Mark as watched") { try? container?.historyRepo.markWatched(itemID: m.id, kind: .movie, seriesID: nil, duration: m.durationSeconds ?? 1); reloadProgress() }
-            }
+    @ViewBuilder private var actionButtons: some View {
+        let fav = state.isFavorite(m.id), later = state.isWatchLater(m.id)
+        HeroCircleButton(symbol: fav ? "heart.fill" : "heart", help: fav ? "Remove from Favourites" : "Add to Favourites", active: fav) { state.toggleFavorite(m.id, kind: .movie) }
+            .accessibilityValue(fav ? "On" : "Off")
+        HeroCircleButton(symbol: later ? "bookmark.fill" : "bookmark", help: later ? "Remove from Watch Later" : "Add to Watch Later", active: later) { state.toggleWatchLater(m.id, kind: .movie) }
+            .accessibilityValue(later ? "On" : "Off")
+        DownloadButton(itemID: m.id, compact: true) { $0.enqueue(movie: m) }.buttonStyle(HeroCircleStyle()).menuStyle(.button).menuIndicator(.hidden).fixedSize().help("Download")
+        if let link = DeepLink.link(movie: m.title) {
+            ShareLink(item: link, subject: Text(m.title), message: Text("Open “\(m.title)” in StreamSetu")) { Image(systemName: "square.and.arrow.up") }
+                .buttonStyle(HeroCircleStyle()).help("Share").accessibilityLabel("Share")
         }
     }
 
-    private func load() async {
-        guard let c = container else { return }
-        reloadProgress()
-        detail = try? await c.details.movie(id: movie.id)
-        loading = false
+    @ViewBuilder private var moreMenu: some View {
+        if TitlePageLogic.resume(model.progress) != nil { Button("Start Over", systemImage: "gobackward") { container?.playback.play(movie: m, resume: false); router.closeDetail() } }
+        Button("Watch Privately", systemImage: "eye.slash") { container?.playback.play(movie: m, privately: true); router.closeDetail() }
+        if model.progress != nil { Button("Mark as Watched", systemImage: "checkmark.circle") { try? container?.historyRepo.markWatched(itemID: m.id, kind: .movie, seriesID: nil, duration: m.durationSeconds ?? 1); model.reloadProgress(container) } }
+        CollectionMenu(itemID: m.id, kind: .movie)
     }
 
-    private func reloadProgress() { progress = try? container?.historyRepo.progress(for: movie.id) }
+    private func refreshDetail() async {
+        guard let c = container, let d = try? await c.details.movie(id: movie.id) else { return }
+        if d != detail { detail = d }
+    }
 }

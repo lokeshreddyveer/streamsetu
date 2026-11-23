@@ -22,12 +22,29 @@ enum SearchIdeas {
         .init(label: "Award-winning", query: "award winning movies I have not watched", symbol: "star"),
     ]
 
-    static let examples: [SearchIdea] = [
-        .init(label: "top rated telugu movies", query: "top rated telugu movies", symbol: "text.magnifyingglass"),
-        .init(label: "hindi movies 2020s, unwatched", query: "hindi movies 2020s unwatched", symbol: "text.magnifyingglass"),
-        .init(label: "newest series", query: "newest series", symbol: "text.magnifyingglass"),
-        .init(label: "an actor's films: “Prabhas movies”", query: "Prabhas movies", symbol: "person"),
-        .init(label: "go to live tv", query: "go to live tv", symbol: "arrow.right"),
-        .init(label: "resume", query: "resume", symbol: "play"),
-    ]
+    /// Example searches. The language in them is the person's own: the audio language chosen in Settings, else the device's language, so a Spanish
+    /// or Korean library is never shown another region's example. `languages` (English names, most common first) may be passed by a caller that knows the library.
+    static var examples: [SearchIdea] { examples(languages: LibraryLanguageHint.read()) }
+
+    static func examples(languages: [String], audioSetting: String? = UserDefaults.standard.string(forKey: "settings.alang"), locale: Locale = .current) -> [SearchIdea] {
+        let first = exampleLanguage(languages: languages, audioSetting: audioSetting, locale: locale)
+        let second = languages.dropFirst().first(where: { $0.lowercased() != first.lowercased() }) ?? first
+        let lang = first.lowercased(), lang2 = second.lowercased()
+        return [
+            .init(label: "top rated \(lang) movies", query: "top rated \(lang) movies", symbol: "text.magnifyingglass"),
+            .init(label: "\(lang2) movies 2020s, unwatched", query: "\(lang2) movies 2020s unwatched", symbol: "text.magnifyingglass"),
+            .init(label: "newest series", query: "newest series", symbol: "text.magnifyingglass"),
+            .init(label: "an actor's films: a name, then “movies”", query: "tom hanks movies", symbol: "person"),
+            .init(label: "go to live tv", query: "go to live tv", symbol: "arrow.right"),
+            .init(label: "resume", query: "resume", symbol: "play"),
+        ]
+    }
+
+    /// The English name of the language an example should use: a library language, else the Settings audio language, else the device's, else "english".
+    static func exampleLanguage(languages: [String], audioSetting: String?, locale: Locale) -> String {
+        if let l = languages.first(where: { !$0.isEmpty }) { return l }
+        if let a = audioSetting, let n = OtherLanguages.preferredName(a) { return n }
+        if let code = locale.language.languageCode?.identifier, let n = OtherLanguages.preferredName(code) { return n }
+        return "English"
+    }
 }

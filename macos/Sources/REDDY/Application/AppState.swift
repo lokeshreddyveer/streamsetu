@@ -76,7 +76,24 @@ final class AppState {
     var needsOnboarding: Bool { loaded && sources.isEmpty }
     var isSyncing: Bool { syncProgress.values.contains { $0.state.isBusy } }
 
+    @ObservationIgnored nonisolated(unsafe) private var landedObserver: NSObjectProtocol?
+    deinit { if let o = landedObserver { NotificationCenter.default.removeObserver(o) } }
+    private var lastLandedBump = Date.distantPast
+
+    /// Artwork the background matcher wrote down shows up: Home and the folder rows reload, at most once in half a minute (never while a title is being matched one at a time).
+    private func watchLandedArtwork() {
+        guard landedObserver == nil else { return }
+        landedObserver = NotificationCenter.default.addObserver(forName: .titleMetadataLanded, object: nil, queue: .main) { [weak self] n in
+            guard TitleMetadataEvent(n).bulk else { return }
+            MainActor.assumeIsolated {
+                guard let self, Date().timeIntervalSince(self.lastLandedBump) > 30 else { return }
+                self.lastLandedBump = Date(); self.catalogVersion += 1
+            }
+        }
+    }
+
     func start() async {
+        watchLandedArtwork()
         reload()
         loaded = true
         observerID = await container.sync.addObserver { [weak self] p in
@@ -87,6 +104,8 @@ final class AppState {
         reloadNewEpisodes()
         reloadWatched()
         container.scheduler.start()
+        // Guide hub: guides added by the person and the public channel database, when due (on launch, then every half hour while the app runs).
+        Task.detached(priority: .utility) { [container] in while !Task.isCancelled { await container.runGuideHub(); try? await Task.sleep(nanoseconds: 30 * 60 * 1_000_000_000) } }
         let queue = container.watchQueue
         container.playback.queueAdvance = { [weak self] in
             guard let self, let next = queue.popNext() else { return false }
@@ -159,7 +178,7 @@ final class AppState {
         guard canCombinePlaylists, !showsAllPlaylists else { return }
         container.playback.stop()
         showsAllPlaylists = true; activeSourceID = nil
-        defaults.set("all", forKey: "activePlaylist")
+        defaults.set("all", forKey: DefaultsKey.activePlaylist)
         catalogVersion += 1
         toasts.show("Showing all playlists together", symbol: "checkmark.circle.fill", kind: .success)
     }
@@ -170,19 +189,19 @@ final class AppState {
         container.playback.stop()
         showsAllPlaylists = false
         activeSourceID = id
-        defaults.set(id.uuidString, forKey: "activePlaylist")
+        defaults.set(id.uuidString, forKey: DefaultsKey.activePlaylist)
         catalogVersion += 1
         toasts.show("Switched to \(sourceName(id))", symbol: "checkmark.circle.fill", kind: .success)
     }
 
     private func validateActiveSource() {
         let enabled = sources.filter(\.enabled)
-        if showsAllPlaylists || defaults.string(forKey: "activePlaylist") == "all", enabled.count >= 2 { showsAllPlaylists = true; activeSourceID = nil; return }
+        if showsAllPlaylists || defaults.string(forKey: DefaultsKey.activePlaylist) == "all", enabled.count >= 2 { showsAllPlaylists = true; activeSourceID = nil; return }
         showsAllPlaylists = false
         if let id = activeSourceID, enabled.contains(where: { $0.id == id }) { return }
-        let saved = defaults.string(forKey: "activePlaylist").flatMap(UUID.init(uuidString:))
+        let saved = defaults.string(forKey: DefaultsKey.activePlaylist).flatMap(UUID.init(uuidString:))
         activeSourceID = enabled.first { $0.id == saved }?.id ?? enabled.first?.id
-        if let id = activeSourceID { defaults.set(id.uuidString, forKey: "activePlaylist") } else { defaults.removeObject(forKey: "activePlaylist") }
+        if let id = activeSourceID { defaults.set(id.uuidString, forKey: DefaultsKey.activePlaylist) } else { defaults.removeObject(forKey: DefaultsKey.activePlaylist) }
     }
 
     func folderEntries(for tab: AppTab) -> [SidebarEntry] {

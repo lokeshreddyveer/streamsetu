@@ -163,6 +163,7 @@ final class ThemeState: @unchecked Sendable {
 
     #if os(macOS)
     private var contrastObserver: NSObjectProtocol?
+    deinit { if let o = contrastObserver { NSWorkspace.shared.notificationCenter.removeObserver(o) } }
     init() {
         systemContrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
         contrastObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main) { [weak self] _ in

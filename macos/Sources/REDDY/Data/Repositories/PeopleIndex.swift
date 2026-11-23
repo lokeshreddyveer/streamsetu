@@ -38,7 +38,7 @@ struct PeopleIndex: Sendable {
         let sql = """
             SELECT m.id, m.source_id FROM movies m JOIN sources s ON s.id = m.source_id AND s.enabled = 1
             WHERE NOT EXISTS (SELECT 1 FROM people_done d WHERE d.item_id = m.id)
-            ORDER BY CAST(COALESCE(m.rating,'0') AS REAL) DESC, m.added_at DESC LIMIT ?
+            ORDER BY \(RatingRule.sqlValue("m.rating")) DESC, m.added_at DESC LIMIT ?
             """
         return (try? db.read { c in try c.query(sql, [limit]) { r in (r.string(0), r.uuid(1)) } })?.compactMap { id, s in s.map { (id, $0) } } ?? []
     }
@@ -73,7 +73,7 @@ struct PeopleIndex: Sendable {
         sql += " AND (\(folder) IS NULL OR \(folder) NOT IN (SELECT item_id FROM hidden_items WHERE kind='category'))"
         if alwaysRestricted || restriction?.isActive == true { sql += " AND (\(folder) IS NULL OR \(folder) NOT IN (SELECT category_id FROM locked_categories))" }
         if let sourceID { sql += " AND p.source_id = ?"; args.append(sourceID.uuidString.lowercased()) }
-        sql += " ORDER BY CAST(COALESCE(m.rating, s.rating, '0') AS REAL) DESC LIMIT \(max(1, limit))"
+        sql += " ORDER BY \(RatingRule.sqlValue("COALESCE(m.rating, s.rating)")) DESC LIMIT \(max(1, limit))"
         let found = (try? db.read { c in
             try c.query(sql, args) { r in SearchHit(itemID: r.string(0), kind: ContentKind(rawValue: r.string(1)) ?? .movie, sourceID: r.uuid(2) ?? UUID(), title: r.string(3), category: r.optString(4)) }
         }) ?? []

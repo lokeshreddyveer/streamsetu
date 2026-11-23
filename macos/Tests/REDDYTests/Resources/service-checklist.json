@@ -1,0 +1,228 @@
+{
+  "checkKeys": [
+    "siteLoads",
+    "signInPageRenders",
+    "signInCompletes",
+    "catalog",
+    "video",
+    "audio",
+    "fullscreen",
+    "sessionPersistsAfterRestart",
+    "switchingStopsAudio",
+    "errorScreenRetryAndReturn"
+  ],
+  "services": [
+    {
+      "availability": "available",
+      "checks": [
+        "siteLoads",
+        "signInPageRenders",
+        "signInCompletes",
+        "catalog",
+        "video",
+        "audio",
+        "fullscreen",
+        "sessionPersistsAfterRestart",
+        "switchingStopsAudio",
+        "errorScreenRetryAndReturn",
+        "returningPreservesState",
+        "defaultBrowserActionUnchanged"
+      ],
+      "defaultOutcomes": {},
+      "externalLinks": "confirmThenOpen",
+      "id": "netflix",
+      "presentation": "embedded"
+    },
+    {
+      "availability": "unverified",
+      "checks": [
+        "siteLoads",
+        "signInPageRenders",
+        "signInCompletes",
+        "catalog",
+        "video",
+        "audio",
+        "fullscreen",
+        "sessionPersistsAfterRestart",
+        "switchingStopsAudio",
+        "errorScreenRetryAndReturn",
+        "returningPreservesState",
+        "blockedLinkNotice"
+      ],
+      "defaultOutcomes": {},
+      "externalLinks": "blockWithNotice",
+      "id": "primevideo",
+      "presentation": "embedded"
+    },
+    {
+      "availability": "unverified",
+      "checks": [
+        "siteLoads",
+        "signInPageRenders",
+        "signInCompletes",
+        "catalog",
+        "video",
+        "audio",
+        "fullscreen",
+        "sessionPersistsAfterRestart",
+        "switchingStopsAudio",
+        "errorScreenRetryAndReturn",
+        "returningPreservesState",
+        "blockedLinkNotice"
+      ],
+      "defaultOutcomes": {},
+      "externalLinks": "blockWithNotice",
+      "id": "disneyplus",
+      "presentation": "embedded"
+    },
+    {
+      "availability": "unverified",
+      "checks": [
+        "siteLoads",
+        "signInPageRenders",
+        "signInCompletes",
+        "catalog",
+        "video",
+        "audio",
+        "fullscreen",
+        "sessionPersistsAfterRestart",
+        "switchingStopsAudio",
+        "errorScreenRetryAndReturn",
+        "returningPreservesState",
+        "blockedLinkNotice"
+      ],
+      "defaultOutcomes": {},
+      "externalLinks": "blockWithNotice",
+      "id": "hulu",
+      "presentation": "embedded"
+    },
+    {
+      "availability": "unverified",
+      "checks": [
+        "siteLoads",
+        "signInPageRenders",
+        "signInCompletes",
+        "catalog",
+        "video",
+        "audio",
+        "fullscreen",
+        "sessionPersistsAfterRestart",
+        "switchingStopsAudio",
+        "errorScreenRetryAndReturn",
+        "returningPreservesState",
+        "blockedLinkNotice"
+      ],
+      "defaultOutcomes": {},
+      "externalLinks": "blockWithNotice",
+      "id": "hbomax",
+      "presentation": "embedded"
+    },
+    {
+      "availability": "unverified",
+      "checks": [
+        "siteLoads",
+        "signInPageRenders",
+        "signInCompletes",
+        "catalog",
+        "video",
+        "audio",
+        "fullscreen",
+        "sessionPersistsAfterRestart",
+        "switchingStopsAudio",
+        "errorScreenRetryAndReturn",
+        "returningPreservesState",
+        "blockedLinkNotice"
+      ],
+      "defaultOutcomes": {},
+      "externalLinks": "blockWithNotice",
+      "id": "peacock",
+      "presentation": "embedded"
+    },
+    {
+      "availability": "unverified",
+      "checks": [
+        "siteLoads",
+        "signInPageRenders",
+        "signInCompletes",
+        "catalog",
+        "video",
+        "audio",
+        "fullscreen",
+        "sessionPersistsAfterRestart",
+        "switchingStopsAudio",
+        "errorScreenRetryAndReturn",
+        "returningPreservesState",
+        "blockedLinkNotice"
+      ],
+      "defaultOutcomes": {},
+      "externalLinks": "blockWithNotice",
+      "id": "paramountplus",
+      "presentation": "embedded"
+    },
+    {
+      "availability": "unverified",
+      "checks": [
+        "siteLoads",
+        "signInPageRenders",
+        "signInCompletes",
+        "catalog",
+        "video",
+        "audio",
+        "fullscreen",
+        "sessionPersistsAfterRestart",
+        "switchingStopsAudio",
+        "errorScreenRetryAndReturn",
+        "returningPreservesState",
+        "blockedLinkNotice"
+      ],
+      "defaultOutcomes": {},
+      "externalLinks": "blockWithNotice",
+      "id": "appletv",
+      "presentation": "embedded"
+    },
+    {
+      "availability": "unverified",
+      "checks": [
+        "siteLoads",
+        "signInPageRenders",
+        "signInCompletes",
+        "catalog",
+        "video",
+        "audio",
+        "fullscreen",
+        "sessionPersistsAfterRestart",
+        "switchingStopsAudio",
+        "errorScreenRetryAndReturn",
+        "returningPreservesState",
+        "blockedLinkNotice"
+      ],
+      "defaultOutcomes": {
+        "signInCompletes": "notApplicable"
+      },
+      "externalLinks": "blockWithNotice",
+      "id": "youtube",
+      "presentation": "embedded"
+    },
+    {
+      "availability": "unverified",
+      "checks": [
+        "siteLoads",
+        "signInPageRenders",
+        "signInCompletes",
+        "catalog",
+        "video",
+        "audio",
+        "fullscreen",
+        "sessionPersistsAfterRestart",
+        "switchingStopsAudio",
+        "errorScreenRetryAndReturn",
+        "returningPreservesState",
+        "blockedLinkNotice"
+      ],
+      "defaultOutcomes": {},
+      "externalLinks": "blockWithNotice",
+      "id": "crunchyroll",
+      "presentation": "embedded"
+    }
+  ]
+}

@@ -114,7 +114,7 @@ enum OtherLanguages {
         return w.joined(separator: " ")
     }
 
-    private static let yearInTitle = try! NSRegularExpression(pattern: #"(?<![0-9])((?:19|20)[0-9]{2})(?![0-9])"#)
+    private static let yearInTitle = IdentityDerive.yearInTitle
     private static let cinemaCopy = try! NSRegularExpression(pattern: #"\b(cam|hdcam|hd-cam|camrip|ts|hdts|telesync|tc|telecine)\b"#, options: .caseInsensitive)
 
     /// The year from the metadata, or a 19xx/20xx written in the title.

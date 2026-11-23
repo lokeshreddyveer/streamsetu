@@ -18,8 +18,16 @@ final class ParentalControls {
     private let defaults: UserDefaults
     private let now: () -> Date
     private var relockTask: Task<Void, Never>?
-    private var sleepObserver: NSObjectProtocol?
-    private var activeObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var sleepObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var activeObserver: NSObjectProtocol?
+    deinit {
+        for o in [sleepObserver, activeObserver].compactMap({ $0 }) {
+            NotificationCenter.default.removeObserver(o)
+            #if os(macOS)
+            NSWorkspace.shared.notificationCenter.removeObserver(o)
+            #endif
+        }
+    }
 
     private(set) var isUnlocked = false
     private(set) var unlockedUntil: Date?

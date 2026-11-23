@@ -16,6 +16,16 @@ import Foundation
         #expect(link("streamsetu:///play?channel=CNN") == .playChannel(name: "CNN"), "the path form works too")
     }
 
+    @Test func atlasLinksCarryOnlyAPlainId() {
+        #expect(link("streamsetu://atlas?id=setting.playback.hardwareDecoding") == .atlas(id: "setting.playback.hardwareDecoding"))
+        #expect(link("streamsetu:///atlas?id=screen.ios.tab.guide") == .atlas(id: "screen.ios.tab.guide"))
+        #expect(DeepLink.link(atlas: "screen.ios.tab.guide").flatMap(DeepLink.parse) == .atlas(id: "screen.ios.tab.guide"), "built links parse back")
+        #expect(link("streamsetu://atlas") == nil && link("streamsetu://atlas?id=") == nil && link("streamsetu://atlas?id=a%20b") == nil)
+        #expect(link("streamsetu://atlas?id=..%2F..%2Fetc") == nil && link("streamsetu://atlas?id=a;b") == nil && link("streamsetu://atlas?id=\(String(repeating: "a", count: 101))") == nil)
+        #expect(DeepLink.link(atlas: "bad id") == nil)
+        #expect(DeepLink.atlas(id: "x").isCommand == false, "an Atlas link opens something, so it waits for the unlock instead of being dropped")
+    }
+
     @Test func badOrDangerousLinksAreRefused() {
         #expect(link("https://example.com/add?url=http://x") == nil, "only the app's own scheme")
         #expect(link("streamsetu://add?url=javascript:alert(1)") == nil)

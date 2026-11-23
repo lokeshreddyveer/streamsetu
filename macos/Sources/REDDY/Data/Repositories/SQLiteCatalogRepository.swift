@@ -42,9 +42,6 @@ final class SQLiteCatalogRepository: CatalogRepository {
         return " AND (\(alias).category_id IS NULL OR \(alias).category_id NOT IN (SELECT category_id FROM locked_categories))" + baselineExtra(alias)
     }
 
-    /// The `AND` clause this view applies to a table aliased `alias` (`m` movies, `x` series, `c` channels).
-    func restrictedClause(_ alias: String) -> String { restricted(alias) }
-
     /// What only the recommendation view adds: hidden folders and hidden titles, and the rule that a title is restricted when ANY copy of it
     /// (the twin playlist's, another language's) sits in a locked or hidden folder. Two sets are worked out once per statement (never per row): the titles that share an
     /// identity (same key, year within one) with a copy in such a folder, and the titles that share a normalized title with one (the fallback for titles with no identity yet).
@@ -167,9 +164,6 @@ final class SQLiteCatalogRepository: CatalogRepository {
         }
     }
 
-    /// Every folder (as it is stored) that carries the lock, read live from the database.
-    func familyMembers(of id: String) throws -> [String] { try db.read { try FolderFamily.members(of: id, in: $0) } }
-
     // MARK: sources
 
     private static let sourceSelect = """
@@ -282,7 +276,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
         var args: [(any SQLConvertible)?] = [kind.rawValue]
         if let sourceID { sql += " AND cat.source_id=?"; args.append(sourceID) }
         if !includeHidden { sql += " AND cat.id NOT IN (SELECT item_id FROM hidden_items WHERE kind='category')" }
-        sql += " ORDER BY fo.position IS NULL, fo.position, cat.sort_order, cat.name COLLATE NOCASE"
+        sql += " ORDER BY fo.position IS NULL, fo.position, cat.sort_order, cat.name COLLATE SETU_LOCALE"
         return try db.read { c in
             try c.query(sql, args) { r in
                 CatalogCategory(id: r.string(0), sourceID: r.uuid(1) ?? UUID(), kind: kind, providerID: r.string(3), name: r.string(4),
@@ -439,7 +433,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
             for g in q.genres { args.append("%\(g)%"); args.append("%\(g)%") }
         }
         for g in q.excludeGenres { sql += " AND COALESCE(\(alias).genre,'') NOT LIKE ? AND COALESCE(\(alias).category_name,'') NOT LIKE ?"; args.append("%\(g)%"); args.append("%\(g)%") }
-        if let rating = q.minRating { sql += " AND CAST(\(alias).rating AS REAL) >= ?"; args.append(rating) }
+        if let rating = q.minRating { sql += " AND \(RatingRule.sqlValue("\(alias).rating")) >= ?"; args.append(rating) }
         if kind == "movie", let m = q.maxMinutes { sql += " AND \(alias).duration_seconds > 0 AND \(alias).duration_seconds <= ?"; args.append(m * 60) }
         if kind == "movie", let m = q.minMinutes { sql += " AND \(alias).duration_seconds >= ?"; args.append(m * 60) }
         if let decade = q.decade { sql += " AND \(alias).release_year >= ? AND \(alias).release_year < ?"; args.append(decade); args.append(decade + 10) }
@@ -486,7 +480,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
         case .titleDescending: return " ORDER BY \(a).\(t) COLLATE NOCASE DESC"
         case .year: return " ORDER BY COALESCE(\(a).release_year,0) DESC, \(byTitle)"
         case .yearOldest: return " ORDER BY (\(a).release_year IS NULL), \(a).release_year ASC, \(byTitle)"      // unknown years last
-        case .rating: return " ORDER BY CAST(COALESCE(NULLIF(\(a).rating,''),'0') AS REAL) DESC, \(byTitle)"
+        case .rating: return " ORDER BY \(RatingRule.sqlValue("\(a).rating")) DESC, \(byTitle)"
         case .durationShortest, .durationLongest:
             guard a == "m" else { return " ORDER BY \(byTitle)" }                                                  // series carry no duration
             let dir = sort == .durationShortest ? "ASC" : "DESC"
@@ -617,7 +611,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
         switch kind { case .movie: table = "movies"; case .series: table = "series"; default: return VODMetadataCoverage() }
         let durationExpr = kind == .movie ? "SUM(COALESCE(x.duration_seconds,0) > 0)" : "0"
         var sql = """
-            SELECT COUNT(*), SUM(CAST(COALESCE(NULLIF(x.rating,''),'0') AS REAL) > 0), SUM(x.release_year IS NOT NULL), \(durationExpr)
+            SELECT COUNT(*), SUM(\(RatingRule.sqlValue("x.rating")) > 0), SUM(x.release_year IS NOT NULL), \(durationExpr)
             FROM \(table) x JOIN sources s ON s.id=x.source_id AND s.enabled=1
             """
         var args: [(any SQLConvertible)?] = []
@@ -638,7 +632,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
         if isRestricting { sql += " AND cat.id NOT IN (SELECT category_id FROM locked_categories)" }
         var args: [(any SQLConvertible)?] = []
         for w in words { sql += " AND cat.normalized_name LIKE ? ESCAPE '\\'"; args.append("%" + w.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "%", with: "\\%").replacingOccurrences(of: "_", with: "\\_") + "%") }
-        sql += " ORDER BY (cat.normalized_name = ?) DESC, length(cat.normalized_name), cat.name COLLATE NOCASE LIMIT \(max(1, limit))"
+        sql += " ORDER BY (cat.normalized_name = ?) DESC, length(cat.normalized_name), cat.name COLLATE SETU_LOCALE LIMIT \(max(1, limit))"
         args.append(words.joined(separator: " "))
         return try db.read { c in try c.query(sql, args) { r in
             CatalogCategory(id: r.string(0), sourceID: r.uuid(1) ?? UUID(), kind: ContentKind(rawValue: r.string(2)) ?? .channel, providerID: r.string(3), name: r.string(4), sortOrder: r.int(5))
@@ -739,7 +733,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
         let sql = """
             SELECT DISTINCT d.genre FROM search_docs d WHERE d.kind=? AND d.genre IS NOT NULL AND d.genre!=''
             AND d.item_id IN (SELECT \(alias).id FROM \(table) \(alias) JOIN sources s ON s.id=\(alias).source_id AND s.enabled=1 WHERE 1=1\(baseline.restricted(alias)))
-            ORDER BY d.genre COLLATE NOCASE LIMIT 200
+            ORDER BY d.genre COLLATE SETU_LOCALE LIMIT 200
             """
         return try db.read { c in try c.query(sql, [kind.rawValue]) { $0.string(0) } }
     }

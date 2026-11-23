@@ -14,13 +14,17 @@ struct LibraryFilter: Equatable, Sendable {
     var minRating: Double?
     var decade: Int?
     var status: Status?
+    /// A genre chosen from a genre shelf: the name to show and the provider-text patterns it matches (genre or folder name contains any of them).
+    var genreName: String?
+    var genres: [String] = []
 
-    var count: Int { [categoryID != nil, language != nil, quality != nil, minRating != nil, decade != nil, status != nil].filter { $0 }.count }
+    var count: Int { [categoryID != nil, language != nil, quality != nil, minRating != nil, decade != nil, status != nil, genreName != nil].filter { $0 }.count }
     var isActive: Bool { count > 0 }
 
     /// Puts the choices into a catalog query. The folder is left to the screen, which also checks folder locks.
     func apply(to q: inout VODQuery, kind: ContentKind) {
         q.language = language; q.quality = quality; q.minRating = minRating; q.decade = decade
+        if genreName != nil { q.genres = genres }
         switch status {
         case .unwatched?: q.unwatchedOnly = true
         case .started?: q.watch = .started

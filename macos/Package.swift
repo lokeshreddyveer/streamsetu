@@ -11,6 +11,11 @@ let testLinkFlags: [LinkerSetting] = cltTesting
                      "-Xlinker", "-rpath", "-Xlinker", "/Library/Developer/CommandLineTools/Library/Developer/usr/lib"])]
     : []
 
+// The optional built-in keys (TMDB, fanart.tv, TheTVDB) are generated, gitignored files (Scripts/gen-builtin-key.py); the code that reads each is compiled only when its file exists.
+let generatedDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Sources/REDDY/Generated").path
+let builtInFlag: [SwiftSetting] = [("GeneratedTMDB", "STREAMSETU_BUILTIN_TMDB"), ("GeneratedFanart", "STREAMSETU_BUILTIN_FANART"), ("GeneratedTVDB", "STREAMSETU_BUILTIN_TVDB")]
+    .filter { FileManager.default.fileExists(atPath: generatedDir + "/" + $0.0 + ".swift") }.map { .define($0.1) }
+
 let package = Package(
     name: "REDDY",
     platforms: [.macOS(.v14)],
@@ -23,7 +28,7 @@ let package = Package(
             dependencies: [.product(name: "Sparkle", package: "Sparkle")],
             path: "Sources/REDDY",
             exclude: ["Resources/README.txt"],
-            swiftSettings: [.swiftLanguageMode(.v6)]
+            swiftSettings: [.swiftLanguageMode(.v6)] + builtInFlag
         ),
         .testTarget(
             name: "REDDYTests",

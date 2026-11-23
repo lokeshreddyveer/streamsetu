@@ -8,9 +8,13 @@ enum DeepLink: Equatable {
     case playMovie(title: String)
     case findSeries(title: String)
     case openTab(AppTab)
+    /// An outside service (only where the platform's capabilities have it; elsewhere the link does not parse).
+    case openService(ExternalService)
     case search(String)
     case sleep(minutes: Int)
     case remote(RemoteCommand)
+    /// Opens the screen or setting the Atlas knows by this id (Spotlight results and the Open Setting shortcut use it). Only the id's shape is checked here; the Atlas decides whether it exists.
+    case atlas(id: String)
 
     enum RemoteCommand: String, Equatable { case pause, resume, stop, next, previous, last }
 
@@ -19,8 +23,10 @@ enum DeepLink: Equatable {
 
     static let scheme = "streamsetu"
 
-    /// streamsetu://add?url=…&name=…   play?channel=…   watch?movie=…   watch?series=…   open?tab=live   search?q=…   sleep?minutes=45   pause | resume | stop | next | previous | last
-    static func parse(_ url: URL) -> DeepLink? {
+    /// streamsetu://add?url=…&name=…   play?channel=…   watch?movie=…   watch?series=…   open?tab=live   atlas?id=…   search?q=…   sleep?minutes=45   pause | resume | stop | next | previous | last
+    static func parse(_ url: URL) -> DeepLink? { parse(url, capabilities: .current) }
+
+    static func parse(_ url: URL, capabilities: ServiceCapabilities) -> DeepLink? {
         guard url.scheme?.lowercased() == scheme else { return nil }
         let comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
         // streamsetu://play?x=1 puts "play" in the host; streamsetu:///play does in the path
@@ -39,11 +45,16 @@ enum DeepLink: Equatable {
             return nil
         case "open":
             let tabs: [String: AppTab] = ["home": .home, "live": .liveTV, "livetv": .liveTV, "movies": .movies, "series": .series, "guide": .guide, "tvguide": .guide]
-            guard let t = value("tab")?.lowercased().replacingOccurrences(of: " ", with: ""), let tab = tabs[t] else { return nil }
+            guard let t = value("tab")?.lowercased().replacingOccurrences(of: " ", with: "") else { return nil }
+            if let service = ExternalService(rawValue: t) { return capabilities.allows(service) ? .openService(service) : nil }
+            guard let tab = tabs[t] else { return nil }
             return .openTab(tab)
         case "search":
             guard let q = value("q"), !q.isEmpty, q.count <= 200 else { return nil }
             return .search(q)
+        case "atlas":
+            guard let id = value("id"), validAtlasID(id) else { return nil }
+            return .atlas(id: id)
         case "sleep":
             guard let m = value("minutes").flatMap(Int.init), (1...600).contains(m) else { return nil }
             return .sleep(minutes: m)
@@ -56,6 +67,14 @@ enum DeepLink: Equatable {
     static func link(channel name: String) -> URL? { build("play", "channel", name) }
     static func link(movie title: String) -> URL? { build("watch", "movie", title) }
     static func link(series title: String) -> URL? { build("watch", "series", title) }
+
+    /// The link that opens an Atlas entry (a screen or a setting).
+    static func link(atlas id: String) -> URL? { validAtlasID(id) ? build("atlas", "id", id) : nil }
+
+    /// Atlas ids are dotted words ("setting.playback.hardwareDecoding"): letters, digits and . _ - only, so a link cannot smuggle anything else in.
+    static func validAtlasID(_ id: String) -> Bool {
+        !id.isEmpty && id.count <= 100 && id.unicodeScalars.allSatisfy { ($0.isASCII && ($0.properties.isAlphabetic || ("0"..."9").contains(Character($0)))) || $0 == "." || $0 == "_" || $0 == "-" }
+    }
 
     private static func build(_ action: String, _ key: String, _ value: String) -> URL? {
         var parts = URLComponents()

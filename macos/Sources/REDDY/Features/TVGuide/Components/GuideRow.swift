@@ -22,7 +22,7 @@ struct GuideRow: View {
                 }
                 .padding(.horizontal, Spacing.md).frame(width: LayoutTokens.guideChannelWidth, height: LayoutTokens.guideRowHeight, alignment: .leading)
                 .background(ColorTokens.sidebar)
-            }.buttonStyle(.plain).help("Watch \(channel.name)")
+            }.buttonStyle(.plain).help("Watch \(channel.name)").atlas("screen.guide.grid")
 
             ZStack(alignment: .topLeading) {
                 Color.clear
@@ -59,7 +59,7 @@ struct GuideRow: View {
         .popover(item: Binding(get: { selected?.id == p.id ? selected : nil }, set: { selected = $0 })) { prog in
             ProgramPopover(program: prog, channel: channel, onWatch: { onPlay(channel) }, onCatchup: { container?.playback.playCatchup(channel: channel, program: prog); selected = nil })
         }
-        .help(p.title)
+        .help(p.title).atlas("context.guide.row")
     }
 }
 
@@ -83,22 +83,22 @@ struct ProgramPopover: View {
             if let c = program.category { QualityBadge(text: c) }
             if let d = program.description { Text(d).font(Typography.body).fixedSize(horizontal: false, vertical: true).frame(maxWidth: 340, alignment: .leading) }
             HStack {
-                if program.isLive() { PrimaryButton(title: "Watch Now", symbol: "play.fill", action: onWatch) }
+                if program.isLive() { PrimaryButton(title: "Watch Now", symbol: "play.fill", action: onWatch).atlas("control.guide.programmeAction") }
                 if channel.archiveDays > 0, program.start < Date(), program.start > Date().addingTimeInterval(-TimeInterval(min(channel.archiveDays, 7)) * 86400) {
-                    SecondaryButton(title: program.isLive() ? "Watch from the start" : "Watch (catch-up)", symbol: "gobackward", action: onCatchup)
+                    SecondaryButton(title: program.isLive() ? "Watch from the start" : "Watch (catch-up)", symbol: "gobackward", action: onCatchup).atlas("control.guide.programmeAction")
                 }
                 if program.start > Date() && settings.remindersEnabled {
-                    SecondaryButton(title: hasReminder ? "Cancel Reminder" : "Remind Me", symbol: hasReminder ? "bell.slash" : "bell") { toggle() }
+                    SecondaryButton(title: hasReminder ? "Cancel Reminder" : "Remind Me", symbol: hasReminder ? "bell.slash" : "bell") { toggle() }.atlas("control.guide.programmeAction")
                 }
                 if program.end > Date(), let rec = container?.scheduledRecordings {
                     SecondaryButton(title: recording ? (recordsWeekly ? "Cancel Every Week" : "Cancel Recording") : "Record", symbol: recording ? "stop.circle" : "record.circle") {
                         if recording { rec.cancel(channelID: channel.id, start: program.start); recording = false; recordsWeekly = false }
                         else if rec.schedule(program: program, channel: channel) { recording = true; state.toasts.show("Will record \(program.title)", symbol: "record.circle", kind: .info) }
-                    }
+                    }.atlas("control.guide.programmeAction")
                     if !recording {
                         SecondaryButton(title: "Record Every Week", symbol: "repeat") {
                             if rec.schedule(program: program, channel: channel, weekly: true) { recording = true; recordsWeekly = true; state.toasts.show("Will record \(program.title) every week", symbol: "repeat", kind: .info) }
-                        }
+                        }.atlas("control.guide.programmeAction")
                     }
                 }
             }

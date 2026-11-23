@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreSpotlight
 import AppKit
 
 struct RootView: View {
@@ -52,7 +53,7 @@ struct RootView: View {
             }.frame(maxWidth: .infinity, maxHeight: .infinity).background(ColorTokens.background).preferredColorScheme(.dark)
         case .ready:
             if let container = coordinator.container, let state = coordinator.state {
-                MainShell(router: coordinator.router, keys: coordinator.keys, container: container, state: state)
+                MainShell(router: coordinator.router, keys: coordinator.keys, container: container, state: state, services: coordinator.services, hosts: coordinator.hosts)
                     .overlay { if choosing(container) { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { picked = true } } } }
                     .overlay { ViewingBlockOverlay(container: container) }
                     .animation(.easeInOut(duration: 0.3), value: container.playback.viewingBlock)
@@ -66,6 +67,9 @@ struct MainShell: View {
     let keys: PlayerKeyMonitor
     let container: AppContainer
     let state: AppState
+    let services: ServiceNavigation
+    let hosts: ServiceHostRegistry
+    @State private var servicePrefs = ServicePreferences.load()
     @State private var switchingProfile = false
     @State private var addingProfile = false
     @State private var program: EPGProgram?
@@ -74,43 +78,39 @@ struct MainShell: View {
     @State private var width: CGFloat = 1440
     @State private var search: GlobalSearchModel
     @State private var dropTargeted = false
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(router: AppRouter, keys: PlayerKeyMonitor, container: AppContainer, state: AppState) {
-        self.router = router; self.keys = keys; self.container = container; self.state = state
+    init(router: AppRouter, keys: PlayerKeyMonitor, container: AppContainer, state: AppState, services: ServiceNavigation = ServiceNavigation(), hosts: ServiceHostRegistry = ServiceHostRegistry()) {
+        self.router = router; self.keys = keys; self.container = container; self.state = state; self.services = services; self.hosts = hosts
         _search = State(initialValue: GlobalSearchModel(service: container.globalSearch))
     }
 
     var body: some View {
         @Bindable var router = router
         let playback = container.playback
+        let surface = playback.primarySurface
         ZStack {
             if state.needsOnboarding {
-                OnboardingView()
+                OnboardingView().atlasScreen("screen.onboarding")
             } else {
                 VStack(spacing: 0) {
-                    ReddyTopBar(state: TopBarState(tab: router.tab, initials: initials, accountMenuOpen: router.accountMenuOpen, width: width),
-                                query: Binding(get: { router.searchQuery }, set: { setQuery($0) }),
-                                focusToken: router.topSearchFocus,
-                                onSubmit: { if let r = search.selected ?? search.visible.first { activate(r) } },
-                                onResultsFocus: { router.searchResultsFocus += 1 },
-                                onSelectTab: { router.navigate($0) },
-                                onToggleAccount: { router.playlistMenuOpen = false; router.accountMenuOpen.toggle() })
+                    topBar
                         .zIndex(3)
                     HStack(spacing: 0) {
-                        sidebar
+                        // The native sidebar and screens belong to StreamSetu; while a service shows, the destination state (not a flag of its own) removes them.
+                        if services.navExpanded { sidebar }
                         ZStack {
-                            ContentRouter()
-                                .id(state.activeSourceID)       // a playlist switch rebuilds the screen: nothing carries over
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            mainContent
                             // Results replace the content while searching. The screen underneath stays alive, so clearing the
                             // search returns to exactly where you were; playback is never touched.
                             if router.isSearching {
-                                SearchResultsPage(model: search, focusToken: router.searchResultsFocus, isFavorite: { state.isFavorite($0) }, onActivate: activate)
+                                searchResultsPage
                             }
                         }
                     }
                     .zIndex(1)
-                    if LivePlayerLayout.shouldShowMiniPlayer(onLiveTV: router.tab == .liveTV, isLive: playback.isLive, livePreviewVisible: playback.livePreviewVisible, hasPlayback: playback.current != nil),
+                    if services.navExpanded, PlayerSurfaceModel.showsBar(surface),          // no native bar under a service's page
                        let bar = BottomPlayerAdapter.state(playback, program: program) {
                         ReddyBottomPlayer(state: bar,
                                           onTitle: { openPlayingItem(playback) },
@@ -118,28 +118,28 @@ struct MainShell: View {
                                           onToggleMute: { playback.isMuted.toggle() },
                                           onVolume: { playback.isMuted = false; playback.volume = $0 },
                                           onSeek: { playback.seek(to: $0) },
-                                          onExpand: { playback.isExpanded = true },
+                                          onExpand: { playback.isExpanded = true },          // the bar hands over to the popup; it disappears while the popup is up
                                           onStop: { playback.stop() },
-                                          videoPlayback: bar.isLive ? nil : playback,
+                                          videoPlayback: bar.isLive || !PlayerSurfaceModel.barHoldsVideo(surface) ? nil : playback,
                                           onSkip: { playback.seek(by: $0) })
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
-                .animation(AnimationTokens.standard, value: playback.current != nil && !(router.tab == .liveTV && playback.isLive))
+                .animation(reduceMotion ? nil : AnimationTokens.standard, value: surface)
                 overlays
             }
-            if !state.needsOnboarding {
-                AssistantBubble(container: container, bottomInset: playback.current != nil && !(router.tab == .liveTV && playback.isLive) ? 96 : 20,
+            if !state.needsOnboarding && services.navExpanded {          // the Setu button would sit over the service's own controls
+                AssistantBubble(container: container, bottomInset: max(20, PlayerSurfaceModel.reservedBottom(surface, isLive: playback.isLive)),
                                 open: { PlayActions.open($0, router: router) },
                                 look: { (screen: assistantScreenName, item: router.movie.map { .movie($0) } ?? router.series.map { .series($0) }, search: router.searchQuery) },
                                 perform: { p in
                                     switch p.kind {
-                                    case .command, .playItem, .toggleList: return await SearchCommandRunner.execute(p.kind, container: container, router: router, state: state)
+                                    case .command, .playItem, .toggleList, .openAtlas: return await SearchCommandRunner.execute(p.kind, container: container, router: router, state: state)
                                     default: return await container.perform(p, state: state)
                                     }
                                 })
             }
-            VStack { Spacer(); HStack { Spacer(); ToastHost(center: state.toasts) } }.padding(.bottom, LivePlayerLayout.shouldShowMiniPlayer(onLiveTV: router.tab == .liveTV, isLive: playback.isLive, livePreviewVisible: playback.livePreviewVisible, hasPlayback: playback.current != nil) ? BottomPlayerLayout.height(isLive: playback.isLive) + 8 : 12)
+            VStack { Spacer(); HStack { Spacer(); ToastHost(center: state.toasts) } }.padding(.bottom, services.navExpanded && PlayerSurfaceModel.showsBar(surface) ? PlayerSurfaceModel.reservedBottom(surface, isLive: playback.isLive) + 8 : 12)
         }
         // The root shell owns the top edge: the bar starts at the window's top in every window state, so it is never pushed
         // by the title bar's safe-area inset, and it is never inside a scroll view.
@@ -161,10 +161,15 @@ struct MainShell: View {
         .reddyTheme(container.settings)
         .loggingNotice()
         .onChange(of: router.tab) { _, _ in folderQuery = "" }
+        .background(ServiceGuards(services: services, hosts: hosts, router: router, playback: playback, lock: container.appLock))
+        .onChange(of: AtlasNavRequests.shared.window) { _, id in if let id { openWindow(id: id); AtlasNavRequests.shared.window = nil } }          // Setu opening a window
         .onChange(of: container.settings.hideEmptyFolders) { _, _ in state.reloadFolders() }
         .onChange(of: router.selection) { _, _ in router.clearSearch(); search.clear() }
         .onChange(of: state.activeSourceID) { _, _ in folderQuery = ""; router.closeDetail(); router.clearSearch(); search.clear() }
         .onOpenURL { handleOpen($0) }
+        .onContinueUserActivity(CSSearchableItemActionType) { activity in          // a Spotlight result for a screen or a setting
+            if let id = AtlasSpotlight.atlasID(fromActivityIdentifier: activity.userInfo?[CSSearchableItemActivityIdentifier] as? String), let url = DeepLink.link(atlas: id) { handleOpen(url) }
+        }
         .onChange(of: container.appLock.isLocked) { _, locked in if !locked, let url = container.appLock.takeHeldLink() { handleOpen(url) } }          // what was opened while locked runs now
         .onDrop(of: [.fileURL, .url, .plainText], isTargeted: $dropTargeted) { providers in handleDrop(providers) }
         .overlay { if dropTargeted { dropHint.allowsHitTesting(false).transition(.opacity).zIndex(20) } }
@@ -172,6 +177,7 @@ struct MainShell: View {
         .onChange(of: router.sidebarCollapsed) { _, c in container.settings.sidebarWasCollapsed = c }
         .onChange(of: container.settings.rememberFolders) { _, on in router.rememberFolders = on }
         .onAppear {
+            ShowMeController.shared.opener = { id in AtlasOpener.open(id, container: container, router: router, state: state).isDone }
             router.rememberFolders = container.settings.rememberFolders
             if router.isSearching { search.term = router.searchQuery; search.schedule() }
         }
@@ -183,6 +189,27 @@ struct MainShell: View {
             keys.install()
         }
         .onDisappear { keys.remove() }
+        .onReceive(NotificationCenter.default.publisher(for: StreamingServicesSettingsModel.preferencesDidChange)) { _ in servicePrefs = ServicePreferences.load() }
+        .atlasShowMeHost()
+    }
+
+    /// The native screen, or the service that replaced it (the destination state decides; nothing else).
+    @ViewBuilder private var mainContent: some View {
+        Group {
+            if services.navExpanded {
+                ContentRouter()
+                    .id(state.activeSourceID)       // a playlist switch rebuilds the screen: nothing carries over
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let id = services.activeService {
+                // One host view for every embedded service; a disabled one shows the native unavailable screen. Both were checked by the same capability gate in `select`.
+                if let model = hosts.model(for: id) {
+                    ServiceHostView(model: model, onReturn: { services.returnToStreamSetu() }).id(id).transition(.opacity)
+                } else if let def = hosts.registry.definition(for: id), def.presentation == .integrationUnavailable {
+                    IntegrationUnavailableView(definition: def, onReturn: { services.returnToStreamSetu() }).id(id).transition(.opacity)
+                }
+            }
+        }
+        .animation(reduceMotion ? nil : AnimationTokens.standard, value: services.active)
     }
 
     // MARK: links and drops
@@ -249,6 +276,7 @@ struct MainShell: View {
         switch link {
         case .addPlaylist(let address, let name): present(.address(address, name: name))
         case .openTab(let tab): router.navigate(tab)
+        case .openService(let service): services.select(service)          // refused where the platform or profile does not allow it
         case .search(let q): router.searchQuery = q; search.term = q; search.schedule()
         case .sleep(let m): playback.startSleepTimer(minutes: m); state.toasts.show("Sleep timer set for \(m) minutes.", symbol: "moon.zzz")
         case .remote(let c):
@@ -263,6 +291,7 @@ struct MainShell: View {
         case .playChannel(let name): playChannel(named: name)
         case .playMovie(let title): playMovie(titled: title)
         case .findSeries(let title): router.navigate(.series); router.searchQuery = title; search.term = title; search.schedule()
+        case .atlas(let id): _ = AtlasOpener.open(id, container: container, router: router, state: state)
         }
     }
 
@@ -356,10 +385,10 @@ struct MainShell: View {
         }
         Color.clear.frame(width: 0, height: 0).sheet(isPresented: $addingProfile) { AddProfileSheet(service: container.profiles) }
         if switchingProfile { ProfilePicker(service: container.profiles) { withAnimation(.easeOut(duration: 0.3)) { switchingProfile = false } }.zIndex(12) }
-        if let m = router.movie { scrim { router.closeDetail() } ; MovieDetailView(movie: m).id(m.id).dialogFrame().transition(.opacity.combined(with: .scale(scale: 0.98))).zIndex(6) }
-        if let s = router.series { scrim { router.closeDetail() } ; SeriesDetailView(series: s).id(s.id).dialogFrame().transition(.opacity.combined(with: .scale(scale: 0.98))).zIndex(6) }
+        if let m = router.movie { scrim { router.closeDetail() } ; TitleDialogHost { MovieDetailView(movie: m).id(m.id).atlasScreen("screen.title.movie") }.transition(TitleDialogMotion.transition).zIndex(6) }
+        if let s = router.series { scrim { router.closeDetail() } ; TitleDialogHost { SeriesDetailView(series: s).id(s.id).atlasScreen("screen.title.series") }.transition(TitleDialogMotion.transition).zIndex(6) }
         if let modal = router.modal { modalView(modal) }
-        if container.playback.isExpanded { scrim { container.playback.isExpanded = false }; expandedPlayer.zIndex(8) }
+        if PlayerSurfaceModel.showsExpanded(container.playback.primarySurface) { scrim { container.playback.isExpanded = false }; expandedPlayer.zIndex(8) }
     }
 
     private func scrim(_ close: @escaping () -> Void) -> some View {
@@ -370,11 +399,11 @@ struct MainShell: View {
         scrim { router.modal = nil }
         Group {
             switch modal {
-            case .playlists: PlaylistManager()
+            case .playlists: PlaylistManager().atlasScreen("screen.playlists")
             case .addPlaylist: AddPlaylistDialog()
             case .about: AboutDialog()
             case .unlockRestricted: UnlockDialog()
-            case .channelManager: ReddyDialog(title: "Channel manager", width: 940, onClose: { router.modal = nil }) { ChannelCommandCenterView().frame(height: 640) }
+            case .channelManager: ReddyDialog(title: "Channel manager", width: 940, onClose: { router.modal = nil }) { ChannelCommandCenterView().atlasScreen("screen.settings.channelManager").frame(height: 640) }
             }
         }
         .zIndex(7).transition(.opacity.combined(with: .scale(scale: 0.98)))
@@ -387,8 +416,9 @@ struct MainShell: View {
                 Color.black
                 VideoSurface(playback: p, owner: .expanded)
                 PlayerControlsOverlay(playback: p, program: program, nextProgram: nextProgram,
-                                      onToggleFullscreen: { p.restoreExpandedAfterFullscreen = true; p.isExpanded = false; p.isFullscreen = true }, onChannelList: nil)
+                                      onToggleFullscreen: { p.isFullscreen = true }, onChannelList: nil)
             }
+            .atlas("control.player.expanded")
             .aspectRatio(16.0 / 9.0, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
@@ -423,6 +453,74 @@ struct MainShell: View {
         search.schedule()
     }
 
+    /// What the top bar's pinned items and Services list read and call. Every choice goes through `services.select`, the one capability gate.
+    private var servicesNav: ServicesNavigationBinding {
+        ServicesNavigationBinding(
+            listed: services.services,
+            pinned: servicePrefs.pinned, recents: servicePrefs.recents, active: services.activeService,
+            availability: { hosts.registry.definition(for: $0)?.availability ?? .registered },
+            select: { id in
+                guard services.select(id) else { return }
+                servicePrefs.noteOpened(id); servicePrefs.save(); router.closeMenus()
+            },
+            togglePin: { id in
+                if servicePrefs.isPinned(id) { servicePrefs.unpin(id) } else { servicePrefs.pin(id) }
+                servicePrefs.save(); NotificationCenter.default.post(name: StreamingServicesSettingsModel.preferencesDidChange, object: nil)
+            },
+            move: { id, i in servicePrefs.move(id, to: i); servicePrefs.save() })
+    }
+
+    private var topBar: some View {
+        @Bindable var router = router
+        return ReddyTopBar(state: TopBarState(tab: router.tab, initials: initials, accountMenuOpen: router.accountMenuOpen, width: width,
+                                               destination: services.active, services: [], servicesDisabled: services.isBlocked,
+                                               showsServicesMenu: true, servicesNav: servicesNav),
+            query: Binding(get: { router.searchQuery }, set: { setQuery($0) }),
+            focusToken: router.topSearchFocus,
+            titleOpen: router.movie != nil || router.series != nil,
+            onSubmit: { submitSearch() },
+            onResultsFocus: { router.searchResultsFocus += 1 },
+            onAsk: { askSetu($0) },
+            onSelectTab: { router.navigate($0) },
+            onToggleAccount: { router.playlistMenuOpen = false; router.accountMenuOpen.toggle() },
+            onSelectService: { servicesNav.select($0) },
+            onSelectStreamSetu: { services.returnToStreamSetu() })
+    }
+
+    private var searchResultsPage: some View {
+        SearchResultsPage(model: search, focusToken: router.searchResultsFocus, isFavorite: { state.isFavorite($0) }, onActivate: activate,
+                          onAsk: { askSetu($0) }, onOpenAtlas: { openAtlas($0) }, onShowAtlas: { showAtlas($0) })
+            .atlasScreen("screen.searchResults")
+    }
+
+    /// Return in the top search: a question goes to Setu; otherwise the best library result; with no library result, the best screen or setting; with nothing at all, Setu.
+    private func submitSearch() {
+        let q = router.searchQuery.trimmingCharacters(in: .whitespaces)
+        let kids = container.parental.kidsMode
+        if !kids, AtlasPaletteSource.isQuestion(q) { askSetu(q); return }
+        if let r = search.selected ?? search.visible.first { activate(r); return }
+        guard search.searched, !q.isEmpty else { return }
+        if let row = AtlasPaletteSource.rows(for: q, engine: Atlas.engine, platform: .mac, appStore: AtlasAssistant.appStore, limit: 1).first { row.canOpen ? openAtlas(row.id) : showAtlas(row.id); return }
+        if !kids { askSetu(q) }
+    }
+
+    private func askSetu(_ q: String) {
+        router.clearSearch(); search.clear()
+        AssistantLauncher.shared.ask(q.trimmingCharacters(in: .whitespaces))
+    }
+
+    private func openAtlas(_ id: String) {
+        router.clearSearch(); search.clear()
+        _ = AtlasOpener.open(id, container: container, router: router, state: state)
+    }
+
+    /// Opens the screen the entry lives on, then points at it.
+    private func showAtlas(_ id: String) {
+        router.clearSearch(); search.clear()
+        guard ShowMeController.shared.start(entryID: id) else { return }
+        ShowMeController.shared.openCurrentScreen()
+    }
+
     private func activate(_ result: SearchResult) {
         router.clearSearch(); search.clear()
         SearchActions.perform(result, container: container, router: router, state: state)
@@ -438,14 +536,16 @@ struct MainShell: View {
     /// Plain-key shortcuts. Only called when the user is not typing in a text field (see PlayerKeyMonitor).
     private func handleKey(_ event: NSEvent, _ playback: PlaybackCoordinator) -> Bool {
         if container.appLock.isLocked { return false }          // locked: the keys do nothing (and are not swallowed)
-        if event.keyCode == 53 {                               // Esc closes the topmost layer first
+        if let w = event.window, let main = NSApp.mainWindow, w !== main, services.activeService != nil { return false }          // a popover or panel over a service owns its own keys
+        if event.keyCode == 53 {                               // Esc closes the topmost layer first (the popup sits above everything else)
+            if playback.isExpanded && !playback.isFullscreen { playback.isExpanded = false; return true }
             if router.isSearching { router.clearSearch(); search.clear(); return true }
             if router.modal != nil { router.modal = nil; return true }
             if router.movie != nil || router.series != nil { router.closeDetail(); return true }
             if router.accountMenuOpen || router.playlistMenuOpen { router.closeMenus(); return true }
-            if playback.isExpanded { playback.isExpanded = false; return true }
         }
         let ctx = PlayerShortcutContext(hasPlayback: playback.current != nil, isFullscreen: playback.isFullscreen, isLive: playback.isLive, switcherOpen: playback.showChannelSwitcher, numberEntryActive: !playback.numberEntry.isEmpty, isExpanded: playback.isExpanded)
+        if ServiceKeyRouting.bypassesNativeKeys(serviceActive: services.activeService != nil, popupPlayerUp: playback.isExpanded) { return false }          // plain keys belong to the service's page, unless the popup player is up over it
         guard let command = PlayerShortcuts.resolve(keyCode: event.keyCode, characters: event.charactersIgnoringModifiers, ctx) else { return false }
         switch command {
         case .togglePause: playback.togglePause()
@@ -469,11 +569,44 @@ struct MainShell: View {
 }
 
 private extension View {
-    /// Rounded, hairline-edged frame for the details dialogs.
-    func dialogFrame() -> some View {
-        clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(ColorTokens.glassEdge.opacity(0.7), lineWidth: 0.75))
-            .shadow(color: .black.opacity(0.55), radius: 40, y: 20)
-            .accessibilityAddTraits(.isModal)
+}
+
+/// Where plain keys (Space, arrows, letters, Escape) go. Esc first closes a native layer that is open (popup, search, dialog, menu); every other plain key goes to the web page while a service shows, so typing, Space, arrows and the page's own full-screen exit work. Keys with Command are menu commands and are never seen here.
+enum ServiceKeyRouting {
+    static func bypassesNativeKeys(serviceActive: Bool, popupPlayerUp: Bool) -> Bool { serviceActive && !popupPlayerUp }
+}
+
+/// What must happen around an outside service, as plain functions so each rule is tested without a window.
+@MainActor enum ServiceGuardActions {
+    /// A service was selected: dialogs and sheets that would stay over it close, the popup player goes back to its bar, full screen ends, and the app's own player pauses (it is not resumed by itself).
+    static func serviceEntered(router: AppRouter, collapsePlayer: () -> Void, pausePlayer: () -> Void) {
+        router.closeDetail(); router.modal = nil; router.closeMenus()
+        collapsePlayer(); pausePlayer()
+    }
+    /// The app's own player started: the service's sound stops.
+    static func playerStarted(pauseServiceMedia: () -> Void) { pauseServiceMedia() }
+    /// A Kids profile or the lock came on, or the person began a search: back to StreamSetu (which also stops the service's media).
+    static func leave(services: ServiceNavigation, pauseServiceMedia: () -> Void) { services.returnToStreamSetu(); pauseServiceMedia() }
+}
+
+/// Keeps an outside service from running where it should not.
+private struct ServiceGuards: View {
+    let services: ServiceNavigation
+    let hosts: ServiceHostRegistry
+    let router: AppRouter
+    let playback: PlaybackCoordinator
+    let lock: AppLock
+    var body: some View {
+        Color.clear
+            .onChange(of: playback.isActive) { _, active in if active { ServiceGuardActions.playerStarted(pauseServiceMedia: { hosts.pauseAll() }) } }
+            .onChange(of: playback.currentChannel?.id) { _, _ in if playback.isActive { ServiceGuardActions.playerStarted(pauseServiceMedia: { hosts.pauseAll() }) } }
+            .onChange(of: services.isBlocked) { _, blocked in if blocked { ServiceGuardActions.leave(services: services, pauseServiceMedia: { hosts.pauseAll() }) } }
+            .onChange(of: lock.isLocked) { _, locked in if locked { ServiceGuardActions.leave(services: services, pauseServiceMedia: { hosts.pauseAll() }) } }
+            // typing in the top search shows native results, so the app returns to StreamSetu first: the selected item and the content always agree
+            .onChange(of: router.isSearching) { _, searching in if searching, services.activeService != nil { ServiceGuardActions.leave(services: services, pauseServiceMedia: { hosts.pauseAll() }) } }
+            .onChange(of: services.activeService) { _, now in
+                hosts.pauseAll(except: now)          // media stops on every switch and on returning to StreamSetu; nothing resumes by itself
+                if now != nil { ServiceGuardActions.serviceEntered(router: router, collapsePlayer: { playback.isExpanded = false; playback.isFullscreen = false }, pausePlayer: { if playback.isActive { playback.pause() } }) }
+            }
     }
 }

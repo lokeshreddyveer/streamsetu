@@ -14,7 +14,7 @@ struct SimilarSection: View {
             Color.clear.frame(height: 1)
             if !suggestions.isEmpty {
                 VStack(alignment: .leading, spacing: Spacing.md) {
-                    Text("More Like This").font(Typography.heading)
+                    TitleSectionHeader(title: "More Like This")
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(alignment: .top, spacing: Spacing.md) {
                             ForEach(suggestions) { s in

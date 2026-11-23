@@ -81,6 +81,8 @@ struct SearchResult: Identifiable, Hashable, Sendable {
     let destination: SearchDestination
     /// Higher is more relevant. See `GlobalSearchService.score`.
     let score: Double
+    /// The rating worth showing for a film or series (nil when there is none).
+    var rating: Double? = nil
 }
 
 /// The stages a search publishes, in order. Each update carries everything found so far, so a screen replaces its list with it and a row that is already shown never moves or
@@ -189,6 +191,7 @@ final class GlobalSearchService: Sendable {
     private func run(_ rawQuery: String, kinds: Set<SearchResultKind>, limit: Int, publish: (SearchStage, GlobalSearchResults) -> Void = { _, _ in }) throws -> GlobalSearchResults {
         var out = GlobalSearchResults(query: rawQuery)
         let q = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sp = SmoothSignpost.begin("SearchRun"); defer { SmoothSignpost.end(sp, "SearchRun") }
         guard !MetadataNormalizer.normalize(q).isEmpty else { return out }
         let allSources = (try? catalog.sources()) ?? []
         let sources = Dictionary(allSources.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
@@ -232,7 +235,7 @@ final class GlobalSearchService: Sendable {
                 add(.movie, mv.enumerated().compactMap { i, h in by[h.itemID].map { m in
                     SearchResult(id: "movie:\(m.id)", kind: .movie, title: m.title, subtitle: [m.releaseYear.map(String.init), m.genre ?? m.categoryName, multipleSources ? sourceName(m.sourceID) : nil].compactMap { $0 }.joined(separator: " · "),
                                  sourceID: m.sourceID, sourceName: sourceName(m.sourceID), artworkURL: m.posterURL, destination: .movie(id: m.id),
-                                 score: Self.score(title: m.title, query: q, position: i))
+                                 score: Self.score(title: m.title, query: q, position: i), rating: RatingRule.credible(m.rating))
                 } }, to: &out, limit: limit)
             }
             emit(.titles)
@@ -243,7 +246,7 @@ final class GlobalSearchService: Sendable {
                 add(.series, sr.enumerated().compactMap { i, h in by[h.itemID].map { s in
                     SearchResult(id: "series:\(s.id)", kind: .series, title: s.title, subtitle: [s.releaseYear.map(String.init), s.genre ?? s.categoryName, multipleSources ? sourceName(s.sourceID) : nil].compactMap { $0 }.joined(separator: " · "),
                                  sourceID: s.sourceID, sourceName: sourceName(s.sourceID), artworkURL: s.posterURL, destination: .series(id: s.id),
-                                 score: Self.score(title: s.title, query: q, position: i))
+                                 score: Self.score(title: s.title, query: q, position: i), rating: RatingRule.credible(s.rating))
                 } }, to: &out, limit: limit)
             }
         }
@@ -277,7 +280,7 @@ final class GlobalSearchService: Sendable {
             let nq = MetadataNormalizer.normalize(q)
             let cols = ((try? favorites.collections()) ?? []).filter { MetadataNormalizer.normalize($0.name).contains(nq) }
             add(.collection, cols.enumerated().map { i, c in
-                SearchResult(id: "collection:\(c.id)", kind: .collection, title: c.name, subtitle: "\(c.itemCount) item\(c.itemCount == 1 ? "" : "s")", sourceID: nil, sourceName: nil, artworkURL: nil,
+                SearchResult(id: "collection:\(c.id)", kind: .collection, title: c.name, subtitle: "\(Localized.plural(c.itemCount, one: "%@ item", other: "%@ items"))", sourceID: nil, sourceName: nil, artworkURL: nil,
                              destination: .collection(id: c.id), score: Self.score(title: c.name, query: q, position: i))
             }, to: &out, limit: limit)
         } }

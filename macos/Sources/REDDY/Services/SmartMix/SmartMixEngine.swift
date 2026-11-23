@@ -94,14 +94,34 @@ enum SmartMixEngine {
     }
 
     // MARK: build one shelf
-    static func build(shelfId: String, prepared: Prepared, ctx: SMContext, loadsAgo: [String: Int] = [:], trending: TrendingMode = TrendingMode()) -> SMShelfResult {
-        let def = SmartMixScoring.shelf(shelfId)
+    static func build(shelfId: String, prepared: Prepared, ctx: SMContext, loadsAgo: [String: Int] = [:], trending: TrendingMode = TrendingMode(), ranks: [String: Int]? = nil) -> SMShelfResult {
+        var prepared = prepared
+        if shelfId == SMShelf.collections { return SMCollections.build(prepared: prepared, ctx: ctx) }
+        let mode = ctx.mode(shelfId)
+        let moodDef = SMShelf.isMood(shelfId) ? SMMoods.byKey[String(shelfId.dropFirst(SMShelf.moodPrefix.count))] : nil
+        let isContextual = moodDef != nil || shelfId == SMShelf.fresh || shelfId == SMShelf.movieNight || shelfId == SMShelf.binge
+        let isGenre = SMShelf.isGenre(shelfId)
+        let genreDef = isGenre ? SMGenres.byKey[String(shelfId.dropFirst(SMGenres.shelfPrefix.count))] : nil
+        // TMDB ranks for this shelf's own list (genre shelves, and Trending in Your Library in its all-time view); nil = no list, the local ranking stands.
+        let usesRanks = isGenre || (shelfId == SMShelf.trendingLibrary && mode == .allTime)
+        if usesRanks { for i in prepared.groups.indices { prepared.groups[i].trend = ranks?[prepared.groups[i].id] } }
+        let seedShelf = (mode == .allTime && (isGenre || shelfId == SMShelf.trendingLibrary)) ? shelfId + "|top" : shelfId
+        let def = SmartMixScoring.shelf(shelfId, mode: mode)
         let isFolder = SMShelf.isFolder(shelfId)
         var diag = SMDiagnostics()
         diag.inCount = prepared.inCount
         diag.tmdb = (shelfId == SMShelf.topWeek || shelfId == SMShelf.trendingLibrary || shelfId == SMShelf.hero) ? trending.status : ""
 
-        let source: [Int] = isFolder ? (prepared.byFolder[String(shelfId.dropFirst(7))] ?? []) : Array(prepared.groups.indices)
+        if (isGenre && genreDef == nil) || (SMShelf.isMood(shelfId) && moodDef == nil) { diag.hidden = true; return SMShelfResult(shelfId: shelfId, picks: [], diag: diag) }
+        var source: [Int] = isFolder ? (prepared.byFolder[String(shelfId.dropFirst(7))] ?? []) : Array(prepared.groups.indices)
+        if let gd = genreDef { source = source.filter { SMGenres.matches(gd, genres: prepared.groups[$0].genres, kind: prepared.groups[$0].kind) } }
+        if moodDef != nil {          // adaptive floor: a mood needs 1.5 % of the library's showable titles (at least 8)
+            let total = prepared.groups.reduce(0) { $0 + (!$1.restricted && !$1.dismissed && !$1.camOnly && $1.poster ? 1 : 0) }
+            let hits = source.reduce(0) { n, i in let g = prepared.groups[i]; return n + (!g.restricted && !g.dismissed && !g.camOnly && g.poster && SMMoods.matches(moodDef!, genres: g.genres, kind: g.kind, kids: ctx.kids) ? 1 : 0) }
+            if hits < max(8, total * 15 / 1000) { diag.hidden = true; return SMShelfResult(shelfId: shelfId, picks: [], diag: diag) }
+        }
+        if let md = moodDef { source = source.filter { SMMoods.matches(md, genres: prepared.groups[$0].genres, kind: prepared.groups[$0].kind, kids: ctx.kids) } }
+        if isContextual && moodDef == nil { source = source.filter { SMHomeRules.eligible(shelfId, prepared.groups[$0]) } }
         diag.groups = source.count
         var base: [Int] = []
         base.reserveCapacity(source.count)
@@ -114,7 +134,8 @@ enum SmartMixEngine {
         if shelfId == SMShelf.langPref && (ctx.preferredLang ?? "").isEmpty { diag.hidden = true; return SMShelfResult(shelfId: shelfId, picks: [], diag: diag) }
         let need = min(def.minCount, base.count)
         let trendMode = shelfId == SMShelf.trendingLibrary && base.reduce(0, { $0 + (prepared.groups[$1].trend != nil ? 1 : 0) }) >= 3
-        diag.trendMode = trendMode
+        let genreOrdered = isGenre && base.reduce(0, { $0 + (prepared.groups[$1].trend != nil ? 1 : 0) }) >= SMTrendingPolicy.minMatchesForTopWeek
+        diag.trendMode = trendMode || genreOrdered
         let cap = min(def.pool, ctx.poolCap ?? Int.max)
 
         var final: (tier: Int, counts: SMDiagnostics, tiny: Bool, items: [SMCandidate], picks: [Int], relaxed: Bool)? = nil
@@ -142,6 +163,17 @@ enum SmartMixEngine {
             let items = pool.map { prepared.groups[$0.index] }
             let ws = pool.map { SmartMixScoring.weight(score: $0.score, sharp: def.sharp) }
             var forced: [Int] = []
+            var rng = SplitMix64(seed: SmartMixPRNG.seed(profile: ctx.profile, shelf: seedShelf, day: ctx.dayKey, counter: ctx.refreshCounter))
+            if genreOrdered {
+                // TMDB order, with titles in the same rank bucket (3 ranks) shuffled by the day-seeded stream: one draw per ranked title, in (rank, id) order.
+                let ranked = items.indices.filter { items[$0].trend != nil }.sorted { a, b in
+                    items[a].trend! != items[b].trend! ? items[a].trend! < items[b].trend! : idLess(items[a].id, items[b].id)
+                }
+                var keyed: [(bucket: Int, key: UInt64, index: Int)] = []
+                for i in ranked { keyed.append(((items[i].trend! - 1) / SMGenres.rankBucket, rng.next(), i)) }
+                keyed.sort { a, b in a.bucket != b.bucket ? a.bucket < b.bucket : (a.key != b.key ? a.key < b.key : idLess(items[a.index].id, items[b.index].id)) }
+                forced = keyed.prefix(def.size).map(\.index)
+            }
             if trending.ordered && shelfId == SMShelf.topWeek {
                 let ranked = items.indices.filter { items[$0].trend != nil }.sorted { a, b in
                     items[a].trend! != items[b].trend! ? items[a].trend! < items[b].trend! : idLess(items[a].id, items[b].id)
@@ -149,9 +181,10 @@ enum SmartMixEngine {
                 forced = Array(ranked.prefix(def.size))
             }
             let k = min(def.size, items.count)
-            var rng = SplitMix64(seed: SmartMixPRNG.seed(profile: ctx.profile, shelf: shelfId, day: ctx.dayKey, counter: ctx.refreshCounter))
             var picks: [Int] = [], relaxed = false
-            if k > 0 { (picks, relaxed) = draw(items: items, weights: ws, k: k, rng: &rng, def: def, diversity: eff < 2, langRule: shelfId != SMShelf.langPref, forced: forced) }
+            let kk = min(def.size + max(0, ctx.oversample), items.count)
+            if kk > 0 { (picks, relaxed) = draw(items: items, weights: ws, k: kk, rng: &rng, def: def, diversity: eff < 2, langRule: shelfId != SMShelf.langPref, genreRule: !(isGenre || moodDef != nil), forced: forced) }
+            _ = k
             final = (tier, counts, tiny, items, picks, relaxed)
             if picks.count >= need { break }
         }
@@ -159,6 +192,15 @@ enum SmartMixEngine {
         diag.camOnly = f.counts.camOnly; diag.noArtwork = f.counts.noArtwork; diag.watched = f.counts.watched
         diag.lang = f.counts.lang; diag.notTrending = f.counts.notTrending
         diag.tier = f.tier; diag.tiny = f.tiny; diag.pool = f.items.count; diag.drawn = f.picks.count; diag.diversityRelaxed = f.relaxed
+        if isGenre && f.picks.count < SMGenres.minTitles {          // a genre shelf with too few titles is not shown (no fallback)
+            diag.hidden = true
+            return SMShelfResult(shelfId: shelfId, picks: [], diag: diag)
+        }
+        // Home v2 rows: no fallback, and never below the quality tiers (no CAM-only, no artwork-less titles).
+        if isContextual && (f.picks.count < def.minCount || f.tier >= 4) {
+            diag.hidden = true
+            return SMShelfResult(shelfId: shelfId, picks: [], diag: diag)
+        }
         var out = f.picks.map { f.items[$0] }
         if out.isEmpty && shelfId != SMShelf.langPref {
             // Never empty: recently added from what survived restricted/dismissed, then the plain library.
@@ -172,12 +214,21 @@ enum SmartMixEngine {
         switch shelfId {
         case SMShelf.topWeek: diag.caption = trending.ordered ? .trendingTMDB : .mostWatchedHere
         case SMShelf.trendingLibrary: diag.caption = trendMode ? .trendingTMDB : .mostWatchedHere
-        default: break
+        default: if isGenre { diag.caption = genreOrdered ? .trendingTMDB : .mostWatchedHere }
         }
-        let picks = out.map { SMPick(id: $0.id, key: $0.key, year: $0.year, kind: $0.kind, hasBackdrop: $0.backdrop) }
+        let picks = out.map { SMPick(id: $0.id, key: $0.key, year: $0.year, kind: $0.kind, hasBackdrop: $0.backdrop, genre: $0.genre, genres: $0.genres, lang: $0.lang, franchise: $0.franchise) }
         let result = SMShelfResult(shelfId: shelfId, picks: picks, diag: diag)
         assertNoRestricted(result, in: prepared)
         return result
+    }
+
+    /// Eligible titles per genre key: not restricted, not dismissed, not CAM-only, with a poster, of a kind the genre covers, and matching it.
+    static func genreCounts(_ prepared: Prepared) -> [String: Int] {
+        var counts: [String: Int] = [:]
+        for g in prepared.groups where !g.restricted && !g.dismissed && !g.camOnly && g.poster {
+            for k in SMGenres.keys(genres: g.genres, kind: g.kind) { counts[k, default: 0] += 1 }
+        }
+        return counts
     }
 
     private static func recentlyAddedLess(_ a: SMCandidate, _ b: SMCandidate) -> Bool {
@@ -207,7 +258,7 @@ enum SmartMixEngine {
 
     // MARK: weighted sampling without replacement + MMR-style penalties + max 2 consecutive
     static func draw(items: [SMCandidate], weights: [Int64], k: Int, rng: inout some SmartMixBitSource, def: SmartMixScoring.Shelf,
-                     diversity: Bool, langRule: Bool, forced: [Int]) -> (picks: [Int], relaxed: Bool) {
+                     diversity: Bool, langRule: Bool, genreRule: Bool = true, forced: [Int]) -> (picks: [Int], relaxed: Bool) {
         let n = items.count
         var w = weights
         var picks: [Int] = []
@@ -217,7 +268,7 @@ enum SmartMixEngine {
             if let v = table[s] { return v }
             let v = Int32(table.count); table[s] = v; return v
         }
-        let fr = items.map { intern($0.franchise) }, ge = items.map { intern($0.genre) }, la = items.map { intern($0.lang) }
+        let fr = items.map { intern($0.franchise) }, ge = items.map { genreRule ? intern($0.genre) : -1 }, la = items.map { intern($0.lang) }
         let kd: [Int32] = items.map { $0.kind == .movie ? 0 : 1 }
         for i in forced { w[i] = 0; picks.append(i) }
         var relaxed = false

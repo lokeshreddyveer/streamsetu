@@ -38,7 +38,7 @@ struct PlaylistManager: View {
                     Rectangle().fill(ColorTokens.line).frame(width: 1)
                     if let s = selected {
                         VStack(alignment: .leading, spacing: 14) {
-                            Picker("Section", selection: $section) { ForEach(Section.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).labelsHidden()
+                            Picker("Section", selection: $section) { ForEach(Section.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).labelsHidden().atlas("screen.playlists")
                             ScrollView { PlaylistSectionView(source: s, section: section).frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 8) }.scrollIndicators(.hidden)
                         }
                         .padding(.leading, 20).id(s.id)
@@ -68,15 +68,15 @@ struct PlaylistManager: View {
                             .background(on ? Color.white.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                             .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(on ? ColorTokens.lineStrong : .clear))
                             .contentShape(Rectangle())
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(.plain).atlas("screen.playlists")
                     }
                 }
             }.scrollIndicators(.hidden)
             HStack {
-                SecondaryButton(title: "Refresh all", symbol: "arrow.clockwise") { state.syncAll() }
+                SecondaryButton(title: "Refresh all", symbol: "arrow.clockwise") { state.syncAll() }.atlas("screen.playlists")
                 Spacer()
             }
-            PrimaryButton(title: "Add playlist", symbol: "plus") { router.modal = .addPlaylist }
+            PrimaryButton(title: "Add playlist", symbol: "plus") { router.modal = .addPlaylist }.atlas("screen.addPlaylist")
         }.padding(.trailing, 16)
     }
 
@@ -145,17 +145,17 @@ private struct PlaylistSectionView: View {
                 }
                 Spacer()
                 Toggle("Enabled", isOn: Binding(get: { source.enabled }, set: { on in try? container?.sources.setEnabled(source.id, on); state.reload(); state.catalogVersion += 1 }))
-                    .toggleStyle(.switch)
+                    .toggleStyle(.switch).atlas("screen.playlists")
             }
             HStack(spacing: 28) { stat("Live channels", counts.channels); stat("Movies", counts.movies); stat("Series", counts.series) }
             if let p = progress, p.state.isBusy { Text(p.state.label).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
             HStack {
-                SecondaryButton(title: "Refresh", symbol: "arrow.clockwise") { state.sync(source.id) }.disabled(busy || !hasLogin)
-                SecondaryButton(title: "Refresh Guide", symbol: "calendar") { state.sync(source.id, forceGuide: true) }.disabled(busy || !hasLogin)
-                if busy { SecondaryButton(title: "Cancel", symbol: "xmark") { state.cancelSync(source.id) } }
+                SecondaryButton(title: "Refresh", symbol: "arrow.clockwise") { state.sync(source.id) }.disabled(busy || !hasLogin).atlas("screen.playlists")
+                SecondaryButton(title: "Refresh Guide", symbol: "calendar") { state.sync(source.id, forceGuide: true) }.disabled(busy || !hasLogin).atlas("screen.playlists")
+                if busy { SecondaryButton(title: "Cancel", symbol: "xmark") { state.cancelSync(source.id) }.atlas("screen.playlists") }
                 Spacer()
-                SecondaryButton(title: "Edit", symbol: "pencil") { showEdit = true }
-                SecondaryButton(title: "Remove", symbol: "trash") { confirmDelete = true }
+                SecondaryButton(title: "Edit", symbol: "pencil") { showEdit = true }.atlas("screen.playlist.connection")
+                SecondaryButton(title: "Remove", symbol: "trash") { confirmDelete = true }.atlas("screen.playlists")
             }
         }
     }
@@ -171,8 +171,8 @@ private struct PlaylistSectionView: View {
             playbackOverrides
             requestHeaders
             HStack {
-                SecondaryButton(title: testing ? "Testing…" : "Test connection", symbol: "bolt.horizontal") { Task { await test() } }.disabled(testing || !hasLogin || source.type == .m3uLocal)
-                SecondaryButton(title: hasLogin ? "Change login" : "Add login", symbol: "key") { showEdit = true }
+                SecondaryButton(title: testing ? "Testing…" : "Test connection", symbol: "bolt.horizontal") { Task { await test() } }.disabled(testing || !hasLogin || source.type == .m3uLocal).atlas("screen.playlist.connection")
+                SecondaryButton(title: hasLogin ? "Change login" : "Add login", symbol: "key") { showEdit = true }.atlas("screen.playlist.connection")
             }
             if let r = testResult { Label(r.text, systemImage: r.ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill").font(Typography.caption).foregroundStyle(r.ok ? ColorTokens.success : ColorTokens.warning) }
         }
@@ -187,13 +187,13 @@ private struct PlaylistSectionView: View {
                     Picker("Player engine", selection: Binding(get: { engineChoice }, set: { engineChoice = $0; settings.setEngineOverride($0, for: source.id) })) {
                         Text("Use app setting").tag(PlaybackEnginePreference?.none)
                         ForEach(PlaybackEnginePreference.allCases) { Text($0.rawValue).tag(PlaybackEnginePreference?.some($0)) }
-                    }.labelsHidden().pickerStyle(.menu).fixedSize()
+                    }.labelsHidden().pickerStyle(.menu).fixedSize().atlas("setting.playlistEngine")
                 }
                 overrideRow("Buffering", help: "Applies to the next stream you start.") {
                     Picker("Buffering", selection: Binding(get: { bufferingChoice }, set: { bufferingChoice = $0; settings.setBufferingOverride($0, for: source.id) })) {
                         Text("Use app setting").tag(BufferingMode?.none)
                         ForEach(BufferingMode.allCases) { Text($0.title).tag(BufferingMode?.some($0)) }
-                    }.labelsHidden().pickerStyle(.menu).fixedSize()
+                    }.labelsHidden().pickerStyle(.menu).fixedSize().atlas("setting.playlistBuffering")
                 }
             }
             .padding(12).background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -210,13 +210,13 @@ private struct PlaylistSectionView: View {
                     Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(ColorTokens.textSecondary).rotationEffect(.degrees(showHeaders ? 90 : 0))
                 }.contentShape(Rectangle())
-            }.buttonStyle(.plain)
+            }.buttonStyle(.plain).atlas("setting.userAgent")
             if showHeaders {
                 Text("If this provider refuses to play or load, try presenting as another player. These apply to this playlist only: its catalog, guide and streams.")
                     .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
                     TextField("User-Agent (leave empty for the default)", text: $userAgentText).textFieldStyle(.roundedBorder)
-                    Menu("Presets") { ForEach(SourceHeaders.presets, id: \.name) { p in Button(p.name) { userAgentText = p.value } } }.menuStyle(.button).fixedSize()
+                    Menu("Presets") { ForEach(SourceHeaders.presets, id: \.name) { p in Button(p.name) { userAgentText = p.value } } }.menuStyle(.button).fixedSize().atlas("setting.userAgent")
                 }
                 Text("Other headers, one per line").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
                 TextEditor(text: $headerText).font(Typography.mono).frame(height: 70).scrollContentBackground(.hidden)
@@ -225,8 +225,8 @@ private struct PlaylistSectionView: View {
                 Text("Passwords and cookies can't be added here.").font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
                 ForEach(headerProblems, id: \.self) { Text($0).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
                 HStack {
-                    SecondaryButton(title: "Save") { saveHeaders() }
-                    SecondaryButton(title: "Use defaults") { userAgentText = ""; headerText = ""; headerProblems = []; saveHeaders() }
+                    SecondaryButton(title: "Save") { saveHeaders() }.atlas("setting.userAgent")
+                    SecondaryButton(title: "Use defaults") { userAgentText = ""; headerText = ""; headerProblems = []; saveHeaders() }.atlas("setting.userAgent")
                     if let m = headerMessage { Text(m).font(Typography.caption).foregroundStyle(ColorTokens.success) }
                 }
             }
@@ -267,7 +267,7 @@ private struct PlaylistSectionView: View {
                 HStack(spacing: 28) { stat("Programmes", c.programs); stat("Matched channels", c.mapped); stat("Guide channels", c.channels) }
                 if let d = c.lastUpdate { fact("Last updated", d.formatted(.relative(presentation: .named))) }
             } else { Text("No guide data yet.").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary) }
-            SecondaryButton(title: "Refresh Guide", symbol: "calendar") { state.sync(source.id, forceGuide: true) }.disabled(busy || !hasLogin)
+            SecondaryButton(title: "Refresh Guide", symbol: "calendar") { state.sync(source.id, forceGuide: true) }.disabled(busy || !hasLogin).atlas("setting.guideShift")
             guideShift
             catchupClock
         }
@@ -288,7 +288,7 @@ private struct PlaylistSectionView: View {
                         guideShiftMinutes = v; settings.setGuideShiftMinutes(v, for: source.id); state.sync(source.id, forceGuide: true)
                     })) {
                         ForEach(Array(stride(from: -720, through: 720, by: 30)), id: \.self) { m in Text(Self.shiftLabel(m)).tag(m) }
-                    }.labelsHidden().pickerStyle(.menu).fixedSize()
+                    }.labelsHidden().pickerStyle(.menu).fixedSize().atlas("setting.guideShift")
                 }
             }
             .padding(12).background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -316,13 +316,13 @@ private struct PlaylistSectionView: View {
                     Spacer(minLength: 12)
                     Picker("Provider's clock", selection: Binding(get: { catchupOffset }, set: { catchupOffset = $0; settings.setCatchupOffsetMinutes($0, for: source.id) })) {
                         ForEach(Array(stride(from: -720, through: 840, by: 30)), id: \.self) { m in Text(Self.offsetLabel(m)).tag(m) }
-                    }.labelsHidden().pickerStyle(.menu).fixedSize()
+                    }.labelsHidden().pickerStyle(.menu).fixedSize().atlas("setting.catchupClock")
                 }
                 SecondaryButton(title: "Use this Mac's time zone") {
                     let m = TimeZone.current.secondsFromGMT() / 60
                     let snapped = (m / 30) * 30
                     catchupOffset = snapped; settings.setCatchupOffsetMinutes(snapped, for: source.id)
-                }
+                }.atlas("setting.catchupClock")
             }
             .padding(12).background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             .task(id: source.id) { catchupOffset = settings.catchupOffsetMinutes(for: source.id) }
@@ -367,7 +367,7 @@ private struct PlaylistSectionView: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(PlaylistReport.text(source: source, counts: counts, scopes: scopes, hasLogin: hasLogin), forType: .string)
                 copied = true
-            }
+            }.atlas("screen.playlist.connection")
         }
     }
 
@@ -378,7 +378,7 @@ private struct PlaylistSectionView: View {
             Image(systemName: "key.fill").foregroundStyle(ColorTokens.warning)
             Text("This playlist needs its login again (it was restored without it).").font(Typography.caption)
             Spacer()
-            SecondaryButton(title: "Add login") { showEdit = true }
+            SecondaryButton(title: "Add login") { showEdit = true }.atlas("screen.playlist.connection")
         }.padding(12).background(ColorTokens.warning.opacity(0.1), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 

@@ -165,9 +165,8 @@ final class DiagnosticsUploader: @unchecked Sendable {
 }
 
 /// A small thread-safe counter.
-final class LockedCounter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 0
-    func withLock(_ body: (inout Int) -> Void) { lock.lock(); body(&count); lock.unlock() }
-    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
+final class LockedCounter: Sendable {
+    private let count = Locked(0)
+    func withLock(_ body: @Sendable (inout Int) -> Void) { count.withLock { body(&$0) } }
+    var value: Int { count.value }
 }

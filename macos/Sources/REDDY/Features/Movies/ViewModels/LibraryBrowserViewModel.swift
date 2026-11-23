@@ -57,7 +57,7 @@ final class LibraryBrowserViewModel {
     init(kind: ContentKind) { self.kind = kind }
 
     var noun: String { kind == .movie ? "movies" : "series" }
-    var countText: String { "\(total.formatted()) title\(total == 1 ? "" : "s")" }
+    var countText: String { Localized.plural(total, one: "%@ title", other: "%@ titles") }
 
     private func query(_ selection: SidebarSelection, source: UUID?, offset: Int, favorites: Bool = false, natural: NaturalQuery? = nil) -> VODQuery {
         var q = VODQuery(sourceID: source, search: natural?.text ?? search, sort: sort.vod, limit: pageSize, offset: offset)

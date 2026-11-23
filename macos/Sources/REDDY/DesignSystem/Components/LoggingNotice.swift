@@ -15,8 +15,8 @@ struct LoggingNotice: ViewModifier {
                 if !Task.isCancelled { show = true }
             }
             .alert("Help fix playback problems?", isPresented: $show) {
-                Button("Share Logs") { DiagnosticsUploader.shared.isEnabled = true; DiagnosticsUploader.shared.noticeShown = true }
-                Button("Not Now", role: .cancel) { DiagnosticsUploader.shared.isEnabled = false; DiagnosticsUploader.shared.noticeShown = true }
+                Button("Share Logs") { DiagnosticsUploader.shared.isEnabled = true; DiagnosticsUploader.shared.noticeShown = true }.atlas("control.logging.share")
+                Button("Not Now", role: .cancel) { DiagnosticsUploader.shared.isEnabled = false; DiagnosticsUploader.shared.noticeShown = true }.atlas("control.logging.share")
             } message: {
                 Text("When a stream fails for good, StreamSetu can send the recent playback log to the developer: which player was used, timings and error codes, your app and system version, your device model and a random report number made on this device. Server names are hidden, and logins, playlist names, titles and stream addresses are never sent. Nothing is sent unless you choose Share Logs. You can change this in Settings → Send Feedback.")
             }

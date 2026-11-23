@@ -33,6 +33,11 @@ final class SQLiteEPGRepository: EPGRepository {
             let rows: [(String, EPGProgram)] = try db.read { c in try c.query(sql, args) { ($0.string(10), Self.map($0)) } }
             for (cid, p) in rows where (out[cid]?.count ?? 0) < 2 { out[cid, default: []].append(p) }
         }
+        // Channels the playlist's own guide does not cover: guides the person added (guide hub tables).
+        let missing = channelIDs.filter { out[$0] == nil }
+        if !missing.isEmpty, let extra = try? hubProgrammes(channelIDs: missing, from: date, to: date.addingTimeInterval(6 * 3600)) {
+            for (cid, list) in extra { out[cid] = Array(list.sorted { $0.start < $1.start }.prefix(2)) }
+        }
         return out
     }
 
@@ -54,11 +59,14 @@ final class SQLiteEPGRepository: EPGRepository {
             let rows: [(String, EPGProgram)] = try db.read { c in try c.query(sql, args) { ($0.string(10), Self.map($0)) } }
             for (cid, p) in rows { out[cid, default: []].append(p) }
         }
+        let missing = channelIDs.filter { out[$0] == nil }
+        if !missing.isEmpty, let extra = try? hubProgrammes(channelIDs: missing, from: from, to: to) { for (cid, list) in extra { out[cid] = list } }
         return out
     }
 
     func program(id: Int64) throws -> EPGProgram? {
-        try db.read { try $0.query(Self.programSelect + " FROM epg_programs p WHERE p.id=?", [id], Self.map).first }
+        if id >= Self.hubIDBase { return try hubProgram(id: id) }
+        return try db.read { try $0.query(Self.programSelect + " FROM epg_programs p WHERE p.id=?", [id], Self.map).first }
     }
 
     func guideCoverage(sourceID: UUID) throws -> (channels: Int, programs: Int, mapped: Int, lastUpdate: Date?) {
@@ -75,7 +83,7 @@ final class SQLiteEPGRepository: EPGRepository {
 
     func guideChannels(sourceID: UUID) throws -> [(id: String, name: String)] {
         try db.read { c in
-            try c.query("SELECT xmltv_id, COALESCE(display_name, xmltv_id) FROM epg_channels WHERE source_id=? ORDER BY display_name COLLATE NOCASE", [sourceID]) {
+            try c.query("SELECT xmltv_id, COALESCE(display_name, xmltv_id) FROM epg_channels WHERE source_id=? ORDER BY display_name COLLATE SETU_LOCALE", [sourceID]) {
                 (id: $0.string(0), name: $0.string(1))
             }
         }

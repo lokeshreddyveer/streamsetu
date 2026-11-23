@@ -51,6 +51,11 @@ final class AppContainer {
     let channelHealth: ChannelHealthService
     let statistics: StatisticsService
     let metadata: MetadataMatchService
+    /// Matches missing artwork by itself in the background (see ArtworkAutoMatcher).
+    let artworkMatcher: ArtworkAutoMatcher
+    private let matchProfile = MatchProfileBox()
+    /// The system's view of the connection; "offline" is only ever said when it reports no path at all.
+    let matchNetwork = PathMatchNetwork()
     let newEpisodes: NewEpisodeService
     let people: PeopleIndexService
     let watchQueue: WatchQueue
@@ -86,11 +91,11 @@ final class AppContainer {
     #endif
     private(set) var nowPlaying: NowPlayingService!
 
-    init(databasePath: String? = nil, credentials: CredentialStore = StandardCredentialStore()) throws {
+    init(databasePath: String? = nil, openedDatabase: DatabaseManager? = nil, credentials: CredentialStore = StandardCredentialStore()) throws {
         #if os(macOS)
         if databasePath == nil { LegacyDefaults.migrate(from: AppConfiguration.legacyBundleID, into: .standard) }     // keep the settings made under the old name
         #endif
-        db = try databasePath.map { try DatabaseManager(path: $0) } ?? DatabaseManager.standard()
+        db = try openedDatabase ?? databasePath.map { try DatabaseManager(path: $0) } ?? DatabaseManager.standard()          // an already opened (and migrated) database comes from the launch task, so the main thread does not wait for it
         catalog = SQLiteCatalogRepository(db: db)
         epgRepo = SQLiteEPGRepository(db: db)
         searchRepo = SQLiteSearchRepository(db: db, restriction: catalog.restriction)
@@ -132,7 +137,13 @@ final class AppContainer {
         parental = ParentalControls(catalog: catalog)
         appLock = AppLock(settings: settings)
         statistics = StatisticsService(db: db, catalog: catalog)
-        metadata = MetadataMatchService(db: db, credentials: credentials, http: http)
+        metadata = MetadataMatchService(db: db, credentials: credentials, http: http, defaults: settings.defaultsStore, pacer: RequestPacer(interval: ArtworkAutoMatcher.interval))
+        let box = matchProfile
+        let matchStore = MatchStateStore(defaults: settings.defaultsStore, profileID: { box.id })
+        metadata.lookupsAllowed = { matchStore.enabled }
+        let providerDetails = details
+        metadata.setProviderLookup { c in c.isSeries ? await providerDetails.extras(series: c.id)?.tmdbID : await providerDetails.extras(movie: c.id)?.tmdbID }          // the provider's own TMDB id for a title that is opened
+        artworkMatcher = ArtworkAutoMatcher(service: metadata, store: matchStore, network: matchNetwork)
         maintenance = LibraryMaintenanceService(db: db, health: health)
         backup = BackupService(db: db, catalog: catalog, sources: sources)
         dataReset = DataResetService(db: db, catalog: catalog, sources: sources, history: historyRepo)
@@ -230,6 +241,7 @@ final class AppContainer {
         profiles = ProfileService(db: db, defaults: settings.defaultsStore) { [weak self] _ in self?.profileSwitched() }
         profiles.willSwitch = { [weak self] in self?.playback.stop(); self?.lan.setEnabled(false) }       // nothing in flight may touch the tables while they change hands
         parental.kidsMode = profiles.active.kind == .kids
+        matchProfile.id = profiles.active.id
         applyViewingLimits()
         playback.onSessionChange = { [weak self] in self?.lan.nudge() }
         trakt.allowed = { [weak self] in !(self?.parental.kidsMode ?? false) }
@@ -251,31 +263,36 @@ final class AppContainer {
     /// What is dropped, at once, when a folder is locked or hidden or an unlocked session ends: caches, what the shelves remembered, the pictures. See PrivacyPurge.
     private func wirePrivacy() {
         let memory = recommendationMemory, purge = privacy, featured = featured
-        let smart = smartMix
-        parental.observeRestriction { Task { await featured.purge() }; smart.invalidate(.lockOrRestrictionChange) }
-        observeProfileSwitch { smart.invalidate(.profileSwitch) }
+        let smart = smartMix, matcher = artworkMatcher
+        parental.observeRestriction { [matcher] in Task { await featured.purge() }; smart.invalidate(.lockOrRestrictionChange); matcher.restrictionChanged() }
+        observeProfileSwitch { [matcher] in smart.invalidate(.profileSwitch); matcher.restrictionChanged(); matcher.start() }
         indexer.identityChanged.value = { [weak self] _ in
             smart.invalidate(.syncChanged)
+            matcher.start()          // new titles may be waiting for artwork
             // A sync (a playlist added after a folder was locked or hidden) can lock or hide its twin folders in the database: the lock badges and the purge hooks are told now, not at the next reload.
             Task { @MainActor in self?.parental.reloadLocks(onlyIfChanged: true); self?.hiddenArrived() }
         }
         let metadata = metadata
-        parental.onFoldersLocked = { ids in
+        let hub = HubStore(db: db)          // the extra sources' saved details follow the same purge rules
+        parental.onFoldersLocked = { [weak self] ids in
+            matcher.restrictionChanged()
             _ = try? memory.purgeRestricted()
             smart.invalidate(.lockOrRestrictionChange)
-            Task.detached(priority: .utility) { metadata.purgeStored(inFolders: ids); await purge.evictArtwork(inFolders: ids) }
+            Task.detached(priority: .utility) { metadata.purgeStored(inFolders: ids); hub.purge(inFolders: ids); await purge.evictArtwork(inFolders: ids) }
         }
         favoritesRepo.onFoldersHidden = { [weak self] ids in
+            matcher.restrictionChanged()
             _ = try? memory.purgeRestricted()
             smart.invalidate(.hideChange)
-            Task.detached(priority: .utility) { metadata.purgeStored(inFolders: ids); await purge.evictArtwork(inFolders: ids) }
+            Task.detached(priority: .utility) { metadata.purgeStored(inFolders: ids); hub.purge(inFolders: ids); await purge.evictArtwork(inFolders: ids) }
             // The featured slideshow, Home, the folder rows and the widget were built while these folders were visible: a restriction change rebuilds them all.
             Task { @MainActor in self?.syncKnownHidden(); self?.parental.foldersHiddenChanged() }
         }
         favoritesRepo.onHiddenChanged = { [weak self] ids, hidden in
             if hidden {
+                matcher.restrictionChanged()
                 _ = try? memory.purgeRestricted()
-                Task.detached(priority: .utility) { metadata.purgeStoredTitles(ids) }
+                Task.detached(priority: .utility) { metadata.purgeStoredTitles(ids); hub.purge(items: ids) }
             }
             smart.invalidate(.hideChange)
             Task { @MainActor in self?.syncKnownHidden(); self?.parental.foldersHiddenChanged() }
@@ -283,13 +300,13 @@ final class AppContainer {
         parental.onRelock = { [weak self] in self?.sweepRestrictedArtwork() }
         if parental.artworkSweepPending { sweepRestrictedArtwork() }          // the last session ended while unlocked (a crash or a quit): its pictures are still on disk
         _ = try? memory.purgeRestricted()
-        _ = metadata.purgeExpired()
+        _ = metadata.purgeExpired(); hub.purgeExpired()
         let restrictedNow = (try? purge.restrictedFolderIDs()) ?? []
         knownHidden = Set((try? db.read { try $0.query("SELECT item_id FROM hidden_items WHERE kind='category'") { $0.string(0) } }) ?? [])
         if ProcessInfo.processInfo.environment["STREAMSETU_TESTING"] == nil {
             let identity = IdentityStore(db: db), database = db
             Task.detached(priority: .background) {
-                metadata.purgeStored(inFolders: restrictedNow)          // anything saved about a title that is locked or hidden now
+                metadata.purgeStored(inFolders: restrictedNow); hub.purge(inFolders: restrictedNow)          // anything saved about a title that is locked or hidden now
                 SchemaV19.ensureQueryIndexes(db: database)              // the big indexes are built here, never in the launch migration
                 identity.backfillAll()
             }          // titles that have no identity yet, a few thousand at a time
@@ -333,6 +350,7 @@ final class AppContainer {
 
     /// Another profile is now in use: its own data is in place, so screens reload; kids profiles hide the locked folders; sync, which carries the first profile only, pauses.
     private func profileSwitched() {
+        matchProfile.id = profiles.active.id
         parental.kidsMode = profiles.active.kind == .kids
         for f in profileObservers { f() }
         applyViewingLimits()

@@ -411,8 +411,4 @@ final class TSBridge: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     }
 }
 
-final class Once: @unchecked Sendable {
-    private var taken = false
-    private let lock = NSLock()
-    func take() -> Bool { lock.withLock { if taken { return false }; taken = true; return true } }
-}
+typealias Once = OnceFlag

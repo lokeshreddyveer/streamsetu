@@ -103,6 +103,8 @@ struct AssistantCoverageRow: Equatable {
         "Home": covered("feature", "Home", read: "screen name, search text", act: "open_screen, search_everything", restrictions: "n/a", error: "yes"),
         "LiveTV": covered("feature", "LiveTV", read: "search_everything, tv_guide, now_playing", act: "play_title, open_screen", restrictions: "yes: AssistantAuthorizer", error: "yes"),
         "Movies": covered("feature", "Movies", read: "search_library, title_details, similar_titles", act: "play_title, favourite, watch_later, open_screen with filters", restrictions: "yes: AssistantAuthorizer", error: "yes"),
+        "Netflix": unsupported("feature", "Netflix", "One of the outside websites (streaming services) shown in a web view (Mac only), with the Services menu and pinned items in the top bar. Setu does not read or control any of them: nothing is injected into the page, and sign-in, cookies and playback stay between the person and the website."),
+        "Streaming": unsupported("feature", "Streaming", "One of the outside websites (streaming services) shown in a web view (Mac only), with the Services menu and pinned items in the top bar. Setu does not read or control any of them: nothing is injected into the page, and sign-in, cookies and playback stay between the person and the website."),
         "Onboarding": unsupported("feature", "Onboarding", ui: "yes", "First-run screens; the assistant is not shown there."),
         "Opening": unsupported("feature", "Opening", ui: "yes", "The opening and What's New at launch; the assistant is not shown there."),
         "Player": covered("feature", "Player", read: "diagnose_playback, now_playing, recommend_engine", act: "control_playback, retry_playback, switch_engine, select_track", restrictions: "yes: AssistantAuthorizer (session, profile)", error: "yes: diagnosis table"),
@@ -117,15 +119,17 @@ struct AssistantCoverageRow: Equatable {
 
     /// Files that contain a context menu. None are mapped to the registry yet.
     static let contextMenus: [String: String] = [
+        "Features/Streaming/PinnedServicesBar.swift": "Pinned service menu (open, pin or unpin, move left or right): not mapped yet.",
         "DesignSystem/Components/Sidebar/ReddySidebar.swift": "Sidebar folder menu (lock, hide, rename): not mapped yet.",
         "Features/CommandCenter/Views/CommandCenterView.swift": "Channel and folder manager menus: not mapped yet.",
         "Features/Files/FilesView.swift": "Local file menu: not mapped yet.",
         "Features/Files/PodcastsView.swift": "Podcast menu: not mapped yet.",
         "Features/Home/Views/HomeScreen.swift": "Title card menu (favourite, watch later, hide): reachable as the favourite and watch_later tools, not as its own entry.",
         "Features/LiveTV/Views/LiveTVScreen.swift": "Channel menu (favourite, reminders, versions): partly reachable as favourite and play_title.",
-        "Features/Movies/Views/LibraryScreen.swift": "Title menu: partly reachable as favourite, watch_later and play_title.",
+        "DesignSystem/Components/Cards/FeaturedSlideshow.swift": "Featured banner menu: the shared title menu (same as the tiles); partly reachable as favourite, watch_later and play_title.",
+        "Features/Shared/TileMenu.swift": "Title menu on every tile (one shared builder): partly reachable as favourite, watch_later and play_title.",
         "Features/Player/Views/MultiViewWindow.swift": "Multi-view tile menu: not mapped yet.",
-        "Features/Series/Views/SeriesDetailView.swift": "Episode menu (mark watched): not mapped yet.",
+        "Features/Series/Views/EpisodeCard.swift": "Episode menu (play, watch privately, mark watched, reset progress): declared in the Atlas as the episode menu; not an assistant action yet.",
         "Features/TVGuide/Components/GuideRow.swift": "Programme menu (remind, record): not mapped yet.",
     ]
 
@@ -147,7 +151,7 @@ struct AssistantCoverageRow: Equatable {
         [.command(.init(kind: .go(.discover, library: nil))), .command(.init(kind: .play("x"))), .command(.init(kind: .resume)), .command(.init(kind: .lastChannel)),
          .command(.init(kind: .favourite("x", on: true))), .command(.init(kind: .watchLater("x", on: true))), .setting(id: "theme", value: "x"), .playback("pause"), .refresh, .retry,
          .engine("mpv"), .track(audio: true, id: nil, label: ""), .syncGuide, .copyReport(""),
-         .playItem(id: "x", isChannel: false, title: "x"), .toggleList(id: "x", kind: .movie, watchLater: false, on: true, title: "x")]
+         .playItem(id: "x", isChannel: false, title: "x"), .toggleList(id: "x", kind: .movie, watchLater: false, on: true, title: "x"), .openAtlas(id: "screen.tab.home")]
     }
 
     // MARK: the matrix

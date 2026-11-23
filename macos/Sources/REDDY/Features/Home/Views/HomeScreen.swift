@@ -6,15 +6,15 @@ struct HomeScreen: View {
 
     var body: some View {
         switch router.selection {
-        case .shortcut(.tonight): TonightPage()
-        case .shortcut(.continueWatching): ContinueWatchingPage()
-        case .shortcut(.recentlyWatched): RecentlyWatchedPage()
-        case .shortcut(.watchHistory): WatchHistoryPage()
-        case .shortcut(.statistics): StatisticsPage()
-        case .shortcut(.favorites): FavoritesPage()
-        case .shortcut(.watchLater): WatchLaterPage()
-        case .shortcut(.collections): CollectionsPage()
-        default: DiscoverPage()
+        case .shortcut(.tonight): TonightPage().atlasScreen("screen.shortcut.tonight")
+        case .shortcut(.continueWatching): ContinueWatchingPage().atlasScreen("screen.shortcut.continueWatching")
+        case .shortcut(.recentlyWatched): RecentlyWatchedPage().atlasScreen("screen.shortcut.recentlyWatched")
+        case .shortcut(.watchHistory): WatchHistoryPage().atlasScreen("screen.shortcut.watchHistory")
+        case .shortcut(.statistics): StatisticsPage().atlasScreen("screen.shortcut.statistics")
+        case .shortcut(.favorites): FavoritesPage().atlasScreen("screen.shortcut.favorites")
+        case .shortcut(.watchLater): WatchLaterPage().atlasScreen("screen.shortcut.watchLater")
+        case .shortcut(.collections): CollectionsPage().atlasScreen("screen.shortcut.collections")
+        default: DiscoverPage().atlasScreen("screen.shortcut.discover")
         }
     }
 }
@@ -50,6 +50,10 @@ struct LibraryItemCard: View {
     var removal: (title: String, action: () -> Void)?
     /// Folder rows only: the quiet line (short genre or year, or nothing) replaces the usual one, and the tile reserves its lines so a row never jumps.
     var folderLine: String??
+    /// What the tile calls the title (the cleaned name); the original when nil.
+    var displayTitle: String?
+    /// Shelves: both text lines keep their room, so every tile of a row is the same height.
+    var uniformHeight = false
     @Environment(\.container) private var container
     @Environment(AppState.self) private var state
     @Environment(AppRouter.self) private var router
@@ -57,6 +61,8 @@ struct LibraryItemCard: View {
     private var cardModel: PosterCardModel {
         var m = PosterCardModel(item: item, rank: rank, progress: progress ?? state.partialProgress(item.id), isFavorite: state.isFavorite(item.id), isNew: state.hasNewEpisodes(item.id), isWatched: state.isWatched(item.id))
         if let folderLine { m.subtitle = folderLine ?? ""; m.reservesLines = true }
+        if uniformHeight { m.reservesLines = true }
+        m.displayTitle = displayTitle
         return m
     }
 
@@ -64,17 +70,18 @@ struct LibraryItemCard: View {
         ReddyPosterCard(model: cardModel, width: width,
                         onOpen: { PlayActions.open(item, router: router) },
                         onPlay: { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item) } })
-            .contextMenu {
-                Button("Play") { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item) } }
-                Button("Watch Privately", systemImage: "eye.slash") { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item, privately: true) } }
-                Button("View details") { PlayActions.open(item, router: router) }
-                Button(state.isFavorite(item.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(item.id, kind: item.kind) }
-                Button(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(item.id, kind: item.kind) }
-                QueueMenu(item: item)
-                FavoriteOrderMenu(item: item)
-                CollectionMenu(itemID: item.id, kind: item.kind)
-                if let removal { Divider(); Button(removal.title, role: .destructive, action: removal.action) }
-            }
+            .tileMenu(item, handlers: menuHandlers)
+    }
+
+    private var menuHandlers: TileMenuHandlers {
+        let c = container, toasts = state.toasts, r = router, it = item
+        var h = TileMenuHandlers(play: { if let c { PlayActions(container: c, toasts: toasts).play(it) } },
+                                 playPrivately: { if let c { PlayActions(container: c, toasts: toasts).play(it, privately: true) } },
+                                 open: { PlayActions.open(it, router: r) })
+        if let cat = it.categoryID { h.openFolder = { r.openFolder(it.isSeries ? .series : .movies, categoryID: cat) } }
+        h.goToCast = { CastFocus.request(it.id); PlayActions.open(it, router: r) }          // the title page opens with its cast row in view
+        h.removal = removal
+        return h
     }
 }
 
@@ -90,7 +97,7 @@ struct ClearMenu: View {
                 ForEach(group) { o in Button(o.title, role: o.destructive ? .destructive : nil, action: o.action) }
             }
         } label: { Label("Clear", systemImage: "trash") }
-        .menuStyle(.button).fixedSize()
+        .menuStyle(.button).fixedSize().atlas("control.home.clearMenu")
     }
 }
 
@@ -142,6 +149,10 @@ struct DiscoverPage: View {
     @State private var loaded = false
     @State private var slides: [FeaturedSlide] = []
     @State private var filter = DiscoverFilter()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The view switch of a ranked shelf rebuilds only that shelf; a newer tap on the same shelf cancels the older build.
+    @State private var modeTasks: [String: Task<Void, Never>] = [:]
+    @State private var openCollection: CollectionTile?
 
     private var slideshowKey: String { "\(state.activeSourceID?.uuidString ?? "")-\(FeaturedPolicy.dayKey(Date()))-\(content != nil)-\(state.shuffleTick)" }
 
@@ -157,31 +168,42 @@ struct DiscoverPage: View {
                 ScrollView {
                     if state.hasLibrary, !slides.isEmpty {
                         FeaturedSlideshow(slides: slides, kicker: "DISCOVER · FROM YOUR LIBRARY", height: FeaturedLayout.bannerHeight(contentHeight: g.size.height),
-                                          onPlay: { play($0.item) }, onInfo: { PlayActions.open($0.item, router: router) })
+                                          onPlay: { play($0.item) }, onInfo: { PlayActions.open($0.item, router: router) },
+                                          menu: { s in AnyView(TileMenuContent(item: s.item, handlers: MacTileHandlers.make(s.item, container: container, toasts: state.toasts, router: router))) })
                             .padding(.bottom, 10)
                     }
-                    VStack(alignment: .leading, spacing: 16) { rails }.padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: HomeLayout.rowGap) { rails }.padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
                         .animation(AnimationTokens.page, value: loaded)
                 }
                 .scrollIndicators(.hidden).frame(maxHeight: .infinity).clipped()
             }
             .padding(.horizontal, LayoutTokens.gutter).padding(.top, 10)
         }
+        .sheet(item: $openCollection) { tile in
+            VStack(spacing: 0) {
+                HStack { Text(tile.name).font(.system(size: 18, weight: .semibold)).accessibilityAddTraits(.isHeader); Spacer(); Button("Done") { openCollection = nil }.keyboardShortcut(.defaultAction).atlas("control.home.collectionDone") }.padding(16)
+                CollectionGrid(tile: tile, width: 140) { item in LibraryItemCard(item: item, width: 140, uniformHeight: true) }
+            }.frame(minWidth: 640, minHeight: 520)
+        }
         .onAppear { state.reloadWatched() }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(state.shuffleTick)") {
             guard let c = container, state.hasLibrary else { loaded = true; return }
             let sid = state.activeSourceID
             // The engine picks the mix off the main thread; if the identity layer is not ready it returns nil and the earlier Home is drawn.
-            let smart = await c.smartMix.home(profile: c.profiles.activeID, sourceID: sid, preferredLanguage: c.settings.preferredAudioLanguage)
-            let built = await Task.detached { try? c.discover.build(sourceID: sid, smart: smart) }.value
+            let smart = await c.smartMix.home(profile: c.profiles.activeID, sourceID: sid, preferredLanguage: c.settings.preferredAudioLanguage, kids: c.parental.kidsMode)
+            let built = await offMain { try? c.discover.build(sourceID: sid, smart: smart) }
             content = built; loaded = true
             c.smartMix.refreshTrendingIfNeeded()
+            c.smartMix.refreshListsIfNeeded(genres: (built?.shelves ?? []).compactMap { $0.genre })
+            let warm = (built?.shelves ?? []).compactMap { sh in sh.smartID.flatMap { id in sh.mode.map { (id: id, mode: $0) } } }
+            await c.smartMix.warmOtherViews(profile: c.profiles.activeID, sourceID: sid, preferredLanguage: c.settings.preferredAudioLanguage, shelves: warm, kids: c.parental.kidsMode)
         }
         // Keyed on the playlist and the day (and on whether content exists yet), not on filters or refreshes: choosing a
         // filter or a catalog update never rebuilds or restarts the slideshow.
         .task(id: slideshowKey) {
             guard let c = container, let content, state.hasLibrary else { return }
             let ranked = content.heroOrder.isEmpty ? DiscoverFilter.slideshowOrder(content.shelves) : content.heroOrder
+            c.artworkMatcher.expressHero(ranked)          // hero candidates: posters and backdrops are matched at once
             let built = await c.featured.discoverSlides(ranked: ranked, sourceID: state.activeSourceID, revision: c.parental.restrictionRevision)
             if !built.isEmpty || slides.isEmpty { slides = built }
         }
@@ -191,20 +213,64 @@ struct DiscoverPage: View {
         if !state.hasLibrary {
             EmptyStateView(symbol: "list.bullet.rectangle", title: "No playlist yet", message: "Add a playlist to start watching.", actionTitle: "Add playlist") { router.modal = .addPlaylist }.frame(height: 300)
         } else if !loaded {
-            HStack(spacing: 11) { ForEach(0..<7, id: \.self) { _ in SkeletonBlock(width: 150, height: 218, radius: 8) } }
+            ForEach(0..<3, id: \.self) { _ in ShelfSkeleton(tileWidth: 150, tiles: 7) }
         } else if let content, !content.shelves.isEmpty {
             let shown = filter.apply(to: content.shelves)
             if shown.isEmpty {
                 EmptyStateView(symbol: "line.3.horizontal.decrease.circle", title: "Nothing matches", message: "No titles match these filters. Clear them to see everything.", actionTitle: "Clear filters") { filter = DiscoverFilter() }.frame(height: 240)
             } else {
                 ForEach(shown) { shelf in
-                    ReddyRail(title: shelf.title, caption: shelf.caption, items: shelf.items) { item, index in
-                        LibraryItemCard(item: item, rank: shelf.ranked ? index : nil)
+                    if !shelf.collections.isEmpty {
+                        ReddyRail(title: shelf.title, caption: shelf.caption, items: shelf.collections) { tile, _ in CollectionTileCard(tile: tile, width: 150) { openCollection = tile } }
+                    } else {
+                    let labels = DisplayTitle.labels(shelf.items.map { ($0.id, $0.title, $0.year) })
+                    ReddyRail(title: shelf.title, caption: shelf.caption, mode: shelf.mode, onMode: { m in setMode(m, shelf) },
+                              onSeeAll: shelf.genre.map { key in { openGenre(key) } }, items: shelf.items) { item, index in
+                        LibraryItemCard(item: item, rank: shelf.ranked ? index : nil, displayTitle: labels[item.id], uniformHeight: true)
+                    }
                     }
                 }
+                if !content.browseGenres.isEmpty, filter.isDefault { browseByGenre(content.browseGenres) }
             }
         } else {
             EmptyStateView(symbol: "film.stack", title: "Nothing to discover yet", message: state.isSyncing ? "Your playlist is still loading." : "This playlist has no movies or series.").frame(height: 280)
+        }
+    }
+
+    private func setMode(_ m: SMShelfMode, _ shelf: DiscoverShelf) {
+        guard let c = container, let id = shelf.smartID, shelf.mode != m else { return }
+        let profile = c.profiles.activeID, source = state.activeSourceID, lang = c.settings.preferredAudioLanguage, kids = c.parental.kidsMode
+        c.smartMix.setMode(m, profile: profile, shelf: id)
+        if var cur = content, let i = cur.shelves.firstIndex(where: { $0.id == shelf.id }) { cur.shelves[i].mode = m; content = cur }      // the control answers at once
+        modeTasks[id]?.cancel()
+        modeTasks[id] = Task {
+            guard let new = await c.smartMix.shelfView(profile: profile, sourceID: source, preferredLanguage: lang, smartID: id, mode: m, kids: kids, avoid: Set((content?.shelves ?? []).filter { $0.id != shelf.id }.flatMap { $0.items.map(\.id) })), !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { content = content?.replacingShelf(new) }
+        }
+    }
+
+    /// "See all" / a genre chip: the Movies (or Series, for a series-only genre) list with that genre chosen and the best rated first.
+    private func openGenre(_ key: String) {
+        guard let g = SMGenres.byKey[key] else { return }
+        var f = LibraryFilter(); f.genreName = g.name; f.genres = g.words
+        router.libraryFilter = f
+        router.navigate(g.scope == .series ? .series : .movies, g.scope == .series ? .shortcut(.library) : .shortcut(.allMovies))
+    }
+
+    /// The "Browse by genre" row: every genre with enough titles, so none is out of reach on a day it is not on a shelf.
+    private func browseByGenre(_ genres: [BrowseGenre]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(SMNaming.browseByGenre.loc).font(.system(size: 16, weight: .semibold)).tracking(-0.2).accessibilityAddTraits(.isHeader)
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(genres) { g in
+                        Button { openGenre(g.key) } label: {
+                            Text(SMGenres.byKey[g.key]?.name.loc ?? LocalizedStringKey(g.title)).font(.system(size: 12, weight: .medium)).lineLimit(1).padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(Color.primary.opacity(0.10), in: Capsule())
+                        }.buttonStyle(.plain).accessibilityLabel(Text("\(g.title), \(g.count) titles")).atlas("control.home.genre")
+                    }
+                }.padding(.vertical, 2)
+            }.scrollIndicators(.hidden)
         }
     }
 
@@ -213,7 +279,7 @@ struct DiscoverPage: View {
             InlineSearchField(text: $filter.query, prompt: "Filter Discover…").frame(minWidth: 180, maxWidth: 320)
             Spacer(minLength: 8)
             Picker("Order", selection: $filter.mode) { ForEach(DiscoverMode.allCases) { Text($0.rawValue).tag($0) } }
-                .pickerStyle(.segmented).labelsHidden().fixedSize()
+                .pickerStyle(.segmented).labelsHidden().fixedSize().atlas("control.home.discoverOrder")
             let languages = LanguageTags.available(in: content.shelves).prefix(14)
             if !languages.isEmpty {
                 Menu {
@@ -221,9 +287,9 @@ struct DiscoverPage: View {
                     Divider()
                     ForEach(Array(languages), id: \.language) { l in Button { filter.language = l.language } label: { Label("\(l.language) (\(l.count))", systemImage: filter.language == l.language ? "checkmark" : "") } }
                 } label: { Label(filter.language ?? "Language", systemImage: "globe") }
-                    .menuStyle(.button).fixedSize()
+                    .menuStyle(.button).fixedSize().atlas("control.home.discoverLanguage")
             }
-            if !filter.isDefault { Button("Clear") { filter = DiscoverFilter() }.buttonStyle(.plain).font(Typography.captionMedium).foregroundStyle(ColorTokens.textSecondary) }
+            if !filter.isDefault { Button("Clear") { filter = DiscoverFilter() }.buttonStyle(.plain).font(Typography.captionMedium).foregroundStyle(ColorTokens.textSecondary).atlas("control.home.discoverClear") }
         }
     }
 
@@ -257,14 +323,14 @@ struct ContinueWatchingPage: View {
         }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") { await load() }
         .confirmationDialog("Clear Continue Watching?", isPresented: $confirmClear) {
-            Button("Clear Continue Watching", role: .destructive) { clearAll() }
+            Button("Clear Continue Watching", role: .destructive) { clearAll() }.atlas("screen.shortcut.continueWatching")
         } message: { Text("Forgets where you stopped in every movie and episode of this playlist. Your watch history and favorites are not changed.") }
     }
 
     private func load() async {
         guard let c = container else { return }
         let sid = state.activeSourceID
-        items = await Task.detached { (try? c.history.continueWatching(limit: 60, sourceID: sid)) ?? [] }.value
+        items = await offMain { (try? c.history.continueWatching(limit: 60, sourceID: sid)) ?? [] }
         loaded = true
     }
 
@@ -272,38 +338,33 @@ struct ContinueWatchingPage: View {
         guard let c = container else { return }
         let prefix = HistoryClearing.prefix(state.activeSourceID)
         items = []
-        Task { await Task.detached { try? c.historyRepo.clearResumePoints(sourcePrefix: prefix) }.value; state.catalogVersion += 1 }
-    }
-
-    private func remove(_ ci: ContinueItem) {
-        guard let c = container else { return }
-        let id: String
-        switch ci.content { case .movie(let m): id = m.id; case .episode(let e, _): id = e.id }
-        items.removeAll { $0.id == ci.id }
-        Task { await Task.detached { try? c.historyRepo.clearProgress(itemID: id) }.value; state.catalogVersion += 1 }
+        Task { await offMain { try? c.historyRepo.clearResumePoints(sourcePrefix: prefix) }; state.catalogVersion += 1 }
     }
 
     private func resumeCard(_ ci: ContinueItem) -> some View {
         Button { resume(ci) } label: {
-            LandscapeCard(title: ci.title, subtitle: "\(DurationFormatter.short(max(0, ci.progress.durationSeconds - ci.progress.positionSeconds))) left", imageURL: ci.artworkURL, progress: ci.progress.fraction)
+            LandscapeCard(title: ci.title, subtitle: Localized.string("%@ left", DurationFormatter.short(max(0, ci.progress.durationSeconds - ci.progress.positionSeconds))), imageURL: ci.artworkURL, progress: ci.progress.fraction, itemID: ci.id, rating: { switch ci.content { case .movie(let m): RatingRule.credible(m.rating); case .episode(_, let s): RatingRule.credible(s.rating) } }())
         }
         .buttonStyle(.plain).accessibilityLabel("Resume \(ci.title)")
-        .contextMenu {
-            Button("Resume") { resume(ci) }
-            Button("Don't Recommend This", systemImage: "hand.thumbsdown") { stopRecommending(ci) }
-            Divider()
-            Button("Remove from Continue Watching", role: .destructive) { remove(ci) }
-        }
+        .prioritizesArtwork((ci.artworkURL ?? "").isEmpty ? [ci.id] : [])
+        .tileMenu(ci.libraryItem, kind: .continueWatching, handlers: continueHandlers(ci)).atlas("screen.shortcut.continueWatching")
     }
 
-    /// Writes only the "do not recommend" marker. The entry stays in Continue Watching and nothing about playback changes.
-    private func stopRecommending(_ ci: ContinueItem) {
-        guard let c = container else { return }
-        let id: String, profile = c.profiles.activeID
-        switch ci.content { case .movie(let m): id = m.id; case .episode(_, let s): id = s.id }
-        if c.smartMix.dismiss(profile: profile, itemID: id) {
-            state.toasts.show("Won't be recommended again", symbol: "hand.thumbsdown", kind: .success, duration: 8, actionTitle: "Undo") { c.smartMix.undismiss(profile: profile, itemID: id) }
-        } else { state.toasts.show("This title can't be changed here", symbol: "exclamationmark.circle", kind: .info) }
+    /// The same menu as every other tile; removing writes only the Continue Watching marker (progress, resume point and history stay).
+    private func continueHandlers(_ ci: ContinueItem) -> TileMenuHandlers {
+        let c = container, r = router, item = ci.libraryItem
+        var h = TileMenuHandlers(play: { resume(ci) },
+                                 playPrivately: {
+                                     switch ci.content {
+                                     case .movie(let m): c?.playback.play(movie: m, privately: true)
+                                     case .episode(let e, let s): c?.playback.play(episode: e, series: s, privately: true)
+                                     }
+                                 },
+                                 open: { PlayActions.open(item, router: r) })
+        if let cat = item.categoryID { h.openFolder = { r.openFolder(item.isSeries ? .series : .movies, categoryID: cat) } }
+        h.goToCast = { CastFocus.request(item.id); PlayActions.open(item, router: r) }
+        h.continueID = ci.id
+        return h
     }
 
     private func resume(_ ci: ContinueItem) {
@@ -341,7 +402,7 @@ struct RecentlyWatchedPage: View {
                                 Button("Watch Privately", systemImage: "eye.slash") { container?.playback.play(channel: ch, queue: channels, privately: true) }
                                 Divider()
                                 Button("Remove from Recently Watched", role: .destructive) { remove(ch.id) }
-                            }
+                            }.atlas("context.home.recentChannel")
                     }
                 }
                 if !movies.isEmpty { ReddyRail(title: "Movies", items: movies) { m, _ in LibraryItemCard(item: .movie(m), width: 155, removal: ("Remove from Recently Watched", { remove(m.id) })) } }
@@ -350,7 +411,7 @@ struct RecentlyWatchedPage: View {
         }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") { await load() }
         .confirmationDialog("Clear everything in Recently Watched?", isPresented: $confirmClear) {
-            Button("Clear Recently Watched", role: .destructive) { clear(nil) }
+            Button("Clear Recently Watched", role: .destructive) { clear(nil) }.atlas("screen.shortcut.recentlyWatched")
         } message: { Text("Empties these lists for this playlist. Your watch history log, Continue Watching and favorites are not changed.") }
     }
 
@@ -363,14 +424,14 @@ struct RecentlyWatchedPage: View {
     private func load() async {
         guard let c = container else { return }
         let sid = state.activeSourceID
-        let r = await Task.detached { ((try? c.history.recentChannels(limit: 24, sourceID: sid)) ?? [], (try? c.history.recentMovies(limit: 24, sourceID: sid)) ?? [], (try? c.history.recentSeries(limit: 24, sourceID: sid)) ?? []) }.value
+        let r = await offMain { ((try? c.history.recentChannels(limit: 24, sourceID: sid)) ?? [], (try? c.history.recentMovies(limit: 24, sourceID: sid)) ?? [], (try? c.history.recentSeries(limit: 24, sourceID: sid)) ?? []) }
         channels = r.0; movies = r.1; series = r.2; loaded = true
     }
 
     private func remove(_ id: String) {
         guard let c = container else { return }
         channels.removeAll { $0.id == id }; movies.removeAll { $0.id == id }; series.removeAll { $0.id == id }
-        Task { await Task.detached { try? c.historyRepo.removeRecent(itemID: id) }.value }
+        Task { await offMain { try? c.historyRepo.removeRecent(itemID: id) } }
     }
 
     private func clear(_ kind: ContentKind?) {
@@ -379,7 +440,7 @@ struct RecentlyWatchedPage: View {
         if kind == nil || kind == .channel { channels = [] }
         if kind == nil || kind == .movie { movies = [] }
         if kind == nil || kind == .series { series = [] }
-        Task { await Task.detached { try? c.historyRepo.clearRecent(kind: kind, sourcePrefix: prefix) }.value }
+        Task { await offMain { try? c.historyRepo.clearRecent(kind: kind, sourcePrefix: prefix) } }
     }
 }
 
@@ -410,7 +471,7 @@ struct WatchHistoryPage: View {
         }
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)") { await load() }
         .confirmationDialog(confirm == .everything ? "Clear all history and resume points?" : "Clear the whole watch history?", isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }), titleVisibility: .visible) {
-            if confirm == .everything { Button("Clear Everything", role: .destructive) { clearEverything() } }
+            if confirm == .everything { Button("Clear Everything", role: .destructive) { clearEverything() }.atlas("screen.shortcut.watchHistory") }
             else { Button("Clear Watch History", role: .destructive) { clearLog(since: nil) } }
         } message: {
             Text(confirm == .everything
@@ -433,7 +494,7 @@ struct WatchHistoryPage: View {
     private func load() async {
         guard let c = container else { return }
         let sid = state.activeSourceID
-        log = await Task.detached { (try? c.history.watchLog(limit: 200, sourceID: sid)) ?? [] }.value
+        log = await offMain { (try? c.history.watchLog(limit: 200, sourceID: sid)) ?? [] }
         loaded = true
     }
 
@@ -441,13 +502,13 @@ struct WatchHistoryPage: View {
         guard let c = container else { return }
         log.removeAll { $0.id == item.id }
         let e = item.entry
-        Task { await Task.detached { try? c.historyRepo.removeLogEntry(itemID: e.itemID, playedAt: e.playedAt) }.value }
+        Task { await offMain { try? c.historyRepo.removeLogEntry(itemID: e.itemID, playedAt: e.playedAt) } }
     }
 
     private func clearLog(since: Date?) {
         guard let c = container else { return }
         let prefix = HistoryClearing.prefix(state.activeSourceID)
-        Task { await Task.detached { try? c.historyRepo.clearLog(since: since, sourcePrefix: prefix) }.value; await load() }
+        Task { await offMain { try? c.historyRepo.clearLog(since: since, sourcePrefix: prefix) }; await load() }
     }
 
     private func clearEverything() {
@@ -479,14 +540,14 @@ private struct HistoryRow: View {
             Text(item.entry.playedAt.formatted(.dateTime.day().month(.abbreviated).hour().minute())).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
             Button(action: onRemove) { Image(systemName: "xmark").font(.system(size: 10, weight: .semibold)).frame(width: 22, height: 22).contentShape(Rectangle()) }
                 .buttonStyle(.plain).foregroundStyle(ColorTokens.textSecondary).help("Remove this entry")
-                .opacity(hovering ? 1 : 0).accessibilityLabel("Remove \(item.entry.title) from history")
+                .opacity(hovering ? 1 : 0).accessibilityLabel("Remove \(item.entry.title) from history").atlas("screen.shortcut.watchHistory")
         }
         .padding(.horizontal, 12).frame(height: 34)
         .background(hovering ? Color.white.opacity(0.04) : .clear)
         .onHover { hovering = $0 }
         .animation(AnimationTokens.quick, value: hovering)
         .contextMenu { Button("Remove Entry", role: .destructive, action: onRemove) }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .combine).atlas("context.home.historyEntry")
     }
 }
 
@@ -510,7 +571,7 @@ struct FavoritesPage: View {
                     SectionHeader(title: "Channels")
                     ItemGrid(items: channels, cardWidth: 200) { ch, _ in
                         Button { container?.playback.play(channel: ch, queue: channels) } label: { ChannelCard(channel: ch) }
-                            .buttonStyle(.plain).accessibilityLabel("Play \(ch.name)")
+                            .buttonStyle(.plain).accessibilityLabel("Play \(ch.name)").atlas("screen.shortcut.favorites")
                     }
                 }
                 if !movies.isEmpty { SectionHeader(title: "Movies"); ItemGrid(items: movies) { m, w in LibraryItemCard(item: .movie(m), width: w) } }
@@ -520,7 +581,7 @@ struct FavoritesPage: View {
         .task(id: "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(state.favoriteIDs.count)") {
             guard let c = container else { return }
             let sid = state.activeSourceID
-            let r = await Task.detached { ((try? c.favorites.channels(sourceID: sid)) ?? [], (try? c.favorites.movies(sourceID: sid)) ?? [], (try? c.favorites.series(sourceID: sid)) ?? []) }.value
+            let r = await offMain { ((try? c.favorites.channels(sourceID: sid)) ?? [], (try? c.favorites.movies(sourceID: sid)) ?? [], (try? c.favorites.series(sourceID: sid)) ?? []) }
             channels = r.0; movies = r.1; series = r.2; loaded = true
         }
     }
@@ -580,10 +641,10 @@ struct CollectionsPage: View {
                             .foregroundStyle(selectedID == col.id ? ColorTokens.textPrimary : ColorTokens.textSecondary)
                     }
                     .buttonStyle(.plain)
-                    .contextMenu { Button("Rename…") { rename(col) }; Button("Delete", role: .destructive) { confirmDelete = col } }
+                    .contextMenu { Button("Rename…") { rename(col) }; Button("Delete", role: .destructive) { confirmDelete = col } }.atlas("context.home.collectionChip")
                 }
                 Button { create() } label: { Label("New collection", systemImage: "plus").font(Typography.row).padding(.horizontal, 11).frame(height: 28).overlay(Capsule().strokeBorder(ColorTokens.glassEdge)) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.plain).atlas("screen.shortcut.collections")
                 Spacer()
             }
             if collections.isEmpty {
@@ -596,11 +657,11 @@ struct CollectionsPage: View {
                     ItemGrid(items: channels, cardWidth: 200) { ch, _ in
                         Button { container?.playback.play(channel: ch, queue: channels) } label: { ChannelCard(channel: ch) }
                             .buttonStyle(.plain)
-                            .contextMenu { Button("Play") { container?.playback.play(channel: ch, queue: channels) }; Button("Remove from collection") { remove(ch.id) } }
+                            .contextMenu { Button("Play") { container?.playback.play(channel: ch, queue: channels) }; Button("Remove from collection") { remove(ch.id) } }.atlas("context.home.collectionItem")
                     }
                 }
-                if !movies.isEmpty { SectionHeader(title: "Movies"); ItemGrid(items: movies) { m, w in LibraryItemCard(item: .movie(m), width: w).contextMenu { Button("Remove from collection") { remove(m.id) } } } }
-                if !series.isEmpty { SectionHeader(title: "Series"); ItemGrid(items: series) { s, w in LibraryItemCard(item: .series(s), width: w).contextMenu { Button("Remove from collection") { remove(s.id) } } } }
+                if !movies.isEmpty { SectionHeader(title: "Movies"); ItemGrid(items: movies) { m, w in LibraryItemCard(item: .movie(m), width: w).contextMenu { Button("Remove from collection") { remove(m.id) } }.atlas("context.home.collectionItem") } }
+                if !series.isEmpty { SectionHeader(title: "Series"); ItemGrid(items: series) { s, w in LibraryItemCard(item: .series(s), width: w).contextMenu { Button("Remove from collection") { remove(s.id) } }.atlas("context.home.collectionItem") } }
             }
         }
         .task(id: "\(state.catalogVersion)-\(state.activeSourceID?.uuidString ?? "")") { await load() }

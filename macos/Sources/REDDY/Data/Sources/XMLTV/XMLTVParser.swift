@@ -6,6 +6,12 @@ struct XMLTVStats: Sendable {
     var channels = 0
     var programmesSeen = 0
     var programmesKept = 0
+    /// What the document held that was not kept, and its full time range (diagnostics for an empty guide).
+    var droppedPast = 0
+    var droppedFuture = 0
+    var droppedInvalid = 0
+    var firstStart: Date?
+    var lastStop: Date?
 }
 
 /// Streams an XMLTV document from disk. Only programmes inside `window` are kept; everything else is skipped
@@ -96,6 +102,10 @@ final class XMLTVParser: NSObject, XMLParserDelegate {
             inChannel = nil
         case "programme":
             inProgramme = false
+            if let s = progStart, let e = progStop, e > s, !progChannel.isEmpty, !title.isEmpty {
+                stats.firstStart = min(stats.firstStart ?? s, s); stats.lastStop = max(stats.lastStop ?? e, e)
+                if e < window.lowerBound { stats.droppedPast += 1 } else if s > window.upperBound { stats.droppedFuture += 1 }
+            } else { stats.droppedInvalid += 1 }
             if let s = progStart, let e = progStop, e > s, !progChannel.isEmpty, !title.isEmpty,
                e >= window.lowerBound, s <= window.upperBound {
                 batch.append(XMLTVProgramme(channel: progChannel, start: s, stop: e, title: title, subtitle: subtitle,

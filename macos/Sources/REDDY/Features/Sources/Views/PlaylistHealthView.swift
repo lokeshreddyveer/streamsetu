@@ -41,9 +41,9 @@ struct PlaylistHealthView: View {
                     Text("A sample of 40 channels").tag(Scope.sample)
                     if !folders.isEmpty { Divider() }
                     ForEach(folders) { Text("Folder: \($0.name) (up to 200)").tag(Scope.folder($0.id)) }
-                }.labelsHidden().pickerStyle(.menu).frame(maxWidth: 300, alignment: .leading).disabled(running)
-                if running { SecondaryButton(title: "Stop", symbol: "stop.fill") { task?.cancel() } }
-                else { PrimaryButton(title: results.isEmpty ? "Check channels" : "Check again", symbol: "stethoscope") { start() } }
+                }.labelsHidden().pickerStyle(.menu).frame(maxWidth: 300, alignment: .leading).disabled(running).atlas("screen.playlist.health")
+                if running { SecondaryButton(title: "Stop", symbol: "stop.fill") { task?.cancel() }.atlas("screen.playlist.health") }
+                else { PrimaryButton(title: results.isEmpty ? "Check channels" : "Check again", symbol: "stethoscope") { start() }.atlas("screen.playlist.health") }
                 Spacer(minLength: 0)
             }
             if running || total > 0 {
@@ -58,10 +58,10 @@ struct PlaylistHealthView: View {
                     stat("Slow or silent", slow.count, ColorTokens.warning)
                     stat("Dead", dead.count, ColorTokens.danger)
                 }
-                Picker("Show", selection: $filter) { ForEach(Filter.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).labelsHidden()
+                Picker("Show", selection: $filter) { ForEach(Filter.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).labelsHidden().atlas("screen.playlist.health")
                 HStack(spacing: 8) {
-                    SecondaryButton(title: "Hide dead channels", symbol: "eye.slash") { hideDead() }.disabled(dead.isEmpty || running)
-                    SecondaryButton(title: "Copy report", symbol: "doc.on.doc") { copyReport() }
+                    SecondaryButton(title: "Hide dead channels", symbol: "eye.slash") { hideDead() }.disabled(dead.isEmpty || running).atlas("screen.playlist.health")
+                    SecondaryButton(title: "Copy report", symbol: "doc.on.doc") { copyReport() }.atlas("screen.playlist.health")
                     Spacer(minLength: 0)
                 }
                 if let message { Text(message).font(Typography.caption).foregroundStyle(ColorTokens.success) }
@@ -124,7 +124,7 @@ struct PlaylistHealthView: View {
         let ids = dead.map(\.channelID)
         Task {
             await Task.detached { for id in ids { try? c.favoritesRepo.hide(id, kind: "channel") } }.value
-            message = "Hid \(ids.count) dead channel\(ids.count == 1 ? "" : "s"). They stay in your library; show them again from the Channel manager."
+            message = "Hid \(Localized.plural(ids.count, one: "%@ dead channel", other: "%@ dead channels")). They stay in your library; show them again from the Channel manager."
             state.catalogVersion += 1
         }
     }

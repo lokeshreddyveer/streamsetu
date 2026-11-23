@@ -40,7 +40,15 @@ final class AppLock {
     private let auth: LockAuthenticator
     private let now: () -> Date
     private var leftAt: Date?
-    private var observers: [NSObjectProtocol] = []
+    nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
+    deinit {
+        for o in observers {
+            NotificationCenter.default.removeObserver(o)
+            #if os(macOS)
+            NSWorkspace.shared.notificationCenter.removeObserver(o)
+            #endif
+        }
+    }
 
     private(set) var isLocked: Bool
     private(set) var isAuthenticating = false

@@ -27,7 +27,7 @@ struct TonightPage: View {
                             ForEach(plan.upNext) { u in
                                 Button { container?.playback.play(episode: u.episode, series: u.series) } label: {
                                     row(symbol: "play.circle", title: u.series.title, detail: "S\(u.episode.seasonNumber) E\(u.episode.episodeNumber) · \(u.episode.title)")
-                                }.buttonStyle(.plain)
+                                }.buttonStyle(.plain).atlas("screen.shortcut.tonight")
                             }
                         }
                     }
@@ -51,7 +51,7 @@ struct TonightPage: View {
         AnyView(Button { container?.playback.play(channel: s.channel) } label: {
             row(symbol: live ? "dot.radiowaves.left.and.right" : "clock", title: s.program.title,
                 detail: "\(s.channel.name) · " + (live ? "until \(TimeFormatter.time(s.program.end))" : TimeFormatter.time(s.program.start)))
-        }.buttonStyle(.plain))
+        }.buttonStyle(.plain).atlas("screen.shortcut.tonight"))
     }
 
     private func row(symbol: String, title: String, detail: String?) -> some View {

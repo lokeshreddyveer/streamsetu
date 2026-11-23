@@ -144,7 +144,7 @@ enum JudgeAdvisor {
 enum KnownForAdvisor {
     static let system = """
     You list the films and series an actor or director is best known for. Reply with JSON only, no other text, shaped like:
-    [{"title": "Pokiri", "year": 2006, "show": false}, ...]
+    [{"title": "Parasite", "year": 2019, "show": false}, ...]
     At most 40 entries, the most popular first, with the original release year. Include only titles you are sure exist and that this person really worked on. If you do not know the person, reply [].
     """
 

@@ -67,6 +67,8 @@ struct FeaturedSlideshow: View {
     let height: CGFloat
     let onPlay: (FeaturedSlide) -> Void
     let onInfo: (FeaturedSlide) -> Void
+    /// The right-click menu of the slide on show (the shared tile menu, supplied by the screen).
+    var menu: ((FeaturedSlide) -> AnyView)? = nil
 
     @State private var controller = SlideshowController()
     @Environment(\.controlActiveState) private var activeState
@@ -94,6 +96,7 @@ struct FeaturedSlideshow: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(0.10)))
         .animation(reduceMotion ? nil : .easeInOut(duration: SlideshowController.crossfade), value: controller.index)
+        .contextMenu { if let menu, slides.indices.contains(i) { menu(slides[i]) } }
         .onHover { controller.interacting = $0 }
         .focusable().focused($focused).focusEffectDisabled()
         .onKeyPress(.leftArrow) { controller.previous(); return .handled }
@@ -105,7 +108,7 @@ struct FeaturedSlideshow: View {
         .task(id: slides.map(\.id)) {
             controller.reduceMotion = reduceMotion; controller.windowActive = activeState != .inactive
             controller.configure(count: slides.count)
-        }
+        }.atlas("context.slideshow.banner")
         // The countdown is a task keyed on everything that should restart or stop it. When the slideshow disappears, or
         // pauses, the task is cancelled: nothing keeps ticking in the background.
         .task(id: AutoplayKey(index: controller.index, running: controller.shouldAutoplay, count: slides.count)) {
@@ -177,8 +180,8 @@ struct FeaturedSlideshow: View {
 
     private func controls(_ s: FeaturedSlide) -> some View {
         HStack(spacing: 8) {
-            Button { onPlay(s) } label: { Label("Play", systemImage: "play.fill") }.buttonStyle(SlidePrimaryStyle())
-            Button { onInfo(s) } label: { Label("More info", systemImage: "info.circle") }.buttonStyle(SlideSecondaryStyle())
+            Button { onPlay(s) } label: { Label("Play", systemImage: "play.fill") }.buttonStyle(SlidePrimaryStyle()).atlas("control.featured.play")
+            Button { onInfo(s) } label: { Label("More info", systemImage: "info.circle") }.buttonStyle(SlideSecondaryStyle()).atlas("control.featured.moreInfo")
             Spacer(minLength: 12)
             if slides.count > 1 {
                 HStack(spacing: 6) {
@@ -189,7 +192,7 @@ struct FeaturedSlideshow: View {
                                 Capsule().fill(n == controller.index ? accent : Color.white.opacity(0.4)).frame(width: n == controller.index ? 18 : 6, height: 6)
                                     .frame(height: 16).contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain).accessibilityLabel("Slide \(n + 1): \(slide.title)").accessibilityAddTraits(n == controller.index ? .isSelected : [])
+                            .buttonStyle(.plain).accessibilityLabel("Slide \(n + 1): \(slide.title)").accessibilityAddTraits(n == controller.index ? .isSelected : []).atlas("control.featured.dot")
                         }
                     }
                     roundButton("chevron.right", "Next slide") { controller.next() }
@@ -207,7 +210,7 @@ struct FeaturedSlideshow: View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 10, weight: .bold)).frame(width: 24, height: 24).contentShape(Circle())
         }
-        .buttonStyle(.plain).foregroundStyle(.white.opacity(0.9)).help(label).accessibilityLabel(label)
+        .buttonStyle(.plain).foregroundStyle(.white.opacity(0.9)).help(label).accessibilityLabel(label).atlas("control.featured.arrow")
     }
 }
 

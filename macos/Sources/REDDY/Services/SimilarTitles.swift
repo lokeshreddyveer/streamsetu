@@ -194,8 +194,8 @@ struct SimilarService: Sendable {
 
     private func candidate(_ item: LibraryItem) -> SimilarTitles.Candidate {
         switch item {
-        case .movie(let m): return .init(item: item, rating: Double(m.rating ?? ""), plot: m.overview, genres: SimilarTitles.genreSet(m.genre), folder: m.categoryID)
-        case .series(let s): return .init(item: item, rating: Double(s.rating ?? ""), plot: s.overview, genres: SimilarTitles.genreSet(s.genre), folder: s.categoryID)
+        case .movie(let m): return .init(item: item, rating: RatingRule.credible(m.rating), plot: m.overview, genres: SimilarTitles.genreSet(m.genre), folder: m.categoryID)
+        case .series(let s): return .init(item: item, rating: RatingRule.credible(s.rating), plot: s.overview, genres: SimilarTitles.genreSet(s.genre), folder: s.categoryID)
         }
     }
 

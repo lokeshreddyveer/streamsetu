@@ -141,3 +141,33 @@ import Foundation
         if case .movie(let m) = v[1].item { #expect(m.streamRef == "2.mp4") } else { Issue.record("not a movie") }
     }
 }
+
+/// Language tags and folders from libraries in many languages (Indian-language libraries are one group among many). Read from the rules in `languageInfo`; not yet run.
+@Suite("Language tags across languages") struct LanguageTagsAcrossLanguagesTests {
+    private func info(_ title: String, _ folder: String?) -> [String] {
+        let i = OtherLanguages.languageInfo(title: title, folder: folder)
+        return [i.language ?? "-", i.dubbed ? "dubbed" : "", i.folderLabel ?? "-"]
+    }
+
+    @Test func aBracketTagNamesAnyLanguage() {
+        #expect(info("Roma (2018) (Spanish) 4K", nil) == ["Spanish", "", "-"])
+        #expect(info("Intouchables [French]", nil) == ["French", "", "-"])
+        #expect(info("Parasite (2019) (Korean)", nil) == ["Korean", "", "-"])
+    }
+
+    @Test func aFolderNamesAnyLanguage() {
+        #expect(info("Oldboy (2003)", "KOREAN | MOVIES")[0] == "Korean")
+        #expect(info("Spirited Away (2001)", "JAPANESE | FHD")[0] == "Japanese")
+        #expect(info("Kis Uykusu (2014)", "TURKISH | GENERAL")[0] == "Turkish")
+        #expect(info("Das Boot (1981)", "GERMAN DUBBED") == ["German", "dubbed", "-"])
+        #expect(info("Movie (2020)", "ARABIC | ENGLISH SUBTITLES")[0] == "Arabic")
+        #expect(info("Movie (2020)", "ENGLISH | ARABIC SUBTITLES")[0] == "English")
+    }
+
+    @Test func everyLanguageHasADisplayNameAndSomeHaveTheirOwnScript() {
+        for l in ["Spanish", "Korean", "Japanese", "Chinese", "Arabic", "Hebrew", "Russian", "Thai", "Turkish", "Portuguese", "French", "German", "Italian"] {
+            #expect(OtherLanguages.languageNames.values.contains(l), Comment(rawValue: l))
+            #expect(OtherLanguages.nativeNames[l] != nil || l == "English", "no native name for \(l)")
+        }
+    }
+}

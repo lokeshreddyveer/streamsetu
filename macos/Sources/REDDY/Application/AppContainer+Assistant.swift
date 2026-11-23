@@ -116,13 +116,27 @@ extension AppContainer {
         set { settings.defaultsStore.set(newValue, forKey: "assistant.cloud") }
     }
 
+    /// When on, every question goes to the model first (Setu's own index still answers when no model is ready). Off by default: the index answers questions about the app on its own.
+    var assistantModelFirst: Bool {
+        get { settings.defaultsStore.object(forKey: "assistant.modelFirst") as? Bool ?? false }
+        set { settings.defaultsStore.set(newValue, forKey: "assistant.modelFirst") }
+    }
+
     /// The models to try, in order: the chosen one, then the others that are ready (on-device first, then online ones if allowed), so a rate limit or an outage does not end the conversation.
-    func assistantModelChain() -> [AIConfig] {
+    /// `store` and `cloudAllowed` let a test use its own settings instead of the shared ones.
+    func assistantModelChain(store: AIStore? = nil, cloudAllowed: Bool? = nil) -> [AIConfig] {
+        let ai = store ?? self.ai, assistantCloudAllowed = cloudAllowed ?? self.assistantCloudAllowed
         let chosen = ai.load()
         let order: [AIProvider] = [.apple, .gemini, .groq, .openRouter, .nvidia, .ollamaCloud, .claude, .openAI, .ollama]
         func allowed(_ p: AIProvider) -> Bool { assistantCloudAllowed || p == .apple || p == .ollama }
-        var chain: [AIConfig] = chosen.isReady && allowed(chosen.provider) ? [chosen] : []
-        for p in order where p != chosen.provider && allowed(p) && (p == .apple ? AIClient.appleAvailability().ok : ai.load(p).isReady) { chain.append(ai.load(p)) }
+        // Apple Intelligence counts as ready only when the device says so; Ollama only counts as a fallback when the person gave it an address (its default address makes it look ready everywhere).
+        func ready(_ c: AIConfig) -> Bool { c.provider == .apple ? AIClient.appleAvailability().ok : c.isReady }
+        var chain: [AIConfig] = ready(chosen) && allowed(chosen.provider) ? [chosen] : []
+        for p in order where p != chosen.provider && allowed(p) {
+            let c = ai.load(p)
+            if p == .ollama && c.base.trimmingCharacters(in: .whitespaces).isEmpty { continue }
+            if ready(c) { chain.append(c) }
+        }
         return chain
     }
 
@@ -140,7 +154,10 @@ extension AppContainer {
         // A name on its own is answered by the app's own search at once; no model is waited for.
         if !skipInstant, let found = await AssistantToolbox(container: self, onStep: onStep).discoveryReply(text) { return found }
         if !skipInstant, let fast = await AssistantToolbox(container: self, onStep: onStep).fastNameReply(text) { return fast }
-        let hint = skipInstant ? "The person says the quick search results for this name were not what they meant. Look beyond them: it may be a person, another spelling, another language, a mood or something else. Check anything you suggest with the library tools." : nil
+        var hint = skipInstant ? "The person says the quick search results for this name were not what they meant. Look beyond them: it may be a person, another spelling, another language, a mood or something else. Check anything you suggest with the library tools." : nil
+        // The model is asked only when Setu's own index was unsure (or the person chose it first), and it picks from the index's closest topics instead of recalling screens from memory.
+        if !skipInstant, let picked = await atlasModelReply(text) { return picked }      // the optional model layer: picks among the index's own topics; nil changes nothing
+        if let c = AtlasAssistant.candidates(for: text) { hint = (hint.map { $0 + "\n\n" } ?? "") + c }
         var chain = assistantModelChain()
         var handedOver: String?
         // Apple's on-device model does not know actors and films well. For a question about a person, an online model that is ready goes first.
@@ -172,7 +189,7 @@ extension AppContainer {
         }
         // Nothing answered: the app's own reading still helps.
         var r = await AssistantToolbox(container: self, onStep: onStep).localReply(text)
-        r.fallbackNote = "No AI could answer (\(failures.first ?? "unavailable")). This is the app's own answer."
+        r.fallbackNote = "AI is not available right now."
         return r
     }
 
@@ -228,7 +245,7 @@ extension AppContainer {
             UIPasteboard.general.string = text
             #endif
             return .done("Copied. It has no logins, addresses or tokens, so it is safe to share.")
-        case .command, .playItem, .toggleList: return .failed("That is carried out by the screen's own runner.")      // see SearchCommandRunner.execute
+        case .command, .playItem, .toggleList, .openAtlas: return .failed("That is carried out by the screen's own runner.")      // see SearchCommandRunner.execute
         }
     }
 }

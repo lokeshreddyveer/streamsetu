@@ -1,7 +1,14 @@
 import SwiftUI
 
 /// A person in a title's cast, opened from the cast row. Used as a navigation value on iPhone and iPad.
-struct PersonRoute: Hashable { let name: String }
+struct PersonRoute: Hashable {
+    let name: String
+    /// TMDB's id for the person, when the cast row had it.
+    var tmdbID: Int? = nil
+    /// The title the person was tapped from (to tell two people of one name apart).
+    var fromTitle: String? = nil
+    var fromYear: Int? = nil
+}
 
 /// The titles of one person in the library: each title once (its other-language versions folded into it), restricted titles never listed.
 enum PersonTitles {
@@ -18,11 +25,17 @@ enum PersonTitles {
             var people = PeopleIndex(db: c.db); people.alwaysRestricted = true
             let hits = people.hits(term: name, kinds: [.movie, .series], sourceID: nil, limit: 300, exact: true)
             let view = c.catalog.recommendationView
-            var items: [LibraryItem] = []
-            for h in hits {
-                if h.kind == .series { if let s = (try? view.seriesItem(id: h.itemID)) ?? nil { items.append(.series(s)) } }
-                else if let m = (try? view.movie(id: h.itemID)) ?? nil { items.append(.movie(m)) }
+            // One read per 300 ids and kind (not one per hit); the hits' order (best rated first) is kept.
+            var byID: [String: LibraryItem] = [:]
+            for kind in [ContentKind.movie, .series] {
+                let ids = hits.filter { $0.kind == kind }.map(\.itemID)
+                for chunk in stride(from: 0, to: ids.count, by: 300).map({ Array(ids[$0..<min($0 + 300, ids.count)]) }) {
+                    var q = VODQuery(); q.ids = chunk; q.limit = nil
+                    if kind == .series { for s in (try? view.series(q)) ?? [] { byID[s.id] = .series(s) } }
+                    else { for m in (try? view.movies(q)) ?? [] { byID[m.id] = .movie(m) } }
+                }
             }
+            let items = hits.compactMap { byID[$0.itemID] }
             var lang: [String: String] = [:]
             let ids = items.map(\.id)
             for chunk in stride(from: 0, to: ids.count, by: 300).map({ Array(ids[$0..<min($0 + 300, ids.count)]) }) {
@@ -76,7 +89,7 @@ enum PersonTitles {
 struct CastSection: View {
     let item: LibraryItem
     var useLinks = false
-    var onPerson: (String) -> Void = { _ in }
+    var onPerson: (PersonRoute) -> Void = { _ in }
     @Environment(\.container) private var container
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .caption) private var photo: CGFloat = 72
@@ -87,12 +100,12 @@ struct CastSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if !model.people.isEmpty {
-                Text("Cast").font(.headline).accessibilityAddTraits(.isHeader)
+                TitleSectionHeader(title: "Cast")
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
                         ForEach(model.people) { p in
-                            if useLinks { NavigationLink(value: PersonRoute(name: p.name)) { cell(p) }.buttonStyle(.plain) }
-                            else { Button { onPerson(p.name) } label: { cell(p) }.buttonStyle(.plain) }
+                            if useLinks { NavigationLink(value: route(p)) { cell(p) }.buttonStyle(.plain).atlas("screen.person") }
+                            else { Button { onPerson(route(p)) } label: { cell(p) }.buttonStyle(.plain).atlas("screen.person") }
                         }
                     }.padding(.vertical, 2)
                 }
@@ -102,7 +115,14 @@ struct CastSection: View {
             guard let c = container else { return }
             await model.load(itemID: item.id) { await CastModel.fetch(item: item, container: c) }
         }
+        // Details that landed after the row was drawn (the title was matched a moment later): the same people stay on screen until the photos replace them, so nothing flickers.
+        .onMetadataLanded(for: item.id) {
+            guard let c = container else { return }
+            Task { await model.load(itemID: item.id) { await CastModel.fetch(item: item, container: c) } }
+        }
     }
+
+    private func route(_ p: TitleDetails.Person) -> PersonRoute { PersonRoute(name: p.name, tmdbID: p.tmdbID, fromTitle: item.title, fromYear: item.year) }
 
     private func cell(_ p: TitleDetails.Person) -> some View {
         VStack(spacing: 5) {
@@ -116,7 +136,7 @@ struct CastSection: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(p.name)\(p.role.map { ", as \($0)" } ?? "")")
-        .accessibilityHint("Shows this person's titles in your library")
+        .accessibilityHint("Shows this person's films")
     }
 }
 
@@ -134,7 +154,7 @@ struct PersonTitlesList<Card: View>: View {
                 if let entries {
                     if entries.isEmpty { Text("None of \(name)'s titles are in your library yet. They appear once their cast has been read.").foregroundStyle(.secondary) }
                     else {
-                        Text("\(entries.count) title\(entries.count == 1 ? "" : "s") in your library").font(.caption).foregroundStyle(.secondary)
+                        Text(verbatim: Localized.plural(entries.count, one: "%@ title in your library", other: "%@ titles in your library")).font(.caption).foregroundStyle(.secondary)
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 110, maximum: 160), spacing: 12, alignment: .top)], alignment: .leading, spacing: 14) {
                             ForEach(entries) { card($0) }
                         }
@@ -145,4 +165,4 @@ struct PersonTitlesList<Card: View>: View {
         .task(id: name) { if let c = container { entries = await PersonTitles.load(name: name, container: c) } }
     }
 }
-extension PersonRoute: Identifiable { var id: String { name } }
+extension PersonRoute: Identifiable { var id: String { name + "#" + String(tmdbID ?? 0) } }

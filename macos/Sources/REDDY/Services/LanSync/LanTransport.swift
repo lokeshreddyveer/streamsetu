@@ -2,11 +2,10 @@ import Foundation
 import Network
 
 /// Runs a block once, however many times it is asked (connection state handlers fire more than once).
-final class LanOnce: @unchecked Sendable {
-    private let lock = NSLock()
-    private var done = false
-    func take() -> Bool { lock.lock(); defer { lock.unlock() }; if done { return false }; done = true; return true }
-    var finished: Bool { lock.lock(); defer { lock.unlock() }; return done }
+final class LanOnce: Sendable {
+    private let done = OnceFlag()
+    func take() -> Bool { done.take() }
+    var finished: Bool { done.value }
 }
 
 /// A TCP connection that sends and receives whole frames: 4 bytes (big endian) with the length, then the body, at most 8 MiB, as in docs/WIFI-SYNC.md.

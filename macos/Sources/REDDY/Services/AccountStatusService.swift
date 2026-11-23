@@ -17,7 +17,7 @@ final class AccountStatusService {
     init(catalog: CatalogRepository, defaults: UserDefaults, provider: @escaping @Sendable (PlaylistSource) throws -> SourceProvider) {
         self.catalog = catalog; self.defaults = defaults; self.provider = provider
         if let data = defaults.data(forKey: key), let saved = try? JSONDecoder().decode([String: AccountStatus].self, from: data) {
-            statuses = Dictionary(uniqueKeysWithValues: saved.compactMap { k, v in UUID(uuidString: k).map { ($0, v) } })
+            statuses = Dictionary(saved.compactMap { k, v in UUID(uuidString: k).map { ($0, v) } }, uniquingKeysWith: { a, _ in a })
         }
     }
 
@@ -31,13 +31,13 @@ final class AccountStatusService {
             if let status = try? await make(s).accountStatus() { statuses[s.id] = status }
         }
         statuses = statuses.filter { id, _ in sources.contains { $0.id == id } }
-        defaults.set(try? JSONEncoder().encode(Dictionary(uniqueKeysWithValues: statuses.map { ($0.key.uuidString, $0.value) })), forKey: key)
+        defaults.set(try? JSONEncoder().encode(Dictionary(statuses.map { ($0.key.uuidString, $0.value) }, uniquingKeysWith: { a, _ in a })), forKey: key)
         defaults.set(now, forKey: stampKey)
     }
 
     /// Playlists that end within a week or have ended, most urgent first.
     func warnings(now: Date = Date()) -> [Warning] {
-        let names = Dictionary(uniqueKeysWithValues: ((try? catalog.sources()) ?? []).map { ($0.id, $0.name) })
+        let names = Dictionary(((try? catalog.sources()) ?? []).map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
         return statuses.compactMap { id, st -> (Int, Warning)? in
             let level = st.level(now: now)
             guard level != .fine, let name = names[id] else { return nil }

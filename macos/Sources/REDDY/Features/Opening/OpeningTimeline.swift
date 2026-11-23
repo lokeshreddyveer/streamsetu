@@ -251,14 +251,6 @@ enum AppRelease {
     static var current: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev" }
 }
 
-/// Where the opening's sound will play. Off until the sound is produced; when it is, it must follow the silent switch, the system
-/// volume and the Opening setting.
-enum OpeningSound {
-    enum Cue { case hum, click, powerOn, hit }
-    static let enabled = false
-    static func play(_ cue: Cue) { guard enabled else { return } }
-}
-
 // MARK: - Start-up state machine
 
 /// The start-up steps, the same on every platform. The opening and the app's own start-up run side by side and may finish in either

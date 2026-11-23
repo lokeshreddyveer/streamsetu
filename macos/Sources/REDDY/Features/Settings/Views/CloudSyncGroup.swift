@@ -9,11 +9,11 @@ struct CloudSyncGroup: View {
         @Bindable var s = settings
         let status = container?.cloud.status
         SettingsGroup(title: "iCloud", footer: "Playlists, favourites, collections, watch history and resume positions, folder organisation and settings follow you to your other devices through your own private iCloud. The channels, movies and series themselves are downloaded separately on each device. Nothing is sent to anyone else.") {
-            SettingsRow(title: "Sync with iCloud", detail: "Needs the same Apple ID on every device.") {
+            SettingsRow(title: "Sync with iCloud", atlas: "setting.icloudSync", detail: "Needs the same Apple ID on every device.") {
                 Toggle("Sync with iCloud", isOn: $s.iCloudSync).labelsHidden()
                     .onChange(of: s.iCloudSync) { _, _ in Task { await container?.updateCloudSync() } }
             }
-            SettingsRow(title: "Sync logins", detail: "Playlist logins and your TMDB key travel in iCloud Keychain, end-to-end encrypted by Apple. Turn this off to enter logins on each device.") {
+            SettingsRow(title: "Sync logins", atlas: "setting.syncLogins", detail: "Playlist logins and your TMDB key travel in iCloud Keychain, end-to-end encrypted by Apple. Turn this off to enter logins on each device.") {
                 Toggle("Sync logins", isOn: $s.syncLogins).labelsHidden().disabled(!s.iCloudSync)
                     .onChange(of: s.syncLogins) { _, _ in Task { await container?.updateCloudSync() } }
             }
@@ -21,8 +21,8 @@ struct CloudSyncGroup: View {
                 SettingsValueRow(title: "Status", value: status.text, tone: { if case .failed = status.state { return .warning }; if case .unavailable = status.state { return .warning }; return .normal }())
                 if status.pending > 0 { SettingsValueRow(title: "Waiting to send", value: "\(status.pending)") }
                 SettingsActions {
-                    Button { Task { await container?.cloud.syncNow() } } label: { Label("Sync Now", systemImage: "arrow.triangle.2.circlepath") }
-                    Button(role: .destructive) { Task { s.iCloudSync = false; await container?.cloud.eraseCloudData() } } label: { Text("Erase iCloud Data…") }
+                    Button { Task { await container?.cloud.syncNow() } } label: { Label("Sync Now", systemImage: "arrow.triangle.2.circlepath") }.atlas("control.settings.icloudSyncNow")
+                    Button(role: .destructive) { Task { s.iCloudSync = false; await container?.cloud.eraseCloudData() } } label: { Text("Erase iCloud Data…") }.atlas("control.settings.icloudErase")
                 }
             }
         }

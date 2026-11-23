@@ -33,7 +33,78 @@ final class SpellingIndex: @unchecked Sendable {
     init(db: DatabaseManager) { self.db = db }
     init(words: [String: Int]) { self.db = nil; self.words = words }      // for tests
 
-    func correct(_ query: String) -> String? { Self.correct(query, vocabulary: vocabulary()) }
+    /// Everything derived from the vocabulary once, so a correction does no whole-vocabulary scan: the words sorted (prefix test by binary search), grouped by first letter and length (edit candidates),
+    /// by their ending after the first letter (first-letter slips), and by spelling-insensitive key (transliteration).
+    struct Index: Sendable {
+        let sorted: [String]
+        let byFirstAndLength: [String: [String]]
+        let byTail: [String: [String]]
+        let folded: [String: String]
+        init(_ vocabulary: [String: Int]) {
+            sorted = vocabulary.keys.sorted()
+            var a: [String: [String]] = [:], t: [String: [String]] = [:]
+            for w in sorted { a[Self.key(w.first, w.count), default: []].append(w); t[String(w.dropFirst().prefix(3)), default: []].append(w) }
+            byFirstAndLength = a; byTail = t
+            var best: [String: (w: String, n: Int)] = [:]
+            for w in sorted {
+                let n = vocabulary[w] ?? 0, k = ArtworkMatchDecision.fold(w)
+                if let b = best[k], b.n >= n { continue }
+                best[k] = (w, n)
+            }
+            folded = best.mapValues(\.w)
+        }
+        static func key(_ first: Character?, _ length: Int) -> String { String(first ?? " ") + String(length) }
+        /// Whether any word starts with `prefix`.
+        func hasWord(withPrefix prefix: String) -> Bool {
+            var lo = 0, hi = sorted.count
+            while lo < hi { let m = (lo + hi) / 2; if sorted[m] < prefix { lo = m + 1 } else { hi = m } }
+            return lo < sorted.count && sorted[lo].hasPrefix(prefix)
+        }
+    }
+
+    private var index: Index?
+    func correct(_ query: String) -> String? {
+        let v = vocabulary()
+        let ix: Index = lock.withLock { if let index { return index }; let n = Index(v); index = n; return n }
+        return Self.correct(query, vocabulary: v, index: ix)
+    }
+
+    /// `index` is built from `vocabulary` when not given (one pass over it, the cost of a single scan).
+    static func correct(_ query: String, vocabulary: [String: Int], index: Index? = nil) -> String? {
+        guard !vocabulary.isEmpty else { return nil }
+        let ix = index ?? Index(vocabulary)
+        var changed = false
+        let fixed = query.split(whereSeparator: \.isWhitespace).map { raw -> String in
+            let w = raw.lowercased().filter { $0.isLetter || $0.isNumber }
+            guard w.count >= 4, vocabulary[w] == nil else { return String(raw) }
+            if ix.hasWord(withPrefix: w) { return String(raw) }        // a word being typed is not a mistake
+            if let alt = ix.folded[ArtworkMatchDecision.fold(w)], alt != w { changed = true; return alt }        // same word spelt another way (transliteration)
+            let allowed = w.count <= 5 ? 1 : 2
+            func better(_ d: Int, _ cand: String, than best: (word: String, distance: Int, count: Int)?) -> Bool {
+                guard let best else { return true }
+                let c = vocabulary[cand] ?? 0
+                return d < best.distance || (d == best.distance && (c > best.count || (c == best.count && cand < best.word)))
+            }
+            var best: (word: String, distance: Int, count: Int)?
+            for len in (w.count - allowed)...(w.count + allowed) {
+                for cand in ix.byFirstAndLength[Index.key(w.first, len)] ?? [] {
+                    let d = distance(w, cand, limit: allowed)
+                    if d <= allowed, better(d, cand, than: best) { best = (cand, d, vocabulary[cand] ?? 0) }
+                }
+            }
+            if best == nil, w.count >= 5 {
+                // The first letter is the slip ("qvengers"): same ending, one edit.
+                for cand in ix.byTail[String(w.dropFirst().prefix(3))] ?? [] where abs(cand.count - w.count) <= 1 && cand.first != w.first {
+                    let d = distance(w, cand, limit: 1)
+                    if d <= 1, better(d, cand, than: best) { best = (cand, d, vocabulary[cand] ?? 0) }
+                }
+            }
+            guard let best else { return String(raw) }
+            changed = true
+            return best.word
+        }
+        return changed ? fixed.joined(separator: " ") : nil
+    }
 
     private func vocabulary() -> [String: Int] {
         lock.withLock {
@@ -48,26 +119,6 @@ final class SpellingIndex: @unchecked Sendable {
             words = counts
             return counts
         }
-    }
-
-    static func correct(_ query: String, vocabulary: [String: Int]) -> String? {
-        guard !vocabulary.isEmpty else { return nil }
-        var changed = false
-        let fixed = query.split(whereSeparator: \.isWhitespace).map { raw -> String in
-            let w = raw.lowercased().filter { $0.isLetter || $0.isNumber }
-            guard w.count >= 4, vocabulary[w] == nil else { return String(raw) }
-            if vocabulary.keys.contains(where: { $0.hasPrefix(w) }) { return String(raw) }        // a word being typed is not a mistake
-            let allowed = w.count <= 5 ? 1 : 2
-            var best: (word: String, distance: Int, count: Int)?
-            for (cand, count) in vocabulary where abs(cand.count - w.count) <= allowed && cand.first == w.first {
-                let d = distance(w, cand, limit: allowed)
-                if d <= allowed, best == nil || d < best!.distance || (d == best!.distance && count > best!.count) { best = (cand, d, count) }
-            }
-            guard let best else { return String(raw) }
-            changed = true
-            return best.word
-        }
-        return changed ? fixed.joined(separator: " ") : nil
     }
 
     /// Edit distance (insert, delete, change, swap two neighbours), giving up above `limit`.

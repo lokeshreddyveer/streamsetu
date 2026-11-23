@@ -61,7 +61,6 @@ extension FolderRowsModel.Row {
     var spokenName: String { display.replacingOccurrences(of: " · ", with: " ") }
     /// "(1,058)": shown dim and smaller beside the name.
     var countText: String { "(\(count.formatted()))" }
-    var accessibilityTitle: String { locked ? "\(spokenName), locked folder" : "\(spokenName), \(count.formatted()) \(count == 1 ? "title" : "titles")" }
 }
 
 /// The folder list for one kind, paged 20 at a time, with each row's tiles loaded only when the row first appears.
@@ -158,6 +157,7 @@ final class FolderRowsModel {
 
     func ensureTiles(_ row: Row, _ c: AppContainer, sourceID: UUID?, profile: String) async {
         guard !row.locked, tiles[row.id] == nil, channelTiles[row.id] == nil, requested.insert(row.id).inserted else { return }
+        let sp = SmoothSignpost.begin("FolderRowsEnsureTiles"); defer { SmoothSignpost.end(sp, "FolderRowsEnsureTiles") }
         if kind == .channel { await ensureChannels(row, c, sourceID: sourceID); return }
         let kind = kind, lang = c.settings.preferredAudioLanguage
         let ep = epoch
@@ -179,10 +179,6 @@ final class FolderRowsModel {
 
 /// Posters first: a title without a poster is a grey placeholder, so tiles that have one lead and the others follow only when there are not enough. Order within each group is kept.
 enum FolderTileOrder {
-    static func postersFirst(_ items: [LibraryItem], limit: Int) -> [LibraryItem] {
-        let (with, without) = (items.filter(hasPoster), items.filter { !hasPoster($0) })
-        return Array((with + without).prefix(limit))
-    }
     /// A row never starts with grey placeholders: with enough titles that have a poster the others are left out, otherwise they follow the ones that do. Order within each group is kept.
     static func preferPosters(_ items: [LibraryItem], enough: Int = 6) -> [LibraryItem] {
         let with = items.filter(hasPoster)

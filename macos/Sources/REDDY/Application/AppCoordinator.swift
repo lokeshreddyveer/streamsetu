@@ -10,14 +10,26 @@ final class AppCoordinator {
     private(set) var state: AppState?
     let router = AppRouter()
     let keys = PlayerKeyMonitor()
+    /// Which top-level destination is showing (StreamSetu or an outside service), and the registry of the web models that host the services on
+    /// this Mac. A service's model (and its store and web view) is made only when it is first needed.
+    let services = ServiceNavigation()
+    let hosts = ServiceHostRegistry()
+    /// The first service's model, for the call sites that have not moved to the registry yet.
+    var netflix: ServiceWebModel { hosts.model(for: .netflix)! }
 
-    init() { AppDelegate.coordinator = self }
+    init() {
+        AppDelegate.coordinator = self
+        services.hosts = hosts
+        services.attach(to: router)
+    }
 
     func boot() async {
         guard container == nil else { return }
         do {
-            let c = try AppContainer()
+            let opened = try await Task.detached(priority: .userInitiated) { try DatabaseManager.standard() }.value          // open + migrate off the main thread
+            let c = try AppContainer(openedDatabase: opened)
             container = c
+            services.gate = { [weak c] in c?.parental.kidsMode == true || c?.appLock.isLocked == true }
             switch c.settings.sidebarLaunch {
             case .expanded: router.sidebarCollapsed = false
             case .collapsed: router.sidebarCollapsed = true
@@ -26,15 +38,19 @@ final class AppCoordinator {
             router.rememberFolders = c.settings.rememberFolders
             let s = AppState(container: c)
             state = s
+            c.artworkMatcher.start()          // artwork is matched in the background, on Wi-Fi, with a TMDB key (own or built in)
             c.parental.onChange = { [weak s] in s?.reloadFolders(); s?.catalogVersion += 1 }
             cleanLegacyFiles()
             let migrated = await c.sources.importLegacyPreferences()
             await s.start()
+            #if DEBUG
+            await Self.loadUITestFixture(c, s)
+            #endif
             c.onCloudChange = { [weak s] r in
                 s?.reload(); s?.catalogVersion += 1
                 for id in r.newSources { if let u = UUID(uuidString: id) { s?.sync(u) } }          // a playlist added on another device: load it here too
             }
-            if !migrated.isEmpty { s.toasts.show("Moved \(migrated.count) source\(migrated.count == 1 ? "" : "s") into the new library", symbol: "arrow.right.circle.fill", kind: .info) }
+            if !migrated.isEmpty { s.toasts.show("Moved \(Localized.plural(migrated.count, one: "%@ source", other: "%@ sources")) into the new library", symbol: "arrow.right.circle.fill", kind: .info) }
             if migrated.isEmpty == false { s.syncAll() }
             Task.detached { [artwork = c.artwork] in await artwork.trim() }
             phase = .ready                                  // the app opens now; iCloud starts in the background, it is never waited for
@@ -45,10 +61,22 @@ final class AppCoordinator {
             Task { try? await Task.sleep(nanoseconds: 20_000_000_000); c.startPeopleIndex() }          // after the first screens are up and playing
             c.autoBackup.runIfDue()
             resumeLastChannelIfWanted(c, s)
+            Task { await AtlasSpotlight.reindexPlainItemsIfNeeded(AtlasSpotlight.indexable(Atlas.entries, platform: .mac, appStore: AtlasAssistant.appStore), suppressed: c.parental.kidsMode) }          // Spotlight finds screens and settings
         } catch {
             phase = .failed(error.localizedDescription)
         }
     }
+
+    #if DEBUG
+    /// UI tests only (debug builds, and only with STREAMSETU_TESTING so the data folder is a throwaway one): loads the M3U file named by STREAMSETU_UITEST_M3U as the one playlist. Never in a release build, never touches the real library.
+    private static func loadUITestFixture(_ c: AppContainer, _ s: AppState) async {
+        let env = ProcessInfo.processInfo.environment
+        guard env["STREAMSETU_TESTING"] != nil, let path = env["STREAMSETU_UITEST_M3U"], s.sources.isEmpty else { return }
+        _ = try? await c.sources.addM3UFile(name: "UITest Fixture", fileURL: URL(fileURLWithPath: path)).id.uuidString
+        s.reload()
+        s.syncAll()
+    }
+    #endif
 
     /// Deletes the cache database from earlier builds (it is rebuilt from the sources).
     private func cleanLegacyFiles() {

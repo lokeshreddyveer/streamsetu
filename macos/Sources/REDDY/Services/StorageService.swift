@@ -18,7 +18,8 @@ final class StorageService: Sendable {
     }
 
     static var caches: URL {
-        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("REDDY", isDirectory: true)
+        if ProcessInfo.processInfo.environment["STREAMSETU_TESTING"] != nil { return FileManager.default.temporaryDirectory.appendingPathComponent("reddy-caches-\(ProcessInfo.processInfo.processIdentifier)", isDirectory: true) }
+        return FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("REDDY", isDirectory: true)
     }
 
     static var databaseDirectory: URL { ensure(applicationSupport.appendingPathComponent("Database", isDirectory: true)) }

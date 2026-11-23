@@ -30,10 +30,9 @@ final class LanTrustStore: LanTrust, @unchecked Sendable {
 }
 
 /// A switch that is read from other threads.
-final class LanFlag: @unchecked Sendable {
-    private let lock = NSLock()
-    private var on = false
-    var value: Bool { get { lock.lock(); defer { lock.unlock() }; return on } set { lock.lock(); on = newValue; lock.unlock() } }
+final class LanFlag: Sendable {
+    private let on = OnceFlag()
+    var value: Bool { get { on.value } set { on.value = newValue } }
 }
 
 /// Sync on this network: finds the person's other devices, pairs with them once (both people compare six digits), and then keeps favourites, Watch Later, collections and resume points in step.

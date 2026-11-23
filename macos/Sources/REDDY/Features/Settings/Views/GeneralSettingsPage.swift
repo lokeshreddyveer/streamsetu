@@ -8,31 +8,31 @@ struct GeneralSettingsPage: View {
         @Bindable var s = settings
         SettingsPage {
             SettingsGroup(title: "Browsing") {
-                SettingsRow(title: "Open channels with", detail: s.clickBehavior == .singleClick ? "One click on a channel starts it." : "Double-click starts a channel; a single click only selects it. Return also plays.") {
+                SettingsRow(title: "Open channels with", atlas: "setting.clickBehavior", detail: s.clickBehavior == .singleClick ? "One click on a channel starts it." : "Double-click starts a channel; a single click only selects it. Return also plays.") {
                     Picker("Open channels with", selection: $s.clickBehavior) { ForEach(ClickBehavior.allCases) { Text($0.title).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Group quality variants", detail: "Shows HD, FHD and 4K copies of a channel as one entry with a Streams menu.") { Toggle("Group quality variants", isOn: $s.collapseDuplicates) }
-                SettingsRow(title: "Hide empty folders", detail: "Folders the provider lists but that currently hold nothing. They are never deleted.") { Toggle("Hide empty folders", isOn: $s.hideEmptyFolders) }
-                SettingsRow(title: "Movies and series order", detail: "How Movies and Series are sorted when you open them.") {
+                SettingsRow(title: "Group quality variants", atlas: "setting.collapseDuplicates", detail: "Shows HD, FHD and 4K copies of a channel as one entry with a Streams menu.") { Toggle("Group quality variants", isOn: $s.collapseDuplicates) }
+                SettingsRow(title: "Hide empty folders", atlas: "setting.hideEmptyFolders", detail: "Folders the provider lists but that currently hold nothing. They are never deleted.") { Toggle("Hide empty folders", isOn: $s.hideEmptyFolders) }
+                SettingsRow(title: "Movies and series order", atlas: "setting.defaultLibrarySort", detail: "How Movies and Series are sorted when you open them.") {
                     Picker("Movies and series order", selection: $s.defaultLibrarySort) { ForEach(LibrarySortPreference.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Channel order", detail: "Provider order follows the playlist; alphabetical sorts by name.") {
+                SettingsRow(title: "Channel order", atlas: "setting.defaultChannelSort", detail: "Provider order follows the playlist; alphabetical sorts by name.") {
                     Picker("Channel order", selection: $s.defaultChannelSort) { ForEach(ChannelSortPreference.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Remember last folder", detail: "Return to the folder you were in when you come back to a tab.", divider: false) { Toggle("Remember last folder", isOn: $s.rememberFolders) }
+                SettingsRow(title: "Remember last folder", atlas: "setting.rememberFolders", detail: "Return to the folder you were in when you come back to a tab.", divider: false) { Toggle("Remember last folder", isOn: $s.rememberFolders) }
             }
 
             SettingsGroup(title: "At launch", footer: "StreamSetu always opens on Home → Discover. This only adds playback on top of that.") {
-                SettingsRow(title: "Resume the last channel", detail: "Starts the live channel that was playing when you last quit, in the bottom player.", divider: false) {
+                SettingsRow(title: "Resume the last channel", atlas: "setting.resumeLastChannel", detail: "Starts the live channel that was playing when you last quit, in the bottom player.", divider: false) {
                     Toggle("Resume the last channel", isOn: $s.resumeLastChannel)
                 }
             }
 
             SettingsGroup(title: "Notifications", footer: notificationFooter) {
-                SettingsRow(title: "Programme reminders", detail: "Adds a bell to upcoming programmes. Reminders are local notifications; nothing leaves this Mac.") {
+                SettingsRow(title: "Programme reminders", atlas: "setting.remindersEnabled", detail: "Adds a bell to upcoming programmes. Reminders are local notifications; nothing leaves this Mac.") {
                     Toggle("Programme reminders", isOn: $s.remindersEnabled)
                 }
-                SettingsRow(title: "macOS permission", detail: notification.title, divider: false) {
+                SettingsRow(title: "macOS permission", atlas: "setting.notificationPermission", detail: notification.title, divider: false) {
                     switch notification {
                     case .denied: Button("Open Notification Settings") { NotificationPermission.openSystemSettings() }
                     case .notDetermined: AsyncActionButton(title: "Allow Notifications") { notification = await NotificationPermission.request() }
@@ -71,7 +71,7 @@ struct AccentPicker: View {
                     .padding(3).overlay(Circle().strokeBorder(selection == a ? a.color : .clear, lineWidth: 1.5))
                     .contentShape(Circle())
                 }
-                .buttonStyle(.plain).help(a.title).accessibilityLabel(a.title).accessibilityAddTraits(selection == a ? .isSelected : [])
+                .buttonStyle(.plain).help(a.title).accessibilityLabel(a.title).accessibilityAddTraits(selection == a ? .isSelected : []).atlas("setting.accent")
             }
         }
     }
@@ -95,7 +95,7 @@ struct ThemePicker: View {
                         }
                     }
                 }
-                .pickerStyle(.menu).labelsHidden().fixedSize()
+                .pickerStyle(.menu).labelsHidden().fixedSize().atlas("setting.theme")
             }
             HStack(alignment: .center, spacing: 14) {
                 tile(selection == .custom ? draft.palette : selection.palette).frame(width: 150)
@@ -130,9 +130,9 @@ struct ThemePicker: View {
                     .font(.callout).foregroundStyle(.orange)
             }
             HStack {
-                Button("Apply") { custom = draft }.disabled(draft == custom).keyboardShortcut(.defaultAction)
-                Button("Revert") { draft = custom }.disabled(draft == custom)
-                Button("Start Again") { draft = .standard; custom = .standard }.disabled(draft == .standard && custom == .standard)
+                Button("Apply") { custom = draft }.disabled(draft == custom).keyboardShortcut(.defaultAction).atlas("setting.customTheme")
+                Button("Revert") { draft = custom }.disabled(draft == custom).atlas("setting.customTheme")
+                Button("Start Again") { draft = .standard; custom = .standard }.disabled(draft == .standard && custom == .standard).atlas("setting.customTheme")
             }
         }
     }

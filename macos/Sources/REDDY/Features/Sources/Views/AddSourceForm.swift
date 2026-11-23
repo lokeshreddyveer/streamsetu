@@ -87,7 +87,7 @@ struct AddSourceForm<ChooserFooter: View>: View {
         HStack(spacing: 10) {
             SecondaryButton(title: "Help me with this", symbol: "sparkles") {
                 AssistantLauncher.shared.ask("How do I add a \(vm.kind.rawValue) source? What do I fill in?"); AssistantLauncher.bringMainWindowForward()
-            }
+            }.atlas("screen.addPlaylist")
             Spacer()
             Button { if vm.plainHTTPWarning != nil { askAboutHTTP = true } else { submitNow() } } label: {
                 HStack(spacing: 8) {
@@ -101,7 +101,7 @@ struct AddSourceForm<ChooserFooter: View>: View {
             .alert("This server is not encrypted", isPresented: $askAboutHTTP) {
                 Button("Save Anyway") { vm.acceptPlainHTTP(); submitNow() }
                 Button("Cancel", role: .cancel) {}
-            } message: { Text(vm.plainHTTPWarning ?? "") }
+            } message: { Text(vm.plainHTTPWarning ?? "") }.atlas("screen.addPlaylist")
         }
         .startRiseIn(delay: 0.09)
     }
@@ -131,7 +131,7 @@ struct AddSourceForm<ChooserFooter: View>: View {
                 .onSubmit { continueFromPaste() }
             SecondaryButton(title: "Paste", symbol: "doc.on.clipboard") {
                 if let t = NSPasteboard.general.string(forType: .string) { pasted = t }
-            }
+            }.atlas("screen.addPlaylist")
         }
         .padding(.leading, 16).padding(.trailing, 8).padding(.vertical, 8)
         .frame(minHeight: 54)
@@ -147,7 +147,7 @@ struct AddSourceForm<ChooserFooter: View>: View {
                     .font(Typography.row).foregroundStyle(StartStyle.textSecondary(branded)).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 if canContinueFromPaste {
-                    SecondaryButton(title: "Continue", symbol: "arrow.right") { continueFromPaste() }
+                    SecondaryButton(title: "Continue", symbol: "arrow.right") { continueFromPaste() }.atlas("screen.addPlaylist")
                 }
             }
         } else {
@@ -178,7 +178,7 @@ struct AddSourceForm<ChooserFooter: View>: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("All connection types"))
-            .startRiseIn()
+            .startRiseIn().atlas("screen.addPlaylist")
 
             HStack(alignment: .center, spacing: 14) {
                 StartIconTile(symbol: tile.symbol, size: 48, motionKind: tile.iconMotion, trigger: 1)
@@ -219,13 +219,13 @@ struct AddSourceForm<ChooserFooter: View>: View {
         case .hdhomerun:
             field("Tuner address", text: $vm.server, prompt: "192.168.1.50 or hdhomerun.local")
             HStack(spacing: 8) {
-                SecondaryButton(title: finder.searching ? "Looking…" : "Find Tuners on This Network", symbol: "dot.radiowaves.left.and.right") { finder.start() }.disabled(finder.searching)
+                SecondaryButton(title: finder.searching ? "Looking…" : "Find Tuners on This Network", symbol: "dot.radiowaves.left.and.right") { finder.start() }.disabled(finder.searching).atlas("screen.addPlaylist")
                 if finder.searching { ProgressView().controlSize(.small) }
             }
             ForEach(finder.tuners) { t in
                 Button { vm.server = t.host; if vm.name.isEmpty { vm.name = t.name } } label: {
                     Label("\(t.name)  ·  \(t.host)", systemImage: "tv.and.mediabox").foregroundStyle(StartStyle.textPrimary)
-                }.buttonStyle(.plain)
+                }.buttonStyle(.plain).atlas("screen.addPlaylist")
             }
         case .plex:
             field("Server address", text: $vm.server, prompt: "http://host:32400")
@@ -243,7 +243,7 @@ struct AddSourceForm<ChooserFooter: View>: View {
                     Image(systemName: "doc.text").foregroundStyle(StartStyle.textSecondary(branded)).accessibilityHidden(true)
                     Text(vm.fileURL?.lastPathComponent ?? "No file chosen").foregroundStyle(vm.fileURL == nil ? StartStyle.textSecondary(branded) : StartStyle.textPrimary).lineLimit(1)
                     Spacer()
-                    SecondaryButton(title: "Choose File…", symbol: "doc") { vm.chooseFile() }
+                    SecondaryButton(title: "Choose File…", symbol: "doc") { vm.chooseFile() }.atlas("screen.addPlaylist")
                 }
                 .padding(.leading, 12).padding(.trailing, 6).padding(.vertical, 6)
                 .background(fieldShape.fill(StartStyle.fieldFill(branded)))

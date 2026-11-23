@@ -1,5 +1,8 @@
 import Foundation
 
+/// The two views of a ranked shelf (Trending in Your Library and every genre shelf): this week's TMDB trending, or the best of all time.
+enum SMShelfMode: String, Sendable, CaseIterable { case weekly, allTime }
+
 enum SMKind: String, Sendable { case movie, series }
 
 /// Shelf ids. `folder:<folderKey>` is built with `SMShelf.folder(_:)`.
@@ -11,8 +14,21 @@ enum SMShelf {
     static let topWeek = "top-week"                 // Top This Week
     static let trendingLibrary = "trending-library" // Trending in Your Library
     static let all = [hero, topWeek, trendingLibrary, forYou, rediscover, langPref]
+    // Home v2 rows (docs/SMART-MIX.md section 10). Not part of `all`: the coordinator asks for them next to it.
+    static let fresh = "fresh"                      // Fresh Additions
+    static let movieNight = "movie-night"           // Movie Night (Fri/Sat evenings)
+    static let binge = "binge"                      // Binge-Worthy Series (weekends)
+    static let collections = "collections"          // franchise tiles
+    static let moodPrefix = "mood:"
+    static func mood(_ key: String) -> String { moodPrefix + key }
+    static func isMood(_ id: String) -> Bool { id.hasPrefix(moodPrefix) }
+    static let contextual = [fresh, movieNight, binge, collections] + SMMoods.table.map { mood($0.key) }
     static func folder(_ key: String) -> String { "folder:" + key }
     static func isFolder(_ id: String) -> Bool { id.hasPrefix("folder:") }
+    /// Asks the session for today's genre shelves (`genre:<key>`, see SmartMixGenres.swift); the result also carries `genres:index`.
+    static let genresAuto = "genres:auto"
+    static let genresIndex = "genres:index"
+    static func isGenre(_ id: String) -> Bool { id.hasPrefix(SMGenres.shelfPrefix) }
 }
 
 /// One library item as the platform adapter hands it to the engine (no titles, no URLs: ids and keys only).
@@ -29,6 +45,8 @@ struct SMCandidate: Sendable {
     var folder: String? = nil       // folderKey
     var franchise: String? = nil
     var genre: String? = nil
+    /// Every genre token of the title, normalised (`SMGenres.tokens`); `genre` stays the first one.
+    var genres: [String] = []
     var poster = true
     var backdrop = false
     var watched = false
@@ -51,8 +69,10 @@ struct SMAffinity: Sendable, Equatable {
     var topFolders: [String] = []
     var topGenres: [String] = []
     var topDecades: [Int] = []
-    init(topLangs: [String] = [], topFolders: [String] = [], topGenres: [String] = [], topDecades: [Int] = []) {
-        self.topLangs = topLangs; self.topFolders = topFolders; self.topGenres = topGenres; self.topDecades = topDecades
+    /// Genre-shelf keys (`SMGenres.table`) of what was watched most lately, most watched first.
+    var genreKeys: [String] = []
+    init(topLangs: [String] = [], topFolders: [String] = [], topGenres: [String] = [], topDecades: [Int] = [], genreKeys: [String] = []) {
+        self.topLangs = topLangs; self.topFolders = topFolders; self.topGenres = topGenres; self.topDecades = topDecades; self.genreKeys = genreKeys
     }
 }
 
@@ -62,7 +82,14 @@ struct SMContext: Sendable {
     var refreshCounter = 0
     var preferredLang: String? = nil
     var affinity = SMAffinity()
+    /// Per shelf id; a shelf that is not listed is `.weekly`.
+    var modes: [String: SMShelfMode] = [:]
+    func mode(_ shelf: String) -> SMShelfMode { modes[shelf] ?? .weekly }
+    var kids = false                // Kids profile: only kid-safe genre shelves
     var poolCap: Int? = nil         // degraded tiers (large / huge libraries) lower the pool
+    /// Extra picks drawn after the normal ones (the first `size` picks are identical with or without it); Home composition trims, so a title removed from a row by the
+    /// one-title-per-screen rule is replaced from the same draw. 0 in every shared fixture.
+    var oversample = 0
     var nowYear: Int { Int(dayKey.prefix(4)) ?? 2026 }
     var loadKey: String { dayKey + "|" + String(refreshCounter) }
     init(profile: String, dayKey: String, refreshCounter: Int = 0, preferredLang: String? = nil, affinity: SMAffinity = SMAffinity(), poolCap: Int? = nil) {
@@ -91,6 +118,18 @@ struct SMPick: Sendable, Equatable {
     var kind: SMKind
     /// hero only: true when the card has a backdrop; false = poster composition tier.
     var hasBackdrop: Bool
+    /// Taste metadata for composition (re-rank, exploration). Never leaves the device.
+    var genre: String? = nil
+    var genres: [String] = []
+    var lang: String? = nil
+    var franchise: String? = nil
+}
+
+/// One franchise tile of the Collections row: its display stem key, the member titles' representative ids (release order) and how many titles it has.
+struct SMCollection: Sendable, Equatable {
+    var key: String
+    var memberIds: [String]
+    var count: Int { memberIds.count }
 }
 
 struct SMShelfResult: Sendable {
@@ -98,6 +137,11 @@ struct SMShelfResult: Sendable {
     var picks: [SMPick]
     var diag: SMDiagnostics
     var ids: [String] { picks.map(\.id) }
+    /// `genres:index` only: eligible titles per genre key, and the keys chosen for today in shelf order.
+    var genreCounts: [String: Int] = [:]
+    var genreSelected: [String] = []
+    /// `collections` only: the franchises, in tile order (`picks` holds each franchise's lead title).
+    var collections: [SMCollection] = []
     /// True when the shelf must not be shown at all (lang-pref without a language / without matches).
     var isHidden: Bool { diag.hidden }
 }

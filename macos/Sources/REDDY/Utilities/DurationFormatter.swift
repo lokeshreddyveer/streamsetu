@@ -5,8 +5,8 @@ enum DurationFormatter {
     static func short(_ seconds: Double) -> String {
         let total = max(0, Int(seconds.rounded()))
         let h = total / 3600, m = (total % 3600) / 60
-        if h > 0 { return m > 0 ? "\(h)h \(m)m" : "\(h)h" }
-        return "\(max(1, m))m"
+        if h > 0 { return m > 0 ? Localized.string("%dh %dm", h, m) : Localized.string("%dh", h) }
+        return Localized.string("%dm", max(1, m))
     }
 
     /// 3725 -> "1:02:05", 125 -> "2:05"

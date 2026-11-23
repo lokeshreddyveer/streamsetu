@@ -377,6 +377,18 @@ final class ScriptedWeb: @unchecked Sendable {
         #expect(!c.assistantModelChain().contains { $0.provider == .gemini || $0.provider == .groq })
     }
 
+    @Test func ollamaIsNotTriedUnlessThePersonSetItUp() throws {
+        let c = try rig()
+        // its own defaults: the shared ones are read by every other Setu test running at the same time
+        IsolatedDefaults.with("ollama-chain") { d in
+            let store = AIStore(defaults: d, credentials: InMemoryCredentialStore())
+            store.save(AIConfig(provider: .gemini, model: "", base: "", key: "K")); store.provider = .gemini
+            #expect(!c.assistantModelChain(store: store, cloudAllowed: true).contains { $0.provider == .ollama })
+            store.save(AIConfig(provider: .ollama, model: "", base: "http://192.168.1.5:11434", key: "")); store.provider = .gemini
+            #expect(c.assistantModelChain(store: store, cloudAllowed: true).contains { $0.provider == .ollama })
+        }
+    }
+
     @Test func aBlipIsRetriedButAKeyProblemIsNot() {
         #expect(AppContainer.isTransient(.rejected("Google Gemini does not know the model \"x\". Change the model name in Settings.")))
         #expect(AppContainer.isTransient(.network("Google Gemini is not answering (503).")))
@@ -479,7 +491,7 @@ final class ScriptedWeb: @unchecked Sendable {
     } }
 }
 
-@MainActor @Suite("Assistant: answering a name at once") struct AssistantFastNameTests {
+@MainActor @Suite("Assistant: answering a name at once", .timeLimit(.minutes(1))) struct AssistantFastNameTests {
     private func rig() throws -> (AppContainer, PlaylistSource) {
         let c = try AppContainer(databasePath: FileManager.default.temporaryDirectory.appendingPathComponent("reddy-fn-\(UUID().uuidString).sqlite").path, credentials: InMemoryCredentialStore())
         let src = try c.sources.addM3U(name: "Mine", url: "http://127.0.0.1:9/list.m3u")

@@ -41,7 +41,7 @@ struct LibraryScreen: View {
                     if showsModeSwitch {
                         Picker("View", selection: Binding(get: { viewMode }, set: { viewMode = $0; FolderViewMode.save($0, kind, profile: profileID) })) {
                             Label("Folders", systemImage: "folder").tag(FolderViewMode.folders); Label("Grid", systemImage: "square.grid.2x2").tag(FolderViewMode.grid)
-                        }.pickerStyle(.segmented).labelsHidden().fixedSize().accessibilityLabel("Folders or grid")
+                        }.pickerStyle(.segmented).labelsHidden().fixedSize().accessibilityLabel("Folders or grid").atlas("control.library.viewMode")
                     }
                     SortMenu(options: vm.availableSorts, selection: Binding(get: { vm.sort }, set: { newSort in
                         // Folder rows keep each folder's own order, so choosing a sort means choosing the grid, which honours it.
@@ -84,8 +84,9 @@ struct LibraryScreen: View {
         .onChange(of: profileID) { _, _ in viewMode = FolderViewMode.load(kind, profile: profileID); topRow = nil }
         .onChange(of: showsFolders) { _, on in if !on { topRow = nil } }          // the grid must not inherit a folder row as its scroll position; the row is restored from memory on return
         .onAppear { if !appliedDefaultSort { appliedDefaultSort = true; vm.sort = settings.defaultLibrarySort.sort } }
-        .onAppear { state.reloadWatched(); takeLibraryQuery() }
+        .onAppear { state.reloadWatched(); takeLibraryQuery(); takeLibraryFilter() }
         .onChange(of: router.libraryQuery) { _, _ in takeLibraryQuery() }
+        .onChange(of: router.libraryFilter) { _, _ in takeLibraryFilter() }
         .task(id: taskKey) { if let c = container { await vm.reset(c, selection: selection, source: state.activeSourceID) } }
         // The slideshow depends on the playlist and the day only, so a catalog refresh or a sort change never rebuilds it.
         .task(id: slideshowKey) {
@@ -111,7 +112,7 @@ struct LibraryScreen: View {
                 ForEach(Array(vm.items.enumerated()), id: \.element.id) { index, item in
                     ReddyPosterCard(model: noted(PosterCardModel(item: item, progress: vm.progress[item.id] ?? state.partialProgress(item.id), isFavorite: state.isFavorite(item.id), isNew: state.hasNewEpisodes(item.id), isWatched: state.isWatched(item.id)), item.id), width: layout.cardWidth,
                                     onOpen: { open(item) }, onPlay: { play(item) })
-                        .contextMenu { menu(item) }
+                        .tileMenu(item, handlers: menuHandlers(item))
                         .task { if let c = container { await vm.loadMoreIfNeeded(c, current: item, selection: selection, source: state.activeSourceID) } }
                         .staggeredAppear(index)
                 }
@@ -159,17 +160,20 @@ struct LibraryScreen: View {
 
     private func open(_ item: LibraryItem) { switch item { case .movie(let m): router.open(movie: m); case .series(let s): router.open(series: s) } }
 
-    @ViewBuilder private func menu(_ item: LibraryItem) -> some View {
-        Button("Play") { play(item) }
-        Button("Watch Privately", systemImage: "eye.slash") { play(item, privately: true) }
-        Button("View details") { open(item) }
-        Button(state.isFavorite(item.id) ? "Remove from Favorites" : "Add to Favorites") { state.toggleFavorite(item.id, kind: item.kind) }
-        Button(state.isWatchLater(item.id) ? "Remove from Watch Later" : "Add to Watch Later") { state.toggleWatchLater(item.id, kind: item.kind); if selection == .shortcut(.watchLater) { Task { await vm.reset(container!, selection: selection, source: state.activeSourceID) } } }
-        QueueMenu(item: item)
-        FavoriteOrderMenu(item: item)
-        CollectionMenu(itemID: item.id, kind: item.kind)
-        Divider()
-        Button("Hide") { try? container?.favoritesRepo.hide(item.id, kind: item.kind.rawValue); state.catalogVersion += 1 }
+    private func menuHandlers(_ item: LibraryItem) -> TileMenuHandlers {
+        var h = TileMenuHandlers(play: { play(item) }, playPrivately: { play(item, privately: true) }, open: { open(item) })
+        if let cat = item.categoryID { h.openFolder = { router.openFolder(item.isSeries ? .series : .movies, categoryID: cat) } }
+        h.goToCast = { CastFocus.request(item.id); open(item) }
+        h.changed = { if selection == .shortcut(.watchLater) || selection == .shortcut(.favorites), let c = container { Task { await vm.reset(c, selection: selection, source: state.activeSourceID) } } }
+        return h
+    }
+
+    /// A genre chosen on Home: the filter is used once, with the best rated first when the list can be ordered that way.
+    private func takeLibraryFilter() {
+        guard let f = router.libraryFilter else { return }
+        router.libraryFilter = nil
+        vm.filter = f
+        if vm.availableSorts.contains(.topRated) { vm.sort = .topRated }
     }
 
     /// A command typed in the top search put words for this list's own search box: they are used once, so the filters and ordering in them apply here.

@@ -93,7 +93,7 @@ import Foundation
     }
 
     @Test func aPercentageRatingDoesNotOutrankARealNine() async throws {
-        #expect(AssistantToolbox.tenPointRating("57") == 5.7); #expect(AssistantToolbox.tenPointRating("9.2") == 9.2); #expect(AssistantToolbox.tenPointRating("10") == 10)
+        #expect(AssistantToolbox.tenPointRating("57") == 5.7); #expect(AssistantToolbox.tenPointRating("9.2") == 9.2); #expect(AssistantToolbox.tenPointRating("10") == 0, "a bare 10 is junk under the shared rating rule (0, 10 and 10.0 are not credible)")
         #expect(AssistantToolbox.tenPointRating("250") == 0 && AssistantToolbox.tenPointRating(nil) == 0 && AssistantToolbox.tenPointRating("n/a") == 0)
         let (c, src) = try rig()
         try c.indexer.commitSeries(source: src, categories: [], series: [series(src, "a", "Percent Show", "57"), series(src, "b", "Real Nine", "9.0"), series(src, "c", "Seven", "7.0")])

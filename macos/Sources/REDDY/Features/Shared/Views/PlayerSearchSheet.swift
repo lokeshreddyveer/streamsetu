@@ -19,7 +19,7 @@ struct PlayerSearchSheet: View {
     var body: some View {
         List {
             if query.trimmingCharacters(in: .whitespaces).isEmpty {
-                Text("Type a title, a channel or something like “hindi movies 2024”.").foregroundStyle(.secondary).listRowBackground(Color.clear)
+                Text("Type a title, a channel or something like “action movies 2024”.").foregroundStyle(.secondary).listRowBackground(Color.clear)
             } else if found.isEmpty {
                 Text(searching ? "Searching…" : "No results. Try fewer letters or another spelling.").foregroundStyle(.secondary).listRowBackground(Color.clear)
             }
@@ -33,7 +33,7 @@ struct PlayerSearchSheet: View {
                         }
                         Spacer(minLength: 0)
                     }.contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                }.buttonStyle(.plain).atlas("control.player.search")
             }
         }
         .listStyle(.plain)
@@ -55,7 +55,7 @@ struct PlayerSearchSheet: View {
             TextField("Search the catalog", text: $query).textFieldStyle(.plain).focused($focused).submitLabel(.search).onSubmit { focused = false }
             if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.buttonStyle(.plain).accessibilityLabel("Clear") }
             Picker("Search in", selection: $tab) { ForEach(Self.choices) { Text($0 == .all ? "All" : $0.rawValue).tag($0) } }
-                .pickerStyle(.menu).labelsHidden().fixedSize()
+                .pickerStyle(.menu).labelsHidden().fixedSize().atlas("control.player.search")
             Button("Close") { dismiss() }
         }
         .padding(12).background(.regularMaterial)

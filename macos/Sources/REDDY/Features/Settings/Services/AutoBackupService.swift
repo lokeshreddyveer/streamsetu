@@ -5,7 +5,7 @@ import Foundation
 /// into Application Support/…/Backups and removes all but the newest five.
 @MainActor
 final class AutoBackupService {
-    static let interval: TimeInterval = 7 * 86400
+    static let interval: TimeInterval = Retention.autoBackupInterval
     static let keep = 5
     private let backup: BackupService
     private let settings: AppSettings

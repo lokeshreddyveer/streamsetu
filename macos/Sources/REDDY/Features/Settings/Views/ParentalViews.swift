@@ -29,7 +29,7 @@ struct UnlockDialog: View {
                     .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true)
                 PINField(title: "PIN", text: $pin, onSubmit: submit)
                 if let message { Text(message.loc).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
-                HStack { Spacer(); SecondaryButton(title: "Cancel") { router.modal = nil }; PrimaryButton(title: "Unlock", action: submit).disabled(pin.count < 4) }
+                HStack { Spacer(); SecondaryButton(title: "Cancel") { router.modal = nil }; PrimaryButton(title: "Unlock", action: submit).disabled(pin.count < 4).atlas("setting.parentalPin") }
             }
         }
     }
@@ -38,7 +38,7 @@ struct UnlockDialog: View {
         guard let p = container?.parental else { return }
         switch p.unlock(pin: pin) {
         case .unlocked: router.modal = nil
-        case .wrongPIN(let left): message = "That isn't the PIN. \(left) \(left == 1 ? "try" : "tries") left."; pin = ""
+        case .wrongPIN(let left): message = "That isn't the PIN. \(Localized.plural(left, one: "%@ try", other: "%@ tries")) left."; pin = ""
         case .tooManyAttempts(let t): message = "Too many tries. Wait \(Int(t.rounded(.up))) seconds."; pin = ""
         case .noPIN: router.modal = nil
         }
@@ -64,7 +64,7 @@ struct SetPINSheet: View {
             PINField(title: "New PIN", text: $new)
             PINField(title: "Repeat new PIN", text: $confirm, onSubmit: save)
             if let error { Text(error).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
-            HStack { Spacer(); SecondaryButton(title: "Cancel") { dismiss() }; PrimaryButton(title: "Save", action: save) }
+            HStack { Spacer(); SecondaryButton(title: "Cancel") { dismiss() }; PrimaryButton(title: "Save", action: save).atlas("setting.parentalPin") }
         }
         .padding(22).frame(width: 380).background(ColorTokens.background)
     }
@@ -93,19 +93,19 @@ struct ParentalSettingsGroup: View {
         if let p = container?.parental {
             @Bindable var bp = p
             SettingsGroup(title: "Parental controls", footer: "Lock a folder from the sidebar (right-click) or from the Channel manager's Folders tab. While locked, its channels, movies and series are missing from every list and search.") {
-                SettingsRow(title: "PIN", detail: p.hasPIN ? "A PIN is set." : "No PIN yet. Set one to lock folders.") {
+                SettingsRow(title: "PIN", atlas: "setting.parentalPin", detail: p.hasPIN ? "A PIN is set." : "No PIN yet. Set one to lock folders.") {
                     if p.hasPIN {
                         HStack(spacing: 8) { Button("Change…") { showChange = true }; Button("Remove…") { showRemove = true } }
                     } else { Button("Set PIN…") { showSet = true } }
                 }
                 if p.hasPIN {
-                    SettingsRow(title: "Locked folders", detail: p.lockedCategoryIDs.isEmpty ? "None yet." : "\(p.lockedCategoryIDs.count) folder\(p.lockedCategoryIDs.count == 1 ? "" : "s") locked.") { EmptyView() }
-                    SettingsRow(title: "Unlock lasts", detail: "Then the folders lock again by themselves.") {
+                    SettingsRow(title: "Locked folders", atlas: "setting.parental", detail: p.lockedCategoryIDs.isEmpty ? "None yet." : Localized.plural(p.lockedCategoryIDs.count, one: "%@ folder locked.", other: "%@ folders locked.")) { EmptyView() }
+                    SettingsRow(title: "Unlock lasts", atlas: "setting.parentalUnlock", detail: "Then the folders lock again by themselves.") {
                         Picker("Unlock lasts", selection: Binding(get: { p.unlockMinutes }, set: { p.unlockMinutes = $0 })) {
                             ForEach([5, 15, 30, 60, 120], id: \.self) { Text("\($0) minutes").tag($0) }
                         }.pickerStyle(.menu).fixedSize()
                     }
-                    SettingsRow(title: "Right now", detail: p.isUnlocked ? "Locked folders are visible." : "Locked folders are hidden.", divider: false) {
+                    SettingsRow(title: "Right now", atlas: "setting.parental", detail: p.isUnlocked ? "Locked folders are visible." : "Locked folders are hidden.", divider: false) {
                         if p.isUnlocked { Button("Lock Now") { p.lockNow() } } else { Button("Unlock…") { showUnlock = true } }
                     }
                 }
@@ -135,7 +135,7 @@ struct ParentalSettingsGroup: View {
             Text(note).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true)
             PINField(title: "PIN", text: pin, onSubmit: run)
             if let error { Text(error).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
-            HStack { Spacer(); SecondaryButton(title: "Cancel") { showRemove = false; showUnlock = false }; PrimaryButton(title: action, action: run) }
+            HStack { Spacer(); SecondaryButton(title: "Cancel") { showRemove = false; showUnlock = false }; PrimaryButton(title: action, action: run).atlas("setting.parentalPin") }
         }
         .padding(22).frame(width: 360).background(ColorTokens.background)
     }
@@ -157,7 +157,7 @@ struct LockedFolderView: View {
                 .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
             PINField(title: "PIN", text: $pin, onSubmit: submit)
             if let message { Text(message.loc).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
-            PrimaryButton(title: "Unlock", symbol: "lock.open", action: submit).disabled(pin.count < 4)
+            PrimaryButton(title: "Unlock", symbol: "lock.open", action: submit).disabled(pin.count < 4).atlas("setting.parental")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -178,7 +178,7 @@ struct AppLockSettingsGroup: View {
     var body: some View {
         if let lock = container?.appLock {
             SettingsGroup(title: "App lock", footer: "Asks for Touch ID or your Mac password when you open StreamSetu, after the screen sleeps, or after you have been away for 30 seconds. A stream that is playing keeps playing.") {
-                SettingsRow(title: "Require \(lock.method)", detail: lock.canEnable ? "Off by default." : "Set a password on this Mac to use this.") {
+                SettingsRow(title: "Require \(lock.method)", atlas: "setting.appLock", detail: lock.canEnable ? "Off by default." : "Set a password on this Mac to use this.") {
                     Toggle("", isOn: Binding(get: { lock.enabled }, set: { v in Task { await lock.setEnabled(v) } })).labelsHidden().disabled(!lock.canEnable && !lock.enabled)
                 }
             }
@@ -193,11 +193,11 @@ struct ProxySettingsGroup: View {
     var body: some View {
         @Bindable var s = settings
         SettingsGroup(title: "Proxy", footer: "Sends playlist, guide, artwork and detail requests, and streams played by the MPV engine, through a proxy. MPV supports HTTP proxies only. Apple's player uses the system network settings and ignores this.") {
-            SettingsRow(title: "Type", detail: s.proxy.isActive ? "On" : "Off") {
+            SettingsRow(title: "Type", atlas: "setting.proxy", detail: s.proxy.isActive ? "On" : "Off") {
                 Picker("", selection: $s.proxyKind) { ForEach(ProxyConfig.Kind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.labelsHidden().fixedSize()
             }
             if s.proxyKind != .off {
-                SettingsRow(title: "Address", detail: "Host name or IP address, and port.") {
+                SettingsRow(title: "Address", atlas: "setting.proxyHost", detail: "Host name or IP address, and port.") {
                     HStack {
                         TextField("host", text: $s.proxyHost).textFieldStyle(.roundedBorder).frame(width: 180)
                         TextField("port", text: $port).textFieldStyle(.roundedBorder).frame(width: 70)
@@ -221,12 +221,12 @@ struct AppDNSSettingsGroup: View {
     var body: some View {
         @Bindable var s = settings
         SettingsGroup(title: "App DNS", footer: AppDNSStatus.overrideNotice + " " + AppDNSStatus.privacyNotice + " It can fix DNS blocking; it cannot get past IP blocking, routing problems or geographic limits.") {
-            SettingsRow(title: "Use App DNS", detail: AppDNSStatus.line(s.appDNS, mpvInUse: true)) { Toggle("", isOn: $s.appDNS.enabled).labelsHidden() }
-            SettingsRow(title: "DNS provider", detail: s.appDNS.provider.summary) {
+            SettingsRow(title: "Use App DNS", atlas: "setting.appDNS", detail: AppDNSStatus.line(s.appDNS, mpvInUse: true)) { Toggle("", isOn: $s.appDNS.enabled).labelsHidden() }
+            SettingsRow(title: "DNS provider", atlas: "setting.appDNS", detail: s.appDNS.provider.summary) {
                 Picker("", selection: $s.appDNS.provider) { ForEach(AppDNSProvider.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.labelsHidden().fixedSize()
             }
             if s.appDNS.provider == .custom {
-                SettingsRow(title: "Custom DNS", detail: customProblem(s.appDNS.customURL) ?? "A DNS-over-HTTPS address, and optionally the resolver's IP addresses.") {
+                SettingsRow(title: "Custom DNS", atlas: "setting.appDNS", detail: customProblem(s.appDNS.customURL) ?? "A DNS-over-HTTPS address, and optionally the resolver's IP addresses.") {
                     VStack(alignment: .trailing) {
                         TextField("name", text: $s.appDNS.customName).textFieldStyle(.roundedBorder).frame(width: 260)
                         TextField("https://example.com/dns-query", text: $s.appDNS.customURL).textFieldStyle(.roundedBorder).frame(width: 260)
@@ -235,8 +235,8 @@ struct AppDNSSettingsGroup: View {
                     }
                 }
             }
-            SettingsRow(title: "Local devices use system DNS", detail: ".local names, single-label names and local addresses.") { Toggle("", isOn: $s.appDNS.localUsesSystem).labelsHidden() }
-            SettingsRow(title: "Test", detail: result.map { $0.headline + ($0.reachable ? " · \($0.milliseconds) ms" : "") } ?? "Checks your playlist and guide servers as well as a public name.") {
+            SettingsRow(title: "Local devices use system DNS", atlas: "setting.appDNS", detail: ".local names, single-label names and local addresses.") { Toggle("", isOn: $s.appDNS.localUsesSystem).labelsHidden() }
+            SettingsRow(title: "Test", atlas: "setting.appDNS", detail: result.map { $0.headline + ($0.reachable ? " · \($0.milliseconds) ms" : "") } ?? "Checks your playlist and guide servers as well as a public name.") {
                 HStack {
                     SecondaryButton(title: testing ? "Testing…" : "Test App DNS") { Task { await runTest() } }.disabled(testing)
                     SecondaryButton(title: "Clear DNS Cache") { AppDNSController.clearCache(); container?.http.setProxy(settings.proxy.isActive ? settings.proxy : nil) }
@@ -272,10 +272,10 @@ struct VPNSettingsGroup: View {
     var body: some View {
         @Bindable var s = settings
         SettingsGroup(title: "VPN", footer: "StreamSetu does not run a VPN and never sees what your VPN does. It only looks for a VPN connection on this Mac; it cannot confirm that StreamSetu's traffic goes through it. The option below pauses playback when a detected VPN drops, which helps keep a stream from carrying on outside it but is not a guarantee.") {
-            SettingsRow(title: "Status", detail: (container?.vpn.isOn ?? false) ? "A VPN connection is detected." : "No VPN connection detected.") {
+            SettingsRow(title: "Status", atlas: "setting.vpn", detail: (container?.vpn.isOn ?? false) ? "A VPN connection is detected." : "No VPN connection detected.") {
                 Button("Open Network Settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Network-Settings.extension")!) }
             }
-            SettingsRow(title: "Pause if the VPN drops", detail: "Only while something is playing.") {
+            SettingsRow(title: "Pause if the VPN drops", atlas: "setting.vpn", detail: "Only while something is playing.") {
                 Toggle("", isOn: $s.vpnPause).labelsHidden()
             }
         }

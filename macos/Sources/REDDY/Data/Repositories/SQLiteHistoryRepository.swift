@@ -118,7 +118,8 @@ final class SQLiteHistoryRepository: HistoryRepository {
 
     /// Unfinished movies/episodes, newest first (one entry per series: its most recent episode).
     func continueWatching(limit: Int) throws -> [WatchProgress] {
-        let rows = try db.read { try $0.query(Self.select + " WHERE completed=0 AND position_seconds>30 ORDER BY updated_at DESC LIMIT 200", [], Self.map) }
+        // A title the person removed from the list stays out until it is played again (its progress is newer than the marker).
+        let rows = try db.read { try $0.query(Self.select + " WHERE completed=0 AND position_seconds>30 AND NOT EXISTS (SELECT 1 FROM continue_hidden h WHERE h.item_id = watch_progress.item_id AND h.hidden_at >= watch_progress.updated_at) ORDER BY updated_at DESC LIMIT 200", [], Self.map) }
         var seenSeries = Set<String>(), out: [WatchProgress] = []
         for p in rows {
             if let s = p.seriesID { guard seenSeries.insert(s).inserted else { continue } }
@@ -126,6 +127,24 @@ final class SQLiteHistoryRepository: HistoryRepository {
             if out.count == limit { break }
         }
         return out
+    }
+
+    /// "Remove from Continue Watching": writes only the marker.
+    func hideFromContinue(itemID: String, now: Date = Date()) throws {
+        // An episode takes the other episodes of its series with it (the list shows one entry per series).
+        try db.write { c in
+            try c.execute("INSERT OR REPLACE INTO continue_hidden(item_id, hidden_at) VALUES(?,?)", [itemID, now.timeIntervalSince1970])
+            try c.execute("INSERT OR REPLACE INTO continue_hidden(item_id, hidden_at) SELECT item_id, ? FROM watch_progress WHERE series_id IS NOT NULL AND series_id = (SELECT series_id FROM watch_progress WHERE item_id=?)", [now.timeIntervalSince1970, itemID])
+        }
+        onProgressChanged?()
+    }
+
+    /// Undo of the above.
+    func showInContinue(itemID: String) throws {
+        try db.write { c in
+            try c.execute("DELETE FROM continue_hidden WHERE item_id=? OR item_id IN (SELECT item_id FROM watch_progress WHERE series_id IS NOT NULL AND series_id = (SELECT series_id FROM watch_progress WHERE item_id=?))", [itemID, itemID])
+        }
+        onProgressChanged?()
     }
 
     func watchedTitleIDs() throws -> Set<String> {

@@ -46,7 +46,7 @@ struct ReddyVideoSizeMenu: View {
             if hasOverride { Button("Forget This Channel's Setting", action: onForget) }
             Button("Apply as Global Default", action: onApplyGlobal)
         } label: { chipIcon("arrow.up.left.and.down.right.magnifyingglass", active: !layout.isDefault) }
-        .modifier(MenuChip(label: "Video size and zoom"))
+        .modifier(MenuChip(label: "Video size and zoom")).atlas("control.player.videoSize")
     }
 }
 
@@ -68,7 +68,7 @@ struct ReddyQualityMenu: View {
             }
             if !technical.isEmpty { Divider(); Text(technical) }
         } label: { chipIcon("dial.medium", active: selectedID != nil) }
-        .modifier(MenuChip(label: "Quality"))
+        .modifier(MenuChip(label: "Quality")).atlas("control.player.quality")
     }
 }
 
@@ -111,7 +111,7 @@ struct ReddyAudioMenu: View {
                 if !delaySupported { Text("Audio delay needs the MPV engine") }
             }
         } label: { chipIcon("speaker.wave.2.bubble", active: processing != .off || delay != 0 || (channelTrim ?? 0) != 0) }
-        .modifier(MenuChip(label: "Audio"))
+        .modifier(MenuChip(label: "Audio")).atlas("control.player.audio")
     }
 }
 
@@ -137,7 +137,7 @@ struct ReddySubtitleMenu: View {
             Button("Reset Delay") { onDelay(0) }.disabled(!delaySupported || delay == 0)
             if !delaySupported { Text("Subtitle delay needs the MPV engine") }
         } label: { chipIcon("captions.bubble", active: tracks.contains { $0.isSelected }) }
-        .modifier(MenuChip(label: "Subtitles"))
+        .modifier(MenuChip(label: "Subtitles")).atlas("control.player.subtitles")
     }
 }
 
@@ -155,7 +155,7 @@ struct ReddyPicturePanel: View {
             slider("Saturation", \.saturation)
             slider("Gamma", \.gamma)
             slider("Hue", \.hue)
-            HStack { Spacer(); Button("Reset") { onChange(PictureAdjustments()) }.disabled(picture.isDefault) }
+            HStack { Spacer(); Button("Reset") { onChange(PictureAdjustments()) }.disabled(picture.isDefault).atlas("setting.picture") }
         }
         .padding(16).frame(width: 280)
     }

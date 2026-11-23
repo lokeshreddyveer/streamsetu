@@ -170,7 +170,7 @@ final class CloudKitSync: CKSyncEngineDelegate, @unchecked Sendable {
                 let waiting = core.quarantinedCount()
                 await MainActor.run {
                     self.status.lastSync = Date()
-                    self.status.summary = waiting > 0 ? "\(waiting) change\(waiting == 1 ? "" : "s") from another device could not be applied yet. They are kept and tried again; an update of this app may be needed." : nil
+                    self.status.summary = waiting > 0 ? "\(Localized.plural(waiting, one: "%@ change", other: "%@ changes")) from another device could not be applied yet. They are kept and tried again; an update of this app may be needed." : nil
                 }
             } catch {
                 // The batch could not be written at all. CloudKit will not send it again, so it is kept here and applied with the next one; and the person is told.

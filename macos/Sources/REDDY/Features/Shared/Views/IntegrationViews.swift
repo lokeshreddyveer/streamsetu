@@ -18,24 +18,24 @@ struct TraktPanel: View {
             TextField("Client ID", text: $clientID).textFieldStyle(.roundedBorder).autocorrectionDisabled()
             SecureField("Client Secret", text: $secret).textFieldStyle(.roundedBorder)
             HStack {
-                Button("Save Keys") { trakt.app = TraktApp(clientID: clientID, secret: secret); result = "Saved." }.disabled(clientID.isEmpty || secret.isEmpty)
-                if trakt.app.isComplete { Button("Remove Keys", role: .destructive) { trakt.signOut(); trakt.app = TraktApp(); clientID = ""; secret = ""; result = nil } }
+                Button("Save Keys") { trakt.app = TraktApp(clientID: clientID, secret: secret); result = "Saved." }.disabled(clientID.isEmpty || secret.isEmpty).atlas("setting.trakt")
+                if trakt.app.isComplete { Button("Remove Keys", role: .destructive) { trakt.signOut(); trakt.app = TraktApp(); clientID = ""; secret = ""; result = nil }.atlas("setting.trakt") }
             }
             switch trakt.state {
             case .notConfigured: Text("Add your keys to sign in.").font(.callout).foregroundStyle(.secondary)
-            case .signedOut: Button("Sign In to Trakt") { trakt.beginSignIn() }.buttonStyle(.borderedProminent)
+            case .signedOut: Button("Sign In to Trakt") { trakt.beginSignIn() }.buttonStyle(.borderedProminent).atlas("setting.trakt")
             case .waitingForCode(let code, let url):
                 VStack(alignment: .leading, spacing: 6) {
                     Text("On another device, open \(url) and enter:").font(.callout)
                     Text(code).font(.system(size: 30, weight: .bold, design: .monospaced)).textSelection(.enabled)
-                    HStack { if let u = URL(string: url) { Link("Open It Here", destination: u) }; Button("Cancel") { trakt.cancelSignIn() } }
+                    HStack { if let u = URL(string: url) { Link("Open It Here", destination: u) }; Button("Cancel") { trakt.cancelSignIn() }.atlas("setting.trakt") }
                     ProgressView().controlSize(.small)
                 }
             case .signedIn:
                 Label("Signed in to Trakt", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
                 HStack {
-                    Button(busy ? "Reading…" : "Add My Watchlist to Watch Later") { importList() }.disabled(busy)
-                    Button("Sign Out", role: .destructive) { trakt.signOut() }
+                    Button(busy ? "Reading…" : "Add My Watchlist to Watch Later") { importList() }.disabled(busy).atlas("setting.trakt")
+                    Button("Sign Out", role: .destructive) { trakt.signOut() }.atlas("setting.trakt")
                 }
             }
             if let m = result ?? trakt.message { Text(m).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
@@ -68,15 +68,15 @@ struct DebridPanel: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Plays a link from a file host through your own debrid account. Your token stays in the Keychain and is sent only to the service you choose.\(DebridClient.magnetsAllowed ? " Magnet links work too." : " Magnet links are not supported in the iPhone and iPad apps.")")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Picker("Service", selection: $account.service) { ForEach(DebridService.allCases) { Text($0.title).tag($0) } }
+            Picker("Service", selection: $account.service) { ForEach(DebridService.allCases) { Text($0.title).tag($0) } }.atlas("setting.debrid")
             SecureField("API token (\(account.service.tokenHelp))", text: $account.token).textFieldStyle(.roundedBorder)
             HStack {
-                Button("Save Token") { container.debrid.save(account); status = account.isComplete ? "Saved." : "Removed." }
-                if account.isComplete { Button("Remove", role: .destructive) { account.token = ""; container.debrid.save(account); status = "Removed." } }
+                Button("Save Token") { container.debrid.save(account); status = account.isComplete ? "Saved." : "Removed." }.atlas("setting.debrid")
+                if account.isComplete { Button("Remove", role: .destructive) { account.token = ""; container.debrid.save(account); status = "Removed." }.atlas("setting.debrid") }
             }
             Divider()
             TextField(DebridClient.magnetsAllowed ? "Paste a link or magnet link" : "Paste a link", text: $input).textFieldStyle(.roundedBorder).autocorrectionDisabled()
-            Button(busy ? "Working…" : "Play") { play() }.buttonStyle(.borderedProminent).disabled(busy || input.trimmingCharacters(in: .whitespaces).isEmpty || !account.isComplete)
+            Button(busy ? "Working…" : "Play") { play() }.buttonStyle(.borderedProminent).disabled(busy || input.trimmingCharacters(in: .whitespaces).isEmpty || !account.isComplete).atlas("setting.debrid")
             if let status { Text(status).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
         }
         .onAppear { account = container.debrid.load() }

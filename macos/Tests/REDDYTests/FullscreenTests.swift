@@ -1,6 +1,7 @@
 import Testing
 import AppKit
 import Foundation
+import Network
 @testable import REDDY
 
 /// Stand-in for the fullscreen window: records what the controller asks for and lets a test deliver the AppKit callbacks.
@@ -15,6 +16,24 @@ import Foundation
     func completeExit() { onDidExit?() }
 }
 
+/// A loopback server that accepts connections and never answers, so a test stream stays "loading" instead of failing and being retried by the player's own recovery,
+/// which would change the load count for reasons that have nothing to do with fullscreen (and depend on how busy the machine is).
+final class HoldingServer: @unchecked Sendable {
+    let listener: NWListener
+    private(set) var port: UInt16 = 0
+    private var open: [NWConnection] = []
+    private let queue = DispatchQueue(label: "test.hold")
+    init() throws { listener = try loopbackListener() }
+    func start() async {
+        let ready = AsyncStream<UInt16>.makeStream()
+        listener.newConnectionHandler = { [weak self] c in guard let self else { return }; self.open.append(c); c.start(queue: self.queue) }
+        listener.stateUpdateHandler = { [listener] in if case .ready = $0, let p = listener.port?.rawValue { ready.continuation.yield(p) } }
+        listener.start(queue: queue)
+        for await p in ready.stream { port = p; break }
+    }
+    func stop() { listener.cancel(); open.forEach { $0.cancel() } }
+}
+
 @Suite("Fullscreen playback") @MainActor struct FullscreenTests {
     struct Rig {
         let c: AppContainer
@@ -23,10 +42,10 @@ import Foundation
         let channel: Channel
     }
 
-    func rig() throws -> Rig {
+    func rig(streamPort: UInt16 = 9) throws -> Rig {
         let c = try AppContainer(databasePath: FileManager.default.temporaryDirectory.appendingPathComponent("reddy-fs-\(UUID().uuidString).sqlite").path, credentials: InMemoryCredentialStore())
         let src = try c.sources.addM3U(name: "Local", url: "http://127.0.0.1:9/list.m3u")
-        var ch = TestSupport.channel(src, "a", "Channel A"); ch.streamRef = "http://127.0.0.1:9/live/a.ts"
+        var ch = TestSupport.channel(src, "a", "Channel A"); ch.streamRef = "http://127.0.0.1:\(streamPort)/live/a.ts"
         try c.indexer.commitChannels(source: src, categories: [], channels: [ch])
         let stored = try #require(try c.catalog.channels(ChannelQuery(collapseVariants: false)).first)
         var made: [FakeFullscreenWindow] = []
@@ -37,7 +56,8 @@ import Foundation
     func settle() async { for _ in 0..<3 { await Task.yield(); try? await Task.sleep(nanoseconds: 1_000_000) } }
 
     @Test func twentyCyclesNeverTouchThePlaybackSession() async throws {
-        let r = try rig(), p = r.c.playback
+        let server = try HoldingServer(); await server.start(); defer { server.stop() }
+        let r = try rig(streamPort: server.port), p = r.c.playback
         let router = AppRouter(); router.navigate(.movies, .folder("cat-9"))
         p.play(channel: r.channel)
         let player = p.avPlayer, loads = p.loadCount, item = p.current

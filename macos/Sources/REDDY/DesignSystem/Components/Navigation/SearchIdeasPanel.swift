@@ -12,7 +12,7 @@ struct SearchIdeasPanel: View {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(SearchIdeas.examples) { e in
                     Button { pick(e.query) } label: { Label(e.label, systemImage: e.symbol).font(.system(size: 12)).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle()) }
-                        .buttonStyle(.plain).padding(.vertical, 3)
+                        .buttonStyle(.plain).padding(.vertical, 3).atlas("control.search.idea")
                 }
             }
         }
@@ -32,7 +32,7 @@ private struct FlowChips: View {
                         Button { pick(i.query) } label: {
                             Label(i.label, systemImage: i.symbol).font(.system(size: 12, weight: .medium)).lineLimit(1)
                                 .padding(.horizontal, 10).padding(.vertical, 6).background(Color.accentColor.opacity(0.14), in: Capsule())
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(.plain).atlas("control.search.idea")
                     }
                 }
             }

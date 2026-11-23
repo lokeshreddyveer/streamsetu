@@ -21,7 +21,7 @@ struct FilesView: View {
     var body: some View {
         List {
             Section {
-                Button { pickingFile = true } label: { Label("Open a Video File", systemImage: "doc.badge.plus") }
+                Button { pickingFile = true } label: { Label("Open a Video File", systemImage: "doc.badge.plus") }.atlas("menu.file.openVideoFile")
                 #if os(iOS)
                 PhotosPicker(selection: $photo, matching: .videos) { Label("Choose from Photos", systemImage: "photo.on.rectangle") }
                 #endif
@@ -32,14 +32,14 @@ struct FilesView: View {
                         Label { VStack(alignment: .leading) { Text(s.name); Text(s.kind == .webdav ? (s.address ?? "WebDAV") : "On this device").font(.caption).foregroundStyle(.secondary) } }
                         icon: { Image(systemName: s.kind == .webdav ? "server.rack" : "folder") }
                     }
-                    .contextMenu { Button("Remove", role: .destructive) { remove(s) } }
+                    .contextMenu { Button("Remove", role: .destructive) { remove(s) } }.atlas("context.files.source")
                 }
                 .onDelete { idx in idx.map { sources[$0] }.forEach(remove) }
-                Button { pickingFolder = true } label: { Label("Add a Folder", systemImage: "folder.badge.plus") }
-                Button { addingServer = true } label: { Label("Add a WebDAV Server", systemImage: "externaldrive.badge.plus") }
+                Button { pickingFolder = true } label: { Label("Add a Folder", systemImage: "folder.badge.plus") }.atlas("control.files.addFolder")
+                Button { addingServer = true } label: { Label("Add a WebDAV Server", systemImage: "externaldrive.badge.plus") }.atlas("control.files.addServer")
             } header: { Text("Folders and Servers") } footer: { Text("WebDAV works with Nextcloud and most home servers (NAS). The password is kept in the Keychain.") }
             Section {
-                NavigationLink { PodcastsView() } label: { Label("Podcasts", systemImage: "mic.fill") }
+                NavigationLink { PodcastsView() } label: { Label("Podcasts", systemImage: "mic.fill") }.atlas("screen.podcasts")
             } footer: { Text("Follow shows and play their episodes. Your place in each episode is remembered.") }
             if let note { Section { Text(note).foregroundStyle(.secondary) } }
         }
@@ -148,7 +148,7 @@ private struct AddServerForm: View {
                     Button("Save") {
                         onSave(FileSource(kind: .webdav, name: name.trimmingCharacters(in: .whitespaces), address: address, username: user.isEmpty ? nil : user), password)
                         dismiss()
-                    }.disabled(!valid)
+                    }.disabled(!valid).atlas("control.files.addServer")
                 }
             }
         }
@@ -181,7 +181,7 @@ struct BrowserView: View {
             if let error { Text(error).foregroundStyle(.secondary) }
             ForEach(entries.filter { $0.isFolder || LocalMedia.isVideo($0.name) }) { e in
                 if e.isFolder {
-                    NavigationLink { BrowserView(source: source, location: e.location, title: e.name) } label: { Label(e.name, systemImage: "folder") }
+                    NavigationLink { BrowserView(source: source, location: e.location, title: e.name) } label: { Label(e.name, systemImage: "folder") }.atlas("control.files.browse")
                 } else {
                     Button { play(e) } label: {
                         HStack {
@@ -189,7 +189,7 @@ struct BrowserView: View {
                             Spacer()
                             if let size = e.size { Text(ByteCountFormatter.string(fromByteCount: size, countStyle: .file)).font(.caption).foregroundStyle(.secondary) }
                         }
-                    }
+                    }.atlas("control.files.play")
                 }
             }
             if !loading, error == nil, entries.isEmpty { Text("No videos or folders here.").foregroundStyle(.secondary) }

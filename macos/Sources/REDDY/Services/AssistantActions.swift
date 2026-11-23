@@ -64,6 +64,7 @@ struct AssistantActionSpec: Sendable {
         case .toggleList(_, _, let later, _, _): return later
             ? .init(id: "library.watchLater", title: "Add or remove from Watch Later", scope: .profile, permission: .libraryChange, inputs: ["id: library item", "on: bool"], service: "AppState.toggleWatchLater", confirmation: nil, platforms: [.macOS, .iOS], needsPlayback: false)
             : .init(id: "library.favourite", title: "Add or remove a favourite", scope: .profile, permission: .libraryChange, inputs: ["id: library item", "on: bool"], service: "AppState.toggleFavorite", confirmation: nil, platforms: [.macOS, .iOS], needsPlayback: false)
+        case .openAtlas: return .init(id: "navigation.openAtlas", title: "Open a screen, page or window", scope: .session, permission: .control, inputs: ["id: atlas entry with a way to open it"], service: "AtlasOpener (the same router calls the buttons use)", confirmation: nil, platforms: [.macOS, .iOS], needsPlayback: false)
         case .copyReport: return .init(id: "diagnostics.copyReport", title: "Copy a redacted problem report", scope: .device, permission: .read, inputs: [], service: "DiagnosticsService.report (secrets removed)", confirmation: nil, platforms: [.macOS, .iOS], needsPlayback: false)
         }
     }
@@ -201,6 +202,12 @@ struct AssistantSituation {
         // 4. The target is still there, and still allowed under the parental restrictions in force now.
         if let cat = p.origin.categoryID, s.restricting, s.isLocked(cat) { return .deny("That title is in a locked folder. Unlock restricted content first.") }
         if let id = p.origin.targetItemID, !s.itemExists(id) { return .deny("That title is no longer in your library.") }
+
+        // 4b. An atlas screen must still exist, be one the person can open, and exist on this device.
+        if case .openAtlas(let id) = p.kind {
+            guard let e = Atlas.entry(id), e.reach != .none, AtlasAssistant.visible(e) else { return .deny("I cannot open that from here.") }
+            if e.reach == .modal("unlockRestricted") { return .deny("Unlocking is done only in the normal PIN form.") }
+        }
         // 5. Settings: the entry must still be changeable, and the value allowed.
         if case .setting(let id, let value) = p.kind {
             guard let e = AppSettingsCatalog.find(id), e.changeable else { return .deny("That setting cannot be changed from here.") }

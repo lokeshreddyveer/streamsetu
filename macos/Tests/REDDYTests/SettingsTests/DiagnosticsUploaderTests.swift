@@ -125,12 +125,19 @@ import Foundation
         #expect(PrivacyReport.make(s).sentOut.contains { $0.id == "provider" }, "the rest of the report is unchanged")
     }
 
-    @Test func theIPhoneManifestDeclaresNoCollectedData() throws {
+    @Test func theIPhoneManifestDeclaresTheTitleLookups() throws {
         var url = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { url.deleteLastPathComponent() }                         // up to the repository root
         let data = try Data(contentsOf: url.appendingPathComponent("ios/StreamSetu/PrivacyInfo.xcprivacy"))
         let plist = try #require(try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
-        #expect((plist["NSPrivacyCollectedDataTypes"] as? [Any])?.isEmpty == true, "the iPhone app sends nothing, so the manifest lists nothing (the App Store answer is Data Not Collected)")
+        let collected = try #require(plist["NSPrivacyCollectedDataTypes"] as? [[String: Any]])
+        #expect(collected.count == 1, "exactly one declared type: the titles and years looked up at the metadata services (App Store answer: Other User Content)")
+        let entry = try #require(collected.first)
+        #expect(entry["NSPrivacyCollectedDataType"] as? String == "NSPrivacyCollectedDataTypeOtherUserContent")
+        #expect(entry["NSPrivacyCollectedDataTypeLinked"] as? Bool == false)
+        #expect(entry["NSPrivacyCollectedDataTypeTracking"] as? Bool == false)
+        #expect(entry["NSPrivacyCollectedDataTypePurposes"] as? [String] == ["NSPrivacyCollectedDataTypePurposeAppFunctionality"])
+        #expect((plist["NSPrivacyTrackingDomains"] as? [Any])?.isEmpty == true, "no tracking domains")
         #expect(plist["NSPrivacyTracking"] as? Bool == false)
     }
 

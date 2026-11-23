@@ -60,7 +60,7 @@ actor SportsEventService {
     /// Drops everything cached and stops work in flight (a playlist was removed, the guide was rebuilt…).
     func invalidate() { generation += 1; cache.removeAll(); order.removeAll(); inflight?.task.cancel(); inflight = nil }
 
-    /// Call when the profile, the PIN lock or kids mode changes: work for the previous state is cancelled and can never be published.
+    /// Call when the profile, the PIN lock or kids mode changes (kept as the tested hook for that; the app does not call it yet): work for the previous state is cancelled and can never be published.
     func contextDidChange() { generation += 1; inflight?.task.cancel(); inflight = nil }
 
     /// Events overlapping `window` (limited to 72 hours), for this person.

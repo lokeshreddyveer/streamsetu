@@ -9,13 +9,7 @@ final class PeopleIndexService: Sendable {
     private let sources: SourceManager
     private let indexer: CatalogIndexer
     private let busy: @Sendable () async -> Bool
-    private let running = Flag()
-
-    private final class Flag: @unchecked Sendable {
-        private let lock = NSLock(); private var on = false
-        func begin() -> Bool { lock.lock(); defer { lock.unlock() }; if on { return false }; on = true; return true }
-        func end() { lock.lock(); on = false; lock.unlock() }
-    }
+    private let running = OnceFlag()
 
     init(index: PeopleIndex, catalog: SQLiteCatalogRepository, sources: SourceManager, indexer: CatalogIndexer, busy: @escaping @Sendable () async -> Bool) {
         self.index = index; self.catalog = catalog; self.sources = sources; self.indexer = indexer; self.busy = busy

@@ -9,7 +9,7 @@ enum AppTab: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// Fixed shortcuts pinned at the top of a tab's sidebar.
-enum Shortcut: String, Hashable, Sendable {
+enum Shortcut: String, Hashable, Sendable, CaseIterable {
     case tonight, discover, continueWatching, recentlyWatched, watchHistory, favorites, watchLater, collections
     case featured, allMovies, recentlyAdded, library, allChannels, statistics
     /// Smart lists: made by rules from what the library holds and what has been played, never typed in.
@@ -81,13 +81,13 @@ struct Navigation: Hashable, Sendable {
 }
 
 /// Destinations that other parts of the app ask for by name.
-enum Destination: Hashable, Sendable {
+enum Destination: Hashable, Sendable, CaseIterable {
     case home, liveTV, movies, series, guide
     case favorites, continueWatching, history, collections
     case channelManager, playlists
 }
 
-enum ModalRoute: Hashable, Identifiable, Sendable {
+enum ModalRoute: Hashable, Identifiable, Sendable, CaseIterable {
     case playlists, addPlaylist, about, channelManager, unlockRestricted
     var id: Self { self }
 }
@@ -117,6 +117,10 @@ final class AppRouter {
     var pendingFolder: String?
     /// Words for the next list screen's own search box, set by a command typed in the top search ("open movies: top rated telugu"). Consumed once.
     var libraryQuery: String?
+    /// Filters for the next Movies / Series list (a genre chosen on Home), best rated first. Consumed once.
+    var libraryFilter: LibraryFilter?
+    /// Called before any navigation to a native screen or title; the macOS shell uses it to leave an outside service first. Nil elsewhere.
+    @ObservationIgnored var onNavigate: (() -> Void)?
 
     static func defaultSelection(for tab: AppTab) -> SidebarSelection { .shortcut(Shortcut.pinned(for: tab)[0]) }
 
@@ -125,6 +129,7 @@ final class AppRouter {
     func select(_ s: SidebarSelection) { selections[tab] = s }
 
     func navigate(_ tab: AppTab, _ selection: SidebarSelection? = nil) {
+        onNavigate?()
         self.tab = tab
         selections[tab] = selection ?? (rememberFolders ? selections[tab] : nil) ?? Self.defaultSelection(for: tab)
         playlistMenuOpen = false; accountMenuOpen = false
@@ -133,6 +138,7 @@ final class AppRouter {
     func openFolder(_ tab: AppTab, categoryID: String) { navigate(tab, .folder(categoryID)) }
 
     func go(_ d: Destination) {
+        onNavigate?()
         switch d {
         case .home: navigate(.home, .shortcut(.discover))
         case .liveTV: navigate(.liveTV, .shortcut(.allChannels))
@@ -150,8 +156,8 @@ final class AppRouter {
 
     // MARK: details & search
 
-    func open(movie: Movie) { series = nil; self.movie = movie }
-    func open(series: Series) { movie = nil; self.series = series }
+    func open(movie: Movie) { onNavigate?(); series = nil; self.movie = movie }
+    func open(series: Series) { onNavigate?(); movie = nil; self.series = series }
     func closeDetail() { movie = nil; series = nil }
 
     /// ⌘K: focus the search field in the top bar. Search never opens a dialog.

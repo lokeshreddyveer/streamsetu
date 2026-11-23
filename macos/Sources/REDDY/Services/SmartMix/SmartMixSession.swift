@@ -74,12 +74,13 @@ actor SmartMixSession {
     private let source: SmartMixCandidateSource
     private let state: SmartMixStateStore
     private let trending: SMTrendingService?
+    private let lists: SMListsService?
     private var generation = 0
     private var cache: [String: SMShelfResult] = [:]     // L2, in memory only; never holds titles or URLs, never anything restricted
     private(set) var buildCount = 0
 
-    init(source: SmartMixCandidateSource, state: SmartMixStateStore, trending: SMTrendingService? = nil) {
-        self.source = source; self.state = state; self.trending = trending
+    init(source: SmartMixCandidateSource, state: SmartMixStateStore, trending: SMTrendingService? = nil, lists: SMListsService? = nil) {
+        self.source = source; self.state = state; self.trending = trending; self.lists = lists
     }
 
     /// Cache and generation reset. Builds already running are discarded when they finish (`SessionError.stale`).
@@ -102,43 +103,78 @@ actor SmartMixSession {
             let cur = await trending.current(now: now)
             entries = cur.entries; status = cur.status
         }
+        let listEntries = await lists?.current(now: now) ?? [:]
+        let listsStamp = listEntries.keys.sorted().map { $0 + String(listEntries[$0]?.count ?? 0) }.joined(separator: ",")
         var out: [SMShelfResult] = []
         var home: SmartMixEngine.Prepared? = nil
         var fresh: [String: SMShelfResult] = [:]
+        /// TMDB ranks for a shelf in its mode: the shelf's own list, else the whole-library list of that mode; nil when neither is cached (local ranking).
+        let weekEntries = entries
+        func ranks(_ shelf: String, _ prepared: SmartMixEngine.Prepared) -> [String: Int]? {
+            let k = SMListKey.forShelf(shelf, mode: ctx.mode(shelf))
+            for name in [k.own, k.general].compactMap({ $0 }) {
+                let list = name == "week" ? weekEntries : listEntries[name]
+                if let list, !list.isEmpty { return SMTrendingMatcher.match(entries: list, candidates: prepared.groups, normalize: IdentityKey.make) }
+            }
+            return nil
+        }
         for shelf in ids {
-            let key = cacheKey(rev, ctx, shelf, status)
-            if let hit = cache[key] { out.append(hit); continue }
+            let key = cacheKey(rev, ctx, shelf, status, listsStamp)
+            if let hit = cache[key] {
+                if shelf == SMShelf.genresAuto, !hit.genreSelected.allSatisfy({ cache[cacheKey(rev, ctx, SMGenres.shelfId($0), status, listsStamp)] != nil }) { cache[key] = nil }
+                else {
+                    if shelf == SMShelf.genresAuto { for g in hit.genreSelected { if let r = cache[cacheKey(rev, ctx, SMGenres.shelfId(g), status, listsStamp)] { out.append(r) } } }
+                    out.append(hit); continue
+                }
+            }
+            if shelf == SMShelf.genresAuto {
+                let prepared: SmartMixEngine.Prepared
+                if let h = home { prepared = h } else { prepared = try await loadHome(ctx, entries); home = prepared }
+                let counts = SmartMixEngine.genreCounts(prepared)
+                let selected = SMGenres.select(counts: counts, ctx: ctx)
+                var index = SMShelfResult(shelfId: SMShelf.genresIndex, picks: [], diag: SMDiagnostics())
+                index.diag.hidden = true; index.genreCounts = counts; index.genreSelected = selected
+                for g in selected {
+                    let id = SMGenres.shelfId(g)
+                    let loads = state.loadsAgo(profile: ctx.profile, shelf: id, loadKey: ctx.loadKey)
+                    let r = SmartMixEngine.build(shelfId: id, prepared: prepared, ctx: ctx, loadsAgo: loads, ranks: ranks(id, prepared))
+                    out.append(r); fresh[cacheKey(rev, ctx, id, status, listsStamp)] = r
+                }
+                out.append(index); fresh[key] = index
+                continue
+            }
             let prepared: SmartMixEngine.Prepared
             if SMShelf.isFolder(shelf) {
                 var cs = try await source.candidates(profile: ctx.profile, scope: .folder(String(shelf.dropFirst(7))), poolLimit: 200)
                 if let entries { Self.applyTrend(entries, &cs) }
                 prepared = SmartMixEngine.prepare(cs, preferredLang: ctx.preferredLang)
-            } else if let h = home {
-                prepared = h
             } else {
-                var cs = try await source.candidates(profile: ctx.profile, scope: .home, poolLimit: 2000)
-                if let entries { Self.applyTrend(entries, &cs) }
-                let p = SmartMixEngine.prepare(cs, preferredLang: ctx.preferredLang)
-                home = p; prepared = p
+                if let h = home { prepared = h } else { prepared = try await loadHome(ctx, entries); home = prepared }
             }
             var mode = SmartMixEngine.TrendingMode(ordered: false, status: status.rawValue)
             if entries != nil && shelf == SMShelf.topWeek {
                 mode.ordered = prepared.groups.reduce(0) { $0 + (!$1.restricted && $1.trend != nil ? 1 : 0) } >= SMTrendingPolicy.minMatchesForTopWeek
             }
             let loads = state.loadsAgo(profile: ctx.profile, shelf: shelf, loadKey: ctx.loadKey)
-            let r = SmartMixEngine.build(shelfId: shelf, prepared: prepared, ctx: ctx, loadsAgo: loads, trending: mode)
+            let r = SmartMixEngine.build(shelfId: shelf, prepared: prepared, ctx: ctx, loadsAgo: loads, trending: mode, ranks: ranks(shelf, prepared))
             out.append(r)
             fresh[key] = r
         }
         guard gen == generation else { throw SessionError.stale }
         for (k, v) in fresh { cache[k] = v }
         if commit {
-            for r in out where !r.diag.hidden {
+            for r in out where !r.diag.hidden && r.shelfId != SMShelf.genresAuto {
                 state.recordShown(profile: ctx.profile, shelf: r.shelfId, loadKey: ctx.loadKey,
-                                  rows: r.picks.map { SMShownRow(key: $0.key, year: $0.year, itemId: $0.id, seq: 0) })
+                                  rows: r.picks.prefix(SMCompose.size(r.shelfId) + (r.shelfId == SMShelf.hero ? -2 : 0)).map { SMShownRow(key: $0.key, year: $0.year, itemId: $0.id, seq: 0) })
             }
         }
         return out
+    }
+
+    private func loadHome(_ ctx: SMContext, _ entries: [SMTrendingEntry]?) async throws -> SmartMixEngine.Prepared {
+        var cs = try await source.candidates(profile: ctx.profile, scope: .home, poolLimit: 2000)
+        if let entries { Self.applyTrend(entries, &cs) }
+        return SmartMixEngine.prepare(cs, preferredLang: ctx.preferredLang)
     }
 
     private static func applyTrend(_ entries: [SMTrendingEntry], _ cs: inout [SMCandidate]) {
@@ -146,8 +182,8 @@ actor SmartMixSession {
         for i in cs.indices { cs[i].trend = m[cs[i].id] }
     }
 
-    private func cacheKey(_ rev: SMRevision, _ ctx: SMContext, _ shelf: String, _ status: SMTrendingStatus) -> String {
-        "\(ctx.profile)|\(shelf)|\(ctx.loadKey)|\(ctx.preferredLang ?? "")|\(ctx.affinity.topLangs)\(ctx.affinity.topFolders)\(ctx.affinity.topGenres)\(ctx.affinity.topDecades)|\(status.rawValue)|\(rev.catalog).\(rev.restrict).\(rev.hidden).\(rev.profileEpoch).\(rev.prefs).\(rev.dismiss).\(rev.identVer)"
+    private func cacheKey(_ rev: SMRevision, _ ctx: SMContext, _ shelf: String, _ status: SMTrendingStatus, _ listsStamp: String = "") -> String {
+        "\(ctx.profile)|\(shelf)|\(ctx.mode(shelf).rawValue)|\(ctx.kids)|\(ctx.affinity.genreKeys)|\(listsStamp)|\(ctx.loadKey)|\(ctx.preferredLang ?? "")|\(ctx.affinity.topLangs)\(ctx.affinity.topFolders)\(ctx.affinity.topGenres)\(ctx.affinity.topDecades)|\(status.rawValue)|\(rev.catalog).\(rev.restrict).\(rev.hidden).\(rev.profileEpoch).\(rev.prefs).\(rev.dismiss).\(rev.identVer)"
     }
 }
 

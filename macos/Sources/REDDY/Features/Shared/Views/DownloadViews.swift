@@ -19,6 +19,8 @@ struct DownloadRing: View {
 struct DownloadButton: View {
     let itemID: String
     var compact = false
+    /// The title page's action row: icon with a small label.
+    var tile = false
     let start: (DownloadService) -> Void
     @Environment(\.container) private var container
 
@@ -27,38 +29,40 @@ struct DownloadButton: View {
             let r = d.record(for: itemID)
             switch r?.state {
             case nil:
-                Button { start(d) } label: { label("Download", "arrow.down.circle") }
+                Button { start(d) } label: { label("Download", "arrow.down.circle") }.atlas("screen.downloads")
             case .failed?:
                 Menu {
                     if let e = r?.error { Text(e) }
                     Button("Try Again") { start(d) }
                     Button("Remove", role: .destructive) { d.remove(itemID) }
-                } label: { label("Download Failed", "exclamationmark.arrow.circlepath") }
+                } label: { label("Download Failed", "exclamationmark.arrow.circlepath") }.atlas("screen.downloads")
             case .queued?:
-                Menu { Button("Cancel Download", role: .destructive) { d.remove(itemID) } } label: { label("Waiting", "clock") }
+                Menu { Button("Cancel Download", role: .destructive) { d.remove(itemID) } } label: { label("Waiting", "clock") }.atlas("screen.downloads")
             case .downloading?:
                 Menu {
                     Button("Pause") { d.pause(itemID) }
                     Button("Cancel Download", role: .destructive) { d.remove(itemID) }
-                } label: { ringLabel(r?.fraction ?? 0) }
+                } label: { ringLabel(r?.fraction ?? 0) }.atlas("screen.downloads")
             case .paused?:
                 Menu {
                     Button("Resume") { d.resume(itemID) }
                     Button("Cancel Download", role: .destructive) { d.remove(itemID) }
-                } label: { label("Paused", "pause.circle") }
+                } label: { label("Paused", "pause.circle") }.atlas("screen.downloads")
             case .done?:
-                Menu { Button("Remove Download", role: .destructive) { d.remove(itemID) } } label: { label("Downloaded", "checkmark.circle.fill") }
+                Menu { Button("Remove Download", role: .destructive) { d.remove(itemID) } } label: { label("Downloaded", "checkmark.circle.fill") }.atlas("screen.downloads")
             }
         }
     }
 
     @ViewBuilder private func ringLabel(_ fraction: Double) -> some View {
-        if compact { DownloadRing(fraction: fraction).accessibilityLabel("Downloading, \(Int(fraction * 100)) percent") }
+        if tile { VStack(spacing: 5) { DownloadRing(fraction: fraction).frame(height: 26); Text("\(Int(fraction * 100))%").font(.caption2.weight(.medium)).monospacedDigit() }.frame(maxWidth: .infinity, minHeight: 56).accessibilityLabel("Downloading, \(Int(fraction * 100)) percent") }
+        else if compact { DownloadRing(fraction: fraction).accessibilityLabel("Downloading, \(Int(fraction * 100)) percent") }
         else { HStack(spacing: 6) { DownloadRing(fraction: fraction); Text("\(Int(fraction * 100))%").monospacedDigit() } }
     }
 
     @ViewBuilder private func label(_ text: String, _ symbol: String) -> some View {
-        if compact { Image(systemName: symbol).accessibilityLabel(text) } else { Label(text, systemImage: symbol) }
+        if tile { ActionLabel(text: text == "Download" ? "Download" : text, symbol: symbol, active: text == "Downloaded").accessibilityLabel(text) }
+        else if compact { Image(systemName: symbol).accessibilityLabel(text) } else { Label(text, systemImage: symbol) }
     }
 }
 
@@ -96,12 +100,12 @@ struct DownloadsList: View {
             }
             Spacer(minLength: 8)
             switch r.state {
-            case .done: Button { container?.playSaved(r) } label: { Image(systemName: "play.fill") }.accessibilityLabel("Play")
-            case .downloading: Button { d.pause(r.itemID) } label: { ZStack { DownloadRing(fraction: r.fraction, size: 24); Image(systemName: "pause.fill").font(.system(size: 8)) } }.accessibilityLabel("Pause")
-            case .paused, .failed: Button { d.resume(r.itemID) } label: { Image(systemName: "arrow.clockwise") }.accessibilityLabel("Resume")
+            case .done: Button { container?.playSaved(r) } label: { Image(systemName: "play.fill") }.accessibilityLabel("Play").atlas("screen.downloads")
+            case .downloading: Button { d.pause(r.itemID) } label: { ZStack { DownloadRing(fraction: r.fraction, size: 24); Image(systemName: "pause.fill").font(.system(size: 8)) } }.accessibilityLabel("Pause").atlas("screen.downloads")
+            case .paused, .failed: Button { d.resume(r.itemID) } label: { Image(systemName: "arrow.clockwise") }.accessibilityLabel("Resume").atlas("screen.downloads")
             case .queued: EmptyView()
             }
-            Button(role: .destructive) { d.remove(r.itemID) } label: { Image(systemName: "trash") }.accessibilityLabel("Remove")
+            Button(role: .destructive) { d.remove(r.itemID) } label: { Image(systemName: "trash") }.accessibilityLabel("Remove").atlas("screen.downloads")
         }
         .buttonStyle(.borderless)
     }
@@ -120,8 +124,8 @@ struct ScheduledRecordingsList: View {
                         Text("\(r.channelName)  ·  \(r.start.formatted(date: .abbreviated, time: .shortened))  ·  " + status(r) + (r.repeats ? "  ·  every week" : "")).font(.caption).foregroundStyle(r.state == .failed || r.state == .missed ? Color.orange : Color.secondary)
                     }
                     Spacer(minLength: 8)
-                    if r.repeats { Button("Stop Repeating") { service.stopRepeating(r.id) } }
-                    Button(role: .destructive) { service.remove(r.id) } label: { Image(systemName: r.state == .scheduled || r.state == .recording ? "xmark" : "trash") }.accessibilityLabel(r.state == .scheduled ? "Cancel" : "Remove")
+                    if r.repeats { Button("Stop Repeating") { service.stopRepeating(r.id) }.atlas("setting.scheduledRecordings") }
+                    Button(role: .destructive) { service.remove(r.id) } label: { Image(systemName: r.state == .scheduled || r.state == .recording ? "xmark" : "trash") }.accessibilityLabel(r.state == .scheduled ? "Cancel" : "Remove").atlas("setting.scheduledRecordings")
                 }.buttonStyle(.borderless)
             }
             Text("A scheduled recording opens its own connection to your provider, and the app has to be open at that time. The Mac stays awake while it records.").font(.caption).foregroundStyle(.secondary)
@@ -155,9 +159,9 @@ struct RecordingsList: View {
                             Text(item.date.formatted(date: .abbreviated, time: .shortened) + "  ·  " + DownloadNaming.megabytes(item.bytes)).font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 8)
-                        Button { container?.playback.play(file: item.url, title: item.title + " (recorded)") } label: { Image(systemName: "play.fill") }.accessibilityLabel("Play")
-                        Button { NSWorkspace.shared.activateFileViewerSelecting([item.url]) } label: { Image(systemName: "folder") }.accessibilityLabel("Show in Finder")
-                        Button(role: .destructive) { try? FileManager.default.removeItem(at: item.url); items = Recordings.all() } label: { Image(systemName: "trash") }.accessibilityLabel("Remove")
+                        Button { container?.playback.play(file: item.url, title: item.title + " (recorded)") } label: { Image(systemName: "play.fill") }.accessibilityLabel("Play").atlas("screen.recordings")
+                        Button { NSWorkspace.shared.activateFileViewerSelecting([item.url]) } label: { Image(systemName: "folder") }.accessibilityLabel("Show in Finder").atlas("screen.recordings")
+                        Button(role: .destructive) { try? FileManager.default.removeItem(at: item.url); items = Recordings.all() } label: { Image(systemName: "trash") }.accessibilityLabel("Remove").atlas("screen.recordings")
                     }.buttonStyle(.borderless)
                 }
                 LabeledContent("Space used", value: DownloadNaming.megabytes(items.reduce(0) { $0 + $1.bytes }))

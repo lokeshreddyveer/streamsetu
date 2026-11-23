@@ -8,7 +8,7 @@ enum DatabaseRecovery {
     static let personalTables = [
         "sources", "profiles", "profile_rows", "profile_state", "favorites", "collections", "collection_items", "hidden_items", "metadata_overrides",
         "folder_order", "locked_categories", "watch_history", "watch_progress", "recently_watched", "search_history", "downloads", "epg_channel_mappings",
-        "video_layouts", "playback_sessions", "rec_dismissed",
+        "video_layouts", "playback_sessions", "rec_dismissed", "continue_hidden",
     ]
 
     /// What a damaged database still holds, for the "this is what you would lose" summary.
@@ -19,8 +19,8 @@ enum DatabaseRecovery {
 
         var lines: [String] {
             guard readable else { return ["The database could not be read, so nothing in it can be listed."] }
-            return ["\(playlists) playlist\(playlists == 1 ? "" : "s")", "\(favourites) favourite\(favourites == 1 ? "" : "s")", "\(collections) list\(collections == 1 ? "" : "s")",
-                    "\(profiles) profile\(profiles == 1 ? "" : "s")", "\(history) watch history entr\(history == 1 ? "y" : "ies")"]
+            return ["\(Localized.plural(playlists, one: "%@ playlist", other: "%@ playlists"))", "\(Localized.plural(favourites, one: "%@ favourite", other: "%@ favourites"))", "\(Localized.plural(collections, one: "%@ list", other: "%@ lists"))",
+                    "\(Localized.plural(profiles, one: "%@ profile", other: "%@ profiles"))", "\(Localized.plural(history, one: "%@ watch history entry", other: "%@ watch history entries"))"]
         }
     }
 

@@ -7,11 +7,17 @@ struct SearchResultsPage: View {
     var focusToken = 0
     let isFavorite: (String) -> Bool
     let onActivate: (SearchResult) -> Void
+    /// Setu: an Ask row was chosen.
+    var onAsk: (String) -> Void = { _ in }
+    /// An Atlas row was chosen: open its screen, or point at it.
+    var onOpenAtlas: (String) -> Void = { _ in }
+    var onShowAtlas: (String) -> Void = { _ in }
     @FocusState private var focused: Bool
     @Environment(\.reddyAccent) private var accent
     @Environment(\.container) private var container
     @Environment(AppRouter.self) private var router
     @Environment(AppState.self) private var state
+    @State private var person: PersonRoute?
 
     private static let preview = 6
 
@@ -21,7 +27,8 @@ struct SearchResultsPage: View {
                 VStack(alignment: .leading, spacing: 4) {
                     header
                     commandRows
-                    if let container { SmartPicksCard(container: container, query: model.term, open: { PlayActions.open($0, router: router) }, force: model.searched && model.visible.isEmpty && model.term.split(separator: " ").count >= 2).padding(.bottom, 8) }
+                    atlasRows
+                    if let container { SmartPicksCard(container: container, query: model.term, open: { PlayActions.open($0, router: router) }, openPerson: { person = $0 }, force: model.searched && model.visible.isEmpty && model.term.split(separator: " ").count >= 2).padding(.bottom, 8) }
                     tabs.padding(.bottom, 6)
                     content
                 }
@@ -37,6 +44,7 @@ struct SearchResultsPage: View {
         .onKeyPress(.upArrow) { model.moveSelection(-1); return .handled }
         .onKeyPress(.return) { if let r = model.selected { onActivate(r); return .handled }; return .ignored }
         .onChange(of: focusToken) { _, _ in focused = true }
+        .sheet(item: $person) { p in PersonSheet(person: p) { person = nil }.frame(minWidth: 640, minHeight: 480) }
         .accessibilityElement(children: .contain).accessibilityLabel("Search results")
     }
 
@@ -57,8 +65,17 @@ struct SearchResultsPage: View {
                         }
                         .padding(.horizontal, 12).padding(.vertical, 9).frame(maxWidth: .infinity, alignment: .leading)
                         .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous)).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(.plain).atlas("screen.searchResults")
                 }
+            }.padding(.bottom, 8)
+        }
+    }
+
+    /// "Ask Setu" and the settings, screens, menus and shortcuts that match, from the Atlas. Library results stay below, unchanged.
+    @ViewBuilder private var atlasRows: some View {
+        if let container, !model.term.trimmingCharacters(in: .whitespaces).isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                AtlasPaletteList(query: model.term, platform: .mac, appStore: AtlasAssistant.appStore, showAsk: !container.parental.kidsMode, open: onOpenAtlas, show: onShowAtlas, ask: onAsk)
             }.padding(.bottom, 8)
         }
     }
@@ -74,7 +91,7 @@ struct SearchResultsPage: View {
     private var title: String {
         if model.loading && !model.searched { return "Searching…" }
         let n = model.count(model.tab)
-        return "\(n) result\(n == 1 ? "" : "s")"
+        return Localized.plural(n, one: "%@ result", other: "%@ results")
     }
 
     private var tabs: some View {
@@ -90,7 +107,7 @@ struct SearchResultsPage: View {
                     .background(model.tab == t ? Color.white.opacity(0.07) : .clear, in: Capsule())
                     .contentShape(Capsule())
                 }
-                .buttonStyle(.plain).accessibilityAddTraits(model.tab == t ? .isSelected : [])
+                .buttonStyle(.plain).accessibilityAddTraits(model.tab == t ? .isSelected : []).atlas("screen.searchResults")
             }
             Spacer()
         }
@@ -102,7 +119,7 @@ struct SearchResultsPage: View {
         guard let container, model.term.split(separator: " ").count >= 2 else { return "" }
         let p = PeopleIndex(db: container.db).progress()
         guard p.total > 0, Double(p.done) / Double(p.total) < 0.9 else { return "" }
-        return " If it is an actor, their films may not be read yet: the cast has been read for \(Int(Double(p.done) / Double(p.total) * 100))% of your films. A TMDB key in Settings finds them right away."
+        return " If it is an actor, their films may not be read yet: the cast has been read for \(Int(Double(p.done) / Double(p.total) * 100))% of your films. An artwork and details key in Settings finds them right away."
     }
 
     @ViewBuilder private var content: some View {
@@ -121,7 +138,7 @@ struct SearchResultsPage: View {
             ForEach(Array(model.tab.kinds), id: \.self) { kind in
                 if model.results.hasMore.contains(kind) {
                     Button { Task { await model.loadMore(kind) } } label: { Label("Show more \(kind.groupTitle.lowercased())", systemImage: "chevron.down") }
-                        .buttonStyle(SecondaryButtonStyle()).padding(.top, 10)
+                        .buttonStyle(SecondaryButtonStyle()).padding(.top, 10).atlas("screen.searchResults")
                 }
             }
         }
@@ -133,7 +150,7 @@ struct SearchResultsPage: View {
                 Text(kind.groupTitle.uppercased()).font(Typography.eyebrow).tracking(1.2).foregroundStyle(ColorTokens.textSecondary)
                 Spacer()
                 if let tab = SearchTab.allCases.first(where: { $0 != .all && $0.kinds == [kind] }), rows.count > Self.preview || model.results.hasMore.contains(kind) {
-                    Button("Show all") { model.selectTab(tab) }.buttonStyle(.plain).font(Typography.captionMedium).foregroundStyle(accent)
+                    Button("Show all") { model.selectTab(tab) }.buttonStyle(.plain).font(Typography.captionMedium).foregroundStyle(accent).atlas("screen.searchResults")
                 }
             }.padding(.top, 10)
             VStack(spacing: 0) { ForEach(rows.prefix(Self.preview)) { row($0) } }.padding(.vertical, 4).surface()
@@ -151,6 +168,7 @@ struct SearchResultsPage: View {
                 }
                 Spacer(minLength: 8)
                 if isFavorite(r.destinationItemID) { Image(systemName: "heart.fill").font(.system(size: 10)).foregroundStyle(accent) }
+                if let rt = r.rating { RatingBadge(value: rt) }
                 Text(r.kind.typeLabel).font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
             }
             .padding(.horizontal, 12).padding(.vertical, 6)
@@ -159,8 +177,10 @@ struct SearchResultsPage: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain).id(r.id)
+        .modifier(SearchResultMenuModifier(result: r, handlers: { MacTileHandlers.make($0, container: container, toasts: state.toasts, router: router) }, playChannel: { container?.playback.play(channel: $0, queue: [$0]) }))
         .accessibilityLabel("\(r.title), \(r.kind.typeLabel)\(r.sourceName.map { ", from \($0)" } ?? "")")
         .accessibilityAddTraits(selected ? .isSelected : [])
+        .prioritizesArtwork(r.ratingTileIDs).atlas("context.search.result")
     }
 
     @ViewBuilder private func thumbnail(_ r: SearchResult) -> some View {

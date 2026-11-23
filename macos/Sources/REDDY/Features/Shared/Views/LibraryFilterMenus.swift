@@ -12,24 +12,30 @@ struct LibraryFilterMenus: View {
         Menu("Language") {
             choice("Any language", on: filter.language == nil) { filter.language = nil }
             ForEach(options.languages, id: \.self) { l in choice(l, on: filter.language == l) { filter.language = l } }
-        }
+        }.atlas("control.library.filter")
         Menu("Quality") {
             choice("Any quality", on: filter.quality == nil) { filter.quality = nil }
             ForEach(options.qualities, id: \.self) { q in choice(q, on: filter.quality == q) { filter.quality = q } }
-        }
+        }.atlas("control.library.filter")
         Menu("Status") {
             choice("Everything", on: filter.status == nil) { filter.status = nil }
             ForEach(LibraryFilter.statuses(for: kind)) { s in choice(s.rawValue, on: filter.status == s) { filter.status = s } }
-        }
+        }.atlas("control.library.filter")
         Menu("Rating") {
             choice("Any rating", on: filter.minRating == nil) { filter.minRating = nil }
             ForEach(LibraryFilterTerms.ratings, id: \.self) { r in choice("\(Int(r))+ stars", on: filter.minRating == r) { filter.minRating = r } }
-        }
+        }.atlas("control.library.filter")
+        Menu("Genre") {
+            choice("Any genre", on: filter.genreName == nil) { filter.genreName = nil; filter.genres = [] }
+            ForEach(SMGenres.table.filter { $0.scope != (kind == .movie ? .series : .movie) }, id: \.key) { g in
+                choice(g.name, on: filter.genreName == g.name) { filter.genreName = g.name; filter.genres = g.words }
+            }
+        }.atlas("control.library.filter")
         Menu("Release decade") {
             choice("Any year", on: filter.decade == nil) { filter.decade = nil }
             ForEach(LibraryFilterTerms.decades, id: \.self) { d in choice("\(d)s", on: filter.decade == d) { filter.decade = d } }
-        }
-        if filter.isActive { Button("Clear these filters", role: .destructive) { filter = LibraryFilter() } }
+        }.atlas("control.library.filter")
+        if filter.isActive { Button("Clear these filters", role: .destructive) { filter = LibraryFilter() }.atlas("control.library.filter") }
     }
 
     private func choice(_ label: String, on: Bool, _ pick: @escaping () -> Void) -> some View {

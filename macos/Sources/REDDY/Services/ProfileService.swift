@@ -25,7 +25,7 @@ final class ProfileService {
     /// Everyone who shares a device: the first profile and up to three more.
     static let maxProfiles = 4
     /// The tables that hold one person's own data. Collections come before their items.
-    static let personalTables = ["favorites", "collections", "collection_items", "watch_progress", "watch_history", "recently_watched", "search_history", "new_episodes"]
+    static let personalTables = ["favorites", "collections", "collection_items", "watch_progress", "watch_history", "recently_watched", "search_history", "new_episodes", "continue_hidden"]
     /// Preferences that belong to one person (the line of titles queued to play next). Each profile keeps its own copy.
     static let personalDefaultsKeys = ["watchQueue"]
 

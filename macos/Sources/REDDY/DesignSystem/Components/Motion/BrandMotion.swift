@@ -21,7 +21,7 @@ enum BrandMotion {
     }
 
     /// Reduce Motion: the system setting, or the app's own "Reduce animation".
-    static func reduced(_ system: Bool) -> Bool { system || UserDefaults.standard.bool(forKey: "settings.reducemotion") }
+    static func reduced(_ system: Bool) -> Bool { system || UserDefaults.standard.bool(forKey: DefaultsKey.reduceMotion) }
 }
 
 /// The accent the person sees elsewhere: on the Mac the app's own accent, on the iPhone the tint set from the same setting.
@@ -114,37 +114,12 @@ extension View {
     func brandShimmer() -> some View { modifier(BrandShimmer()) }
 }
 
-/// Placeholders shaped like what is coming: a poster, a row, or a line of text.
-struct SkeletonPoster: View {
-    var width: CGFloat = 120
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(ColorTokens.card).frame(width: width, height: width * 1.5).brandShimmer()
-            SkeletonLine(width: width * 0.8, height: 10)
-            SkeletonLine(width: width * 0.5, height: 8)
-        }
-        .accessibilityHidden(true)
-    }
-}
-
 struct SkeletonLine: View {
     var width: CGFloat? = nil
     var height: CGFloat = 12
     var body: some View {
         RoundedRectangle(cornerRadius: height / 2, style: .continuous).fill(ColorTokens.card).frame(width: width, height: height).brandShimmer()
             .accessibilityHidden(true)
-    }
-}
-
-struct SkeletonRow: View {
-    var thumb: CGFloat = 44
-    var body: some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 8, style: .continuous).fill(ColorTokens.card).frame(width: thumb, height: thumb).brandShimmer()
-            VStack(alignment: .leading, spacing: 6) { SkeletonLine(width: 180, height: 12); SkeletonLine(width: 110, height: 9) }
-            Spacer(minLength: 0)
-        }
-        .accessibilityHidden(true)
     }
 }
 
@@ -341,133 +316,39 @@ struct ProgressFillIn: ViewModifier {
     }
 }
 
-// MARK: - Feedback
+// MARK: - Press
 
-/// Success: a ring bursts outwards and a check draws itself. With Reduce Motion both are simply there.
-struct SuccessCheck: View {
-    var size: CGFloat = 72
-    var color: Color = ColorTokens.success
-    @Environment(\.accessibilityReduceMotion) private var systemReduce
-    @State private var drawn = false
-
-    var body: some View {
-        let still = BrandMotion.reduced(systemReduce)
-        ZStack {
-            Circle().stroke(color.opacity(drawn ? 0 : 0.7), lineWidth: 3).scaleEffect(drawn && !still ? 1.9 : 1)
-            Circle().fill(color.opacity(0.18)).overlay(Circle().strokeBorder(color, lineWidth: 2.5))
-            CheckMarkShape().trim(from: 0, to: drawn ? 1 : 0)
-                .stroke(.white, style: StrokeStyle(lineWidth: size * 0.06, lineCap: .round, lineJoin: .round))
-                .padding(size * 0.28)
-        }
-        .frame(width: size, height: size)
-        .onAppear { if still { drawn = true } else { withAnimation(.easeOut(duration: 0.55)) { drawn = true } } }
-        .accessibilityElement()
-        .accessibilityLabel("Done")
-    }
-}
-
-private struct CheckMarkShape: Shape {
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: r.minX, y: r.midY + r.height * 0.05))
-        p.addLine(to: CGPoint(x: r.minX + r.width * 0.36, y: r.maxY - r.height * 0.1))
-        p.addLine(to: CGPoint(x: r.maxX, y: r.minY + r.height * 0.12))
-        return p
-    }
-}
-
-/// Failure: a short shake each time `trigger` grows. With Reduce Motion it does not move.
-private struct BrandShakeEffect: GeometryEffect {
-    var shakes: CGFloat
-    var animatableData: CGFloat { get { shakes } set { shakes = newValue } }
-    func effectValue(size: CGSize) -> ProjectionTransform { ProjectionTransform(CGAffineTransform(translationX: 7 * sin(shakes * .pi * 4), y: 0)) }
-}
-
-private struct BrandShake: ViewModifier {
-    let trigger: Int
-    @Environment(\.accessibilityReduceMotion) private var systemReduce
-    func body(content: Content) -> some View {
-        content.modifier(BrandShakeEffect(shakes: BrandMotion.reduced(systemReduce) ? 0 : CGFloat(trigger)))
-            .animation(.easeOut(duration: 0.45), value: trigger)
-    }
-}
-
-extension View {
-    func brandShake(trigger: Int) -> some View { modifier(BrandShake(trigger: trigger)) }
-}
-
-// MARK: - Selection, press and hover
-
-/// The selected item's background, sliding between items (matched geometry in `namespace`) instead of jumping.
-struct SelectionPill: ViewModifier {
-    let selected: Bool
-    let namespace: Namespace.ID
-    var id = "selection"
-    var fill: Color? = nil
-    private let accent = BrandAccent()
-    func body(content: Content) -> some View {
-        content.background {
-            if selected {
-                Capsule().fill(fill ?? accent.color.opacity(0.2))
-                    .overlay(Capsule().strokeBorder((fill ?? accent.color).opacity(0.45)))
-                    .matchedGeometryEffect(id: id, in: namespace)
-            }
-        }
-    }
-}
-
-extension View {
-    func selectionPill(_ selected: Bool, in namespace: Namespace.ID, id: String = "selection", fill: Color? = nil) -> some View {
-        modifier(SelectionPill(selected: selected, namespace: namespace, id: id, fill: fill))
-    }
-}
-
-/// Press feel for any tappable surface: a little smaller and dimmer while held, springing back. With Reduce Motion it only dims.
+/// The one press feel for any tappable surface (it replaces the five near-identical styles): a little smaller and dimmer while held, springing back. With Reduce Motion (the system setting or
+/// the app's own) it only dims, and the tap haptic still plays when asked for. `dim` also lowers the opacity (cards on the iPhone), `haptic` adds the light tap (iPhone).
 struct BrandPressStyle: ButtonStyle {
     var scale: CGFloat = 0.97
-    func makeBody(configuration: Configuration) -> some View { BrandPressBody(configuration: configuration, scale: scale) }
+    var dim: Double = 0
+    var haptic = false
+    func makeBody(configuration: Configuration) -> some View { BrandPressBody(configuration: configuration, scale: scale, dim: dim, haptic: haptic) }
 }
 
 private struct BrandPressBody: View {
     let configuration: ButtonStyle.Configuration
-    let scale: CGFloat
+    let scale: CGFloat, dim: Double, haptic: Bool
     @Environment(\.accessibilityReduceMotion) private var systemReduce
     var body: some View {
         let still = BrandMotion.reduced(systemReduce)
-        configuration.label
+        let label = configuration.label
             .scaleEffect(configuration.isPressed && !still ? scale : 1)
             .brightness(configuration.isPressed ? -0.05 : 0)
+            .opacity(configuration.isPressed ? 1 - dim : 1)
             .animation(still ? .linear(duration: 0.1) : BrandMotion.standard, value: configuration.isPressed)
+        if haptic { label.sensoryFeedback(.impact(flexibility: .soft, intensity: 0.55), trigger: configuration.isPressed) { _, pressed in pressed } } else { label }
     }
 }
 
 extension ButtonStyle where Self == BrandPressStyle {
     static var brandPress: BrandPressStyle { BrandPressStyle() }
-}
-
-/// Hover feel for cards and posters: a small lift (scale and a deeper shadow) under the pointer, 120 ms; on the Mac a pointing hand.
-struct HoverLift: ViewModifier {
-    var scale: CGFloat = 1.03
-    @Environment(\.accessibilityReduceMotion) private var systemReduce
-    @State private var hovering = false
-    func body(content: Content) -> some View {
-        let lift = hovering && !BrandMotion.reduced(systemReduce)
-        content
-            .scaleEffect(lift ? scale : 1)
-            .shadow(color: .black.opacity(lift ? 0.38 : 0), radius: lift ? 18 : 0, y: lift ? 10 : 0)
-            .animation(BrandMotion.quick, value: hovering)
-            .onHover { inside in
-                hovering = inside
-                #if os(macOS)
-                if inside { NSCursor.pointingHand.set() } else { NSCursor.arrow.set() }
-                #endif
-            }
-    }
+    /// Cards, rows and buttons on the iPhone: dip, dim and a light tap.
+    static var press: BrandPressStyle { BrandPressStyle(scale: 0.96, dim: 0.12, haptic: true) }
 }
 
 extension View {
-    func hoverLift(_ scale: CGFloat = 1.03) -> some View { modifier(HoverLift(scale: scale)) }
-
     /// Rises a little and fades in the first time it appears, `index` places into a list (only the first screenful is staggered).
     /// With Reduce Motion it only fades.
     func staggeredAppear(_ index: Int) -> some View { modifier(StaggeredAppear(index: index)) }

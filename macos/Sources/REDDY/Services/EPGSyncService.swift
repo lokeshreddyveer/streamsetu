@@ -11,6 +11,10 @@ struct EPGSyncResult: Sendable {
 /// New programmes are written under a fresh `import_id`; readers only see the old import until the final switch,
 /// so a failed or cancelled import never leaves a half-updated guide.
 final class EPGSyncService: Sendable {
+    private static let lastImportID = ImportIDBox()
+    /// Milliseconds since 1970, but always above the one before.
+    static func nextImportID() -> Int { lastImportID.next(Int(Date().timeIntervalSince1970 * 1000)) }
+
     let db: DatabaseManager
     let catalog: CatalogRepository
     let http: HTTPClient
@@ -62,15 +66,28 @@ final class EPGSyncService: Sendable {
             if !(error is CancellationError) {
                 try? catalog.recordSync(sourceID: source.id, scope: "epg", success: false, itemCount: nil, etag: nil, lastModified: nil,
                                         error: CredentialRedactor.redact(error.localizedDescription))
+                if !error.localizedDescription.hasPrefix("The guide contained no programmes"), (try? SQLiteGuideRepository(db: db).ensureProviderRow(sourceID: source.id)) != nil {
+                    try? SQLiteGuideRepository(db: db).recordFetch(sourceID: "provider:" + source.id.uuidString.lowercased(), .init(outcome: "failed", error: error.localizedDescription))
+                }
             }
             throw error
         }
     }
 
+    /// Settings > Guide reads these (what the file held, what was skipped, why a guide is empty). Never fails the import.
+    private func recordDiagnostics(_ sid: String, outcome: String, stats: XMLTVStats, mapped: Int, error: String?) {
+        var r = GuideReadStats(channels: stats.channels, programmesSeen: stats.programmesSeen, programmesKept: stats.programmesKept, droppedPast: stats.droppedPast, droppedFuture: stats.droppedFuture,
+                               droppedInvalid: stats.droppedInvalid, truncated: stats.truncated)
+        r.firstStart = stats.firstStart; r.lastStop = stats.lastStop
+        let repo = SQLiteGuideRepository(db: db)
+        if let id = UUID(uuidString: sid) { try? repo.ensureProviderRow(sourceID: id) }
+        try? repo.recordFetch(sourceID: "provider:" + sid, .init(outcome: outcome, stats: r, mapped: mapped, error: error))
+    }
+
     /// Synchronous core, also used directly by tests.
     func importFile(_ file: URL, sourceID: UUID) throws -> EPGSyncResult {
         let sid = sourceID.uuidString.lowercased()
-        let importID = Int(Date().timeIntervalSince1970 * 1000)
+        let importID = Self.nextImportID()          // never the same as an earlier import, even within one millisecond (a failed import deletes only its own rows)
         let now = Date()
         let shift = TimeInterval(shiftMinutes(sourceID) * 60)
         // The guide's own times are read in the window shifted the other way, then stored moved by `shift`.
@@ -93,9 +110,11 @@ final class EPGSyncService: Sendable {
             try? db.write { try $0.execute("DELETE FROM epg_programs WHERE source_id=? AND import_id=?", [sid, importID]) }
             throw error
         }
-        guard stats.programmesKept > 0 || stats.channels > 0 else {
+        guard stats.programmesKept > 0 else {
+            // A guide that keeps no programmes never replaces a working one; the diagnostics say why (all past, wrong times, channels only).
             try? db.write { try $0.execute("DELETE FROM epg_programs WHERE source_id=? AND import_id=?", [sid, importID]) }
-            throw SourceError.invalidResponse("The guide contained no programmes.")
+            recordDiagnostics(sid, outcome: "empty", stats: stats, mapped: 0, error: stats.programmesSeen == 0 ? "The guide contained no programmes." : "The guide contained no programmes for the days kept.")
+            throw SourceError.invalidResponse(stats.programmesSeen == 0 ? "The guide contained no programmes." : "The guide contained no programmes for the days kept.")
         }
 
         // Atomic switch to the new import.
@@ -110,15 +129,13 @@ final class EPGSyncService: Sendable {
             try c.execute("DELETE FROM epg_programs WHERE source_id=? AND import_id != ?", [sid, importID])
         }
         let mapped = try XMLTVChannelMatcher(db: db).rebuild(sourceID: sourceID).mapped
+        recordDiagnostics(sid, outcome: "ok", stats: stats, mapped: mapped, error: nil)
         return EPGSyncResult(skipped: false, channels: stats.channels, programmes: stats.programmesKept, mapped: mapped)
     }
 }
 
 
-/// A value shared between threads.
-final class LockedBox<T>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var stored: T
-    init(_ v: T) { stored = v }
-    var value: T { get { lock.withLock { stored } } set { lock.withLock { stored = newValue } } }
+private final class ImportIDBox: @unchecked Sendable {
+    private let lock = NSLock(); private var last = 0
+    func next(_ ms: Int) -> Int { lock.withLock { last = max(ms, last + 1); return last } }
 }

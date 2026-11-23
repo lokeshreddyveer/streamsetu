@@ -1,6 +1,6 @@
 import Foundation
 
-final class XtreamProvider: SourceProvider, PeopleReporting, @unchecked Sendable {
+final class XtreamProvider: SourceProvider, PeopleReporting, ProviderIDReporting, @unchecked Sendable {
     let source: PlaylistSource
     private let client: XtreamClient
     private let account: XtreamAccount
@@ -60,9 +60,11 @@ final class XtreamProvider: SourceProvider, PeopleReporting, @unchecked Sendable
     }
 
     func movies() -> AsyncThrowingStream<[Movie], Error> {
-        .producing { [client, mapper, names] c in
+        .producing { [client, mapper, names, weak self] c in
             let cats = names(try await client.vodCategories())
-            let all = mapper.movies(try await client.vodStreams(), names: cats)
+            let list = try await client.vodStreams()
+            let all = mapper.movies(list, names: cats)
+            self?.keepIDs(mapper.providerIDs(movies: list))
             for b in all.chunked(into: 2000) { try Task.checkCancellation(); c.yield(b) }
         }
     }
@@ -72,12 +74,17 @@ final class XtreamProvider: SourceProvider, PeopleReporting, @unchecked Sendable
     private func keepSeriesPeople(_ p: [String: [String]]) { peopleLock.withLock { seriesPeople = p } }
     func takeSeriesPeople() -> [String: [String]] { peopleLock.withLock { let p = seriesPeople; seriesPeople = [:]; return p } }
 
+    private var ids: [String: ProviderIDs] = [:]
+    private func keepIDs(_ new: [String: ProviderIDs]) { peopleLock.withLock { ids.merge(new) { $1 } } }
+    func takeProviderIDs() -> [String: ProviderIDs] { peopleLock.withLock { let x = ids; ids = [:]; return x } }
+
     func series() -> AsyncThrowingStream<[Series], Error> {
         .producing { [client, mapper, names, weak self] c in
             let cats = names(try await client.seriesCategories())
             let list = try await client.seriesList()
             let all = mapper.series(list, names: cats)
             self?.keepSeriesPeople(mapper.seriesPeople(list))
+            self?.keepIDs(mapper.providerIDs(series: list))
             for b in all.chunked(into: 2000) { try Task.checkCancellation(); c.yield(b) }
         }
     }

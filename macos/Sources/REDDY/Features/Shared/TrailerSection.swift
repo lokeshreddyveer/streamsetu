@@ -9,6 +9,10 @@ struct TrailerSection: View {
     let title: String
     let year: Int?
     let isSeries: Bool
+    /// The age rating, country and director line: the title page lists them in Details, so it turns this off.
+    var showFacts = true
+    /// The title page's hero: a round icon button instead of a labelled one.
+    var circle = false
     @Environment(\.container) private var container
     @State private var extras: ProviderExtras?
     @State private var tmdbTrailer: String?
@@ -21,11 +25,13 @@ struct TrailerSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
-            SecondaryButton(title: key != nil || clip != nil ? "Watch Trailer" : "Find Trailer on YouTube", symbol: key != nil || clip != nil ? "play.rectangle.fill" : "magnifyingglass") {
-                if key == nil, clip != nil { showClip = true; return }
-                show = key.map { TrailerPage(url: URL(string: "https://www.youtube.com/watch?v=\($0)")!, embed: $0) } ?? searchPage
+            if circle {
+                Button(action: openTrailer) { Image(systemName: hasTrailer ? "play.rectangle.fill" : "magnifyingglass") }
+                    .buttonStyle(HeroCircleStyle()).help(hasTrailer ? "Watch Trailer" : "Find Trailer on YouTube").accessibilityLabel(hasTrailer ? "Watch Trailer" : "Find Trailer on YouTube").atlas("control.title.trailer")
+            } else {
+                SecondaryButton(title: hasTrailer ? "Watch Trailer" : "Find Trailer on YouTube", symbol: hasTrailer ? "play.rectangle.fill" : "magnifyingglass", action: openTrailer).atlas("control.title.trailer")
             }
-            if let e = extras {
+            if showFacts, let e = extras {
                 let line = [e.ageRating, e.country].compactMap { $0 }.joined(separator: " · ")
                 if !line.isEmpty { Text(line).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary) }
                 if !e.directors.isEmpty { fact(isSeries ? "Creator" : "Director", e.directors.joined(separator: ", ")) }
@@ -44,6 +50,13 @@ struct TrailerSection: View {
                 IconButton(symbol: "xmark", help: "Close") { show = nil }.padding(Spacing.md)
             }
         }
+    }
+
+    private var hasTrailer: Bool { key != nil || clip != nil }
+
+    private func openTrailer() {
+        if key == nil, clip != nil { showClip = true; return }
+        show = key.map { TrailerPage(url: URL(string: "https://www.youtube.com/watch?v=\($0)")!, embed: $0) } ?? searchPage
     }
 
     private var searchPage: TrailerPage? {

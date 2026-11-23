@@ -19,8 +19,8 @@ struct LibrarySettingsPage: View {
         SettingsPage {
             SettingsGroup(title: "Manage", footer: "Add, edit or refresh playlists, and organise channels and folders. These open in the main window.") {
                 SettingsActions {
-                    Button { showManager(.playlists) } label: { Label("Playlists…", systemImage: "list.bullet.rectangle") }
-                    Button { showManager(.channelManager) } label: { Label("Channel manager…", systemImage: "slider.horizontal.3") }
+                    Button { showManager(.playlists) } label: { Label("Playlists…", systemImage: "list.bullet.rectangle") }.atlas("screen.playlists")
+                    Button { showManager(.channelManager) } label: { Label("Channel manager…", systemImage: "slider.horizontal.3") }.atlas("screen.settings.channelManager")
                 }
             }
 
@@ -33,23 +33,24 @@ struct LibrarySettingsPage: View {
                 SettingsValueRow(title: "Folders", value: n(vm.overview.categories))
                 SettingsValueRow(title: "Last successful refresh", value: date(vm.overview.lastSync))
                 SettingsValueRow(title: "Next scheduled refresh", value: nextRefresh)
-                SettingsRow(title: "Refresh automatically", detail: "How often playlists are refreshed. Fresh enough catalogs are skipped.") {
+                SettingsRow(title: "Refresh automatically", atlas: "setting.catalogRefresh", detail: "How often playlists are refreshed. Fresh enough catalogs are skipped.") {
                     Picker("Refresh automatically", selection: $s.catalogRefresh) { ForEach(RefreshInterval.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Refresh when the app opens", detail: "Playlists more than an hour old are refreshed as the app opens, even when the schedule above is Manual.") {
+                SettingsRow(title: "Refresh when the app opens", atlas: "setting.refreshOnOpen", detail: "Playlists more than an hour old are refreshed as the app opens, even when the schedule above is Manual.") {
                     Toggle("", isOn: $s.refreshOnOpen).labelsHidden()
                 }
                 SettingsValueRow(title: "Current state", value: syncState, tone: state.isSyncing ? .warning : .normal, divider: !state.sources.isEmpty)
                 syncList
                 SettingsActions {
                     Button { state.syncAll() } label: { HStack(spacing: 6) { if state.isSyncing { ProgressView().controlSize(.small) } else { Image(systemName: "arrow.clockwise") }; Text(state.isSyncing ? "Refreshing…" : "Refresh All Playlists") } }
-                        .disabled(state.isSyncing || state.sources.isEmpty)
-                    if state.isSyncing { Button("Cancel") { for s in state.sources { state.cancelSync(s.id) } } }
+                        .disabled(state.isSyncing || state.sources.isEmpty).atlas("control.settings.refreshNow")
+                    if state.isSyncing { Button("Cancel") { for s in state.sources { state.cancelSync(s.id) } }.atlas("control.settings.refreshNow") }
                 }
                 MessageLine(message: vm.syncMessage)
             }
 
             ArtworkMatchingGroup()
+            HubSourcesGroup()
 
             ProfilesGroup()
             IntegrationsGroup()
@@ -68,21 +69,23 @@ struct LibrarySettingsPage: View {
                 SettingsValueRow(title: "Programmes stored", value: n(vm.overview.guidePrograms))
                 SettingsValueRow(title: "Channels matched to the guide", value: n(vm.overview.guideMatched))
                 SettingsValueRow(title: "Channels without guide data", value: n(vm.overview.guideUnmatched), tone: vm.overview.guideUnmatched > 0 && vm.overview.guideMatched == 0 ? .warning : .normal)
-                SettingsRow(title: "Refresh guide", detail: "Fresh guides are skipped, so a short interval doesn't download more often than needed.") {
+                SettingsRow(title: "Refresh guide", atlas: "setting.guideRefresh", detail: "Fresh guides are skipped, so a short interval doesn't download more often than needed.") {
                     Picker("Refresh guide", selection: $s.guideRefresh) { ForEach(RefreshInterval.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Keep past programmes", detail: "How far back the grid can scroll. Applies from the next guide download.") {
+                SettingsRow(title: "Keep past programmes", atlas: "setting.guideRetentionDays", detail: "How far back the grid can scroll. Applies from the next guide download.") {
                     Picker("Keep past programmes", selection: $s.guideRetentionDays) {
                         Text("3 hours").tag(0); Text("1 day").tag(1); Text("3 days").tag(3); Text("7 days").tag(7)
                     }.pickerStyle(.menu).fixedSize()
                 }
                 SettingsActions {
                     Button { state.refreshGuides(); vm.guideMessage = .init(text: "Guide refresh started.", kind: .info) } label: { Label("Refresh Guide", systemImage: "calendar") }
-                        .disabled(state.isSyncing || state.sources.isEmpty)
-                    Button { showChannelManager() } label: { Label("Review EPG Mappings…", systemImage: "link") }
+                        .disabled(state.isSyncing || state.sources.isEmpty).atlas("setting.guideRefresh")
+                    Button { showChannelManager() } label: { Label("Review EPG Mappings…", systemImage: "link") }.atlas("control.settings.reviewEPG")
                 }
                 MessageLine(message: vm.guideMessage)
             }
+
+            GuideSourcesGroup()
 
             // MARK: backup
             SettingsGroup(title: "Backup", footer: "Passwords and full playlist addresses are never exported. A restored playlist comes back switched off and asks for its login.") {
@@ -91,15 +94,15 @@ struct LibrarySettingsPage: View {
                 backupToggle("Favorites", .favorites)
                 backupToggle("Preferences", .preferences)
                 backupToggle("Viewing history and resume points", .history, divider: false)
-                SettingsRow(title: "Back up automatically", detail: "Once a week, StreamSetu saves a backup here and keeps the newest five. It never contains passwords.") {
+                SettingsRow(title: "Back up automatically", atlas: "setting.autoBackup", detail: "Once a week, StreamSetu saves a backup here and keeps the newest five. It never contains passwords.") {
                     Toggle("Back up automatically", isOn: $s.autoBackup)
                 }
                 SettingsActions {
-                    Button { NSWorkspace.shared.open(StorageService.backups) } label: { Label("Show Backups in Finder", systemImage: "folder") }
+                    Button { NSWorkspace.shared.open(StorageService.backups) } label: { Label("Show Backups in Finder", systemImage: "folder") }.atlas("screen.settings.library.backup")
                 }
                 SettingsActions {
-                    Button { if let c = container { vm.export(c) } } label: { Label("Export Backup…", systemImage: "square.and.arrow.up") }.disabled(vm.backupOptions.isEmpty)
-                    Button { if let c = container { vm.chooseRestore(c) } } label: { Label("Restore Backup…", systemImage: "square.and.arrow.down") }
+                    Button { if let c = container { vm.export(c) } } label: { Label("Export Backup…", systemImage: "square.and.arrow.up") }.disabled(vm.backupOptions.isEmpty).atlas("screen.settings.library.backup")
+                    Button { if let c = container { vm.chooseRestore(c) } } label: { Label("Restore Backup…", systemImage: "square.and.arrow.down") }.atlas("screen.settings.library.backup")
                 }
                 MessageLine(message: vm.backupMessage)
             }
@@ -113,7 +116,7 @@ struct LibrarySettingsPage: View {
             // MARK: downloads
             SettingsGroup(title: "Downloads", footer: "Movies and episodes saved on this Mac to watch without a connection. They are kept out of backups and can be removed here at any time. A download pauses while something is playing.") {
                 DownloadsList()
-                if let d = container?.downloads { Toggle("Delete a download after I have watched it", isOn: Binding(get: { d.deleteWhenWatched }, set: { d.deleteWhenWatched = $0 })) }
+                if let d = container?.downloads { Toggle("Delete a download after I have watched it", isOn: Binding(get: { d.deleteWhenWatched }, set: { d.deleteWhenWatched = $0 })).atlas("setting.downloadsDeleteWatched") }
             }
 
             // MARK: people
@@ -121,13 +124,13 @@ struct LibrarySettingsPage: View {
                 SettingsValueRow(title: "Movies read", value: "\(n(people.done)) of \(n(people.total))")
                 SettingsActions {
                     Button { container?.startPeopleIndex(fast: true); Task { try? await Task.sleep(nanoseconds: 3_000_000_000); refreshPeople() } } label: { Label("Read Cast Now", systemImage: "person.2") }
-                        .disabled(people.done >= people.total)
+                        .disabled(people.done >= people.total).atlas("setting.castReading")
                 }
             }
 
             // MARK: maintenance (technical, collapsed until asked for)
             SettingsGroup(title: "Maintenance", footer: "Storage use, database checks and the search index. You rarely need these; they are here for when something looks wrong.") {
-                SettingsRow(title: "Show maintenance tools", detail: "Cache sizes, database verification and search index rebuild.", divider: false) {
+                SettingsRow(title: "Show maintenance tools", atlas: "setting.maintenance", detail: "Cache sizes, database verification and search index rebuild.", divider: false) {
                     Toggle("Show maintenance tools", isOn: $showMaintenance.animation(AnimationTokens.standard))
                 }
             }
@@ -174,7 +177,7 @@ struct LibrarySettingsPage: View {
                 SettingsActions {
                     AsyncActionButton(title: "Verify Index", symbol: "checkmark.circle", busyTitle: "Verifying…") { if let c = container { await vm.verifyIndex(c) } }
                     AsyncActionButton(title: "Rebuild Search Index", symbol: "arrow.triangle.2.circlepath", busyTitle: "Rebuilding…") { if let c = container { await vm.rebuildIndex(c) } }
-                    Button { if let c = container { vm.clearSearchHistory(c) } } label: { Label("Clear Search History", systemImage: "clock.arrow.circlepath") }
+                    Button { if let c = container { vm.clearSearchHistory(c) } } label: { Label("Clear Search History", systemImage: "clock.arrow.circlepath") }.atlas("control.settings.clearSearchHistory")
                 }
                 MessageLine(message: vm.indexMessage)
             }
@@ -237,7 +240,7 @@ struct LibrarySettingsPage: View {
     }
 
     private func backupToggle(_ title: String, _ option: BackupOptions, divider: Bool = true) -> some View {
-        SettingsRow(title: title, divider: divider) {
+        SettingsRow(title: title, atlas: "control.settings.backupContents", divider: divider) {
             Toggle(title, isOn: Binding(get: { vm.backupOptions.contains(option) }, set: { on in if on { vm.backupOptions.insert(option) } else { vm.backupOptions.remove(option) } }))
         }
     }

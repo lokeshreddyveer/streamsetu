@@ -31,7 +31,7 @@ struct CurrentProgramCard: View {
                     if let s = p.subtitle { Text(s).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary) }
                     ProgressBar(fraction: p.progress(), height: 4)
                     if channel.archiveDays > 0, p.start < Date().addingTimeInterval(-60) {
-                        Button { onCatchup(p) } label: { Label("Watch from the start", systemImage: "gobackward") }.buttonStyle(.bordered).controlSize(.small)
+                        Button { onCatchup(p) } label: { Label("Watch from the start", systemImage: "gobackward") }.buttonStyle(.bordered).controlSize(.small).atlas("control.liveTV.catchUp")
                     }
                     if let d = p.description { Text(d).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).lineLimit(4) }
                 }
@@ -49,7 +49,7 @@ struct CurrentProgramCard: View {
                             Spacer()
                             Image(systemName: "play.circle").foregroundStyle(ColorTokens.textSecondary)
                         }.contentShape(Rectangle())
-                    }.buttonStyle(.plain).help("Watch \(p.title) from the provider's archive")
+                    }.buttonStyle(.plain).help("Watch \(p.title) from the provider's archive").atlas("control.liveTV.catchUp")
                 }
             }
             if !later.isEmpty {
@@ -61,7 +61,7 @@ struct CurrentProgramCard: View {
                         Spacer()
                         if settings.remindersEnabled { Button { toggleReminder(p) } label: { Image(systemName: reminded.contains(p.id) ? "bell.fill" : "bell") }
                             .buttonStyle(.plain).foregroundStyle(reminded.contains(p.id) ? Color.accentColor : ColorTokens.textSecondary)
-                            .help(reminded.contains(p.id) ? "Cancel reminder" : "Remind me when it starts").accessibilityLabel(reminded.contains(p.id) ? "Cancel reminder for \(p.title)" : "Remind me when \(p.title) starts") }
+                            .help(reminded.contains(p.id) ? "Cancel reminder" : "Remind me when it starts").accessibilityLabel(reminded.contains(p.id) ? "Cancel reminder for \(p.title)" : "Remind me when \(p.title) starts").atlas("setting.remindersEnabled") }
                     }
                 }
             }

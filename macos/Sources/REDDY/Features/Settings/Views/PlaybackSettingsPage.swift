@@ -9,7 +9,17 @@ struct PlaybackSettingsPage: View {
     @State private var loadedLayout = false
     @State private var confirmReset = false
 
-    private static let languages: [(String, String)] = [("", "No preference"), ("en", "English"), ("es", "Spanish"), ("fr", "French"), ("de", "German"), ("it", "Italian"), ("pt", "Portuguese"), ("nl", "Dutch"), ("pl", "Polish"), ("ru", "Russian"), ("tr", "Turkish"), ("ar", "Arabic"), ("hi", "Hindi"), ("te", "Telugu"), ("ta", "Tamil"), ("zh", "Chinese"), ("ja", "Japanese"), ("ko", "Korean")]
+    /// "No preference", then the device's language, then every other language alphabetically (never a fixed region first).
+    private static let languages: [(String, String)] = {
+        let all: [(String, String)] = [("en", "English"), ("es", "Spanish"), ("fr", "French"), ("de", "German"), ("it", "Italian"), ("pt", "Portuguese"), ("nl", "Dutch"), ("pl", "Polish"), ("ru", "Russian"), ("uk", "Ukrainian"), ("tr", "Turkish"), ("ar", "Arabic"), ("he", "Hebrew"), ("fa", "Persian"), ("hi", "Hindi"), ("te", "Telugu"), ("ta", "Tamil"), ("bn", "Bengali"), ("ur", "Urdu"), ("zh", "Chinese"), ("ja", "Japanese"), ("ko", "Korean"), ("th", "Thai"), ("vi", "Vietnamese"), ("id", "Indonesian"), ("sv", "Swedish"), ("el", "Greek")]
+        let device = Locale.current.language.languageCode?.identifier ?? "en"
+        let sorted = all.sorted { $0.1.localizedCompare($1.1) == .orderedAscending }
+        let library = LibraryLanguageHint.read().map { $0.lowercased() }
+        let first = sorted.filter { $0.0 == device }
+        let detected = library.compactMap { name in sorted.first { $0.1.lowercased() == name && $0.0 != device } }
+        let rest = sorted.filter { l in l.0 != device && !detected.contains { $0.0 == l.0 } }
+        return [("", "No preference")] + first + detected + rest
+    }()
 
     private var mpv: EngineReport? { engines.first { $0.kind == .mpv } }
     private var mpvUsable: Bool { mpv?.available ?? false }
@@ -20,39 +30,39 @@ struct PlaybackSettingsPage: View {
             engineGroup()
 
             SettingsGroup(title: "Video") {
-                SettingsRow(title: "Hardware decoding", detail: s.hardwareDecoding.explanation,
+                SettingsRow(title: "Hardware decoding", atlas: "setting.hardwareDecoding", detail: s.hardwareDecoding.explanation,
                             note: "AVPlayer manages decoding itself using macOS media capabilities, with hardware acceleration where the format allows. This choice applies to streams MPV plays.") {
                     Picker("Hardware decoding", selection: $s.hardwareDecoding) { ForEach(HardwareDecoding.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Preferred quality", detail: s.videoQuality.explanation, note: "Chooses between the quality variants of adaptive (HLS) streams. Other streams play as provided. Scaling quality is under Advanced video.") {
+                SettingsRow(title: "Preferred quality", atlas: "setting.videoQuality", detail: s.videoQuality.explanation, note: "Chooses between the quality variants of adaptive (HLS) streams. Other streams play as provided. Scaling quality is under Advanced video.") {
                     Picker("Preferred quality", selection: $s.videoQuality) { ForEach(VideoQualityPreference.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Default video size", detail: "Fit keeps the whole picture, Fill crops to fill the window, Original Size doesn't scale, Stretch ignores the aspect ratio.") {
+                SettingsRow(title: "Default video size", atlas: "setting.defaultVideoSize", detail: "Fit keeps the whole picture, Fill crops to fill the window, Original Size doesn't scale, Stretch ignores the aspect ratio.") {
                     Picker("Default video size", selection: layoutBinding(\.mode)) { ForEach(VideoSizeMode.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Default aspect ratio", detail: "Overrides the stream's own ratio. Each channel or title can set its own from the player's Video menu.", divider: false) {
+                SettingsRow(title: "Default aspect ratio", atlas: "setting.defaultAspect", detail: "Overrides the stream's own ratio. Each channel or title can set its own from the player's Video menu.", divider: false) {
                     Picker("Default aspect ratio", selection: layoutBinding(\.aspect)) { ForEach(AspectRatioOption.presets) { Text($0.title).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
             }
 
             SettingsGroup(title: "Live TV") {
-                SettingsRow(title: "Pause and rewind live TV", detail: "Keeps a few minutes of the channel in memory so you can pause it and wind back. Uses up to about 400 MB while a channel plays.",
+                SettingsRow(title: "Pause and rewind live TV", atlas: "setting.liveRewind", detail: "Keeps a few minutes of the channel in memory so you can pause it and wind back. Uses up to about 400 MB while a channel plays.",
                             note: mpvUsable ? "Applies to channels MPV plays, from the next channel you start." : "Needs the MPV engine, which isn't available on this Mac.", divider: false) {
                     Toggle("Pause and rewind live TV", isOn: $s.liveRewind).disabled(!mpvUsable)
                 }
             }
 
             SettingsGroup(title: "Buffering", footer: "A playlist can use its own buffering and player engine: open Playlists and choose its Connection section.") {
-                SettingsRow(title: "Mode", detail: s.bufferingMode.explanation, note: "AVPlayer's forward buffer and MPV's cache are set from the same choice.", divider: false) {
+                SettingsRow(title: "Mode", atlas: "setting.bufferingMode", detail: s.bufferingMode.explanation, note: "AVPlayer's forward buffer and MPV's cache are set from the same choice.", divider: false) {
                     Picker("Buffering mode", selection: $s.bufferingMode) { ForEach(BufferingMode.allCases) { Text($0.title).tag($0) } }.pickerStyle(.menu).fixedSize()
                 }
             }
 
             SettingsGroup(title: "Audio") {
-                SettingsRow(title: "Preferred language", detail: "Chosen automatically when a stream offers several audio tracks. You can still switch inside the player.") {
+                SettingsRow(title: "Preferred language", atlas: "setting.preferredAudioLanguage", detail: "Chosen automatically when a stream offers several audio tracks. You can still switch inside the player.") {
                     Picker("Preferred audio language", selection: $s.preferredAudioLanguage) { ForEach(Self.languages, id: \.0) { Text($0.1).tag($0.0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Output device", divider: false) {
+                SettingsRow(title: "Output device", atlas: "setting.audioOutputUID", divider: false) {
                     Picker("Output device", selection: $s.audioOutputUID) {
                         Text("System default").tag("")
                         ForEach(AudioDevices.outputs()) { Text($0.name).tag($0.uid) }
@@ -61,89 +71,89 @@ struct PlaybackSettingsPage: View {
             }
 
             SettingsGroup(title: "Subtitles") {
-                SettingsRow(title: "Preferred language") {
+                SettingsRow(title: "Preferred language", atlas: "setting.preferredSubtitleLanguage") {
                     Picker("Preferred subtitle language", selection: $s.preferredSubtitleLanguage) { ForEach(Self.languages, id: \.0) { Text($0.1).tag($0.0) } }.pickerStyle(.menu).fixedSize()
                 }
-                SettingsRow(title: "Show by default", detail: "Turns subtitles on when a track in your language exists.") { Toggle("Show subtitles by default", isOn: $s.subtitlesByDefault) }
-                SettingsRow(title: "Size") {
+                SettingsRow(title: "Show by default", atlas: "setting.subtitlesByDefault", detail: "Turns subtitles on when a track in your language exists.") { Toggle("Show subtitles by default", isOn: $s.subtitlesByDefault) }
+                SettingsRow(title: "Size", atlas: "setting.subtitleSize") {
                     HStack { Slider(value: $s.subtitleSize, in: 60...200, step: 10).frame(width: 180); Text("\(Int(s.subtitleSize))%").monospacedDigit().frame(width: 44, alignment: .trailing) }
                         .onChange(of: s.subtitleSize) { _, _ in container?.settingChanged("subtitleSize") }
                 }
-                SettingsRow(title: "Background opacity") {
+                SettingsRow(title: "Background opacity", atlas: "setting.subtitleBackground") {
                     HStack { Slider(value: $s.subtitleBackground, in: 0...1).frame(width: 180); Text("\(Int(s.subtitleBackground * 100))%").monospacedDigit().frame(width: 44, alignment: .trailing) }
                         .onChange(of: s.subtitleBackground) { _, _ in container?.settingChanged("subtitleBackground") }
                 }
-                SettingsRow(title: "Text colour") {
+                SettingsRow(title: "Text colour", atlas: "setting.subtitleColor") {
                     Picker("Text colour", selection: $s.subtitleColor) { ForEach(SubtitleColor.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
                         .onChange(of: s.subtitleColor) { _, _ in container?.settingChanged("subtitleColor") }
                 }
                 let positionOK = container?.playback.capabilities(of: .mpv)?.subtitlePosition ?? false
-                SettingsRow(title: "Vertical position", note: positionOK ? nil : "Needs the MPV engine, which isn't available on this Mac.") {
+                SettingsRow(title: "Vertical position", atlas: "setting.subtitlePosition", note: positionOK ? nil : "Needs the MPV engine, which isn't available on this Mac.") {
                     Slider(value: $s.subtitlePosition, in: 0...1).frame(width: 180).disabled(!positionOK)
                         .onChange(of: s.subtitlePosition) { _, _ in container?.settingChanged("subtitlePosition") }
                 }
                 let outlineOK = container?.playback.capabilities(of: .mpv) != nil
-                SettingsRow(title: "Outline and shadow", detail: "Keeps text readable over bright scenes.", note: outlineOK ? nil : "Needs the MPV engine, which isn't available on this Mac.") {
+                SettingsRow(title: "Outline and shadow", atlas: "setting.subtitleOutline", detail: "Keeps text readable over bright scenes.", note: outlineOK ? nil : "Needs the MPV engine, which isn't available on this Mac.") {
                     Toggle("Outline and shadow", isOn: $s.subtitleOutline).disabled(!outlineOK)
                         .onChange(of: s.subtitleOutline) { _, _ in container?.settingChanged("subtitleOutline") }
                 }
-                SettingsRow(title: "Preview", detail: "How subtitles will look.", divider: false) { SubtitlePreview(style: s.subtitleStyle) }
+                SettingsRow(title: "Preview", atlas: "setting.subtitleSize", detail: "How subtitles will look.", divider: false) { SubtitlePreview(style: s.subtitleStyle) }
             }
 
             SettingsGroup(title: "Subtitles online", footer: "From OpenSubtitles, using your own free account and API key (opensubtitles.com). They stay in the Keychain on this device and are sent only to OpenSubtitles when you ask for subtitles in the player.") {
-                SettingsRow(title: "Fetch automatically", detail: "When a film or episode has no subtitles in your language, gets the most downloaded one by itself a few seconds after it starts. Choose your subtitle language above.") { Toggle("Fetch subtitles automatically", isOn: $s.autoSubtitles) }
+                SettingsRow(title: "Fetch automatically", atlas: "setting.autoSubtitles", detail: "When a film or episode has no subtitles in your language, gets the most downloaded one by itself a few seconds after it starts. Choose your subtitle language above.") { Toggle("Fetch subtitles automatically", isOn: $s.autoSubtitles) }
                 OpenSubtitlesFields()
             }
 
             SettingsGroup(title: "Remembered choices", footer: "Audio language, subtitles, speed and timing come back the next time you play the same title or channel.") {
-                SettingsRow(title: "Remember settings for each title") { Toggle("", isOn: Binding(get: { ItemMemory().enabled }, set: { ItemMemory().enabled = $0 })).labelsHidden() }
+                SettingsRow(title: "Remember settings for each title", atlas: "setting.rememberPerTitle") { Toggle("", isOn: Binding(get: { ItemMemory().enabled }, set: { ItemMemory().enabled = $0 })).labelsHidden() }
             }
 
             SettingsGroup(title: "Behaviour") {
-                SettingsRow(title: "Play next episode automatically", detail: "Only continues within the series you are watching.") { Toggle("Play next episode automatically", isOn: $s.autoPlayNextEpisode) }
-                SettingsRow(title: "Remember playback position", detail: "Saves where you stop in movies and episodes so Continue Watching works. Live channels have no position to save. Off means no resume points are written.") { Toggle("Remember playback position", isOn: $s.rememberPosition) }
-                SettingsRow(title: "Resume automatically", detail: s.rememberPosition ? "Continue a partly watched title where it stopped instead of from the start." : "Needs “Remember playback position”.") {
+                SettingsRow(title: "Play next episode automatically", atlas: "setting.autoPlayNextEpisode", detail: "Only continues within the series you are watching.") { Toggle("Play next episode automatically", isOn: $s.autoPlayNextEpisode) }
+                SettingsRow(title: "Remember playback position", atlas: "setting.rememberPosition", detail: "Saves where you stop in movies and episodes so Continue Watching works. Live channels have no position to save. Off means no resume points are written.") { Toggle("Remember playback position", isOn: $s.rememberPosition) }
+                SettingsRow(title: "Resume automatically", atlas: "setting.resumeAutomatically", detail: s.rememberPosition ? "Continue a partly watched title where it stopped instead of from the start." : "Needs “Remember playback position”.") {
                     Toggle("Resume automatically", isOn: $s.resumeAutomatically).disabled(!s.rememberPosition)
                 }
-                SettingsRow(title: "Play the best version first", detail: "When a film is in your library in several qualities or folders, start with the best one (4K, then 1080p, and never a cinema recording first). If it does not play, the next best is tried.") {
+                SettingsRow(title: "Play the best version first", atlas: "setting.bestVersionFirst", detail: "When a film is in your library in several qualities or folders, start with the best one (4K, then 1080p, and never a cinema recording first). If it does not play, the next best is tried.") {
                     Toggle("Play the best version first", isOn: $s.bestVersionFirst)
                 }
             }
 
             SettingsDisclosure(title: "Advanced video", footer: "These change how MPV processes video. Most people never need them; AVPlayer ignores them.") {
-                SettingsRow(title: "Scaling quality", detail: s.renderingProfile.explanation, note: mpvUsable ? "Applies to streams MPV plays, from the next stream you start." : "Needs the MPV engine, which isn't available on this Mac.") {
+                SettingsRow(title: "Scaling quality", atlas: "setting.renderingProfile", detail: s.renderingProfile.explanation, note: mpvUsable ? "Applies to streams MPV plays, from the next stream you start." : "Needs the MPV engine, which isn't available on this Mac.") {
                     Picker("Scaling quality", selection: $s.renderingProfile) { ForEach(RenderingProfile.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize().disabled(!mpvUsable)
                 }
-                SettingsRow(title: "HDR tone mapping", detail: s.toneMapping.explanation, note: mpvUsable ? "How HDR video is shown on a normal display. From the next stream you start." : "Needs the MPV engine, which isn't available on this Mac.") {
+                SettingsRow(title: "HDR tone mapping", atlas: "setting.toneMapping", detail: s.toneMapping.explanation, note: mpvUsable ? "How HDR video is shown on a normal display. From the next stream you start." : "Needs the MPV engine, which isn't available on this Mac.") {
                     Picker("HDR tone mapping", selection: $s.toneMapping) { ForEach(HDRToneMapping.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize().disabled(!mpvUsable)
                 }
-                SettingsRow(title: "Picture", detail: s.picture.isDefault ? "Brightness, contrast, saturation, gamma and hue are at their defaults. Adjust them from the player's picture button." : "Adjusted from the player's picture button.",
+                SettingsRow(title: "Picture", atlas: "setting.picture", detail: s.picture.isDefault ? "Brightness, contrast, saturation, gamma and hue are at their defaults. Adjust them from the player's picture button." : "Adjusted from the player's picture button.",
                             note: mpvUsable ? nil : "Needs the MPV engine, which isn't available on this Mac.") {
                     Button("Reset Picture") { s.picture = PictureAdjustments() }.disabled(s.picture.isDefault)
                 }
-                SettingsRow(title: "Deinterlacing", detail: "Automatic turns it on for live TV, where interlaced broadcast video is common, and leaves films alone. Choose On for an interlaced recording.",
+                SettingsRow(title: "Deinterlacing", atlas: "setting.deinterlace", detail: "Automatic turns it on for live TV, where interlaced broadcast video is common, and leaves films alone. Choose On for an interlaced recording.",
                             note: mpvUsable ? "Applies to streams MPV plays." : "Needs the MPV engine, which isn't available on this Mac.", divider: false) {
                     Picker("Deinterlacing", selection: $s.deinterlace) { ForEach(DeinterlaceMode.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize().disabled(!mpvUsable)
                 }
             }
 
             SettingsDisclosure(title: "Advanced audio", footer: "Only MPV can process audio this way. AVPlayer plays audio as the stream provides it.") {
-                SettingsRow(title: "Volume normalization", detail: s.audioProcessing.explanation,
+                SettingsRow(title: "Volume normalization", atlas: "setting.audioProcessing", detail: s.audioProcessing.explanation,
                             note: mpvUsable ? "Applies to streams MPV plays." : "Needs the MPV engine, which isn't available on this Mac.") {
                     Picker("Volume normalization", selection: $s.audioProcessing) { ForEach(AudioProcessingMode.allCases) { Text($0.title).tag($0) } }.pickerStyle(.menu).fixedSize().disabled(!mpvUsable)
                         .onChange(of: s.audioProcessing) { _, _ in container?.settingChanged("audioProcessing") }
                 }
-                SettingsRow(title: "Downmix to stereo", detail: "Mixes 5.1 and 7.1 audio down to two channels, for speakers and headphones.",
+                SettingsRow(title: "Downmix to stereo", atlas: "setting.stereoDownmix", detail: "Mixes 5.1 and 7.1 audio down to two channels, for speakers and headphones.",
                             note: mpvUsable ? "Applies from the next stream you start." : "Needs the MPV engine, which isn't available on this Mac.", divider: false) {
                     Toggle("Downmix to stereo", isOn: $s.stereoDownmix).disabled(!mpvUsable)
                 }
             }
 
             SettingsDisclosure(title: "Troubleshooting", footer: "Details come from the stream playing right now. Nothing here is sent anywhere.") {
-                SettingsRow(title: "Show stream information", detail: "A small overlay with resolution, bitrate and dropped frames.") { Toggle("Show stream information", isOn: $s.showDiagnosticsOverlay) }
+                SettingsRow(title: "Show stream information", atlas: "setting.showDiagnosticsOverlay", detail: "A small overlay with resolution, bitrate and dropped frames.") { Toggle("Show stream information", isOn: $s.showDiagnosticsOverlay) }
                 PlaybackDetailsPanel()
                 SettingsActions {
-                    Button(role: .destructive) { confirmReset = true } label: { Label("Restore Playback Defaults…", systemImage: "arrow.uturn.backward") }
+                    Button(role: .destructive) { confirmReset = true } label: { Label("Restore Playback Defaults…", systemImage: "arrow.uturn.backward") }.atlas("control.settings.restorePlaybackDefaults")
                 }
             }
         }
@@ -167,11 +177,11 @@ struct PlaybackSettingsPage: View {
     private func engineGroup() -> some View {
         @Bindable var s = settings
         SettingsGroup(title: "Player engine", footer: "Automatic uses AVPlayer for HLS and MP4, and MPV for MKV, raw MPEG-TS, RTSP and DASH. If a stream's format isn't supported, StreamSetu tries the other engine once; a sign-in problem is reported instead of retried.") {
-            SettingsRow(title: "Engine", detail: "Automatic is recommended.", divider: !engines.isEmpty) {
+            SettingsRow(title: "Engine", atlas: "setting.enginePreference", detail: "Automatic is recommended.", divider: !engines.isEmpty) {
                 Picker("Engine", selection: $s.enginePreference) { ForEach(PlaybackEnginePreference.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu).fixedSize()
             }
             ForEach(AppSettings.ViewingKind.allCases) { kind in
-                SettingsRow(title: "For \(kind.title)", detail: kind == .live ? "A playlist's or channel's own choice still comes first." : nil) {
+                SettingsRow(title: "For \(kind.title)", atlas: "setting.engineForKind", detail: kind == .live ? "A playlist's or channel's own choice still comes first." : nil) {
                     Picker(kind.title, selection: Binding(get: { settings.engineChoice(for: kind) }, set: { settings.setEngineChoice($0, for: kind) })) {
                         Text("Use the engine above").tag(PlaybackEnginePreference?.none)
                         ForEach(PlaybackEnginePreference.allCases) { Text($0.rawValue).tag(PlaybackEnginePreference?.some($0)) }

@@ -17,11 +17,11 @@ struct ContentRouter: View {
         Group {
             if let name = lockedFolder { LockedFolderView(name: name) } else {
             switch router.tab {
-            case .home: HomeScreen()
-            case .liveTV: LiveTVScreen()
-            case .movies: LibraryScreen(kind: .movie).id(ContentKind.movie)
-            case .series: LibraryScreen(kind: .series).id(ContentKind.series)
-            case .guide: GuideScreen()
+            case .home: HomeScreen().atlasScreen("screen.tab.home")
+            case .liveTV: LiveTVScreen().atlasScreen("screen.tab.liveTV")
+            case .movies: LibraryScreen(kind: .movie).id(ContentKind.movie).atlasScreen("screen.tab.movies")
+            case .series: LibraryScreen(kind: .series).id(ContentKind.series).atlasScreen("screen.tab.series")
+            case .guide: GuideScreen().atlasScreen("screen.tab.guide")
             }
             }
         }

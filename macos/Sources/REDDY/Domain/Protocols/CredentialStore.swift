@@ -24,6 +24,7 @@ extension CredentialStore {
     func deleteLocal(ref: String) throws { try delete(ref: ref) }
 }
 
+#if DEBUG
 /// Test double that keeps secrets in memory only.
 final class InMemoryCredentialStore: CredentialStore, @unchecked Sendable {
     private var items: [String: Credentials] = [:]
@@ -32,3 +33,4 @@ final class InMemoryCredentialStore: CredentialStore, @unchecked Sendable {
     func load(ref: String) throws -> Credentials? { lock.lock(); defer { lock.unlock() }; return items[ref] }
     func delete(ref: String) throws { lock.lock(); items[ref] = nil; lock.unlock() }
 }
+#endif

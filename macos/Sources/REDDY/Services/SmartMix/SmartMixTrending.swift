@@ -2,7 +2,7 @@ import Foundation
 
 // TMDB weekly trending for "Top This Week" / "Trending in Your Library".
 // Privacy: the only network request is the public weekly trending list. Nothing about the person (library, history, folders, profile, device) is sent.
-// The list is matched locally. ON by default but only ACTIVE when the person entered their own TMDB key. No key is bundled.
+// The list is matched locally. ON by default; ACTIVE with the person's own TMDB key or the built-in token when this build has one (TMDBAccess).
 
 struct SMTrendingEntry: Codable, Sendable, Equatable {
     var rank: Int
@@ -21,11 +21,11 @@ enum SMTrendingStatus: String, Sendable { case off, noCache, active, expired, pu
 
 /// Cache and activation policy. All thresholds in one place.
 struct SMTrendingPolicy: Sendable {
-    /// "Use TMDB weekly trending" switch. Default ON; has no effect without the person's own key.
+    /// "Use TMDB weekly trending" switch. Default ON; has no effect without a credential (own key or built-in token).
     var enabled = true
     var hasOwnKey = false
-    static let displayFreshDays = 30      // older: shown local-only until refreshed
-    static let maxCacheDays = 180         // owner cap: nothing is kept longer than 6 months
+    static let displayFreshDays = Retention.trendingFreshDays      // older: shown local-only until refreshed
+    static let maxCacheDays = Retention.maxKeepDays         // owner cap: nothing is kept longer than 6 months
     static let refetchAfterHours = 24     // a weekly list: at most one refresh a day
     static let minMatchesForTopWeek = 6
 
@@ -54,7 +54,8 @@ protocol SMTrendingCacheStore: Sendable {
     func save(_ cache: SMTrendingCache)
     func clear()
 }
-protocol SMTMDBKeyProvider: Sendable { var apiKey: String? { get } }
+protocol SMTMDBKeyProvider: Sendable { var apiKey: String? { get }; func reportRejected() }
+extension SMTMDBKeyProvider { func reportRejected() {} }
 
 enum SMTrendingMatcher {
     /// Normalises a title for matching. Must equal the identity layer's key function once that is wired (the matcher takes `normalize`).
@@ -135,7 +136,8 @@ actor SMTrendingService {
     }
 }
 
-// MARK: in-memory fakes
+// MARK: in-memory fakes (tests only)
+#if DEBUG
 final class InMemoryTrendingCacheStore: SMTrendingCacheStore, @unchecked Sendable {
     private var value: SMTrendingCache?
     private let lock = NSLock()
@@ -153,6 +155,7 @@ final class FakeTrendingFetcher: SMTrendingFetching, @unchecked Sendable {
     init(_ r: Result<[SMTrendingEntry], Error>) { result = r }
     func fetchWeekly() async throws -> [SMTrendingEntry] { lock.withLock { _calls += 1 }; return try result.get() }
 }
+#endif
 
 // MARK: thin network client (OFF unless the person entered their own key)
 struct SMTMDBTrendingClient: SMTrendingFetching {
@@ -180,9 +183,11 @@ struct SMTMDBTrendingClient: SMTrendingFetching {
         if MetadataMatchService.isBearerToken(key) { req = URLRequest(url: comps.url!); req.setValue("Bearer " + key, forHTTPHeaderField: "Authorization") }
         else { comps.queryItems = [URLQueryItem(name: "api_key", value: key)]; req = URLRequest(url: comps.url!) }
         req.timeoutInterval = 15
+        req.allowsConstrainedNetworkAccess = true; req.allowsExpensiveNetworkAccess = true
         req.httpShouldHandleCookies = false
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw Failure.badResponse }
+        if BuiltInKeyPause.isRefusal(http.statusCode) { keys.reportRejected() }          // a refused built-in token is set aside for a while
         guard http.statusCode == 200 else { throw Failure.http(http.statusCode) }
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any], let results = obj["results"] as? [[String: Any]] else { throw Failure.badResponse }
         return results.enumerated().map { i, r in

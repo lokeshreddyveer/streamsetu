@@ -185,7 +185,7 @@ enum IntentAdvisor {
     You turn a request for something to watch into search parts. Reply with JSON only, no other text, shaped like:
     {"people": [], "genres": [], "languages": [], "year": null, "decade": null, "keywords": [], "like": [], "kind": "any", "maxMinutes": null, "minRating": null, "unwatched": false, "exclude": [], "surprise": false}
     "people": names of actors or directors the request names (full names, correctly spelled). "genres": from Action, Adventure, Animation, Comedy, Crime, Documentary, Drama, Family, Fantasy, History, Horror, Music, Mystery, Romance, Sci-Fi, Thriller, War.
-    "languages": such as Telugu, Hindi, Tamil, English. "like": titles the request says it wants more like. "keywords": at most three words about the theme or mood. "kind": "movie", "series" or "any".
+    "languages": such as English, Spanish, Korean, Hindi, Arabic. "like": titles the request says it wants more like. "keywords": at most three words about the theme or mood. "kind": "movie", "series" or "any".
     "exclude": genres they do not want. "surprise": true when they leave the choice to you. "keywords": the mood or theme in a few plain words (such as "feel-good heist" or "slow-burn mystery").
     Use null or an empty list for anything the request does not say. Never add a film or series of your own.
     """
@@ -395,7 +395,7 @@ struct AskLibrary: @unchecked Sendable {
             if !a.intent.people.isEmpty && a.castCoverage < 0.9 { return "Nothing found yet. The cast has been read for \(Int(a.castCoverage * 100))% of your films, so more may appear after Read Cast Now in Settings." }
             return "Nothing in your library fits all of that. Try fewer words."
         }
-        var s = n == 1 ? "1 title in your library" : "\(n) titles in your library"
+        var s = Localized.plural(n, one: "%@ title in your library", other: "%@ titles in your library")
         if !a.intent.people.isEmpty { s += " with " + a.intent.people.joined(separator: " and ") }
         s += fresh == 0 ? ", all watched." : (fresh == n ? ", none watched yet." : ", \(fresh) not watched yet.")
         if a.judged { s += " The AI picked the best of them." }
@@ -411,7 +411,7 @@ struct AskLibrary: @unchecked Sendable {
     }
 
     private func rating(_ i: LibraryItem) -> Double? {
-        switch i { case .movie(let m): return m.rating.flatMap(Double.init); case .series(let s): return s.rating.flatMap(Double.init) }
+        switch i { case .movie(let m): return RatingRule.credible(m.rating); case .series(let s): return RatingRule.credible(s.rating) }
     }
 
     private func match(title: String, year: Int?, isShow: Bool) -> LibraryItem? {

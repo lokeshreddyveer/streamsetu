@@ -288,9 +288,23 @@ import Foundation
         }
     }
     @Test func everyExampleDoesSomething() {
-        for e in SearchIdeas.examples where e.label != "an actor's films: “Prabhas movies”" {
+        for e in SearchIdeas.examples where e.symbol != "person" {
             let i = LocalIntent.parse(e.query, hasPerson: { _ in nil })
             #expect(!i.isEmpty || !SearchCommands.parse(e.query).isEmpty || NaturalQuery.parse(e.query).isStructured, "\(e.label) does nothing")
+        }
+    }
+    @Test func examplesFollowThePersonsLanguageNotAFixedRegion() {
+        func texts(_ langs: [String], audio: String?, _ id: String) -> String {
+            SearchIdeas.examples(languages: langs, audioSetting: audio, locale: Locale(identifier: id)).map(\.query).joined(separator: "|").lowercased()
+        }
+        #expect(texts([], audio: nil, "de_DE").contains("german movies"))
+        #expect(texts([], audio: nil, "ko_KR").contains("korean movies"))
+        #expect(texts([], audio: "es", "en_US").contains("spanish movies"))
+        #expect(texts(["Turkish", "Arabic"], audio: nil, "en_US").contains("arabic movies 2020s"))
+        #expect(texts([], audio: nil, "xx_XX").contains("english movies"))
+        for id in ["en_US", "de_DE", "ja_JP", "ar_EG", "es_MX", "hi_IN", "te_IN"] {
+            let all = texts([], audio: nil, id)
+            #expect(!all.contains("prabhas") && !all.contains("telugu") || id == "te_IN", "\(id)")
         }
     }
 }

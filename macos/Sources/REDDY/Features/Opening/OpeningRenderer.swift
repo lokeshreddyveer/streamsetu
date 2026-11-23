@@ -225,16 +225,6 @@ struct OpeningArt {
     }()
 }
 
-/// A value behind a lock, for the art that is decoded on one thread and drawn on another.
-final class Locked<T>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var stored: T
-    init(_ value: T) { stored = value }
-    var value: T { get { lock.lock(); defer { lock.unlock() }; return stored } set { lock.lock(); stored = newValue; lock.unlock() } }
-    /// Sets the value and returns the old one.
-    func swap(_ new: T) -> T { lock.lock(); defer { lock.unlock() }; let old = stored; stored = new; return old }
-}
-
 /// Draws one frame of "Tune In" from the television's layers. The artboard (1000 x 600) is fitted into the view and centred; on a
 /// portrait screen only its middle 700 units are fitted, so the television is not tiny.
 ///

@@ -8,6 +8,7 @@ import Foundation
 ///  - `clear()` drops everything at once and is what a change of profile, library or lock calls, so nothing a person is no longer allowed to see can come back from here;
 ///  - the number of entries and the total cost are bounded, and the least recently used entry goes first;
 ///  - it holds the list's items and counts only: no address, no login and no playable URL.
+/// Status: built and tested ahead of use; no screen holds one yet. Kept (not moved to the tests) because it is the strict, privacy-reviewed shape a page cache must have.
 @MainActor
 final class PageSnapshotCache<Key: Hashable, Value> {
     private struct Entry { var value: Value; var cost: Int; var revision: Int }

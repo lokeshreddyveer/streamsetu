@@ -58,11 +58,11 @@ struct ReddyBottomPlayer: View {
                         .background(.black.opacity(0.6), in: Circle()).padding(5).foregroundStyle(.white.opacity(0.9))
                 }
             }
-            .buttonStyle(.plain).accessibilityLabel("Play \(state.title) full screen")
+            .buttonStyle(.plain).accessibilityLabel("Play \(state.title) full screen").atlas("control.player.miniExpand")
 
             VStack(alignment: .leading, spacing: 6) {
                 Button(action: onTitle) { Text(state.title).font(.system(size: 13, weight: .semibold)).lineLimit(1).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading) }
-                    .buttonStyle(.plain).accessibilityLabel("Details for \(state.title)")
+                    .buttonStyle(.plain).accessibilityLabel("Details for \(state.title)").atlas("control.player.miniExpand")
                 Text(state.meta.isEmpty ? state.status : "\(state.meta) · \(state.status)").font(.system(size: 10)).lineLimit(1)
                     .foregroundStyle(state.failed ? ColorTokens.warning : ColorTokens.textSecondary)
                 HStack(spacing: 8) {
@@ -103,11 +103,11 @@ struct ReddyBottomPlayer: View {
                 .frame(width: 76, height: 46).clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.white.opacity(0.1)))
             }
-            .buttonStyle(.plain).accessibilityLabel("Expand player")
+            .buttonStyle(.plain).accessibilityLabel("Expand player").atlas("control.player.miniExpand")
 
             VStack(alignment: .leading, spacing: 4) {
                 Button(action: onTitle) { Text(state.title).font(.system(size: 12, weight: .semibold)).lineLimit(1).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading) }
-                    .buttonStyle(.plain).accessibilityLabel("Details for \(state.title)")
+                    .buttonStyle(.plain).accessibilityLabel("Details for \(state.title)").atlas("control.player.miniExpand")
                 HStack(spacing: 6) {
                     if state.isLive { LiveBadge() }
                     Text(state.meta.isEmpty ? state.status : "\(state.meta) · \(state.status)").font(.system(size: 10)).lineLimit(1)
@@ -148,7 +148,7 @@ struct ReddyBottomPlayer: View {
             Image(systemName: symbol).font(.system(size: large ? 14 : 12, weight: .semibold)).frame(width: large ? 36 : 30, height: large ? 36 : 30)
                 .background(Color.white.opacity(0.06), in: Circle()).contentShape(Circle())
         }
-        .buttonStyle(.plain).accessibilityLabel(label)
+        .buttonStyle(.plain).accessibilityLabel(label).atlas("control.player.miniButtons")
     }
 }
 

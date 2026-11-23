@@ -32,9 +32,9 @@ enum FeaturedPolicy {
             var rating: String?, minutes: Int?
             switch item {
             case .movie(let m):
-                if let r = m.rating, let v = Double(r), v > 0 { rating = String(format: "%.1f", v) }
+                if let v = RatingRule.credible(m.rating) { rating = String(format: "%.1f", v) }
                 if let d = m.durationSeconds, d > 60, let mins = Int(exactly: (d / 60).rounded()) { minutes = mins }
-            case .series(let s): if let r = s.rating, let v = Double(r), v > 0 { rating = String(format: "%.1f", v) }
+            case .series(let s): if let v = RatingRule.credible(s.rating) { rating = String(format: "%.1f", v) }
             }
             let text = item.overview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             return FeaturedSlide(item: item, title: displayTitle(item.title), year: item.year, genre: item.genre, durationMinutes: minutes, rating: rating,
@@ -48,10 +48,10 @@ enum FeaturedPolicy {
         var minutes: Int?
         switch item {
         case .movie(let m):
-            if let r = m.rating, let v = Double(r), v > 0 { rating = String(format: "%.1f", v) }
+            if let v = RatingRule.credible(m.rating) { rating = String(format: "%.1f", v) }
             if let d = m.durationSeconds, d > 60, let mins = Int(exactly: (d / 60).rounded()) { minutes = mins }
         case .series(let s):
-            if let r = s.rating, let v = Double(r), v > 0 { rating = String(format: "%.1f", v) }
+            if let v = RatingRule.credible(s.rating) { rating = String(format: "%.1f", v) }
         }
         return FeaturedSlide(item: item, title: displayTitle(item.title), year: item.year, genre: item.genre, durationMinutes: minutes, rating: rating,
                              synopsis: synopsis, backdropURL: backdrop, posterURL: item.posterURL)
@@ -64,9 +64,8 @@ enum FeaturedPolicy {
 
     /// "Alien: Romulus (2024) (Tamil) (CAM)" → "Alien: Romulus". Provider tags are noise on a banner.
     static func displayTitle(_ raw: String) -> String {
-        var t = raw
-        while let r = t.range(of: #"\s*[\(\[][^\)\]]*[\)\]]"#, options: .regularExpression) { t.removeSubrange(r) }
-        let cleaned = t.trimmingCharacters(in: .whitespacesAndNewlines)
+        // The same cleaning as the tiles ("|EN| Obsession 1080p HD" -> "Obsession"): brackets, prefixes, quality and language tags.
+        let cleaned = ArtworkNameCleaner.clean(raw).trimmingCharacters(in: .whitespacesAndNewlines)
         return cleaned.isEmpty ? raw : cleaned
     }
 
@@ -110,10 +109,10 @@ enum FeaturedPolicy {
     /// rotates once a day. The order is not provider order and is not presented as a chart.
     static func moviePool(_ candidates: [Movie], day: String, scope: String, year: Int = Calendar.current.component(.year, from: Date()), poolSize: Int = 80) -> [Movie] {
         let good = candidates.filter { m in
-            guard let r = m.rating.flatMap(Double.init), r >= 6.0, m.posterURL.map(isUsableArtwork) == true, m.releaseYear != nil else { return false }
+            guard let r = RatingRule.credible(m.rating), r >= 6.0, m.posterURL.map(isUsableArtwork) == true, m.releaseYear != nil else { return false }
             return true
         }
-        func quality(_ m: Movie) -> Double { (Double(m.rating ?? "") ?? 0) * 10 + ((m.releaseYear ?? 0) >= year - 6 ? 8 : 0) + (m.backdropURL != nil ? 20 : 0) }
+        func quality(_ m: Movie) -> Double { (RatingRule.credible(m.rating) ?? 0) * 10 + ((m.releaseYear ?? 0) >= year - 6 ? 8 : 0) + (m.backdropURL != nil ? 20 : 0) }
         let best = good.sorted { (quality($0), $1.id) > (quality($1), $0.id) }.prefix(poolSize)
         return seededShuffle(Array(best), seed: seed(day: day, scope: scope + "|movies"))
     }

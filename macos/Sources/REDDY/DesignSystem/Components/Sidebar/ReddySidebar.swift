@@ -88,7 +88,7 @@ struct ReddySidebar: View {
                 Image(systemName: "sidebar.left").font(.system(size: 14, weight: .regular)).frame(width: 26, height: 26).contentShape(Rectangle())
             }
             .buttonStyle(.plain).foregroundStyle(ColorTokens.textSecondary)
-            .accessibilityLabel(state.collapsed ? "Expand sidebar" : "Collapse sidebar")
+            .accessibilityLabel(state.collapsed ? "Expand sidebar" : "Collapse sidebar").atlas("control.sidebar.collapse")
         }
         .padding(.horizontal, state.collapsed ? 0 : 14).padding(.top, 10).padding(.bottom, 6)
         .frame(maxWidth: .infinity, alignment: state.collapsed ? .center : .leading)
@@ -143,9 +143,9 @@ struct ReddySidebar: View {
                 .opacity(dragging == e.id ? 0.45 : 1)
                 .onDrag { dragging = e.id; working = state.folders; return NSItemProvider(object: e.id as NSString) }
                 .onDrop(of: [.text], delegate: FolderDropDelegate(target: e, working: $working, dragging: $dragging, hovered: $hovered, movable: isMovable) { ids in onReorder?(ids) })
-                .contextMenu { folderMenu(e, reorder: true) }
+                .contextMenu { folderMenu(e, reorder: true) }.atlas("context.sidebar.folderReorder")
         } else {
-            row(e).contextMenu { folderMenu(e, reorder: false) }
+            row(e).contextMenu { folderMenu(e, reorder: false) }.atlas("context.sidebar.folderReorder")
         }
     }
 
@@ -206,7 +206,7 @@ struct ReddySidebar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(SidebarRowStyle(selected: selected))
-        .help(e.title)                                      // full name for truncated labels
+        .help(e.title).atlasCovers("screen.sidebar.folders")                                      // full name for truncated labels
         .accessibilityLabel(e.title)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
@@ -248,7 +248,7 @@ struct ReddySidebar: View {
         }
         .buttonStyle(MenuRowStyle())
         .help(state.playlistName ?? "No playlist")
-        .accessibilityLabel("Select playlist").accessibilityValue(state.playlistName ?? "none")
+        .accessibilityLabel("Select playlist").accessibilityValue(state.playlistName ?? "none").atlas("screen.playlistMenu")
     }
 
     /// Opens upward, inside the sidebar's inner width, and scrolls when there are many playlists.
@@ -267,7 +267,7 @@ struct ReddySidebar: View {
                             .padding(.horizontal, 8).padding(.vertical, 7).frame(maxWidth: .infinity, alignment: .leading)
                             .foregroundStyle(p.id == state.activePlaylistID ? accent : ColorTokens.textPrimary).contentShape(Rectangle())
                         }
-                        .buttonStyle(MenuRowStyle()).accessibilityLabel(p.name).accessibilityAddTraits(p.id == state.activePlaylistID ? .isSelected : [])
+                        .buttonStyle(MenuRowStyle()).accessibilityLabel(p.name).accessibilityAddTraits(p.id == state.activePlaylistID ? .isSelected : []).atlas("screen.playlistMenu")
                     }
                 }
             }
@@ -276,7 +276,7 @@ struct ReddySidebar: View {
             Button(action: onAddPlaylist) {
                 HStack(spacing: 6) { Image(systemName: "plus").font(.system(size: 10, weight: .semibold)); Text("Add playlist").font(Typography.row); Spacer() }
                     .padding(.horizontal, 8).padding(.vertical, 7).contentShape(Rectangle())
-            }.buttonStyle(MenuRowStyle())
+            }.buttonStyle(MenuRowStyle()).atlas("screen.addPlaylist")
         }
         .padding(5).frame(width: width - 16).glass(radius: 9)
         .shadow(color: .black.opacity(0.55), radius: 18, y: 8)

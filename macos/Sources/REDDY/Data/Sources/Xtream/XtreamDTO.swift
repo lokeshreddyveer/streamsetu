@@ -57,6 +57,11 @@ struct XtreamVODDTO: Decodable, Sendable {
     let category_id: Flex?
     let container_extension: Flex?
     let year: Flex?
+    /// Some panels list the title's TMDB and IMDb ids beside it.
+    let tmdb: Flex?
+    let tmdb_id: Flex?
+    let imdb: Flex?
+    let imdb_id: Flex?
 }
 
 struct XtreamSeriesDTO: Decodable, Sendable {
@@ -73,6 +78,10 @@ struct XtreamSeriesDTO: Decodable, Sendable {
     let backdrop_path: FlexList?
     let category_id: Flex?
     let last_modified: Flex?
+    let tmdb: Flex?
+    let tmdb_id: Flex?
+    let imdb: Flex?
+    let imdb_id: Flex?
 }
 
 struct XtreamAccountDTO: Decodable, Sendable {

@@ -90,7 +90,7 @@ private struct ConnectionTileButton: View {
             .contentShape(RoundedRectangle(cornerRadius: StartStyle.radius, style: .continuous))
             .startSurface(hovered: hovering, focused: focused)
         }
-        .buttonStyle(StartPressStyle())
+        .buttonStyle(.brandPress)
         .focusEffectDisabled()
         .onHover { hovering = $0 }
         .startPointingHand()
@@ -99,6 +99,6 @@ private struct ConnectionTileButton: View {
         .task {
             try? await Task.sleep(nanoseconds: UInt64((appearDelay + 0.35) * 1_000_000_000))
             greeted += 1
-        }
+        }.atlas("control.addSource.type")
     }
 }

@@ -62,8 +62,8 @@ struct SortMenu<Option: Hashable & Identifiable, Extra: View>: View {
             Menu {
                 ForEach(options) { o in Button { selection = o } label: { Label(title(o), systemImage: o == selection ? "checkmark" : "") } }
                 extra
-            } label: { Text(filterCount > 0 ? "\(title(selection)) · \(filterCount) filter\(filterCount == 1 ? "" : "s")" : title(selection)).font(Typography.row) }
-                .menuStyle(.button).menuIndicator(.visible).fixedSize()
+            } label: { Text(filterCount > 0 ? "\(title(selection)) · " + Localized.plural(filterCount, one: "%@ filter", other: "%@ filters") : title(selection)).font(Typography.row) }
+                .menuStyle(.button).menuIndicator(.visible).fixedSize().atlas("control.page.sort")
         }
         .accessibilityElement(children: .combine).accessibilityLabel("Sort by \(title(selection))\(filterCount > 0 ? ", \(filterCount) filters on" : "")")
     }

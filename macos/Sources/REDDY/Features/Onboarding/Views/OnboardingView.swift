@@ -93,7 +93,7 @@ struct OnboardingView: View {
             HStack(spacing: 10) {
                 SecondaryButton(title: restore.phase == .looking ? "Looking…" : "Restore from iCloud", symbol: "icloud.and.arrow.down") {
                     if let container { Task { await restore.start(container: container, state: state) } }
-                }.disabled(restore.phase == .looking)
+                }.disabled(restore.phase == .looking).atlas("screen.onboarding")
                 if restore.phase == .looking { ProgressView().controlSize(.small) }
             }
             if restore.phase != .idle {

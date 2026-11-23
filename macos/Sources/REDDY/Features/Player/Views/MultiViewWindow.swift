@@ -74,7 +74,7 @@ struct MultiViewWindow: View {
     }
 
     private var title: String {
-        model.tiles.isEmpty ? "Multi-View" : "Multi-View · \(model.tiles.count) channel\(model.tiles.count == 1 ? "" : "s")"
+        model.tiles.isEmpty ? "Multi-View" : Localized.plural(model.tiles.count, one: "Multi-View · %@ channel", other: "Multi-View · %@ channels")
     }
 
     // MARK: layouts
@@ -125,17 +125,17 @@ struct MultiViewWindow: View {
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem {
             Button { showPicker = true } label: { Label("Add Channel", systemImage: "plus") }
-                .disabled(model.isFull).help(model.isFull ? "Multi-View holds four channels" : "Add a channel")
+                .disabled(model.isFull).help(model.isFull ? "Multi-View holds four channels" : "Add a channel").atlas("control.multiView.addChannel")
         }
         ToolbarItem {
             Picker("Layout", selection: Binding(get: { model.layout }, set: { model.layout = $0 })) {
                 ForEach(MultiViewModel.Layout.allCases) { Label($0.rawValue, systemImage: $0.symbol).tag($0) }
             }
-            .pickerStyle(.segmented).help("Grid shows every channel equally. Spotlight makes one large.").disabled(model.tiles.count < 2)
+            .pickerStyle(.segmented).help("Grid shows every channel equally. Spotlight makes one large.").disabled(model.tiles.count < 2).atlas("control.multiView.layout")
         }
         ToolbarItem {
             Button { model.toggleMute() } label: { Label(model.isMuted ? "Unmute" : "Mute All", systemImage: model.isMuted ? "speaker.slash.fill" : "speaker.wave.2") }
-                .disabled(model.tiles.isEmpty).help("Mute or restore the sound (M)")
+                .disabled(model.tiles.isEmpty).help("Mute or restore the sound (M)").atlas("control.multiView.muteAll")
         }
         ToolbarItem {
             Menu {
@@ -147,9 +147,9 @@ struct MultiViewWindow: View {
                     Menu("Delete a Set") { ForEach(model.presets) { p in Button(p.name, role: .destructive) { model.deletePreset(p.id) } } }
                 }
             } label: { Label("Sets", systemImage: "square.stack") }
-            .help("Save the channels on screen as a set, or bring one back")
+            .help("Save the channels on screen as a set, or bring one back").atlas("control.multiView.sets")
         }
-        ToolbarItem { Button { model.removeAll() } label: { Label("Close All", systemImage: "xmark.rectangle") }.disabled(model.tiles.isEmpty).help("Stop and remove every channel") }
+        ToolbarItem { Button { model.removeAll() } label: { Label("Close All", systemImage: "xmark.rectangle") }.disabled(model.tiles.isEmpty).help("Stop and remove every channel").atlas("control.multiView.closeAll") }
     }
 }
 
@@ -168,11 +168,11 @@ private struct EmptyMultiView: View {
                 Text("One has the sound; click another to switch it. Keys: 1–4 pick a tile, M mutes, F fills the window.")
                     .font(.callout).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center).frame(maxWidth: 420)
             }
-            Button(action: add) { Label("Add a Channel", systemImage: "plus") }.buttonStyle(.borderedProminent).controlSize(.large)
+            Button(action: add) { Label("Add a Channel", systemImage: "plus") }.buttonStyle(.borderedProminent).controlSize(.large).atlas("control.multiView.addChannel")
             if !presets.isEmpty {
                 VStack(spacing: 6) {
                     Text("Your sets").font(.caption).foregroundStyle(.white.opacity(0.5))
-                    HStack { ForEach(presets.prefix(4)) { p in Button(p.name) { load(p) }.buttonStyle(.bordered) } }
+                    HStack { ForEach(presets.prefix(4)) { p in Button(p.name) { load(p) }.buttonStyle(.bordered).atlas("control.multiView.sets") } }
                 }.padding(.top, 6)
             }
         }
@@ -192,7 +192,7 @@ private struct AddSlot: View {
             .foregroundStyle(.white.opacity(hovering ? 0.9 : 0.5)).frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.white.opacity(hovering ? 0.07 : 0.03))
         }
-        .buttonStyle(.plain).onHover { hovering = $0 }.accessibilityLabel("Add a channel")
+        .buttonStyle(.plain).onHover { hovering = $0 }.accessibilityLabel("Add a channel").atlas("control.multiView.addChannel")
     }
 }
 
@@ -226,7 +226,7 @@ private struct TileView: View {
         .onHover { hovering = $0 }
         .contextMenu { menu }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(tile.channel.name + (tile.isAudible ? ", sound on" : ""))
+        .accessibilityLabel(tile.channel.name + (tile.isAudible ? ", sound on" : "")).atlas("context.multiView.tileMac")
     }
 
     @ViewBuilder private var status: some View {
@@ -235,7 +235,7 @@ private struct TileView: View {
                 Image(systemName: "exclamationmark.triangle").font(.title2)
                 Text(failure).font(.callout).multilineTextAlignment(.center)
                 if let d = tile.failureDetail, !d.isEmpty { Text(d).font(.caption).foregroundStyle(.white.opacity(0.55)).multilineTextAlignment(.center).lineLimit(3).textSelection(.enabled) }
-                HStack { Button("Try Again") { model.retry(tile.id) }; Button("Change Channel") { showSwap = true } }
+                HStack { Button("Try Again") { model.retry(tile.id) }.atlas("control.multiView.tileRetry"); Button("Change Channel") { showSwap = true }.atlas("control.multiView.tileRetry") }
             }
             .foregroundStyle(.white.opacity(0.9)).padding().frame(maxWidth: .infinity, maxHeight: .infinity).background(.black.opacity(0.55))
         } else if tile.isWorking {
@@ -295,7 +295,7 @@ private struct TileView: View {
 
     private func button(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
         Button(action: action) { Image(systemName: symbol).font(.system(size: 13, weight: .medium)).frame(width: 22, height: 22).contentShape(Rectangle()) }
-            .buttonStyle(.plain).help(help).accessibilityLabel(help)
+            .buttonStyle(.plain).help(help).accessibilityLabel(help).atlas("control.multiView.tileButton")
     }
 }
 
@@ -319,10 +319,10 @@ private struct ChannelPicker: View {
                     Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                     TextField(replacing == nil ? "Find a channel to add" : "Find a channel to switch to", text: $text).textFieldStyle(.plain).focused($searching)
                         .onSubmit { if let first = results.first(where: { !isShown($0) }) { choose(first) } }
-                    if !text.isEmpty { Button { text = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).foregroundStyle(.secondary) }
+                    if !text.isEmpty { Button { text = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Clear search").help("Clear search").atlas("control.multiView.addChannel") }
                 }
                 .padding(8).background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-                Picker("Show", selection: $favouritesOnly) { Text("All channels").tag(false); Text("Favourites").tag(true) }.pickerStyle(.segmented).labelsHidden()
+                Picker("Show", selection: $favouritesOnly) { Text("All channels").tag(false); Text("Favourites").tag(true) }.pickerStyle(.segmented).labelsHidden().atlas("control.multiView.addChannel")
             }.padding(12)
             Divider()
             if results.isEmpty {
@@ -340,7 +340,7 @@ private struct ChannelPicker: View {
                             if isShown(c) { Image(systemName: "checkmark").foregroundStyle(.secondary) }
                         }.contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain).disabled(isShown(c))
+                    .buttonStyle(.plain).disabled(isShown(c)).atlas("control.multiView.addChannel")
                 }
                 .listStyle(.plain)
             }

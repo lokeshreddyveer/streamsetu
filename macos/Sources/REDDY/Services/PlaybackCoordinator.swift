@@ -72,7 +72,11 @@ final class PlaybackCoordinator {
     /// What the user asked for. The real state is `fullscreenPhase`, which only changes from window lifecycle callbacks.
     var isFullscreen = false {
         // The channel list belongs to one full-screen session: it never carries over into the next.
-        didSet { if isFullscreen != oldValue { showChannelSwitcher = false } }
+        didSet {
+            if isFullscreen != oldValue { showChannelSwitcher = false }
+            // Full screen replaces the popup: collapse it now and come back to it when full screen ends (see finishFullscreen).
+            if isFullscreen, !oldValue, isExpanded { restoreExpandedAfterFullscreen = true; isExpanded = false }
+        }
     }
     var fullscreenPhase: FullscreenPhase = .windowed
     /// True while the separate "StreamSetu Player" window is showing the video.
@@ -100,16 +104,16 @@ final class PlaybackCoordinator {
 
     // MARK: dependencies
 
-    private let factory: PlaybackEngineFactory
+    let factory: PlaybackEngineFactory
     private let resolver: StreamResolver
-    private let historyRepo: HistoryRepository
+    let historyRepo: HistoryRepository
     private let historyService: HistoryService
     private let catalog: CatalogRepository
     private let settings: AppSettings
-    private let itemMemory = ItemMemory()
-    private var memoryEntry: ItemMemory.Entry?
-    private let introSkip = IntroSkip()
-    private let episodeMarks = EpisodeMarks()
+    let itemMemory = ItemMemory()
+    var memoryEntry: ItemMemory.Entry?
+    let introSkip = IntroSkip()
+    let episodeMarks = EpisodeMarks()
     private let diagnostics: DiagnosticsService
     private let videoPrefs: VideoPreferencesRepository
     private let recovery = PlaybackRecoveryService()
@@ -121,19 +125,19 @@ final class PlaybackCoordinator {
     private var engine: any PlaybackEngine
     /// The system player behind what is playing now, when it is the one playing (SharePlay keeps it in step with others); nil while another engine plays.
     var activeAVPlayer: AVPlayer? { (engine as? AVPlayerEngine)?.player }
-    private var startTask: Task<Void, Never>?
-    private var watchdogTask: Task<Void, Never>?
-    private var recoveryTask: Task<Void, Never>?
-    private var ticker: Task<Void, Never>?
+    var startTask: Task<Void, Never>?
+    var watchdogTask: Task<Void, Never>?
+    var recoveryTask: Task<Void, Never>?
+    var ticker: Task<Void, Never>?
     private var stateTasks: [PlaybackEngineKind: Task<Void, Never>] = [:]
     private var attempt = 0
     private var switchedEngine = false
     private let pacer = ConnectionPacer()
     /// The provider whose live stream is open right now (nil when nothing live is open).
     private var openLiveSource: UUID?
-    private var sessionID: Int64?
+    var sessionID: Int64?
     private var recordedPlay = false
-    private var stableTask: Task<Void, Never>?
+    var stableTask: Task<Void, Never>?
     private var lastSavedAt = Date.distantPast
     /// When the person asked for what is playing now: the start-time statistics measure from here, retries included.
     private var tapAt = Date()
@@ -145,9 +149,9 @@ final class PlaybackCoordinator {
     private var switchCheckTask: Task<Void, Never>?
     private var previousChannel: Channel?
     private var currentMovie: Movie?
-    private var currentEpisode: (Episode, Series)?
+    var currentEpisode: (Episode, Series)?
     private var appliedPreferredTracks = false
-    private var generation = 0
+    var generation = 0
 
     init(factory: PlaybackEngineFactory, resolver: StreamResolver, history: HistoryRepository, historyService: HistoryService,
          catalog: CatalogRepository, settings: AppSettings, diagnostics: DiagnosticsService, videoPrefs: VideoPreferencesRepository,
@@ -271,7 +275,7 @@ final class PlaybackCoordinator {
     /// A movie or episode started or stopped playing, for Trakt. Never sent for a private play. Set by the app; the player only announces and carries on.
     enum WatchEvent { case started(TraktItem), stopped(TraktItem, progress: Double) }
     var onWatchEvent: ((WatchEvent) -> Void)?
-    private var announced: TraktItem?
+    var announced: TraktItem?
 
     private func traktItem() -> TraktItem? {
         if let m = currentMovie, current?.isLive == false { return .movie(title: TraktItem.cleanTitle(m.title), year: m.releaseYear ?? MetadataNormalizer.year(from: m.title)) }
@@ -1189,81 +1193,4 @@ final class PlaybackCoordinator {
         audioTracks = engine.availableAudioTracks(); subtitleTracks = engine.availableSubtitleTracks()
     }
 
-    // MARK: remembered choices, skip intro, go to time
-
-    /// Whether audio, subtitles, speed and timing come back the next time the same title plays.
-    var remembersPerTitle: Bool { get { itemMemory.enabled } set { itemMemory.enabled = newValue } }
-
-    private func remember() {
-        guard !isPrivate, let id = current?.itemID else { return }          // a private play leaves no remembered choices
-        let e = ItemMemory.Entry(audioLanguage: audioTracks.first(where: \.isSelected)?.language, subtitleLanguage: subtitleTracks.first(where: \.isSelected).map { $0.language ?? "" } ?? "off",
-                                 rate: rate, audioDelay: audioDelay, subtitleDelay: subtitleDelay)
-        memoryEntry = e
-        itemMemory.save(e, for: id)
-    }
-
-    /// Where the opening of this episode ends, while it is still on screen; nil for anything else.
-    var introEnd: TimeInterval? {
-        guard !isLive, let series = currentEpisode?.1 else { return nil }
-        return introSkip.target(seriesID: series.id, position: position)
-    }
-
-    func skipIntro() { if let end = introEnd { seek(to: end) } }
-
-    /// Where the recap at the start of this episode ends, while it is on screen; nil for anything else.
-    var recapEnd: TimeInterval? {
-        guard !isLive, currentEpisode != nil else { return nil }
-        return episodeMarks.recapEnd(chapters: chapters, position: position, duration: duration)
-    }
-
-    func skipRecap() { if let end = recapEnd { seek(to: end) } }
-
-    /// True once the credits of this episode have started and there is still something to skip.
-    var creditsShowing: Bool {
-        guard !isLive, let series = currentEpisode?.1, let d = duration, let start = episodeMarks.creditsStart(seriesID: series.id, chapters: chapters, duration: d) else { return false }
-        return position >= start && d - position > 3
-    }
-
-    /// Skipping the credits plays the next episode when there is one, and otherwise goes to the end.
-    func skipCredits() {
-        guard let series = currentEpisode?.1, let d = duration else { return }
-        if episodeMarks.isCreditsSkip(from: position, to: d, duration: d) { episodeMarks.learn(seriesID: series.id, from: position, duration: d) }
-        if queueAdvance?() == true { return }
-        if upNext != nil { playNextEpisode() } else { seek(to: d) }
-    }
-
-    /// Jumps to a point in a movie or episode.
-    func goTo(_ seconds: TimeInterval) { seek(to: seconds) }
-
-    /// "1:23:45", "83:45" or "45" (seconds) as seconds; nil when it is not a time.
-    nonisolated static func parseTime(_ text: String) -> TimeInterval? {
-        let parts = text.split(separator: ":").map { Double($0.trimmingCharacters(in: .whitespaces)) }
-        guard !parts.isEmpty, parts.count <= 3, parts.allSatisfy({ $0 != nil && $0! >= 0 }) else { return nil }
-        return parts.reduce(0) { $0 * 60 + $1! }
-    }
-
-    private func step(_ delta: Int) {
-        guard !queue.isEmpty else { return }
-        let i = currentChannel.flatMap { c in queue.firstIndex { $0.id == c.id } } ?? (delta > 0 ? -1 : 0)
-        let next = queue[((i + delta) % queue.count + queue.count) % queue.count]
-        play(channel: next, privately: isPrivate)
-    }
-
-    private func endSession(outcome: String, error: String?) {
-        defer { onSessionChange?() }
-        if let item = announced {
-            announced = nil
-            let done = outcome == "ended" ? 100 : ((duration ?? 0) > 0 ? min(100, position / (duration ?? 1) * 100) : 0)
-            onWatchEvent?(.stopped(item, progress: done))
-        }
-        if let id = sessionID { try? historyRepo.endSession(id: id, outcome: outcome, error: error); sessionID = nil }
-    }
-
-    private func cancelWork() {
-        startTask?.cancel(); recoveryTask?.cancel(); stableTask?.cancel(); watchdogTask?.cancel(); ticker?.cancel(); ticker = nil
-        generation += 1
-    }
-
-    /// For diagnostics export.
-    var diagnosticsSummary: String { "state=\(state) · \(metrics.summary) · engines=\(factory.available.map(\.rawValue).sorted())" }
 }
