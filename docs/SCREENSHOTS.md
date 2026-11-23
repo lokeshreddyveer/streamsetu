@@ -37,15 +37,39 @@ From the opening screen, through every way to connect, to Home, Live TV, Movies,
   </tr>
   <tr>
     <td width="50%" valign="top" align="center"><img src="screenshots/mac-home.png" alt="StreamSetu on Mac: Home" width="100%"><br><sub><b>9</b> &nbsp;Home</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-live.png" alt="StreamSetu on Mac: Live TV" width="100%"><br><sub><b>10</b> &nbsp;Live TV</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-services-panel.png" alt="StreamSetu on Mac: Home with the Services panel open" width="100%"><br><sub><b>10</b> &nbsp;Home with the Services panel open</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-movies.png" alt="StreamSetu on Mac: Movies" width="100%"><br><sub><b>11</b> &nbsp;Movies</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-series.png" alt="StreamSetu on Mac: Series" width="100%"><br><sub><b>12</b> &nbsp;Series</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-live.png" alt="StreamSetu on Mac: Live TV" width="100%"><br><sub><b>11</b> &nbsp;Live TV</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-live-menu.png" alt="StreamSetu on Mac: Live TV: channel menu" width="100%"><br><sub><b>12</b> &nbsp;Live TV: channel menu</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-guide.png" alt="StreamSetu on Mac: TV Guide" width="100%"><br><sub><b>13</b> &nbsp;TV Guide</sub></td>
-    <td width="50%"></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-channel-manager.png" alt="StreamSetu on Mac: Channel manager" width="100%"><br><sub><b>13</b> &nbsp;Channel manager</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-movies.png" alt="StreamSetu on Mac: Movies" width="100%"><br><sub><b>14</b> &nbsp;Movies</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-movies-featured.png" alt="StreamSetu on Mac: Movies: featured" width="100%"><br><sub><b>15</b> &nbsp;Movies: featured</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-all-movies.png" alt="StreamSetu on Mac: All Movies" width="100%"><br><sub><b>16</b> &nbsp;All Movies</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-movies-menu.png" alt="StreamSetu on Mac: Movies: title menu" width="100%"><br><sub><b>17</b> &nbsp;Movies: title menu</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-folder-menu.png" alt="StreamSetu on Mac: Movies: folder menu" width="100%"><br><sub><b>18</b> &nbsp;Movies: folder menu</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-title.png" alt="StreamSetu on Mac: Title page" width="100%"><br><sub><b>19</b> &nbsp;Title page</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-title-more.png" alt="StreamSetu on Mac: Title page: episodes, cast and more like this" width="100%"><br><sub><b>20</b> &nbsp;Title page: episodes, cast and more like this</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-title-versions.png" alt="StreamSetu on Mac: Title page: versions" width="100%"><br><sub><b>21</b> &nbsp;Title page: versions</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-search.png" alt="StreamSetu on Mac: Search" width="100%"><br><sub><b>22</b> &nbsp;Search</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-person.png" alt="StreamSetu on Mac: Person page" width="100%"><br><sub><b>23</b> &nbsp;Person page</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-series.png" alt="StreamSetu on Mac: Series" width="100%"><br><sub><b>24</b> &nbsp;Series</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-guide.png" alt="StreamSetu on Mac: TV Guide" width="100%"><br><sub><b>25</b> &nbsp;TV Guide</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-service.png" alt="StreamSetu on Mac: A streaming service inside the app" width="100%"><br><sub><b>26</b> &nbsp;A streaming service inside the app</sub></td>
   </tr>
 </table>
 
