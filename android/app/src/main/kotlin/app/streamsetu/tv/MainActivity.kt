@@ -9,7 +9,10 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import android.os.Bundle
@@ -77,11 +80,8 @@ class MainActivity : ComponentActivity() {
             }
             val watched by container.watchedTitles.collectAsStateWithLifecycle()
             val partial by container.partialTitles.collectAsStateWithLifecycle()
-            val saved by container.downloads.items.collectAsStateWithLifecycle()
-            val downloadStatus = androidx.compose.runtime.remember(saved) {
-                val order = listOf(app.streamsetu.core.data.repo.SaveState.DOWNLOADING, app.streamsetu.core.data.repo.SaveState.QUEUED, app.streamsetu.core.data.repo.SaveState.PAUSED, app.streamsetu.core.data.repo.SaveState.FAILED, app.streamsetu.core.data.repo.SaveState.DONE)
-                saved.groupBy { it.seriesId ?: it.itemId }.mapValues { (_, list) -> list.minBy { order.indexOf(it.state) }.let { it.state to it.fraction } }
-            }
+            // Built off the main thread and only published when it really changes (a new 5 percent step, a new state): a download's progress does not redraw every poster.
+            val downloadStatus by androidx.compose.runtime.remember(container) { container.downloads.items.map { app.streamsetu.tv.ui.components.downloadStatusOf(it) }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default) }.collectAsStateWithLifecycle(emptyMap())
             androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.components.LocalWatched provides watched, app.streamsetu.tv.ui.components.LocalDownloadStatus provides downloadStatus, app.streamsetu.tv.ui.components.LocalPartialProgress provides partial) {
                 if (phone) androidx.compose.foundation.layout.Box {
                     app.streamsetu.tv.ui.phone.PhoneApp(container, nav, onExit = { finish() })
@@ -306,7 +306,9 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
     androidx.compose.ui.platform.LocalConfiguration.current.let { cfg -> remember(cfg.screenWidthDp, cfg.screenHeightDp) { app.streamsetu.tv.ui.theme.UiScale.apply(cfg.screenWidthDp.toFloat(), cfg.screenHeightDp.toFloat()); true } }
     // One shared menu behind every poster, on phones and on the television (the same items and order as the television's), and every item of it offered to the screen reader on the poster.
     val tileMenu = app.streamsetu.tv.ui.phone.rememberTileMenu(c, nav, app.streamsetu.tv.ui.phone.isPhoneDevice(androidx.compose.ui.platform.LocalContext.current))
-    val tileFavs = tileMenu?.vm?.favouriteIds?.collectAsState()?.value; val tileLater = tileMenu?.vm?.watchLaterIds?.collectAsState()?.value
+    val tileFavs = tileMenu?.vm?.favouriteIds?.collectAsState(); val tileLater = tileMenu?.vm?.watchLaterIds?.collectAsState()          // held as State, read only inside a tile while a screen reader is on
+    val screenReaderOn = app.streamsetu.tv.ui.phone.rememberScreenReaderOn()
+    val ratingValues = remember(c) { c.ratingBadges }.values.collectAsState()
     androidx.compose.runtime.CompositionLocalProvider(
         app.streamsetu.core.ui.motion.LocalReducedMotion provides reduced,
         app.streamsetu.tv.ui.components.LocalHighContrast provides contrast,
@@ -314,9 +316,11 @@ fun StreamSetuTV(c: AppContainer, nav: Navigator, onExit: () -> Unit) {
         // For the whole screen, the open pages and sheets included: a tile with no picture anywhere asks for its own cover.
         app.streamsetu.tv.ui.components.LocalArtworkFiller provides remember(c) { { id: String, replace: Boolean -> c.artwork.want(id, replace) } },
         app.streamsetu.tv.ui.components.LocalRatings provides remember(c) { c.ratingBadges },
+        app.streamsetu.tv.ui.components.LocalRatingValues provides ratingValues,
         app.streamsetu.tv.ui.components.LocalTileVisibility provides remember(c) { { id: String, on: Boolean -> c.artworkExpress.tileVisible(id, on) } },
         app.streamsetu.tv.ui.phone.LocalTileMenu provides tileMenu?.let { m -> { id: String -> m.openMenu(id) } },
-        app.streamsetu.tv.ui.phone.LocalTileActions provides tileMenu?.let { m -> app.streamsetu.tv.ui.phone.TileActionSource((tileFavs?.hashCode() ?: 0) * 31 + (tileLater?.hashCode() ?: 0)) { id -> m.actionsFor(id) } },
+        app.streamsetu.tv.ui.phone.LocalTileActions provides tileMenu?.let { m -> androidx.compose.runtime.remember(m) { app.streamsetu.tv.ui.phone.TileActionSource({ (tileFavs?.value?.hashCode() ?: 0) * 31 + (tileLater?.value?.hashCode() ?: 0) }) { id -> m.actionsFor(id) } } },
+        app.streamsetu.tv.ui.phone.LocalScreenReaderOn provides screenReaderOn,
     ) {
     // A movie or series page covers the whole screen. Once it has fully faded in, the page behind it is not drawn at all (it stays alive underneath, so Back finds it exactly as it was): a Fire TV Stick's GPU
     // otherwise redraws that whole page, its big picture included, on every frame of the page above.

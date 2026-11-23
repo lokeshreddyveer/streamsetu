@@ -122,7 +122,7 @@ class TileMenuTests {
         val labels = actionsFor(TargetState(TargetKind.MOVIE, hasFolder = true, hasCast = true, canShare = true)).map { homeActionLabel(it) }
         val source = app.streamsetu.tv.ui.phone.TileActionSource(1) { _ -> labels.map { l -> app.streamsetu.tv.ui.phone.TileA11yAction(l) { ran += l } } }
         rule.setContent {
-            androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.phone.LocalTileActions provides source, app.streamsetu.tv.ui.phone.LocalTileMenu provides { _: String -> ran += "menu" }) {
+            androidx.compose.runtime.CompositionLocalProvider(app.streamsetu.tv.ui.phone.LocalScreenReaderOn provides true, app.streamsetu.tv.ui.phone.LocalTileActions provides source, app.streamsetu.tv.ui.phone.LocalTileMenu provides { _: String -> ran += "menu" }) {
                 PhonePoster("Open Film", null, {}, itemId = "x")
             }
         }

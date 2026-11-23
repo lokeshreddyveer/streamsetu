@@ -228,7 +228,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
             val named = if (ov.isEmpty()) filtered else filtered.map { card -> ov[card.id]?.let { o -> card.copy(title = o.title ?: card.title, posterUrl = o.posterUrl ?: card.posterUrl) } ?: card }
             SectionPage(sp.key, named)
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(KEEP_MS), null)
+    }.flowOn(kotlinx.coroutines.Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(KEEP_MS), null)
     val cards: StateFlow<List<Card>?> = page.map { it?.cards }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(KEEP_MS), null)
 
     val favourites: StateFlow<Set<String>> = secondary.flatMapLatest { on -> if (on) c.user.favouriteIds(UserRepository.FAVOURITES) else flowOf(emptySet()) }.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
@@ -301,6 +301,7 @@ abstract class SectionViewModel(c: AppContainer, kind: ContentKind) : FolderView
         combine(railDefs.map { (k, t, b) -> source(b, SortSpec.defaultFor(kind), 24).map { Rail(k, t, b, it) } }) { all -> all.filter { it.cards.isNotEmpty() } }
             .combine(extraRails()) { base, extra -> if (extra.isEmpty()) base else base.take(1) + extra + base.drop(1) }
             .combine(overrides) { rows, ov -> if (ov.isEmpty()) rows else rows.map { r -> r.copy(cards = r.cards.map { card -> ov[card.id]?.let { o -> card.copy(title = o.title ?: card.title, posterUrl = o.posterUrl ?: card.posterUrl) } ?: card }) } }
+            .flowOn(kotlinx.coroutines.Dispatchers.Default)
             .let { rows ->
                 // A rail that did not change keeps its instance, so only a rail whose cards changed is drawn again (reference equality, never a deep compare of a long list).
                 var previous: Map<String, Rail> = emptyMap()

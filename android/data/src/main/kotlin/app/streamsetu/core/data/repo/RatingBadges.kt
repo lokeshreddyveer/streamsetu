@@ -37,6 +37,7 @@ class RatingBadges(
 
     /** Adds [more] and drops the oldest entries beyond [MAX_VALUES], so the map neither grows without bound nor is copied at full library size. */
     private fun add(more: Map<String, Double>) = _values.update { cur ->
+        if (more.all { (k, v) -> cur[k] == v }) return@update cur          // nothing new: no publication, no copy, no wake-up of the readers
         val m = LinkedHashMap<String, Double>(cur.size + more.size)
         for ((k, v) in cur) if (k !in more) m[k] = v
         m.putAll(more)

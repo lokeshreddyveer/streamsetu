@@ -35,6 +35,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation("net.sf.kxml:kxml2:2.3.0")          // an XML pull parser on the JVM (Android has its own), so the guide decoder is tested against the shared fixtures
     testImplementation(libs.okhttp.mockwebserver)
 }

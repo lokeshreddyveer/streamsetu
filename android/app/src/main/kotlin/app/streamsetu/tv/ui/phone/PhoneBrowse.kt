@@ -95,7 +95,7 @@ fun PhoneSection(vm: SectionViewModel, title: String, c: AppContainer, nav: Navi
                     }
                 }
                 if (list.isEmpty()) item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) { Empty("Nothing here", when (browse) { Browse.Favorites -> "Touch and hold a title to add it to your favorites."; Browse.WatchLater -> "Nothing saved for later yet."; else -> "This list is empty." }) }
-                items(list, key = { it.id }) { card ->
+                items(list, key = { it.id }, contentType = { "poster" }) { card ->
                     val p = progress[card.id]
                     PhonePoster(
                         card.title, card.posterUrl, { card.movie?.let { nav.open(Overlay.MovieDetail(it)) } ?: card.series?.let { nav.open(Overlay.SeriesDetail(it)) } },
@@ -175,7 +175,7 @@ fun PhoneLive(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
         else if (list == null) Loading(Modifier.weight(1f))
         else if (list.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth()) { Empty("No channels", "Nothing in this group.") }
         else LazyVerticalGrid(GridCells.Fixed(3), Modifier.weight(1f), state = gridState, contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(list, key = { it.rep.id }) { g ->
+            items(list, key = { it.rep.id }, contentType = { "channel" }) { g ->
                 val ch = g.rep
                 val program = epgIds[ch.id]?.let { now[it] }
                 Column(

@@ -20,8 +20,42 @@ val LocalTileMenu = compositionLocalOf<((String) -> Unit)?> { null }
 class TileA11yAction(val label: String, val run: () -> Unit)
 
 /** What TalkBack is offered on a poster: every item of its menu as an action of its own. [rev] changes when a list the labels depend on (favourites, watch later) changes. */
-class TileActionSource(val rev: Int, val load: suspend (String) -> List<TileA11yAction>)
+class TileActionSource(val revOf: () -> Int, val load: suspend (String) -> List<TileA11yAction>) {
+    constructor(rev: Int, load: suspend (String) -> List<TileA11yAction>) : this({ rev }, load)
+    /** Read only by a tile while a screen reader is on, so a favourite change does not recompose the posters of everyone else. */
+    val rev: Int get() = revOf()
+}
 val LocalTileActions = compositionLocalOf<TileActionSource?> { null }
+
+/** True while TalkBack (touch exploration) is on. Posters read their menu items for the screen reader only then, so nobody else pays for it. */
+val LocalScreenReaderOn = compositionLocalOf { false }
+
+/** One listener for the whole app (not one per poster): the screen-reader state as a value that follows the system setting. */
+@Composable
+fun rememberScreenReaderOn(): Boolean {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var on by remember { mutableStateOf(false) }
+    DisposableEffect(context) {
+        val am = context.getSystemService(android.content.Context.ACCESSIBILITY_SERVICE) as? android.view.accessibility.AccessibilityManager
+        if (am == null) { on = false; return@DisposableEffect onDispose { } }
+        on = am.isEnabled && am.isTouchExplorationEnabled
+        val l = android.view.accessibility.AccessibilityManager.TouchExplorationStateChangeListener { on = am.isEnabled && it }
+        am.addTouchExplorationStateChangeListener(l)
+        onDispose { am.removeTouchExplorationStateChangeListener(l) }
+    }
+    return on
+}
+
+/** The menu items of a title as screen-reader actions. Loaded only while a screen reader is on; empty (and free) otherwise. */
+@Composable
+fun rememberTileA11y(itemId: String?): List<Pair<String, () -> Unit>> {
+    if (!LocalScreenReaderOn.current) return emptyList()
+    val source = LocalTileActions.current
+    var a11y by remember { mutableStateOf(emptyList<TileA11yAction>()) }
+    val rev = source?.rev
+    LaunchedEffect(itemId, rev) { a11y = if (itemId != null && source != null) runCatching { source.load(itemId) }.getOrDefault(emptyList()) else emptyList() }
+    return a11y.map { it.label to it.run }
+}
 
 /** The state behind the phone's shared tile menu: which title is open, how an id becomes a title, and what each menu item does without opening the menu. */
 class TileMenuState(val c: AppContainer, val nav: Navigator, val vm: HomeViewModel, val phone: Boolean = true) {

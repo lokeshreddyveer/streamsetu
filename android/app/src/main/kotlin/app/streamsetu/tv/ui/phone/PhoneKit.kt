@@ -149,11 +149,9 @@ fun PhonePoster(title: String, imageUrl: String?, onClick: () -> Unit, modifier:
     // A poster without a menu of its own opens the shared one; every item of it is also a screen-reader action of the poster.
     val shared = LocalTileMenu.current
     val long = onLong ?: itemId?.let { id -> shared?.let { open -> { open(id) } } }
-    val source = LocalTileActions.current
-    var a11y by remember { mutableStateOf(emptyList<TileA11yAction>()) }
-    LaunchedEffect(itemId, source?.rev) { a11y = if (itemId != null && source != null) runCatching { source.load(itemId) }.getOrDefault(emptyList()) else emptyList() }
-    Column(modifier.moreOptionsAction(long, a11y.map { it.label to it.run }), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Tap(onClick, Modifier.fillMaxWidth().aspectRatio(2f / 3f).shadow(6.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Tokens.card).border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(12.dp)), long) {
+    val a11y = rememberTileA11y(itemId)
+    Column(modifier.moreOptionsAction(long, a11y), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Tap(onClick, Modifier.fillMaxWidth().aspectRatio(2f / 3f).tileShadow(12.dp).clip(RoundedCornerShape(12.dp)).background(Tokens.card).border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(12.dp)), long) {
             app.streamsetu.tv.ui.components.PosterArt(title, imageUrl?.takeIf { it.isNotBlank() }, Modifier.fillMaxSize(), year = subtitle?.take(4))
             val shown = if (progress > 0f) progress else itemId?.let { app.streamsetu.tv.ui.components.LocalPartialProgress.current[it] } ?: 0f
             if (shown > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) { Box(Modifier.fillMaxWidth(shown.coerceIn(0f, 1f)).fillMaxHeight().background(Tokens.accent)) }
@@ -174,11 +172,9 @@ fun PhonePoster(title: String, imageUrl: String?, onClick: () -> Unit, modifier:
 @Composable
 fun PhoneWide(title: String, subtitle: String?, imageUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, progress: Float = 0f, badge: String? = null, onLong: (() -> Unit)? = null, itemId: String? = null) {
     app.streamsetu.tv.ui.components.ReportTileVisible(itemId, !imageUrl.isNullOrBlank())
-    val source = LocalTileActions.current
-    var a11y by remember { mutableStateOf(emptyList<TileA11yAction>()) }
-    LaunchedEffect(itemId, source?.rev) { a11y = if (itemId != null && source != null) runCatching { source.load(itemId) }.getOrDefault(emptyList()) else emptyList() }
-    Column(modifier.moreOptionsAction(onLong, a11y.map { it.label to it.run }), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Tap(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f).shadow(6.dp, RoundedCornerShape(14.dp)).clip(RoundedCornerShape(14.dp)).background(Tokens.card).border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(14.dp)), onLong) {
+    val a11y = rememberTileA11y(itemId)
+    Column(modifier.moreOptionsAction(onLong, a11y), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Tap(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f).tileShadow(14.dp).clip(RoundedCornerShape(14.dp)).background(Tokens.card).border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(14.dp)), onLong) {
             PosterPlaceholder(title, Modifier.fillMaxSize())
             if (!imageUrl.isNullOrBlank()) AsyncImage(imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).progressFill(progress, Color(0x66000000), Tokens.accent))
@@ -372,4 +368,12 @@ fun MiniPlayer(c: app.streamsetu.tv.AppContainer, onOpen: () -> Unit) {
 /** TalkBack: a card with a touch-and-hold menu also offers "More options" as an accessibility action, so the menu does not depend on finding the long press. */
 fun Modifier.moreOptionsAction(onLong: (() -> Unit)?, items: List<Pair<String, () -> Unit>> = emptyList()): Modifier = if (onLong == null) this else this.semantics(mergeDescendants = false) {
     customActions = items.map { (label, run) -> androidx.compose.ui.semantics.CustomAccessibilityAction(label) { run(); true } } + androidx.compose.ui.semantics.CustomAccessibilityAction("More options") { onLong(); true }
+}
+
+/** The soft shadow under a tile. A shadow per tile is a real GPU cost on a low-end phone or tablet, so there the flat border alone is drawn; elsewhere it is unchanged. */
+@Composable
+private fun Modifier.tileShadow(radius: androidx.compose.ui.unit.Dp): Modifier {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val flat = remember(context) { app.streamsetu.tv.Perf.lowEnd(context) }
+    return if (flat) this else this.shadow(6.dp, RoundedCornerShape(radius))
 }

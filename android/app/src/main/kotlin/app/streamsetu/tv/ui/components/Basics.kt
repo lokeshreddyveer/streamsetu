@@ -449,6 +449,15 @@ val LocalWatched = androidx.compose.runtime.compositionLocalOf<Set<String>> { em
 /** For each movie or series id: how far its download is (a series shows its most active episode). */
 val LocalDownloadStatus = androidx.compose.runtime.compositionLocalOf<Map<String, Pair<app.streamsetu.core.data.repo.SaveState, Float>>> { emptyMap() }
 
+/**
+ * Builds [LocalDownloadStatus] from the saved list: the most active state per title, and the fraction in steps of 5 percent, so that
+ * a download's every byte does not make a new map. The local compares values, so an equal map invalidates no poster.
+ */
+fun downloadStatusOf(saved: List<app.streamsetu.core.data.repo.SavedTitle>): Map<String, Pair<app.streamsetu.core.data.repo.SaveState, Float>> {
+    val order = listOf(app.streamsetu.core.data.repo.SaveState.DOWNLOADING, app.streamsetu.core.data.repo.SaveState.QUEUED, app.streamsetu.core.data.repo.SaveState.PAUSED, app.streamsetu.core.data.repo.SaveState.FAILED, app.streamsetu.core.data.repo.SaveState.DONE)
+    return saved.groupBy { it.seriesId ?: it.itemId }.mapValues { (_, list) -> list.minBy { order.indexOf(it.state) }.let { it.state to (Math.round(it.fraction * 20f) / 20f) } }
+}
+
 /** A small round badge at the bottom left of a poster for a title that is saved or being saved; the ring fills as it downloads. */
 @Composable
 fun BoxScope.DownloadBadge(state: app.streamsetu.core.data.repo.SaveState, fraction: Float, size: Dp = 22.dp) {
@@ -523,6 +532,8 @@ val LocalTileVisibility = androidx.compose.runtime.compositionLocalOf<((String, 
 
 /** The ratings of the titles on screen (see [app.streamsetu.core.data.repo.RatingBadges]). */
 val LocalRatings = androidx.compose.runtime.compositionLocalOf<app.streamsetu.core.data.repo.RatingBadges?> { null }
+/** The rating values collected once for the whole app: a tile reads its own id from this State, so no poster runs a collector of its own. Null: the tile collects for itself (as before). */
+val LocalRatingValues = androidx.compose.runtime.compositionLocalOf<State<Map<String, Double>>?> { null }
 
 /**
  * The star rating of a tile: the one look on every title tile of every screen (theme tokens, small, in the corner of the poster, never focusable on its own, read out as "Rated 7.5 out of 10").
@@ -543,8 +554,8 @@ fun RatingBadge(value: Double, modifier: Modifier = Modifier, small: Boolean = f
 fun TileRating(itemId: String?, modifier: Modifier = Modifier, small: Boolean = false) {
     val src = LocalRatings.current ?: return
     if (itemId == null) return
-    LaunchedEffect(itemId) { src.want(itemId) }
-    val all = src.values.collectAsState()
+    remember(src, itemId) { src.want(itemId); itemId }          // a set insert and a poke, the same id again is ignored: no coroutine per tile
+    val all = LocalRatingValues.current ?: src.values.collectAsState()
     val v by remember(itemId) { derivedStateOf { all.value[itemId] } }
     v?.let { RatingBadge(it, modifier, small) }
 }

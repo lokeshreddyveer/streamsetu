@@ -74,6 +74,29 @@ fun groupChannels(list: List<Channel>): List<ChannelGroup> {
     return order.values.map { v -> ChannelGroup(v.maxByOrNull { qualityRank(it.name) } ?: v.first(), v.sortedByDescending { qualityRank(it.name) }) }
 }
 
+/**
+ * The same result as [groupChannels], kept up to date as pages are appended: when the new list begins with exactly the rows of the last one, only the added rows are
+ * normalised and put in their group; any other change starts again. Used from one coroutine at a time (a flow's transform).
+ */
+class ChannelGrouper {
+    private var prev: List<Channel>? = null
+    private val members = LinkedHashMap<String, MutableList<Channel>>()
+    private val built = HashMap<String, ChannelGroup>()
+    private fun key(ch: Channel) = app.streamsetu.core.data.repo.SearchText.normalize(app.streamsetu.core.sync.stripQuality(ch.name))
+    private fun build(v: List<Channel>) = ChannelGroup(v.maxByOrNull { qualityRank(it.name) } ?: v.first(), v.sortedByDescending { qualityRank(it.name) })
+
+    fun group(list: List<Channel>): List<ChannelGroup> {
+        val p = prev
+        val extends = p != null && list.size >= p.size && p.indices.all { p[it] == list[it] }
+        val from = if (extends) p!!.size else { members.clear(); built.clear(); 0 }
+        val touched = HashSet<String>()
+        for (i in from until list.size) { val k = key(list[i]); members.getOrPut(k) { mutableListOf() } += list[i]; touched += k }
+        for (k in touched) built[k] = build(members.getValue(k))
+        prev = list
+        return members.keys.map { built.getValue(it) }
+    }
+}
+
 /** What the channel list draws. */
 data class ChannelListState(val browse: Browse, val groups: List<ChannelGroup>?, val loadingMore: Boolean, val pageFailed: Boolean)
 
@@ -165,15 +188,30 @@ class LiveSectionViewModel @Inject constructor(c: AppContainer) : FolderViewMode
 
     val favourites: StateFlow<Set<String>> = c.user.favouriteIds(UserRepository.FAVOURITES).stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
     /** The list as shown: duplicates of one channel folded into one row (Settings, Live TV), or every channel on its own. */
-    val groups: StateFlow<List<ChannelGroup>?> = combine(channels, c.ui.groupDuplicates) { list, on -> list?.let { if (on) groupChannels(it) else it.map { ch -> ChannelGroup(ch, listOf(ch)) } } }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val groups: StateFlow<List<ChannelGroup>?> = run {
+        val grouper = ChannelGrouper()          // appends only the new page to the groups; the work is off the main thread
+        combine(channels, c.ui.groupDuplicates) { list, on -> list?.let { if (on) grouper.group(it) else it.map { ch -> ChannelGroup(ch, listOf(ch)) } } }.flowOn(kotlinx.coroutines.Dispatchers.Default)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    /** The guide id for each listed channel: its own, or one matched by name. */
-    val epgIds: StateFlow<Map<String, String>> = channels.mapLatest { list -> runCatching { c.epg.resolve(list.orEmpty().take(1500)) }.getOrDefault(emptyMap()) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    /** The guide id for each listed channel: its own, or one matched by name. A page appended to the list is resolved on its own; the rows already resolved are kept. */
+    val epgIds: StateFlow<Map<String, String>> = run {
+        var prev: List<Channel>? = null; var acc: Map<String, String> = emptyMap()
+        channels.mapLatest { list ->
+            val l = list.orEmpty().take(1500)
+            val p = prev
+            val extends = p != null && l.size >= p.size && p.indices.all { p[it] == l[it] }
+            val fresh = if (extends) l.drop(p!!.size) else l
+            if (extends && fresh.isEmpty()) return@mapLatest acc
+            val got = runCatching { c.epg.resolve(fresh) }.getOrNull() ?: return@mapLatest emptyMap<String, String>()
+            val all = if (extends) acc + got else got
+            prev = l; acc = all; all
+        }.flowOn(kotlinx.coroutines.Dispatchers.Default)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     /** What is on now for the channels listed, refreshed once a minute. */
     val now: StateFlow<Map<String, EpgProgram>> = epgIds.flatMapLatest { ids ->
         flow { while (true) { emit(ids.values.distinct().take(300)); delay(60_000) } }
-    }.mapLatest { ids -> if (ids.isEmpty()) emptyMap() else runCatching { c.epg.nowFor(ids, System.currentTimeMillis() - c.ui.epgOffsetMinutes.value * 60_000L) }.getOrDefault(emptyMap()) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    }.mapLatest { ids -> if (ids.isEmpty()) emptyMap() else runCatching { c.epg.nowFor(ids, System.currentTimeMillis() - c.ui.epgOffsetMinutes.value * 60_000L) }.getOrDefault(emptyMap()) }.flowOn(kotlinx.coroutines.Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     /** What the channel list draws and nothing else: the rows and the paging row at their end. The guide, the player and the folders never change it. */
     val channelListState: StateFlow<ChannelListState> = combine(browse, groups, loadingMore, pageFailed) { b, g, more, failed -> ChannelListState(b, g, more, failed) }

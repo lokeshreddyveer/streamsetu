@@ -95,6 +95,14 @@ android {
     }       // the Compose UI tests run on the JVM with Robolectric
 }
 
+// Opt-in only (`-PcomposeMetrics`): writes the Compose compiler's reports (which composables skip, which parameters are unstable) to app/build/compose_compiler. Default builds are unchanged.
+if (providers.gradleProperty("composeMetrics").isPresent) {
+    composeCompiler {
+        reportsDestination = layout.buildDirectory.dir("compose_compiler")
+        metricsDestination = layout.buildDirectory.dir("compose_compiler")
+    }
+}
+
 dependencies {
     // Guava comes in through media3 (ExoPlayer) at 33.3.1-android, which has a reported vulnerability (GHSA-xxph-c9ww-hj94: reading an untrusted Java-serialized Guava collection can allocate
     // gigabytes). The app never deserializes Java streams into Guava collections, but the release check (Scripts/audit-dependencies.py) rightly stops for it. 33.7.2-android is the first fixed version,
