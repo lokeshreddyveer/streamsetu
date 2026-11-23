@@ -20,6 +20,15 @@ if [ -f "$PRIV" ] && plutil -lint "$PRIV" >/dev/null; then
   norm() { plutil -convert json -o - "$1" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True))'; }
   if [ "$(norm "$PRIV")" = "$(norm Configuration/PrivacyInfo.xcprivacy)" ]; then ok "privacy manifest matches Configuration/PrivacyInfo.xcprivacy"; else bad "privacy manifest differs from Configuration/PrivacyInfo.xcprivacy (repackage from current source)"; fi
   for t in DeviceID OtherDiagnosticData OtherUserContent; do plutil -extract NSPrivacyCollectedDataTypes json -o - "$PRIV" | grep -q "NSPrivacyCollectedDataType$t" || bad "privacy manifest does not declare $t"; done
+  # The titles and years sent to the metadata services are declared as Other User Content: not linked, no tracking, App Functionality; tracking stays off with no tracking domains.
+  plutil -convert json -o - "$PRIV" | python3 -c '
+import json,sys
+d=json.load(sys.stdin)
+e=[x for x in d["NSPrivacyCollectedDataTypes"] if x["NSPrivacyCollectedDataType"]=="NSPrivacyCollectedDataTypeOtherUserContent"]
+ok=(len(e)==1 and e[0]["NSPrivacyCollectedDataTypeLinked"] is False and e[0]["NSPrivacyCollectedDataTypeTracking"] is False
+    and e[0]["NSPrivacyCollectedDataTypePurposes"]==["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+    and d["NSPrivacyTracking"] is False and d["NSPrivacyTrackingDomains"]==[])
+sys.exit(0 if ok else 1)' && ok "privacy manifest: Other User Content, not linked, no tracking" || bad "privacy manifest: Other User Content must be unlinked, untracked, App Functionality, with no tracking domains"
 else bad "privacy manifest"; fi
 # The bundled libmpv and its libraries must be signed by the app's own team: that is what lets the app load only its own library (see MPVLibrary.searchPaths) and is the condition for ever dropping the
 # library-validation entitlement.
@@ -34,6 +43,7 @@ if [ -n "${REDDY_FORBIDDEN_PATTERN:-}" ]; then
   if strings -a "$APP/Contents/MacOS/StreamSetu" | grep -qiE "$REDDY_FORBIDDEN_PATTERN"; then bad "binary contains a forbidden string"; else ok "no forbidden strings in binary"; fi
 fi
 if strings -a "$APP/Contents/MacOS/StreamSetu" | grep -qE "/Users/[A-Za-z0-9._-]+/"; then bad "binary contains a local home path"; else ok "no local paths in binary"; fi
+if ../Scripts/check-no-secrets.sh "$APP" > /tmp/streamsetu-secrets.txt 2>&1; then ok "no built-in key (TMDB, fanart.tv, TheTVDB) or fragment in the repository files or the app (scrambled in the binary)"; else bad "built-in key check failed"; sed 's/^/    /' /tmp/streamsetu-secrets.txt; fi
 if [ "${SKIP_SMOKE_TEST:-0}" != "1" ]; then
   if Scripts/smoke-test-app.sh "$APP" > /tmp/streamsetu-smoke.txt 2>&1; then ok "smoke test (plays a video through MPV and AVPlayer in the packaged app)"; else bad "smoke test failed"; cat /tmp/streamsetu-smoke.txt; fi
 fi

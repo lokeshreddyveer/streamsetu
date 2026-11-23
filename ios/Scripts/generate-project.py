@@ -16,7 +16,7 @@ PROJECT = "StreamSetu"
 BUNDLE_ID = "app.streamsetu.ios"
 DEPLOYMENT = "18.0"
 VERSION = "1.3"
-BUILD = "1"
+BUILD = "1"  # placeholder for local builds only: ios/Scripts/testflight.sh overrides CURRENT_PROJECT_VERSION with the real build number (stored in ~/Library/Application Support/StreamSetuRenew/testflight/last-build)
 
 
 def oid(*parts):
@@ -40,6 +40,14 @@ def find_team():
 TEAM = find_team()
 if TEAM:
     open(os.path.join(ROOT, ".signing-team"), "w").write(TEAM + "\n")
+
+# The optional built-in keys (TMDB, fanart.tv, TheTVDB): scrambled, gitignored Swift files, each compiled in only when it exists (see Scripts/gen-builtin-key.py).
+import subprocess
+BUILTIN_FLAG = ""
+for _name, _file, _flag in (("tmdb", "GeneratedTMDB.swift", "STREAMSETU_BUILTIN_TMDB"), ("fanart", "GeneratedFanart.swift", "STREAMSETU_BUILTIN_FANART"), ("tvdb", "GeneratedTVDB.swift", "STREAMSETU_BUILTIN_TVDB")):
+    _gen = os.path.join(ROOT, APP_DIR, "Generated", _file)
+    subprocess.run([sys.executable, os.path.join(ROOT, "..", "Scripts", "gen-builtin-key.py"), _name, _gen], check=True, stdout=subprocess.DEVNULL)
+    if os.path.exists(_gen): BUILTIN_FLAG += " " + _flag
 
 shared = [l.strip() for l in open(os.path.join(ROOT, "SharedSources.txt")) if l.strip()]
 for f in shared:
@@ -197,8 +205,8 @@ common = {
     "COPY_PHASE_STRIP": "NO",
 }
 proj_debug = dict(common, **{"DEBUG_INFORMATION_FORMAT": "dwarf", "ENABLE_TESTABILITY": "YES", "GCC_OPTIMIZATION_LEVEL": "0", "ONLY_ACTIVE_ARCH": "YES",
-                             "SWIFT_ACTIVE_COMPILATION_CONDITIONS": '"DEBUG STREAMSETU_MPV $(inherited)"', "SWIFT_OPTIMIZATION_LEVEL": '"-Onone"', "MTL_ENABLE_DEBUG_INFO": "INCLUDE_SOURCE"})
-proj_release = dict(common, **{"DEBUG_INFORMATION_FORMAT": '"dwarf-with-dsym"', "ENABLE_NS_ASSERTIONS": "NO", "SWIFT_COMPILATION_MODE": "wholemodule", "SWIFT_ACTIVE_COMPILATION_CONDITIONS": '"STREAMSETU_MPV STREAMSETU_APPSTORE $(inherited)"', "SWIFT_OPTIMIZATION_LEVEL": '"-O"', "VALIDATE_PRODUCT": "YES"})
+                             "SWIFT_ACTIVE_COMPILATION_CONDITIONS": f'"DEBUG STREAMSETU_MPV{BUILTIN_FLAG} $(inherited)"', "SWIFT_OPTIMIZATION_LEVEL": '"-Onone"', "MTL_ENABLE_DEBUG_INFO": "INCLUDE_SOURCE"})
+proj_release = dict(common, **{"DEBUG_INFORMATION_FORMAT": '"dwarf-with-dsym"', "ENABLE_NS_ASSERTIONS": "NO", "SWIFT_COMPILATION_MODE": "wholemodule", "SWIFT_ACTIVE_COMPILATION_CONDITIONS": f'"STREAMSETU_MPV STREAMSETU_APPSTORE{BUILTIN_FLAG} $(inherited)"', "SWIFT_OPTIMIZATION_LEVEL": '"-O"', "VALIDATE_PRODUCT": "YES"})
 target_common = {
     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
     "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",

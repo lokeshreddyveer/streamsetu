@@ -11,6 +11,10 @@ BUILD="${2:-$(date +%Y%m%d%H%M)}"
 DIST=dist
 rm -rf "$DIST" && mkdir -p "$DIST"
 
+# The optional built-in keys (TMDB token, fanart.tv key, TheTVDB key: from $STREAMSETU_* or the private keys folder), each scrambled into a gitignored Swift file; with none, the build has no built-in key.
+python3 ../Scripts/gen-builtin-key.py tmdb Sources/REDDY/Generated/GeneratedTMDB.swift
+python3 ../Scripts/gen-builtin-key.py fanart Sources/REDDY/Generated/GeneratedFanart.swift
+python3 ../Scripts/gen-builtin-key.py tvdb Sources/REDDY/Generated/GeneratedTVDB.swift
 echo "▸ Compiling (release)…"
 if swift build -c release --arch arm64 --arch x86_64 >/dev/null 2>&1; then
   # Where SwiftPM puts a multi-arch build depends on its version (.build/apple/... before Swift 6.4, .build/out/... from it), so it is asked.
@@ -32,6 +36,8 @@ sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD/" Configuration/Info.pli
 cp Configuration/PrivacyInfo.xcprivacy "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
 # The app's wording in Hindi and Telugu (and the English marker): one folder per language, each with its Localizable.strings.
 for LANG in en hi te; do cp -R "Resources/Localization/$LANG.lproj" "$APP/Contents/Resources/$LANG.lproj"; done
+# The offline alias index (read by name only; see tools/aliases/README.md). A build without it simply has no alias tier.
+[ -f ../artwork/aliases/aliases.tsv.gz ] && cp ../artwork/aliases/aliases.tsv.gz "$APP/Contents/Resources/aliases.tsv.gz"
 # The transparent TV symbol shown on the welcome screen (BrandSymbol in the code).
 cp Resources/Branding/BrandSymbol.png "$APP/Contents/Resources/BrandSymbol.png"
 cp Resources/Branding/TMDBLogo.png "$APP/Contents/Resources/TMDBLogo.png"

@@ -1,0 +1,20 @@
+{
+  "_about": "Provider names that must not appear in user-facing prose outside Settings/About/credits, and the neutral words to use instead. Shared: Scripts/checks reads it to scan generated docs; the Apple generator of docs/assistant-coverage.md should read it to scrub names. Matching is case-insensitive, whole words, longest name first.",
+  "terms": {
+    "The Movie Database": "the movie database service",
+    "TMDB": "the movie database",
+    "fanart.tv": "the artwork service",
+    "TheTVDB": "the series database",
+    "TVmaze": "the schedule service",
+    "Netflix": "the external service",
+    "Prime Video": "the external service",
+    "Disney+": "the external service",
+    "Hulu": "the external service",
+    "HBO Max": "the external service",
+    "Peacock": "the external service",
+    "Paramount+": "the external service",
+    "Apple TV": "the external service",
+    "YouTube": "the external service",
+    "Crunchyroll": "the external service"
+  }
+}

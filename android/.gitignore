@@ -9,3 +9,8 @@ captures/
 scripts/uitest/injector/inj.dex
 scripts/uitest/__pycache__/
 scripts/uitest/results/
+
+# the generated, scrambled built-in key sources (TMDB, fanart.tv, TheTVDB) (see app/build.gradle.kts); never committed
+app/build/generated/streamsetu-tmdb/
+app/build/generated/streamsetu-fanart/
+app/build/generated/streamsetu-tvdb/

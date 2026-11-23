@@ -13,5 +13,7 @@ python3 ../Scripts/audit-dependencies.py --strict --scope android --report "dist
 [ "${CONNECTED:-}" = "1" ] && ./gradlew connectedDebugAndroidTest
 ./gradlew :app:assembleRelease -PappVersionName="${1:-0.2.0}" -PappVersionCode="${2:-1}"
 APK=app/build/outputs/apk/release/app-release.apk
+# The built-in TMDB token must be in no file git can see and in no string of the APK (pass or fail only; the token is never printed).
+scripts/check-no-secrets.sh "$APK" || { echo "✘ secret scan failed."; exit 1; }
 [ -f keystore.properties ] || echo "WARNING: no keystore.properties; this APK is signed with the debug key. Test only."
 ls -l "$APK"

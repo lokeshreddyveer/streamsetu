@@ -101,6 +101,7 @@ make_root() {   # builds a fake repository with good artifacts in $ROOT_DIR
   mkdir -p macos/dist macos/Scripts android/dist/9.9.9 ios/Scripts Scripts docs/releases web windows
   cp "$SRC/Scripts/verify-release-artifacts.sh" "$SRC/Scripts/release.sh" Scripts/
   cp "$SRC/macos/Scripts/appcast_add.py" macos/Scripts/
+  cp "$SRC/Scripts/check_no_secrets.py" Scripts/
   printf '#!/bin/bash\nexit "${VERIFY_RC:-0}"\n' > macos/Scripts/verify-release.sh
   printf '#!/bin/bash\necho "appcast $*" >> "$GH_LOG"\nexit "${APPCAST_RC:-0}"\n' > macos/Scripts/update-appcast.sh
   chmod +x Scripts/*.sh macos/Scripts/*.sh macos/Scripts/appcast_add.py
@@ -160,6 +161,8 @@ expect_blocked "the two APKs differ"             'echo other >> android/dist/9.9
 expect_blocked "checksums do not match the build" 'echo tampered >> android/dist/9.9.9/streamsetu-tv-9.9.9.apk; cp android/dist/9.9.9/streamsetu-tv-9.9.9.apk android/dist/9.9.9/StreamSetu-Android-9.9.9.apk' "checksum differs"
 expect_blocked "notes do not name the version"   'printf "# Notes\n\n- nothing\n" > docs/releases/t1.md' "do not mention"
 expect_blocked "tag already published"           'export GH_PRESET_STATE=false' "already published"
+expect_blocked "a built-in key leaks into a file" 'mkdir -p "$TMP/k"; printf "%s" "0123456789abcdef0123456789abcdef" > "$TMP/k/fanart-api-key.txt"; export STREAMSETU_KEYS_DIR="$TMP/k"; echo "api_key=0123456789abcdef0123456789abcdef" >> android/dist/9.9.9/leak.txt' "built-in key"
+unset STREAMSETU_KEYS_DIR
 expect_blocked "no signer pin"                   'rm android/release-signer.sha256' "release-signer.sha256 is missing"
 expect_blocked "no build commit record"          'rm android/dist/9.9.9/BUILD-COMMIT.txt' "BUILD-COMMIT.txt is missing"
 echo "An upload that does not arrive intact is never published"

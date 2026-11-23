@@ -34,3 +34,11 @@ android/dist/
 android/.kotlin/
 # windows release files
 windows/native/dist/
+
+# optional built-in keys (TMDB, fanart.tv, TheTVDB), generated at build time (scrambled); never committed
+macos/Sources/REDDY/Generated/
+ios/StreamSetu/Generated/
+
+# local result cache of Scripts/checks/run_all.py
+Scripts/checks/.stamp.json
+Scripts/checks/.stamp.tmp

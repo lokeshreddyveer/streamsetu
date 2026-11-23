@@ -86,6 +86,13 @@ if [ -f "$SUMS" ]; then
     [ -n "$want" ] && [ "$want" = "$have" ] && ok "$(basename "$apk"): checksum is the one the build recorded" || bad "$(basename "$apk"): checksum differs from what the build recorded"; done
 else bad "$SUMS is missing"; fi
 
+echo "Secrets"
+# No built-in key (TMDB, fanart.tv, TheTVDB) may be in a file git can see or in a shipped file (the scan never prints a key).
+SCAN_ARGS=(); for f in "$TV" "$PHONE"; do [ -f "$f" ] && SCAN_ARGS+=("$f"); done; [ -n "${APP:-}" ] && [ -d "${APP:-}" ] && SCAN_ARGS+=("$APP")
+if [ -f Scripts/check_no_secrets.py ]; then
+  SECRET_OUT="$(python3 -I Scripts/check_no_secrets.py --repo . "${SCAN_ARGS[@]}" 2>&1)" && ok "no built-in key in the repository files or the release files" || { bad "a built-in key (or a piece of one) is visible: run Scripts/check-no-secrets.sh"; echo "$SECRET_OUT" | grep FAIL | sed 's/^/      /'; }
+else bad "Scripts/check_no_secrets.py is missing"; fi
+
 echo "Dependencies"
 if "$PYTHON3" Scripts/audit-dependencies.py --strict >/dev/null 2>&1; then ok "dependency report is clean"; else bad "dependency report is not clean (vulnerable or could not be checked): run Scripts/audit-dependencies.py --strict"; fi
 
