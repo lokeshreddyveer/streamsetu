@@ -223,7 +223,7 @@ struct DiscoverPage: View {
                     if !shelf.collections.isEmpty {
                         ReddyRail(title: shelf.title, caption: shelf.caption, items: shelf.collections) { tile, _ in CollectionTileCard(tile: tile, width: 150) { openCollection = tile } }
                     } else {
-                    let labels = DisplayTitle.labels(shelf.items.map { ($0.id, $0.title, $0.year) })
+                    let labels = DisplayTitle.labelsCached(shelf.items.map { ($0.id, $0.title, $0.year) })
                     ReddyRail(title: shelf.title, caption: shelf.caption, mode: shelf.mode, onMode: { m in setMode(m, shelf) },
                               onSeeAll: shelf.genre.map { key in { openGenre(key) } }, items: shelf.items) { item, index in
                         LibraryItemCard(item: item, rank: shelf.ranked ? index : nil, displayTitle: labels[item.id], uniformHeight: true)

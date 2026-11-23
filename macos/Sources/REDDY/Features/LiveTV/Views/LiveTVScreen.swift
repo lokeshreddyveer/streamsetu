@@ -60,18 +60,7 @@ struct LiveTVScreen: View {
                 ScrollView {
                     LazyVStack(spacing: 1) {
                         ForEach(vm.channels) { ch in
-                            Button { clicked(ch) } label: {
-                                LiveChannelRow(channel: ch, nowNext: vm.nowNext[ch.id], isPlaying: currentChannel?.id == ch.id, isSelected: vm.selectedID == ch.id,
-                                               isFavorite: state.isFavorite(ch.id),
-                                               onFavorite: { state.toggleFavorite(ch.id, kind: .channel); if vm.filter == .favorites, let c = container { Task { await vm.reload(c) } } })
-                            }
-                            .buttonStyle(.plain)
-                            .simultaneousGesture(TapGesture(count: 2).onEnded { if settings.clickBehavior == .doubleClick { play(ch) } })
-                            .onKeyPress(.return) { play(ch); return .handled }
-                            .task { if let c = container { vm.want(ch.id, c) } }
-                            .contextMenu { ChannelContextMenu(channel: ch, onPlay: { play(ch) }, onChanged: { if let c = container { Task { await vm.reload(c) } } }) }
-                            .accessibilityLabel("\(ch.name)\(vm.nowNext[ch.id]?.first(where: { $0.isLive() }).map { ", now \($0.title)" } ?? "")")
-                            .accessibilityAddTraits(currentChannel?.id == ch.id ? .isSelected : []).atlas("context.liveTV.channel")
+                            LiveRowHost(channel: ch, vm: vm, onClick: { clicked(ch) }, onPlay: { play(ch) })
                         }
                     }
                     .padding(.horizontal, 6).padding(.vertical, 6)
@@ -153,6 +142,52 @@ struct LiveTVScreen: View {
     private func play(_ ch: Channel) {
         vm.selectedID = ch.id
         playback?.play(channel: ch, queue: vm.channels)
+    }
+}
+
+/// One row of the channel list. It reads its own state (now/next, favorite, playing, selected) so the list's body does not depend on any of it:
+/// a guide fetch or a heart tap re-draws the rows concerned, not the whole list.
+private struct LiveRowHost: View {
+    let channel: Channel
+    let vm: LiveTVViewModel
+    let onClick: () -> Void
+    let onPlay: () -> Void
+    @Environment(\.container) private var container
+    @Environment(AppState.self) private var state
+    @Environment(AppSettings.self) private var settings
+
+    var body: some View {
+        let ch = channel
+        let box = vm.nowNext.box(for: ch.id)
+        let current = container?.playback.currentChannel
+        RowBody(channel: ch, box: box, isPlaying: current?.id == ch.id, isSelected: vm.selectedID == ch.id, isFavorite: state.isFavorite(ch.id),
+                onFavorite: { state.toggleFavorite(ch.id, kind: .channel); if vm.filter == .favorites, let c = container { Task { await vm.reload(c) } } },
+                onClick: onClick, onPlay: onPlay, doubleClickPlays: settings.clickBehavior == .doubleClick,
+                want: { if let c = container { vm.want(ch.id, c) } },
+                changed: { if let c = container { Task { await vm.reload(c) } } })
+    }
+
+    /// Reads the box, so only this row re-draws when its programme changes.
+    private struct RowBody: View {
+        let channel: Channel
+        let box: NowNextBox
+        let isPlaying: Bool, isSelected: Bool, isFavorite: Bool
+        let onFavorite: () -> Void, onClick: () -> Void, onPlay: () -> Void
+        let doubleClickPlays: Bool
+        let want: () -> Void, changed: () -> Void
+        var body: some View {
+            let ch = channel
+            Button(action: onClick) {
+                LiveChannelRow(channel: ch, nowNext: box.programs, isPlaying: isPlaying, isSelected: isSelected, isFavorite: isFavorite, onFavorite: onFavorite)
+            }
+            .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture(count: 2).onEnded { if doubleClickPlays { onPlay() } })
+            .onKeyPress(.return) { onPlay(); return .handled }
+            .task { want() }
+            .contextMenu { ChannelContextMenu(channel: ch, onPlay: onPlay, onChanged: changed) }
+            .accessibilityLabel("\(ch.name)\(box.programs?.first(where: { $0.isLive() }).map { ", now \($0.title)" } ?? "")")
+            .accessibilityAddTraits(isPlaying ? .isSelected : []).atlas("context.liveTV.channel")
+        }
     }
 }
 

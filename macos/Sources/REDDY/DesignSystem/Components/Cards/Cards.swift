@@ -70,6 +70,18 @@ struct PosterArt: View {
 
 // MARK: - Poster card
 
+/// The quality label of a title ("4K", "FHD", "HD", "SD" or none), remembered by title: working it out folds and splits the name, and a tile used to do that twice per redraw.
+enum PosterQualityMemo {
+    private nonisolated(unsafe) static let cache: NSCache<NSString, NSString> = { let c = NSCache<NSString, NSString>(); c.countLimit = 50_000; return c }()
+    static func label(for title: String) -> String? {
+        let key = title as NSString
+        if let hit = cache.object(forKey: key) { return hit.length == 0 ? nil : hit as String }
+        let v = MetadataNormalizer.qualityLabel(MetadataNormalizer.normalize(title))
+        cache.setObject((v ?? "") as NSString, forKey: key)
+        return v
+    }
+}
+
 struct PosterCardModel: Identifiable, Hashable {
     let id: String
     let title: String
@@ -97,8 +109,9 @@ struct PosterCardModel: Identifiable, Hashable {
         subtitle = [item.quietLine.isEmpty ? nil : item.quietLine, item.isSeries ? "Series" : nil].compactMap { $0 }.joined(separator: " · ")
         imageURL = item.posterURL
         rating = RatingRule.credible({ switch item { case .movie(let m): m.rating; case .series(let s): s.rating } }())
-        placeholderDetail = ArtworkTile.Content.detail(year: item.year, quality: item.isSeries ? "Series" : MetadataNormalizer.qualityLabel(MetadataNormalizer.normalize(item.title)))
-        tag = item.isSeries ? "SERIES" : MetadataNormalizer.qualityLabel(MetadataNormalizer.normalize(item.title)).flatMap { ["4K", "FHD"].contains($0) ? $0 : nil }
+        let quality = item.isSeries ? nil : PosterQualityMemo.label(for: item.title)
+        placeholderDetail = ArtworkTile.Content.detail(year: item.year, quality: item.isSeries ? "Series" : quality)
+        tag = item.isSeries ? "SERIES" : quality.flatMap { ["4K", "FHD"].contains($0) ? $0 : nil }
         self.rank = rank; self.progress = progress; self.isFavorite = isFavorite; self.isNew = isNew; self.isWatched = isWatched
     }
 }

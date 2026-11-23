@@ -110,13 +110,25 @@ struct TileMenuHandlers {
     let kind: TileMenu.Kind
     let handlers: TileMenuHandlers
 
-    func facts() -> TileMenu.Facts {
+    /// `blocking`: read the saved-cast fact from the database now (the menu was just opened, one tile). Otherwise (the accessibility actions of every tile) the answer
+    /// comes from `SavedCastIndex` in O(1); a title not yet known is looked up off the main thread and answers on a later pass.
+    func facts(blocking: Bool = false) -> TileMenu.Facts {
         var f = TileMenu.Facts(kind: kind)
         f.isFavorite = state.isFavorite(item.id); f.isWatchLater = state.isWatchLater(item.id)
         f.inQueue = container?.watchQueue.contains(item.id) ?? false
         f.queueAvailable = container?.watchQueue != nil
         if handlers.openFolder != nil, let n = item.categoryName, !n.isEmpty { f.folderName = FolderNaming.clean(n) }
-        f.hasCast = handlers.goToCast != nil && (container?.metadata.hasSavedCast(item.id) ?? false)
+        if handlers.goToCast != nil, let c = container {
+            if blocking {
+                let v = c.metadata.hasSavedCast(item.id)
+                SavedCastIndex.shared.set(item.id, v)
+                f.hasCast = v
+            } else if let v = SavedCastIndex.shared.value(item.id) {
+                f.hasCast = v
+            } else {
+                let m = c.metadata; SavedCastIndex.shared.warm(item.id) { m.hasSavedCast($0) }
+            }
+        }
         return f
     }
 
@@ -161,6 +173,60 @@ struct TileMenuHandlers {
     }
 }
 
+/// Which titles have saved cast details, remembered so a tile never reads the database while it is drawn. A small least-recently-used table behind a lock:
+/// reads are O(1) on any thread, lookups run off the main thread, and a title whose details landed is forgotten so it is asked again.
+final class SavedCastIndex: @unchecked Sendable {
+    static let shared = SavedCastIndex(capacity: 4096, observeLanding: true)
+    private let lock = NSLock()
+    private var table: [String: (value: Bool, stamp: UInt64)] = [:]
+    private var inflight: Set<String> = []
+    private var counter: UInt64 = 0
+    private let capacity: Int
+    private var observer: NSObjectProtocol?
+
+    init(capacity: Int, observeLanding: Bool = false) {
+        self.capacity = max(2, capacity)
+        if observeLanding {
+            observer = NotificationCenter.default.addObserver(forName: .titleMetadataLanded, object: nil, queue: nil) { [weak self] n in self?.forget(TitleMetadataEvent(n).ids) }
+        }
+    }
+    deinit { if let o = observer { NotificationCenter.default.removeObserver(o) } }
+
+    func value(_ id: String) -> Bool? {
+        lock.lock(); defer { lock.unlock() }
+        guard var e = table[id] else { return nil }
+        counter += 1; e.stamp = counter; table[id] = e
+        return e.value
+    }
+
+    func set(_ id: String, _ value: Bool) {
+        lock.lock(); defer { lock.unlock() }
+        counter += 1; table[id] = (value, counter); inflight.remove(id)
+        if table.count > capacity {                       // drop the least recently used half
+            let keep = table.sorted { $0.value.stamp > $1.value.stamp }.prefix(capacity / 2)
+            table = Dictionary(uniqueKeysWithValues: keep.map { ($0.key, $0.value) })
+        }
+    }
+
+    func forget(_ ids: [String]) {
+        lock.lock(); defer { lock.unlock() }
+        for id in ids { table[id] = nil }
+    }
+
+    var count: Int { lock.lock(); defer { lock.unlock() }; return table.count }
+
+    /// Looks the title up once, off the main thread.
+    func warm(_ id: String, lookup: @escaping @Sendable (String) -> Bool) {
+        lock.lock()
+        if inflight.contains(id) || table[id] != nil { lock.unlock(); return }
+        inflight.insert(id); lock.unlock()
+        Task.detached(priority: .utility) { [self] in
+            let v = lookup(id)
+            set(id, v)
+        }
+    }
+}
+
 /// The menu body: the entries, in order, with a divider before the group that removes things.
 struct TileMenuContent: View {
     let item: LibraryItem
@@ -171,7 +237,7 @@ struct TileMenuContent: View {
 
     var body: some View {
         let runner = TileMenuRunner(container: container, state: state, item: item, kind: kind, handlers: handlers)
-        let list = TileMenu.entries(runner.facts())
+        let list = TileMenu.entries(runner.facts(blocking: true))
         let firstDestructive = list.first { $0.destructive }?.action
         ForEach(list) { entry in
             if entry.action == firstDestructive { Divider() }

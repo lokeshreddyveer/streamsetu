@@ -179,8 +179,18 @@ actor ImageCache {
         }
     }
 
+    /// Hashing is remembered per url: tiles ask for the key on every redraw, on the main thread.
+    private nonisolated(unsafe) static let keyMemo: NSCache<NSString, NSString> = { let c = NSCache<NSString, NSString>(); c.countLimit = 20_000; return c }()
+
     nonisolated static func key(_ url: URL, _ kind: ArtworkKind) -> String {
-        SHA256.hash(data: Data("\(kind.rawValue)|\(url.absoluteString)".utf8)).map { String(format: "%02x", $0) }.joined()
+        let source = "\(kind.rawValue)|\(url.absoluteString)"
+        if let hit = keyMemo.object(forKey: source as NSString) { return hit as String }
+        let hex = Array("0123456789abcdef".utf8)
+        var out = [UInt8](); out.reserveCapacity(64)
+        for b in SHA256.hash(data: Data(source.utf8)) { out.append(hex[Int(b >> 4)]); out.append(hex[Int(b & 15)]) }
+        let k = String(decoding: out, as: UTF8.self)
+        keyMemo.setObject(k as NSString, forKey: source as NSString)
+        return k
     }
 
     private func fileURL(_ key: String, _ kind: ArtworkKind) -> URL {

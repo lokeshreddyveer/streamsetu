@@ -1,12 +1,42 @@
 import SwiftUI
 import Observation
 
+/// One channel's now/next, observed by that channel's row alone.
+@MainActor @Observable final class NowNextBox {
+    /// nil: not asked yet. []: asked, no guide data.
+    var programs: [EPGProgram]?
+    init(_ p: [EPGProgram]? = nil) { programs = p }
+}
+
+/// Now/next for the channels on screen, keyed by channel id. The dictionary itself is not observed: a row reads only its own box, so a fetch for forty channels
+/// re-draws at most those rows (and only the ones whose answer changed), never the 30,000-row list.
+@MainActor final class NowNextStore {
+    private var boxes: [String: NowNextBox] = [:]
+    var knownIDs: [String] { boxes.compactMap { $0.value.programs != nil ? $0.key : nil } }
+    func isKnown(_ id: String) -> Bool { boxes[id]?.programs != nil }
+    func box(for id: String) -> NowNextBox {
+        if let b = boxes[id] { return b }
+        let b = NowNextBox(); boxes[id] = b; return b
+    }
+    func programs(for id: String) -> [EPGProgram]? { boxes[id]?.programs }
+    /// Stores answers; only a box whose value changed is written. Returns the ids that changed.
+    @discardableResult func publish(_ ids: [String], _ map: [String: [EPGProgram]]) -> [String] {
+        var changed: [String] = []
+        for id in ids {
+            let v = map[id] ?? []
+            let b = box(for: id)
+            if b.programs != v { b.programs = v; changed.append(id) }
+        }
+        return changed
+    }
+}
+
 @MainActor @Observable
 final class LiveTVViewModel {
     var filter: LiveFilter = .all
     var search = ""
     var channels: [Channel] = []
-    var nowNext: [String: [EPGProgram]] = [:]
+    @ObservationIgnored let nowNext = NowNextStore()
     var upcoming: [EPGProgram] = []
     /// Programmes that already aired and are still in the provider's archive (empty for channels without catch-up).
     var past: [EPGProgram] = []
@@ -81,23 +111,25 @@ final class LiveTVViewModel {
 
     /// Rows ask for their program info as they appear; requests are batched so scrolling stays cheap.
     func want(_ id: String, _ c: AppContainer) {
-        if nowNext[id] != nil { return }
+        if nowNext.isKnown(id) { return }
         wanted.insert(id)
-        fetchTask?.cancel()
+        guard fetchTask == nil else { return }          // one fetch at a time, collecting what rows ask for meanwhile (not restarted by every row)
         fetchTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 70_000_000)
+            try? await Task.sleep(nanoseconds: 250_000_000)
             guard !Task.isCancelled, let self else { return }
             let ids = Array(self.wanted); self.wanted.removeAll()
+            self.fetchTask = nil
+            guard !ids.isEmpty else { return }
             let map = await Task.detached { (try? c.epgRepo.nowNext(channelIDs: ids, at: Date())) ?? [:] }.value
-            for id in ids { self.nowNext[id] = map[id] ?? [] }       // [] = "no guide data", remembered so we don't re-ask
+            self.nowNext.publish(ids, map)       // [] = "no guide data", remembered so we don't re-ask
         }
     }
 
     func refreshNowNext(_ c: AppContainer) async {
-        let ids = Array(nowNext.keys)
+        let ids = nowNext.knownIDs
         guard !ids.isEmpty else { return }
         let map = await Task.detached { (try? c.epgRepo.nowNext(channelIDs: ids, at: Date())) ?? [:] }.value
-        for id in ids { nowNext[id] = map[id] ?? [] }
+        nowNext.publish(ids, map)
     }
 
     func loadDetails(for channel: Channel?, _ c: AppContainer) async {

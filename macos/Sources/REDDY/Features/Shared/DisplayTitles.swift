@@ -22,6 +22,23 @@ enum DisplayTitle {
     }
 }
 
+extension DisplayTitle {
+    private final class Box { let value: [String: String]; init(_ v: [String: String]) { value = v } }
+    /// NSCache is documented thread-safe, so sharing this one instance is safe.
+    private nonisolated(unsafe) static let memo: NSCache<NSNumber, Box> = { let c = NSCache<NSNumber, Box>(); c.countLimit = 400; return c }()
+
+    /// `labels`, remembered per row content: a shelf's body re-runs often and the names do not change, so cleaning and folding every title is done once.
+    static func labelsCached(_ items: [(id: String, title: String, year: Int?)]) -> [String: String] {
+        var h = Hasher()
+        for i in items { h.combine(i.id); h.combine(i.title); h.combine(i.year) }
+        let key = NSNumber(value: h.finalize())
+        if let hit = memo.object(forKey: key) { return hit.value }
+        let v = labels(items)
+        memo.setObject(Box(v), forKey: key)
+        return v
+    }
+}
+
 /// One rule for whether a provider's rating may be shown as a badge: the same one the ranking uses (a text such as "7.4"; 0, 10, 10.0 and anything unreadable are junk).
 enum RatingRule {
     static func credible(_ text: String?) -> Double? { SmartMixScoring.ratingTenths(text).map { Double($0) / 10 } }
