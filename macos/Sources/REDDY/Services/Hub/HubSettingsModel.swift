@@ -106,6 +106,7 @@ enum ServiceCredits {
             Credit(id: "wikipedia", text: "Wikipedia text is used under CC BY-SA, with a link to the article", linkTitle: "wikipedia.org", url: URL(string: "https://www.wikipedia.org")!),
         ]
         list.append(Credit(id: "sparkle", text: "App updates on Mac use Sparkle (MIT licence)", linkTitle: "sparkle-project.org", url: URL(string: "https://sparkle-project.org")!))
+        list.append(Credit(id: "sponsorblock", text: "Sponsor-segment times for YouTube (Mac, only if you turn on sponsor skipping) come from SponsorBlock, by Ajay Ramachandran and contributors, licensed CC BY-NC-SA 4.0. Only the first 4 characters of a hash of the video id are sent.", linkTitle: "sponsor.ajay.app", url: URL(string: "https://sponsor.ajay.app")!))
         list.append(Credit(id: "mpv", text: "Playback uses mpv and FFmpeg (open-source licences), packaged by MPVKit", linkTitle: "mpv.io", url: URL(string: "https://mpv.io")!))
         return list
     }()

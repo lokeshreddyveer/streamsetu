@@ -11,15 +11,18 @@ import Foundation
         ProviderDefinition(id: d.id, displayName: d.displayName, homeURL: d.homeURL, availability: availability, distributionAuthorization: d.distributionAuthorization,
                            termsNote: d.termsNote, externalLinks: d.externalLinks, platforms: d.platforms, storeIdentity: d.storeIdentity, urlPolicy: d.urlPolicy,
                            capabilities: d.capabilities, authentication: d.authentication, sessionCookieDomains: d.sessionCookieDomains, zoomDefault: d.zoomDefault,
-                           zoomDefaultsKey: d.zoomDefaultsKey, regionNote: d.regionNote, releaseNote: d.releaseNote)
+                           zoomDefaultsKey: d.zoomDefaultsKey, regionNote: d.regionNote, releaseNote: d.releaseNote, userAgentProfile: d.userAgentProfile, pageEnhancements: d.pageEnhancements, regionProfile: d.regionProfile)
     }
 
     @Test func listsEveryListedServiceWithItsBadge() {
         let m = StreamingServicesSettingsModel(defaults: defaults())
         #expect(m.rows.count == 10)
-        #expect(Set(m.rows.map(\.id)) == Set(ProviderCatalog.all.map(\.id)))
+        #expect(Set(m.rows.map(\.id)) == Set(ProviderCatalog.all.map(\.id).filter { $0 != .jiohotstar }), "JioHotstar is on hold and has no row")
         #expect(m.rows.first { $0.id == .netflix }?.badge == "Available")
-        #expect(m.rows.filter { $0.id != .netflix }.allSatisfy { $0.badge == "Unverified" })
+        let verified: Set<ProviderID> = [.netflix, .primevideo, .disneyplus, .hulu, .hbomax, .paramountplus, .appletv, .peacock, .youtube, .crunchyroll]        // owner-confirmed on 2026-11-22
+        #expect(m.rows.filter { verified.contains($0.id) }.allSatisfy { $0.badge == "Available" })
+        #expect(m.rows.filter { !verified.contains($0.id) }.allSatisfy { $0.badge == "Unverified" })
+        #expect(m.rows.filter { $0.badge == "Unverified" }.isEmpty, "every listed service is owner-confirmed")
         #expect(m.rows.first?.id == .netflix && m.rows.first?.pinned == true)
     }
 
@@ -28,16 +31,18 @@ import Foundation
         defs[2] = copy(defs[2], availability: .disabled)
         defs[3] = copy(defs[3], availability: .registered)
         let m = StreamingServicesSettingsModel(registry: ProviderRegistry(definitions: defs), defaults: defaults())
-        #expect(m.rows.count == 9)
+        #expect(m.rows.count == 9, "eleven definitions minus the held JioHotstar minus the registered one")
         #expect(m.rows.first { $0.id == defs[2].id }?.badge == "Disabled")
         #expect(m.rows.contains { $0.id == defs[3].id } == false)
         #expect(m.rows.first { $0.id == defs[2].id }?.canOpen == false)
     }
 
-    @Test func distributionIsAPlainRecordedStatus() {
+    @Test func distributionIsOneNoteForTheSectionNotALinePerService() {
         let m = StreamingServicesSettingsModel(defaults: defaults())
-        #expect(m.rows.allSatisfy { $0.distributionLine == "Distribution permission: unresolved" })
-        #expect(m.rows.allSatisfy { !$0.statusLine.isEmpty })
+        #expect(m.distributionNote == "Distribution permission: unresolved for every service")
+        #expect(StreamingServicesSettingsModel.distributionNote(for: [.confirmed, .confirmed]) == nil)
+        #expect(StreamingServicesSettingsModel.distributionNote(for: [.confirmed, .unresolved, .unresolved]) == "Distribution permission: unresolved for 2 services")
+        #expect(m.rows.allSatisfy { !($0.statusLine ?? "").contains("Distribution") })
     }
 
     @Test func youTubeShowsTheSignInLimitationAndOthersDoNot() {
@@ -101,7 +106,7 @@ import Foundation
         let unwired = StreamingServicesSettingsModel(defaults: defaults())
         #expect(unwired.canClear == false)
         unwired.requestClear(.hulu); await unwired.confirmClear()
-        #expect(unwired.notice == "Clearing website data is not available yet.")
+        #expect(unwired.notice == "Clearing data is not available yet.")
         let failing = StreamingServicesSettingsModel(defaults: defaults(), actions: .init(clearWebsiteData: { _ in .failed }))
         failing.requestClear(.hulu); await failing.confirmClear()
         #expect(failing.notice?.contains("Hulu") == true && failing.notice?.hasPrefix("Could not") == true)
@@ -116,7 +121,7 @@ import Foundation
         #expect(opened == [.hulu])
     }
 
-    /// Owner rule: no external-browser action for the nine, so the section holds no way to launch one. Netflix keeps its own existing action elsewhere.
+    /// Owner rule: no external-browser action for the ten, so the section holds no way to launch one. Netflix keeps its own existing action elsewhere.
     @Test func theSectionHasNoBrowserLaunchCode() throws {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/REDDY/Features/Settings/Views/StreamingServicesSettingsSection.swift")

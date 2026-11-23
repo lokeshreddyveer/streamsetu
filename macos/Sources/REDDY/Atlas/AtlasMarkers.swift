@@ -40,16 +40,35 @@ struct AtlasProbeView: View {
     }
 }
 
+/// Frames are only recorded while something reads them: a Show-me request is active, or tests force markers on.
+/// Every tile and row carries a marker, and a live preference per tile makes the whole tree re-reduce each time a lazy container realizes or drops one.
+enum AtlasMarkerGate {
+    /// Tests (and the screen walk) set this to record frames without a Show-me session.
+    nonisolated(unsafe) static var forceEnabled = false
+    @MainActor static var enabled: Bool { forceEnabled || ShowMeController.shared.isActive }
+}
+
+private struct AtlasMarkerModifier: ViewModifier {
+    let id: String?
+    @MainActor func body(content: Content) -> some View {
+        if AtlasMarkerGate.enabled, let id {
+            content.anchorPreference(key: AtlasFramesKey.self, value: .bounds) { [id: $0] }
+        } else {
+            content
+        }
+    }
+}
+
 extension View {
     /// Marks an interactive control with the id of its Atlas entry. It changes nothing on screen; it records the control's frame so Show-me can point at it.
     func atlas(_ id: String) -> some View {
-        anchorPreference(key: AtlasFramesKey.self, value: .bounds) { [id: $0] }
+        modifier(AtlasMarkerModifier(id: id))
             .overlay(alignment: .topLeading) { if AtlasProbe.enabled { AtlasProbeView(identifier: "atlas:" + id) } }
     }
 
     /// The same marker for a helper that may or may not have an id (a settings row). With `nil` nothing is recorded and the view is unchanged.
     func atlasOptional(_ id: String?) -> some View {
-        anchorPreference(key: AtlasFramesKey.self, value: .bounds) { anchor in id.map { [$0: anchor] } ?? [:] }
+        modifier(AtlasMarkerModifier(id: id))
             .overlay(alignment: .topLeading) { if AtlasProbe.enabled, let id { AtlasProbeView(identifier: "atlas:" + id) } }
     }
 

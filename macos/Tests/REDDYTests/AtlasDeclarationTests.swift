@@ -219,8 +219,10 @@ import Foundation
         let md = AtlasCoverageDoc.markdown(entries: Atlas.entries, actionMatrix: AssistantCoverage.markdown())
         let path = Self.root.appendingPathComponent("docs/assistant-coverage.md")
         if ProcessInfo.processInfo.environment["ATLAS_DOCS_WRITE"] != nil { try md.write(to: path, atomically: true, encoding: .utf8) }
-        let onDisk = try String(contentsOf: path, encoding: .utf8)
-        #expect(onDisk == md, "docs/assistant-coverage.md is out of date: run the tests with ATLAS_DOCS_WRITE=1")
+        // The first two lines are fingerprint comments written by Scripts/checks/atlas_fingerprint.py (not by this generator); they are the only lines ignored here.
+        var lines = try String(contentsOf: path, encoding: .utf8).components(separatedBy: "\n")
+        for key in ["atlas-inputs-sha256", "coverage-body-sha256"] where lines.first?.hasPrefix("<!-- \(key): ") == true && lines.first?.hasSuffix(" -->") == true { lines.removeFirst() }
+        #expect(lines.joined(separator: "\n") == md, "docs/assistant-coverage.md is out of date: run `cd macos && ATLAS_DOCS_WRITE=1 swift test --filter AtlasDeclarationTests`, then `python3 Scripts/checks/atlas_fingerprint.py --write docs/assistant-coverage.md`")
     }
 
     /// Every file that has a gesture, swipe or pull-to-refresh, and the entries that describe what it does there. A new site makes the test above fail until someone declares it.

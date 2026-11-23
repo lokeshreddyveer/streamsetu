@@ -25,7 +25,7 @@ import AppKit
         var url: String { model.webView?.url?.path ?? "" }
     }
 
-    nonisolated static let services: [ProviderID] = [.netflix, .primevideo, .youtube]
+    nonisolated static let services: [ProviderID] = [.netflix, .primevideo, .youtube, .jiohotstar]
 
     @Test(arguments: services) func loadsRedirectsAndNamesItselfFromTheDefinition(_ id: ProviderID) async throws {
         let rig = try await Rig(id); defer { rig.finish() }
@@ -62,7 +62,7 @@ import AppKit
         #expect(ServiceFailureScreen(phase: .terminated, definition: rig.model.definition)?.actions == [.retry, .openInDefaultBrowser])
     }
 
-    @Test(arguments: [ProviderID.primevideo, .hulu, .crunchyroll]) func aServiceThatNeverLeavesTheAppCancelsOffSiteLinksWithANotice(_ id: ProviderID) async throws {
+    @Test(arguments: [ProviderID.primevideo, .hulu, .crunchyroll, .jiohotstar]) func aServiceThatNeverLeavesTheAppCancelsOffSiteLinksWithANotice(_ id: ProviderID) async throws {
         let rig = try await Rig(id); defer { rig.finish() }
         var launches = 0
         #expect(rig.model.openExternal == nil, "no opener exists")
@@ -88,7 +88,7 @@ import AppKit
 
     @Test func everyServiceThatNeverLeavesTheAppHoldsNoOpener() {
         let blocking = ServiceTestSupport.blocking
-        #expect(blocking.count == 9)
+        #expect(blocking.count == 10)
         for d in blocking {
             let m = ServiceWebModel(definition: d, dataStore: { .nonPersistent() }, openExternal: { _ in Issue.record("launched") })
             #expect(m.openExternal == nil, "\(d.id)")

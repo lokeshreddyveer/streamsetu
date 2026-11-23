@@ -119,7 +119,8 @@ struct AssistantCoverageRow: Equatable {
 
     /// Files that contain a context menu. None are mapped to the registry yet.
     static let contextMenus: [String: String] = [
-        "Features/Streaming/PinnedServicesBar.swift": "Pinned service menu (open, pin or unpin, move left or right): not mapped yet.",
+        "Features/Streaming/PinnedServicesBar.swift": "Service pill menu (reload, pin or unpin, move left or right, clear data): control.services.pillmenu.",
+        "Features/Streaming/ServicesDropdown.swift": "Services list row menu (move up or down for a pinned service): control.services.move.",
         "DesignSystem/Components/Sidebar/ReddySidebar.swift": "Sidebar folder menu (lock, hide, rename): not mapped yet.",
         "Features/CommandCenter/Views/CommandCenterView.swift": "Channel and folder manager menus: not mapped yet.",
         "Features/Files/FilesView.swift": "Local file menu: not mapped yet.",

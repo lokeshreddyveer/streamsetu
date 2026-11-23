@@ -12,6 +12,8 @@ import AppKit
     private var pressureSource: DispatchSourceMemoryPressure?
     private weak var cookieObserver: ServiceWebDelegates?
     private var delegates: ServiceWebDelegates?
+    /// Adds the optional page additions a person turned on; does nothing for a service that declares none.
+    private(set) lazy var enhancements = EnhancementInstaller(definition: definition)
 
     /// canGoBack, canGoForward or the full-screen state changed.
     var onNavigationChange: (() -> Void)?
@@ -28,7 +30,7 @@ import AppKit
     @discardableResult func ensureWebView(delegates: ServiceWebDelegates, zoom: Double, menuActions: @escaping () -> ServiceMenuActions) -> (view: ServiceWebView, isNew: Bool) {
         if let webView { return (webView, false) }
         let store = dataStore()
-        let v = factory.makeWebView(definition: definition, dataStore: store, zoom: zoom)
+        let v = factory.makeWebView(definition: definition, dataStore: store, zoom: zoom, enhancements: definition.pageEnhancements.isEmpty ? nil : enhancements)
         v.navigationDelegate = delegates; v.uiDelegate = delegates; v.menuActions = menuActions
         self.delegates = delegates
         observers = [
@@ -41,6 +43,16 @@ import AppKit
         startMemoryWatch()
         webView = v
         return (v, true)
+    }
+
+
+    /// What a change of the person's choices needs: the page additions on this view differ from what is wanted now.
+    var enhancementsStale: Bool { webView != nil && !definition.pageEnhancements.isEmpty && enhancements.installed != enhancements.wanted }
+
+    /// Brings the page additions in line with the choices (they take effect with the next load).
+    func refreshEnhancements() {
+        guard let v = webView, !definition.pageEnhancements.isEmpty else { return }
+        enhancements.apply(to: v.configuration.userContentController)
     }
 
     private func startMemoryWatch() {

@@ -467,7 +467,14 @@ struct MainShell: View {
                 if servicePrefs.isPinned(id) { servicePrefs.unpin(id) } else { servicePrefs.pin(id) }
                 servicePrefs.save(); NotificationCenter.default.post(name: StreamingServicesSettingsModel.preferencesDidChange, object: nil)
             },
-            move: { id, i in servicePrefs.move(id, to: i); servicePrefs.save() })
+            move: { id, i in servicePrefs.move(id, to: i); servicePrefs.save() },
+            canReload: { id in services.activeService == id && hosts.model(for: id) != nil },
+            reload: { id in if services.activeService == id { hosts.model(for: id)?.reload() } },
+            canClearData: { id in hosts.registry.definition(for: id)?.presentation == .embedded },
+            clearData: { id in
+                guard let def = hosts.registry.definition(for: id) else { return }
+                Task { await ServiceDataClearing.confirmAndClear(id, name: def.displayName, hosts: hosts) }
+            })
     }
 
     private var topBar: some View {

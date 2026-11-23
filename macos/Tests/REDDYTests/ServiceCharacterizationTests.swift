@@ -10,10 +10,10 @@ import Foundation
     }
 
     @Test func externalServiceRawValuesAndTitles() {
-        #expect(ExternalService.allCases.map(\.rawValue) == ["netflix", "primevideo", "disneyplus", "hulu", "hbomax", "peacock", "paramountplus", "appletv", "youtube", "crunchyroll"])          // nine added by the hub; Netflix stays first
+        #expect(ExternalService.allCases.map(\.rawValue) == ["netflix", "primevideo", "disneyplus", "hulu", "hbomax", "peacock", "paramountplus", "appletv", "youtube", "crunchyroll", "jiohotstar"])          // nine added by the hub; Netflix stays first
         #expect(ExternalService.netflix.id == "netflix")
         #expect(ExternalService.netflix.title == "Netflix")
-        #expect(ServiceCapabilities.macOS.externalServices == ExternalService.allCases)
+        #expect(ServiceCapabilities.macOS.externalServices == ExternalService.allCases.filter { $0 != .jiohotstar }, "JioHotstar is on hold: defined, not listed")
         #expect(ServiceCapabilities.none.externalServices.isEmpty)
     }
 

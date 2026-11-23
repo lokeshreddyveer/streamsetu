@@ -41,6 +41,10 @@ for LANG in en hi te; do cp -R "Resources/Localization/$LANG.lproj" "$APP/Conten
 # The transparent TV symbol shown on the welcome screen (BrandSymbol in the code).
 cp Resources/Branding/BrandSymbol.png "$APP/Contents/Resources/BrandSymbol.png"
 cp Resources/Branding/TMDBLogo.png "$APP/Contents/Resources/TMDBLogo.png"
+# The services' own icons for the Services list, decoded once at launch (ServiceIconStore).
+mkdir -p "$APP/Contents/Resources/ServiceIcons" && cp Resources/ServiceIcons/*.png "$APP/Contents/Resources/ServiceIcons/"
+# The YouTube ad-skipping rules (data only; checked name by name when loaded).
+cp Resources/youtube-ads.json "$APP/Contents/Resources/youtube-ads.json"
 # The layers of the opening's television (TuneIn-<layer>.png), from the shared motion assets at the root of the repository.
 for LAYER in ../motion/assets/tune-in/*.png; do cp "$LAYER" "$APP/Contents/Resources/TuneIn-$(basename "$LAYER")"; done
 echo "APPL????" > "$APP/Contents/PkgInfo"

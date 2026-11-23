@@ -50,13 +50,14 @@ import Foundation
     @Test func streamingServicesSettingsWordingHasHindiAndTelugu() throws {
         let hi = try table("hi"), te = try table("te")
         var keys = ["Streaming Services", "Pin to Top Bar", "Unpin from Top Bar", "Pin %@ to the top bar", "Unpin %@ from the top bar", "Move Left", "Move Right", "Move %@ left", "Move %@ right",
-                    "Open %@", "Clear Website Data…", "Clear Website Data", "Clear website data for %@", "Clear website data for %@?", "Reset Order", "Pinned", "Not pinned", "Website", "Sign-in", "Playback",
-                    "Website data cleared for %@.", "Could not clear all website data for %@.", "Clearing website data is not available yet.",
-                    "Distribution permission: confirmed", "Distribution permission: unresolved",
-                    "This signs you out of %@ and removes its saved website data from this Mac. Your other services stay signed in.",
+                    "Open %@", "Clear Data…", "Clear Data", "Clear data for %@", "Clear data for %@?", "Reset Order", "In top bar", "Not in top bar",
+                    "Data cleared for %@.", "Could not clear all data for %@.", "Clearing data is not available yet.",
+                    "Distribution permission: unresolved for every service", "Distribution permission: unresolved for %lld services",
+                    "checked by you", "checked by you on %@",
+                    "This signs you out of %@ and removes its saved data from this Mac. Your other services stay signed in.",
                     "Google sign-in is not supported in this view, so this service is used signed out."]
         keys += ["available", "unverified", "disabled", "registered"].map { StreamingServicesSettingsModel.badge(ServiceAvailability(rawValue: $0)!) }
-        keys += [CapabilityStatus.enabledForTesting, .manualVerificationRequired, .unavailable, .ownerVerified, .unsupported, .notPermitted].map(StreamingServicesSettingsModel.word)
+        keys += CompatibilityResult.Check.allCases.map(StreamingServicesSettingsModel.passedWords) + CompatibilityResult.Check.allCases.map(StreamingServicesSettingsModel.failedWords)
         for k in keys { #expect(hi[k] != nil && te[k] != nil, "no Hindi/Telugu for: \(k)"); #expect(hi[k] != k && te[k] != k, "not translated: \(k)") }
     }
 }

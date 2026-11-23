@@ -65,7 +65,7 @@ enum SafariUserAgent {
     static let applicationName: String = applicationName(forSafariVersion: installedVersion())
 }
 
-/// Makes the web views. One recipe for every service: plain WebKit, no user scripts, no message handlers (so no bridge to the app), the
+/// Makes the web views. One recipe for every service: plain WebKit, no page code and no message handlers (so no bridge to the app) unless the definition declares an optional enhancement that the person turned on and agreed to (see EnhancementInstaller; the only place that adds any), the
 /// application name follows the provider's userAgentProfile, and the page is never read. Only a service the registry presents as embedded gets a web view.
 @MainActor struct ServiceWebViewFactory {
     static func makeConfiguration(dataStore: WKWebsiteDataStore, userAgent: UserAgentProfile = .safari) -> WKWebViewConfiguration {
@@ -80,9 +80,11 @@ enum SafariUserAgent {
         return c
     }
 
-    func makeWebView(definition: ProviderDefinition, dataStore: WKWebsiteDataStore, zoom: Double) -> ServiceWebView {
+    /// `enhancements` adds the page additions a person turned on (YouTube only); nil or nothing wanted leaves the plain recipe untouched.
+    func makeWebView(definition: ProviderDefinition, dataStore: WKWebsiteDataStore, zoom: Double, enhancements: EnhancementInstaller? = nil) -> ServiceWebView {
         assert(definition.presentation == .embedded, "only an embedded service gets a web view")
         let v = ServiceWebView(frame: .zero, configuration: Self.makeConfiguration(dataStore: dataStore, userAgent: definition.userAgentProfile))
+        enhancements?.apply(to: v.configuration.userContentController)
         v.allowsBackForwardNavigationGestures = true
         v.allowsMagnification = false          // no pinch zoom; the size is the page zoom
         v.pageZoom = CGFloat(zoom)

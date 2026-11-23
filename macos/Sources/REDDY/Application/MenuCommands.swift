@@ -72,7 +72,7 @@ struct MenuCommands: Commands {
                     Button("Pin to Top Bar") {}.disabled(true).atlas("menu.services.pin")
                 }
                 Divider()
-                Button("Clear Website Data…") { if let id = services.activeService, let host { confirmClearData(id, host) } }.disabled(!on).atlas("menu.services.clearData")
+                Button("Clear Data…") { if let id = services.activeService, let host { confirmClearData(id, host) } }.disabled(!on).atlas("menu.services.clearData")
             }
         }
         CommandMenu("Playback") {
@@ -100,8 +100,8 @@ struct MenuCommands: Commands {
     /// Asks first; clears only the website data of the service on screen (sign-in, cookies, caches), nothing else in the app.
     private func confirmClearData(_ id: ProviderID, _ host: any ActiveServiceCommands) {
         let alert = NSAlert()
-        alert.messageText = Localized.string("Clear %@ website data?", id.title)
-        alert.informativeText = Localized.string("This signs you out of %@ in StreamSetu and removes its cookies and saved site data. Your playlists and settings are not touched.", id.title)
+        alert.messageText = ServiceDataClearing.confirmationTitle(id.title)
+        alert.informativeText = ServiceDataClearing.confirmationMessage(id.title)
         alert.addButton(withTitle: Localized.string("Clear Data")); alert.addButton(withTitle: Localized.string("Cancel"))
         alert.alertStyle = .warning
         guard alert.runModal() == .alertFirstButtonReturn else { return }
@@ -109,7 +109,7 @@ struct MenuCommands: Commands {
             let report = await host.clearServiceDataReporting()
             guard report.remainingRecordCount > 0 else { return }
             let a = NSAlert(); a.alertStyle = .warning
-            a.messageText = Localized.string("Could not clear all website data for %@.", id.title)
+            a.messageText = ServiceDataClearing.resultMessage(.failed, name: id.title)
             a.addButton(withTitle: Localized.string("OK")); a.runModal()
         }
     }

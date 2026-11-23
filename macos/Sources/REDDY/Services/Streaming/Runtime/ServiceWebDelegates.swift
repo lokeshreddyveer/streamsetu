@@ -14,6 +14,8 @@ import AppKit
     func loadFinished()
     func loadFailed(_ error: Error)
     func processTerminated()
+    /// The provider's own server redirected the load to one of its regional pages (an exact host the definition names). The load was cancelled.
+    func regionRestricted(host: String, label: String?)
     func cookiesChanged()
 }
 
@@ -28,15 +30,42 @@ import AppKit
     private var alertCount = 0
     /// A main-frame navigation has started and not yet committed: another main-frame request in that time is a redirect.
     private var navigating = false
+    /// The host the in-flight main-frame load began on (set when that first request was allowed; cleared when the load commits, finishes or fails).
+    private var loadOriginHost: String?
+    /// Host-only hops of the in-flight load, in order, each host once in a row (a same-host redirect adds no hop).
+    private var chainHosts: [String] = []
+    /// How many times WebKit reported a server redirect that this app had allowed to continue. The callback carries no address and is never
+    /// called for a redirect the app cancelled, so this is a count only.
+    private(set) var confirmedServerRedirects = 0
 
-    init(events: ServiceWebEvents) { self.events = events; definition = events.definition }
+    private let diagnostics: ServiceDiagnostics
 
-    private func decide(_ url: URL?, isMainFrame: Bool, isRedirect: Bool = false) -> ProviderURLPolicy.Decision {
-        let d = AdapterRegistry.decide(definition, url, isMainFrame: isMainFrame, context: NavigationContext(fromHost: nil, userInitiated: false, isRedirect: isRedirect))
+    init(events: ServiceWebEvents, diagnostics: ServiceDiagnostics = .shared) { self.events = events; definition = events.definition; self.diagnostics = diagnostics }
+
+    private func decide(_ url: URL?, isMainFrame: Bool, isRedirect: Bool = false, record: Bool = true, originHost: String? = nil) -> ProviderURLPolicy.Decision {
+        let d = AdapterRegistry.decide(definition, url, isMainFrame: isMainFrame, context: NavigationContext(fromHost: originHost, userInitiated: false, isRedirect: isRedirect))
         #if DEBUG
         DebugHostLog.record(service: definition.id, url: url, decision: d, isMainFrame: isMainFrame)
         #endif
+        if record && d != .allowInApp && !d.isProviderRegionRestriction {
+            if isMainFrame { diagnostics.recordBlocked(definition.id, url: url) } else { diagnostics.recordSubframeBlocked(definition.id, url: url) }
+        }
         return d
+    }
+
+    // MARK: redirect chain (host only)
+
+    private func endChain() { loadOriginHost = nil; chainHosts = [] }
+
+    /// Starts a chain on a new main-frame load and appends a host when a redirect arrives at a new host. The first redirect to another host
+    /// records both the origin (index 0) and the target (index 1); only a host name and its order index are kept.
+    private func noteHop(_ url: URL?, isRedirect: Bool) {
+        guard let scheme = url?.scheme?.lowercased(), scheme == "http" || scheme == "https", let host = ServiceDiagnostics.host(of: url) else { return }
+        if !isRedirect || chainHosts.isEmpty { chainHosts = [host]; return }
+        guard host != chainHosts.last else { return }
+        if chainHosts.count == 1 { diagnostics.recordRedirectHop(definition.id, host: chainHosts[0], index: 0) }
+        chainHosts.append(host)
+        diagnostics.recordRedirectHop(definition.id, host: host, index: chainHosts.count - 1)
     }
 
     // MARK: navigation
@@ -50,10 +79,19 @@ import AppKit
         // reload caused (`.other`). A script that navigates in that same window of time looks the same; it can only ever reach the extra
         // hosts of a redirect-only rule (the service's own short-link or old-brand hosts), never any other site, and the response is checked again.
         let isRedirect = isMain && navigating && navigationAction.navigationType == .other
-        switch decide(url, isMainFrame: isMain, isRedirect: isRedirect) {
+        // What the public API can say about a redirect chain (host only, in memory): every main-frame request this callback sees, in order. A
+        // redirect target is seen here BEFORE it is requested (so a cancelled hop is never fetched), but its HTTP status (301/302) is not exposed.
+        if isMain { noteHop(url, isRedirect: isRedirect) }
+        let origin = isRedirect ? loadOriginHost : nil
+        switch decide(url, isMainFrame: isMain, isRedirect: isRedirect, originHost: origin) {
         case .allowInApp:
-            if isMain, let url, url.scheme != "about" { events?.addressAllowed(url) }
+            if isMain, let url, url.scheme != "about" { events?.addressAllowed(url); if !isRedirect { loadOriginHost = ServiceDiagnostics.host(of: url) } }
             return .allow
+        case .providerRegionRestriction(let host, let label):
+            // The provider's own server sent this connection to its regional page. That host is NOT loaded (policy unchanged); the person is told the truth.
+            diagnostics.recordRegionalPage(definition.id, host: host)
+            events?.regionRestricted(host: host, label: label)
+            return .cancel
         case .openExternally:
             if let url { events?.addressOffSite(url) }          // never opened here: the model asks first, or says it was blocked
             return .cancel
@@ -67,35 +105,44 @@ import AppKit
         let disposition = http?.value(forHTTPHeaderField: "Content-Disposition")?.lowercased() ?? ""
         if disposition.hasPrefix("attachment") || !navigationResponse.canShowMIMEType { events?.downloadBlocked(); return .cancel }
         if navigationResponse.isForMainFrame {
-            if decide(navigationResponse.response.url, isMainFrame: true, isRedirect: true) != .allowInApp { return .cancel }
+            switch decide(navigationResponse.response.url, isMainFrame: true, isRedirect: true, originHost: loadOriginHost) {
+            case .allowInApp: break
+            case .providerRegionRestriction(let host, let label): events?.regionRestricted(host: host, label: label); return .cancel
+            default: return .cancel
+            }
+            diagnostics.recordHTTPStatus(definition.id, url: navigationResponse.response.url, status: http?.statusCode)
             events?.mainResponse(statusCode: http?.statusCode)
         }
         return .allow
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) { alertCount = 0; navigating = true; events?.loadStarted() }
-    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { navigating = false; events?.loadCommitted(webView.url) }
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { navigating = false; events?.loadFinished() }
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { navigating = false; events?.loadFailed(error) }
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { navigating = false; events?.loadFailed(error) }
+    /// Public API: called when the server redirected the provisional load and the app's policy allowed the target to continue. No address is given.
+    func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) { confirmedServerRedirects += 1 }
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { navigating = false; endChain(); events?.loadCommitted(webView.url) }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { navigating = false; endChain(); events?.loadFinished() }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { navigating = false; endChain(); diagnostics.recordFailure(definition.id, error: error, fallbackURL: webView.url); events?.loadFailed(error) }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { navigating = false; endChain(); diagnostics.recordFailure(definition.id, error: error, fallbackURL: webView.url); events?.loadFailed(error) }
 
     /// The server's certificate is judged by the system; nothing here overrides it and no credentials are ever supplied.
     func webView(_ webView: WKWebView, didReceive challenge: URLAuthenticationChallenge) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
         challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust ? (.performDefaultHandling, nil) : (.cancelAuthenticationChallenge, nil)
     }
 
-    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { navigating = false; events?.processTerminated() }
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { navigating = false; endChain(); diagnostics.recordProcessTerminated(definition.id, url: webView.url); events?.processTerminated() }
 
     // MARK: windows, permissions, panels
 
     /// A new window never opens. An address on the site loads in this view; any other is handled like an off-site link.
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         let url = navigationAction.request.url
-        switch decide(url, isMainFrame: true) {
+        let d = decide(url, isMainFrame: true, record: false)
+        switch d {
         case .allowInApp: if let url, url.scheme != "about" { events?.openInPlace(url) }
         case .openExternally: if let url { events?.addressOffSite(url) }
-        case .block: break
+        case .block, .providerRegionRestriction: break
         }
+        if d != .allowInApp { diagnostics.recordPopupRefused(definition.id, url: url) }
         return nil
     }
 
@@ -125,4 +172,8 @@ import AppKit
     nonisolated func cookiesDidChange(in cookieStore: WKHTTPCookieStore) {
         Task { @MainActor in self.events?.cookiesChanged() }
     }
+}
+
+extension ProviderURLPolicy.Decision {
+    var isProviderRegionRestriction: Bool { if case .providerRegionRestriction = self { true } else { false } }
 }

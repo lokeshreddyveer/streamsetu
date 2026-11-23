@@ -5,6 +5,8 @@ struct ReddyApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var coordinator = AppCoordinator()
 
+    init() { ServiceIconStore.preload() }
+
     var body: some Scene {
         WindowGroup("StreamSetu", id: "main") {
             RootView(coordinator: coordinator)

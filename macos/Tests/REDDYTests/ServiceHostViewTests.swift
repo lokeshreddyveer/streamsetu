@@ -41,7 +41,7 @@ import AppKit
 
     @Test func theViewRendersEveryServiceAndShowsTheBlockedLinkNotice() async throws {
         _ = NSApplication.shared
-        for d in ProviderCatalog.all {
+        for d in ProviderCatalog.all where d.presentation == .embedded {          // a service on hold has no view
             let model = ServiceWebModel(definition: d, dataStore: { .nonPersistent() })
             let host = NSHostingView(rootView: ServiceHostView(model: model))
             let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 600), styleMask: [.titled], backing: .buffered, defer: false)
@@ -72,7 +72,7 @@ import AppKit
         #expect(root.contains("ServiceHostView(model: model") && root.contains("IntegrationUnavailableView"))
         #expect(root.contains("hosts.pauseAll") && !root.contains("netflix.pauseMedia"))
         #expect(root.contains("showsServicesMenu: true") && root.contains("servicePrefs.pinned"))
-        #expect(!root.contains("services: services.services"), "the bar gets pinned ids, not all ten")
+        #expect(!root.contains("services: services.services"), "the bar gets pinned ids, not all eleven")
     }
 
     @Test func settingsClearingNeverConfirmsAgainAndTouchesOneService() async throws {

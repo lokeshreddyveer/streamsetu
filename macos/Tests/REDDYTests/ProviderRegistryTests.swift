@@ -8,36 +8,69 @@ import Foundation
         ("disneyplus", "eb14ffb5-2e9f-4629-8a99-6f700c8b3398"), ("hulu", "32bc5ffc-0cdc-46d7-a7d4-bff3a25d0cca"),
         ("hbomax", "eac63ddd-0365-428e-b75a-5bf55799a0f6"), ("peacock", "320567c5-6338-46bd-8680-fedd1bab701f"),
         ("paramountplus", "862a68b0-ee28-4ebc-af6e-a8df1a592a83"), ("appletv", "61c40311-eeed-49f9-8a69-92ab863689c2"),
-        ("youtube", "20bed3f7-5bc0-46f4-ade6-bce2f57350db"), ("crunchyroll", "84d233c6-bd18-4367-b759-6e8b206e5b84"),
+        ("youtube", "20bed3f7-5bc0-46f4-ade6-bce2f57350db"), ("crunchyroll", "84d233c6-bd18-4367-b759-6e8b206e5b84"), ("jiohotstar", "c64c1cf7-09c5-4d6a-882a-939c4396fa03"),
     ]
     let reg = ProviderRegistry.standard
 
-    @Test func tenDefinitionsInCatalogOrderWithNetflixFirst() {
+    @Test func elevenDefinitionsInCatalogOrderWithNetflixFirst() {
         #expect(reg.definitions.map(\.id.rawValue) == Self.frozen.map(\.0))
-        #expect(reg.definitions.map(\.displayName) == ["Netflix", "Prime Video", "Disney+", "Hulu", "HBO Max", "Peacock", "Paramount+", "Apple TV", "YouTube", "Crunchyroll"])
+        #expect(reg.definitions.map(\.displayName) == ["Netflix", "Prime Video", "Disney+", "Hulu", "HBO Max", "Peacock", "Paramount+", "Apple TV", "YouTube", "Crunchyroll", "JioHotstar"])
     }
 
     @Test func theCatalogValidatesCleanly() { #expect(ProviderRegistry.validate(reg.definitions).isEmpty) }
 
     @Test func storeIdentifiersAreFrozenLiteralsAndUnique() {
         for (id, uuid) in Self.frozen { #expect(reg.definition(for: ProviderID(unchecked: id))?.storeIdentity.uuid == UUID(uuidString: uuid), Comment(rawValue: id)) }
-        #expect(Set(reg.definitions.map(\.storeIdentity.uuid)).count == 10)
+        #expect(Set(reg.definitions.map(\.storeIdentity.uuid)).count == 11)
     }
 
     @Test func addressesAreHTTPSAndOnTheirOwnHost() {
         let homes = ["https://www.netflix.com/", "https://www.primevideo.com/", "https://www.disneyplus.com/", "https://www.hulu.com/", "https://www.hbomax.com/",
-                     "https://www.peacocktv.com/", "https://www.paramountplus.com/", "https://tv.apple.com/", "https://www.youtube.com/", "https://www.crunchyroll.com/"]
+                     "https://www.peacocktv.com/", "https://www.paramountplus.com/", "https://tv.apple.com/", "https://www.youtube.com/", "https://www.crunchyroll.com/", "https://www.hotstar.com/in"]
         #expect(reg.definitions.map(\.homeURL.absoluteString) == homes)
         for d in reg.definitions { #expect(d.urlPolicy.isAllowedHost(d.homeURL.host)); #expect(d.urlPolicy.inAppSchemes == ["https"]) }
+    }
+
+    /// Confirmed by the owner on his own Mac (Release builds, 2026-11-22); everything else stays unverified.
+    private static let ownerVerified: Set<ProviderID> = [.netflix, .primevideo, .disneyplus, .hulu, .paramountplus, .appletv, .peacock, .crunchyroll, .youtube, .hbomax]
+
+    @Test func ownerResultsAreRecordedExactlyAndNothingElseIsInvented() throws {
+        func rec(_ id: ProviderID) -> CompatibilityResult { reg.definition(for: id)!.capabilities.compatibility }
+        let day = try #require(rec(.hulu).checkedOn)
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "UTC")!
+        #expect(cal.dateComponents([.year, .month, .day], from: day) == DateComponents(year: 2026, month: 11, day: 22))
+        let four: [CompatibilityResult.Check] = [.siteLoads, .signInPageRenders, .signInCompletes, .video]
+        for (id, build, passed) in [(ProviderID.hulu, "Release 2.17.10", [CompatibilityResult.Check.siteLoads, .signInCompletes, .video]),
+                                    (.disneyplus, "Release 2.17.10", [.siteLoads, .signInCompletes, .video]),
+                                    (.paramountplus, "Release 2.17.11", four), (.primevideo, "Release 2.17.11", four), (.appletv, "Release 2.17.11", four),
+                                    (.peacock, "Release 2.17.11", [.siteLoads, .signInCompletes, .video]), (.crunchyroll, "Release 2.17.11", four)] {
+            let r = rec(id)
+            #expect(r.build == build && r.note == "owner-verified", "\(id)")
+            for c in CompatibilityResult.Check.allCases { #expect(r.outcome(c) == (passed.contains(c) ? .passed : .notChecked), "\(id) \(c)") }
+        }
+        let hbo = rec(.hbomax)
+        #expect([.siteLoads, .signInPageRenders, .signInCompletes, .video].allSatisfy { hbo.outcome($0) == .passed } && hbo.build == "Release 2.17.12")
+        #expect(CompatibilityResult.Check.allCases.filter { hbo.outcome($0) != .notChecked }.count == 4)
+        let yt = rec(.youtube)
+        #expect(yt.outcome(.siteLoads) == .passed && yt.outcome(.video) == .passed && yt.outcome(.signInCompletes) == .notApplicable && yt.note == "signed-out only by design")
+        #expect(CompatibilityResult.Check.allCases.filter { yt.outcome($0) != .notChecked }.count == 3)
+        for id in [ProviderID.netflix, .jiohotstar] { #expect(rec(id) == .unchecked, "\(id)") }
+    }
+
+    @Test func hboMaxKeepsItsHostRoles() {
+        let d = reg.definition(for: .hbomax)!
+        #expect(d.releaseNote?.contains("max.com") == true)
+        #expect(d.urlPolicy.hostRules.first { $0.suffix == "max.com" }?.role == .site)
+        #expect(d.urlPolicy.hostRules.first { $0.suffix == "auth.max.com" }?.role == .auth)
     }
 
     @Test func initialStatesPoliciesAndRecordedDecisions() {
         for d in reg.definitions {
             let isNetflix = d.id == .netflix
-            #expect(d.availability == (isNetflix ? .available : .unverified))
+            #expect(d.availability == (Self.ownerVerified.contains(d.id) ? .available : d.id == .jiohotstar ? .registered : .unverified), "JioHotstar is on hold")
             #expect(d.externalLinks == (isNetflix ? .confirmThenOpen : .blockWithNotice))
             #expect(d.distributionAuthorization == .unresolved)
-            #expect(d.platforms == [.macOS]); #expect(d.presentation == .embedded)
+            #expect(d.platforms == [.macOS]); #expect(d.presentation == (d.id == .jiohotstar ? .hidden : .embedded))
             #expect(d.zoomDefaultsKey == (isNetflix ? "netflix.pageZoom" : "streaming.zoom.\(d.id.rawValue)"))
         }
         #expect(reg.definition(for: .netflix)?.zoomDefault == 0.85)
@@ -54,8 +87,33 @@ import Foundation
         for (id, s) in active { #expect(rule(id, s)?.role == .auth && rule(id, s)?.active == true, Comment(rawValue: s)) }
         for (id, s) in [(ProviderID.hulu, "disneyplus.com"), (.paramountplus, "cbs.com")] { #expect(rule(id, s)?.role == .auth && rule(id, s)?.active == false, Comment(rawValue: s)) }
         for def in reg.definitions { for r in def.urlPolicy.hostRules { #expect(r.suffix.contains(".") && !r.suffix.contains("*") && r.suffix != "com") } }
-        #expect(rule(.youtube, "youtu.be")?.role == .redirectOnly && rule(.hbomax, "max.com")?.role == .redirectOnly)
-        #expect(reg.definition(for: .youtube)?.urlPolicy.hostRules.contains { $0.suffix.contains("google") } == false)
+        #expect(rule(.youtube, "youtu.be")?.role == .redirectOnly && rule(.hbomax, "max.com")?.role == .site)
+        #expect(reg.definition(for: .youtube)?.urlPolicy.hostRules.filter { $0.suffix.contains("google") }.map(\.suffix) == ["consent.google.com"])
+        #expect(reg.definition(for: .youtube)?.urlPolicy.hostRules.first { $0.suffix == "consent.google.com" }?.role == .redirectOnly)
+    }
+
+    @Test func jioHotstarIsOnHoldDefinedButNotListed() {
+        let j = reg.definition(for: .jiohotstar)!
+        #expect(j.availability == .registered && j.presentation == .hidden && !j.availability.isListed)
+        #expect(!reg.listed(on: .macOS).map(\.id).contains(.jiohotstar) && reg.listed(on: .macOS).count == 10)
+        #expect(j.storeIdentity.uuid == UUID(uuidString: "c64c1cf7-09c5-4d6a-882a-939c4396fa03") && j.regionProfile == .india && j.homeURL.absoluteString == "https://www.hotstar.com/in")
+        #expect(!ServiceCapabilities.macOS.allows(.jiohotstar))
+        var nav = DestinationState(capabilities: .macOS)
+        #expect(nav.select(.jiohotstar) == false && nav.active == .streamSetu, "every route goes through select, which refuses it")
+        #expect(DestinationState(rawValue: "service.jiohotstar", capabilities: .macOS).active == .streamSetu, "restored state is refused too")
+        // re-enabling is one registry change
+        let back = rebuilt(.jiohotstar, .unverified)
+        #expect(back.listed(on: .macOS).map(\.id).contains(.jiohotstar) && back.definition(for: .jiohotstar)?.presentation == .embedded)
+    }
+
+    @Test func jioHotstarHostRulesAreExactAndPathRestricted() {
+        let rules = reg.definition(for: .jiohotstar)?.urlPolicy.hostRules ?? []
+        #expect(rules.map(\.suffix) == ["jiohotstar.com", "www.hotstar.com", "hotstar.com"] && rules.allSatisfy { $0.role == .site && $0.active })
+        let p = reg.definition(for: .jiohotstar)!.urlPolicy
+        for u in ["https://www.hotstar.com/", "https://www.hotstar.com/us", "https://sub.hotstar.com/in", "https://www.jio.com/", "https://accounts.jio.com/", "https://evil-jiohotstar.com/", "https://jiohotstar.com.evil.test/"] {
+            #expect(p.decide(URL(string: u), isMainFrame: true) != .allowInApp, Comment(rawValue: u))
+        }
+        #expect(p.decide(URL(string: "https://www.hotstar.com/in"), isMainFrame: true) == .allowInApp)
     }
 
     @Test func presentationTable() {
@@ -71,7 +129,7 @@ import Foundation
             return ProviderDefinition(id: d.id, displayName: d.displayName, homeURL: d.homeURL, availability: a, distributionAuthorization: d.distributionAuthorization, termsNote: d.termsNote,
                                       externalLinks: d.externalLinks, platforms: d.platforms, storeIdentity: d.storeIdentity, urlPolicy: d.urlPolicy, capabilities: d.capabilities,
                                       authentication: d.authentication, sessionCookieDomains: d.sessionCookieDomains, zoomDefault: d.zoomDefault, zoomDefaultsKey: d.zoomDefaultsKey,
-                                      regionNote: d.regionNote, releaseNote: d.releaseNote)
+                                      regionNote: d.regionNote, releaseNote: d.releaseNote, userAgentProfile: d.userAgentProfile, pageEnhancements: d.pageEnhancements, regionProfile: d.regionProfile)
         })
     }
 
@@ -110,7 +168,7 @@ import Foundation
     @Test func capabilitiesDeriveFromTheRegistryAndIOSHasNone() {
         #expect(ServiceCapabilities.macOS.externalServices == reg.listed(on: .macOS).map(\.id))
         #expect(ServiceCapabilities.none.externalServices.isEmpty)
-        for id in ProviderID.allCases { #expect(!ServiceCapabilities.none.allows(id)); #expect(ServiceCapabilities.macOS.allows(id)) }
+        for id in ProviderID.allCases { #expect(!ServiceCapabilities.none.allows(id)); #expect(ServiceCapabilities.macOS.allows(id) == (id != .jiohotstar), Comment(rawValue: id.rawValue)) }
         #expect(ServiceCapabilities.macOS.profile(for: "ghost").websiteLoading == .unavailable)
     }
 

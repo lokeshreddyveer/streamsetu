@@ -78,17 +78,37 @@ final class AppState {
 
     @ObservationIgnored nonisolated(unsafe) private var landedObserver: NSObjectProtocol?
     deinit { if let o = landedObserver { NotificationCenter.default.removeObserver(o) } }
-    private var lastLandedBump = Date.distantPast
+    @ObservationIgnored private var landedGate = LandedPublishGate(minInterval: 30)
+    @ObservationIgnored private var landedRetry: Task<Void, Never>?
 
-    /// Artwork the background matcher wrote down shows up: Home and the folder rows reload, at most once in half a minute (never while a title is being matched one at a time).
+    /// Artwork the background matcher wrote down: tiles on screen patch themselves in place (see `MetadataLandedHub`). The lists reload only when a title on screen changed,
+    /// at most once in half a minute, and never while the list is being scrolled (the change waits and is offered again).
     private func watchLandedArtwork() {
         guard landedObserver == nil else { return }
         landedObserver = NotificationCenter.default.addObserver(forName: .titleMetadataLanded, object: nil, queue: .main) { [weak self] n in
-            guard TitleMetadataEvent(n).bulk else { return }
-            MainActor.assumeIsolated {
-                guard let self, Date().timeIntervalSince(self.lastLandedBump) > 30 else { return }
-                self.lastLandedBump = Date(); self.catalogVersion += 1
-            }
+            let e = TitleMetadataEvent(n)
+            guard e.bulk else { return }
+            MainActor.assumeIsolated { self?.landedBatch(e.ids) }
+        }
+    }
+
+    private func landedBatch(_ ids: [String]) {
+        let hub = MetadataLandedHub.shared
+        let up = ProcessInfo.processInfo.systemUptime
+        if landedGate.offer(now: up, changedVisible: hub.hasVisible(anyOf: ids), busy: hub.isScrolling) { catalogVersion += 1 }
+        else if landedGate.pending { scheduleLandedRetry() }
+    }
+
+    private func scheduleLandedRetry() {
+        guard landedRetry == nil else { return }
+        landedRetry = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard let self else { return }
+            self.landedRetry = nil
+            if Task.isCancelled { return }
+            let hub = MetadataLandedHub.shared
+            if self.landedGate.retry(now: ProcessInfo.processInfo.systemUptime, busy: hub.isScrolling) { self.catalogVersion += 1 }
+            else if self.landedGate.pending { self.scheduleLandedRetry() }
         }
     }
 

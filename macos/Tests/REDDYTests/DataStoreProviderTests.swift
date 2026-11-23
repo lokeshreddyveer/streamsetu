@@ -6,7 +6,7 @@ import WebKit
 @Suite("Data store provider") @MainActor struct DataStoreProviderTests {
     @Test func everyServiceHasItsOwnFrozenStoreIdentifier() {
         let ids = ProviderCatalog.all.map(\.storeIdentity.uuid)
-        #expect(ids.count == 10 && Set(ids).count == 10)
+        #expect(ids.count == 11 && Set(ids).count == 11)
         #expect(ProviderCatalog.netflix.storeIdentity.uuid == UUID(uuidString: "afdfb6b8-2671-42a0-bd87-6973dcd90758"))
         #expect(ServiceWebModel.storeIdentifier == ProviderCatalog.netflix.storeIdentity.uuid)
     }

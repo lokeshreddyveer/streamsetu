@@ -4,6 +4,8 @@ Application/AppRouter.swift
 Application/ServiceNavigation.swift
 Services/Streaming/Domain/ProviderID.swift
 Services/Streaming/Domain/ProviderDefinition.swift
+Services/Streaming/Domain/RegionProfile.swift
+Services/Streaming/Domain/PageEnhancement.swift
 Services/Streaming/Domain/CapabilityModel.swift
 Services/Streaming/Domain/CompatibilityResult.swift
 Services/Streaming/Domain/ProviderRegistry.swift

@@ -7,6 +7,11 @@ enum RegistryIssue: Equatable, Sendable {
     case homeURLNotHTTPS(ProviderID)
     case homeHostNotAllowed(ProviderID)
     case noHosts(ProviderID)
+    /// Two services both actively allow the same SITE host (auth-role overlap is allowed: each service has its own web view and store).
+    case sharedSiteHost(ProviderID, ProviderID, String)
+    case invalidRegionProfile(ProviderID)
+    /// A regional-notice host that is not an exact host, overlaps a site rule, or is declared on a policy that is not https on the default port.
+    case invalidRegionNoticeHost(ProviderID)
 }
 
 /// Every service the app knows, as data. Adding, removing or switching off a service is a registry change and nothing else.
@@ -27,13 +32,21 @@ struct ProviderRegistry: Sendable {
     static func validate(_ defs: [ProviderDefinition]) -> [RegistryIssue] {
         var issues: [RegistryIssue] = []
         var ids = Set<ProviderID>(), stores = Set<UUID>(), zooms = Set<String>()
+        var siteOwner: [String: ProviderID] = [:]
         for d in defs {
             if !ids.insert(d.id).inserted { issues.append(.duplicateID(d.id)) }
             if !stores.insert(d.storeIdentity.uuid).inserted { issues.append(.duplicateStoreIdentity(d.id)) }
             if !zooms.insert(d.zoomDefaultsKey).inserted { issues.append(.duplicateZoomKey(d.id)) }
             if d.homeURL.scheme?.lowercased() != "https" { issues.append(.homeURLNotHTTPS(d.id)) }
             if d.urlPolicy.hostRules.filter(\.active).isEmpty { issues.append(.noHosts(d.id)) }
-            if !d.urlPolicy.isAllowedHost(d.homeURL.host) { issues.append(.homeHostNotAllowed(d.id)) }
+            if d.urlPolicy.decide(d.homeURL, isMainFrame: true) != .allowInApp { issues.append(.homeHostNotAllowed(d.id)) }
+            if let r = d.regionProfile, !r.isWellFormed { issues.append(.invalidRegionProfile(d.id)) }
+            let notice = d.regionNoticeHosts
+            if !notice.isEmpty, !(notice.allSatisfy(\.isWellFormed) && !d.urlPolicy.regionNoticeOverlapsSite && d.urlPolicy.inAppSchemes == ["https"] && !d.urlPolicy.allowsAnyPort) { issues.append(.invalidRegionNoticeHost(d.id)) }
+            for rule in d.urlPolicy.hostRules where rule.active && rule.role == .site {
+                let host = rule.suffix.lowercased()
+                if let other = siteOwner[host], other != d.id { issues.append(.sharedSiteHost(other, d.id, host)) } else { siteOwner[host] = d.id }
+            }
         }
         return issues
     }

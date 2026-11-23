@@ -67,6 +67,13 @@ struct ProviderDefinition: Equatable, Sendable, Identifiable {
     let regionNote: RegionNote?
     let releaseNote: String?
     var userAgentProfile: UserAgentProfile = .safari
+    /// Optional page additions this service supports (all off until a person enables and agrees to each). Empty for every service but the one that declares them.
+    var pageEnhancements: Set<PageEnhancement> = []
+    /// A fixed client preference for region and language (nil for every service that declares none). Never sent anywhere and never proof of eligibility.
+    var regionProfile: RegionProfile? = nil
+
+    /// The provider's own regional pages (exact hosts), kept with the address policy that applies them. Empty for every service but one.
+    var regionNoticeHosts: [RegionNoticeHost] { urlPolicy.regionNoticeHosts }
 
     var presentation: ServiceAvailability.Presentation { availability.presentation }
 }

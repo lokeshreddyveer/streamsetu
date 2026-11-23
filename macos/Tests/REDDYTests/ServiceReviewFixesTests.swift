@@ -122,7 +122,7 @@ import AppKit
                 #expect(d.urlPolicy.decide(u, isMainFrame: true, isRedirect: true) == .allowInApp, Comment(rawValue: "\(rule.suffix) by redirect"))
             }
         }
-        #expect(seen == 2)
+        #expect(seen == 2)          // youtu.be, consent.google.com (consent.youtube.com is already a youtube.com host)
         let src = try? String(contentsOf: ServiceSources.root.appendingPathComponent("Services/Streaming/Runtime/ServiceWebDelegates.swift"), encoding: .utf8)
         #expect(src?.contains("Known limit") == true, "the limit of the redirect signal stays written down next to the code")
     }

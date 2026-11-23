@@ -14,6 +14,14 @@ import AppKit
         })
     }
 
+    /// A provider on hold (.registered) never gets a model, a host or a web view, so the factory's embedded-only assertion is unreachable.
+    @Test func aServiceOnHoldNeverGetsAModelOrAWebView() {
+        let r = ServiceHostRegistry()
+        #expect(ProviderCatalog.jiohotstar.presentation == .hidden)
+        #expect(r.model(for: .jiohotstar) == nil && r.host(for: .jiohotstar) == nil)
+        #expect(r.createdIDs.isEmpty && r.liveIDs.isEmpty)
+    }
+
     @Test func nothingIsCreatedUntilAServiceIsOpened() async throws {
         let server = try ServiceFixtureServer(); try await server.start(); defer { server.stop() }
         var made = 0
@@ -171,6 +179,6 @@ private extension ProviderDefinition {
         ProviderDefinition(id: id, displayName: displayName, homeURL: homeURL, availability: a, distributionAuthorization: distributionAuthorization, termsNote: termsNote,
                            externalLinks: externalLinks, platforms: platforms, storeIdentity: storeIdentity, urlPolicy: urlPolicy, capabilities: capabilities,
                            authentication: authentication, sessionCookieDomains: sessionCookieDomains, zoomDefault: zoomDefault, zoomDefaultsKey: zoomDefaultsKey,
-                           regionNote: regionNote, releaseNote: releaseNote)
+                           regionNote: regionNote, releaseNote: releaseNote, userAgentProfile: userAgentProfile, pageEnhancements: pageEnhancements, regionProfile: regionProfile)
     }
 }

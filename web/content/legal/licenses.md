@@ -29,6 +29,8 @@ The source code of the LGPL and GPL components is available from the project sit
 - **Wikipedia** text is used under CC BY-SA, with a link to the article.
 - **Apple iTunes Search API** and **iCloud**, used under Apple's terms.
 - **YouTube** embedded player, used under YouTube's terms.
+- **SponsorBlock** (Mac app, optional, off by default). The sponsor-segment times come from SponsorBlock, by Ajay Ramachandran and contributors (https://sponsor.ajay.app), whose database and API are licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0, https://creativecommons.org/licenses/by-nc-sa/4.0/). StreamSetu stays free of charge and does not sell this data; if that ever changes, permission must first be asked from the SponsorBlock author. The licence applies to the data, not to StreamSetu's own code. The data is read only while you watch, is not changed, and is kept in memory only.
+- **Service names and logos** are trademarks of their owners, shown only to identify the service.
 
 ## Website
 

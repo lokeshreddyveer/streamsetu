@@ -4,7 +4,7 @@ import SwiftUI
 struct ServiceCreditsView: View {
     /// Credits drawn elsewhere on the same screen (TMDB has its logo and notice above).
     var skipping: Set<String> = []
-    /// Sparkle updates the Mac app only: the iPhone and iPad list does not credit it.
+    /// Sparkle updates, and the YouTube sponsor skipping, are Mac only: the iPhone and iPad list does not credit them.
     private static var phone: Bool {
         #if os(iOS)
         return true
@@ -14,7 +14,7 @@ struct ServiceCreditsView: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ForEach(ServiceCredits.all.filter { !skipping.contains($0.id) && !(Self.phone && $0.id == "sparkle") }) { c in
+            ForEach(ServiceCredits.all.filter { !skipping.contains($0.id) && !(Self.phone && ($0.id == "sparkle" || $0.id == "sponsorblock")) }) { c in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(c.text.loc).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     Link(c.linkTitle, destination: c.url).font(.caption)

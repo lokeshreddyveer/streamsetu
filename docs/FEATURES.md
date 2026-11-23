@@ -120,6 +120,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Suggestions under a movie or series by franchise, director, genre, cast and story, each with its reason | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **Assistant and your own services** | | | | | |
 | Streaming services inside the app: a Services menu (can be pinned to the top bar) that opens each provider's own site in the app; sign-in and data are the provider's, and you can clear a service's data (new, not yet verified; Mac only) | ✓ | – | – | – | – |
+| Optional page options for one streaming service (Mac only): skipping its video ads and skipping community-marked sponsor segments, each off by default, each asking first with the risks explained, shown once when the service is first opened and any time in Settings; never in a kids profile or while locked | ✓ | – | – | – | – |
 | Setu, an assistant in a chat bubble: finds something to watch, answers about your screen, settings and playback problems, and offers actions you tap to confirm (new; on iPhone and iPad it opens as a bottom sheet or popover; hidden in kids mode) | ✓ | ✓ | – | – | – |
 | Bring your own AI: Apple Intelligence, Gemini, OpenRouter, Claude, OpenAI, Groq, NVIDIA, Ollama Cloud, or Ollama on your network, with each one's price and free limit shown | ✓ | ✓ | ✓ | ✓ without Apple Intelligence | ✓ without Apple Intelligence |
 | Ask AI from the search box when a request finds nothing | ✓ | ✓ | ✓ | ✓ | ✓ |

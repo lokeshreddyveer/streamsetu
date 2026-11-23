@@ -68,6 +68,11 @@ final class ServiceFixtureServer: @unchecked Sendable {
     func url(_ path: String) -> URL { URL(string: "\(isTLS ? "https" : "http")://127.0.0.1:\(port)\(path)")! }
     /// The same server under a different host name, which the policy does not allow in the app.
     func otherHost(_ path: String) -> String { "http://localhost:\(port)\(path)" }
+    /// The fixture's stand-in for the provider's regional page: the loopback name "localhost" (the site itself is 127.0.0.1), so the two hosts differ
+    /// deterministically while one listener serves both. A test that expects the policy to cancel it asserts the page's hit count stays 0.
+    func regionalHost(_ path: String) -> String { "http://localhost:\(port)\(path)" }
+    /// A host no listener serves and no policy allows ("unexpected external"): it only ever appears in an address the policy cancels.
+    func unexpectedHost(_ path: String) -> String { "http://unexpected.test:\(port)\(path)" }
 
     private func serve(_ c: NWConnection) {
         c.start(queue: queue)
@@ -84,6 +89,11 @@ final class ServiceFixtureServer: @unchecked Sendable {
         read()
     }
 
+    private func hitCount(_ route: String) -> Int { lock.lock(); defer { lock.unlock() }; return counts[route] ?? 0 }
+    private func query(_ path: String, _ name: String) -> String? {
+        URLComponents(string: "http://x" + path)?.queryItems?.first { $0.name == name }?.value
+    }
+
     private func html(_ body: String, title: String = "fixture") -> Data { Data("<!doctype html><html><head><title>\(title)</title></head><body>\(body)</body></html>".utf8) }
 
     private func respond(_ request: String, _ c: NWConnection) {
@@ -97,6 +107,39 @@ final class ServiceFixtureServer: @unchecked Sendable {
         case "/home": body = html("<p>home</p>", title: "home")
         case "/redirect": status = 302; headers["Location"] = "/home"; body = Data()
         case "/redirect-out": status = 302; headers["Location"] = otherHost("/elsewhere"); body = Data()
+        // Path-aware region fixtures. The site is 127.0.0.1 and its own pages live under the whole segment /in; "/us", "/uk" are the per-country pages of
+        // the same host. A cancelled hop means the next requests are never made (a test asserts hits stay 0).
+        case "/": switch query(path, "to") {
+            case "in": status = 302; headers["Location"] = "/in/home"; body = Data()
+            case "us": status = 302; headers["Location"] = "/us"; body = Data()
+            case "uk": status = 302; headers["Location"] = "/uk/home"; body = Data()
+            default: body = html("<p>root</p>", title: "root")
+            }
+        case "/in/chain-a": status = 301; headers["Location"] = "/in/chain-b"; body = Data()
+        case "/in/chain-b": status = 302; headers["Location"] = "/in/home"; body = Data()
+        case "/in/to-root-in": status = 302; headers["Location"] = "/?to=in"; body = Data()
+        case "/in/to-root-us": status = 302; headers["Location"] = "/?to=us"; body = Data()
+        case "/in/to-root-uk": status = 302; headers["Location"] = "/?to=uk"; body = Data()
+        case "/in/to-root-stable": status = 302; headers["Location"] = "/"; body = Data()
+        case "/in/to-us": status = 302; headers["Location"] = "/us"; body = Data()
+        case "/in/to-us-chain": status = 301; headers["Location"] = "/us"; body = Data()                    // the real chain continues to /us/next, never requested
+        case "/us": status = 302; headers["Location"] = "/us/next"; body = Data()
+        case "/in/to-india": status = 302; headers["Location"] = "/india"; body = Data()
+        case "/in/to-inevil": status = 302; headers["Location"] = "/in.evil"; body = Data()
+        case "/in/to-encoded": status = 302; headers["Location"] = "/%69n"; body = Data()
+        case "/in/to-encoded-us": status = 302; headers["Location"] = "/%75s"; body = Data()
+        case "/in/to-traversal": status = 302; headers["Location"] = "/in/../us"; body = Data()
+        case "/in/to-doubleslash": status = 302; headers["Location"] = "http://127.0.0.1:\(port)//in"; body = Data()          // an empty first segment on the service's own host (a bare "//in" would be a host)
+        case "/in/to-other-path": status = 302; headers["Location"] = "/sports/shows"; body = Data()
+        case "/in/to-region-once": if hitCount(route) == 1 { status = 302; headers["Location"] = "/us" } else { status = 302; headers["Location"] = "/in/home" }; body = Data()
+        case "/in/to-unexpected": status = 302; headers["Location"] = unexpectedHost("/x"); body = Data()
+        case "/in/to-lookalike":
+            let h = query(path, "h") ?? "evil.test"
+            status = 302; headers["Location"] = "http://\(h):\(port)/us"; body = Data()
+        case "/in/idle-to-us": body = html("<script>setTimeout(function(){location.href='/us'},600)</script><p>idle</p>", title: "idle-to-us")
+        case "/in/idle-link-us": body = html("<a id=\"r\" href=\"/us\">r</a>", title: "idle-link-us")
+        case "/in/idle-link-other": body = html("<a id=\"r\" href=\"/sports/shows\">r</a>", title: "idle-link-other")
+        case "/in/500": status = 500; body = html("broken", title: "500")
         case "/404": status = 404; body = html("not found", title: "404")
         case "/500": status = 500; body = html("broken", title: "500")
         case "/slow": delay = 1.5; body = html("slow", title: "slow")

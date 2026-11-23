@@ -3,6 +3,9 @@ import Foundation
 /// Why the page could not be shown, in the words of the person using the app (see the failure copy in the host view).
 enum ServiceFailure: Equatable, Sendable {
     case offline, dnsFailure, tlsFailure, timedOut, siteUnavailable(status: Int?), other
+    /// The provider's own server redirected this connection to its regional page (the host, and the two-letter country of its path when that path was seen). Not a network error and not StreamSetu's own
+    /// address policy (that is the "Link blocked" notice).
+    case regionRestricted(host: String, label: String?)
 
     /// From a failed load's error domain and code. nil means "not a failure" (the load was cancelled on purpose).
     static func from(domain: String, code: Int) -> ServiceFailure? {

@@ -31,10 +31,11 @@
       "defaultOutcomes": {},
       "externalLinks": "confirmThenOpen",
       "id": "netflix",
-      "presentation": "embedded"
+      "presentation": "embedded",
+      "recordedOutcomes": {}
     },
     {
-      "availability": "unverified",
+      "availability": "available",
       "checks": [
         "siteLoads",
         "signInPageRenders",
@@ -52,10 +53,16 @@
       "defaultOutcomes": {},
       "externalLinks": "blockWithNotice",
       "id": "primevideo",
-      "presentation": "embedded"
+      "presentation": "embedded",
+      "recordedOutcomes": {
+        "signInCompletes": "passed",
+        "signInPageRenders": "passed",
+        "siteLoads": "passed",
+        "video": "passed"
+      }
     },
     {
-      "availability": "unverified",
+      "availability": "available",
       "checks": [
         "siteLoads",
         "signInPageRenders",
@@ -73,10 +80,15 @@
       "defaultOutcomes": {},
       "externalLinks": "blockWithNotice",
       "id": "disneyplus",
-      "presentation": "embedded"
+      "presentation": "embedded",
+      "recordedOutcomes": {
+        "signInCompletes": "passed",
+        "siteLoads": "passed",
+        "video": "passed"
+      }
     },
     {
-      "availability": "unverified",
+      "availability": "available",
       "checks": [
         "siteLoads",
         "signInPageRenders",
@@ -94,10 +106,15 @@
       "defaultOutcomes": {},
       "externalLinks": "blockWithNotice",
       "id": "hulu",
-      "presentation": "embedded"
+      "presentation": "embedded",
+      "recordedOutcomes": {
+        "signInCompletes": "passed",
+        "siteLoads": "passed",
+        "video": "passed"
+      }
     },
     {
-      "availability": "unverified",
+      "availability": "available",
       "checks": [
         "siteLoads",
         "signInPageRenders",
@@ -115,10 +132,16 @@
       "defaultOutcomes": {},
       "externalLinks": "blockWithNotice",
       "id": "hbomax",
-      "presentation": "embedded"
+      "presentation": "embedded",
+      "recordedOutcomes": {
+        "signInCompletes": "passed",
+        "signInPageRenders": "passed",
+        "siteLoads": "passed",
+        "video": "passed"
+      }
     },
     {
-      "availability": "unverified",
+      "availability": "available",
       "checks": [
         "siteLoads",
         "signInPageRenders",
@@ -136,10 +159,15 @@
       "defaultOutcomes": {},
       "externalLinks": "blockWithNotice",
       "id": "peacock",
-      "presentation": "embedded"
+      "presentation": "embedded",
+      "recordedOutcomes": {
+        "signInCompletes": "passed",
+        "siteLoads": "passed",
+        "video": "passed"
+      }
     },
     {
-      "availability": "unverified",
+      "availability": "available",
       "checks": [
         "siteLoads",
         "signInPageRenders",
@@ -157,10 +185,16 @@
       "defaultOutcomes": {},
       "externalLinks": "blockWithNotice",
       "id": "paramountplus",
-      "presentation": "embedded"
+      "presentation": "embedded",
+      "recordedOutcomes": {
+        "signInCompletes": "passed",
+        "signInPageRenders": "passed",
+        "siteLoads": "passed",
+        "video": "passed"
+      }
     },
     {
-      "availability": "unverified",
+      "availability": "available",
       "checks": [
         "siteLoads",
         "signInPageRenders",
@@ -178,10 +212,16 @@
       "defaultOutcomes": {},
       "externalLinks": "blockWithNotice",
       "id": "appletv",
-      "presentation": "embedded"
+      "presentation": "embedded",
+      "recordedOutcomes": {
+        "signInCompletes": "passed",
+        "signInPageRenders": "passed",
+        "siteLoads": "passed",
+        "video": "passed"
+      }
     },
     {
-      "availability": "unverified",
+      "availability": "available",
       "checks": [
         "siteLoads",
         "signInPageRenders",
@@ -201,10 +241,15 @@
       },
       "externalLinks": "blockWithNotice",
       "id": "youtube",
-      "presentation": "embedded"
+      "presentation": "embedded",
+      "recordedOutcomes": {
+        "signInCompletes": "notApplicable",
+        "siteLoads": "passed",
+        "video": "passed"
+      }
     },
     {
-      "availability": "unverified",
+      "availability": "available",
       "checks": [
         "siteLoads",
         "signInPageRenders",
@@ -222,7 +267,22 @@
       "defaultOutcomes": {},
       "externalLinks": "blockWithNotice",
       "id": "crunchyroll",
-      "presentation": "embedded"
+      "presentation": "embedded",
+      "recordedOutcomes": {
+        "signInCompletes": "passed",
+        "signInPageRenders": "passed",
+        "siteLoads": "passed",
+        "video": "passed"
+      }
+    },
+    {
+      "availability": "registered",
+      "checks": [],
+      "defaultOutcomes": {},
+      "externalLinks": "blockWithNotice",
+      "id": "jiohotstar",
+      "presentation": "hidden",
+      "recordedOutcomes": {}
     }
   ]
 }

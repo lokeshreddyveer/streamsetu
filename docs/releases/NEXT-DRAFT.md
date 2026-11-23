@@ -16,10 +16,14 @@ Working notes for the release after 2026.11.21. Nothing here is shipped. Rename 
 
 ## Mac
 - **Streaming services inside the app:** a Services menu (can be pinned to the top bar) opens a provider's own site in the app, with a way to clear each service's data. Mac only. **Not verified:** unit tests cover the logic, but the services themselves still need the owner to try them on his Mac. Release is on hold.
+- **Services panel and top bar:** each service now shows its own icon in a themed panel; Settings has a card per service with Clear Data. Verified by the owner by hand on his Mac for all services except the one on hold. Release is on hold.
+- **Optional page options for one service (off by default):** skipping its video ads and community-marked sponsor segments, asked first with the risks explained, shown once on first open and any time in Settings. Checked by tests; hands-on check by the owner still pending.
+- **A further service is on hold:** its code is in place but hidden; it is not part of this release.
+- **Diagnostics for service load failures** and smoother scrolling. Checked by tests (scroll speed not measured on a device).
 - **Top bar and search fixes** for the service buttons and navigation. Tests pass; hands-on check still needed.
 
 ## Verified by tests, still needs a hands-on check
-- Verified by tests: Mac full suite (1898), iPhone and iPad suite (33, 1 skipped), Android (1352), strict Atlas check, shared check scripts (5/5), secret scan, host-parity check.
+- Verified by tests: Mac full suite (2021, run twice), iPhone and iPad suite (33, 1 skipped), Android (1361, plus lint and R8), strict Atlas check, shared check scripts (5/5), secret scan, host-parity check.
 - Still needs the owner's hands: streaming services on the Mac, title pages, genre shelves, matching quality on a real library, and the Setu assistant on iPhone and iPad.
 
 ## iPhone and iPad

@@ -17,6 +17,7 @@ struct ServiceFailureScreen: Equatable {
         default: return nil
         }
         serviceName = definition.displayName
+        if case .failed(.regionRestricted) = phase { actions = [.retry, .returnToStreamSetu]; return }          // never a browser fallback: the provider decided
         switch definition.externalLinks {
         case .confirmThenOpen: actions = [.retry, .openInDefaultBrowser]
         case .blockWithNotice: actions = [.retry, .returnToStreamSetu]

@@ -4,11 +4,11 @@ import Observation
 
 extension ProviderDefinition {
     /// The same service with another address policy and start page (local fixtures; the UI-test override).
-    func replacing(urlPolicy: ProviderURLPolicy, homeURL: URL) -> ProviderDefinition {
-        ProviderDefinition(id: id, displayName: displayName, homeURL: homeURL, availability: availability, distributionAuthorization: distributionAuthorization,
+    func replacing(urlPolicy: ProviderURLPolicy, homeURL: URL, availability newAvailability: ServiceAvailability? = nil) -> ProviderDefinition {
+        ProviderDefinition(id: id, displayName: displayName, homeURL: homeURL, availability: newAvailability ?? availability, distributionAuthorization: distributionAuthorization,
                            termsNote: termsNote, externalLinks: externalLinks, platforms: platforms, storeIdentity: storeIdentity, urlPolicy: urlPolicy,
                            capabilities: capabilities, authentication: authentication, sessionCookieDomains: sessionCookieDomains, zoomDefault: zoomDefault,
-                           zoomDefaultsKey: zoomDefaultsKey, regionNote: regionNote, releaseNote: releaseNote, userAgentProfile: userAgentProfile)
+                           zoomDefaultsKey: zoomDefaultsKey, regionNote: regionNote, releaseNote: releaseNote, userAgentProfile: userAgentProfile, pageEnhancements: pageEnhancements, regionProfile: regionProfile)
     }
 }
 
@@ -66,6 +66,8 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
     @ObservationIgnored private let slowAfter: Duration
     @ObservationIgnored private let recovery: RecoveryPolicy
     @ObservationIgnored private var delegates: ServiceWebDelegates?
+    /// Where blocked hosts, redirect hops and failures are recorded (in memory). Set before the first web view is made (tests use their own).
+    @ObservationIgnored var diagnostics: ServiceDiagnostics = .shared
     /// True while `clearServiceData` runs: no web view is made on the store until it has finished.
     @ObservationIgnored private var isClearing = false
     @ObservationIgnored private var releaseTask: Task<Void, Never>?
@@ -126,7 +128,7 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
     // MARK: web view
 
     @discardableResult private func ensureWebView() -> ServiceWebView {
-        let d = delegates ?? ServiceWebDelegates(events: self)
+        let d = delegates ?? ServiceWebDelegates(events: self, diagnostics: diagnostics)
         delegates = d
         let (v, isNew) = lifecycle.ensureWebView(delegates: d, zoom: zoom.value, menuActions: { [weak self] in self?.menuActions() ?? ServiceMenuActions(canGoBack: false, canGoForward: false, back: {}, forward: {}, reload: {}) })
         if isNew { state.webViewGeneration += 1; Task { await refreshSessionFlag() } }
@@ -207,6 +209,10 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
         state.pendingURL = url; statusFailure = nil; state.notice = nil; state.blockedLinkHost = nil
         v.load(URLRequest(url: url))
     }
+
+    /// The person changed a page addition after this page loaded: reloading applies it (or removes it).
+    var enhancementsStale: Bool { _ = EnhancementRuntime.shared.store.revision; return lifecycle.enhancementsStale }
+    func applyEnhancementChanges() { lifecycle.refreshEnhancements(); reload() }
 
     func goBack() { webView?.goBack() }
     func goForward() { webView?.goForward() }
@@ -337,7 +343,15 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
         state.phase = statusFailure.map { .failed($0) } ?? .ready
     }
 
+    /// The provider's own server sent the load to its regional page: a state of its own (not a network failure, not the app's address policy).
+    /// The cancelled load reports a policy cancellation right after; `loadFailed` leaves this state in place.
+    func regionRestricted(host: String, label: String?) {
+        endLoading(); statusFailure = nil; state.blockedLinkHost = nil; state.pendingExternal = nil; state.notice = nil
+        state.phase = .failed(.regionRestricted(host: host, label: label))
+    }
+
     func loadFailed(_ error: Error) {
+        if case .failed(.regionRestricted) = state.phase, ServiceFailure.from(domain: (error as NSError).domain, code: (error as NSError).code) == nil { return }
         endLoading()
         let e = error as NSError
         guard let failure = ServiceFailure.from(domain: e.domain, code: e.code) else {

@@ -30,6 +30,8 @@ struct ServiceHostView: View {
     var onReturn: () -> Void = {}
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var bannerDismissed = false
+    @State private var showPrompt = false
+    @State private var toggles = EnhancementToggleModel()
 
     private var name: String { model.definition.displayName }
     private var key: String { model.definition.id.rawValue }
@@ -41,10 +43,24 @@ struct ServiceHostView: View {
     var body: some View {
         VStack(spacing: 0) {
             if showsSlowBanner { slowBanner.transition(.opacity) }
+            if model.enhancementsStale { reloadBanner.transition(.opacity) }
             page
         }
         .onChange(of: model.phase) { _, p in if p != .loading { bannerDismissed = false } }
         .animation(reduceMotion ? nil : AnimationTokens.standard, value: showsSlowBanner)
+    }
+
+    /// A page addition was turned on or off after this page loaded: reloading applies it. Never reloads by itself.
+    private var reloadBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.clockwise")
+            Text(Localized.string("Reload %@ to apply your page options.", name)).font(Typography.caption)
+            Spacer(minLength: 8)
+            Button("Reload".loc) { model.applyEnhancementChanges() }.buttonStyle(.link).atlas("control.enhancement.reload")
+        }
+        .padding(.horizontal, 14).padding(.vertical, 6).frame(maxWidth: .infinity)
+        .background(ColorTokens.elevated)
+        .accessibilityElement(children: .contain).accessibilityIdentifier("\(key).reloadBanner")
     }
 
     private var slowBanner: some View {
@@ -69,6 +85,19 @@ struct ServiceHostView: View {
             state
         }
         .overlay(alignment: .top) { notices }
+        .overlay(alignment: .top) {
+            if showPrompt {
+                EnhancementPromptCard(enhancements: PageEnhancement.allCases.filter(model.definition.pageEnhancements.contains), model: toggles) { showPrompt = false }
+                    .padding(.top, 12).transition(reduceMotion ? .opacity : .scale(scale: 0.97, anchor: .top).combined(with: .opacity))
+            }
+        }
+        .onAppear {
+            // Once per service that declares page additions: recorded when shown, so it never comes back, whatever the answer.
+            if !showPrompt, EnhancementRuntime.shared.shouldPrompt(for: model.definition) {
+                EnhancementRuntime.shared.store.recordPromptAnswered(for: model.definition.id)
+                withAnimation(reduceMotion ? AnimationTokens.quick : AnimationTokens.spring) { showPrompt = true }
+            }
+        }
         .animation(reduceMotion ? nil : AnimationTokens.standard, value: model.phase)
         .animation(reduceMotion ? nil : AnimationTokens.standard, value: model.notice)
         .animation(reduceMotion ? nil : AnimationTokens.standard, value: model.blockedLinkHost)
@@ -96,7 +125,12 @@ struct ServiceHostView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity).background(ColorTokens.contentBackground).transition(.opacity)
             .accessibilityElement(children: .contain).accessibilityIdentifier("\(key).loading")
         case .failed(let failure):
-            if let screen = model.failureScreen { card(ServiceFailureCopy.text(for: failure, name: name, offersBrowser: confirmsLinks), actions: screen.actions, id: "\(key).error") }
+            if let screen = model.failureScreen {
+                if case .regionRestricted = failure {
+                    card(ServiceFailureCopy.text(for: failure, name: name, offersBrowser: false, officialSite: ServiceFailureCopy.officialSite(model.definition.homeURL)), actions: screen.actions, id: "\(key).regionRestricted",
+                         details: ServiceFailureCopy.regionSeparation(name: name, profile: model.definition.regionProfile))
+                } else { card(ServiceFailureCopy.text(for: failure, name: name, offersBrowser: confirmsLinks), actions: screen.actions, id: "\(key).error") }
+            }
         case .terminated:
             if let screen = model.failureScreen { card(ServiceFailureCopy.terminated(name: name), actions: screen.actions, id: "\(key).terminated") }
         default:
@@ -104,11 +138,16 @@ struct ServiceHostView: View {
         }
     }
 
-    private func card(_ c: (symbol: String, title: String, message: String), actions: [ServiceFailureScreen.Action], id: String) -> some View {
+    private func card(_ c: (symbol: String, title: String, message: String), actions: [ServiceFailureScreen.Action], id: String, details: [String] = []) -> some View {
         VStack(spacing: Spacing.lg) {
             Image(systemName: c.symbol).font(.system(size: 38)).foregroundStyle(ColorTokens.textSecondary)
             Text(c.title.loc).font(Typography.title)
             Text(c.message).font(Typography.body).foregroundStyle(ColorTokens.textSecondary).frame(maxWidth: 460).multilineTextAlignment(.center)
+            if !details.isEmpty {
+                VStack(alignment: .leading, spacing: 4) { ForEach(details, id: \.self) { Text(verbatim: $0) } }
+                    .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).frame(maxWidth: 460, alignment: .leading)
+                    .accessibilityElement(children: .combine).accessibilityIdentifier("\(key).regionDetails")
+            }
             HStack {
                 ForEach(actions, id: \.self) { action in
                     switch action {

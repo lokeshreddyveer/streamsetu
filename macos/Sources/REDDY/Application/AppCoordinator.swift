@@ -30,6 +30,7 @@ final class AppCoordinator {
             let c = try AppContainer(openedDatabase: opened)
             container = c
             services.gate = { [weak c] in c?.parental.kidsMode == true || c?.appLock.isLocked == true }
+            EnhancementRuntime.shared.isRestricted = { [weak c] in c == nil || c?.parental.kidsMode == true || c?.appLock.isLocked == true }          // page options never run for a kids profile or while locked
             switch c.settings.sidebarLaunch {
             case .expanded: router.sidebarCollapsed = false
             case .collapsed: router.sidebarCollapsed = true
