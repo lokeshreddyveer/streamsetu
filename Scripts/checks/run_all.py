@@ -6,7 +6,7 @@
 A check is skipped (cached result shown, marked 'cached') when none of its input files changed since the last run: content hashes come from
 a stamp file (Scripts/checks/.stamp.json, git-ignored) that remembers each file's (mtime, size, sha1), so a warm run only stats files.
 Exit 0 = every check passes (warnings allowed), 1 = a check failed. Standard library only; prints no secrets."""
-import importlib, json, os, sys, time, inspect
+import importlib, json, os, sys, time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -31,7 +31,7 @@ def main(argv):
     only = set(argv[argv.index("--only") + 1].split(",")) if "--only" in argv else None
     try: stamp = json.loads(STAMP.read_text()) if use_cache else {}
     except (OSError, ValueError): stamp = {}
-    stamp.setdefault("files", {}); stamp.setdefault("checks", {}); stamp.setdefault("state", {})
+    stamp.setdefault("files", {}); stamp.setdefault("checks", {})
     ctx = common.Ctx(stat_cache=stamp["files"])
     mods = [m for m in load_checks() if not only or m.NAME in only]
     t_list = time.time() - t0
@@ -43,7 +43,7 @@ def main(argv):
         if use_cache and old and old["key"] == key:
             return mod, common.Result.from_json(old["result"]), time.time() - t, True, key
         try:
-            res = mod.run(ctx, stamp["state"]) if "state" in inspect.signature(mod.run).parameters else mod.run(ctx)
+            res = mod.run(ctx)
         except Exception as e:  # a crashing check is a failing check
             res = common.Result(); res.err("check crashed: %s: %s" % (type(e).__name__, e))
         return mod, res, time.time() - t, False, key

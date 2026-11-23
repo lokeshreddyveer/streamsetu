@@ -40,6 +40,7 @@ STEPS = {
     "blockedLinkNotice": "Click a link that leaves the service. Nothing opens in another app; a native notice says the link was blocked. There is no browser button anywhere for this service.",
     "defaultBrowserActionUnchanged": "The existing Open in Default Browser actions and the off-site link confirmation behave exactly as before.",
 }
+CHECKED_ON = "2026-11-22"      # the day of the owner-entered results recorded in the catalog
 DISABLED_STEP = "Select the service. A native Integration Unavailable screen names it and offers only Return to StreamSetu; Return works."
 PRESENTATION = {"available": "embedded", "unverified": "embedded", "disabled": "integrationUnavailable", "registered": "hidden"}
 
@@ -68,6 +69,17 @@ def arg(body, name, default=None):
     return v[1:-1] if v.startswith('"') else v[1:]
 
 
+def parse_owner_results(body):
+    """Owner-entered outcomes recorded in the catalog: owner("build", [passed...], failed: [...], note: "...")."""
+    m = re.search(r'\bowner\("([^"]*)",\s*\[([^\]]*)\](?:,\s*failed:\s*\[([^\]]*)\])?(?:,\s*notApplicable:\s*\[([^\]]*)\])?(?:,\s*note:\s*"([^"]*)")?', body)
+    if not m: return None
+    keys = lambda g: re.findall(r"\.(\w+)", g or "")
+    out = {k: "passed" for k in keys(m.group(2))}
+    out.update({k: "failed" for k in keys(m.group(3))})
+    out.update({k: "notApplicable" for k in keys(m.group(4))})
+    return {"build": m.group(1), "note": m.group(5) or "owner-verified", "outcomes": out}
+
+
 def parse_catalog(text):
     """Services in catalog order with the fields the checklist needs."""
     order = re.search(r"static let all: \[ProviderDefinition\] = \[([^\]]*)\]", text)
@@ -79,7 +91,7 @@ def parse_catalog(text):
         if not m: raise ValueError("no definition for " + n)
         body = balanced(text, m.end() - 1)
         if m.group(1) == "unverified":
-            d = dict(id=arg(body, "id"), name=arg(body, "name"), availability="unverified", external="blockWithNotice",
+            d = dict(id=arg(body, "id"), name=arg(body, "name"), availability=arg(body, "availability", "unverified"), external="blockWithNotice",
                      terms=arg(body, "terms"), auth=arg(body, "auth", "manualVerificationRequired"), mode=arg(body, "mode", "signInInApp"),
                      loading="enabledForTesting", playback="manualVerificationRequired", region=arg(body, "region"))
         else:
@@ -88,6 +100,7 @@ def parse_catalog(text):
                      terms=arg(body, "termsNote"), auth=caps[1] if len(caps) > 1 else "manualVerificationRequired", mode=arg(body, "authentication", "signInInApp"),
                      loading=caps[0] if caps else "enabledForTesting", playback=caps[2] if len(caps) > 2 else "manualVerificationRequired", region=arg(body, "regionNote"))
         d["distribution"] = "unresolved"
+        d["recorded"] = parse_owner_results(body)
         out.append(d)
     return out
 
@@ -104,7 +117,8 @@ def fixture(services):
     rows = []
     for s in services:
         rows.append({"id": s["id"], "availability": s["availability"], "externalLinks": s["external"], "presentation": PRESENTATION[s["availability"]],
-                     "checks": checks_for(s), "defaultOutcomes": ({"signInCompletes": "notApplicable"} if s["mode"] == "signedOutOnly" else {})})
+                     "checks": checks_for(s), "defaultOutcomes": ({"signInCompletes": "notApplicable"} if s["mode"] == "signedOutOnly" else {}),
+                     "recordedOutcomes": (s["recorded"]["outcomes"] if s["recorded"] else {})})
     return {"checkKeys": BASE_CHECKS, "services": rows}
 
 
@@ -131,10 +145,12 @@ def report_md(services):
               "- availability: %s" % s["availability"], "- distributionAuthorization: %s (a recorded status only; nothing depends on it)" % s["distribution"],
               "- termsNote: %s" % (s["terms"] or "none"), "- externalLinks: %s" % s["external"], "- presentation: %s" % PRESENTATION[s["availability"]],
               "- websiteLoading: %s" % s["loading"], "- authentication: %s (%s)" % (s["auth"], s["mode"]), "- protectedPlayback: %s" % s["playback"], "- distribution: unverified",
-              "- build: ", "- checked on: ", ""]
+              "- build: %s" % (s["recorded"]["build"] if s["recorded"] else ""), "- checked on: %s" % (CHECKED_ON if s["recorded"] else ""), ""]
+        rec = s["recorded"]["outcomes"] if s["recorded"] else {}
         for k in checks_for(s):
             default = "notApplicable" if (k == "signInCompletes" and s["mode"] == "signedOutOnly") else "notChecked"
-            L.append("  - %s: %s | date: | note:" % (k, default))
+            if k in rec: L.append("  - %s: %s | date: %s | note: %s" % (k, rec[k], CHECKED_ON, s["recorded"]["note"]))
+            else: L.append("  - %s: %s | date: | note:" % (k, default))
         L.append("")
     return "\n".join(L)
 

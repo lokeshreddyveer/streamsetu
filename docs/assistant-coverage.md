@@ -1,3 +1,5 @@
+<!-- atlas-inputs-sha256: fe25f7b17b4e16851bf5654fa4a0d105cd6f9dda9a2b521d339f128e9e6c873a -->
+<!-- coverage-body-sha256: 301327745fa4cceee51c6613fdad9d1e75470c6ef3b565fd77e53d4150411077 -->
 # Assistant coverage
 
 Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to rewrite it). Everything Setu can answer about the app is one entry in `macos/Sources/REDDY/Atlas`; this page lists them all. *Reviewed* means the wording was checked against the code by a person or in a test; the rest was written from the code and has not had a second look. Setu answers from these entries with no language model.
@@ -8,7 +10,7 @@ Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to re
 |---|---|---|---|---|---|
 | Screens | 121 | 118 | 78 | 45 | 44 |
 | Settings pages | 24 | 24 | 8 | 18 | 18 |
-| Controls and settings groups | 394 | 368 | 190 | 222 | 222 |
+| Controls and settings groups | 412 | 368 | 208 | 222 | 222 |
 | Settings | 109 | 106 | 101 | 98 | 99 |
 | Menu commands | 40 | 40 | 40 | 1 | 1 |
 | Keyboard shortcuts | 31 | 31 | 28 | 0 | 3 |
@@ -18,7 +20,7 @@ Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to re
 | How-tos | 65 | 65 | 64 | 61 | 62 |
 | Troubleshooting | 23 | 23 | 23 | 21 | 21 |
 | About Setu and what is new | 17 | 17 | 14 | 16 | 16 |
-| **All** | **909** | **877** | 595 | 540 | 540 |
+| **All** | **927** | **877** | 613 | 540 | 540 |
 
 Entries Setu explains but never changes (app lock, proxy, parental controls and similar): 49.
 
@@ -196,6 +198,14 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.commandCenter.restoreDefaults | Restore provider defaults | Channel Manager > Channels | explained only | Mac | yes |
 | control.commandCenter.selectAll | Select all channels | Channel Manager > Channels | explained only | Mac | yes |
 | control.commandCenter.tabs | Channels or Folders view | Channel Manager | explained only | Mac | yes |
+| control.enhancement.consentCancel | Cancel (page option) | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.enhancement.consentConfirm | Turn On (page option) | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.enhancement.promptAdSkip | Skip ads (first-open card) | Services | explained only | Mac | no |
+| control.enhancement.promptDone | Done (page options) | Services | explained only | Mac | no |
+| control.enhancement.promptNotNow | Not now (page options) | Services | explained only | Mac | no |
+| control.enhancement.promptSetUp | Set up page options | Services | explained only | Mac | no |
+| control.enhancement.promptSponsorSkip | Skip sponsor segments (first-open card) | Services | explained only | Mac | no |
+| control.enhancement.reload | Reload to apply page options | Services | explained only | Mac | no |
 | control.featured.arrow | Featured banner arrows | Movies > Featured banner | explained only | Mac | yes |
 | control.featured.dot | Featured banner dots | Movies > Featured banner | explained only | Mac | yes |
 | control.featured.moreInfo | More info on a featured title | Movies > Featured banner | explained only | Mac | yes |
@@ -441,6 +451,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.multiView.tileRetry | Retry or change a tile's channel | Multi-View | explained only | Mac | yes |
 | control.nav.the external service | the external service tab | Top bar | explained only | Mac | no |
 | control.nav.service | Service tab | Top bar | explained only | Mac | no |
+| control.nav.service.reload | Reload a service | Top bar | explained only | Mac | no |
 | control.nav.streamsetu | StreamSetu item | Top bar | explained only | Mac | no |
 | control.the external service.dismissNotice | Dismiss notice (the external service) | the external service | explained only | Mac | no |
 | control.the external service.openBlocked | Open blocked link in browser | the external service | explained only | Mac | no |
@@ -485,11 +496,14 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.service.openBrowser | Open in Default Browser (service) | Services | explained only | Mac | no |
 | control.service.retry | Try Again (service) | Services | explained only | Mac | no |
 | control.service.returnHome | Return to StreamSetu | Services | explained only | Mac | no |
+| control.services.clearData | Clear a service's data (top bar) | Top bar | explained only | Mac | no |
 | control.services.filter | Filter services | Top bar > Services | explained only | Mac | no |
 | control.services.menu | Services menu | Top bar | explained only | Mac | no |
 | control.services.move | Move a pinned service | Top bar | explained only | Mac | no |
 | control.services.open | Open a service | Top bar > Services | explained only | Mac | no |
+| control.services.pillmenu | Service pill menu | Top bar | explained only | Mac | no |
 | control.services.pin | Pin or unpin a service | Top bar > Services | explained only | Mac | no |
+| control.services.section | Services list section | Top bar > Services | explained only | Mac | no |
 | control.settings.artworkTrending | Use the movie database weekly trending | Settings > Library > Artwork and details | explained only | Mac | yes |
 | control.settings.backupContents | What a backup contains | Settings > Library > Backup | explained only | Mac | yes |
 | control.settings.checkForUpdates | Check for updates | Settings > Advanced > About | explained only | Mac | yes |
@@ -498,6 +512,10 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.settings.clearSearchHistory | Clear search history | Settings > Library > Search index | explained only | Mac | yes |
 | control.settings.copyReport | Copy diagnostics report | Settings > Advanced > Diagnostics | explained only | Mac | yes |
 | control.settings.crashReports | Crash reports | Settings > Advanced > About | explained only | Mac | yes |
+| control.settings.enhancementAdSkip | Skip ads (page option) | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.enhancementPromptReset | Show the first-open prompt again | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.enhancementReload | Reload to apply page options (Settings) | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.enhancementSponsorSkip | Skip sponsor segments (page option) | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.icloudErase | Erase iCloud data | Settings > General > iCloud | explained only | Mac | yes |
 | control.settings.icloudSyncNow | Sync with iCloud now | Settings > General > iCloud | explained only | Mac | yes |
 | control.settings.lanAddDevice | Add a device to sync with | Settings > General > Sync on this network | explained only | Mac | yes |
@@ -516,7 +534,9 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.settings.reviewEPG | Review guide mappings | Settings > Library > Programme guide | explained only | Mac | yes |
 | control.settings.saveReport | Save diagnostics report | Settings > Advanced > Diagnostics | explained only | Mac | yes |
 | control.settings.savedLoginsNewSet | Start a new set of saved logins | Settings > Privacy > Saved logins | explained only | Mac | yes |
-| control.settings.servicesClear | Clear a service's website data | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.servicesClear | Clear a service's data | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.servicesDiagnosticsClear | Clear | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.servicesDiagnosticsCopy | Copy hosts | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.servicesMove | Move a service (Settings) | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.servicesOpen | Open a service (Settings) | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.servicesPin | Pin a service (Settings) | Settings > Privacy > Streaming services | explained only | Mac | no |
@@ -727,7 +747,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | menu.playback.stop | Stop | Menu bar > Playback > Stop | explained only | Mac | yes |
 | menu.services.actualSize | Actual Size | Menu bar > Services > Actual Size | explained only | Mac | yes |
 | menu.services.back | Back | Menu bar > Services > Back | explained only | Mac | yes |
-| menu.services.clearData | Clear Website Data… | Menu bar > Services > Clear Website Data… | explained only | Mac | yes |
+| menu.services.clearData | Clear Data… | Menu bar > Services > Clear Data… | explained only | Mac | yes |
 | menu.services.forward | Forward | Menu bar > Services > Forward | explained only | Mac | yes |
 | menu.services.openInBrowser | Open in Default Browser | Menu bar > Services > Open in Default Browser | explained only | Mac | yes |
 | menu.services.pin | Pin to Top Bar | Menu bar > Services > Pin to Top Bar | explained only | Mac | yes |
@@ -999,7 +1019,7 @@ Generated from the code by the coverage tests. **Reported, pending independent v
 
 Columns: *UI* = the app has its own control · *Read* = how the assistant looks at it · *Act* = what it can offer (always tap-to-confirm, rechecked by the authorizer) · *Restrictions tested* · *Error path tested* · *Platforms verified*.
 
-**174 rows: 138 covered, 36 unsupported with a reason.**
+**175 rows: 138 covered, 37 unsupported with a reason.**
 
 
 ### agent action
@@ -1073,7 +1093,8 @@ Columns: *UI* = the app has its own control · *Read* = how the assistant looks 
 | Features/Player/Views/MultiViewWindow.swift | yes | — | — | — | — | **Unsupported:** Multi-view tile menu: not mapped yet. |
 | Features/Series/Views/EpisodeCard.swift | yes | — | — | — | — | **Unsupported:** Episode menu (play, watch privately, mark watched, reset progress): declared in the Atlas as the episode menu; not an assistant action yet. |
 | Features/Shared/TileMenu.swift | yes | — | — | — | — | **Unsupported:** Title menu on every tile (one shared builder): partly reachable as favourite, watch_later and play_title. |
-| Features/Streaming/PinnedServicesBar.swift | yes | — | — | — | — | **Unsupported:** Pinned service menu (open, pin or unpin, move left or right): not mapped yet. |
+| Features/Streaming/PinnedServicesBar.swift | yes | — | — | — | — | **Unsupported:** Service pill menu (reload, pin or unpin, move left or right, clear data): control.services.pillmenu. |
+| Features/Streaming/ServicesDropdown.swift | yes | — | — | — | — | **Unsupported:** Services list row menu (move up or down for a pinned service): control.services.move. |
 | Features/TVGuide/Components/GuideRow.swift | yes | — | — | — | — | **Unsupported:** Programme menu (remind, record): not mapped yet. |
 
 ### feature

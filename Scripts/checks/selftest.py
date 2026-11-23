@@ -75,18 +75,68 @@ CASES = [
     ("doc-code-drift", "Apple migration list ahead of docs", {"macos/Sources/REDDY/Data/Database/DatabaseMigrator.swift": bump(r"(?s).*Migration\(version:\s*(\d+)")}, "Apple schema"),
     ("doc-code-drift", "coverage totals disagree", {"docs/assistant-coverage.md": bump(r"\| \*\*All\*\* \| \*\*(\d+)\*\*")}, "'All' total"),
     ("doc-code-drift", "release doc names a missing script", {"docs/RELEASING.md": lambda t: t + "\nRun `Scripts/ghost-release.sh` first.\n"}, "ghost-release.sh"),
-    ("doc-code-drift", "atlas changed, coverage doc not regenerated", {"macos/Sources/REDDY/Atlas/InjectedEntry.swift": "// new atlas entry\n"}, "was not regenerated"),
+    ("doc-code-drift", "atlas changed, coverage doc not regenerated", {"macos/Sources/REDDY/Atlas/InjectedEntry.swift": "// new atlas entry\n"}, "atlas inputs changed"),
     ("doc-code-drift", "iPhone version drifts from Xcode", {"ios/StreamSetu.xcodeproj/project.pbxproj": bump_version(r"MARKETING_VERSION = (\d+\.\d+);") if False else (lambda t: re.sub(r"MARKETING_VERSION = [\d.]+;", "MARKETING_VERSION = 9.9;", t))}, "MARKETING_VERSION"),
 ]
+
+
+DOC = "docs/assistant-coverage.md"
+ATLAS_NEW = "macos/Sources/REDDY/Atlas/InjectedEntry.swift"
+
+
+def hash_cases(base, mod, rows):
+    """The embedded-fingerprint contract of docs/assistant-coverage.md: (label, files written to the overlay, expected error substring or None).
+    A callable value receives (overlay Ctx, current doc bytes) and returns the new doc bytes (it runs the real post-step, so regeneration is what is tested)."""
+    import atlas_fingerprint as af
+    doc = base.abs(DOC).read_bytes()
+    def regen(tmp): # what `atlas_fingerprint.py --write` does, against the overlay
+        return af.render(common.Ctx(overlay=tmp), doc)
+    def edit(f): return lambda tmp: f(doc)
+    L1, L2 = doc.split(b"\n", 2)[:2]
+    cases = [
+        ("hash: atlas input changed, doc not regenerated", {ATLAS_NEW: b"// new atlas entry\n"}, None, "atlas inputs changed"),
+        ("hash: regenerated, body identical (header rewritten)", {}, regen, None),
+        ("hash: atlas input changed and regenerated (post-step)", {ATLAS_NEW: b"// new atlas entry\n"}, regen, None),
+        ("hash: inputs line deleted", {}, edit(lambda d: d.split(b"\n", 1)[1]), "missing"),
+        ("hash: body line deleted", {}, edit(lambda d: d.replace(L2 + b"\n", b"", 1)), "missing"),
+        ("hash: inputs line duplicated", {}, edit(lambda d: L1 + b"\n" + d), "duplicated"),
+        ("hash: line malformed (uppercase hex)", {}, edit(lambda d: re.sub(rb"[0-9a-f]{64}", lambda m: m.group(0).upper().replace(b"E", b"A") if re.search(rb"[a-f]", m.group(0)) else b"G" * 64, d, 1)), "not the first two lines"),
+        ("hash: line malformed (63 hex digits)", {}, edit(lambda d: re.sub(rb"[0-9a-f]{64}", lambda m: m.group(0)[:63], d, 1)), "not the first two lines"),
+        ("hash: header lines swapped", {}, edit(lambda d: d.replace(L1 + b"\n" + L2, L2 + b"\n" + L1, 1)), "not the first two lines"),
+        ("hash: stale inputs value kept", {}, edit(lambda d: d.replace(L1, L1[:30] + (b"0" if L1[30:31] != b"0" else b"1") + L1[31:], 1)), "atlas inputs changed"),
+        ("hash: a table row edited, totals still add up", {}, edit(lambda d: d.replace(b"| no |", b"| yes |", 1)), "does not match its embedded"),
+        ("hash: a total edited, valid hash left", {}, edit(lambda d: re.sub(rb"(\| \*\*All\*\* \| \*\*)(\d+)", lambda m: m.group(1) + str(int(m.group(2)) + 1).encode(), d, 1)), "'All' total"),
+    ]
+    bad = 0
+    for label, files, how, expect in cases:
+        tmp = Path(tempfile.mkdtemp(prefix="checks-overlay-"))
+        try:
+            for rel, content in files.items():
+                (tmp / rel).parent.mkdir(parents=True, exist_ok=True); (tmp / rel).write_bytes(content)
+            if how: (tmp / DOC).parent.mkdir(parents=True, exist_ok=True); (tmp / DOC).write_bytes(how(tmp))
+            ctx = common.Ctx(overlay=tmp); t = time.time(); res = mod.run(ctx); secs = time.time() - t
+            good = (not res.errors) if expect is None else any(expect in e for e in res.errors)
+            bad += not good; rows.append((label, "doc-code-drift", "ok" if good else "NOT CAUGHT", secs, "" if good else "expected %r; got %s" % (expect, res.errors[:2])))
+        finally: shutil.rmtree(tmp, ignore_errors=True)
+    # the original false failure: regenerated-but-identical doc with a stale or absent stamp, through run_all itself, must PASS
+    tmp = Path(tempfile.mkdtemp(prefix="checks-overlay-"))
+    try:
+        (tmp / ATLAS_NEW).parent.mkdir(parents=True, exist_ok=True); (tmp / ATLAS_NEW).write_bytes(b"// new atlas entry\n")
+        (tmp / DOC).parent.mkdir(parents=True, exist_ok=True); (tmp / DOC).write_bytes(af.render(common.Ctx(overlay=tmp), doc))
+        stale = tmp / "stale-stamp.json"; stale.write_text(json.dumps({"files": {}, "checks": {}, "state": {"assistant-coverage": {"atlas": "0" * 40, "doc": base.digest(DOC)}}}))
+        for label, stamp in (("stale stamp", stale), ("no stamp", Path("/nonexistent-dir/x.json"))):
+            t = time.time()
+            p = subprocess.run([sys.executable, "-I", str(HERE / "run_all.py"), "--only", "doc-code-drift"], env=dict(os.environ, CHECKS_OVERLAY=str(tmp), CHECKS_STAMP=str(stamp)), capture_output=True, text=True)
+            good = p.returncode == 0; bad += not good
+            rows.append(("hash: regenerated-identical doc, %s (run_all)" % label, "doc-code-drift", "ok" if good else "NOT CAUGHT", time.time() - t, "" if good else p.stdout[-300:]))
+    finally: shutil.rmtree(tmp, ignore_errors=True)
+    return bad
 
 
 def main():
     mods = {m.NAME: m for m in run_all.load_checks()}
     base = common.Ctx(); rows = []; bad = 0
-    # the stamp state a regenerated coverage doc leaves behind: atlas hash + doc hash as of now
-    import doc_drift
-    state = {}
-    t = time.time(); real = {n: m.run(base, state) if n == "doc-code-drift" else m.run(base) for n, m in mods.items()}
+    t = time.time(); real = {n: m.run(base) for n, m in mods.items()}
     for n, r in real.items():
         ok = not r.errors; bad += not ok
         rows.append(("real tree", n, "PASS" if ok else "FAIL", 0, "; ".join(r.errors[:2])))
@@ -102,16 +152,14 @@ def main():
             t = time.time()
             ctx = common.Ctx(overlay=tmp)
             ctx._text = {k: v for k, v in base._text.items() if k not in edits}
-            if name == "doc-code-drift":
-                st = {doc_drift.STAMP_KEY: dict(state[doc_drift.STAMP_KEY])}
-                res = mods[name].run(ctx, st)
-            else: res = mods[name].run(ctx)
+            res = mods[name].run(ctx)
             secs = time.time() - t
             if expect is None: good, why = not res.errors, "no failure expected"
             else: good = any(expect in e for e in res.errors); why = "expected %r" % expect
             if not good: bad += 1
             rows.append((label, name, "ok" if good else "NOT CAUGHT", secs, "" if good else "%s; got %s" % (why, res.errors[:2])))
         finally: shutil.rmtree(tmp, ignore_errors=True)
+    bad += hash_cases(base, mods["doc-code-drift"], rows)
     # end to end through the environment overrides: a temporary copy of the three fixture folders
     tmp = Path(tempfile.mkdtemp(prefix="checks-fixtures-"))
     try:
@@ -128,7 +176,7 @@ def main():
     print("%-*s  %-22s  %-10s  %s" % (w, "injected violation", "check", "result", "time"))
     for label, name, res, secs, extra in rows:
         print("%-*s  %-22s  %-10s  %.2fs  %s" % (w, label, name, res, secs, extra))
-    print("selftest: %s (%d injections)" % ("FAIL" if bad else "PASS, every check bites and the real tree passes", len(CASES) + 1))
+    print("selftest: %s (%d injections)" % ("FAIL" if bad else "PASS, every check bites and the real tree passes", len(CASES) + 1 + 13))
     return 1 if bad else 0
 
 

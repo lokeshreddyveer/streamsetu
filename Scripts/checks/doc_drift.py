@@ -6,22 +6,22 @@
              and its command line repeats the same name and code.
   schema     Apple: highest SchemaVNN = last Migration(version:) = highest vNN in macos/Docs/DATABASE.md;
              Android: Room version = highest android/core-database/schemas/**/N.json; docs/METADATA-HUB.md no longer calls a built version 'reserved'.
-  coverage   docs/assistant-coverage.md totals add up to its tables; and it was regenerated after the atlas last changed (hash stamp: the generator is a
-             slow Swift test, so the stamp stores the atlas input hash seen with the document hash; a changed atlas with an unchanged document fails).
+  coverage   docs/assistant-coverage.md totals add up to its tables; its first two lines embed the SHA-256 of every generator input and of the body
+             (Scripts/checks/atlas_fingerprint.py, written after ATLAS_DOCS_WRITE=1); missing, duplicated, malformed or stale lines fail. No stamp, no mtime.
   release docs  every file a release doc names exists."""
-import hashlib, re, sys
+import re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import common
 
 NAME = "doc-code-drift"
-ATLAS_RX = r"^macos/Sources/REDDY/(Atlas/|Services/AssistantCoverage\.swift|Services/AssistantKnowledge\.swift)"
+import atlas_fingerprint
+ATLAS_RX = atlas_fingerprint.ATLAS_RX
 RELEASE_DOCS = ["docs/RELEASING.md", "docs/RELEASE-SECURITY.md", "macos/Docs/RELEASE.md"]
 INPUTS = [r"^README\.md$", r"^appcast\.xml$", r"^ios/Scripts/generate-project\.py$", r"^ios/StreamSetu\.xcodeproj/project\.pbxproj$",
           r"^windows/native/[^/]+/[^/]+\.csproj$", r"^docs/(RELEASING|RELEASE-SECURITY|METADATA-HUB|assistant-coverage)\.md$", r"^docs/releases/",
           r"^macos/Docs/(RELEASE|DATABASE)\.md$", r"^macos/Sources/REDDY/Data/Database/", r"^android/core-database/(schemas|src/main)/", ATLAS_RX,
           r"^android/dist/", r"^Scripts/", r"^android/[^/]+\.(sh|txt|properties)$", r"^android/(scripts|tools)/", r"^macos/(Scripts|Tools|Distribution)/", r"^ios/Scripts/"]
-STAMP_KEY = "assistant-coverage"
 # files a release doc tells the person to create (they exist only while an override or a signing step is in use)
 ON_DEMAND = {"Scripts/risk-acceptances.json", "Scripts/risk-acceptances.json.sig", "Scripts/allowed_signers"}
 
@@ -29,7 +29,7 @@ ON_DEMAND = {"Scripts/risk-acceptances.json", "Scripts/risk-acceptances.json.sig
 def ver(t): return tuple(int(x) for x in t.split("."))
 
 
-def run(ctx, state=None):
+def run(ctx):
     R = common.Result(); err = R.err
     readme = ctx.read("README.md")
     row = lambda label: next((l for l in readme.split("\n") if l.startswith("| **%s**" % label)), "")
@@ -112,15 +112,8 @@ def run(ctx, state=None):
         if len(rows) != n: err("docs/assistant-coverage.md: totals say %d %s but the table lists %d" % (n, kind, len(rows)))
     allm = re.search(r"\| \*\*All\*\* \| \*\*(\d+)\*\*", cov)
     if not allm or int(allm.group(1)) != tsum: err("docs/assistant-coverage.md: 'All' total %s is not the sum of its rows (%d)" % (allm and allm.group(1), tsum))
-    h = hashlib.sha1()
-    for f in ctx.select([ATLAS_RX]): h.update(f.encode()); h.update(ctx.digest(f).encode())
-    atlas_h, doc_h = h.hexdigest(), ctx.digest("docs/assistant-coverage.md")
-    if state is not None:
-        old = state.get(STAMP_KEY)
-        if old and old["atlas"] != atlas_h and old["doc"] == doc_h:
-            err("docs/assistant-coverage.md was not regenerated after the atlas changed (ATLAS_DOCS_WRITE=1 swift test --filter AssistantCoverage in macos/)")
-        else: state[STAMP_KEY] = {"atlas": atlas_h, "doc": doc_h}
-    else: R.warn("coverage staleness not checked standalone (needs the stamp kept by run_all.py)")
+    for e in atlas_fingerprint.verify(ctx, ctx.abs("docs/assistant-coverage.md").read_bytes() if ctx.exists("docs/assistant-coverage.md") else b""):
+        err("docs/assistant-coverage.md: " + e)
     # release docs name only existing files
     names = {Path(f).name for f in ctx.files}
     skip = re.compile(r"[<>*$~{}()\[\]|=\s]|^https?:|^\.\.?/|^/|^-|(^|/)(dist|build|\.build|Generated|keys)(/|$)|\.(app|dmg|apk|zip|pkg|xcarchive|ipa|exe)$|(^|/)(local|keystore|gradle)\.properties$|^StreamSetu")

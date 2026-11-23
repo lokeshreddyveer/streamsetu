@@ -22,8 +22,8 @@ EXCLUDE_RX = re.compile(r"/(Tests?|test|androidTest|UITests|node_modules|dist|bi
 INPUTS = [SRC_RX, "^" + re.escape(IOS_PLIST) + "$", "^" + re.escape(MAC_PLIST) + "$", "^" + re.escape(NSC) + "$", r"^legal/(privacy|licenses)\.md$",
           r"^ios/StreamSetu/PrivacyInfo\.xcprivacy$", r"^macos/Configuration/PrivacyInfo\.xcprivacy$"]
 
-APPLE_ONLY = {"primevideo.com", "disneyplus.com", "hulu.com", "hbomax.com", "peacocktv.com", "paramountplus.com", "tv.apple.com", "crunchyroll.com",  # embedded streaming services (Mac only)
-              "github.com", "githubusercontent.com", "supabase.co", "cloudflare-dns.com", "controld.com", "dns.adguard-dns.com", "dns.google", "dns.quad9.net"}
+APPLE_ONLY = {"primevideo.com", "disneyplus.com", "hulu.com", "hbomax.com", "peacocktv.com", "paramountplus.com", "tv.apple.com", "crunchyroll.com", "jiohotstar.com", "hotstar.com",  # embedded streaming services (Mac only)
+              "sponsor.ajay.app", "github.com", "githubusercontent.com", "supabase.co", "cloudflare-dns.com", "controld.com", "dns.adguard-dns.com", "dns.google", "dns.quad9.net"}
 # links that are only opened in a browser or are documentation / namespace / placeholder hosts: never fetched by the app
 DOC_LINKS = {"www.wikidata.org", "www.netflix.com", "netflix.com", "apps.apple.com", "testflight.apple.com", "www.apple.com", "ffmpeg.org", "mpv.io", "sparkle-project.org", "creativecommons.org",
              "ai.google.dev", "duckduckgo.com", "streamsetu.example", "www.w3.org", "apache.org", "schemas.android.com", "tauri.localhost", "localhost",
@@ -32,15 +32,15 @@ HTTP_OK = re.compile(r"(^|\.)(w3\.org|apache\.org|schemas\.android\.com|apple\.c
 PLACEHOLDER = re.compile(r"(^|\.)(example|example\.com|example\.test|local|test|invalid)$")
 # registrable service domain -> name the privacy text must use (case-insensitive)
 SERVICE_NAMES = {"primevideo.com": "Prime Video", "disneyplus.com": "Disney+", "hulu.com": "Hulu", "hbomax.com": "HBO Max", "peacocktv.com": "Peacock",
-                 "paramountplus.com": "Paramount+", "tv.apple.com": "Apple TV", "crunchyroll.com": "Crunchyroll", "themoviedb.org": "TMDB", "tmdb.org": "TMDB", "fanart.tv": "fanart.tv", "thetvdb.com": "TheTVDB", "tvmaze.com": "TVmaze",
+                 "paramountplus.com": "Paramount+", "tv.apple.com": "Apple TV", "crunchyroll.com": "Crunchyroll", "jiohotstar.com": "JioHotstar", "hotstar.com": "JioHotstar", "themoviedb.org": "TMDB", "tmdb.org": "TMDB", "fanart.tv": "fanart.tv", "thetvdb.com": "TheTVDB", "tvmaze.com": "TVmaze",
                  "opensubtitles.com": "OpenSubtitles", "trakt.tv": "Trakt", "wikipedia.org": "Wikipedia", "wikimedia.org": "Wikipedia",
-                 "itunes.apple.com": "iTunes", "youtube.com": "YouTube", "googleapis.com": "Google", "groq.com": "Groq", "openai.com": "OpenAI",
+                 "itunes.apple.com": "iTunes", "youtube.com": "YouTube", "sponsor.ajay.app": "SponsorBlock", "googleapis.com": "Google", "groq.com": "Groq", "openai.com": "OpenAI",
                  "anthropic.com": "Anthropic", "openrouter.ai": "OpenRouter", "nvidia.com": "NVIDIA", "ollama.com": "Ollama",
                  "real-debrid.com": "Real-Debrid", "alldebrid.com": "AllDebrid", "premiumize.me": "Premiumize", "github.com": "GitHub",
                  "githubusercontent.com": "GitHub", "supabase.co": "Supabase", "cloudflare-dns.com": "Cloudflare", "controld.com": "Control D",
                  "dns.adguard-dns.com": "AdGuard", "dns.google": "Google", "dns.quad9.net": "Quad9", "iptv-org.github.io": "iptv-org"}
 # data services that must also be credited in legal/licenses.md
-CREDITED = {"TMDB": "not endorsed or certified", "fanart.tv": "fanart.tv", "TheTVDB": "TheTVDB", "TVmaze": "CC BY-SA"}
+CREDITED = {"SponsorBlock": "CC BY-NC-SA 4.0", "TMDB": "not endorsed or certified", "fanart.tv": "fanart.tv", "TheTVDB": "TheTVDB", "TVmaze": "CC BY-SA"}
 
 
 def covers(domains, host): return any(host == d or host.endswith("." + d) for d in domains)
