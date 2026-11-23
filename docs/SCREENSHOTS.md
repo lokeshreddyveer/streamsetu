@@ -4,22 +4,62 @@
 
 ## Mac
 
+In order, from the opening screen to the end.
+
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="screenshots/mac-home.png" alt="StreamSetu on Mac: Home with the Discover banner and Trending in Your Library" width="100%"></td>
-    <td width="50%" valign="top"><img src="screenshots/mac-live.png" alt="StreamSetu on Mac: Live TV with channel groups, channel list and player" width="100%"></td>
+    <td width="50%" valign="top"><img src="screenshots/mac-00-start.png" alt="StreamSetu on Mac: The opening screen: choose how to connect" width="100%"></td>
+    <td width="50%" valign="top"><img src="screenshots/mac-01-playlist-link.png" alt="StreamSetu on Mac: Playlist link" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>The opening screen: choose how to connect</sub></td>
+    <td align="center"><sub>Playlist link</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="screenshots/mac-02-xtream.png" alt="StreamSetu on Mac: Xtream Codes" width="100%"></td>
+    <td width="50%" valign="top"><img src="screenshots/mac-03-media-server.png" alt="StreamSetu on Mac: Media server" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Xtream Codes</sub></td>
+    <td align="center"><sub>Media server</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="screenshots/mac-04-tv-tuner.png" alt="StreamSetu on Mac: TV tuner or receiver" width="100%"></td>
+    <td width="50%" valign="top"><img src="screenshots/mac-05-playlist-file.png" alt="StreamSetu on Mac: Playlist file" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>TV tuner or receiver</sub></td>
+    <td align="center"><sub>Playlist file</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="screenshots/mac-06-portal.png" alt="StreamSetu on Mac: Stalker portal" width="100%"></td>
+    <td width="50%" valign="top"><img src="screenshots/mac-07-single-stream.png" alt="StreamSetu on Mac: Single stream" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Stalker portal</sub></td>
+    <td align="center"><sub>Single stream</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="screenshots/mac-home.png" alt="StreamSetu on Mac: Home" width="100%"></td>
+    <td width="50%" valign="top"><img src="screenshots/mac-live.png" alt="StreamSetu on Mac: Live TV" width="100%"></td>
   </tr>
   <tr>
     <td align="center"><sub>Home</sub></td>
     <td align="center"><sub>Live TV</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><img src="screenshots/mac-movies.png" alt="StreamSetu on Mac: Movies with a featured banner, folder list and poster grid" width="100%"></td>
-    <td width="50%" valign="top"><img src="screenshots/mac-series.png" alt="StreamSetu on Mac: Series with the folder list and poster grid" width="100%"></td>
+    <td width="50%" valign="top"><img src="screenshots/mac-movies.png" alt="StreamSetu on Mac: Movies" width="100%"></td>
+    <td width="50%" valign="top"><img src="screenshots/mac-series.png" alt="StreamSetu on Mac: Series" width="100%"></td>
   </tr>
   <tr>
     <td align="center"><sub>Movies</sub></td>
     <td align="center"><sub>Series</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="screenshots/mac-guide.png" alt="StreamSetu on Mac: TV Guide" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>TV Guide</sub></td>
   </tr>
 </table>
 
