@@ -94,8 +94,12 @@ final class FolderRowsModel {
     /// Counts every time the rows' tiles were cleared (a reload finished). A row's loading task is keyed by it, so rows already on screen ask again and refill.
     private(set) var epoch = 0
     private var lastKey: String?
+    /// The screen's own reload key when the rows were last read; a returning screen with the same key skips the read.
+    var lastReloadKey: String?
 
-    init(kind: ContentKind) { self.kind = kind }
+    /// Never reused for another model.
+    let uid = ScreenModelID.next()
+    init(kind: ContentKind) { self.kind = kind; Perf.bump("FolderRowsModel") }
 
     var visible: [Row] { Array(rows.prefix(shown)) }
     var hasMore: Bool { shown < rows.count }

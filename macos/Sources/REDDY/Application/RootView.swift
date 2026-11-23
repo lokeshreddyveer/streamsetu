@@ -62,6 +62,29 @@ struct RootView: View {
     }
 }
 
+/// The bottom bar with its own observation of the playback session (position, volume, state), kept out of `MainShell.body`.
+private struct BottomPlayerHost: View {
+    let playback: PlaybackCoordinator
+    let program: EPGProgram?
+    let surface: PrimaryPlayerSurface
+    let onTitle: () -> Void
+
+    var body: some View {
+        if let bar = BottomPlayerAdapter.state(playback, program: program) {
+            ReddyBottomPlayer(state: bar,
+                              onTitle: onTitle,
+                              onTogglePlay: { if bar.failed { playback.retryNow() } else { playback.togglePause() } },
+                              onToggleMute: { playback.isMuted.toggle() },
+                              onVolume: { playback.isMuted = false; playback.volume = $0 },
+                              onSeek: { playback.seek(to: $0) },
+                              onExpand: { playback.isExpanded = true },          // the bar hands over to the popup; it disappears while the popup is up
+                              onStop: { playback.stop() },
+                              videoPlayback: bar.isLive || !PlayerSurfaceModel.barHoldsVideo(surface) ? nil : playback,
+                              onSkip: { playback.seek(by: $0) })
+        }
+    }
+}
+
 struct MainShell: View {
     let router: AppRouter
     let keys: PlayerKeyMonitor
@@ -110,18 +133,9 @@ struct MainShell: View {
                         }
                     }
                     .zIndex(1)
-                    if services.navExpanded, PlayerSurfaceModel.showsBar(surface),          // no native bar under a service's page
-                       let bar = BottomPlayerAdapter.state(playback, program: program) {
-                        ReddyBottomPlayer(state: bar,
-                                          onTitle: { openPlayingItem(playback) },
-                                          onTogglePlay: { if bar.failed { playback.retryNow() } else { playback.togglePause() } },
-                                          onToggleMute: { playback.isMuted.toggle() },
-                                          onVolume: { playback.isMuted = false; playback.volume = $0 },
-                                          onSeek: { playback.seek(to: $0) },
-                                          onExpand: { playback.isExpanded = true },          // the bar hands over to the popup; it disappears while the popup is up
-                                          onStop: { playback.stop() },
-                                          videoPlayback: bar.isLive || !PlayerSurfaceModel.barHoldsVideo(surface) ? nil : playback,
-                                          onSkip: { playback.seek(by: $0) })
+                    if services.navExpanded, PlayerSurfaceModel.showsBar(surface), playback.current != nil {          // no native bar under a service's page
+                        // The bar reads position, volume and state itself, so a playback tick redraws the bar and not this whole shell.
+                        BottomPlayerHost(playback: playback, program: program, surface: surface, onTitle: { openPlayingItem(playback) })
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
@@ -165,12 +179,12 @@ struct MainShell: View {
         .onChange(of: AtlasNavRequests.shared.window) { _, id in if let id { openWindow(id: id); AtlasNavRequests.shared.window = nil } }          // Setu opening a window
         .onChange(of: container.settings.hideEmptyFolders) { _, _ in state.reloadFolders() }
         .onChange(of: router.selection) { _, _ in router.clearSearch(); search.clear() }
-        .onChange(of: state.activeSourceID) { _, _ in folderQuery = ""; router.closeDetail(); router.clearSearch(); search.clear() }
+        .onChange(of: state.activeSourceID) { _, new in container.screens.removeAll { $0.source != new }; container.filterOptionsStore.invalidate(); folderQuery = ""; router.closeDetail(); router.clearSearch(); search.clear() }
         .onOpenURL { handleOpen($0) }
         .onContinueUserActivity(CSSearchableItemActionType) { activity in          // a Spotlight result for a screen or a setting
             if let id = AtlasSpotlight.atlasID(fromActivityIdentifier: activity.userInfo?[CSSearchableItemActivityIdentifier] as? String), let url = DeepLink.link(atlas: id) { handleOpen(url) }
         }
-        .onChange(of: container.appLock.isLocked) { _, locked in if !locked, let url = container.appLock.takeHeldLink() { handleOpen(url) } }          // what was opened while locked runs now
+        .onChange(of: container.appLock.isLocked) { _, locked in if locked { container.screens.clear() }; if !locked, let url = container.appLock.takeHeldLink() { handleOpen(url) } }          // what was opened while locked runs now
         .onDrop(of: [.fileURL, .url, .plainText], isTargeted: $dropTargeted) { providers in handleDrop(providers) }
         .overlay { if dropTargeted { dropHint.allowsHitTesting(false).transition(.opacity).zIndex(20) } }
         .animation(AnimationTokens.standard, value: dropTargeted)

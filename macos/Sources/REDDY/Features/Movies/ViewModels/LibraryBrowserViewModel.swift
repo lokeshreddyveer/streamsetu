@@ -44,17 +44,30 @@ final class LibraryBrowserViewModel {
     /// The Filter button's choices, and the languages and qualities this list really has (read again when the playlist changes).
     var filter = LibraryFilter()
     private(set) var filterOptions = LibraryFilterOptions()
-    private var optionsKey = ""
+    private var optionsKey: FilterOptionsStore.Key?
+    /// What the screen last finished loading for (its task key); a returning screen with the same key does not read again.
+    var loadedKey: String?
+    /// The default sort from Settings that was last applied to this model. It is applied again only when the setting itself changes, so a sort the person chose survives a tab switch.
+    private(set) var appliedDefaultSort: LibrarySortPreference?
+    func applyDefaultSort(_ pref: LibrarySortPreference) { if appliedDefaultSort != pref { appliedDefaultSort = pref; sort = pref.sort } }
+    /// Never reused for another model (screens put it in their task keys).
+    let uid = ScreenModelID.next()
+    /// The first title in view when the screen went away, so a return lands on it.
+    var scrollAnchor: String?
+    /// The newest sync of the playlist(s) shown; part of the filter-options key. Set by the screen.
+    var syncStamp: Double = 0
     private(set) var coverage = VODMetadataCoverage(total: 1, rated: 1, withYear: 1, withDuration: 1)
     var availableSorts: [LibrarySort] { LibrarySort.allCases.filter { $0.isSupported(by: coverage, kind: kind) } }
 
     private let pageSize = 120
     private var generation = 0
     private var searchTask: Task<Void, Never>?
+    /// A search was typed and its list has not been read yet (the debounce, or the read itself, is still running).
+    private var searchPending = false
     /// The titles saved to watch later, for the Watch Later folder.
     private var watchLaterIDs: [String] = []
 
-    init(kind: ContentKind) { self.kind = kind }
+    init(kind: ContentKind) { self.kind = kind; Perf.bump("LibraryBrowserViewModel") }
 
     var noun: String { kind == .movie ? "movies" : "series" }
     var countText: String { Localized.plural(total, one: "%@ title", other: "%@ titles") }
@@ -93,11 +106,13 @@ final class LibraryBrowserViewModel {
         if case .shortcut(.continueWatching) = selection { await loadContinue(c, source: source, gen: gen); return }
         if case .shortcut(.watchLater) = selection { watchLaterIDs = await Task.detached { Self.savedIDs(c, kind: kind) }.value }
         let found = await Task.detached { (try? c.catalog.metadataCoverage(kind: kind, sourceID: source)) ?? VODMetadataCoverage() }.value
+        if Task.isCancelled, gen == generation { loading = false; return }          // the screen went away (or the search moved on) before the page was read: do not read it
         coverage = found
-        let optionsKey = "\(source?.uuidString ?? "")-\(found.total)"
+        // Shared by every model of this kind and playlist, read off the main thread, once at a time (see FilterOptionsStore).
+        let optionsKey = FilterOptionsStore.Key(source: source, kind: kind, total: found.total, restriction: c.parental.restrictionRevision, stamp: syncStamp)
         if optionsKey != self.optionsKey {
             self.optionsKey = optionsKey
-            filterOptions = await Task.detached { (try? c.catalog.filterOptions(sourceID: source, kind: kind)) ?? LibraryFilterOptions() }.value
+            filterOptions = await c.filterOptionsStore.options(for: optionsKey) { (try? c.catalog.filterOptions(sourceID: source, kind: kind)) ?? LibraryFilterOptions() }
         }
         if !sort.isSupported(by: found, kind: kind) { sort = .recentlyAdded }               // a stored choice the data can't support
         var natural = NaturalQuery.parse(search)
@@ -168,12 +183,33 @@ final class LibraryBrowserViewModel {
         ((try? c.favoritesRepo.collectionItems(id: AppState.watchLaterListID)) ?? []).filter { $0.kind == kind }.map(\.itemID).reversed()
     }
 
+    /// Called when the screen goes away while this model is kept: stops a pending search, and cuts a long list back so a hidden model stays small.
+    func trimForRetention() {
+        searchTask?.cancel()
+        if searchPending { searchPending = false; loadedKey = nil }          // the text and the list disagree: the return reads the list again
+        if items.count > ScreenRetention.maxRetainedItems {
+            items = Array(items.prefix(ScreenRetention.maxRetainedItems)); hasMore = true
+        }
+    }
+
+    /// Whether a list is the same until the catalog changes. Shortcuts that depend on what was just played, saved or favourited are read again on every visit.
+    /// A watched / started / favourite filter (chosen in the panel or spoken in the search box) changes as titles are played or saved, so such a list is read again too.
+    static func isStaticListing(_ s: SidebarSelection, filter: LibraryFilter = LibraryFilter(), search: String = "") -> Bool {
+        guard filter.status == nil else { return false }
+        if !search.isEmpty { let n = NaturalQuery.parse(search); if n.unwatched || n.started || n.favorites { return false } }
+        switch s {
+        case .folder: return true
+        case .shortcut(let x): return x == .allMovies || x == .featured || x == .library || x == .recentlyAdded
+        }
+    }
+
     /// Debounced; a newer keystroke cancels the pending query.
     func scheduleSearch(_ c: AppContainer, selection: SidebarSelection, source: UUID?) {
         searchTask?.cancel()
+        searchPending = true
         searchTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 220_000_000)
-            if !Task.isCancelled { await self?.reset(c, selection: selection, source: source) }
+            if !Task.isCancelled { await self?.reset(c, selection: selection, source: source); if !Task.isCancelled { self?.searchPending = false } }
         }
     }
 }

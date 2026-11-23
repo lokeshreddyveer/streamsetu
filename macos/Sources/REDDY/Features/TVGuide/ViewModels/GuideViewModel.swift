@@ -8,6 +8,7 @@ enum GuideScope: Hashable {
 
 @MainActor @Observable
 final class GuideViewModel {
+    init() { Perf.bump("GuideViewModel") }
     var scope: GuideScope = .withGuide
     var channels: [Channel] = []
     var windowStart: Date = GuideViewModel.snap(Date().addingTimeInterval(-30 * 60))
@@ -62,6 +63,18 @@ final class GuideViewModel {
         CGFloat(date.timeIntervalSince(windowStart) / (hours * 3600)) * trackWidth
     }
 
+    /// What the screen last finished loading for, and when; a returning screen with the same key and a recent read keeps the grid.
+    private(set) var loadedKey: String?
+    private var loadedAt: Date?
+    func markLoaded(_ key: String) { loadedKey = key; loadedAt = Date() }
+    func isFresh(maxAge: TimeInterval) -> Bool { loadedAt.map { Date().timeIntervalSince($0) < maxAge } ?? false }
+
+    /// Called when the screen goes away while this model is kept: a very long channel list is dropped (it is read again on return).
+    let uid = ScreenModelID.next()
+    func trimForRetention() {
+        if channels.count > ScreenRetention.maxRetainedChannels { channels = []; programs = [:]; loadedKey = nil; useChannels([]) }
+    }
+
     func reload(_ c: AppContainer) async {
         loading = channels.isEmpty
         let s = scope, sid = sourceID
@@ -74,7 +87,7 @@ final class GuideViewModel {
         }.value
         useChannels(list)
         loading = false
-        fetch = { ids, from, to in await Task.detached { (try? c.epgRepo.programs(channelIDs: ids, from: from, to: to)) ?? [:] }.value }
+        fetch = { [weak c] ids, from, to in guard let c else { return [:] }; return await Task.detached { (try? c.epgRepo.programs(channelIDs: ids, from: from, to: to)) ?? [:] }.value }
         if let sid { coverage = try? c.epgRepo.guideCoverage(sourceID: sid) }
     }
 

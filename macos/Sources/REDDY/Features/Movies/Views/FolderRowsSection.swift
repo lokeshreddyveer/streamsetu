@@ -11,8 +11,9 @@ struct FolderRowsSection: View {
     @Environment(AppRouter.self) private var router
     @State private var model: FolderRowsModel
 
-    init(kind: ContentKind, memoryKey: String, topRow: Binding<String?>) {
-        self.kind = kind; self.memoryKey = memoryKey; _topRow = topRow; _model = State(initialValue: FolderRowsModel(kind: kind))
+    /// `model` is the one kept for this profile and playlist, so a return does not rebuild the rows or read their tiles again.
+    init(kind: ContentKind, memoryKey: String, topRow: Binding<String?>, model: FolderRowsModel? = nil) {
+        self.kind = kind; self.memoryKey = memoryKey; _topRow = topRow; _model = State(initialValue: model ?? FolderRowsModel(kind: kind))
     }
 
     private var reloadKey: String { "\(kind.rawValue)-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(container?.parental.restrictionRevision ?? 0)-\(container?.profiles.activeID ?? "")" }
@@ -34,7 +35,12 @@ struct FolderRowsSection: View {
         .scrollTargetLayout()
         .task(id: reloadKey) {
             guard let c = container else { return }
+            if model.loaded, model.lastReloadKey == reloadKey {          // the same catalog, profile, playlist and restriction as when the rows were read: keep them
+                if topRow == nil, let saved = FolderScrollMemory.shared.get(memoryKey), model.reveal(saved) { topRow = saved }
+                return
+            }
             await model.reload(c, sourceID: state.activeSourceID, profile: c.profiles.activeID, restrictionKey: "\(c.parental.restrictionRevision)-\(c.profiles.activeID)-\(state.activeSourceID?.uuidString ?? "")")
+            if !Task.isCancelled { model.lastReloadKey = reloadKey }
             if topRow == nil, let saved = FolderScrollMemory.shared.get(memoryKey), model.reveal(saved) { topRow = saved }
         }
         .onChange(of: topRow) { _, id in if let id { FolderScrollMemory.shared.set(memoryKey, id) } }          // nil only means "not set" (a profile switch), never "scrolled to nothing"
@@ -64,6 +70,7 @@ private struct FolderRowView: View {
     }
 
     var body: some View {
+        let _ = Perf.bump("FolderRowBody")
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 FolderHeaderLabel(row: row, noun: .title, nameSize: 16, countSize: 12, tracking: -0.2).accessibilityAddTraits(.isHeader)

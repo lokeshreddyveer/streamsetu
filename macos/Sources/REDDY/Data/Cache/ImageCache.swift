@@ -254,6 +254,7 @@ actor ImageCache {
 
     /// Validates and downsamples in one step; never decodes more pixels than needed.
     static func decode(_ data: Data, maxPixel: Int, policy: CachePolicy = .default) -> CGImage? {
+        let sp = Perf.begin("ImageDecode"); defer { Perf.end("ImageDecode", sp); Perf.bump("imageDecode") }
         guard let src = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
               CGImageSourceGetCount(src) > 0, CGImageSourceGetStatus(src) == .statusComplete,
               let type = CGImageSourceGetType(src), UTType(type as String)?.conforms(to: .image) == true,

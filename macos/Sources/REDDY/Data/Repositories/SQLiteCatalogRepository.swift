@@ -489,6 +489,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
     }
 
     func movies(_ q: VODQuery) throws -> [Movie] {
+        let sp = Perf.begin("CatalogMovies"); defer { Perf.end("CatalogMovies", sp) }
         if twinRule, let lite = liteStore, let limit = q.limit, q.offset == 0, q.ids == nil {
             return try Self.overFetch(limit: limit) { n in try lite.moviesInView(q.with(limit: n)) } twinFree: { try self.twinFree($0.map(\.id), table: "movies") } id: { $0.id }
         }
@@ -567,6 +568,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
     }
 
     func series(_ q: VODQuery) throws -> [Series] {
+        let sp = Perf.begin("CatalogSeries"); defer { Perf.end("CatalogSeries", sp) }
         if twinRule, let lite = liteStore, let limit = q.limit, q.offset == 0, q.ids == nil {
             return try Self.overFetch(limit: limit) { n in try lite.seriesInView(q.with(limit: n)) } twinFree: { try self.twinFree($0.map(\.id), table: "series") } id: { $0.id }
         }

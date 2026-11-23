@@ -335,7 +335,7 @@
       "file" : "macos/Sources/REDDY/Features/LiveTV/Views/LiveTVScreen.swift",
       "kind" : "Button",
       "reason" : "item inside the Streams menu, which is marked",
-      "symbol" : "LiveTVScreen.channelHeader"
+      "symbol" : "LiveTVScreenContent.channelHeader"
     },
     {
       "file" : "macos/Sources/REDDY/Features/LiveTV/Views/LiveTVScreen.swift",
@@ -671,7 +671,7 @@
       "file" : "macos/Sources/REDDY/Features/TVGuide/Views/GuideScreen.swift",
       "kind" : "Button",
       "reason" : "one item per day inside the Day menu, which is marked",
-      "symbol" : "GuideScreen.toolbar"
+      "symbol" : "GuideScreenContent.toolbar"
     }
   ]
 }

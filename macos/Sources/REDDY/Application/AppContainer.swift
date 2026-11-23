@@ -6,6 +6,10 @@ import UIKit
 /// Builds the object graph once. Views get services from here, never construct them.
 @MainActor
 final class AppContainer {
+    /// Light screen models kept across tab switches (Movies, Series, their folder rows, Live TV, Guide), keyed by profile and playlist. Bounded by `ScreenRetention`.
+    let screens = ScreenRetention.makeStore()
+    /// Filter languages and qualities per playlist and catalog state, shared by every Movies / Series model.
+    let filterOptionsStore = FilterOptionsStore()
     let db: DatabaseManager
     let catalog: SQLiteCatalogRepository
     let epgRepo: SQLiteEPGRepository
@@ -128,7 +132,10 @@ final class AppContainer {
         featured = FeaturedService(catalog: catalog, details: details)
         artwork = ArtworkService(cache: ImageCache(root: StorageService.caches, http: http, headers: { [sources] url in sources.artworkHeaders(for: url) }))
         try? PlexTokenCleanup.run(db)
-        memoryGuard = MemoryPressureGuard { [artwork] in await artwork.relieveMemory() }
+        memoryGuard = MemoryPressureGuard { [artwork, screens, filterOptionsStore] in
+            await artwork.relieveMemory()
+            await MainActor.run { screens.clear(); filterOptionsStore.invalidate() }          // kept screen models are the first thing to give back
+        }
         diagnostics = DiagnosticsService(db: db, catalog: catalog)
         reminders = ReminderService()
         health = IndexHealthMonitor(db: db)
@@ -351,6 +358,9 @@ final class AppContainer {
     /// Another profile is now in use: its own data is in place, so screens reload; kids profiles hide the locked folders; sync, which carries the first profile only, pauses.
     private func profileSwitched() {
         matchProfile.id = profiles.active.id
+        let activeProfile = profiles.active.id
+        screens.removeAll { $0.profile != activeProfile }          // nothing kept for the profile that was just left can be shown to this one
+        filterOptionsStore.invalidate()
         parental.kidsMode = profiles.active.kind == .kids
         for f in profileObservers { f() }
         applyViewingLimits()

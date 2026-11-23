@@ -1,19 +1,33 @@
 import SwiftUI
 
-/// Live TV: sidebar (groups) | channel list | player and programme info. Exactly three functional columns.
+/// Live TV. Finds the model kept for this profile and playlist (search, list, selection and the loaded channels survive a tab switch) and shows it.
 struct LiveTVScreen: View {
+    @Environment(\.container) private var container
+    @Environment(AppState.self) private var state
+
+    var body: some View {
+        if let c = container {
+            LiveTVScreenContent(vm: c.screens.model(ScreenKey(screen: .liveTV, profile: c.profiles.activeID, source: state.activeSourceID), revision: c.parental.restrictionRevision) { LiveTVViewModel() })
+        } else {
+            LiveTVScreenContent(vm: LiveTVViewModel())
+        }
+    }
+}
+
+/// Sidebar (groups) | channel list | player and programme info. Exactly three functional columns.
+private struct LiveTVScreenContent: View {
     @Environment(\.container) private var container
     @Environment(AppState.self) private var state
     @Environment(AppRouter.self) private var router
     @Environment(AppSettings.self) private var settings
-    @State private var vm = LiveTVViewModel()
+    @Bindable var vm: LiveTVViewModel
     @AppStorage("live.channelListWidth") private var storedListWidth: Double = 300
     @AppStorage("live.channelListCollapsed") private var listCollapsed = false
 
     private var playback: PlaybackCoordinator? { container?.playback }
     private var currentChannel: Channel? { playback?.currentChannel }
     private var filter: LiveFilter { LiveFilter(router.selection) }
-    private var taskKey: String { "\(filter)-\(vm.listID ?? "")-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(settings.collapseDuplicates)-\(settings.defaultChannelSort.rawValue)" }
+    private var taskKey: String { "\(vm.uid)-\(filter)-\(vm.listID ?? "")-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(settings.collapseDuplicates)-\(settings.defaultChannelSort.rawValue)" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -31,8 +45,13 @@ struct LiveTVScreen: View {
         .padding(.horizontal, LayoutTokens.gutter).padding(.top, 10).padding(.bottom, 12)
         .task(id: taskKey) {
             vm.sourceID = state.activeSourceID; vm.filter = filter
-            if let c = container { await vm.reload(c) }
+            guard let c = container else { return }
+            // Back on a list read for exactly this state (all channels or one group): keep it. Favourites, recents and named lists change as channels are played or saved, so they are read again.
+            if vm.loadedKey == taskKey, !vm.channels.isEmpty, vm.isStaticListing(filter) { return }
+            await vm.reload(c)
+            if !Task.isCancelled { vm.loadedKey = taskKey }
         }
+        .onDisappear { vm.trimForRetention() }
         .task(id: "\(playback?.current?.itemID ?? "")-\(state.catalogVersion)") { if let c = container { await vm.loadDetails(for: currentChannel, c) } }
         .task { while !Task.isCancelled { try? await Task.sleep(nanoseconds: 60_000_000_000); if let c = container { await vm.refreshNowNext(c); await vm.loadDetails(for: currentChannel, c) } } }
     }

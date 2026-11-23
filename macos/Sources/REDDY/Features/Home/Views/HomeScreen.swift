@@ -67,6 +67,7 @@ struct LibraryItemCard: View {
     }
 
     var body: some View {
+        let _ = Perf.bump("TileBody")
         ReddyPosterCard(model: cardModel, width: width,
                         onOpen: { PlayActions.open(item, router: router) },
                         onPlay: { if let c = container { PlayActions(container: c, toasts: state.toasts).play(item) } })

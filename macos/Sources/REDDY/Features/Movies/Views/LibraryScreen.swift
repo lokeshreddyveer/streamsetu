@@ -1,23 +1,36 @@
 import SwiftUI
 
-/// Movies and Series. The sidebar selection decides what is listed; sorting and search sit under any banner.
+/// Movies and Series. Finds the model kept for this profile and playlist (so filter, search, sort, loaded pages and scroll place survive a tab switch) and shows it.
 struct LibraryScreen: View {
+    let kind: ContentKind
+    @Environment(\.container) private var container
+    @Environment(AppState.self) private var state
+
+    var body: some View {
+        if let c = container {
+            LibraryScreenContent(kind: kind, vm: c.screens.model(ScreenKey(screen: .library(kind), profile: c.profiles.activeID, source: state.activeSourceID), revision: c.parental.restrictionRevision) { LibraryBrowserViewModel(kind: kind) })
+        } else {
+            LibraryScreenContent(kind: kind, vm: LibraryBrowserViewModel(kind: kind))
+        }
+    }
+}
+
+private struct LibraryScreenContent: View {
     let kind: ContentKind
     @Environment(\.container) private var container
     @Environment(AppState.self) private var state
     @Environment(AppRouter.self) private var router
     @Environment(AppSettings.self) private var settings
     @Environment(\.reddyDensity) private var density
-    @State private var appliedDefaultSort = false
-    @State private var vm: LibraryBrowserViewModel
+    @Bindable var vm: LibraryBrowserViewModel
     @State private var slides: [FeaturedSlide] = []
     @State private var viewMode: FolderViewMode = .folders
     @State private var topRow: String?
 
-    init(kind: ContentKind) { self.kind = kind; _vm = State(initialValue: LibraryBrowserViewModel(kind: kind)) }
+    init(kind: ContentKind, vm: LibraryBrowserViewModel) { self.kind = kind; self.vm = vm }
 
     private var selection: SidebarSelection { router.selection }
-    private var taskKey: String { "\(selection)-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(vm.sort.rawValue)-\(String(describing: vm.filter))" }
+    private var taskKey: String { "\(vm.uid)-\(selection)-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(vm.sort.rawValue)-\(String(describing: vm.filter))" }
 
     /// Folders is the default view of the full Movies / Series lists; a search or a filter always shows the grid, and so do the shortcut lists (favourites, unwatched, and so on).
     private var showsFolders: Bool {
@@ -25,6 +38,12 @@ struct LibraryScreen: View {
         return selection == .shortcut(.allMovies) || selection == .shortcut(.featured) || selection == .shortcut(.library)
     }
     private var showsModeSwitch: Bool { selection == .shortcut(.allMovies) || selection == .shortcut(.featured) || selection == .shortcut(.library) }
+    /// The kept model of the folder rows for this profile and playlist (their tiles and place are not read again on a return).
+    private var folderModel: FolderRowsModel? {
+        guard let c = container else { return nil }
+        return c.screens.model(ScreenKey(screen: .folders(kind), profile: c.profiles.activeID, source: state.activeSourceID), revision: c.parental.restrictionRevision) { FolderRowsModel(kind: kind) }
+    }
+    private var syncStamp: Double { state.sources.filter { state.activeSourceID == nil || $0.id == state.activeSourceID }.compactMap { $0.lastSync?.timeIntervalSince1970 }.max() ?? 0 }
     private var profileID: String { container?.profiles.activeID ?? "main" }
 
     private var showsSlideshow: Bool { kind == .movie && selection == .shortcut(.featured) }
@@ -67,7 +86,8 @@ struct LibraryScreen: View {
                         }.padding(.bottom, 8).transition(.opacity)
                     }
                     if showsFolders, state.hasLibrary {
-                        FolderRowsSection(kind: kind, memoryKey: "\(kind.rawValue)-\(profileID)", topRow: $topRow).padding(.bottom, 16).frame(maxWidth: .infinity, alignment: .leading)
+                        let fm = folderModel
+                        FolderRowsSection(kind: kind, memoryKey: "\(kind.rawValue)-\(profileID)", topRow: $topRow, model: fm).id(fm?.uid ?? 0).padding(.bottom, 16).frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         content(layout).padding(.bottom, 16).frame(maxWidth: .infinity, alignment: .leading)
                             .animation(AnimationTokens.page, value: vm.loading)
@@ -83,11 +103,23 @@ struct LibraryScreen: View {
         .onAppear { viewMode = FolderViewMode.load(kind, profile: profileID) }
         .onChange(of: profileID) { _, _ in viewMode = FolderViewMode.load(kind, profile: profileID); topRow = nil }
         .onChange(of: showsFolders) { _, on in if !on { topRow = nil } }          // the grid must not inherit a folder row as its scroll position; the row is restored from memory on return
-        .onAppear { if !appliedDefaultSort { appliedDefaultSort = true; vm.sort = settings.defaultLibrarySort.sort } }
+        .onAppear { vm.applyDefaultSort(settings.defaultLibrarySort) }
+        .onChange(of: settings.defaultLibrarySort) { _, new in vm.applyDefaultSort(new) }
+        .onAppear { if !showsFolders, topRow == nil { topRow = vm.scrollAnchor } }          // back on the grid: the title that was at the top is at the top again
+        .onChange(of: topRow) { _, id in if !showsFolders, let id { vm.scrollAnchor = id } }
+        .onDisappear { vm.trimForRetention() }
         .onAppear { state.reloadWatched(); takeLibraryQuery(); takeLibraryFilter() }
         .onChange(of: router.libraryQuery) { _, _ in takeLibraryQuery() }
         .onChange(of: router.libraryFilter) { _, _ in takeLibraryFilter() }
-        .task(id: taskKey) { if let c = container { await vm.reset(c, selection: selection, source: state.activeSourceID) } }
+        .task(id: taskKey) {
+            guard let c = container else { return }
+            // Back on a list that was already read for exactly this state: nothing to do. Lists that change as titles are played or saved are read again.
+            if vm.loadedKey == taskKey, !vm.items.isEmpty || vm.total == 0, LibraryBrowserViewModel.isStaticListing(selection, filter: vm.filter, search: vm.search) { return }
+            vm.scrollAnchor = nil; if !showsFolders { topRow = nil }          // a list read again starts at its top; an anchor from the old list means nothing
+            vm.syncStamp = syncStamp
+            await vm.reset(c, selection: selection, source: state.activeSourceID)
+            if !Task.isCancelled { vm.loadedKey = taskKey }
+        }
         // The slideshow depends on the playlist and the day only, so a catalog refresh or a sort change never rebuilds it.
         .task(id: slideshowKey) {
             guard showsSlideshow, let c = container else { slides = []; return }
@@ -117,6 +149,7 @@ struct LibraryScreen: View {
                         .staggeredAppear(index)
                 }
             }
+            .scrollTargetLayout()
             if vm.loading { BrandLoader(size: 28).frame(maxWidth: .infinity).padding(.vertical, 10) }
         }
     }

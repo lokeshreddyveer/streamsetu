@@ -225,7 +225,14 @@ final class SmartMixCoordinator: @unchecked Sendable {
     }
 
     /// Remembers that a folder was opened (for "recent first"). Device-local, per profile.
-    func noteFolderOpened(profile: String, categoryID: String) {
+    @discardableResult
+    func noteFolderOpened(profile: String, categoryID: String) -> Task<Void, Never> {
+        // Fire and forget: the folder opens at once and the write (2-3 ms, longer while a playlist sync holds the writer) is done off the main thread. Opens are counted, so order does not matter.
+        let db = self.db
+        return Task.detached(priority: .utility) { Self.recordFolderOpen(db: db, profile: profile, categoryID: categoryID) }
+    }
+
+    nonisolated static func recordFolderOpen(db: DatabaseManager, profile: String, categoryID: String) {
         _ = try? db.write { try $0.execute("INSERT INTO folder_recent(profile_id, category_id, last_opened_at, opens) VALUES(?,?,?,1) ON CONFLICT(profile_id, category_id) DO UPDATE SET last_opened_at = excluded.last_opened_at, opens = opens + 1", [profile, categoryID, Date()]) }
     }
 

@@ -47,12 +47,12 @@ final class DatabaseManager: @unchecked Sendable {
         }
         defer { load.withLock { $0[i] -= 1 } }
         let r = readers[i]
-        return try r.queue.sync { try body(r.connection) }
+        return try Perf.main("dbRead") { try r.queue.sync { try body(r.connection) } }
     }
 
     /// Runs `body` in one transaction. Throwing rolls everything back.
     func write<T>(_ body: (Connection) throws -> T) throws -> T {
-        try writeQueue.sync {
+        try Perf.main("dbWrite") { try writeQueue.sync {
             try writer.exec("BEGIN IMMEDIATE")
             do {
                 let r = try body(writer)
@@ -62,7 +62,7 @@ final class DatabaseManager: @unchecked Sendable {
                 try? writer.exec("ROLLBACK")
                 throw error
             }
-        }
+        } }
     }
 
     /// Runs `body` on the writer, outside a transaction (VACUUM and wal_checkpoint cannot run inside one). It shares the

@@ -38,13 +38,20 @@ extension AppContainer {
     /// Playlist guides keep going through `EPGSyncService`. Safe to call often: it does nothing when nothing is due, and only one run at a time.
     @discardableResult
     func runGuideHub(force: Bool = false, now: Date = Date()) async -> [String: GuideImportPipeline.Result] {
+        // `AppContainer` is main-actor isolated, so a plain method body here runs on the main thread (a `Task {}` or an `await` from a detached task does not change that).
+        // Only the cheap reads of container state happen here; the database work runs in `guideHubPass`, which is off the main actor, and one pass at a time.
+        let db = self.db, enrich = GuideSettingsModel.enrichmentEnabled(settings.defaultsStore), mgr = guideManager, dir = Self.guideHubDirectory
+        return await Self.guideHubPass(db: db, enrich: enrich, manager: mgr, directory: dir, force: force, now: now)
+    }
+
+    @concurrent
+    nonisolated static func guideHubPass(db: DatabaseManager, enrich: Bool, manager mgr: GuideSourceManager, directory: URL, force: Bool, now: Date) async -> [String: GuideImportPipeline.Result] {
+        let perfSP = Perf.begin("GuideHubRefresh"); defer { Perf.end("GuideHubRefresh", perfSP) }
         GuideLogoOverlay.reload(db: db)
         guard HubBox.shared.begin() else { return [:] }
         defer { HubBox.shared.end(); GuideLogoOverlay.reload(db: db) }
-        let enrich = GuideSettingsModel.enrichmentEnabled(settings.defaultsStore)
-        let mgr = guideManager
         let repo = SQLiteGuideRepository(db: db)
-        let database = IPTVOrgDatabase(directory: Self.guideHubDirectory, fetcher: mgr.fetcher)
+        let database = IPTVOrgDatabase(directory: directory, fetcher: mgr.fetcher)
         let indexSource = enrich ? IPTVOrgIndexSource(database: database) : nil
         if enrich, (try? repo.source("iptvorg-db")) == nil {
             try? repo.add(.init(id: "iptvorg-db", kind: .publicIndex, name: "Public channel database", urlRef: nil, url: nil, enabled: true, priority: 30, refreshHours: 24, tz: .automatic, offsetMinutes: 0,

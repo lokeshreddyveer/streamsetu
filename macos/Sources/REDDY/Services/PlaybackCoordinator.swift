@@ -822,6 +822,10 @@ final class PlaybackCoordinator {
         startTask = Task { [weak self] in
             guard let self else { return }
             if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)); guard !Task.isCancelled, gen == self.generation else { return } }
+            #if os(macOS) || STREAMSETU_MPV
+            // A different engine starts only after MPV has let go of its connection (one-connection providers refuse a second one).
+            if !(self.engine is MPVPlayerEngine) { await MPVPlayerEngine.drainAllTeardowns(); guard !Task.isCancelled, gen == self.generation else { return } }
+            #endif
             do { try await self.engine.load(request) }
             catch {
                 if error is CancellationError { return }          // the engine was overtaken by a newer load or stopped: that is not a failure of this play

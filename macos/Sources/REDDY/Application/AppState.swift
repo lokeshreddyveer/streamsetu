@@ -46,14 +46,19 @@ final class AppState {
             reloadWatched()
         }
     }
+    @ObservationIgnored private let watchedLoad = LatestLoad()
+    @ObservationIgnored private let coreLoad = LatestLoad()
+    /// Both aggregations run off the main actor, one scan at a time (a tab entry, a progress save and a sync arriving together cost one scan and one follow-up, not three).
     func reloadWatched() {
         let repo = container.historyRepo
-        Task { @MainActor in
-            let (ids, partial) = await Task.detached { ((try? repo.watchedTitleIDs()) ?? [], (try? repo.partialProgress()) ?? [:]) }.value
+        watchedLoad.coalesced({ ((try? repo.watchedTitleIDs()) ?? [], (try? repo.partialProgress()) ?? [:]) }) { [weak self] (ids, partial) in
+            guard let self else { return }
             if ids != watchedIDs { watchedIDs = ids }
             if partial != partialIDs { partialIDs = partial }
         }
     }
+    /// Waits for the watched-state scan started so far (tests).
+    func settleWatched() async { await watchedLoad.settle() }
     /// Movies and series saved to watch later. A built-in list, kept with the person's other lists.
     private(set) var watchLaterIDs: Set<String> = []
     nonisolated static let watchLaterListID = "watch-later"
@@ -114,7 +119,7 @@ final class AppState {
 
     func start() async {
         watchLandedArtwork()
-        reload()
+        await reloadAsync()
         loaded = true
         observerID = await container.sync.addObserver { [weak self] p in
             Task { @MainActor in self?.apply(p) }
@@ -271,7 +276,31 @@ final class AppState {
         }
     }
 
+    /// `reload()` with its reads off the main actor. A newer call makes an older one stale (its result is dropped), and a playlist switch while it ran drops it too.
+    /// Returns when the result was applied or dropped.
+    func reloadAsync() async {
+        let c = container
+        let t = coreLoad.run({ () -> ReloadSnapshot in
+            var fav = Set<String>()
+            for k in [ContentKind.channel, .movie, .series] { fav.formUnion((try? c.favoritesRepo.favoriteIDs(kind: k)) ?? []) }
+            let later = Set(((try? c.favoritesRepo.collectionItems(id: Self.watchLaterListID)) ?? []).map(\.itemID))
+            return ReloadSnapshot(favorites: fav, watchLater: later, sources: (try? c.catalog.sources()) ?? [])
+        }, apply: { [weak self] snap in
+            guard let self else { return }
+            favoriteIDs = snap.favorites; watchLaterIDs = snap.watchLater; sources = snap.sources
+            validateActiveSource()
+        })
+        await t.value
+        // Counts depend on the (validated) active playlist, so they are read after it is known; an answer for a playlist that is no longer active is dropped.
+        let sid = activeSourceID
+        let counts = await offMain { (try? c.catalog.visibleCounts(sourceID: sid)) ?? CatalogCounts() }
+        if sid == activeSourceID { self.counts = counts }
+        reloadFolders()
+    }
+    private struct ReloadSnapshot: Sendable { let favorites: Set<String>; let watchLater: Set<String>; let sources: [PlaylistSource] }
+
     func reload() {
+        coreLoad.cancel()          // an older asynchronous reload must not land on top of this one
         reloadFavorites()
         reloadWatchLater()
         sources = (try? container.catalog.sources()) ?? []
@@ -285,16 +314,20 @@ final class AppState {
         syncProgress[p.sourceID] = p
         switch p.state {
         case .completed:
-            reload(); catalogVersion += 1
-            if wasBusy {
-                let name = sources.first { $0.id == p.sourceID }?.name ?? "Source"
-                toasts.show("\(name) updated", symbol: "checkmark.circle.fill", kind: .success)
-                for n in p.notes { toasts.show(n, symbol: "exclamationmark.triangle.fill", kind: .warning) }
+            Task { @MainActor in
+                await reloadAsync(); catalogVersion += 1
+                if wasBusy {
+                    let name = sources.first { $0.id == p.sourceID }?.name ?? "Source"
+                    toasts.show("\(name) updated", symbol: "checkmark.circle.fill", kind: .success)
+                    for n in p.notes { toasts.show(n, symbol: "exclamationmark.triangle.fill", kind: .warning) }
+                }
             }
         case .failed(let m):
-            reload()
-            let name = sources.first { $0.id == p.sourceID }?.name ?? "Source"
-            toasts.show("\(name): \(m)", symbol: "xmark.octagon.fill", kind: .error)
+            Task { @MainActor in
+                await reloadAsync()
+                let name = sources.first { $0.id == p.sourceID }?.name ?? "Source"
+                toasts.show("\(name): \(m)", symbol: "xmark.octagon.fill", kind: .error)
+            }
         default: break
         }
     }

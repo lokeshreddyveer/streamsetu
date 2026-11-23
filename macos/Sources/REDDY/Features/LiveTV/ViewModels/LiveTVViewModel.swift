@@ -19,6 +19,8 @@ import Observation
         let b = NowNextBox(); boxes[id] = b; return b
     }
     func programs(for id: String) -> [EPGProgram]? { boxes[id]?.programs }
+    /// Forgets every answer (a kept model that is hidden does not hold programme data that goes stale).
+    func removeAll() { boxes.removeAll() }
     /// Stores answers; only a box whose value changed is written. Returns the ids that changed.
     @discardableResult func publish(_ ids: [String], _ map: [String: [EPGProgram]]) -> [String] {
         var changed: [String] = []
@@ -33,6 +35,9 @@ import Observation
 
 @MainActor @Observable
 final class LiveTVViewModel {
+    init() { Perf.bump("LiveTVViewModel") }
+    /// Never reused for another model (screens put it in their task keys).
+    let uid = ScreenModelID.next()
     var filter: LiveFilter = .all
     var search = ""
     var channels: [Channel] = []
@@ -50,10 +55,29 @@ final class LiveTVViewModel {
     /// The active playlist. Everything here is scoped to it.
     var sourceID: UUID?
 
+    /// What the screen last finished loading for (its task key); a returning screen with the same key does not read again.
+    var loadedKey: String?
+
+    /// Called when the screen goes away while this model is kept: a pending search stops, and a very long channel list is dropped (it is read again on return).
+    func trimForRetention() {
+        searchTask?.cancel(); fetchTask?.cancel()
+        // A cancelled fetch must not leave the guard in `want` shut: rows asking again after the return start a new one. What aired while hidden is asked again too.
+        fetchTask = nil; wanted.removeAll(); nowNext.removeAll()
+        if searchPending { searchPending = false; loadedKey = nil }          // the text and the list disagree: the return reads the list again
+        if channels.count > ScreenRetention.maxRetainedChannels { channels = []; loadedKey = nil }
+    }
+
+    /// Whether the list is the same until the catalog changes.
+    func isStaticListing(_ f: LiveFilter) -> Bool {
+        guard listID == nil else { return false }
+        switch f { case .all, .category: return true; default: return false }
+    }
+
     private var queryGen = 0
     private var wanted = Set<String>()
     private var fetchTask: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
+    private var searchPending = false
 
     func reload(_ c: AppContainer) async {
         queryGen += 1
@@ -103,9 +127,10 @@ final class LiveTVViewModel {
 
     func scheduleSearch(_ c: AppContainer) {
         searchTask?.cancel()
+        searchPending = true
         searchTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 180_000_000)    // debounce keystrokes; stale queries are dropped
-            if !Task.isCancelled { await self?.reload(c) }
+            if !Task.isCancelled { await self?.reload(c); if !Task.isCancelled { self?.searchPending = false } }
         }
     }
 

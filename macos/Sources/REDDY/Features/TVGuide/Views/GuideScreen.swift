@@ -1,15 +1,31 @@
 import SwiftUI
 import AppKit
 
-/// TV Guide: fixed channel labels on the left, a time grid on the right that moves horizontally.
+/// TV Guide. Finds the model kept for this profile and playlist (the time window, scope and channels survive a tab switch) and shows it.
 struct GuideScreen: View {
+    @Environment(\.container) private var container
+    @Environment(AppState.self) private var state
+
+    var body: some View {
+        if let c = container {
+            GuideScreenContent(vm: c.screens.model(ScreenKey(screen: .guide, profile: c.profiles.activeID, source: state.activeSourceID), revision: c.parental.restrictionRevision) { GuideViewModel() })
+        } else {
+            GuideScreenContent(vm: GuideViewModel())
+        }
+    }
+}
+
+/// Fixed channel labels on the left, a time grid on the right that moves horizontally.
+private struct GuideScreenContent: View {
     @Environment(\.container) private var container
     @Environment(AppState.self) private var state
     @Environment(AppRouter.self) private var router
     @Environment(AppSettings.self) private var settings
     @Environment(\.reddyAccent) private var accent
-    @State private var vm = GuideViewModel()
+    @Bindable var vm: GuideViewModel
     @State private var clock = Date()
+
+    private var reloadKey: String { "\(vm.uid)-\(state.catalogVersion)-\(String(describing: scope))-\(state.activeSourceID?.uuidString ?? "")" }
 
     private var scope: GuideScope {
         switch router.selection {
@@ -34,10 +50,16 @@ struct GuideScreen: View {
         .onKeyPress(.leftArrow) { vm.shift(hours: -0.5); return .handled }
         .onKeyPress(.rightArrow) { vm.shift(hours: 0.5); return .handled }
         .task { vm.hours = settings.guideHoursVisible }
-        .task(id: "\(state.catalogVersion)-\(String(describing: scope))-\(state.activeSourceID?.uuidString ?? "")") {
+        .task(id: reloadKey) {
             vm.scope = scope; vm.sourceID = state.activeSourceID
-            if let c = container { await vm.reload(c) }
+            guard let c = container else { return }
+            // Same catalog, scope and playlist as the last read, and the window not stale: keep the grid as it was.
+            if vm.loadedKey == reloadKey, !vm.channels.isEmpty, vm.isFresh(maxAge: ScreenRetention.guideMaxAge) { return }
+            if vm.loadedKey != nil, !vm.isFresh(maxAge: ScreenRetention.guideMaxAge) { vm.windowStart = GuideViewModel.snap(Date().addingTimeInterval(-30 * 60)) }          // a stale window starts at "now" again, as a fresh screen would
+            await vm.reload(c)
+            if !Task.isCancelled { vm.markLoaded(reloadKey) }
         }
+        .onDisappear { vm.trimForRetention() }
         .task { while !Task.isCancelled { try? await Task.sleep(nanoseconds: 30_000_000_000); clock = Date() } }
         .onChange(of: settings.guideHoursVisible) { _, v in vm.hours = v }
     }

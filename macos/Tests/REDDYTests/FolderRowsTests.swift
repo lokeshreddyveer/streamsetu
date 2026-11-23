@@ -55,7 +55,7 @@ import Foundation
 
     @Test func preferredLanguageAndRecentFoldersComeFirst() async throws {
         c.settings.preferredAudioLanguage = "Hindi"
-        c.smartMix.noteFolderOpened(profile: "main", categoryID: "f9")
+        await c.smartMix.noteFolderOpened(profile: "main", categoryID: "f9").value
         let m = FolderRowsModel(kind: .movie)
         await m.reload(c, sourceID: nil, profile: "main")
         #expect(m.rows.first?.id == "f9", "recently opened first")

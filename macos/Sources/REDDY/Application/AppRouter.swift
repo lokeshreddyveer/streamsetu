@@ -95,7 +95,7 @@ enum ModalRoute: Hashable, Identifiable, Sendable, CaseIterable {
 /// Navigation state. A fresh launch always starts at Home → Discover; nothing here is restored from a previous run.
 @MainActor @Observable
 final class AppRouter {
-    private(set) var tab: AppTab = .home
+    private(set) var tab: AppTab = .home { didSet { Perf.signposter.emitEvent("TabSwitch") } }
     private var selections: [AppTab: SidebarSelection] = [:]
     var movie: Movie?
     var series: Series?
@@ -109,7 +109,10 @@ final class AppRouter {
     var playlistMenuOpen = false
     var focusSearch = 0
     /// What is typed in the top bar. While it is non-empty, results replace the content area; the screen beneath stays alive.
-    var searchQuery = ""
+    /// A stored flag that flips only when the text goes from blank to non-blank (or back), so views that only need "is a search open" are not redrawn on every keystroke.
+    var searchQuery = "" { didSet { let now = Self.isSearchText(searchQuery); if now != isSearching { isSearching = now } } }
+    private(set) var isSearching = false
+    nonisolated static func isSearchText(_ s: String) -> Bool { !s.trimmingCharacters(in: .whitespaces).isEmpty }
     var topSearchFocus = 0
     /// Bumped by ↓ in the search field to move keyboard focus into the results.
     var searchResultsFocus = 0
@@ -163,7 +166,6 @@ final class AppRouter {
     /// ⌘K: focus the search field in the top bar. Search never opens a dialog.
     func focusTopSearch() { topSearchFocus += 1 }
     func clearSearch() { searchQuery = "" }
-    var isSearching: Bool { !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
     /// ⌘F: focus the current screen's own search field.
     func focusCurrentScreenSearch() { focusSearch += 1 }
     func closeMenus() { accountMenuOpen = false; playlistMenuOpen = false }

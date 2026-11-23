@@ -112,6 +112,9 @@ final class MPVPlayerEngine: PlaybackEngine {
         // Nothing of this load exists yet while it waits here, so a load that is overtaken (or a stop) has nothing of it to take down; it finds out on the way back.
         let rotationFilter: String? = request.url.isFileURL ? LocalMedia.rotationFilter(await steps.rotationDegrees(request.url)) : nil
         guard generation == loadGeneration else { throw CancellationError() }
+        // The previous context is destroyed on a background queue; the new one starts only after that, so nothing overlaps and nothing blocks the interface.
+        await drainTeardown()
+        guard generation == loadGeneration else { throw CancellationError() }
 
         guard let create = lib.create, let ctx = create() else { throw fail(PlaybackError(.engineUnavailable)) }
         let core = Core(ctx: ctx)
@@ -212,20 +215,52 @@ final class MPVPlayerEngine: PlaybackEngine {
     func setMuted(_ m: Bool) { if let c = core { _ = lib.setProperty?(c.ctx, "mute", m ? "yes" : "no") } }
     func setRate(_ r: Double) { if let c = core { _ = lib.setProperty?(c.ctx, "speed", String(r)) } }
 
+    /// Takes the old context down off the main actor. Everything the person can see or hear changes at once (the context is silenced, the layer is cleared, `core` is nil); the parts that can wait
+    /// (the event thread leaving `mpv_wait_event`, up to 3 s, the render queue draining, `mpv_terminate_destroy`) run in order on one serial queue. A later load waits for that queue (`drainTeardown`)
+    /// before it creates its own context, so two contexts never play at once and a context is never destroyed under a thread that still uses it.
+    nonisolated private static let teardownQueue = DispatchQueue(label: "app.reddy.mpv.teardown", qos: .userInitiated)
+
+    /// Completes when every teardown handed off so far has finished.
+    func drainTeardown() async { await Self.drainAllTeardowns() }
+
+    /// The same, for code that is about to start a different engine: the old connection is closed before the new one opens (one-connection providers refuse two).
+    nonisolated static func drainAllTeardowns() async {
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in teardownQueue.async { c.resume() } }
+    }
+
+    /// How many times the picture was wiped (tests: a teardown wipes it at once and again after the render queue has drained).
+    private(set) var layerClears = 0
+    private func clearLayers() {
+        layerClears += 1
+        displayLayer.sampleBufferRenderer.flush(removingDisplayedImage: true)
+        CATransaction.begin(); CATransaction.setDisableActions(true); surfaceLayer.contents = nil; CATransaction.commit()
+    }
+
     private func teardown() {
         loadGeneration &+= 1          // whatever load is still waiting is now out of date
         relay?.stop(); relay = nil
         workers.forEach { $0.cancel() }; workers = []
         guard let core else { return }
         core.stopped = true
+        self.core = nil
+        // Silence it now: the context may live on the queue for a moment, and the next channel must not overlap its sound.
+        _ = lib.setProperty?(core.ctx, "pause", "yes")
+        _ = lib.setProperty?(core.ctx, "mute", "yes")
+        clearLayers()
+        let lib = self.lib
+        // A frame that was already being drawn when the layer was wiped can still land on it. Once the render queue has drained none is left, so the layer is wiped again, on the main queue,
+        // before anything that waits for this teardown (the next load) can continue: the old channel's last picture never shows over the new one.
+        let again: @Sendable () -> Void = { [weak self] in DispatchQueue.main.async { MainActor.assumeIsolated { self?.clearLayers() } } }
+        Self.teardownQueue.async { Self.destroy(core, lib: lib, afterDrain: again) }
+    }
+
+    nonisolated private static func destroy(_ core: Core, lib: MPVLibrary, afterDrain: @Sendable () -> Void = {}) {
+        defer { afterDrain() }
         // The event thread may be blocked inside mpv_wait_event on this context. Destroying the context underneath it is a
         // use-after-free (libmpv aborts in ta_set_parent), so wake it and wait until it has really left before going on.
         if core.eventThreadRunning {
             lib.wakeup?(core.ctx)
-            if core.eventThreadDone.wait(timeout: .now() + 3) == .timedOut {
-                self.core = nil
-                return
-            }
+            if core.eventThreadDone.wait(timeout: .now() + 3) == .timedOut { return }       // still inside: the context is leaked rather than destroyed under it
         }
         core.renderQueue.sync {
             if let r = core.render {
@@ -236,9 +271,6 @@ final class MPVPlayerEngine: PlaybackEngine {
             }
         }
         lib.terminateDestroy?(core.ctx)
-        self.core = nil
-        displayLayer.sampleBufferRenderer.flush(removingDisplayedImage: true)
-        CATransaction.begin(); CATransaction.setDisableActions(true); surfaceLayer.contents = nil; CATransaction.commit()
     }
 
     // MARK: rendering (software)
@@ -313,6 +345,7 @@ final class MPVPlayerEngine: PlaybackEngine {
         CVPixelBufferUnlockBaseAddress(pb, [])
         guard rc >= 0 else { Trace.log("mpv render FAILED rc=\(rc) size=\(w)x\(h)"); return }
 
+        guard !core.stopped else { return }          // stopped while this frame was drawn: it must not reach the layer
         core.latestBuffer = pb
         #if os(iOS)
         if let io = CVPixelBufferGetIOSurface(pb)?.takeUnretainedValue(), let layer = core.surface {

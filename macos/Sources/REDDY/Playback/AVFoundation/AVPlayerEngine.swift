@@ -218,6 +218,7 @@ final class AVPlayerEngine: PlaybackEngine {
     }
 
     func stop() {
+        let sp = Perf.begin("PlayerTeardown"); defer { Perf.end("PlayerTeardown", sp) }
         loadGeneration += 1
         teardown()
         request = nil

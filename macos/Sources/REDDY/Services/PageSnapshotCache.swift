@@ -8,7 +8,7 @@ import Foundation
 ///  - `clear()` drops everything at once and is what a change of profile, library or lock calls, so nothing a person is no longer allowed to see can come back from here;
 ///  - the number of entries and the total cost are bounded, and the least recently used entry goes first;
 ///  - it holds the list's items and counts only: no address, no login and no playable URL.
-/// Status: built and tested ahead of use; no screen holds one yet. Kept (not moved to the tests) because it is the strict, privacy-reviewed shape a page cache must have.
+/// Status: in use. The container holds one of screen models (`ScreenRetention.Store`) so Movies, Series, Live TV and Guide keep their state across tab switches; the same strict rules apply to it.
 @MainActor
 final class PageSnapshotCache<Key: Hashable, Value> {
     private struct Entry { var value: Value; var cost: Int; var revision: Int }
@@ -39,6 +39,9 @@ final class PageSnapshotCache<Key: Hashable, Value> {
         entries[key] = Entry(value: value, cost: max(0, cost), revision: revision); order.append(key); totalCost += max(0, cost)
         while entries.count > maxEntries || totalCost > maxCost, let oldest = order.first { remove(oldest) }
     }
+
+    /// Forgets the entries whose key matches (another profile or playlist than the one now in use).
+    func removeAll(where shouldRemove: (Key) -> Bool) { for k in order where shouldRemove(k) { remove(k) } }
 
     /// Forgets everything: a new profile, library, lock, kids/adult rule or a memory warning.
     func clear() { entries.removeAll(); order.removeAll(); totalCost = 0 }

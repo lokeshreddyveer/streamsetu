@@ -98,7 +98,7 @@ private final class Gate: @unchecked Sendable {
         #expect(seen.violations.isEmpty, "nothing may be done to a context that was already destroyed: \(seen.violations)")
         #expect(seen.loadfiles == ["file:///tmp/fast.mkv"], "only the newest load attaches playback")
         if case .success = result { Issue.record("the overtaken load must end as cancelled, not as a success") }
-        e.stop()
+        e.stop(); await e.drainTeardown()          // the context is destroyed in the background: finish it before the next test reuses the same fake ids
     }
 
     @Test func aLoadStoppedWhileItWaitsDoesNothingWhenItWakes() async throws {
@@ -106,7 +106,7 @@ private final class Gate: @unchecked Sendable {
         let e = engine(gates: ["slow": slow])
         let a = Task { @MainActor in try await e.load(request("slow")) }
         await waitUntilWaiting(slow)
-        e.stop()
+        e.stop(); await e.drainTeardown()          // the context is destroyed in the background: finish it before the next test reuses the same fake ids
         slow.open()
         _ = await a.result
         let seen = FakeMPV.snapshot
@@ -126,7 +126,7 @@ private final class Gate: @unchecked Sendable {
         let seen = FakeMPV.snapshot
         #expect(seen.violations.isEmpty, "\(seen.violations)")
         #expect(seen.loadfiles == ["http://host.example/fast.ts"])
-        e.stop()
+        e.stop(); await e.drainTeardown()          // the context is destroyed in the background: finish it before the next test reuses the same fake ids
     }
 
     @Test func threeSwitchesFinishingOutOfOrderLeaveOnlyTheNewestPlaying() async throws {
@@ -144,7 +144,7 @@ private final class Gate: @unchecked Sendable {
         let seen = FakeMPV.snapshot
         #expect(seen.violations.isEmpty, "\(seen.violations)")
         #expect(seen.loadfiles == ["file:///tmp/three.mkv"], "\(seen.loadfiles)")
-        e.stop()
+        e.stop(); await e.drainTeardown()          // the context is destroyed in the background: finish it before the next test reuses the same fake ids
     }
 
     @Test func anOvertakenLoadPublishesNoState() async throws {
@@ -163,6 +163,6 @@ private final class Gate: @unchecked Sendable {
         _ = await a.result
         #expect(e.state == before, "the overtaken load must not move the state of the newest one")
         states.cancel()
-        e.stop()
+        e.stop(); await e.drainTeardown()          // the context is destroyed in the background: finish it before the next test reuses the same fake ids
     }
 }
