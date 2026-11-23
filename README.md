@@ -130,7 +130,7 @@ Read the [Privacy policy](legal/privacy.md) and the [Terms](legal/terms.md).
 
 ## 📚 Read more
 
-| | |
+| Guide | What's inside |
 |---|---|
 | [What each app does](docs/FEATURES.md) | The feature table, app by app |
 | [Getting around](docs/GETTING-AROUND.md) | The remote, touch and keyboard controls |
