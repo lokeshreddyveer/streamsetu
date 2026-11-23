@@ -4,7 +4,7 @@
 
 **Every app, screen by screen, in the order you meet them.**
 
-[🖥️ Mac](#mac) &nbsp;·&nbsp; [📺 Fire TV and Android TV](#fire-tv-and-android-tv) &nbsp;·&nbsp; [📱 iPhone](#iphone) &nbsp;·&nbsp; [📱 iPad](#ipad) &nbsp;·&nbsp; [🤖 Android phone](#android-phone)
+[🖥️ Mac](#mac) &nbsp;·&nbsp; [📺 Fire TV and Android TV](#fire-tv-and-android-tv) &nbsp;·&nbsp; [📱 iPhone](#iphone) &nbsp;·&nbsp; [🤖 Android phone](#android-phone) &nbsp;·&nbsp; [📱 iPad](#ipad)
 
 [← Back to the README](../README.md)
 
@@ -115,16 +115,6 @@ From the launch screen to Settings, then the menus and the person page.
 
 ---
 
-## iPad
-
-The sidebar and the full Home screen.
-
-<p align="center"><img src="screenshots/ipad-home.png" alt="StreamSetu on iPad: Home with the sidebar" width="50%"></p>
-
-<p align="right"><sub><a href="#streamsetu-screenshots">↑ Back to the top</a></sub></p>
-
----
-
 ## Android phone
 
 Touch layout for phones and tablets.
@@ -143,5 +133,15 @@ Touch layout for phones and tablets.
 </table>
 
 <p align="right"><sub><a href="#streamsetu-screenshots">↑ Back to the top</a></sub></p>
+
+## iPad
+
+The sidebar and the full Home screen.
+
+<p align="center"><img src="screenshots/ipad-home.png" alt="StreamSetu on iPad: Home with the sidebar" width="50%"></p>
+
+<p align="right"><sub><a href="#streamsetu-screenshots">↑ Back to the top</a></sub></p>
+
+---
 
 The artwork in these screenshots comes from the provider's own playlist. StreamSetu ships no content.
