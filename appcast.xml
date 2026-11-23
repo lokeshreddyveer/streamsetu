@@ -3,6 +3,15 @@
   <channel>
     <title>StreamSetu</title>
     <item>
+      <title>StreamSetu 2.18.0</title>
+      <pubDate>Mon, 23 Nov 2026 19:39:47 -0000</pubDate>
+      <sparkle:version>330</sparkle:version>
+      <sparkle:shortVersionString>2.18.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[**Streaming services inside the Mac app, a faster Mac app, and the Setu assistant on iPhone and iPad.** Mac 2.18.0, iPhone and iPad 1.4 (build 79), Android phone and tablet 0.27.0, Fire TV and Android TV 0.27.0.]]></description>
+      <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/2026.11.23/StreamSetu-2.18.0.dmg" type="application/octet-stream" sparkle:edSignature="Rf/X1t0tastdrQBdOPGcnr4ag2kZcGPngbhDmDd88+91LXMKn5wrmzEiGhxXVb1LCyHoriih58Jx7fe5yfJgBQ==" length="85957753"/>
+    </item>
+    <item>
       <title>StreamSetu 2.17.0</title>
       <pubDate>Sun, 22 Nov 2026 08:54:24 -0000</pubDate>
       <sparkle:version>315</sparkle:version>
@@ -164,5 +173,5 @@
       <description><![CDATA[Updates now come from the one StreamSetu repository. If you have an older copy, download this one once; it updates itself from then on.]]></description>
       <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/mac-v2.3.1/StreamSetu-2.3.1.dmg" type="application/octet-stream" sparkle:edSignature="C6eMDAYgR8nLbI0cQYXeeDf/ZITqwbIqLWvhz++8pB6E8Tq9U1ITGr10mGAIOMsW4pkgqoWbtKb2Me6cLZcOAg==" length="64424077"/>
     </item>
-                                      </channel>
+                                        </channel>
 </rss>
