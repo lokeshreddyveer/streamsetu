@@ -103,18 +103,56 @@ In order, from the opening screen to the end.
 
 ## iPhone
 
+In order, from the launch screen to the end, then the menus and more pages.
+
+<p align="center"><img src="screenshots/iphone-slideshow.gif" alt="StreamSetu on iPhone, from the launch screen to Settings" width="40%"></p>
+
 <table>
   <tr>
+    <td width="25%" valign="top"><img src="screenshots/ios-00-launch.png" alt="StreamSetu on iPhone: Launch screen" width="100%"></td>
+    <td width="25%" valign="top"><img src="screenshots/ios-01-start.png" alt="StreamSetu on iPhone: Opening screen: choose how to connect" width="100%"></td>
     <td width="25%" valign="top"><img src="screenshots/ios-home.png" alt="StreamSetu on iPhone: Home" width="100%"></td>
-    <td width="25%" valign="top"><img src="screenshots/ios-live.png" alt="StreamSetu on iPhone: Live TV channel grid" width="100%"></td>
-    <td width="25%" valign="top"><img src="screenshots/ios-movies.png" alt="StreamSetu on iPhone: Movies" width="100%"></td>
-    <td width="25%" valign="top"><img src="screenshots/ios-series.png" alt="StreamSetu on iPhone: Series" width="100%"></td>
+    <td width="25%" valign="top"><img src="screenshots/ios-live.png" alt="StreamSetu on iPhone: Live TV" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Home</sub></td>
-    <td align="center"><sub>Live TV</sub></td>
-    <td align="center"><sub>Movies</sub></td>
-    <td align="center"><sub>Series</sub></td>
+    <td align="center" valign="top"><sub>Launch screen</sub></td>
+    <td align="center" valign="top"><sub>Opening screen: choose how to connect</sub></td>
+    <td align="center" valign="top"><sub>Home</sub></td>
+    <td align="center" valign="top"><sub>Live TV</sub></td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top"><img src="screenshots/ios-movies.png" alt="StreamSetu on iPhone: Movies" width="100%"></td>
+    <td width="25%" valign="top"><img src="screenshots/ios-title.png" alt="StreamSetu on iPhone: Title page" width="100%"></td>
+    <td width="25%" valign="top"><img src="screenshots/ios-title-more.png" alt="StreamSetu on iPhone: Title page: details, cast and more like this" width="100%"></td>
+    <td width="25%" valign="top"><img src="screenshots/ios-series.png" alt="StreamSetu on iPhone: Series title page" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><sub>Movies</sub></td>
+    <td align="center" valign="top"><sub>Title page</sub></td>
+    <td align="center" valign="top"><sub>Title page: details, cast and more like this</sub></td>
+    <td align="center" valign="top"><sub>Series title page</sub></td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top"><img src="screenshots/ios-episodes.png" alt="StreamSetu on iPhone: Episodes" width="100%"></td>
+    <td width="25%" valign="top"><img src="screenshots/ios-settings.png" alt="StreamSetu on iPhone: Settings" width="100%"></td>
+    <td width="25%" valign="top"><img src="screenshots/ios-menu-channel.png" alt="StreamSetu on iPhone: Channel menu" width="100%"></td>
+    <td width="25%" valign="top"><img src="screenshots/ios-menu-home.png" alt="StreamSetu on iPhone: Title menu on Home" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><sub>Episodes</sub></td>
+    <td align="center" valign="top"><sub>Settings</sub></td>
+    <td align="center" valign="top"><sub>Channel menu</sub></td>
+    <td align="center" valign="top"><sub>Title menu on Home</sub></td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top"><img src="screenshots/ios-person.png" alt="StreamSetu on iPhone: Person page" width="100%"></td>
+    <td width="25%" valign="top"><img src="screenshots/ios-menu-title.png" alt="StreamSetu on iPhone: Title page menu" width="100%"></td>
+    <td width="25%" valign="top"><img src="screenshots/ios-menu-movies.png" alt="StreamSetu on iPhone: Title menu in Movies" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><sub>Person page</sub></td>
+    <td align="center" valign="top"><sub>Title page menu</sub></td>
+    <td align="center" valign="top"><sub>Title menu in Movies</sub></td>
   </tr>
 </table>
 
