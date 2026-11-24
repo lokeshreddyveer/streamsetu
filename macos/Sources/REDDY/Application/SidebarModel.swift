@@ -26,6 +26,19 @@ enum SidebarModel {
         return out
     }
 
+    /// In "All Playlists" two playlists can have a folder of the same name ("Sports" in each). Their rows would look identical but open different lists, so a name more than one
+    /// playlist has gets the playlist's name after it. A name only one playlist has stays as it is.
+    static func tellingPlaylistsApart(_ entries: [SidebarEntry], categories: [CatalogCategory], playlistNames: [UUID: String]) -> [SidebarEntry] {
+        var owner: [String: CatalogCategory] = [:]
+        for c in categories { owner["f:" + c.id] = c }
+        var sources: [String: Set<UUID>] = [:]
+        for e in entries { if let c = owner[e.id] { sources[MetadataNormalizer.normalize(e.title), default: []].insert(c.sourceID) } }
+        return entries.map { e in
+            guard let c = owner[e.id], (sources[MetadataNormalizer.normalize(e.title)]?.count ?? 0) > 1, let name = playlistNames[c.sourceID], !name.isEmpty else { return e }
+            return SidebarEntry(id: e.id, selection: e.selection, title: "\(e.title) · \(name)", symbol: e.symbol, count: e.count)
+        }
+    }
+
     /// Folder search filters folders only. The pinned shortcuts are never affected.
     static func filter(_ folders: [SidebarEntry], query: String) -> [SidebarEntry] {
         let q = MetadataNormalizer.normalize(query)

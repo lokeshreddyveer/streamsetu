@@ -23,6 +23,12 @@ struct ServicesNavigationBinding {
     var canClearData: (ProviderID) -> Bool = { _ in false }
     var clearData: (ProviderID) -> Void = { _ in }
 
+    /// How each native item of the first group is drawn (icon and name, icon only, name only). None of them can be hidden.
+    var tabModes = TopBarTabModes()
+    var setTabMode: (NavTab, TabBarMode) -> Void = { _, _ in }
+    /// False where Podcasts cannot be opened at all (a Kids profile, a locked app): then it is not in the bar. One rule decides.
+    var podcastsAvailable = true
+
     static var empty: ServicesNavigationBinding { ServicesNavigationBinding() }
 
     func isPinned(_ id: ProviderID) -> Bool { pinned.contains(id) }
@@ -75,6 +81,29 @@ extension View {
     /// Context menu and accessibility actions for the active service when it is not pinned.
     func unpinnedActiveBehaviour(_ id: ProviderID, nav: ServicesNavigationBinding) -> some View {
         modifier(UnpinnedItemBehaviour(id: id, nav: nav))
+    }
+}
+
+extension View {
+    /// Right-click menu and accessibility actions of a native item: Icon and Name, Icon Only, Name Only, the current one checked.
+    func tabModeMenu(_ tab: NavTab, nav: ServicesNavigationBinding) -> some View { modifier(TabModeMenu(tab: tab, nav: nav)) }
+}
+
+private struct TabModeMenu: ViewModifier {
+    let tab: NavTab
+    let nav: ServicesNavigationBinding
+    func body(content: Content) -> some View {
+        let current = nav.tabModes.mode(tab)
+        content
+            .contextMenu {
+                ForEach(TabBarMode.allCases) { m in
+                    Button { nav.setTabMode(tab, m) } label: { Label(LocalizedStringKey(m.title), systemImage: m == current ? "checkmark" : "") }.atlas("control.nav.tabMode")
+                }
+            }
+            .atlas("control.nav.tabMode")
+            .accessibilityAction(named: Text("Icon and Name")) { nav.setTabMode(tab, .iconAndName) }
+            .accessibilityAction(named: Text("Icon Only")) { nav.setTabMode(tab, .iconOnly) }
+            .accessibilityAction(named: Text("Name Only")) { nav.setTabMode(tab, .nameOnly) }
     }
 }
 

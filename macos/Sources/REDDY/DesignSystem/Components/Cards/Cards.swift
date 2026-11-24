@@ -142,7 +142,7 @@ struct ReddyPosterCard: View {
                 .accessibilityLabel("View details for \(model.title)")
             Button(action: onPlay) {
                 HStack(spacing: 5) { Image(systemName: "play.fill").font(.system(size: 9)); Text("Play").font(.system(size: 11, weight: .semibold)) }
-                    .foregroundStyle(.white).padding(.horizontal, 12).frame(height: 28)
+                    .foregroundStyle(ColorTokens.onAccent(accent)).padding(.horizontal, 12).frame(height: 28)
                     .background(accent, in: Capsule())
                     .overlay(Capsule().strokeBorder(Color.white.opacity(0.22)))
                     .shadow(color: .black.opacity(0.4), radius: 8, y: 3)
@@ -169,7 +169,7 @@ struct ReddyPosterCard: View {
             ZStack(alignment: .topLeading) {
                 PosterArt(title: model.title, url: model.imageURL, detail: model.placeholderDetail, showsTitle: false, itemID: model.id)
                 if model.isNew {
-                    Text("NEW").font(.system(size: 8, weight: .heavy)).tracking(0.6).foregroundStyle(.white).padding(.horizontal, 6).padding(.vertical, 3)
+                    Text("NEW").font(.system(size: 8, weight: .heavy)).tracking(0.6).foregroundStyle(ColorTokens.onAccent(accent)).padding(.horizontal, 6).padding(.vertical, 3)
                         .background(accent, in: RoundedRectangle(cornerRadius: 3)).padding(8).accessibilityLabel("New episode")
                 }
                 if let r = model.rank {
@@ -293,7 +293,7 @@ struct LandscapeCard: View {
             ZStack(alignment: .bottom) {
                 PosterArt(title: title, url: imageURL, kind: .backdrop, showsTitle: false, itemID: itemID)
                 if let rating { RatingBadge(value: rating).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(8) }
-                Image(systemName: "play.fill").font(.system(size: 13)).foregroundStyle(.white)
+                Image(systemName: "play.fill").font(.system(size: 13)).foregroundStyle(ColorTokens.onAccent(accent))
                     .frame(width: 34, height: 34).background(accent, in: Circle()).shadow(color: .black.opacity(0.4), radius: 8, y: 3)
                     .scaleEffect(hovering ? 1 : 0.85).opacity(hovering ? 1 : 0)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

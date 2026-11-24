@@ -142,8 +142,13 @@ struct FeaturedSlideshow: View {
                 }
                 .frame(width: g.size.width, height: g.size.height).clipped()
             } else {
+                #if os(macOS)
+                // On the Mac the drift is a Core Animation layer animation: SwiftUI animating a scale costs a full window layout every frame.
+                KenBurnsArtwork(url: s.backdropURL).frame(width: g.size.width, height: g.size.height).clipped()
+                #else
                 ArtworkImage(url: s.backdropURL, kind: .backdrop, contentMode: .fill, symbol: "film", showsPlaceholder: false)
                     .frame(width: g.size.width, height: g.size.height).kenBurns().clipped()
+                #endif
             }
         }
         .accessibilityHidden(true)

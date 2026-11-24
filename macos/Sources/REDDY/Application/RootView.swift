@@ -92,12 +92,16 @@ struct MainShell: View {
     let state: AppState
     let services: ServiceNavigation
     let hosts: ServiceHostRegistry
+    private let podcasts = PodcastsHub.shared
     @State private var servicePrefs = ServicePreferences.load()
+    @State private var tabModes = TopBarTabModes.load()
     @State private var switchingProfile = false
     @State private var addingProfile = false
     @State private var program: EPGProgram?
     @State private var nextProgram: EPGProgram?
     @State private var folderQuery = ""
+    /// A playlist the person asked to remove from the playlist menu; the same confirmation as in the playlist manager.
+    @State private var removing: PlaylistSource?
     @State private var width: CGFloat = 1440
     @State private var search: GlobalSearchModel
     @State private var dropTargeted = false
@@ -122,7 +126,8 @@ struct MainShell: View {
                         .zIndex(3)
                     HStack(spacing: 0) {
                         // The native sidebar and screens belong to StreamSetu; while a service shows, the destination state (not a flag of its own) removes them.
-                        if services.navExpanded { sidebar }
+                        if services.showsTabs { sidebar }
+                        else if services.active == .podcasts, services.podcastsAllowed { PodcastsSidebar(hub: podcasts) }
                         ZStack {
                             mainContent
                             // Results replace the content while searching. The screen underneath stays alive, so clearing the
@@ -138,12 +143,13 @@ struct MainShell: View {
                         BottomPlayerHost(playback: playback, program: program, surface: surface, onTitle: { openPlayingItem(playback) })
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
+                    if services.navExpanded, podcasts.player.current != nil, playback.current == nil { PodcastPlayerBar(hub: podcasts) }          // a podcast: its own audio bar
                 }
                 .animation(reduceMotion ? nil : AnimationTokens.standard, value: surface)
                 overlays
             }
             if !state.needsOnboarding && services.navExpanded {          // the Setu button would sit over the service's own controls
-                AssistantBubble(container: container, bottomInset: max(20, PlayerSurfaceModel.reservedBottom(surface, isLive: playback.isLive)),
+                AssistantBubble(container: container, bottomInset: max(20, PlayerSurfaceModel.reservedBottom(surface, isLive: playback.isLive) + podcastBarInset(playback)),
                                 open: { PlayActions.open($0, router: router) },
                                 look: { (screen: assistantScreenName, item: router.movie.map { .movie($0) } ?? router.series.map { .series($0) }, search: router.searchQuery) },
                                 perform: { p in
@@ -153,7 +159,7 @@ struct MainShell: View {
                                     }
                                 })
             }
-            VStack { Spacer(); HStack { Spacer(); ToastHost(center: state.toasts) } }.padding(.bottom, services.navExpanded && PlayerSurfaceModel.showsBar(surface) ? PlayerSurfaceModel.reservedBottom(surface, isLive: playback.isLive) + 8 : 12)
+            VStack { Spacer(); HStack { Spacer(); ToastHost(center: state.toasts) } }.padding(.bottom, services.navExpanded && PlayerSurfaceModel.showsBar(surface) ? PlayerSurfaceModel.reservedBottom(surface, isLive: playback.isLive) + 8 : 12 + podcastBarInset(playback))
         }
         // The root shell owns the top edge: the bar starts at the window's top in every window state, so it is never pushed
         // by the title bar's safe-area inset, and it is never inside a scroll view.
@@ -175,11 +181,13 @@ struct MainShell: View {
         .reddyTheme(container.settings)
         .loggingNotice()
         .onChange(of: router.tab) { _, _ in folderQuery = "" }
-        .background(ServiceGuards(services: services, hosts: hosts, router: router, playback: playback, lock: container.appLock))
+        .background(ServiceGuards(services: services, hosts: hosts, router: router, playback: playback, lock: container.appLock, podcast: podcasts.player))
+        .onAppear { podcasts.attach(container: container, pauseServices: { hosts.pauseAll() }) }
         .onChange(of: AtlasNavRequests.shared.window) { _, id in if let id { openWindow(id: id); AtlasNavRequests.shared.window = nil } }          // Setu opening a window
         .onChange(of: container.settings.hideEmptyFolders) { _, _ in state.reloadFolders() }
         .onChange(of: router.selection) { _, _ in router.clearSearch(); search.clear() }
-        .onChange(of: state.activeSourceID) { _, new in container.screens.removeAll { $0.source != new }; container.filterOptionsStore.invalidate(); folderQuery = ""; router.closeDetail(); router.clearSearch(); search.clear() }
+        .onChange(of: state.activeSourceID) { _, new in container.screens.removeAll { $0.source != new }; container.filterOptionsStore.invalidate(); folderQuery = ""; router.closeDetail(); router.clearSearch(); search.clear(); pruneFolderSelections() }
+        .modifier(PlaylistScopeEffects(state: state, router: router, removing: $removing))
         .onOpenURL { handleOpen($0) }
         .onContinueUserActivity(CSSearchableItemActionType) { activity in          // a Spotlight result for a screen or a setting
             if let id = AtlasSpotlight.atlasID(fromActivityIdentifier: activity.userInfo?[CSSearchableItemActivityIdentifier] as? String), let url = DeepLink.link(atlas: id) { handleOpen(url) }
@@ -204,16 +212,24 @@ struct MainShell: View {
         }
         .onDisappear { keys.remove() }
         .onReceive(NotificationCenter.default.publisher(for: StreamingServicesSettingsModel.preferencesDidChange)) { _ in servicePrefs = ServicePreferences.load() }
+        .onReceive(NotificationCenter.default.publisher(for: TopBarTabModes.didChange)) { _ in tabModes = TopBarTabModes.load() }
         .atlasShowMeHost()
+    }
+
+    /// Room the podcast bar takes at the bottom (nothing while the library's own bar or popup is the player).
+    private func podcastBarInset(_ playback: PlaybackCoordinator) -> CGFloat {
+        services.navExpanded && podcasts.player.current != nil && playback.current == nil ? PodcastPlayerBar.height : 0
     }
 
     /// The native screen, or the service that replaced it (the destination state decides; nothing else).
     @ViewBuilder private var mainContent: some View {
         Group {
-            if services.navExpanded {
+            if services.showsTabs {
                 ContentRouter()
                     .id(state.activeSourceID)       // a playlist switch rebuilds the screen: nothing carries over
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if services.active == .podcasts, services.podcastsAllowed {
+                PodcastsMainView().frame(maxWidth: .infinity, maxHeight: .infinity).transition(.opacity)
             } else if let id = services.activeService {
                 // One host view for every embedded service; a disabled one shows the native unavailable screen. Both were checked by the same capability gate in `select`.
                 if let model = hosts.model(for: id) {
@@ -336,6 +352,11 @@ struct MainShell: View {
         }
     }
 
+    /// Forgets remembered folders of playlists that are gone or not in view.
+    private func pruneFolderSelections() {
+        router.pruneFolderSelections(scope: state.activeSourceID, validSources: Set(state.sources.filter(\.enabled).map(\.id)))
+    }
+
     // MARK: sidebar
 
     private var sidebar: some View {
@@ -357,6 +378,7 @@ struct MainShell: View {
                             onTogglePlaylistMenu: { router.accountMenuOpen = false; router.playlistMenuOpen.toggle() },
                             onSwitchPlaylist: { router.playlistMenuOpen = false; if $0 == AppState.allPlaylistsID { state.switchToAllPlaylists() } else { state.switchPlaylist($0) } },
                             onAddPlaylist: { router.playlistMenuOpen = false; router.modal = .addPlaylist },
+                            onRemovePlaylist: { id in router.playlistMenuOpen = false; removing = state.sources.first { $0.id == id } },
                             onReorder: { state.reorderFolders(tab: tab, entryIDs: $0) },
                             onHideFolder: { state.hideFolder($0) },
                             lockedFolderIDs: container.parental.lockedCategoryIDs,
@@ -402,6 +424,11 @@ struct MainShell: View {
         if let m = router.movie { scrim { router.closeDetail() } ; TitleDialogHost { MovieDetailView(movie: m).id(m.id).atlasScreen("screen.title.movie") }.transition(TitleDialogMotion.transition).zIndex(6) }
         if let s = router.series { scrim { router.closeDetail() } ; TitleDialogHost { SeriesDetailView(series: s).id(s.id).atlasScreen("screen.title.series") }.transition(TitleDialogMotion.transition).zIndex(6) }
         if let modal = router.modal { modalView(modal) }
+        if podcasts.player.panelOpen, podcasts.player.current != nil {
+            scrim { podcasts.player.panelOpen = false }
+            ReddyDialog(title: "Now Playing", width: 900, onClose: { podcasts.player.panelOpen = false }) { PodcastNowPlayingPanel(hub: podcasts) }
+                .zIndex(8).transition(.opacity.combined(with: .scale(scale: 0.98)))
+        }
         if PlayerSurfaceModel.showsExpanded(container.playback.primarySurface) { scrim { container.playback.isExpanded = false }; expandedPlayer.zIndex(8) }
     }
 
@@ -488,7 +515,10 @@ struct MainShell: View {
             clearData: { id in
                 guard let def = hosts.registry.definition(for: id) else { return }
                 Task { await ServiceDataClearing.confirmAndClear(id, name: def.displayName, hosts: hosts) }
-            })
+            },
+            tabModes: tabModes,
+            setTabMode: { tab, mode in var m = tabModes; m.set(mode, for: tab); tabModes = m; m.save() },
+            podcastsAvailable: services.podcastsAllowed)
     }
 
     private var topBar: some View {
@@ -505,7 +535,8 @@ struct MainShell: View {
             onSelectTab: { router.navigate($0) },
             onToggleAccount: { router.playlistMenuOpen = false; router.accountMenuOpen.toggle() },
             onSelectService: { servicesNav.select($0) },
-            onSelectStreamSetu: { services.returnToStreamSetu() })
+            onSelectStreamSetu: { services.returnToStreamSetu() },
+            onSelectPodcasts: { if services.selectPodcasts() { router.closeMenus() } })
     }
 
     private var searchResultsPage: some View {
@@ -559,6 +590,7 @@ struct MainShell: View {
         if container.appLock.isLocked { return false }          // locked: the keys do nothing (and are not swallowed)
         if let w = event.window, let main = NSApp.mainWindow, w !== main, services.activeService != nil { return false }          // a popover or panel over a service owns its own keys
         if event.keyCode == 53 {                               // Esc closes the topmost layer first (the popup sits above everything else)
+            if podcasts.player.panelOpen { podcasts.player.panelOpen = false; return true }
             if playback.isExpanded && !playback.isFullscreen { playback.isExpanded = false; return true }
             if router.isSearching { router.clearSearch(); search.clear(); return true }
             if router.modal != nil { router.modal = nil; return true }
@@ -617,9 +649,13 @@ private struct ServiceGuards: View {
     let router: AppRouter
     let playback: PlaybackCoordinator
     let lock: AppLock
+    let podcast: PodcastPlayer
     var body: some View {
         Color.clear
-            .onChange(of: playback.isActive) { _, active in if active { ServiceGuardActions.playerStarted(pauseServiceMedia: { hosts.pauseAll() }) } }
+            .onChange(of: playback.isActive) { _, active in if active { ServiceGuardActions.playerStarted(pauseServiceMedia: { hosts.pauseAll() }); podcast.otherMediaStarted() } }
+            .onChange(of: services.activeService) { _, now in if now != nil { podcast.otherMediaStarted() } }
+            .onChange(of: services.podcastsAllowed) { _, allowed in if !allowed { podcast.close() } }
+            .onChange(of: lock.isLocked) { _, locked in if locked { podcast.close() } }
             .onChange(of: playback.currentChannel?.id) { _, _ in if playback.isActive { ServiceGuardActions.playerStarted(pauseServiceMedia: { hosts.pauseAll() }) } }
             .onChange(of: services.isBlocked) { _, blocked in if blocked { ServiceGuardActions.leave(services: services, pauseServiceMedia: { hosts.pauseAll() }) } }
             .onChange(of: lock.isLocked) { _, locked in if locked { ServiceGuardActions.leave(services: services, pauseServiceMedia: { hosts.pauseAll() }) } }
@@ -629,5 +665,20 @@ private struct ServiceGuards: View {
                 hosts.pauseAll(except: now)          // media stops on every switch and on returning to StreamSetu; nothing resumes by itself
                 if now != nil { ServiceGuardActions.serviceEntered(router: router, collapsePlayer: { playback.isExpanded = false; playback.isFullscreen = false }, pausePlayer: { if playback.isActive { playback.pause() } }) }
             }
+    }
+}
+
+/// What follows from the set of playlists changing: folders of a playlist that is gone or off are forgotten, and the "Remove…" confirmation from the playlist menu.
+private struct PlaylistScopeEffects: ViewModifier {
+    let state: AppState
+    let router: AppRouter
+    @Binding var removing: PlaylistSource?
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: state.sources.filter(\.enabled).map(\.id)) { _, ids in router.pruneFolderSelections(scope: state.activeSourceID, validSources: Set(ids)) }
+            .confirmationDialog("Remove \(removing?.name ?? "playlist")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), presenting: removing) { p in
+                Button("Remove Playlist and Its Data", role: .destructive) { state.removePlaylist(p.id) }.atlas("screen.playlists")
+            } message: { _ in Text("Its channels, movies, series, favorites and history are removed from this Mac. The provider's account is not affected.") }
     }
 }

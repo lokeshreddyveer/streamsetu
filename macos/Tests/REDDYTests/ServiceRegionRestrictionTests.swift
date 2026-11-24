@@ -237,19 +237,20 @@ import AppKit
     private static func describe(_ r: HostRule) -> String {
         "\(r.role):\(r.suffix):\(r.active)" + (r.exactHost ? ":exact" : "") + (r.pathPrefixSegments.isEmpty ? "" : ":/" + r.pathPrefixSegments.joined(separator: "/"))
     }
-    /// The host rules of each service, frozen. Only JioHotstar declares exact hosts, a path prefix or regional-notice hosts; nothing else moved.
+    /// The host rules of each service, frozen. Only JioHotstar declares site exact hosts, a path prefix or regional-notice hosts; every service also carries the shared Google sign-in group (exact auth hosts).
     static let frozenRules: [String: [String]] = [
-        "netflix": ["site:netflix.com:true"],
-        "primevideo": ["site:primevideo.com:true", "auth:amazon.com:true", "auth:amazon.in:true"],
-        "disneyplus": ["site:disneyplus.com:true", "auth:disneyid.com:true", "auth:jiohotstar.com:true", "auth:hotstar.com:true"],
-        "hulu": ["site:hulu.com:true", "auth:disneyid.com:true", "auth:disneyplus.com:false"],
-        "hbomax": ["site:hbomax.com:true", "site:max.com:true", "auth:auth.max.com:true"],
-        "peacock": ["site:peacocktv.com:true"],
-        "paramountplus": ["site:paramountplus.com:true", "auth:cbs.com:false"],
-        "appletv": ["site:tv.apple.com:true", "auth:appleid.apple.com:true", "auth:idmsa.apple.com:true", "auth:account.apple.com:true"],
-        "youtube": ["site:youtube.com:true", "redirectOnly:youtu.be:true", "redirectOnly:consent.google.com:true"],
-        "crunchyroll": ["site:crunchyroll.com:true"],
-        "jiohotstar": ["site:jiohotstar.com:true", "site:www.hotstar.com:true:exact:/in", "site:hotstar.com:true:exact:/in"],
+        "netflix": ["site:netflix.com:true", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
+        "primevideo": ["site:primevideo.com:true", "auth:amazon.com:true", "auth:amazon.in:true", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
+        "disneyplus": ["site:disneyplus.com:true", "auth:disneyid.com:true", "auth:jiohotstar.com:true", "auth:hotstar.com:true", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
+        "hulu": ["site:hulu.com:true", "auth:disneyid.com:true", "auth:disneyplus.com:false", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
+        "hbomax": ["site:hbomax.com:true", "site:max.com:true", "auth:auth.max.com:true", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
+        "peacock": ["site:peacocktv.com:true", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
+        "paramountplus": ["site:paramountplus.com:true", "auth:cbs.com:false", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
+        "appletv": ["site:tv.apple.com:true", "auth:appleid.apple.com:true", "auth:idmsa.apple.com:true", "auth:account.apple.com:true", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
+        "youtube": ["site:youtube.com:true", "redirectOnly:youtu.be:true", "redirectOnly:consent.google.com:true", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
+        "crunchyroll": ["site:crunchyroll.com:true", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
+        "spotify": ["site:spotify.com:true", "redirectOnly:spotify.link:true", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
+        "jiohotstar": ["site:jiohotstar.com:true", "site:www.hotstar.com:true:exact:/in", "site:hotstar.com:true:exact:/in", "auth:accounts.google.com:true:exact", "auth:accounts.youtube.com:true:exact"],
     ]
 
     @Test func everyOtherDefinitionHasNoRegionalHostsNoPathRulesAndItsRulesAreFrozen() {
@@ -258,7 +259,7 @@ import AppKit
             #expect(d.urlPolicy.inAppSchemes == ["https"] && !d.urlPolicy.allowsAnyPort, "\(d.id)")
             if d.id == .jiohotstar { continue }
             #expect(d.regionNoticeHosts.isEmpty && d.urlPolicy.regionNoticeHosts.isEmpty, "\(d.id)")
-            #expect(d.urlPolicy.hostRules.allSatisfy { !$0.exactHost && $0.pathPrefixSegments.isEmpty }, "\(d.id)")
+            #expect(d.urlPolicy.hostRules.allSatisfy { ($0.exactHost ? HostRule.googleSignIn.contains($0) : true) && $0.pathPrefixSegments.isEmpty }, "\(d.id)")
         }
         #expect(Set(Self.frozenRules.keys) == Set(ProviderCatalog.all.map(\.id.rawValue)))
         #expect(ProviderURLPolicy(hostSuffixes: ["a.test"], inAppSchemes: ["https"]).regionNoticeHosts.isEmpty)

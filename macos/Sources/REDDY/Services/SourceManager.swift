@@ -170,7 +170,8 @@ final class SourceManager: @unchecked Sendable {
     func addMediaServer(_ type: SourceType, name: String, server: String, username: String, password: String) async throws -> PlaylistSource {
         precondition(type == .jellyfin || type == .emby)
         let base = try SourceURLValidator.validateXtreamServer(server)
-        guard !username.isEmpty, !password.isEmpty else { throw SourceValidationError.empty }
+        // The password may be empty: Jellyfin and Emby accept an account with none (the Jellyfin demo server is one).
+        guard !username.isEmpty else { throw SourceValidationError.empty }
         let ref = try secure.save(Credentials(username: username, password: password))
         var source = PlaylistSource(name: name.nilIfEmpty ?? URL(string: base)?.host ?? type.title, type: type, baseURL: base, credentialRef: ref)
         do {

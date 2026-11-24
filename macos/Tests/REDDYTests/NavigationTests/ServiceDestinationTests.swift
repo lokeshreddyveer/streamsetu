@@ -110,8 +110,8 @@ import AppKit
 
     // MARK: platforms (the iPhone and iPad value is injected here; ios/StreamSetuTests runs the real one)
 
-    @Test func theMacHasTheElevenServicesAndNothingElseDoes() {
-        #expect(ServiceCapabilities.macOS.externalServices.count == 10 && ServiceCapabilities.macOS.externalServices.first == .netflix)
+    @Test func theMacHasTheElevenListedServicesAndNothingElseDoes() {
+        #expect(ServiceCapabilities.macOS.externalServices.count == 11 && ServiceCapabilities.macOS.externalServices.first == .netflix)
         #expect(ServiceCapabilities.none.externalServices.isEmpty)
         #expect(ServiceCapabilities.current == .macOS)          // this test target is the Mac
     }
@@ -187,7 +187,7 @@ import AppKit
         nav.select(.netflix)
         #expect(!nav.select(.jiohotstar) && nav.activeService == .netflix && hosts.map[.netflix]!.events == ["n:show"], "a refused selection changes and hides nothing")
         #expect(!nav.capabilities.externalServices.contains(.jiohotstar))
-        #expect(ProviderCatalog.jiohotstar.id == .jiohotstar && ProviderCatalog.all.count == 11, "the definition and its store identity remain")
+        #expect(ProviderCatalog.jiohotstar.id == .jiohotstar && ProviderCatalog.all.count == 12, "the definition and its store identity remain")
     }
 
     @Test func deepLinksAreValidatedAgainstTheRegistry() {
@@ -283,7 +283,7 @@ import AppKit
         let b = TopBarItem.items(for: TopBarState(tab: .movies, initials: "LR", accountMenuOpen: false, width: 1024, destination: .service(.netflix), services: [.netflix]))
         #expect(b.map(\.identifier) == ["tab.StreamSetu", "tab.Netflix"])
         #expect(b.filter(\.selected).map(\.identifier) == ["tab.Netflix"])          // the indicator is on Netflix, never on a hidden tab
-        #expect(b[0].label?.contains("Home, Live TV, Movies, Series and TV Guide") == true)
+        #expect(b[0].label?.contains("Home, Live TV, Movies, Series, TV Guide and Podcasts") == true)
         #expect(b.map(\.title) == ["StreamSetu", "Netflix"])
     }
 
@@ -304,9 +304,9 @@ import AppKit
         let web = TopBarItem.items(for: TopBarState(tab: .series, initials: "LR", accountMenuOpen: false, width: 1024, destination: .service(.netflix), services: [.netflix]))
         #expect(native.first(where: \.selected)?.identifier == "tab.Series")
         #expect(web.first(where: \.selected)?.identifier == "tab.Netflix" && web.filter(\.selected).count == 1)
-        #expect(web[0].glyph == "house.fill" && native.allSatisfy { $0.glyph == nil })
+        #expect(web[0].glyph == "house.fill" && native.prefix(5).map(\.glyph) == ["house.fill", "tv", "film", "rectangle.stack.fill", "calendar"], "the native tabs now carry their icon (default mode: icon and name)")
         #expect(web[0].width(tabPadding: m.tabPadding) == TabLabelMetrics.textWidth("StreamSetu") + TopBarItem.glyphWidth + 2 * m.tabPadding)
-        #expect(native[0].width(tabPadding: m.tabPadding) == TabLabelMetrics.textWidth("Home") + 2 * m.tabPadding)
+        #expect(native[0].width(tabPadding: m.tabPadding) == TabLabelMetrics.textWidth("Home") + TopBarItem.glyphWidth + 2 * m.tabPadding)
     }
 
     /// Width compression: the six-item group plus its capsule padding, and the collapsed group with its glyph, fit the minimum window width with the tiers' search widths.

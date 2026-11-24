@@ -9,9 +9,9 @@ import AppKit
         guard let dir = ProcessInfo.processInfo.environment["NETFLIX_BAR_SHOTS"] else { return }
         _ = NSApplication.shared
         try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-        let saved = ThemeStore.current
-        defer { ThemeStore.current = saved }
-        for theme in [AppTheme.obsidian, .liquidGlass, .dracula] {
+        let saved = ThemeStore.current; ThemeStore.state.frostedOnly = true
+        defer { ThemeStore.current = saved; ThemeStore.state.frostedOnly = false }
+        for theme in [AppTheme.obsidian, .liquidGlass, .liquidGlassBlue, .graphite] {
             ThemeStore.current = theme
             for w: CGFloat in [1024, 1440, 1920] {
                 for (name, dest) in [("streamsetu", TopLevelDestination.streamSetu), ("netflix", .service(.netflix))] {
@@ -41,8 +41,8 @@ import AppKit
         guard let dir = ProcessInfo.processInfo.environment["NETFLIX_BAR_SHOTS"] else { return }
         _ = NSApplication.shared
         try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-        let saved = ThemeStore.current
-        defer { ThemeStore.current = saved }
+        let saved = ThemeStore.current; ThemeStore.state.frostedOnly = true
+        defer { ThemeStore.current = saved; ThemeStore.state.frostedOnly = false }
         func shot<V: View>(_ view: V, _ size: CGSize, _ file: String) throws {
             let host = NSHostingView(rootView: AnyView(view.frame(width: size.width, height: size.height, alignment: .top).background(ColorTokens.background).environment(\.colorScheme, .dark)))
             host.frame = NSRect(origin: .zero, size: size)
@@ -55,7 +55,7 @@ import AppKit
             try #require(rep.representation(using: .png, properties: [:])).write(to: URL(fileURLWithPath: dir).appendingPathComponent(file))
             withExtendedLifetime(win) {}
         }
-        for theme in [AppTheme.obsidian, .liquidGlass] {
+        for theme in [AppTheme.obsidian, .liquidGlass, .liquidGlassBlue, .graphite] {
             ThemeStore.current = theme
             let t = theme.rawValue.replacingOccurrences(of: " ", with: "-")
             var nav = ServicesNavigationBinding()
@@ -69,6 +69,44 @@ import AppKit
                 let bar = ReddyTopBar(state: st, query: Binding(get: { q }, set: { q = $0 }), focusToken: 0, onSelectTab: { _ in }, onToggleAccount: {})
                 try shot(bar, CGSize(width: w, height: LayoutTokens.headerHeight + 40), "\(t)-\(Int(w))-unpinned-active.png")
             }
+        }
+    }
+
+    /// State A and State B of the redesigned bar, at three widths and in three themes, plus Podcasts open and hidden, for a look. Runs only with NETFLIX_BAR_SHOTS.
+    @Test func renderStatesAAndB() throws {
+        guard let dir = ProcessInfo.processInfo.environment["NETFLIX_BAR_SHOTS"] else { return }
+        _ = NSApplication.shared
+        try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        let saved = ThemeStore.current; ThemeStore.state.frostedOnly = true
+        defer { ThemeStore.current = saved; ThemeStore.state.frostedOnly = false }
+        func shot<V: View>(_ view: V, _ size: CGSize, _ file: String) throws {
+            let host = NSHostingView(rootView: AnyView(view.frame(width: size.width, height: size.height, alignment: .top).background(ColorTokens.background).environment(\.colorScheme, .dark)))
+            host.frame = NSRect(origin: .zero, size: size)
+            let win = NSWindow(contentRect: host.frame, styleMask: .borderless, backing: .buffered, defer: false)
+            win.contentView = host; win.appearance = NSAppearance(named: .darkAqua)
+            for _ in 0..<8 { RunLoop.current.run(until: Date().addingTimeInterval(0.05)) }
+            host.layoutSubtreeIfNeeded()
+            let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try #require(rep.representation(using: .png, properties: [:])).write(to: URL(fileURLWithPath: dir).appendingPathComponent(file))
+            withExtendedLifetime(win) {}
+        }
+        for theme in [AppTheme.obsidian, .liquidGlass, .liquidGlassBlue, .graphite] {
+            ThemeStore.current = theme
+            let t = theme.rawValue.replacingOccurrences(of: " ", with: "-")
+            for w: CGFloat in [1024, 1280, 1728] {
+                for (name, dest, inBar) in [("A", TopLevelDestination.streamSetu, true), ("B-hulu", .service(.hulu), true), ("B-unpinned-peacock", .service(.peacock), true), ("podcasts", .podcasts, true)] {
+                    var nav = ServicesNavigationBinding()
+                    nav.pinned = [.netflix, .hulu, .youtube, .hbomax, .disneyplus, .primevideo, .appletv]
+                    if case .service(let s) = dest { nav.active = s }
+                    var q = ""
+                    let st = TopBarState(tab: .movies, initials: "LO", accountMenuOpen: false, width: w, destination: dest, services: [], showsServicesMenu: true, servicesNav: nav)
+                    let bar = ReddyTopBar(state: st, query: Binding(get: { q }, set: { q = $0 }), focusToken: 0, onSelectTab: { _ in }, onToggleAccount: {})
+                    try shot(bar, CGSize(width: w, height: LayoutTokens.headerHeight + 24), "\(t)-\(Int(w))-\(name).png")
+                }
+            }
+            var hidden = ServicesNavigationBinding(); hidden.pinned = [.netflix, .hulu]; hidden.recents = [.peacock]
+            try shot(ServicesDropdown(nav: hidden), CGSize(width: 340, height: 520), "\(t)-services-list.png")
         }
     }
 }

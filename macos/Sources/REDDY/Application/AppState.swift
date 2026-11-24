@@ -204,6 +204,7 @@ final class AppState {
         container.playback.stop()
         showsAllPlaylists = true; activeSourceID = nil
         defaults.set("all", forKey: DefaultsKey.activePlaylist)
+        scopeChanged()
         catalogVersion += 1
         toasts.show("Showing all playlists together", symbol: "checkmark.circle.fill", kind: .success)
     }
@@ -215,8 +216,58 @@ final class AppState {
         showsAllPlaylists = false
         activeSourceID = id
         defaults.set(id.uuidString, forKey: DefaultsKey.activePlaylist)
+        scopeChanged()
         catalogVersion += 1
         toasts.show("Switched to \(sourceName(id))", symbol: "checkmark.circle.fill", kind: .success)
+    }
+
+    /// The playlist (or All) in view changed: the sidebar folders and the counts belong to the old one until they are read again, so the old folders go at once
+    /// (a folder of another playlist opens an empty list) and both are read for the new scope. An answer for a scope that is no longer open is dropped.
+    private func scopeChanged() {
+        folders = [:]
+        scopeLoad?.cancel()
+        let c = container
+        scopeLoad = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let sid = activeSourceID, all = showsAllPlaylists
+            let counts = await offMain { (try? c.catalog.visibleCounts(sourceID: sid)) ?? CatalogCounts() }
+            guard !Task.isCancelled, sid == activeSourceID, all == showsAllPlaylists else { return }
+            self.counts = counts
+            reloadFolders()
+        }
+    }
+    @ObservationIgnored private var scopeLoad: Task<Void, Never>?
+    /// Waits for the counts and folders asked for by the last playlist switch (tests).
+    func settleScope() async { await scopeLoad?.value }
+
+    /// A playlist was just added (and `reload()` has listed it). Seen as one playlist, the new one opens. In "All Playlists" the view stays as it is: the new playlist is part of it.
+    func playlistAdded(_ id: UUID) {
+        if showsAllPlaylists, canCombinePlaylists {
+            catalogVersion += 1
+            scopeChanged()
+        } else { switchPlaylist(id) }
+    }
+
+    /// Removes a playlist and everything kept for it (channels, titles, favorites, history, guide, login), what is playing from it, a refresh running for it and the screens kept for it.
+    /// If it was the open playlist, "All Playlists" opens when two or more remain, else the one that remains, else the empty state.
+    func removePlaylist(_ id: UUID) {
+        let wasOpen = activeSourceID == id
+        let prefix = id.uuidString.lowercased() + "|"
+        if let playing = container.playback.current?.itemID, playing.hasPrefix(prefix) { container.playback.stop() }
+        let c = container
+        Task { await c.sync.cancel(sourceID: id) }
+        do { try container.sources.remove(id) }
+        catch { toasts.show("Could not remove the playlist: \(error.localizedDescription)", symbol: "xmark.octagon.fill", kind: .error); return }
+        syncProgress[id] = nil
+        container.screens.removeAll { $0.source == id }
+        container.filterOptionsStore.invalidate()
+        if wasOpen {
+            activeSourceID = nil
+            showsAllPlaylists = ((try? container.catalog.sources()) ?? []).filter(\.enabled).count >= 2
+            if showsAllPlaylists { defaults.set("all", forKey: DefaultsKey.activePlaylist) }
+        }
+        reload()
+        catalogVersion += 1
     }
 
     private func validateActiveSource() {
@@ -263,12 +314,15 @@ final class AppState {
 
     func reloadFolders() {
         let c = container, sid = activeSourceID, hideEmpty = container.settings.hideEmptyFolders
+        let names = Dictionary(sources.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
         Task { @MainActor in
             let result = await Task.detached { () -> [ContentKind: [SidebarEntry]] in
                 var out: [ContentKind: [SidebarEntry]] = [:]
                 for k in [ContentKind.channel, .movie, .series] {
-                    out[k] = SidebarModel.folders((try? c.catalog.categories(sourceID: sid, kind: k, includeHidden: false)) ?? [], hideEmpty: hideEmpty,
-                                                  uncategorized: (try? c.catalog.uncategorizedCount(sourceID: sid, kind: k)) ?? 0)
+                    let cats = (try? c.catalog.categories(sourceID: sid, kind: k, includeHidden: false)) ?? []
+                    var entries = SidebarModel.folders(cats, hideEmpty: hideEmpty, uncategorized: (try? c.catalog.uncategorizedCount(sourceID: sid, kind: k)) ?? 0)
+                    if sid == nil { entries = SidebarModel.tellingPlaylistsApart(entries, categories: cats, playlistNames: names) }
+                    out[k] = entries
                 }
                 return out
             }.value

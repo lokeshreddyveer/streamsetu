@@ -17,7 +17,7 @@ import WebKit
         return cond()
     }
 
-    /// The eleven services, in catalog order.
+    /// Every catalog service (twelve, one on hold), in catalog order.
     static var all: [ProviderDefinition] { ProviderCatalog.all }
     /// The services that never leave the app.
     static var blocking: [ProviderDefinition] { ProviderCatalog.all.filter { $0.externalLinks == .blockWithNotice } }

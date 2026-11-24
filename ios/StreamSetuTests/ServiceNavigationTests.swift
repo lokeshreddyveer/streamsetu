@@ -36,7 +36,7 @@ import XCTest
             XCTAssertNil(DeepLink.parse(URL(string: "streamsetu://open?tab=\(id.rawValue)")!), id.rawValue)
             XCTAssertFalse(ServiceCapabilities.current.allows(id), id.rawValue)
         }
-        XCTAssertEqual(ProviderRegistry.standard.definitions.count, 11)
+        XCTAssertEqual(ProviderRegistry.standard.definitions.count, 12)
         XCTAssertEqual(ServicePreferences.initial().pinned, [.netflix])
         XCTAssertEqual(nav.active, .streamSetu)
     }

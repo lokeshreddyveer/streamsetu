@@ -69,13 +69,18 @@ final class EnhancementRuntime {
     /// True while a kids profile is in use or the app is locked: nothing is installed, asked or sent then. Set by the app at start-up.
     var isRestricted: () -> Bool = { true }
 
+    /// Owner kill switch for the Spotify options: when this returns true they never install, whatever the choices say. Default: a hidden preference
+    /// (`defaults write <bundle id> enhancement.spotify.killSwitch -bool YES`).
+    var spotifyKillSwitch: () -> Bool = { UserDefaults.standard.bool(forKey: "enhancement.spotify.killSwitch") }
+
     init(store: EnhancementStore = .shared, client: SponsorSegmentsFetching = SponsorBlockClient()) { self.store = store; self.client = client }
 
     /// What may run for a service right now: declared by its definition AND on AND agreed to AND not restricted, and only for an https service address.
     func active(for definition: ProviderDefinition) -> Set<PageEnhancement> {
         guard !definition.pageEnhancements.isEmpty, !isRestricted(), definition.homeURL.scheme == "https",
               let host = definition.homeURL.host?.lowercased(), definition.urlPolicy.isAllowedHost(host) else { return [] }
-        return definition.pageEnhancements.filter(store.isActive)
+        let killed = spotifyKillSwitch()
+        return definition.pageEnhancements.filter { store.isActive($0) && (!$0.isSpotifyOption || (definition.id == .spotify && !killed)) }
     }
 
     /// Whether the first-open prompt should be shown for this service now.

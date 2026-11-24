@@ -11,7 +11,7 @@ struct AddPlaylistDialog: View {
             ReddyDialog(title: "Add playlist", width: 560, onClose: { router.modal = nil }) {
                 AddSourceForm(scrollHeight: max(200, geo.size.height - 300)) { added in
                     state.reload()
-                    state.switchPlaylist(added.id)
+                    state.playlistAdded(added.id)
                     router.modal = nil
                 }
             }

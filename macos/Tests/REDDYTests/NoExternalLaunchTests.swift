@@ -3,13 +3,13 @@ import WebKit
 import AppKit
 @testable import REDDY
 
-/// The ten services that never leave the app: no link, pop-up, redirect or mail address reaches another application, whatever the page does.
+/// The eleven services that never leave the app: no link, pop-up, redirect or mail address reaches another application, whatever the page does.
 /// Local fixtures only.
 @Suite("No external launch", .serialized) @MainActor struct NoExternalLaunchTests {
     nonisolated static let nine: [ProviderID] = ProviderCatalog.all.filter { $0.externalLinks == .blockWithNotice }.map(\.id)
 
-    @Test func tenServicesHaveNoWayToLeave() {
-        #expect(Self.nine.count == 10 && !Self.nine.contains(.netflix))
+    @Test func elevenServicesHaveNoWayToLeave() {
+        #expect(Self.nine.count == 11 && !Self.nine.contains(.netflix))
         for d in ServiceTestSupport.blocking {
             let m = ServiceWebModel(definition: d, dataStore: { .nonPersistent() }, openExternal: { _ in Issue.record("launched \(d.id)") })
             #expect(m.openExternal == nil, "\(d.id)")

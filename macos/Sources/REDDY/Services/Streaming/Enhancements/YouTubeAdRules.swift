@@ -63,6 +63,7 @@ struct YouTubeAdRules: Codable, Equatable, Sendable {
         """
         (function () {
           var host = location.hostname.toLowerCase();
+          if (host === 'accounts.youtube.com') return;          // Google's sign-in hand-back page: nothing of this runs there
           if (!/(^|\\.)youtube\\.com$/.test(host) && !/(^|\\.)youtube-nocookie\\.com$/.test(host)) return;
           var STRIP = \(json(stripKeys)), HIDE = \(json(hideSelectors)), SKIP = \(json(skipSelectors));
           // 1. The ad schedule is removed from the player's data before the player reads it, so there is no ad to play.

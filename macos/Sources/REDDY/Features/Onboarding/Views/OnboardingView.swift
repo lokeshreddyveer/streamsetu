@@ -83,7 +83,7 @@ struct OnboardingView: View {
     }
 
     private var connect: some View {
-        AddSourceForm(onAdded: { added in state.reload(); state.switchPlaylist(added.id); router.navigate(.home, .shortcut(.discover)) }) {
+        AddSourceForm(onAdded: { added in state.reload(); state.playlistAdded(added.id); router.navigate(.home, .shortcut(.discover)) }) {
             restoreActions.padding(.top, Spacing.xxl).startRiseIn(delay: 0.4)
         }
     }

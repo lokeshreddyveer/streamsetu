@@ -14,6 +14,8 @@ import AppKit
     private var delegates: ServiceWebDelegates?
     /// Adds the optional page additions a person turned on; does nothing for a service that declares none.
     private(set) lazy var enhancements = EnhancementInstaller(definition: definition)
+    /// Adds the service's Tidy pages / hidden-element rule list (a content rule list only; nothing when it is off).
+    private(set) lazy var tidy = TidyInstaller(definition: definition)
 
     /// canGoBack, canGoForward or the full-screen state changed.
     var onNavigationChange: (() -> Void)?
@@ -32,6 +34,7 @@ import AppKit
         let store = dataStore()
         let v = factory.makeWebView(definition: definition, dataStore: store, zoom: zoom, enhancements: definition.pageEnhancements.isEmpty ? nil : enhancements)
         v.navigationDelegate = delegates; v.uiDelegate = delegates; v.menuActions = menuActions
+        tidy.apply(to: v.configuration.userContentController)
         self.delegates = delegates
         observers = [
             v.observe(\.canGoBack) { [weak self] _, _ in MainActor.assumeIsolated { self?.onNavigationChange?() } },
@@ -55,6 +58,12 @@ import AppKit
         enhancements.apply(to: v.configuration.userContentController)
     }
 
+    /// Swaps the rule list after Tidy pages or the hidden elements changed (it applies to the next load).
+    func refreshTidy() {
+        guard let v = webView else { return }
+        tidy.apply(to: v.configuration.userContentController)
+    }
+
     private func startMemoryWatch() {
         guard pressureSource == nil else { return }
         let s = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
@@ -75,10 +84,14 @@ import AppKit
     /// For a hidden service: pause, close presentations, then suspend playback. A pause alone is one-off, so a page's own script (autoplay of
     /// the next title, an ad, a retried play) could start sound again while the retained view is out of sight; suspension is the supported
     /// public setting that keeps the page from playing until it is lifted. The three calls reach the web process in this order.
+    /// WebKit counts suspensions: two `true` calls need two `false` calls. A hidden service is paused more than once on one switch (hiding it,
+    /// then the registry's and the root view's "pause everything else"), so the suspension is requested once; a repeat only pauses again.
+    /// Without this a single lift on return left the page suspended and no video could be played (the 2.18.0 report).
     func suspendMedia() {
         guard let v = webView else { return }
         v.pauseAllMediaPlayback()
         v.closeAllMediaPresentations()
+        guard !isMediaSuspended else { return }
         v.setAllMediaPlaybackSuspended(true)
         isMediaSuspended = true
     }

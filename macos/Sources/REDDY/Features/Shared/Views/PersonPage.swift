@@ -263,7 +263,7 @@ struct PersonPage: View {
                 scopeButton("In your library", count: loading ? nil : a.libraryCount, scope: .library)
             }
             .padding(3).background(ColorTokens.card, in: RoundedRectangle(cornerRadius: 10, style: .continuous)).fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: false)
-            .padding(2).overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(scopeFocus ? Color.accentColor : .clear, lineWidth: 2))
+            .padding(2).overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(scopeFocus ? ColorTokens.accent : .clear, lineWidth: 2))
             .focusable().focused($scopeFocus).focusEffectDisabled()
             .onKeyPress(.leftArrow) { model.scope = .all; return .handled }
             .onKeyPress(.rightArrow) { model.scope = .library; return .handled }

@@ -83,6 +83,8 @@ struct Navigation: Hashable, Sendable {
 /// Destinations that other parts of the app ask for by name.
 enum Destination: Hashable, Sendable, CaseIterable {
     case home, liveTV, movies, series, guide
+    /// Podcasts in the main window (Mac). Elsewhere nothing handles it and it does nothing.
+    case podcasts
     case favorites, continueWatching, history, collections
     case channelManager, playlists
 }
@@ -124,12 +126,23 @@ final class AppRouter {
     var libraryFilter: LibraryFilter?
     /// Called before any navigation to a native screen or title; the macOS shell uses it to leave an outside service first. Nil elsewhere.
     @ObservationIgnored var onNavigate: (() -> Void)?
+    /// Opens Podcasts in the main window; set by the macOS shell (the destination state owns it). Nil elsewhere.
+    @ObservationIgnored var onOpenPodcasts: (() -> Void)?
 
     static func defaultSelection(for tab: AppTab) -> SidebarSelection { .shortcut(Shortcut.pinned(for: tab)[0]) }
 
     var selection: SidebarSelection { selections[tab] ?? Self.defaultSelection(for: tab) }
 
     func select(_ s: SidebarSelection) { selections[tab] = s }
+
+    /// Forgets a remembered folder that the open scope cannot show: a folder of a playlist that was removed or switched off, or (with one playlist open) of another playlist.
+    /// A list left pointing at such a folder would show nothing. Folder ids start with their playlist's id.
+    func pruneFolderSelections(scope: UUID?, validSources: Set<UUID>) {
+        for (tab, sel) in selections {
+            guard case .folder(let id) = sel, let owner = id.split(separator: "|", maxSplits: 1).first.flatMap({ UUID(uuidString: String($0)) }) else { continue }
+            if !validSources.contains(owner) || (scope != nil && owner != scope) { selections[tab] = nil }
+        }
+    }
 
     func navigate(_ tab: AppTab, _ selection: SidebarSelection? = nil) {
         onNavigate?()
@@ -148,6 +161,7 @@ final class AppRouter {
         case .movies: navigate(.movies, .shortcut(.allMovies))
         case .series: navigate(.series, .shortcut(.library))
         case .guide: navigate(.guide, .shortcut(.allChannels))
+        case .podcasts: onOpenPodcasts?()
         case .favorites: navigate(.home, .shortcut(.favorites))
         case .continueWatching: navigate(.home, .shortcut(.continueWatching))
         case .history: navigate(.home, .shortcut(.recentlyWatched))

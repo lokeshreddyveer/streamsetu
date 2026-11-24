@@ -24,9 +24,9 @@ struct TopBarState {
     var servicesNav = ServicesNavigationBinding.empty
     /// The search box always searches the person's own library; while a service is on screen its words say so (typing there goes back to StreamSetu first).
     func searchPlaceholder(narrow: Bool) -> String {
-        destination == .streamSetu ? (narrow ? "Search" : "Search everything") : (narrow ? "Search library" : "Search your library")
+        destination.isNative ? (narrow ? "Search" : "Search everything") : (narrow ? "Search library" : "Search your library")
     }
-    var searchLabel: String { destination == .streamSetu ? "Search everything" : "Search your library" }
+    var searchLabel: String { destination.isNative ? "Search everything" : "Search your library" }
 }
 
 /// How the one-row bar spends its width. Narrower windows give up flexible space first (tab padding, the search box, the
@@ -47,19 +47,20 @@ struct TopBarMetrics: Equatable {
     /// Height of the nav capsule, the search capsule and the profile row: one line across the bar.
     static var rowHeight: CGFloat { navItemHeight + 2 * navGroupPadding }
 
-    static func metrics(for width: CGFloat) -> TopBarMetrics {
-        switch width {
-        case 1360...: TopBarMetrics(tabPadding: 15, searchMin: 150, searchIdeal: 250, searchMax: 280, showShortcutHint: true)
-        case 1180...: TopBarMetrics(tabPadding: 13, searchMin: 140, searchIdeal: 220, searchMax: 250, showShortcutHint: true)
-        case 1100...: TopBarMetrics(tabPadding: 11, searchMin: 130, searchIdeal: 180, searchMax: 210, showShortcutHint: false)
-        default: TopBarMetrics(tabPadding: 9, searchMin: 110, searchIdeal: 150, searchMax: 170, showShortcutHint: false)
-        }
-    }
+    /// The width tiers, widest first: the window width from which each applies.
+    static let tiers: [(from: CGFloat, metrics: TopBarMetrics)] = [
+        (1360, TopBarMetrics(tabPadding: 15, searchMin: 150, searchIdeal: 250, searchMax: 280, showShortcutHint: true)),
+        (1180, TopBarMetrics(tabPadding: 13, searchMin: 140, searchIdeal: 220, searchMax: 250, showShortcutHint: true)),
+        (1100, TopBarMetrics(tabPadding: 11, searchMin: 130, searchIdeal: 180, searchMax: 210, showShortcutHint: false)),
+        (0, TopBarMetrics(tabPadding: 9, searchMin: 110, searchIdeal: 150, searchMax: 170, showShortcutHint: false)),
+    ]
+    /// The tier a window width belongs to. The bar itself may pick a narrower tier when that keeps more names or pins (see `TopBarMenuRow.make`).
+    static func metrics(for width: CGFloat) -> TopBarMetrics { tiers.first { width >= $0.from }!.metrics }
 
     /// The width the centred navigation group may use at this window width: what is left once both sides keep the room the brand and the search/profile need.
-    func centerBudget(width: CGFloat, brandWidth: CGFloat) -> CGFloat {
+    func centerBudget(width: CGFloat, brandWidth: CGFloat, search: CGFloat? = nil) -> CGFloat {
         let left = Self.leadingInset + brandWidth + TopBarGeometry.gap
-        let right = searchMin + 8 + Self.accountWidth + Self.trailingInset + TopBarGeometry.gap
+        let right = (search ?? searchMin) + 8 + Self.accountWidth + Self.trailingInset + TopBarGeometry.gap
         return max(0, width - 2 * max(left, right))
     }
 
@@ -135,7 +136,7 @@ enum TabLabelMetrics {
 
 /// What the one row shows for a destination: the five tabs and the services, or (with a service showing) the collapsed StreamSetu item and the services. Pure, so the identifiers, labels and the selected item are table-tested.
 struct TopBarItem: Identifiable, Equatable {
-    enum Kind: Equatable { case tab(AppTab), streamSetu, service(ExternalService), servicesMenu }
+    enum Kind: Equatable { case tab(AppTab), podcasts, streamSetu, service(ExternalService), servicesMenu }
     var kind: Kind
     var title: String
     var identifier: String
@@ -144,38 +145,100 @@ struct TopBarItem: Identifiable, Equatable {
     var atlas: String?
     /// A small symbol before the label: only the collapsed StreamSetu item has one (it reads as the way home).
     var glyph: String? = nil
+    /// A service's favicon (the bundled icon, or its initial tile) before the label.
+    var icon: ProviderID? = nil
+    /// Favicon-only: no label is drawn; the full name is the tooltip and the VoiceOver label.
+    var compact = false
+    /// The tooltip (the full service name for an icon-only chip).
+    var help: String? = nil
     var id: String { identifier }
     var isTab: Bool { if case .tab = kind { true } else { false } }
+    /// The native item this is (a tab or Podcasts), nil for the StreamSetu chip, a service or the Services button.
+    var nativeTab: NavTab? { switch kind { case .tab(let t): NavTab(t); case .podcasts: .podcasts; default: nil } }
     var isService: Bool { if case .service = kind { true } else { false } }
 
     static let glyphWidth: CGFloat = 20
     /// The fixed width of an item: its measured text, the symbol if it has one, and the padding of the current width tier.
-    func width(tabPadding: CGFloat) -> CGFloat { TabLabelMetrics.textWidth(title) + (glyph == nil ? 0 : Self.glyphWidth) + 2 * tabPadding }
+    func width(tabPadding: CGFloat) -> CGFloat {
+        if compact { return ServiceChip.hitWidth }
+        if icon != nil { return ServiceChip.expandedWidth(textWidth: TabLabelMetrics.textWidth(title), tabPadding: tabPadding) }
+        return TabLabelMetrics.textWidth(title) + (glyph == nil ? 0 : Self.glyphWidth) + 2 * tabPadding
+    }
 
-    static let collapsedLabel = "StreamSetu, shows Home, Live TV, Movies, Series and TV Guide"
+    static let collapsedLabel = "StreamSetu, shows Home, Live TV, Movies, Series, TV Guide and Podcasts"
+    static let podcastsTitle = "Podcasts"
+    static let podcastsGlyph = "mic.fill"
+
+    /// One native item in the requested mode. The full name is always the tooltip and the VoiceOver name, whatever is drawn.
+    static func nativeItem(_ t: NavTab, mode: TabBarMode, selected: Bool) -> TopBarItem {
+        TopBarItem(kind: t.appTab.map { .tab($0) } ?? .podcasts, title: t.title, identifier: "tab." + t.title, label: mode == .iconOnly ? t.title : nil, selected: selected,
+                   atlas: t == .podcasts ? "screen.podcasts" : nil, glyph: mode == .nameOnly ? nil : t.symbol, compact: mode == .iconOnly, help: t.title)
+    }
+
+    /// The native items for a state, each in its requested mode. With a `budget` (the width the group may use), names drop to icon-only from the right-most
+    /// item inward until the group fits; the result never wraps and an item never disappears. Pure.
+    static func nativeItems(destination: TopLevelDestination, tab: AppTab, modes: TopBarTabModes, includesPodcasts: Bool, tabPadding: CGFloat, budget: CGFloat?) -> [TopBarItem] {
+        let tabs = NavTab.allCases.filter { $0 != .podcasts || includesPodcasts }
+        var effective = tabs.map { modes.mode($0) }
+        func build() -> [TopBarItem] {
+            zip(tabs, effective).map { t, m in nativeItem(t, mode: m, selected: t == .podcasts ? destination == .podcasts : (destination == .streamSetu && t.appTab == tab)) }
+        }
+        if let budget {
+            var i = tabs.count - 1
+            while i >= 0, build().reduce(0, { $0 + $1.width(tabPadding: tabPadding) }) > budget { effective[i] = .iconOnly; i -= 1 }
+        }
+        return build()
+    }
+
+    static func tabItems(destination: TopLevelDestination, tab: AppTab, modes: TopBarTabModes = TopBarTabModes()) -> [TopBarItem] {
+        nativeItems(destination: destination, tab: tab, modes: modes, includesPodcasts: false, tabPadding: 0, budget: nil)
+    }
+    static func podcastsItem(selected: Bool, mode: TabBarMode = .iconAndName) -> TopBarItem { nativeItem(.podcasts, mode: mode, selected: selected) }
+    static func streamSetuChip() -> TopBarItem {
+        TopBarItem(kind: .streamSetu, title: "StreamSetu", identifier: "tab.StreamSetu", label: collapsedLabel, selected: false, atlas: "control.nav.streamsetu", glyph: "house.fill")
+    }
 
     static func items(for state: TopBarState) -> [TopBarItem] {
         var out: [TopBarItem] = []
-        if state.destination == .streamSetu {
-            out += AppTab.allCases.map { TopBarItem(kind: .tab($0), title: $0.title, identifier: "tab." + $0.title, label: nil, selected: state.tab == $0, atlas: nil) }
+        if state.destination.isNative {
+            out += tabItems(destination: state.destination, tab: state.tab, modes: state.servicesNav.tabModes)
         } else {
-            out.append(TopBarItem(kind: .streamSetu, title: "StreamSetu", identifier: "tab.StreamSetu", label: collapsedLabel, selected: false, atlas: "control.nav.streamsetu", glyph: "house.fill"))
+            out.append(streamSetuChip())
         }
         out += state.services.map { TopBarItem(kind: .service($0), title: $0.title, identifier: "tab." + $0.title, label: nil, selected: state.destination == .service($0), atlas: "control.nav.netflix") }
         return out
     }
 }
 
-/// The single-row plan of the Services menu variant, from the real window width: the leading items (five tabs, or the collapsed StreamSetu item),
-/// the pinned services that fit (in pinned order), the active service when it is not pinned, and the Services item. Pure.
+/// The size of a service in the top row. Only the open service shows its name; the others are a favicon in a small chip, so more pinned services fit.
+enum ServiceChip {
+    static let iconSize: CGFloat = 22
+    /// Width of an icon-only chip (the pointer's hit target is the chip, not just the icon).
+    static let hitWidth: CGFloat = 32
+    static let iconLead: CGFloat = (hitWidth - iconSize) / 2
+    static let iconGap: CGFloat = 6
+    /// The open service: its favicon, then its full name, in a capsule that grows from the icon-only chip.
+    static func expandedWidth(textWidth: CGFloat, tabPadding: CGFloat) -> CGFloat { iconLead + iconSize + iconGap + textWidth + tabPadding }
+}
+
+/// The single-row plan of the Services menu variant, from the real window width. Pure.
+///
+/// State A (StreamSetu's own screens): Home, Live TV, Movies, Series, TV Guide and Podcasts in the mode each is set to (names by default), then the pinned
+/// services as favicon-only chips, then Services. Pins overflow into the Services list first (from the end of the pinned order, as many as fit are kept);
+/// names drop to icons (right-most first) only when the tabs plus Services cannot fit even with no pins. State B (a service is open): one StreamSetu chip (no tabs), the open service expanded to favicon and name
+/// in its pinned place, the other pinned services as favicon-only chips, then Services. What does not fit goes to the Services list, from the
+/// end of the pinned order; the open service never does (an unpinned one follows the pinned ones as a temporary chip).
 struct TopBarMenuRow: Equatable {
+    enum Mode: Equatable { case native, service }
+    var mode: Mode
     var leading: [TopBarItem]
     var pinned: [TopBarItem]
     var chip: TopBarItem?
     var overflow: [ProviderID]
     var servicesItem: TopBarItem
     var tabPadding: CGFloat
-
+    /// The width tier this row was planned with; the bar draws its padding and search box from it.
+    var metrics: TopBarMetrics = TopBarMetrics.metrics(for: 0)
     var items: [TopBarItem] { leading + pinned + (chip.map { [$0] } ?? []) + [servicesItem] }
     var selectedIdentifier: String? { items.first(where: \.selected)?.identifier }
     /// Width of the whole navigation capsule.
@@ -185,26 +248,63 @@ struct TopBarMenuRow: Equatable {
     func item(for id: ProviderID) -> TopBarItem? { (pinned + (chip.map { [$0] } ?? [])).first { $0.kind == .service(id) } }
 
     static func serviceItem(_ id: ProviderID, active: ProviderID?) -> TopBarItem {
-        TopBarItem(kind: .service(id), title: id.title, identifier: "tab." + id.title, label: nil, selected: active == id, atlas: id == .netflix ? "control.nav.netflix" : "control.nav.service")
+        let open = active == id
+        return TopBarItem(kind: .service(id), title: id.title, identifier: "tab." + id.title, label: nil, selected: open,
+                          atlas: id == .netflix ? "control.nav.netflix" : "control.nav.service", icon: id, compact: !open, help: open ? nil : id.title)
     }
 
+    /// The plan for a window width. Each width tier that applies (the tier of the width and every narrower one) is planned on its own; the best plan wins:
+    /// fewest names dropped to icons, then most pinned services, then the widest tier. A wider window therefore never shows fewer names or pins, even where a
+    /// tier change would add padding and search width.
     static func make(for state: TopBarState, brandWidth: CGFloat = TabLabelMetrics.brandWidth) -> TopBarMenuRow {
-        let m = TopBarMetrics.metrics(for: state.width)
-        var base = state; base.services = []
-        let leading = TopBarItem.items(for: base)
+        var best: TopBarMenuRow?
+        var bestScore = (0, 0)
+        for tier in TopBarMetrics.tiers where state.width >= tier.from || tier.from == 0 {
+            let row = plan(state, metrics: tier.metrics, brandWidth: brandWidth)
+            let score = (-row.droppedNames(for: state), row.pinned.count)
+            if best == nil || score.0 > bestScore.0 || (score.0 == bestScore.0 && score.1 > bestScore.1) { best = row; bestScore = score }
+        }
+        return best!
+    }
+
+    /// Items whose name was removed although the person did not choose Icon Only.
+    func droppedNames(for state: TopBarState) -> Int {
+        mode == .native ? leading.filter { $0.compact && $0.nativeTab.map { state.servicesNav.tabModes.mode($0) != .iconOnly } == true }.count : 0
+    }
+
+    private static func plan(_ state: TopBarState, metrics m: TopBarMetrics, brandWidth: CGFloat) -> TopBarMenuRow {
         let active: ProviderID? = { if case .service(let s) = state.destination { s } else { nil } }()
         let services = TopBarItem(kind: .servicesMenu, title: "Services", identifier: "tab.Services", label: "Services", selected: false, atlas: "control.services.menu", glyph: "square.grid.2x2")
+        let center = m.centerBudget(width: state.width, brandWidth: brandWidth) - 2 * TopBarMetrics.navGroupPadding
+        let nativeBudget = center - services.width(tabPadding: m.tabPadding)
+        var leading: [TopBarItem]
+        var dropped = false
+        if state.destination.isNative {
+            // The six native items in their chosen modes. Pinned services overflow into the Services list first; only when the items at their chosen modes
+            // do not fit even with no pins do names give way to icons, right-most first (and then the pins stay in the list, so a wider window brings the
+            // names back before any pin).
+            let nav = state.servicesNav
+            leading = TopBarItem.nativeItems(destination: state.destination, tab: state.tab, modes: nav.tabModes, includesPodcasts: nav.podcastsAvailable, tabPadding: m.tabPadding, budget: nil)
+            if leading.reduce(0, { $0 + $1.width(tabPadding: m.tabPadding) }) > nativeBudget {
+                dropped = true
+                leading = TopBarItem.nativeItems(destination: state.destination, tab: state.tab, modes: nav.tabModes, includesPodcasts: nav.podcastsAvailable, tabPadding: m.tabPadding, budget: nativeBudget)
+            }
+        } else {
+            leading = [TopBarItem.streamSetuChip()]
+        }
         var widths: [ProviderID: CGFloat] = [:]
         for id in Set(state.servicesNav.pinned).union(active.map { [$0] } ?? []) {
             widths[id] = serviceItem(id, active: active).width(tabPadding: m.tabPadding)
         }
         let leadingW = leading.reduce(0) { $0 + $1.width(tabPadding: m.tabPadding) }
-        let budget = m.centerBudget(width: state.width, brandWidth: brandWidth) - 2 * TopBarMetrics.navGroupPadding - leadingW
-        let plan = ServiceBarPlanner.plan(pinned: state.servicesNav.pinned, active: active, itemWidths: widths, servicesButtonWidth: services.width(tabPadding: m.tabPadding), budget: budget)
-        return TopBarMenuRow(leading: leading, pinned: plan.inline.map { serviceItem($0, active: active) }, chip: plan.temporaryChip.map { serviceItem($0, active: active) },
-                             overflow: plan.overflow, servicesItem: services, tabPadding: m.tabPadding)
+        let plan = ServiceBarPlanner.plan(pinned: dropped ? [] : state.servicesNav.pinned, active: active, itemWidths: widths, servicesButtonWidth: services.width(tabPadding: m.tabPadding), budget: center - leadingW)
+        let inline = plan.inline
+        let overflow = dropped ? state.servicesNav.pinned.reduce(into: [ProviderID]()) { if !$0.contains($1) { $0.append($1) } } : plan.overflow
+        return TopBarMenuRow(mode: state.destination.isNative ? .native : .service, leading: leading, pinned: inline.map { serviceItem($0, active: active) },
+                             chip: plan.temporaryChip.map { serviceItem($0, active: active) }, overflow: overflow, servicesItem: services, tabPadding: m.tabPadding, metrics: m)
     }
 }
+
 
 private struct ServicesAnchorKey: PreferenceKey {
     static var defaultValue: Anchor<CGRect>? { nil }
@@ -227,6 +327,7 @@ struct ReddyTopBar: View {
     var onToggleAccount: () -> Void
     var onSelectService: (ExternalService) -> Void = { _ in }
     var onSelectStreamSetu: () -> Void = {}
+    var onSelectPodcasts: () -> Void = {}
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.reddyAccent) private var accent
     /// The selected tab's underline slides from tab to tab.
@@ -237,7 +338,13 @@ struct ReddyTopBar: View {
     @State private var dismissRegion = SearchDismissRegion()
     @State private var servicesOpen = false
     @State private var servicesRegion = SearchDismissRegion()
-    private var metrics: TopBarMetrics { TopBarMetrics.metrics(for: state.width) }
+    /// True when many pinned services leave the search box less than its ideal width: the short placeholder then fits instead of a clipped long one.
+    private var searchIsSqueezed: Bool {
+        guard state.showsServicesMenu else { return false }
+        let row = TopBarMenuRow.make(for: state)
+        return row.width > row.metrics.centerBudget(width: state.width, brandWidth: TabLabelMetrics.brandWidth, search: row.metrics.searchIdeal)
+    }
+    private var metrics: TopBarMetrics { state.showsServicesMenu ? TopBarMenuRow.make(for: state).metrics : TopBarMetrics.metrics(for: state.width) }
 
     var body: some View {
         TopBarLayout(metrics: metrics) {
@@ -291,9 +398,9 @@ struct ReddyTopBar: View {
             .lineLimit(1).fixedSize()
             .accessibilityElement(children: .ignore).accessibilityLabel("StreamSetu")
             // While a service is showing, the collapsed "StreamSetu" item in the row carries the name; the wordmark keeps its space so nothing moves.
-            .opacity(state.destination == .streamSetu ? 1 : 0).accessibilityHidden(state.destination != .streamSetu)
+            .opacity(state.destination.isNative ? 1 : 0).accessibilityHidden(!state.destination.isNative)
             .transaction(value: state.width) { $0.animation = nil }
-            .animation(NavTransition.animation(reduceMotion: reduceMotion), value: state.destination == .streamSetu)
+            .animation(NavTransition.animation(reduceMotion: reduceMotion), value: state.destination.isNative)
     }
 
     @ViewBuilder private var navZone: some View {
@@ -313,7 +420,11 @@ struct ReddyTopBar: View {
         let navBinding = state.servicesNav
         return HStack(spacing: 0) {
             ForEach(row.leading) { item in
-                navItem(item, selected: item.selected) { activate(item) }.atlasCovers("screen.tab.home")
+                if let t = item.nativeTab {
+                    navItem(item, selected: item.selected) { activate(item) }.tabModeMenu(t, nav: navBinding).atlasCovers("screen.tab.home")
+                } else {
+                    navItem(item, selected: item.selected) { activate(item) }.atlasCovers("screen.tab.home")
+                }
             }
             PinnedServicesBar(ids: row.pinned.compactMap { if case .service(let s) = $0.kind { s } else { nil } }, nav: navBinding, disabled: state.servicesDisabled) { id in
                 if let item = row.item(for: id) {
@@ -365,6 +476,7 @@ struct ReddyTopBar: View {
         switch item.kind {
         case .tab(let t): onSelectTab(t)
         case .streamSetu: onSelectStreamSetu()
+        case .podcasts: onSelectPodcasts()
         case .service(let s): onSelectService(s)
         case .servicesMenu: servicesOpen.toggle()
         }
@@ -372,11 +484,15 @@ struct ReddyTopBar: View {
 
     private func navItem(_ item: TopBarItem, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                if let g = item.glyph { Image(systemName: g).font(.system(size: 12, weight: .semibold)).frame(width: TopBarItem.glyphWidth - 6) }
-                Text(item.title).font(Typography.nav).fontWeight(selected ? .semibold : .medium).lineLimit(1).fixedSize()
+            HStack(spacing: item.icon != nil ? ServiceChip.iconGap : 6) {
+                if let id = item.icon { ServiceGlyph(id: id, size: ServiceChip.iconSize) }
+                else if let g = item.glyph { Image(systemName: g).font(.system(size: 12, weight: .semibold)).frame(width: TopBarItem.glyphWidth - 6) }
+                // an icon-only chip draws no label at all; the full name is its tooltip and its VoiceOver name
+                if !item.compact { Text(item.title).font(Typography.nav).fontWeight(selected ? .semibold : .medium).lineLimit(1).fixedSize() }
             }
-            .frame(width: item.width(tabPadding: metrics.tabPadding), height: TopBarMetrics.navItemHeight)
+            .padding(.leading, item.icon != nil ? ServiceChip.iconLead : 0)
+            .frame(width: item.width(tabPadding: metrics.tabPadding), height: TopBarMetrics.navItemHeight, alignment: item.icon != nil ? .leading : .center)
+            .clipped()          // while an item grows from its icon, the name is revealed by the width, never drawn outside it
             .foregroundStyle(selected ? ColorTokens.textPrimary : ColorTokens.textSecondary)
             .background {
                 if selected {
@@ -392,6 +508,7 @@ struct ReddyTopBar: View {
         }
         .buttonStyle(NavButtonStyle())
         .transition(NavTransition.item)
+        .help(item.help.map { Text(verbatim: $0) } ?? Text(verbatim: ""))
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityLabel(Text(LocalizedStringKey(item.label ?? item.title)))
         .accessibilityIdentifier(item.identifier)
@@ -403,7 +520,7 @@ struct ReddyTopBar: View {
     private var searchBox: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").font(.system(size: 12, weight: .medium)).foregroundStyle(ColorTokens.textTertiary)
-            TextField(LocalizedStringKey(state.searchPlaceholder(narrow: metrics.searchIdeal < 170)), text: $query)
+            TextField(LocalizedStringKey(state.searchPlaceholder(narrow: metrics.searchIdeal < 170 || state.width < 1360 || searchIsSqueezed)), text: $query)
                 .textFieldStyle(.plain).font(Typography.row).focused($searchFocused).lineLimit(1)
                 .onKeyPress(.escape) { query = ""; searchFocused = false; return .handled }
                 .onKeyPress(.downArrow) { onResultsFocus(); return .handled }

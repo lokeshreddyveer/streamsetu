@@ -28,9 +28,25 @@ final class ServiceDiagnostics {
             case redirectHop(index: Int)
             /// The provider's own server redirected this connection to its regional page (an exact host the definition names); it was not loaded.
             case providerRegionalPage
+            /// A sign-in window (Google's) was opened over the service, and closed again. Host only.
+            case authPopupOpened
+            case authPopupClosed
+            /// Hide Element: started, hidden, or why it did not hide. Host and a reason code only.
+            case picker(PickerEvent)
         }
         let host: String
         let kind: Kind
+    }
+
+    enum PickerEvent: Equatable, Sendable {
+        case pickStarted, hidden, nothingSuitable, limitReached, scriptFailed, cancelled
+        case refused(ElementPicker.Refusal)
+        var code: String {
+            switch self {
+            case .pickStarted: "started"; case .hidden: "hidden"; case .nothingSuitable: "nothing-suitable"; case .limitReached: "limit"
+            case .scriptFailed: "script-failed"; case .cancelled: "cancelled"; case .refused(let r): "refused-" + r.rawValue
+            }
+        }
     }
 
     private var buffers: [ProviderID: [Entry]] = [:]
@@ -52,6 +68,16 @@ final class ServiceDiagnostics {
     func recordSubframeBlocked(_ id: ProviderID, url: URL?) {
         guard let host = Self.host(of: url) else { return }
         append(Entry(host: host, kind: .subframeBlocked), to: id)
+    }
+
+    func recordAuthPopup(_ id: ProviderID, url: URL?, opened: Bool) {
+        guard let host = Self.host(of: url) else { return }
+        append(Entry(host: host, kind: opened ? .authPopupOpened : .authPopupClosed), to: id)
+    }
+
+    func recordPicker(_ id: ProviderID, url: URL?, event: PickerEvent) {
+        guard let host = Self.host(of: url) else { return }
+        append(Entry(host: host, kind: .picker(event)), to: id)
     }
 
     func recordPopupRefused(_ id: ProviderID, url: URL?) {

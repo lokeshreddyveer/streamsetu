@@ -1,6 +1,6 @@
 import Foundation
 
-/// The eleven service definitions as data. The ONLY place service names, addresses, hosts and store identifiers live.
+/// The service definitions as data. The ONLY place service names, addresses, hosts and store identifiers live.
 /// Store identifiers were generated once and are frozen forever; each is pinned by a literal-equality test. Never derive one.
 enum ProviderCatalog {
     private static let https: Set<String> = ["https"]
@@ -24,7 +24,7 @@ enum ProviderCatalog {
         ProviderDefinition(
             id: id, displayName: name, homeURL: url(home), availability: availability, distributionAuthorization: .unresolved, termsNote: terms,
             externalLinks: .blockWithNotice, platforms: [.macOS], storeIdentity: StoreIdentity(store),
-            urlPolicy: ProviderURLPolicy(hostRules: rules, inAppSchemes: https, regionNoticeHosts: regionNotice),
+            urlPolicy: ProviderURLPolicy(hostRules: rules + HostRule.googleSignIn, inAppSchemes: https, regionNoticeHosts: regionNotice),
             capabilities: CapabilityMatrix(websiteLoading: record(.enabledForTesting, .none), authentication: record(auth, .researchSnippet, authNote),
                                            protectedPlayback: record(.manualVerificationRequired, .none), distribution: CapabilityRecord(.unverified), compatibility: compat),
             authentication: mode, sessionCookieDomains: cookies, zoomDefault: 1.0, zoomDefaultsKey: "streaming.zoom.\(id.rawValue)", regionNote: region, releaseNote: release, userAgentProfile: userAgent, pageEnhancements: enhancements, regionProfile: regionProfile)
@@ -40,7 +40,7 @@ enum ProviderCatalog {
         id: "netflix", displayName: "Netflix", homeURL: url("https://www.netflix.com/"), availability: .available, distributionAuthorization: .unresolved,
         termsNote: "No embedding clause and no grant recorded.", externalLinks: .confirmThenOpen, platforms: [.macOS],
         storeIdentity: StoreIdentity("afdfb6b8-2671-42a0-bd87-6973dcd90758"),
-        urlPolicy: ProviderURLPolicy(hostRules: [site("netflix.com")], inAppSchemes: https),
+        urlPolicy: ProviderURLPolicy(hostRules: [site("netflix.com")] + HostRule.googleSignIn, inAppSchemes: https),
         capabilities: CapabilityMatrix(websiteLoading: record(.ownerVerified, .ownerCheck), authentication: record(.ownerVerified, .ownerCheck),
                                        protectedPlayback: record(.ownerVerified, .ownerCheck), distribution: CapabilityRecord(.unverified)),
         authentication: .signInInApp, sessionCookieDomains: ["netflix.com"], zoomDefault: 0.85, zoomDefaultsKey: "netflix.pageZoom", regionNote: .countryVariants, releaseNote: nil,
@@ -83,14 +83,26 @@ enum ProviderCatalog {
         id: "youtube", name: "YouTube", home: "https://www.youtube.com/", store: "20bed3f7-5bc0-46f4-ade6-bce2f57350db",
         rules: [site("youtube.com"), HostRule(suffix: "youtu.be", role: .redirectOnly),
                HostRule(suffix: "consent.google.com", role: .redirectOnly)], cookies: ["youtube.com"],
-        auth: .unsupported, authNote: "auth.googleSignInNotSupported", mode: .signedOutOnly, region: .countryVariants,
-        release: "Google sign-in hosts are not allowed; the service is used signed out.",
-        availability: .available, compat: owner("Release 2.17.11", [.siteLoads, .video], notApplicable: [.signInCompletes], note: "signed-out only by design"),
+        authNote: "auth.hostsUnverified", region: .countryVariants,
+        release: "Sign in with Google is allowed; the service also works signed out. Google sign-in has not been checked yet.",
+        availability: .available, compat: owner("Release 2.17.11", [.siteLoads, .video], note: "signed-out checks only; Google sign-in not yet checked"),
         enhancements: [.adSkip, .sponsorSkip])
     static let crunchyroll = unverified(
         id: "crunchyroll", name: "Crunchyroll", home: "https://www.crunchyroll.com/", store: "84d233c6-bd18-4367-b759-6e8b206e5b84",
         rules: [site("crunchyroll.com")], cookies: ["crunchyroll.com"], region: .countryVariants, terms: "Terms not retrievable.",
         availability: .available, compat: owner("Release 2.17.11", [.siteLoads, .signInPageRenders, .signInCompletes, .video]))
+
+    /// Spotify web player. Sign-in is the service's own email/username and password form on accounts.spotify.com (same registrable domain, so one
+    /// site rule covers the player, the sign-in pages and the account pages). Google's sign-in hosts are in the shared group every service has;
+    /// Apple and Facebook sign-in hosts are NOT allowed, so those buttons do nothing here. Its CDNs (scdn.co, spotifycdn.com, audio hosts) and the captcha hosts load as sub-resources and
+    /// frames, which the address policy does not gate, so they need no rule. spotify.link is the service's own link shortener (redirect hop only).
+    static let spotify = unverified(
+        id: "spotify", name: "Spotify", home: "https://open.spotify.com", store: "f00c305d-909f-420c-b11e-c7ce68a5a3e3",
+        rules: [site("spotify.com"), HostRule(suffix: "spotify.link", role: .redirectOnly)], cookies: ["spotify.com"],
+        authNote: "auth.hostsUnverified", region: .countryVariants,
+        terms: "Terms and user guidelines prohibit blocking or circumventing ads; recorded as data only.",
+        release: "Sign in with email or username and password, or with Google. Apple and Facebook sign-in are not offered.",
+        enhancements: [.spotifyHideAds, .spotifyMuteAds])
 
     /// JioHotstar: the preference is India (en_IN), fixed here and independent of the Mac's region. It is a client preference only: availability and
     /// playback are decided by the service, the network region is not observed by the app, and nothing is spoofed or hidden. The service's official web
@@ -109,7 +121,7 @@ enum ProviderCatalog {
                        RegionNoticeHost(host: "hotstar.com", pathPattern: RegionNoticeHost.countryPathExceptIn)])
 
     /// Catalog order is the default order.
-    static let all: [ProviderDefinition] = [netflix, primevideo, disneyplus, hulu, hbomax, peacock, paramountplus, appletv, youtube, crunchyroll, jiohotstar]
+    static let all: [ProviderDefinition] = [netflix, primevideo, disneyplus, hulu, hbomax, peacock, paramountplus, appletv, youtube, crunchyroll, spotify, jiohotstar]
 }
 
 extension ProviderID {
@@ -123,5 +135,6 @@ extension ProviderID {
     static let appletv: ProviderID = "appletv"
     static let youtube: ProviderID = "youtube"
     static let crunchyroll: ProviderID = "crunchyroll"
+    static let spotify: ProviderID = "spotify"
     static let jiohotstar: ProviderID = "jiohotstar"
 }

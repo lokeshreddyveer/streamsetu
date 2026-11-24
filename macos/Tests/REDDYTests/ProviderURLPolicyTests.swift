@@ -15,7 +15,7 @@ import Foundation
             #expect(d(p, "http://\(host)/") == .block)
             #expect(d(p, "https://user:pw@\(host)/") == .block)
             #expect(d(p, "https://\(host).evil.example/") == .openExternally)
-            #expect(d(p, "https://evil" + (host.hasPrefix("www.") ? String(host.dropFirst(4)) : host) + "/") == .openExternally)
+            #expect(d(p, "https://evil" + (host.hasPrefix("www.") ? String(host.dropFirst(4)) : host.hasPrefix("open.") ? String(host.dropFirst(5)) : host) + "/") == .openExternally)
             #expect(d(p, "https://\(host)@evil.example/") == .block)
             #expect(d(p, "https://evil.example/\(host)") == .openExternally)
         }
@@ -59,8 +59,12 @@ import Foundation
         #expect(d(policy(.paramountplus), "https://www.cbs.com/") == .openExternally)
     }
 
-    @Test func youtubeStaysWithoutGoogleSignIn() {
-        for h in ["accounts.google.com", "google.com", "accounts.youtube.com.evil.test"] { #expect(d(policy(.youtube), "https://\(h)/signin") == .openExternally) }
+    /// Google sign-in is allowed for every service through one shared group of exact hosts. Updated from "YouTube stays without Google sign-in".
+    @Test func youtubeAllowsGoogleSignInHostsOnlyAndExactly() {
+        for h in ["accounts.google.com", "accounts.youtube.com"] { #expect(d(policy(.youtube), "https://\(h)/signin") == .allowInApp, Comment(rawValue: h)) }
+        for h in ["google.com", "www.google.com", "myaccount.google.com", "mail.google.com", "accounts.google.com.evil.test", "evilaccounts.google.com", "accounts.google.co.in", "id.google.com"] {
+            #expect(d(policy(.youtube), "https://\(h)/signin") == .openExternally, Comment(rawValue: h))
+        }
     }
 
 
@@ -90,13 +94,14 @@ import Foundation
         #expect(d(policy(.youtube), "https://\(host).evil.test/", redirect: true) == .openExternally)
         #expect(d(policy(.youtube), "https://evil-\(host)/", redirect: true) == .openExternally)
         #expect(d(policy(.youtube), "https://\(host)@evil.test/", redirect: true) == .block)
-        for h in ["accounts.google.com", "google.com", "www.google.com", "myaccount.google.com", "evilconsent.google.com"] { #expect(d(policy(.youtube), "https://\(h)/", redirect: true) == .openExternally, Comment(rawValue: h)) }
-        #expect(d(policy(.netflix), "https://consent.google.com/", redirect: true) == .openExternally)
+        for h in ["google.com", "www.google.com", "myaccount.google.com", "evilconsent.google.com"] { #expect(d(policy(.youtube), "https://\(h)/", redirect: true) == .openExternally, Comment(rawValue: h)) }
+        #expect(d(policy(.youtube), "https://accounts.google.com/", redirect: true) == .allowInApp, "the sign-in host is a normal auth host now")
+        #expect(d(policy(.netflix), "https://consent.google.com/", redirect: true) == .openExternally, "the consent host stays YouTube-only")
         #expect(d(policy(.youtube), "https://consent.youtube.com/m") == .allowInApp)                          // already a youtube.com host
     }
 
-    @Test func googleSignInIsNotReachableFromYouTube() {
-        for u in ["https://accounts.google.com/ServiceLogin", "https://accounts.youtube.com/SetSID"] where u.contains("google") { #expect(d(policy(.youtube), u, redirect: true) == .openExternally) }
+    @Test func googleSignInIsReachableFromYouTubeAsAnAuthHost() {
+        for u in ["https://accounts.google.com/ServiceLogin", "https://accounts.youtube.com/SetSID"] { #expect(d(policy(.youtube), u, redirect: true) == .allowInApp) }
         #expect(d(policy(.youtube), "https://m.youtube.com/") == .allowInApp)
     }
 

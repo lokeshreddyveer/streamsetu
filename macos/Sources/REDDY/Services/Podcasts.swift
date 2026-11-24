@@ -7,6 +7,14 @@ struct PodcastEpisode: Identifiable, Equatable, Sendable {
     let audioURL: URL
     let published: Date?
     let duration: TimeInterval?
+    /// The episode's own picture (the show's picture is used when the feed has none).
+    var artwork: URL?
+    /// Podcasting 2.0: a chapters file and a transcript file, when the feed names them.
+    var chaptersURL: URL?
+    var transcriptURL: URL?
+    var transcriptType: String?
+    /// The summary as shown: the same text without the trailing sponsor / privacy boilerplate lines.
+    var displaySummary: String { PodcastText.display(summary) }
     /// The id its resume point is kept under (the same as for any file played from an address).
     var itemID: String { LocalMedia.itemID(audioURL.absoluteString) }
 }
@@ -15,7 +23,25 @@ struct PodcastFeed: Equatable, Sendable {
     var title = ""
     var author = ""
     var artwork: URL?
+    var summary = ""
+    var categories: [String] = []
+    var link: URL?
     var episodes: [PodcastEpisode] = []
+}
+
+/// Show-note text for display: the feed's text is kept as it is, only the lines every host's ad network appends at the end are left out.
+enum PodcastText {
+    private static let markers = ["learn more about your ad choices", "ad choices", "adchoices", "privacy policy", "privacy information", "see omnystudio.com/listener",
+                                  "see acast.com/privacy", "hosted on acast", "visit megaphone.fm", "advertising inquiries", "podcast sponsor information", "for privacy information"]
+
+    static func display(_ text: String) -> String {
+        var lines = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        while let last = lines.last {
+            let lower = last.lowercased()
+            if last.isEmpty || (last.count < 220 && markers.contains { lower.contains($0) }) { lines.removeLast() } else { break }
+        }
+        return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }
 
 struct PodcastSubscription: Identifiable, Codable, Equatable, Sendable {
@@ -35,6 +61,8 @@ final class PodcastParser: NSObject, XMLParserDelegate {
     private var item: [String: String] = [:]
     private var enclosure: URL?
     private var itemImage: URL?
+    private var chapters: URL?
+    private var transcript: (URL, String?)?
 
     static func parse(_ data: Data) -> PodcastFeed? {
         let p = PodcastParser()
@@ -47,7 +75,14 @@ final class PodcastParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName qName: String?, attributes a: [String: String] = [:]) {
         path.append(name); text = ""
-        if name == "item" { inItem = true; item = [:]; enclosure = nil }
+        if name == "item" { inItem = true; item = [:]; enclosure = nil; itemImage = nil; chapters = nil; transcript = nil }
+        if name == "itunes:image", inItem, let s = a["href"] { itemImage = URL(string: s) }
+        if name == "podcast:chapters", inItem, let s = a["url"] { chapters = URL(string: s) }
+        if name == "podcast:transcript", inItem, let s = a["url"], let u = URL(string: s) {
+            let type = a["type"]
+            if transcript == nil || type == "text/vtt" || type == "application/x-subrip" || type == "application/srt" { transcript = (u, type) }
+        }
+        if name == "itunes:category", !inItem, let t = a["text"], !feed.categories.contains(t) { feed.categories.append(t) }
         if name == "enclosure", inItem, let s = a["url"], let u = URL(string: s) { enclosure = u }
         if name == "itunes:image", let s = a["href"], let u = URL(string: s), !inItem { feed.artwork = u }
     }
@@ -65,7 +100,8 @@ final class PodcastParser: NSObject, XMLParserDelegate {
                 inItem = false
                 if let url = enclosure, let title = item["title"], !title.isEmpty {
                     feed.episodes.append(PodcastEpisode(id: item["guid"] ?? url.absoluteString, title: title, summary: Self.plain(item["itunes:summary"] ?? item["description"] ?? ""),
-                                                        audioURL: url, published: item["pubDate"].flatMap(Self.date), duration: item["itunes:duration"].flatMap(Self.duration)))
+                                                        audioURL: url, published: item["pubDate"].flatMap(Self.date), duration: item["itunes:duration"].flatMap(Self.duration),
+                                                        artwork: itemImage, chaptersURL: chapters, transcriptURL: transcript?.0, transcriptType: transcript?.1))
                 }
             default: break
             }
@@ -73,6 +109,8 @@ final class PodcastParser: NSObject, XMLParserDelegate {
             switch name {
             case "title" where feed.title.isEmpty: feed.title = value
             case "itunes:author" where feed.author.isEmpty: feed.author = value
+            case "description" where feed.summary.isEmpty, "itunes:summary" where feed.summary.isEmpty: feed.summary = Self.plain(value)
+            case "link" where feed.link == nil: feed.link = URL(string: value)
             case "url" where path.dropLast().last == "image" && feed.artwork == nil: feed.artwork = URL(string: value)
             default: break
             }
@@ -120,6 +158,9 @@ final class PodcastService: @unchecked Sendable {
 
     func isSubscribed(_ feedURL: URL) -> Bool { subscriptions().contains { $0.feedURL == feedURL } }
 
+    /// Any address's bytes through the same fetcher (chapters and transcript files).
+    func data(_ url: URL) async throws -> Data { try await fetch(url) }
+
     /// Reads the feed at this address.
     func load(_ feedURL: URL) async throws -> PodcastFeed {
         guard let feed = PodcastParser.parse(try await fetch(feedURL)) else { throw PodcastError.notAFeed }
@@ -137,9 +178,9 @@ final class PodcastService: @unchecked Sendable {
     func unsubscribe(_ feedURL: URL) { save(subscriptions().filter { $0.feedURL != feedURL }) }
 
     /// Shows matching the words, from Apple's public podcast directory.
-    func search(_ term: String) async throws -> [PodcastSubscription] {
+    func search(_ term: String, limit: Int = 25) async throws -> [PodcastSubscription] {
         var c = URLComponents(string: "https://itunes.apple.com/search")!
-        c.queryItems = [URLQueryItem(name: "media", value: "podcast"), URLQueryItem(name: "limit", value: "25"), URLQueryItem(name: "term", value: term)]
+        c.queryItems = [URLQueryItem(name: "media", value: "podcast"), URLQueryItem(name: "limit", value: String(limit)), URLQueryItem(name: "term", value: term)]
         return Self.parseSearch(try await fetch(c.url!))
     }
 

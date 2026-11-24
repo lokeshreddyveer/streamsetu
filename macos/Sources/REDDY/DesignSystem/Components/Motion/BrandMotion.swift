@@ -1,4 +1,8 @@
 import SwiftUI
+import Observation
+#if os(macOS)
+import AppKit
+#endif
 
 // The branded motion kit: the pieces every screen uses to move the same way. A loader (the television's dot breathing, a thin ribbon arc
 // circling it), skeleton shimmer, drawn empty states, success and failure feedback, a sliding selection, and the press and hover feel.
@@ -30,7 +34,37 @@ struct BrandAccent: DynamicProperty {
     @Environment(\.reddyAccent) private var accent
     var color: Color { accent }
     #else
-    var color: Color { .accentColor }
+    var color: Color { ColorTokens.accent }
+    #endif
+}
+
+/// Whether the app is in front and on screen, so the endless loops (spinners, shimmers, pulses) can stand still when nobody can see them:
+/// the app is in the background, hidden, or every window is covered or minimised. The Mac updates it from AppKit's notifications; on
+/// the iPhone and iPad it is always true (those loops stop with the screen instead). Loops read `isLive` in their body.
+@MainActor @Observable
+final class AppActivity {
+    static let shared = AppActivity()
+    private(set) var isLive = true
+    /// For tests and measurements: pins `isLive` regardless of the app's state.
+    var forced: Bool? { didSet { refresh() } }
+
+    #if os(macOS)
+    private init() {
+        let center = NotificationCenter.default
+        for name in [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification, NSApplication.didHideNotification,
+                     NSApplication.didUnhideNotification, NSApplication.didChangeOcclusionStateNotification] {
+            center.addObserver(forName: name, object: nil, queue: .main) { _ in MainActor.assumeIsolated { AppActivity.shared.refresh() } }
+        }
+        refresh()
+    }
+    func refresh() {
+        let app = NSApplication.shared
+        let live = forced ?? (app.isActive && !app.isHidden && app.occlusionState.contains(.visible))
+        if live != isLive { isLive = live }
+    }
+    #else
+    private init() {}
+    func refresh() { isLive = forced ?? true }
     #endif
 }
 
@@ -54,8 +88,9 @@ struct BrandLoader: View {
 
     var body: some View {
         let still = BrandMotion.reduced(systemReduce)
+        let live = AppActivity.shared.isLive
         VStack(spacing: 12) {
-            TimelineView(.animation(minimumInterval: 1.0 / 60, paused: still || !visible)) { context in
+            TimelineView(.animation(minimumInterval: 1.0 / 60, paused: still || !visible || !live)) { context in
                 Canvas { ctx, s in draw(&ctx, s, t: still ? 0 : context.date.timeIntervalSinceReferenceDate) }
             }
             .frame(width: size, height: size)
@@ -96,7 +131,7 @@ struct BrandShimmer: ViewModifier {
 
     func body(content: Content) -> some View {
         content.overlay {
-            if !BrandMotion.reduced(systemReduce) {
+            if !BrandMotion.reduced(systemReduce) && AppActivity.shared.isLive {
                 GeometryReader { g in
                     LinearGradient(colors: [.clear, .white.opacity(0.09), .clear], startPoint: .leading, endPoint: .trailing)
                         .frame(width: g.size.width * 0.6)
@@ -155,11 +190,12 @@ struct BrandEmptyArt: View {
 
     var body: some View {
         let still = BrandMotion.reduced(systemReduce)
+        let live = AppActivity.shared.isLive
         Group {
             if kind == .ribbon {
-                RibbonDrawMark(animated: !still && visible)
+                RibbonDrawMark(animated: !still && visible && live)
             } else {
-                TimelineView(.animation(minimumInterval: 1.0 / 30, paused: still || !visible)) { context in
+                TimelineView(.animation(minimumInterval: 1.0 / 30, paused: still || !visible || !live)) { context in
                     Canvas { ctx, s in draw(&ctx, s, t: still ? 0 : context.date.timeIntervalSinceReferenceDate) }
                 }
             }
@@ -284,17 +320,23 @@ struct PulsingDot: View {
     var color: Color
     var size: CGFloat = 8
     @Environment(\.accessibilityReduceMotion) private var systemReduce
-    @State private var pulse = false
     var body: some View {
         Circle().fill(color).frame(width: size, height: size)
             .background {
-                if !BrandMotion.reduced(systemReduce) {
-                    Circle().fill(color.opacity(pulse ? 0 : 0.45)).frame(width: size, height: size).scaleEffect(pulse ? 2.6 : 1)
-                }
+                // The halo exists only while it can be seen: not with Reduce Motion, and not while the app is in the background or covered.
+                if !BrandMotion.reduced(systemReduce) && AppActivity.shared.isLive { PulseHalo(color: color, size: size) }
             }
-            .onAppear { if !BrandMotion.reduced(systemReduce) { withAnimation(.easeOut(duration: 2.4).repeatForever(autoreverses: false)) { pulse = true } } }
-            .onDisappear { pulse = false }
             .accessibilityHidden(true)
+    }
+}
+
+private struct PulseHalo: View {
+    var color: Color
+    var size: CGFloat
+    @State private var pulse = false
+    var body: some View {
+        Circle().fill(color.opacity(pulse ? 0 : 0.45)).frame(width: size, height: size).scaleEffect(pulse ? 2.6 : 1)
+            .onAppear { withAnimation(.easeOut(duration: 2.4).repeatForever(autoreverses: false)) { pulse = true } }
     }
 }
 

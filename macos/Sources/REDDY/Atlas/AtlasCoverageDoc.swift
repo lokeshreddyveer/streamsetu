@@ -36,7 +36,7 @@ enum AtlasCoverageDoc {
     static let neutralTerms: [(name: String, word: String)] = [
         ("The Movie Database", "the movie database service"), ("fanart.tv", "the artwork service"), ("TheTVDB", "the series database"), ("TVmaze", "the schedule service"), ("TMDB", "the movie database"),
         ("Netflix", "the external service"), ("Prime Video", "the external service"), ("Disney+", "the external service"), ("Hulu", "the external service"), ("HBO Max", "the external service"),
-        ("Peacock", "the external service"), ("Paramount+", "the external service"), ("Apple TV", "the external service"), ("YouTube", "the external service"), ("Crunchyroll", "the external service"), ("JioHotstar", "the external service"),
+        ("Peacock", "the external service"), ("Paramount+", "the external service"), ("Apple TV", "the external service"), ("YouTube", "the external service"), ("Crunchyroll", "the external service"), ("Spotify", "the external service"), ("JioHotstar", "the external service"),
     ]
     static func scrubbed(_ text: String) -> String {
         var t = text

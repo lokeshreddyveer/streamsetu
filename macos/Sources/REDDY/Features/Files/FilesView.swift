@@ -17,6 +17,14 @@ struct FilesView: View {
     #endif
 
     private var store: FileSourceStore? { container.map { FileSourceStore(credentials: $0.credentials) } }
+    /// Podcasts (the public directory is unfiltered) is not offered to a Kids profile on the Mac.
+    private var hidesPodcasts: Bool {
+        #if os(macOS)
+        container?.parental.kidsMode == true
+        #else
+        false
+        #endif
+    }
 
     var body: some View {
         List {
@@ -38,9 +46,9 @@ struct FilesView: View {
                 Button { pickingFolder = true } label: { Label("Add a Folder", systemImage: "folder.badge.plus") }.atlas("control.files.addFolder")
                 Button { addingServer = true } label: { Label("Add a WebDAV Server", systemImage: "externaldrive.badge.plus") }.atlas("control.files.addServer")
             } header: { Text("Folders and Servers") } footer: { Text("WebDAV works with Nextcloud and most home servers (NAS). The password is kept in the Keychain.") }
-            Section {
+            if !hidesPodcasts { Section {
                 NavigationLink { PodcastsView() } label: { Label("Podcasts", systemImage: "mic.fill") }.atlas("screen.podcasts")
-            } footer: { Text("Follow shows and play their episodes. Your place in each episode is remembered.") }
+            } footer: { Text("Follow shows and play their episodes. Your place in each episode is remembered.") } }
             if let note { Section { Text(note).foregroundStyle(.secondary) } }
         }
         .navigationTitle("Files, Servers and Podcasts")

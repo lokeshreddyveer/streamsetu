@@ -17,6 +17,8 @@ import AppKit
     /// The provider's own server redirected the load to one of its regional pages (an exact host the definition names). The load was cancelled.
     func regionRestricted(host: String, label: String?)
     func cookiesChanged()
+    /// A sign-in window (Google's) was opened by the page; show it over the service.
+    func presentAuthPopup(_ popup: AuthPopup)
 }
 
 /// Navigation, window, permission and panel delegates of a service's web view, in one object that is held by the web view's lifecycle (WebKit
@@ -133,10 +135,19 @@ import AppKit
 
     // MARK: windows, permissions, panels
 
-    /// A new window never opens. An address on the site loads in this view; any other is handled like an off-site link.
+    /// A new window never opens, except a sign-in window on Google's sign-in hosts (above). An address on the site loads in this view; any other is handled like an off-site link.
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         let url = navigationAction.request.url
         let d = decide(url, isMainFrame: true, record: false)
+        // Only a sign-in window for one of Google's exact sign-in hosts, over https, becomes a real window; every other request is handled as before.
+        if d == .allowInApp, let url, url.scheme?.lowercased() == "https", definition.urlPolicy.isGoogleSignInHost(url.host), let events {
+            let popup = AuthPopup(configuration: configuration, definition: definition)
+            let id = definition.id, diagnostics = diagnostics
+            diagnostics.recordAuthPopup(id, url: url, opened: true)
+            popup.onClose { diagnostics.recordAuthPopup(id, url: url, opened: false) }
+            events.presentAuthPopup(popup)
+            return popup.webView
+        }
         switch d {
         case .allowInApp: if let url, url.scheme != "about" { events?.openInPlace(url) }
         case .openExternally: if let url { events?.addressOffSite(url) }

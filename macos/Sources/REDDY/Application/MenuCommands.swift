@@ -41,6 +41,10 @@ struct MenuCommands: Commands {
             ForEach(Array(AppTab.allCases.enumerated()), id: \.offset) { i, tab in
                 Button(tab.title) { router.navigate(tab) }.keyboardShortcut(KeyEquivalent(Character("\(i + 1)"))).disabled(locked).atlasCovers("menu.navigate.home")
             }
+            if let services, !services.isKidsProfile {
+                // ⌘7 opens Podcasts in the main window, whether or not it has its place in the top bar.
+                Button("Podcasts") { services.selectPodcasts() }.keyboardShortcut("7").disabled(locked).atlas("menu.navigate.podcasts")
+            }
             if let services, !services.services.isEmpty {
                 // ⌘6 opens the Services list in the top bar (never one particular service; there are no per-service shortcuts). ⌘0 goes back to StreamSetu, to the section that was open (⌘1 to ⌘5 also leave the service and open that tab).
                 Button("Services") { NotificationCenter.default.post(name: .openServicesList, object: nil) }.keyboardShortcut("6").disabled(locked).atlas("menu.navigate.services")
@@ -72,6 +76,7 @@ struct MenuCommands: Commands {
                     Button("Pin to Top Bar") {}.disabled(true).atlas("menu.services.pin")
                 }
                 Divider()
+                Button("Hide Element on This Page…") { host?.startPickMode() }.disabled(!on || host?.canPickElement != true).atlas("menu.services.hideElement")
                 Button("Clear Data…") { if let id = services.activeService, let host { confirmClearData(id, host) } }.disabled(!on).atlas("menu.services.clearData")
             }
         }
@@ -140,6 +145,9 @@ struct MenuCommands: Commands {
     /// Only a service whose links are confirmed first (Netflix) can open its page in the default browser.
     var canOpenInBrowser: Bool { get }
     func openInDefaultBrowser()
+    /// Pick mode ("Hide Element on This Page…"): works even where the page cancels its own right-click menu. Always ends in a notice.
+    var canPickElement: Bool { get }
+    func startPickMode()
     func clearServiceData() async
     func clearServiceDataReporting() async -> SessionClearing.ClearReport
 }

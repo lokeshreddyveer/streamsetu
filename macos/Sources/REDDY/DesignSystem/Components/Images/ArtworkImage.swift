@@ -118,8 +118,16 @@ struct ArtworkTile: View {
 
 /// A soft highlight that sweeps across a placeholder while its picture loads, as in the streaming apps. Still when Reduce Motion is on.
 private struct LoadingShimmer: View {
-    @State private var phase: CGFloat = -1
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The sweep exists only while it can be seen (the app in front and on screen), so a placeholder that waits costs nothing in the background.
+    var body: some View {
+        if !(reduceMotion || BrandMotion.reduced(false)) && AppActivity.shared.isLive { ShimmerSweep() } else { Color.clear.allowsHitTesting(false).accessibilityHidden(true) }
+    }
+}
+
+private struct ShimmerSweep: View {
+    @State private var phase: CGFloat = -1
 
     var body: some View {
         GeometryReader { g in
@@ -128,10 +136,7 @@ private struct LoadingShimmer: View {
                 .offset(x: phase * g.size.width * 1.6)
         }
         .clipped().allowsHitTesting(false).accessibilityHidden(true)
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.linear(duration: 1.3).repeatForever(autoreverses: false)) { phase = 1 }
-        }
+        .onAppear { withAnimation(.linear(duration: 1.3).repeatForever(autoreverses: false)) { phase = 1 } }
     }
 }
 

@@ -162,6 +162,7 @@ enum AssistantModels {
 
 /// The conversation itself: the messages, the poster strips and the box to type in. `open` shows a title; `perform` carries out a confirmed suggestion.
 struct AssistantChatView: View {
+    @Environment(\.reddyAccent) private var accentFill
     let container: AppContainer
     @Bindable var model: AssistantModel
     var open: (LibraryItem) -> Void
@@ -212,7 +213,7 @@ struct AssistantChatView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            ZStack { Circle().fill(LinearGradient(colors: [Color.accentColor, Color.accentColor.opacity(0.55)], startPoint: .topLeading, endPoint: .bottomTrailing)); Image(systemName: "sparkles").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white) }
+            ZStack { Circle().fill(LinearGradient(colors: [ColorTokens.accent, ColorTokens.accent.opacity(0.55)], startPoint: .topLeading, endPoint: .bottomTrailing)); Image(systemName: "sparkles").font(.system(size: 14, weight: .semibold)).onAccentLabel() }
                 .frame(width: 30, height: 30).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Setu").font(.headline).foregroundStyle(ColorTokens.textPrimary)
@@ -270,7 +271,7 @@ struct AssistantChatView: View {
             Text("Try asking").font(.caption.weight(.semibold)).foregroundStyle(ColorTokens.textSecondary)
             AssistantFlow(spacing: 6) {
                 ForEach(Self.starters, id: \.self) { q in
-                    Button { model.send(q, container: container, look: look) } label: { Text(q).font(.callout).foregroundStyle(ColorTokens.textPrimary).padding(.horizontal, 11).padding(.vertical, 6).background(Color.accentColor.opacity(0.16), in: Capsule()).overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.28))) }.buttonStyle(.plain).atlas("screen.assistant")
+                    Button { model.send(q, container: container, look: look) } label: { Text(q).font(.callout).foregroundStyle(ColorTokens.textPrimary).padding(.horizontal, 11).padding(.vertical, 6).background(ColorTokens.accent.opacity(0.16), in: Capsule()).overlay(Capsule().strokeBorder(ColorTokens.accent.opacity(0.28))) }.buttonStyle(.plain).atlas("screen.assistant")
                 }
             }
         }
@@ -300,13 +301,13 @@ struct AssistantChatView: View {
                     if canSend { send() }
                 }
                 #endif
-            Button(action: send) { Image(systemName: "arrow.up").font(.system(size: 13, weight: .bold)).foregroundStyle(canSend ? Color.white : ColorTokens.textTertiary).frame(width: 28, height: 28).background(canSend ? Color.accentColor : ColorTokens.elevated, in: Circle()) }
+            Button(action: send) { Image(systemName: "arrow.up").font(.system(size: 13, weight: .bold)).foregroundStyle(canSend ? ColorTokens.onAccent(accentFill) : ColorTokens.textTertiary).frame(width: 28, height: 28).background(canSend ? ColorTokens.accent : ColorTokens.elevated, in: Circle()) }
                 .buttonStyle(.plain).disabled(!canSend).keyboardShortcut(.return, modifiers: .command).accessibilityLabel("Send").accessibilityIdentifier("setu.send").help("Send (⌘↩)").atlas("screen.assistant")
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: canSend)
         }
         .padding(.leading, 14).padding(.trailing, 8).padding(.vertical, 5)
         .background(ColorTokens.elevated.opacity(0.65), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(focused ? Color.accentColor.opacity(0.6) : ColorTokens.lineStrong))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(focused ? ColorTokens.accent.opacity(0.6) : ColorTokens.lineStrong))
         .padding(12)
     }
 
@@ -324,7 +325,7 @@ struct AssistantChatView: View {
             #endif
         } label: {
             HStack(spacing: 6) { Image(systemName: "scope"); Text("Show me") }
-                .font(.callout.weight(.medium)).padding(.horizontal, 10).padding(.vertical, 6).background(Color.accentColor.opacity(0.16), in: Capsule())
+                .font(.callout.weight(.medium)).padding(.horizontal, 10).padding(.vertical, 6).background(ColorTokens.accent.opacity(0.16), in: Capsule())
         }.buttonStyle(.plain).accessibilityHint("Highlights it on the screen").accessibilityIdentifier("setu.showMe").atlas("screen.assistant")
     }
 
@@ -344,7 +345,7 @@ struct AssistantChatView: View {
                     Text(busy ? p.title + " …" : p.title)
                 }
                 .font(.callout.weight(.medium)).padding(.horizontal, 10).padding(.vertical, 6)
-                .background(Color.accentColor.opacity(finished ? 0.06 : 0.16), in: Capsule())
+                .background(ColorTokens.accent.opacity(finished ? 0.06 : 0.16), in: Capsule())
             }.buttonStyle(.plain).disabled(busy || finished)
             if let preview = model.confirming[p.id], state == nil {
                 Text(preview).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -373,12 +374,12 @@ struct AssistantChatView: View {
 
     @ViewBuilder private func bubble(_ m: AssistantMessage) -> some View {
         if m.role == .person {
-            HStack { Spacer(minLength: 40); Text(m.text).textSelection(.enabled).padding(.horizontal, 13).padding(.vertical, 9).background(Color.accentColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous)).foregroundStyle(.white).accessibilityLabel("You said: \(m.text)") }
+            HStack { Spacer(minLength: 40); Text(m.text).textSelection(.enabled).padding(.horizontal, 13).padding(.vertical, 9).background(ColorTokens.accent, in: RoundedRectangle(cornerRadius: 18, style: .continuous)).onAccentLabel().accessibilityLabel("You said: \(m.text)") }
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 if !m.steps.isEmpty { Text(m.steps.joined(separator: " · ")).font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true) }
                 if !m.summary.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 5) { ForEach(m.summary, id: \.self) { Text($0).font(.caption2).padding(.horizontal, 7).padding(.vertical, 3).background(Color.accentColor.opacity(0.16), in: Capsule()) } } }
+                    ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 5) { ForEach(m.summary, id: \.self) { Text($0).font(.caption2).padding(.horizontal, 7).padding(.vertical, 3).background(ColorTokens.accent.opacity(0.16), in: Capsule()) } } }
                 }
                 // The greeting is never selectable: an open panel must not start with highlighted text.
                 AssistantCardText(text: m.text, selectable: m.id != model.messages.first?.id)
@@ -393,12 +394,12 @@ struct AssistantChatView: View {
                 ForEach(m.showMe, id: \.self) { id in showMeButton(id) }
                 if let again = m.askAIText, m.id == model.messages.last?.id, container.aiAvailable, !model.busy {
                     Button { model.send(again, container: container, look: look, viaAI: true) } label: {
-                        Label("Not what you meant? Ask AI", systemImage: "sparkles").font(.caption).padding(.horizontal, 9).padding(.vertical, 4).overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.6)))
+                        Label("Not what you meant? Ask AI", systemImage: "sparkles").font(.caption).padding(.horizontal, 9).padding(.vertical, 4).overlay(Capsule().strokeBorder(ColorTokens.accent.opacity(0.6)))
                     }.buttonStyle(.plain).atlas("screen.assistant")
                 }
                 if !m.followUps.isEmpty, m.id == model.messages.last?.id {
                     if m.followUpIDs.isEmpty {
-                        AssistantFlow(spacing: 6) { ForEach(m.followUps, id: \.self) { f in Button { model.send(f, container: container, look: look) } label: { Text(f).font(.caption).foregroundStyle(ColorTokens.textPrimary).padding(.horizontal, 10).padding(.vertical, 5).background(Color.accentColor.opacity(0.14), in: Capsule()).overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.3))) }.buttonStyle(.plain).atlas("screen.assistant") } }
+                        AssistantFlow(spacing: 6) { ForEach(m.followUps, id: \.self) { f in Button { model.send(f, container: container, look: look) } label: { Text(f).font(.caption).foregroundStyle(ColorTokens.textPrimary).padding(.horizontal, 10).padding(.vertical, 5).background(ColorTokens.accent.opacity(0.14), in: Capsule()).overlay(Capsule().strokeBorder(ColorTokens.accent.opacity(0.3))) }.buttonStyle(.plain).atlas("screen.assistant") } }
                     } else {
                         // Topic choices: full-width rows that always show their words.
                         VStack(alignment: .leading, spacing: 4) {
@@ -406,7 +407,7 @@ struct AssistantChatView: View {
                                 Button { model.send(f, container: container, look: look) } label: {
                                     HStack { Text(f).font(.callout).foregroundStyle(ColorTokens.textPrimary).multilineTextAlignment(.leading); Spacer(minLength: 6); Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.secondary) }
                                         .padding(.horizontal, 10).padding(.vertical, 7).frame(maxWidth: .infinity, alignment: .leading)
-                                        .background(Color.accentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                                        .background(ColorTokens.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                                 }.buttonStyle(.plain).atlas("screen.assistant")
                             }
                         }
@@ -461,7 +462,7 @@ struct AssistantCardText: View {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 if let step = Self.steps(line).first {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("\(step.n)").font(.caption2.weight(.bold)).foregroundStyle(.white).frame(width: 18, height: 18).background(Color.accentColor, in: Circle()).accessibilityHidden(true)
+                        Text("\(step.n)").font(.caption2.weight(.bold)).onAccentLabel().frame(width: 18, height: 18).background(ColorTokens.accent, in: Circle()).accessibilityHidden(true)
                         row(step.say)
                     }.accessibilityElement(children: .combine).accessibilityLabel("Step \(step.n): \(step.say)")
                 } else { row(line) }
@@ -478,14 +479,25 @@ struct AssistantCardText: View {
 struct ThinkingDots: View {
     var status: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var on = false
     var body: some View {
         HStack(spacing: 8) {
-            HStack(spacing: 4) { ForEach(0..<3, id: \.self) { i in Circle().fill(Color.accentColor).frame(width: 6, height: 6).opacity(reduceMotion ? 0.7 : (on ? 1 : 0.3)).animation(reduceMotion ? nil : .easeInOut(duration: 0.6).repeatForever().delay(Double(i) * 0.15), value: on) } }
+            HStack(spacing: 4) { ForEach(0..<3, id: \.self) { i in ThinkingDot(index: i, animated: !reduceMotion && AppActivity.shared.isLive).id(!reduceMotion && AppActivity.shared.isLive) } }
             Text(status ?? "Thinking…").font(.caption).foregroundStyle(ColorTokens.textSecondary)
         }
         .padding(.horizontal, 12).padding(.vertical, 8).background(ColorTokens.card.opacity(0.9), in: Capsule())
-        .onAppear { on = true }.accessibilityElement(children: .combine).accessibilityLabel(status ?? "Thinking")
+        .accessibilityElement(children: .combine).accessibilityLabel(status ?? "Thinking")
+    }
+}
+
+/// One of the three dots; it pulses only while `animated` (not with Reduce Motion, not while the app is in the background or covered).
+private struct ThinkingDot: View {
+    let index: Int
+    let animated: Bool
+    @State private var on = false
+    var body: some View {
+        Circle().fill(ColorTokens.accent).frame(width: 6, height: 6).opacity(animated ? (on ? 1 : 0.3) : 0.7)
+            .animation(animated ? .easeInOut(duration: 0.6).repeatForever().delay(Double(index) * 0.15) : nil, value: on)
+            .onAppear { on = true }
     }
 }
 
@@ -550,8 +562,8 @@ struct AssistantBubble: View {
         Group {
             if shown {
                 Button(action: toggle) {
-                    Image(systemName: "sparkles").font(.system(size: 20, weight: .semibold)).foregroundStyle(.white).frame(width: 48, height: 48)
-                        .background(Color.accentColor, in: Circle()).shadow(color: .black.opacity(0.35), radius: 6, y: 2)
+                    Image(systemName: "sparkles").font(.system(size: 20, weight: .semibold)).onAccentLabel().frame(width: 48, height: 48)
+                        .background(ColorTokens.accent, in: Circle()).shadow(color: .black.opacity(0.35), radius: 6, y: 2)
                         .frame(minWidth: 44, minHeight: 44).contentShape(Circle())
                 }
                 .buttonStyle(.plain).accessibilityLabel("Setu assistant").accessibilityIdentifier("setu.open")
@@ -589,8 +601,8 @@ struct AssistantBubble: View {
                         .transition(.scale(scale: 0.92, anchor: .bottomTrailing).combined(with: .opacity))
                 }
                 Button(action: toggle) {
-                    Image(systemName: isOpen ? "xmark" : "sparkles").font(.system(size: 20, weight: .semibold)).foregroundStyle(.white).frame(width: 52, height: 52)
-                        .background(Color.accentColor, in: Circle()).shadow(color: .black.opacity(0.35), radius: 8, y: 3)
+                    Image(systemName: isOpen ? "xmark" : "sparkles").font(.system(size: 20, weight: .semibold)).onAccentLabel().frame(width: 52, height: 52)
+                        .background(ColorTokens.accent, in: Circle()).shadow(color: .black.opacity(0.35), radius: 8, y: 3)
                 }
                 .buttonStyle(.plain).help("Assistant").accessibilityLabel(isOpen ? "Close assistant" : "Open assistant").atlas("screen.assistant")
             }

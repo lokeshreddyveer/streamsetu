@@ -64,7 +64,9 @@ final class AddSourceViewModel {
         return switch kind {
         case .tvheadend, .enigma2: !server.trimmingCharacters(in: .whitespaces).isEmpty
         case .stream: !url.trimmingCharacters(in: .whitespaces).isEmpty
-        case .xtream, .jellyfin, .emby: !server.trimmingCharacters(in: .whitespaces).isEmpty && !username.isEmpty && !password.isEmpty
+        case .xtream: !server.trimmingCharacters(in: .whitespaces).isEmpty && !username.isEmpty && !password.isEmpty
+        // Jellyfin and Emby accept an account with no password (the Jellyfin demo server is one), so the password may stay empty.
+        case .jellyfin, .emby: !server.trimmingCharacters(in: .whitespaces).isEmpty && !username.isEmpty
         case .plex: !server.trimmingCharacters(in: .whitespaces).isEmpty && !password.trimmingCharacters(in: .whitespaces).isEmpty
         case .stalker: !server.trimmingCharacters(in: .whitespaces).isEmpty && StalkerMapper.normalizedMAC(username) != nil
         case .hdhomerun: !server.trimmingCharacters(in: .whitespaces).isEmpty

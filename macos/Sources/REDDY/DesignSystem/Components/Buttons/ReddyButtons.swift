@@ -11,7 +11,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .background(accent.opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.35), in: Capsule())
             .overlay(Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.16), .clear], startPoint: .top, endPoint: .center)).allowsHitTesting(false))
             .overlay(Capsule().strokeBorder(Color.white.opacity(0.18)))
-            .foregroundStyle(.white)
+            .foregroundStyle(enabled ? ColorTokens.onAccent(accent) : Color.white.opacity(0.7))
             .shadow(color: accent.opacity(enabled ? 0.28 : 0), radius: 10, y: 4)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(AnimationTokens.press, value: configuration.isPressed)

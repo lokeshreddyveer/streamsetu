@@ -22,6 +22,11 @@ import WebKit
         }
     }
 
+    @Test func spotifyIdentifiesAsSafariLikeTheOthers() {
+        #expect(ProviderCatalog.spotify.userAgentProfile == .safari)
+        #expect(ServiceWebViewFactory.makeConfiguration(dataStore: .nonPersistent(), userAgent: ProviderCatalog.spotify.userAgentProfile).applicationNameForUserAgent == SafariUserAgent.applicationName)
+    }
+
     @Test func webKitDefaultProfileSetsNothing() {
         var d = ProviderCatalog.netflix; d.userAgentProfile = .webKitDefault
         #expect(ServiceWebViewFactory.makeConfiguration(dataStore: .nonPersistent(), userAgent: d.userAgentProfile).applicationNameForUserAgent == nil)

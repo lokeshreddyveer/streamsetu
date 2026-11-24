@@ -23,6 +23,7 @@ enum SearchActions {
     }
 
     private static func useFor(_ source: UUID?, _ state: AppState) {
+        guard !state.showsAllPlaylists else { return }          // "All Playlists" already shows every playlist; leaving it would hide the others
         if let source, source != state.activeSourceID { state.switchPlaylist(source) }
     }
 }

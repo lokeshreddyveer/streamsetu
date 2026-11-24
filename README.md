@@ -158,7 +158,7 @@ The full table, app by app, is in [docs/FEATURES.md](docs/FEATURES.md). Where a 
 
 ### 🍏 Streaming services in the Mac app
 
-A Services menu opens ten streaming services' own sites inside StreamSetu, each with its own icon in a themed panel.
+A Services menu opens eleven streaming services' own sites inside StreamSetu, each with its own icon in a themed panel.
 
 - Pin the ones you use to the top bar and move them left or right.
 - Switching service stops the sound of the one you left.

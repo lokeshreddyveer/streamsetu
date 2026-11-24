@@ -48,6 +48,9 @@ struct ServiceHostView: View {
         }
         .onChange(of: model.phase) { _, p in if p != .loading { bannerDismissed = false } }
         .animation(reduceMotion ? nil : AnimationTokens.standard, value: showsSlowBanner)
+        .sheet(item: Binding(get: { model.authPopup }, set: { if $0 == nil { model.closeAuthPopup() } })) { popup in
+            AuthPopupSheet(popup: popup, serviceName: name) { model.closeAuthPopup() }
+        }
     }
 
     /// A page addition was turned on or off after this page loaded: reloading applies it. Never reloads by itself.
@@ -85,9 +88,10 @@ struct ServiceHostView: View {
             state
         }
         .overlay(alignment: .top) { notices }
+        .overlay(alignment: .bottomTrailing) { pickButton }
         .overlay(alignment: .top) {
             if showPrompt {
-                EnhancementPromptCard(enhancements: PageEnhancement.allCases.filter(model.definition.pageEnhancements.contains), model: toggles) { showPrompt = false }
+                EnhancementPromptCard(enhancements: PageEnhancement.allCases.filter(model.definition.pageEnhancements.contains), model: toggles, providerID: model.definition.id) { showPrompt = false }
                     .padding(.top, 12).transition(reduceMotion ? .opacity : .scale(scale: 0.97, anchor: .top).combined(with: .opacity))
             }
         }
@@ -165,9 +169,37 @@ struct ServiceHostView: View {
     @ViewBuilder private var notices: some View {
         VStack(spacing: 6) {
             if model.notice != nil { pill("info.circle", Localized.string("Downloads aren't available in StreamSetu."), id: "\(key).notice") { model.dismissNotice() } }
-            if let host = model.blockedLinkHost { pill("hand.raised", Localized.string("Link blocked: %@", host), id: "\(key).blockedLink") { model.dismissBlockedLink() } }
+            if model.state.hiddenUndo != nil {
+                HStack(spacing: 10) {
+                    Image(systemName: "eye.slash")
+                    Text(Localized.string("Element hidden.")).font(Typography.caption)
+                    Button("Undo".loc) { model.undoHideElement() }.buttonStyle(.link).atlas("control.service.undoHide")
+                    Button("Dismiss".loc) { model.dismissPickerNotice() }.buttonStyle(.link).atlas("control.service.dismissNotice")
+                }
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(.regularMaterial, in: Capsule()).overlay(Capsule().strokeBorder(ColorTokens.glassEdge))
+                .transition(.opacity).accessibilityElement(children: .contain).accessibilityIdentifier("\(key).hiddenUndo")
+            }
+            if let message = model.state.pickerMessage { pill("info.circle", Localized.string(message), id: "\(key).pickerMessage") { model.dismissPickerNotice() } }
+            if let host = model.blockedLinkHost { pill("hand.raised", Localized.string("This link was blocked: %@. It is not an allowed sign-in or service address.", host), id: "\(key).blockedLink") { model.dismissBlockedLink() } }
         }
         .padding(.top, 10)
+    }
+
+    /// The second route to Hide Element, beside the page's right-click item: a small themed button that starts pick mode.
+    @ViewBuilder private var pickButton: some View {
+        if model.phase == .ready, TidyRules.supports(model.definition.id), model.pickRefusal == nil || model.state.picking {
+            Button { model.startPickMode() } label: {
+                Image(systemName: model.state.picking ? "xmark" : "eye.slash").font(.system(size: 12, weight: .semibold)).frame(width: 30, height: 30)
+                    .foregroundStyle(model.state.picking ? ColorTokens.accentDefault : ColorTokens.textSecondary)
+                    .background(.regularMaterial, in: Circle()).overlay(Circle().strokeBorder(ColorTokens.glassEdge))
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain).padding(14)
+            .help(model.state.picking ? Localized.string("Cancel") : Localized.string("Hide Element on This Page…"))
+            .accessibilityLabel(Text(verbatim: Localized.string("Hide Element on This Page…"))).accessibilityIdentifier("\(key).hideElement")
+            .atlas("control.service.hideElementButton")
+        }
     }
 
     private func pill(_ symbol: String, _ text: String, id: String, dismiss: @escaping () -> Void) -> some View {
@@ -198,5 +230,35 @@ struct IntegrationUnavailableView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity).background(ColorTokens.contentBackground)
         .accessibilityElement(children: .contain).accessibilityIdentifier("\(definition.id.rawValue).unavailable")
         .atlasScreen("screen.service.unavailable")
+    }
+}
+
+/// The sign-in window over a service: a small sheet with the page and a Close button. The page closes it itself when sign-in finishes.
+private struct AuthPopupWebRepresentable: NSViewRepresentable {
+    let popup: AuthPopup
+    func makeNSView(context: Context) -> NSView { let c = WebContainer(); c.attach(popup.webView); return c }
+    func updateNSView(_ view: NSView, context: Context) {}
+    static func dismantleNSView(_ view: NSView, coordinator: ()) { view.subviews.forEach { $0.removeFromSuperview() } }
+}
+
+private struct AuthPopupSheet: View {
+    let popup: AuthPopup
+    let serviceName: String
+    var close: () -> Void
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "lock").foregroundStyle(ColorTokens.textSecondary)
+                Text(Localized.string("Sign in for %@", serviceName)).font(Typography.bodyMedium).foregroundStyle(ColorTokens.textPrimary)
+                Spacer()
+                Button("Close".loc) { close() }.keyboardShortcut(.cancelAction).atlas("control.service.authPopupClose")
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(ColorTokens.elevated)
+            AuthPopupWebRepresentable(popup: popup)
+                .accessibilityLabel(Text(Localized.string("Sign in for %@", serviceName))).accessibilityIdentifier("service.authPopup.web")
+        }
+        .frame(width: 480, height: 640)
+        .background(ColorTokens.contentBackground)
     }
 }

@@ -9,10 +9,20 @@ final class EnhancementInstaller {
     private let definition: ProviderDefinition
     private weak var controller: WKUserContentController?
     private var handler: SponsorMessageHandler?
+    /// Where Spotify's rule list is compiled and found (the system's rule store; tests pass their own).
+    private let ruleStore: () -> WKContentRuleListStore
+    /// The rule list this installer put in the controller, and which request for one is current (a late compile result for an older request is dropped).
+    private var addedRuleList: WKContentRuleList?
+    private var ruleGeneration = 0
     /// What is installed in the web view right now.
     private(set) var installed: Set<PageEnhancement> = []
 
-    init(definition: ProviderDefinition, runtime: EnhancementRuntime = .shared) { self.definition = definition; self.runtime = runtime }
+    init(definition: ProviderDefinition, runtime: EnhancementRuntime = .shared, ruleStore: @escaping () -> WKContentRuleListStore = { .default() }) {
+        self.definition = definition; self.runtime = runtime; self.ruleStore = ruleStore
+    }
+
+    /// Whether Spotify's rule list is in the web view's controller right now.
+    var hasRuleList: Bool { addedRuleList != nil }
 
     /// What would be installed now.
     var wanted: Set<PageEnhancement> { runtime.active(for: definition) }
@@ -35,12 +45,30 @@ final class EnhancementInstaller {
             controller.addUserScript(WKUserScript(source: SponsorSkipScript.source(skippedLabel: Localized.string("Skipped sponsor"), undoLabel: Localized.string("Undo")),
                                                   injectionTime: .atDocumentStart, forMainFrameOnly: true, in: world))
         }
+        if wanted.contains(.spotifyMuteAds) {
+            controller.addUserScript(WKUserScript(source: SpotifyMuteScript.source, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: .page))
+        }
+        if wanted.contains(.spotifyHideAds) { addRuleList(to: controller) }
         installed = wanted
         return wanted
     }
 
+    /// Adds Spotify's rule list when it is ready (compiling it first if needed). A compile failure leaves the page exactly as it was.
+    private func addRuleList(to controller: WKUserContentController) {
+        let generation = ruleGeneration
+        let store = ruleStore()
+        Task { @MainActor [weak self, weak controller] in
+            guard let list = await SpotifyAdRules.list(in: store) else { return }
+            guard let self, let controller, self.ruleGeneration == generation, self.wanted.contains(.spotifyHideAds), self.addedRuleList == nil else { return }
+            controller.add(list)
+            self.addedRuleList = list
+        }
+    }
+
     private func remove(from controller: WKUserContentController) {
         guard !installed.isEmpty else { return }
+        ruleGeneration += 1
+        if let list = addedRuleList { controller.remove(list); addedRuleList = nil }
         controller.removeAllUserScripts()          // this installer is the only thing that ever adds scripts to a service's view
         controller.removeScriptMessageHandler(forName: SponsorSkipScript.handlerName, contentWorld: WKContentWorld.world(name: SponsorSkipScript.worldName))
         handler = nil

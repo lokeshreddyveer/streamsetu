@@ -70,7 +70,7 @@ import AppKit
             let d = reg.definition(for: ProviderID(unchecked: id))!
             #expect(d.storeIdentity.uuid == UUID(uuidString: uuid), Comment(rawValue: id))
             #expect(d.homeURL.absoluteString == home && d.zoomDefaultsKey == zoom, Comment(rawValue: id))
-            #expect(d.urlPolicy.hostRules == rules, Comment(rawValue: id))
+            #expect(d.urlPolicy.hostRules == rules + HostRule.googleSignIn, Comment(rawValue: id))
             #expect(d.userAgentProfile == .safari && d.regionProfile == nil, Comment(rawValue: id))
         }
     }
@@ -116,13 +116,13 @@ import AppKit
         }
         #expect(d("http://www.hotstar.com/in") != .allowInApp && d("http://www.jiohotstar.com/") != .allowInApp)
         #expect(d("https://user:pw@www.hotstar.com/in") == .block && d("https://www.hotstar.com@evil.test/in") == .block)
-        #expect(p.hostSuffixes == ["jiohotstar.com", "www.hotstar.com", "hotstar.com"] && p.inAppSchemes == ["https"])
+        #expect(p.hostSuffixes == ["jiohotstar.com", "www.hotstar.com", "hotstar.com"] + HostRule.googleSignInHosts && p.inAppSchemes == ["https"])
         #expect(jio.externalLinks == .blockWithNotice)
     }
 
     @Test func disneyPlusKeepsItsOwnRulesExactlyAndSharingAnAuthHostIsAllowed() {
         let disney = reg.definition(for: .disneyplus)!
-        #expect(disney.urlPolicy.hostRules.filter { $0.role == .auth && $0.active }.map(\.suffix) == ["disneyid.com", "jiohotstar.com", "hotstar.com"])
+        #expect(disney.urlPolicy.hostRules.filter { $0.role == .auth && $0.active }.map(\.suffix) == ["disneyid.com", "jiohotstar.com", "hotstar.com"] + HostRule.googleSignInHosts)
         #expect(ProviderRegistry.validate(reg.definitions).isEmpty, "auth-role overlap with Disney+ is allowed: separate web views and stores")
     }
 

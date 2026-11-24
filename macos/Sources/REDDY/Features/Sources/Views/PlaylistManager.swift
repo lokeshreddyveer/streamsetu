@@ -23,6 +23,8 @@ struct PlaylistManager: View {
     @Environment(AppRouter.self) private var router
     @State private var selectedID: UUID?
     @State private var section: Section = .overview
+    /// A playlist chosen with right-click "Remove…" in the list; the same confirmation and removal as the Remove button.
+    @State private var removing: PlaylistSource?
 
     enum Section: String, CaseIterable, Identifiable { case overview = "Overview", connection = "Connection", catalog = "Catalog", health = "Health", guide = "Guide", sync = "Sync", diagnostics = "Diagnostics"; var id: String { rawValue } }
 
@@ -47,6 +49,9 @@ struct PlaylistManager: View {
                 .frame(height: 520)
             }
         }
+        .confirmationDialog("Remove \(removing?.name ?? "playlist")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), presenting: removing) { p in
+            Button("Remove Playlist and Its Data", role: .destructive) { state.removePlaylist(p.id); if selectedID == p.id { selectedID = nil } }.atlas("screen.playlists")
+        } message: { _ in Text("Its channels, movies, series, favorites and history are removed from this Mac. The provider's account is not affected.") }
     }
 
     private var list: some View {
@@ -69,6 +74,7 @@ struct PlaylistManager: View {
                             .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(on ? ColorTokens.lineStrong : .clear))
                             .contentShape(Rectangle())
                         }.buttonStyle(.plain).atlas("screen.playlists")
+                        .contextMenu { Button("Remove…", role: .destructive) { removing = s }.atlas("screen.playlists") }
                     }
                 }
             }.scrollIndicators(.hidden)
@@ -130,7 +136,7 @@ private struct PlaylistSectionView: View {
         .task(id: "\(source.id)-\(state.catalogVersion)-\(busy)") { await load() }
         .sheet(isPresented: $showEdit) { EditSourceSheet(source: source) }
         .confirmationDialog("Remove \(source.name)?", isPresented: $confirmDelete) {
-            Button("Remove Playlist and Its Data", role: .destructive) { try? container?.sources.remove(source.id); state.reload(); state.catalogVersion += 1 }
+            Button("Remove Playlist and Its Data", role: .destructive) { state.removePlaylist(source.id) }.atlas("screen.playlists")
         } message: { Text("Its channels, movies, series, favorites and history are removed from this Mac. The provider's account is not affected.") }
     }
 

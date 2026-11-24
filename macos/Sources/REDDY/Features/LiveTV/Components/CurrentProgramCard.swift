@@ -60,7 +60,7 @@ struct CurrentProgramCard: View {
                         Text(p.title).font(Typography.body).lineLimit(1)
                         Spacer()
                         if settings.remindersEnabled { Button { toggleReminder(p) } label: { Image(systemName: reminded.contains(p.id) ? "bell.fill" : "bell") }
-                            .buttonStyle(.plain).foregroundStyle(reminded.contains(p.id) ? Color.accentColor : ColorTokens.textSecondary)
+                            .buttonStyle(.plain).foregroundStyle(reminded.contains(p.id) ? ColorTokens.accent : ColorTokens.textSecondary)
                             .help(reminded.contains(p.id) ? "Cancel reminder" : "Remind me when it starts").accessibilityLabel(reminded.contains(p.id) ? "Cancel reminder for \(p.title)" : "Remind me when \(p.title) starts").atlas("setting.remindersEnabled") }
                     }
                 }

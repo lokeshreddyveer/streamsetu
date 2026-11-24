@@ -31,6 +31,7 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
     var notice: Notice? { state.notice }
     var pendingExternal: URL? { state.pendingExternal }
     var blockedLinkHost: String? { state.blockedLinkHost }
+    var authPopup: AuthPopup? { state.authPopup }
     var lastStatusCode: Int? { state.lastStatusCode }
     var hasContent: Bool { state.hasContent }
     var hasSession: Bool { state.hasSession }
@@ -62,6 +63,10 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
     /// Cross-provider check on a termination: answers whether an automatic reload is still allowed.
     @ObservationIgnored var onTermination: ((ProviderID, Date) -> TerminationAction)?
     @ObservationIgnored private let defaults: UserDefaults
+    /// Tidy pages and the hidden elements of this service (shared preferences; tests pass their own).
+    @ObservationIgnored var tidyStore: TidyStore = .shared
+    @ObservationIgnored private var tidyObserver: NSObjectProtocol?
+    @ObservationIgnored private var undoTask: Task<Void, Never>?
     @ObservationIgnored private let releaseAfter: Duration
     @ObservationIgnored private let slowAfter: Duration
     @ObservationIgnored private let recovery: RecoveryPolicy
@@ -93,6 +98,11 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
         // The opener exists only for a definition whose links are confirmed first; the others hold none.
         super.init()
         self.openExternal = openExternal ?? { NSWorkspace.shared.open($0) }          // dropped unless the definition confirms links first
+        let rawID = definition.id.rawValue
+        tidyObserver = NotificationCenter.default.addObserver(forName: TidyStore.didChange, object: nil, queue: .main) { [weak self] note in
+            guard (note.object as? String) == rawID else { return }
+            MainActor.assumeIsolated { self?.lifecycle.refreshTidy() }
+        }
         lifecycle.onNavigationChange = { [weak self] in self?.syncNavigationState(); self?.applyZoom() }
         lifecycle.onMemoryPressure = { [weak self] critical in
             guard let self else { return }
@@ -137,8 +147,87 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
 
     private func menuActions() -> ServiceMenuActions {
         ServiceMenuActions(canGoBack: canGoBack, canGoForward: canGoForward, back: { [weak self] in self?.goBack() }, forward: { [weak self] in self?.goForward() },
-                           reload: { [weak self] in self?.reload() }, openInBrowser: openExternal == nil ? nil : { [weak self] in self?.openInDefaultBrowser() })
+                           reload: { [weak self] in self?.reload() }, openInBrowser: openExternal == nil ? nil : { [weak self] in self?.openInDefaultBrowser() },
+                           hideElement: canHideElement ? { [weak self] point in self?.hideElement(at: point) } : nil)
     }
+
+    // MARK: Hide This Element
+
+    /// The context-menu item exists only on the service's own page and while nothing restricts the app.
+    var canPickElement: Bool { webView != nil && TidyRules.supports(definition.id) }
+    var canHideElement: Bool { ElementPicker.isAllowed(definition: definition, pageURL: webView?.url, restricted: EnhancementRuntime.shared.isRestricted()) }
+
+    /// Runs the one-off picker at a point (CSS pixels) and offers Undo for a few seconds.
+    func hideElement(at point: CGPoint) {
+        guard let v = webView else { return }
+        record(.pickStarted, v)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let outcome = await ElementPicker.hide(at: point, in: v, definition: self.definition, store: self.tidyStore)
+            self.finishPick(outcome, v)
+        }
+    }
+
+    /// Why Hide Element is not available on this page right now, or nil when it is.
+    var pickRefusal: ElementPicker.Refusal? { ElementPicker.refusal(definition: definition, pageURL: webView?.url, restricted: EnhancementRuntime.shared.isRestricted()) }
+
+    /// The second route (a Services menu command and a button on the page): pick mode, which does not depend on the page's own context menu.
+    func startPickMode() {
+        guard let v = webView else { return }
+        guard !state.picking else { Task { await ElementPicker.cancelPickMode(in: v) }; return }
+        if let r = pickRefusal { finishPick(.refused(r), v); return }
+        state.picking = true; state.hiddenUndo = nil; state.pickerMessage = nil
+        record(.pickStarted, v)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let outcome = await ElementPicker.pickInteractively(in: v, definition: self.definition, store: self.tidyStore, hint: Localized.string("Click the element to hide. Esc cancels."))
+            self.state.picking = false
+            self.finishPick(outcome, v)
+        }
+    }
+
+    func cancelPickMode() { guard state.picking, let v = webView else { return }; Task { await ElementPicker.cancelPickMode(in: v) } }
+
+    private func record(_ event: ServiceDiagnostics.PickerEvent, _ v: WKWebView) {
+        diagnostics.recordPicker(definition.id, url: v.url, event: event)
+    }
+
+    /// Every outcome ends in a visible notice (or the Undo bar) and one diagnostics event: the host and a reason code, never the address or the selector.
+    private func finishPick(_ outcome: ElementPicker.Outcome, _ v: WKWebView) {
+        undoTask?.cancel()
+        func notice(_ text: String, _ event: ServiceDiagnostics.PickerEvent) {
+            state.hiddenUndo = nil; state.pickerMessage = text; record(event, v)
+            undoTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(6))
+                guard !Task.isCancelled else { return }
+                self?.state.pickerMessage = nil
+            }
+        }
+        switch outcome {
+        case .hidden(let selector):
+            state.pickerMessage = nil; state.hiddenUndo = selector; record(.hidden, v)
+            undoTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(10))
+                guard !Task.isCancelled else { return }
+                self?.state.hiddenUndo = nil
+            }
+        case .nothingSuitable: notice("Nothing safe to hide there.", .nothingSuitable)
+        case .limitReached: notice("Too many hidden elements for this service. Reset them in Settings.", .limitReached)
+        case .refused(let r): notice(r.notice, .refused(r))
+        case .scriptFailed: notice("Couldn't read this page. Try again once it has finished loading.", .scriptFailed)
+        case .cancelled: state.pickerMessage = nil; record(.cancelled, v)
+        }
+    }
+
+    func undoHideElement() {
+        guard let selector = state.hiddenUndo else { return }
+        state.hiddenUndo = nil; undoTask?.cancel()
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await ElementPicker.undo(selector, in: self.webView, definition: self.definition, store: self.tidyStore)
+        }
+    }
+    func dismissPickerNotice() { undoTask?.cancel(); state.hiddenUndo = nil; state.pickerMessage = nil }
 
     private func applyZoom() {
         guard let v = webView else { return }
@@ -198,6 +287,7 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
         guard let v = webView else { return }
         if let u = v.url, policy.decide(u, isMainFrame: true) == .allowInApp { state.lastURL = u }
         lifecycle.release(); delegates = nil
+        state.authPopup?.close()
         slowTask?.cancel(); state.resetForReleasedView(); releaseCount += 1
     }
 
@@ -257,7 +347,7 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
         openExternal(url)
     }
     func cancelExternal() { state.pendingExternal = nil }
-    func dismissBlockedLink() { state.blockedLinkHost = nil }
+    func dismissBlockedLink() { blockedLinkTask?.cancel(); state.blockedLinkHost = nil }
     func dismissNotice() { state.notice = nil }
 
     /// What the error card offers, from the definition (see `ServiceFailureScreen`).
@@ -303,7 +393,7 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
     static func recordBelongs(_ name: String, to d: ProviderDefinition) -> Bool {
         let n = name.lowercased().hasPrefix(".") ? String(name.dropFirst()).lowercased() : name.lowercased()
         if d.sessionCookieDomains.contains(where: { n == $0 || n.hasSuffix("." + $0) }) { return true }
-        return d.urlPolicy.isAllowedHost(n)
+        return d.urlPolicy.isAllowedHost(n) && !HostRule.googleSignInHosts.contains(n)          // signing in at Google is not a session with the service
     }
 
     private func endLoading() { slowTask?.cancel(); state.isSlow = false }
@@ -318,9 +408,29 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
         guard policy.decide(url, isMainFrame: true) == .openExternally else { return }
         switch definition.externalLinks {
         case .confirmThenOpen: state.pendingExternal = url
-        case .blockWithNotice: state.blockedLinkHost = Self.destinationLabel(url)
+        case .blockWithNotice: state.blockedLinkHost = Self.destinationLabel(url); scheduleBlockedLinkDismissal()
         }
     }
+
+    /// The "link blocked" note goes away by itself after a few seconds (and sooner if the person dismisses it or the page changes).
+    static var blockedLinkLifetime: Duration = .seconds(6)
+    @ObservationIgnored private var blockedLinkTask: Task<Void, Never>?
+    private func scheduleBlockedLinkDismissal() {
+        blockedLinkTask?.cancel()
+        let shown = state.blockedLinkHost
+        blockedLinkTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.blockedLinkLifetime)
+            guard !Task.isCancelled, let self, self.state.blockedLinkHost == shown else { return }
+            self.state.blockedLinkHost = nil
+        }
+    }
+
+    func presentAuthPopup(_ popup: AuthPopup) {
+        state.authPopup?.close()
+        state.authPopup = popup
+        popup.onClose { [weak self, weak popup] in if let self, self.state.authPopup === popup { self.state.authPopup = nil } }
+    }
+    func closeAuthPopup() { state.authPopup?.close() }
 
     func downloadBlocked() { state.notice = .downloadBlocked }
     func openInPlace(_ url: URL) { load(url) }
@@ -333,7 +443,7 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
     func loadStarted() { beginLoading() }
 
     func loadCommitted(_ url: URL?) {
-        if let u = url, policy.decide(u, isMainFrame: true) == .allowInApp { state.lastURL = u }
+        if let u = url, policy.decide(u, isMainFrame: true) == .allowInApp, !policy.isGoogleSignInHost(u.host) { state.lastURL = u }          // a sign-in page is never the place to resume
         state.hasContent = true; applyZoom(); syncNavigationState()
     }
 

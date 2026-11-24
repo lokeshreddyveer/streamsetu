@@ -13,8 +13,10 @@ final class DatabaseManager: @unchecked Sendable {
     private let load = OSAllocatedUnfairLock(initialState: [Int]())
     private let writeQueue = DispatchQueue(label: "app.reddy.db.write")
     static let defaultReaderCount = 3
+    /// Page cache of each read connection, in KiB (SQLite's own default is 2,000 KiB).
+    static let defaultReaderCacheKiB = 32_768
 
-    init(path: String, readerCount: Int = DatabaseManager.defaultReaderCount) throws {
+    init(path: String, readerCount: Int = DatabaseManager.defaultReaderCount, readerCacheKiB: Int = DatabaseManager.defaultReaderCacheKiB) throws {
         self.path = path
         writer = try Connection(path: path, readOnly: false)
         try writer.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON; PRAGMA temp_store=MEMORY; PRAGMA busy_timeout=5000;")
@@ -22,7 +24,7 @@ final class DatabaseManager: @unchecked Sendable {
         var pool: [Reader] = []
         for i in 0..<max(1, readerCount) {
             let c = try Connection(path: path, readOnly: true)
-            try c.exec("PRAGMA busy_timeout=5000; PRAGMA query_only=ON; PRAGMA cache_size=-32768; PRAGMA mmap_size=268435456; PRAGMA temp_store=MEMORY;")
+            try c.exec("PRAGMA busy_timeout=5000; PRAGMA query_only=ON; PRAGMA cache_size=-\(readerCacheKiB); PRAGMA mmap_size=268435456; PRAGMA temp_store=MEMORY;")
             pool.append(Reader(connection: c, queue: DispatchQueue(label: "app.reddy.db.read.\(i)", qos: .userInitiated)))
         }
         readers = pool

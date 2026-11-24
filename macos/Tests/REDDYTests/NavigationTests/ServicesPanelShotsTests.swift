@@ -38,8 +38,8 @@ import AppKit
         guard let dir = ProcessInfo.processInfo.environment["SERVICES_PANEL_SHOTS"] else { return }
         _ = NSApplication.shared
         try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-        let saved = ThemeStore.current
-        defer { ThemeStore.current = saved }
+        let saved = ThemeStore.current; ThemeStore.state.frostedOnly = true
+        defer { ThemeStore.current = saved; ThemeStore.state.frostedOnly = false }
         var nav = ServicesNavigationBinding()
         nav.pinned = [.netflix, .hulu]; nav.recents = [.peacock, .youtube]; nav.active = .peacock
         let cell = CGSize(width: 400, height: 520)

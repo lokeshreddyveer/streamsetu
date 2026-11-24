@@ -133,8 +133,7 @@ final class AppContainer {
         artwork = ArtworkService(cache: ImageCache(root: StorageService.caches, http: http, headers: { [sources] url in sources.artworkHeaders(for: url) }))
         try? PlexTokenCleanup.run(db)
         memoryGuard = MemoryPressureGuard { [artwork, screens, filterOptionsStore] in
-            await artwork.relieveMemory()
-            await MainActor.run { screens.clear(); filterOptionsStore.invalidate() }          // kept screen models are the first thing to give back
+            await AppContainer.relieveMemory(artwork: artwork, screens: screens, filterOptions: filterOptionsStore)
         }
         diagnostics = DiagnosticsService(db: db, catalog: catalog)
         reminders = ReminderService()
@@ -424,6 +423,12 @@ final class AppContainer {
         } onChange: { [weak self] in
             Task { @MainActor in self?.applySettings() }
         }
+    }
+
+    /// What a memory-pressure event gives back: pictures held in memory, kept screen models, cached filter options. Nothing here touches playback or stored data.
+    static func relieveMemory(artwork: ArtworkService, screens: ScreenRetention.Store, filterOptions: FilterOptionsStore) async {
+        await artwork.relieveMemory()
+        await MainActor.run { screens.clear(); filterOptions.invalidate() }          // kept screen models are the first thing to give back
     }
 }
 

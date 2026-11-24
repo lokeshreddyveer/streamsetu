@@ -55,9 +55,21 @@ import Foundation
                     "Distribution permission: unresolved for every service", "Distribution permission: unresolved for %lld services",
                     "checked by you", "checked by you on %@",
                     "This signs you out of %@ and removes its saved data from this Mac. Your other services stay signed in.",
-                    "Google sign-in is not supported in this view, so this service is used signed out."]
+                    "This service is used signed out."]
         keys += ["available", "unverified", "disabled", "registered"].map { StreamingServicesSettingsModel.badge(ServiceAvailability(rawValue: $0)!) }
         keys += CompatibilityResult.Check.allCases.map(StreamingServicesSettingsModel.passedWords) + CompatibilityResult.Check.allCases.map(StreamingServicesSettingsModel.failedWords)
         for k in keys { #expect(hi[k] != nil && te[k] != nil, "no Hindi/Telugu for: \(k)"); #expect(hi[k] != k && te[k] != k, "not translated: \(k)") }
+    }
+
+    /// The Podcasts destination and the redesigned top bar: every new fixed text, in both languages, translated.
+    @Test func podcastsAndTopBarWordingHasHindiAndTelugu() throws {
+        let hi = try table("hi"), te = try table("te")
+        let keys = ["Podcasts", TopBarItem.collapsedLabel, "Icon and Name", "Icon Only", "Name Only", "Top bar", "Reset to Defaults",
+                    "Choose how each item at the top of the window is shown. If the window is narrow, names turn into icons from the right.", "Home", "Live TV", "Movies", "Series", "TV Guide",
+                    "Find a show", "Results", "Following", "Looking…", "Search shows, or paste a feed address", "Unfollow", "Follow", "%lld episodes",
+                    "Search uses Apple's public podcast directory. Nothing about you is sent besides the words you search for.",
+                    "Search Apple's public podcast directory, or paste a feed address, then follow a show to keep it here. Your place in each episode is remembered."]
+        for k in keys { #expect(hi[k] != nil && te[k] != nil, "no Hindi/Telugu for: \(k)"); #expect(hi[k] != k && te[k] != k, "not translated: \(k)") }
+        #expect(hi["StreamSetu, shows Home, Live TV, Movies, Series and TV Guide"] == nil, "the superseded label is gone")
     }
 }

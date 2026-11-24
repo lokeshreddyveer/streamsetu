@@ -31,7 +31,7 @@ private struct FlowChips: View {
                     ForEach(rows[r]) { i in
                         Button { pick(i.query) } label: {
                             Label(i.label, systemImage: i.symbol).font(.system(size: 12, weight: .medium)).lineLimit(1)
-                                .padding(.horizontal, 10).padding(.vertical, 6).background(Color.accentColor.opacity(0.14), in: Capsule())
+                                .padding(.horizontal, 10).padding(.vertical, 6).background(ColorTokens.accent.opacity(0.14), in: Capsule())
                         }.buttonStyle(.plain).atlas("control.search.idea")
                     }
                 }

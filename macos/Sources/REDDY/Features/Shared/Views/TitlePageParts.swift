@@ -150,12 +150,12 @@ struct TitlePlayButton: View {
     #if os(macOS)
     @Environment(\.reddyAccent) private var accent
     #else
-    private var accent: Color { .accentColor }
+    private var accent: Color { ColorTokens.accent }
     #endif
 
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: "play.fill").font(.title3.weight(.bold)).foregroundStyle(.white)
+            Label(title, systemImage: "play.fill").font(.title3.weight(.bold)).foregroundStyle(ColorTokens.onAccent(accent))
                 .frame(maxWidth: .infinity, minHeight: 52).padding(.vertical, 4)
                 .background(Capsule().fill(accent)).contentShape(Capsule())
         }

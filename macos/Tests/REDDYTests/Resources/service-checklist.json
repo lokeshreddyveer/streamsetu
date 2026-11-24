@@ -236,14 +236,11 @@
         "returningPreservesState",
         "blockedLinkNotice"
       ],
-      "defaultOutcomes": {
-        "signInCompletes": "notApplicable"
-      },
+      "defaultOutcomes": {},
       "externalLinks": "blockWithNotice",
       "id": "youtube",
       "presentation": "embedded",
       "recordedOutcomes": {
-        "signInCompletes": "notApplicable",
         "siteLoads": "passed",
         "video": "passed"
       }
@@ -274,6 +271,28 @@
         "siteLoads": "passed",
         "video": "passed"
       }
+    },
+    {
+      "availability": "unverified",
+      "checks": [
+        "siteLoads",
+        "signInPageRenders",
+        "signInCompletes",
+        "catalog",
+        "video",
+        "audio",
+        "fullscreen",
+        "sessionPersistsAfterRestart",
+        "switchingStopsAudio",
+        "errorScreenRetryAndReturn",
+        "returningPreservesState",
+        "blockedLinkNotice"
+      ],
+      "defaultOutcomes": {},
+      "externalLinks": "blockWithNotice",
+      "id": "spotify",
+      "presentation": "embedded",
+      "recordedOutcomes": {}
     },
     {
       "availability": "registered",

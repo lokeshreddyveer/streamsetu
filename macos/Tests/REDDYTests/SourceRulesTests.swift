@@ -181,3 +181,20 @@ import Foundation
         print("BACKGROUND index build on the same rows: \(Int(Double(DispatchTime.now().uptimeNanoseconds - t2.uptimeNanoseconds) / 1e6)) ms")
     }
 }
+
+@Suite("Media server sign-in") @MainActor struct MediaServerPasswordTests {
+    @Test func jellyfinAndEmbyAcceptAnAccountWithNoPassword() {
+        for kind in [AddSourceKind.jellyfin, .emby] {
+            let vm = AddSourceViewModel(); vm.kind = kind; vm.server = "https://demo.example/stable"; vm.username = "demo"; vm.password = ""
+            #expect(vm.canSubmit, "\(kind): the password is optional")
+            vm.username = ""
+            #expect(!vm.canSubmit, "\(kind): the user name is still needed")
+        }
+    }
+    @Test func xtreamAndPlexStillNeedTheirSecret() {
+        let x = AddSourceViewModel(); x.kind = .xtream; x.server = "http://s.example"; x.username = "u"; x.password = ""
+        #expect(!x.canSubmit)
+        let p = AddSourceViewModel(); p.kind = .plex; p.server = "http://s.example"; p.password = ""
+        #expect(!p.canSubmit)
+    }
+}

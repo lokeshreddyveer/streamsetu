@@ -168,7 +168,7 @@ private struct ChannelRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: selected ? "checkmark.square.fill" : "square").font(.system(size: 15)).foregroundStyle(selected ? Color.accentColor : ColorTokens.textTertiary)
+            Image(systemName: selected ? "checkmark.square.fill" : "square").font(.system(size: 15)).foregroundStyle(selected ? ColorTokens.accent : ColorTokens.textTertiary)
             ChannelLogo(url: channel.logoURL, name: channel.name, size: 30)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
@@ -220,7 +220,7 @@ private struct FilterChip: View {
                 if count > 0 { Text(count.formatted()).foregroundStyle(on ? .white.opacity(0.8) : ColorTokens.textTertiary) }
             }
             .font(Typography.captionMedium).padding(.horizontal, 11).frame(height: 26)
-            .background(on ? Color.accentColor.opacity(0.9) : Color.white.opacity(0.06), in: Capsule())
+            .background(on ? ColorTokens.accent.opacity(0.9) : Color.white.opacity(0.06), in: Capsule())
             .foregroundStyle(on ? .white : ColorTokens.textSecondary)
         }.buttonStyle(.plain).animation(AnimationTokens.quick, value: on).atlas("control.commandCenter.filterChip")
     }

@@ -1,5 +1,5 @@
-<!-- atlas-inputs-sha256: fe25f7b17b4e16851bf5654fa4a0d105cd6f9dda9a2b521d339f128e9e6c873a -->
-<!-- coverage-body-sha256: 301327745fa4cceee51c6613fdad9d1e75470c6ef3b565fd77e53d4150411077 -->
+<!-- atlas-inputs-sha256: cba8920cfa2b259a41e6d2cbe91323ce2ae4792c42a1a1cd5dd4d1f0019d22d1 -->
+<!-- coverage-body-sha256: 73e5a44aa5e389d2f80456973f09d1e8c145b3fee3d672756a0f8c93114ebb90 -->
 # Assistant coverage
 
 Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to rewrite it). Everything Setu can answer about the app is one entry in `macos/Sources/REDDY/Atlas`; this page lists them all. *Reviewed* means the wording was checked against the code by a person or in a test; the rest was written from the code and has not had a second look. Setu answers from these entries with no language model.
@@ -8,19 +8,19 @@ Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to re
 
 | Kind | Entries | Reviewed | Mac | iPhone | iPad |
 |---|---|---|---|---|---|
-| Screens | 121 | 118 | 78 | 45 | 44 |
+| Screens | 122 | 118 | 79 | 45 | 44 |
 | Settings pages | 24 | 24 | 8 | 18 | 18 |
-| Controls and settings groups | 412 | 368 | 208 | 222 | 222 |
+| Controls and settings groups | 433 | 376 | 229 | 222 | 222 |
 | Settings | 109 | 106 | 101 | 98 | 99 |
-| Menu commands | 40 | 40 | 40 | 1 | 1 |
+| Menu commands | 42 | 42 | 42 | 1 | 1 |
 | Keyboard shortcuts | 31 | 31 | 28 | 0 | 3 |
-| Context menus | 43 | 43 | 38 | 27 | 27 |
+| Context menus | 44 | 44 | 39 | 27 | 27 |
 | Gestures and long presses | 35 | 35 | 11 | 24 | 20 |
 | Siri and Shortcuts | 7 | 7 | 0 | 7 | 7 |
 | How-tos | 65 | 65 | 64 | 61 | 62 |
 | Troubleshooting | 23 | 23 | 23 | 21 | 21 |
 | About Setu and what is new | 17 | 17 | 14 | 16 | 16 |
-| **All** | **927** | **877** | 613 | 540 | 540 |
+| **All** | **952** | **888** | 638 | 540 | 540 |
 
 Entries Setu explains but never changes (app lock, proxy, parental controls and similar): 49.
 
@@ -44,6 +44,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | screen.destination.liveTV | Go to Live TV | Live TV > All Channels | destination liveTV | Mac | yes |
 | screen.destination.movies | Go to Movies | Movies > All Movies | destination movies | Mac | yes |
 | screen.destination.playlists | Go to Playlists | Playlists | destination playlists | Mac | yes |
+| screen.destination.podcasts | Podcasts | Podcasts | destination podcasts | Mac | no |
 | screen.destination.series | Go to Series | Series > Library | destination series | Mac | yes |
 | screen.downloads | Downloads | Settings > Library > Downloads | search downloads | Mac | yes |
 | screen.feedback | Send Feedback | Help > Send Feedback | window feedback | Mac | yes |
@@ -202,6 +203,8 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.enhancement.consentConfirm | Turn On (page option) | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.enhancement.promptAdSkip | Skip ads (first-open card) | Services | explained only | Mac | no |
 | control.enhancement.promptDone | Done (page options) | Services | explained only | Mac | no |
+| control.enhancement.promptHideAds | Hide ads and upgrade prompts (first-open card) | Services | explained only | Mac | no |
+| control.enhancement.promptMuteAds | Mute audio ads (first-open card) | Services | explained only | Mac | no |
 | control.enhancement.promptNotNow | Not now (page options) | Services | explained only | Mac | no |
 | control.enhancement.promptSetUp | Set up page options | Services | explained only | Mac | no |
 | control.enhancement.promptSponsorSkip | Skip sponsor segments (first-open card) | Services | explained only | Mac | no |
@@ -453,6 +456,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.nav.service | Service tab | Top bar | explained only | Mac | no |
 | control.nav.service.reload | Reload a service | Top bar | explained only | Mac | no |
 | control.nav.streamsetu | StreamSetu item | Top bar | explained only | Mac | no |
+| control.nav.tabMode | Top bar item style | Top bar | explained only | Mac | no |
 | control.the external service.dismissNotice | Dismiss notice (the external service) | the external service | explained only | Mac | no |
 | control.the external service.openBlocked | Open blocked link in browser | the external service | explained only | Mac | no |
 | control.the external service.openBrowser | Open in Default Browser (the external service) | the external service | explained only | Mac | no |
@@ -486,16 +490,28 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.player.tools | Tools menu | Player | explained only | Mac | yes |
 | control.player.upNextCard | Up next card | Player | explained only | Mac | yes |
 | control.player.videoSize | Video size menu | Player | explained only | Mac | yes |
+| control.podcasts.category | Podcast categories | Podcasts > Discover | explained only | Mac | yes |
 | control.podcasts.follow | Follow or unfollow a podcast | Files and Servers > Podcasts | explained only | Mac | yes |
+| control.podcasts.nowPlaying | Podcast Now Playing panel | Podcasts > Player | explained only | Mac | yes |
 | control.podcasts.play | Play a podcast episode | Files and Servers > Podcasts | explained only | Mac | yes |
+| control.podcasts.player | Podcast player controls | Podcasts > Player | explained only | Mac | yes |
+| control.podcasts.queue | Podcast Up Next | Podcasts > Up Next | explained only | Mac | yes |
+| control.podcasts.search | Search podcasts | Podcasts > Discover | explained only | Mac | yes |
+| control.podcasts.sleep | Podcast sleep timer | Podcasts > Player | explained only | Mac | yes |
+| control.podcasts.sort | Sort podcast episodes | Podcasts > Show | explained only | Mac | yes |
+| control.podcasts.speed | Podcast speed and skips | Podcasts > Player | explained only | Mac | yes |
 | control.search.askAI | Ask AI for picks | Search | explained only | Mac, iPhone, iPad | yes |
 | control.search.idea | Search ideas | Search | explained only | Mac, iPhone, iPad | yes |
 | control.series.seasonPicker | Season picker | Series > Title page | explained only | Mac | yes |
+| control.service.authPopupClose | Close sign-in window | Services | explained only | Mac | no |
 | control.service.dismissNotice | Dismiss notice (service) | Services | explained only | Mac | no |
+| control.service.hideElement | Hide This Element (service page) | Services | explained only | Mac | no |
+| control.service.hideElementButton | Hide an element on the page | Services | explained only | Mac | no |
 | control.service.openBlocked | Open blocked link in browser | Services | explained only | Mac | no |
 | control.service.openBrowser | Open in Default Browser (service) | Services | explained only | Mac | no |
 | control.service.retry | Try Again (service) | Services | explained only | Mac | no |
 | control.service.returnHome | Return to StreamSetu | Services | explained only | Mac | no |
+| control.service.undoHide | Undo hiding an element | Services | explained only | Mac | no |
 | control.services.clearData | Clear a service's data (top bar) | Top bar | explained only | Mac | no |
 | control.services.filter | Filter services | Top bar > Services | explained only | Mac | no |
 | control.services.menu | Services menu | Top bar | explained only | Mac | no |
@@ -513,9 +529,12 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.settings.copyReport | Copy diagnostics report | Settings > Advanced > Diagnostics | explained only | Mac | yes |
 | control.settings.crashReports | Crash reports | Settings > Advanced > About | explained only | Mac | yes |
 | control.settings.enhancementAdSkip | Skip ads (page option) | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.enhancementHideAds | Hide ads and upgrade prompts (page option) | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.enhancementMuteAds | Mute audio ads (page option) | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.enhancementPromptReset | Show the first-open prompt again | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.enhancementReload | Reload to apply page options (Settings) | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.enhancementSponsorSkip | Skip sponsor segments (page option) | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.hiddenElementsReset | Reset hidden elements (per service) | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.icloudErase | Erase iCloud data | Settings > General > iCloud | explained only | Mac | yes |
 | control.settings.icloudSyncNow | Sync with iCloud now | Settings > General > iCloud | explained only | Mac | yes |
 | control.settings.lanAddDevice | Add a device to sync with | Settings > General > Sync on this network | explained only | Mac | yes |
@@ -544,6 +563,9 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.settings.servicesRow | Streaming service row | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.showDataFolder | Show data folder | Settings > Advanced > About | explained only | Mac | yes |
 | control.settings.testTmdbKey | Test the the movie database key | Settings > Library > Artwork and details | explained only | Mac | yes |
+| control.settings.tidyPages | Tidy pages (per service) | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.topBarReset | Reset top bar to defaults | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.topBarTabs | Top bar item styles | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.shelf.scrollArrow | Shelf arrows | Home > Shelves | explained only | Mac | yes |
 | control.sidebar.collapse | Collapse the sidebar | Sidebar | explained only | Mac | yes |
 | control.title.folderPath | Open the folder a title is in | Title page | explained only | Mac, iPhone, iPad | yes |
@@ -725,6 +747,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | menu.navigate.home | Home | Menu bar > Navigate > Home | tab Home | Mac | yes |
 | menu.navigate.liveTV | Live TV | Menu bar > Navigate > Live TV | tab Live TV | Mac | yes |
 | menu.navigate.movies | Movies | Menu bar > Navigate > Movies | tab Movies | Mac | yes |
+| menu.navigate.podcasts | Podcasts | Menu bar > Navigate > Podcasts | destination podcasts | Mac | yes |
 | menu.navigate.search | Search | Menu bar > Navigate > Search | search focus | Mac | yes |
 | menu.navigate.searchThisScreen | Search in This Screen | Menu bar > Navigate > Search in This Screen | search focusScreen | Mac | yes |
 | menu.navigate.series | Series | Menu bar > Navigate > Series | tab Series | Mac | yes |
@@ -749,6 +772,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | menu.services.back | Back | Menu bar > Services > Back | explained only | Mac | yes |
 | menu.services.clearData | Clear Data… | Menu bar > Services > Clear Data… | explained only | Mac | yes |
 | menu.services.forward | Forward | Menu bar > Services > Forward | explained only | Mac | yes |
+| menu.services.hideElement | Hide Element on This Page… | Menu bar > Services > Hide Element on This Page… | explained only | Mac | yes |
 | menu.services.openInBrowser | Open in Default Browser | Menu bar > Services > Open in Default Browser | explained only | Mac | yes |
 | menu.services.pin | Pin to Top Bar | Menu bar > Services > Pin to Top Bar | explained only | Mac | yes |
 | menu.services.reload | Reload | Menu bar > Services > Reload | explained only | Mac | yes |
@@ -809,6 +833,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | context.ios.playlist | Playlist menu (iPhone and iPad) | More > Playlists > Playlist > Context menu | explained only | iPhone, iPad | yes |
 | context.liveTV.channel | Live TV channel menu | Live TV > Channel > Context menu | explained only | Mac | yes |
 | context.multiView.tileMac | Multi-View tile menu (Mac) | Multi-View > Tile > Context menu | explained only | Mac | yes |
+| context.podcasts.episode | Podcast episode menu | Podcasts > Show > Context menu | explained only | Mac | yes |
 | context.podcasts.show | Podcast menu | Files and Servers > Podcasts > Context menu | explained only | Mac | yes |
 | context.search.result | Search result menu | Search results > Result > Context menu | explained only | Mac | yes |
 | context.series.episode | Episode menu | Series page > Episode > Context menu | explained only | Mac | yes |
@@ -1019,7 +1044,7 @@ Generated from the code by the coverage tests. **Reported, pending independent v
 
 Columns: *UI* = the app has its own control · *Read* = how the assistant looks at it · *Act* = what it can offer (always tap-to-confirm, rechecked by the authorizer) · *Restrictions tested* · *Error path tested* · *Platforms verified*.
 
-**175 rows: 138 covered, 37 unsupported with a reason.**
+**179 rows: 138 covered, 41 unsupported with a reason.**
 
 
 ### agent action
@@ -1084,15 +1109,18 @@ Columns: *UI* = the app has its own control · *Read* = how the assistant looks 
 | Feature | UI wired | Agent read | Agent action | Restrictions tested | Error path tested | Platforms verified |
 |---|---|---|---|---|---|---|
 | DesignSystem/Components/Cards/FeaturedSlideshow.swift | yes | — | — | — | — | **Unsupported:** Featured banner menu: the shared title menu (same as the tiles); partly reachable as favourite, watch_later and play_title. |
-| DesignSystem/Components/Sidebar/ReddySidebar.swift | yes | — | — | — | — | **Unsupported:** Sidebar folder menu (lock, hide, rename): not mapped yet. |
+| DesignSystem/Components/Sidebar/ReddySidebar.swift | yes | — | — | — | — | **Unsupported:** Sidebar folder menu (lock, hide, rename) and playlist menu row (Remove…): not mapped yet. |
 | Features/CommandCenter/Views/CommandCenterView.swift | yes | — | — | — | — | **Unsupported:** Channel and folder manager menus: not mapped yet. |
 | Features/Files/FilesView.swift | yes | — | — | — | — | **Unsupported:** Local file menu: not mapped yet. |
 | Features/Files/PodcastsView.swift | yes | — | — | — | — | **Unsupported:** Podcast menu: not mapped yet. |
 | Features/Home/Views/HomeScreen.swift | yes | — | — | — | — | **Unsupported:** Title card menu (favourite, watch later, hide): reachable as the favourite and watch_later tools, not as its own entry. |
 | Features/LiveTV/Views/LiveTVScreen.swift | yes | — | — | — | — | **Unsupported:** Channel menu (favourite, reminders, versions): partly reachable as favourite and play_title. |
 | Features/Player/Views/MultiViewWindow.swift | yes | — | — | — | — | **Unsupported:** Multi-view tile menu: not mapped yet. |
+| Features/Podcasts/PodcastShowPage.swift | yes | — | — | — | — | **Unsupported:** Podcast episode menu (Play Next, Add to Up Next, Mark as Played): context.podcasts.episode. |
+| Features/Podcasts/PodcastsMainView.swift | yes | — | — | — | — | **Unsupported:** Podcast menu in the main window (Unfollow): context.podcasts.show. |
 | Features/Series/Views/EpisodeCard.swift | yes | — | — | — | — | **Unsupported:** Episode menu (play, watch privately, mark watched, reset progress): declared in the Atlas as the episode menu; not an assistant action yet. |
 | Features/Shared/TileMenu.swift | yes | — | — | — | — | **Unsupported:** Title menu on every tile (one shared builder): partly reachable as favourite, watch_later and play_title. |
+| Features/Sources/Views/PlaylistManager.swift | yes | — | — | — | — | **Unsupported:** Playlist row menu (Remove…, with the same confirmation as the Remove button): not mapped yet. |
 | Features/Streaming/PinnedServicesBar.swift | yes | — | — | — | — | **Unsupported:** Service pill menu (reload, pin or unpin, move left or right, clear data): control.services.pillmenu. |
 | Features/Streaming/ServicesDropdown.swift | yes | — | — | — | — | **Unsupported:** Services list row menu (move up or down for a pinned service): control.services.move. |
 | Features/TVGuide/Components/GuideRow.swift | yes | — | — | — | — | **Unsupported:** Programme menu (remind, record): not mapped yet. |
@@ -1113,6 +1141,7 @@ Columns: *UI* = the app has its own control · *Read* = how the assistant looks 
 | Onboarding | yes | — | — | — | — | **Unsupported:** First-run screens; the assistant is not shown there. |
 | Opening | yes | — | — | — | — | **Unsupported:** The opening and What's New at launch; the assistant is not shown there. |
 | Player | yes | diagnose_playback, now_playing, recommend_engine | control_playback, retry_playback, switch_engine, select_track | yes: AssistantAuthorizer (session, profile) | yes: diagnosis table | macOS · iOS compiled, not run |
+| Podcasts | yes | — | — | — | — | **Unsupported:** Podcasts in the main window (top row or Services list, ⌘7): Setu points to it (screen.destination.podcasts) but does not search, follow or play shows. |
 | RecentlyWatched | yes | — | — | — | — | **Unsupported:** History is summarised by watch_stats but not searchable or editable by the assistant yet. |
 | Search | yes | search_everything (same engine as the search box) | open_screen with filter words | n/a | yes | macOS · iOS compiled, not run |
 | Series | yes | search_everything, title_details, similar_titles | play_title, favourite, watch_later | yes: AssistantAuthorizer | yes | macOS · iOS compiled, not run |

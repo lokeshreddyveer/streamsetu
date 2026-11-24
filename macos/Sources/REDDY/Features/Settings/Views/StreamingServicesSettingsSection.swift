@@ -54,10 +54,27 @@ final class StreamingServicesSettingsModel {
         let enhancements: [PageEnhancement]
         /// The four separate region lines (preference, network, service, playback) for a service that declares a preference; empty for every other.
         let regionLines: [String]
+        /// Tidy pages and hidden elements of this service (nothing offered for a service without page hosts).
+        var tidy = TidyState()
+    }
+
+    /// What the card shows for Tidy pages and Hide This Element.
+    struct TidyState: Equatable {
+        var supported = false
+        var on = false
+        /// The built-in list has rules for this service (otherwise the card says there is nothing to hide yet).
+        var hasRules = false
+        var hiddenCount = 0
     }
 
     private(set) var preferences: ServicePreferences
     var pendingClear: ProviderID?
+    /// The service whose hidden elements are about to be reset (asks first).
+    var pendingReset: ProviderID?
+    /// Services whose Tidy pages choice changed since their page loaded (a reload applies it).
+    private(set) var tidyReloadHint: Set<ProviderID> = []
+    /// Tidy pages and hidden elements (shared preferences; tests pass their own).
+    let tidyStore: TidyStore
     private(set) var notice: String?
     /// The page options' toggles and consent step, shared with the first-open prompt through one store.
     let enhancements = EnhancementToggleModel()
@@ -72,7 +89,8 @@ final class StreamingServicesSettingsModel {
     let systemLocale: LocaleProvider
 
     init(registry: ProviderRegistry = .standard, defaults: UserDefaults = .standard, actions: StreamingServicesSettingsActions = .unwired, diagnostics: ServiceDiagnostics = .shared,
-         systemLocale: @escaping LocaleProvider = { .current }) {
+         systemLocale: @escaping LocaleProvider = { .current }, tidy: TidyStore = .shared) {
+        tidyStore = tidy
         self.registry = registry; self.defaults = defaults; self.actions = actions; self.diagnostics = diagnostics; self.systemLocale = systemLocale
         available = registry.listed(on: .macOS).map(\.id)
         preferences = ServicePreferences.load(from: defaults, available: available)
@@ -92,11 +110,30 @@ final class StreamingServicesSettingsModel {
         let index = preferences.pinned.firstIndex(of: d.id)
         return Row(id: d.id, name: d.displayName, availability: d.availability, badge: Self.badge(d.availability),
                    statusLine: Self.statusLine(d.capabilities.compatibility),
-                   limitation: d.authentication == .signedOutOnly ? "Google sign-in is not supported in this view, so this service is used signed out." : nil,
+                   limitation: d.authentication == .signedOutOnly ? "This service is used signed out." : nil,
                    pinned: index != nil, pinLabel: index != nil ? "In top bar" : "Not in top bar", canMoveLeft: (index ?? 0) > 0, canMoveRight: index.map { $0 < preferences.pinned.count - 1 } ?? false,
                    canOpen: d.presentation == .embedded && actions.open != nil, note: d.releaseNote.map { Localized.string($0) },
-                   enhancements: PageEnhancement.allCases.filter(d.pageEnhancements.contains), regionLines: RegionStatus.of(d)?.lines ?? [])
+                   enhancements: PageEnhancement.allCases.filter(d.pageEnhancements.contains), regionLines: RegionStatus.of(d)?.lines ?? [],
+                   tidy: TidyState(supported: d.presentation == .embedded && TidyRules.supports(d.id), on: tidyStore.isEnabled(d.id),
+                                   hasRules: !TidyRules.rules(for: d.id).isEmpty, hiddenCount: tidyStore.hiddenCount(d.id)))
     }
+
+    // MARK: Tidy pages and hidden elements
+
+    func setTidy(_ id: ProviderID, on: Bool) {
+        guard !enhancements.isRestricted else { return }
+        tidyStore.setEnabled(on, for: id); tidyReloadHint.insert(id)
+    }
+    func requestReset(_ id: ProviderID) { if tidyStore.hiddenCount(id) > 0 { pendingReset = id } }
+    func cancelReset() { pendingReset = nil }
+    func confirmReset() {
+        guard let id = pendingReset else { return }
+        pendingReset = nil
+        tidyStore.resetHidden(for: id); tidyReloadHint.insert(id)
+    }
+    func resetTitle(_ id: ProviderID) -> String { Localized.string("Reset hidden elements?") }
+    func resetMessage(_ id: ProviderID) -> String { Localized.string("This shows again the elements you hid on %@. Tidy pages and your sign-in are not changed.", name(of: id)) }
+    func reloadTidy(_ id: ProviderID) { actions.reloadService?(id); tidyReloadHint.remove(id) }
 
     // MARK: recent blocked hosts and errors (in memory only)
 
@@ -112,6 +149,9 @@ final class StreamingServicesSettingsModel {
             case .httpStatus(let s): e.host + ": " + Localized.string("HTTP %lld", Int64(s))
             case .redirectHop(let i): e.host + ": " + Localized.string("redirect hop %lld", Int64(i + 1))
             case .providerRegionalPage: e.host + ": " + Localized.string("provider regional page reached")
+            case .authPopupOpened: e.host + ": " + Localized.string("sign-in window opened")
+            case .authPopupClosed: e.host + ": " + Localized.string("sign-in window closed")
+            case .picker(let ev): e.host + ": " + Localized.string("hide element") + " " + ev.code
             }
         }
     }
@@ -216,6 +256,11 @@ final class StreamingServicesSettingsModel {
     func moveRight(_ id: ProviderID) { if preferences.moveRight(id) { commit() } }
     func resetOrder() { preferences.resetOrder(available: available); commit() }
 
+    /// How each native item of the top bar is drawn. No item can be hidden.
+    var tabModes: TopBarTabModes = TopBarTabModes.load()
+    func setTabMode(_ t: NavTab, _ m: TabBarMode) { tabModes.set(m, for: t); tabModes.save() }
+    func resetTabModes() { tabModes.reset(); tabModes.save() }
+
     /// Shows the first-open prompt for this service again (the only way it comes back).
     func resetPrompt(_ id: ProviderID) { enhancements.store.resetPrompt(for: id) }
     func reloadService(_ id: ProviderID) { actions.reloadService?(id); enhancements.clearReloadHint() }
@@ -260,11 +305,12 @@ struct StreamingServicesSettingsSection: View {
     @State private var model = StreamingServicesSettingsModel()
 
     var body: some View {
-        SettingsGroup(title: "Streaming Services", footer: "Pin services to the top bar and put them in order. Unpinning only hides a service from the bar; it never signs you out or clears anything. Each service keeps its own sign-in on this Mac.") {
+        SettingsGroup(title: "Streaming Services", footer: "Pin services to the top bar and put them in order. Unpinning only hides a service from the bar; it never signs you out or clears anything. Each service keeps its own sign-in on this Mac. Signing in with Google is allowed; if a sign-in page says this browser or app is not secure, that page refuses embedded browsers and StreamSetu cannot change it.") {
             VStack(alignment: .leading, spacing: 16) {
                 if let note = model.distributionNote {
                     Text(verbatim: note).font(Typography.row).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true)
                 }
+                TopBarSettingsGroup(model: model)
                 ForEach(model.rows) { row in
                     ServiceSettingsRow(row: row, model: model, enhancements: model.enhancements, canClear: model.canClear)
                 }
@@ -279,6 +325,10 @@ struct StreamingServicesSettingsSection: View {
         .onAppear { model.actions = actions; model.reload() }
         .atlasCovers("control.settings.servicesRow")
         .enhancementConsentAlert(model.enhancements)
+        .alert(Text(verbatim: model.pendingReset.map(model.resetTitle) ?? ""), isPresented: Binding(get: { model.pendingReset != nil }, set: { if !$0 { model.cancelReset() } })) {
+            Button("Cancel", role: .cancel) { model.cancelReset() }.atlas("control.settings.hiddenElementsReset")
+            Button("Reset", role: .destructive) { model.confirmReset() }.atlas("control.settings.hiddenElementsReset")
+        } message: { Text(verbatim: model.pendingReset.map(model.resetMessage) ?? "") }
         .alert(Text(verbatim: model.pendingClear.map(model.confirmationTitle) ?? ""), isPresented: Binding(get: { model.pendingClear != nil }, set: { if !$0 { model.cancelClear() } })) {
             Button("Cancel", role: .cancel) { model.cancelClear() }.atlas("control.settings.servicesClear")
             Button("Clear Data", role: .destructive) { Task { await model.confirmClear() } }.atlas("control.settings.servicesClear")
@@ -316,6 +366,9 @@ struct ServiceSettingsRow: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Page options".loc).font(Typography.eyebrow).textCase(.uppercase).tracking(0.9).foregroundStyle(ColorTokens.textTertiary)
             EnhancementToggleGroup(enhancements: row.enhancements, model: enhancements)
+            if row.id == .spotify {
+                Text(PageEnhancement.spotifyRisks.loc).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true)
+            }
             if enhancements.reloadHint {
                 HStack {
                     Text(Localized.string("Changes apply the next time %@ loads.", row.name)).font(.callout).foregroundStyle(.secondary)
@@ -323,6 +376,41 @@ struct ServiceSettingsRow: View {
                 }
             }
             Button("Show the First-Open Prompt Again") { model.resetPrompt(row.id) }.buttonStyle(.link).atlas("control.settings.enhancementPromptReset")
+        }
+        .padding(.top, 4)
+    }
+
+    /// Tidy pages (off by default; no consent step because it only hides install-app banners and similar) and the hidden elements of this service.
+    private var tidySection: some View {
+        let t = row.tidy
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Tidy pages".loc).font(Typography.eyebrow).textCase(.uppercase).tracking(0.9).foregroundStyle(ColorTokens.textTertiary)
+            Toggle(isOn: Binding(get: { t.on }, set: { model.setTidy(row.id, on: $0) })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Tidy pages".loc).font(Typography.bodyMedium).foregroundStyle(ColorTokens.textPrimary)
+                    Text("On by default. Hides banners that ask you to install the app. Page layout can change at any time.".loc).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !t.hasRules {
+                        Text("Nothing to hide yet for this service. Use Hide This Element on the page.".loc).font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .toggleStyle(.switch).tint(ColorTokens.textPrimary).atlas("control.settings.tidyPages")
+            HStack(spacing: 10) {
+                Text(Localized.string("Hidden elements: %lld", Int64(t.hiddenCount))).font(Typography.row).foregroundStyle(ColorTokens.textPrimary)
+                Button { model.requestReset(row.id) } label: { Label("Reset", systemImage: "arrow.counterclockwise") }.disabled(t.hiddenCount == 0)
+                    .buttonStyle(ServiceCardButtonStyle())
+                    .accessibilityLabel(Text(verbatim: Localized.string("Reset hidden elements for %@", row.name))).atlas("control.settings.hiddenElementsReset")
+            }
+            Text("Right-click an element on the page and choose Hide This Element, or use Services, Hide Element on This Page… if the page has its own right-click menu. Clear Data removes website data only; elements you hid are kept until you reset them.".loc)
+                .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true)
+            if model.tidyReloadHint.contains(row.id) {
+                HStack {
+                    Text(Localized.string("Changes apply the next time %@ loads.", row.name)).font(.callout).foregroundStyle(.secondary)
+                    if model.actions.reloadService != nil { Button("Reload") { model.reloadTidy(row.id) }.atlas("control.settings.enhancementReload") }
+                }
+            }
         }
         .padding(.top, 4)
     }
@@ -413,6 +501,7 @@ struct ServiceSettingsRow: View {
                 if let limitation = row.limitation { Text(limitation.loc).font(Typography.row).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true) }
             }
             if !row.enhancements.isEmpty && !enhancements.isRestricted { pageOptions }
+            if row.tidy.supported && !enhancements.isRestricted { tidySection }
             actionRow
             if row.availability.presentation == .embedded { diagnostics }
         }
@@ -446,5 +535,37 @@ struct ServiceSettingsRow: View {
         case .unverified: .orange
         default: .secondary
         }
+    }
+}
+
+
+/// Settings > Top bar: how each of the six native items is drawn. Same page as the streaming services; none of them can be hidden.
+struct TopBarSettingsGroup: View {
+    let model: StreamingServicesSettingsModel
+    @State private var shown = 0
+
+    var body: some View {
+        let _ = shown
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Top bar").font(Typography.eyebrow).textCase(.uppercase).tracking(0.9).foregroundStyle(ColorTokens.textTertiary)
+            ForEach(NavTab.allCases) { t in
+                HStack(spacing: 10) {
+                    Image(systemName: t.symbol).frame(width: 18).foregroundStyle(ColorTokens.textSecondary)
+                    Text(LocalizedStringKey(t.title)).font(Typography.bodyMedium).foregroundStyle(ColorTokens.textPrimary)
+                    Spacer(minLength: 8)
+                    Menu {
+                        ForEach(TabBarMode.allCases) { m in
+                            Button { model.setTabMode(t, m); shown += 1 } label: { Label(LocalizedStringKey(m.title), systemImage: model.tabModes.mode(t) == m ? "checkmark" : "") }.atlas("control.settings.topBarTabs")
+                        }
+                    } label: { Text(LocalizedStringKey(model.tabModes.mode(t).title)).font(Typography.row) }
+                        .menuStyle(.borderlessButton).foregroundStyle(ColorTokens.textPrimary).fixedSize().accessibilityLabel(Text(verbatim: Localized.string(t.title) + ": " + Localized.string(model.tabModes.mode(t).title)))
+                        .atlas("control.settings.topBarTabs")
+                }
+            }
+            Text("Choose how each item at the top of the window is shown. If the window is narrow, names turn into icons from the right.").font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true)
+            Button { model.resetTabModes(); shown += 1 } label: { Label("Reset to Defaults", systemImage: "arrow.counterclockwise") }.disabled(model.tabModes.isDefault)
+                .buttonStyle(ServiceCardButtonStyle()).atlas("control.settings.topBarReset")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: TopBarTabModes.didChange)) { _ in model.tabModes = TopBarTabModes.load(); shown += 1 }
     }
 }

@@ -114,7 +114,14 @@ struct EnhancementToggleRow: View {
     var inPrompt = false
     @Environment(\.reddyAccent) private var accent
 
-    private var symbol: String { enhancement == .adSkip ? "forward.end.alt.fill" : "scissors" }
+    private var symbol: String {
+        switch enhancement {
+        case .adSkip: "forward.end.alt.fill"
+        case .sponsorSkip: "scissors"
+        case .spotifyHideAds: "eye.slash"
+        case .spotifyMuteAds: "speaker.slash"
+        }
+    }
     private var consentLine: String? {
         guard model.store.hasConsent(enhancement), let date = model.store.consent(enhancement)?.date else { return nil }
         return Localized.string("Consent given on %@", date.formatted(date: .abbreviated, time: .omitted))
@@ -175,6 +182,10 @@ private struct EnhancementToggleAtlas: ViewModifier {
         case (.sponsorSkip, false): content.atlas("control.settings.enhancementSponsorSkip")
         case (.adSkip, true): content.atlas("control.enhancement.promptAdSkip")
         case (.sponsorSkip, true): content.atlas("control.enhancement.promptSponsorSkip")
+        case (.spotifyHideAds, false): content.atlas("control.settings.enhancementHideAds")
+        case (.spotifyMuteAds, false): content.atlas("control.settings.enhancementMuteAds")
+        case (.spotifyHideAds, true): content.atlas("control.enhancement.promptHideAds")
+        case (.spotifyMuteAds, true): content.atlas("control.enhancement.promptMuteAds")
         }
     }
 }
@@ -184,21 +195,18 @@ private struct EnhancementToggleAtlas: ViewModifier {
 struct EnhancementPromptCard: View {
     let enhancements: [PageEnhancement]
     @Bindable var model: EnhancementToggleModel
+    var providerID: ProviderID = .youtube
     var onDone: () -> Void
     @State private var settingUp = false
 
-    /// The existing sentence, shown as a title and one calm line (split at the question mark; one title if it has none).
-    private var parts: (title: String, detail: String) {
-        let full = Localized.string("Skip ads and sponsor segments on YouTube? Both are off. You can change this any time in Settings.")
-        guard let r = full.range(of: "? ") ?? full.range(of: "?") else { return (full, "") }
-        return (String(full[..<r.upperBound]).trimmingCharacters(in: .whitespaces), String(full[r.upperBound...]).trimmingCharacters(in: .whitespaces))
-    }
+    /// The service's own words, shown as a title and one calm line.
+    private var parts: (title: String, detail: String) { PageEnhancement.promptCopy(for: providerID) }
 
     var body: some View {
         let (title, detail) = parts
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 12) {
-                ServiceGlyph(id: .youtube, size: 36)
+                ServiceGlyph(id: providerID, size: 36)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title).font(Typography.heading).foregroundStyle(ColorTokens.textPrimary)
                         .fixedSize(horizontal: false, vertical: true).accessibilityAddTraits(.isHeader)

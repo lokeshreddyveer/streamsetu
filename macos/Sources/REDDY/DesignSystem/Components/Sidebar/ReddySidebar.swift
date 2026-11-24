@@ -29,6 +29,8 @@ struct ReddySidebar: View {
     var onTogglePlaylistMenu: () -> Void
     var onSwitchPlaylist: (UUID) -> Void
     var onAddPlaylist: () -> Void
+    /// Right-click "Remove…" on a playlist row (not on "All Playlists"). Nil leaves the menu without it.
+    var onRemovePlaylist: ((UUID) -> Void)?
     /// New folder order (entry ids) after a drag or a menu move. Nil turns reordering off.
     var onReorder: (([String]) -> Void)?
     var onHideFolder: ((String) -> Void)?
@@ -268,6 +270,9 @@ struct ReddySidebar: View {
                             .foregroundStyle(p.id == state.activePlaylistID ? accent : ColorTokens.textPrimary).contentShape(Rectangle())
                         }
                         .buttonStyle(MenuRowStyle()).accessibilityLabel(p.name).accessibilityAddTraits(p.id == state.activePlaylistID ? .isSelected : []).atlas("screen.playlistMenu")
+                        .contextMenu {
+                            if let remove = onRemovePlaylist, p.id != AppState.allPlaylistsID { Button("Remove…", role: .destructive) { remove(p.id) }.atlas("screen.playlistMenu") }
+                        }
                     }
                 }
             }

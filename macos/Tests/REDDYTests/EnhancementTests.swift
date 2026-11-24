@@ -52,11 +52,12 @@ final class FakeSegments: SponsorSegmentsFetching, @unchecked Sendable {
         #expect(r.active(for: EnhancementRig.youtube).isEmpty)
     }
 
-    @Test func onlyTheYouTubeDefinitionDeclaresEnhancements() {
+    @Test func onlyTheYouTubeAndSpotifyDefinitionsDeclareEnhancements() {
         let declaring = ProviderCatalog.all.filter { !$0.pageEnhancements.isEmpty }
-        #expect(declaring.map(\.id) == [.youtube])
+        #expect(declaring.map(\.id) == [.youtube, .spotify])
         #expect(declaring.first?.pageEnhancements == [.adSkip, .sponsorSkip])
-        #expect(ProviderCatalog.all.count == 11 && ProviderCatalog.all.filter { $0.pageEnhancements.isEmpty }.count == 10)
+        #expect(declaring.last?.pageEnhancements == [.spotifyHideAds, .spotifyMuteAds])
+        #expect(ProviderCatalog.all.count == 12 && ProviderCatalog.all.filter { $0.pageEnhancements.isEmpty }.count == 10)
     }
 
     @Test func nothingIsInstalledByDefaultOrWithoutConsent() {
@@ -82,7 +83,7 @@ final class FakeSegments: SponsorSegmentsFetching, @unchecked Sendable {
     @Test func noOtherServiceEverGetsAScriptEvenWhenEverythingIsOnAndAgreedTo() throws {
         let r = EnhancementRig.runtime()
         EnhancementRig.grantAll(r)
-        for d in ProviderCatalog.all where d.id != .youtube {
+        for d in ProviderCatalog.all where d.id != .youtube && d.id != .spotify {
             #expect(EnhancementRig.scripts(d, r).isEmpty, "\(d.id) must never get a script")
             #expect(r.active(for: d).isEmpty)
             // and through the real factory (a service on hold has no web view at all)
@@ -163,7 +164,7 @@ final class FakeSegments: SponsorSegmentsFetching, @unchecked Sendable {
         let r = EnhancementRig.runtime()
         let y = EnhancementRig.youtube
         #expect(r.shouldPrompt(for: y))
-        for d in ProviderCatalog.all where d.id != .youtube { #expect(!r.shouldPrompt(for: d), "\(d.id)") }
+        for d in ProviderCatalog.all where d.id != .youtube && d.id != .spotify { #expect(!r.shouldPrompt(for: d), "\(d.id)") }
         r.store.recordPromptAnswered(for: .youtube)
         #expect(!r.shouldPrompt(for: y), "not again after any answer")
         r.store.resetPrompt(for: .youtube)
@@ -177,7 +178,8 @@ final class FakeSegments: SponsorSegmentsFetching, @unchecked Sendable {
 
     @Test func settingsRowsOfferTheTogglesForTheDeclaringServiceOnly() {
         let m = StreamingServicesSettingsModel(defaults: EnhancementRig.suite())
-        for row in m.rows { #expect(row.enhancements.isEmpty == (row.id != .youtube), "\(row.id)") }
+        for row in m.rows { #expect(row.enhancements.isEmpty == (row.id != .youtube && row.id != .spotify), "\(row.id)") }
+        #expect(m.rows.first { $0.id == .spotify }?.enhancements == [.spotifyHideAds, .spotifyMuteAds])
         #expect(m.rows.first { $0.id == .youtube }?.enhancements == [.adSkip, .sponsorSkip])
         nonisolated(unsafe) var reloaded: [ProviderID] = []
         m.actions.reloadService = { reloaded.append($0) }
@@ -210,7 +212,9 @@ final class FakeSegments: SponsorSegmentsFetching, @unchecked Sendable {
             let url = ServiceSources.root.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources/Localization/\(code).lproj/Localizable.strings")
             let table = try #require(NSDictionary(contentsOf: url) as? [String: String])
             var keys: [String] = ["Skip ads and sponsor segments on YouTube? Both are off. You can change this any time in Settings.", "Page options", "Not now", "Set up", "Turn On",
-                                  "Reload %@ to apply your page options.", "Changes apply the next time %@ loads.", "Show the First-Open Prompt Again", "Skipped sponsor", "Undo", "Reload"]
+                                  "Reload %@ to apply your page options.", "Changes apply the next time %@ loads.", "Show the First-Open Prompt Again", "Skipped sponsor", "Undo", "Reload",
+                                  "Turn on the Spotify ad options?", "Both options are off. You can change this any time in Settings.", PageEnhancement.spotifyRisks, "Sign in for %@",
+                                  "This link was blocked: %@. It is not an allowed sign-in or service address."]
             for e in PageEnhancement.allCases { keys += [e.title, e.summary, e.consentTitle, e.consentMessage] }
             keys += ServiceCredits.all.filter { $0.id == "sponsorblock" }.map(\.text)
             keys += ProviderCatalog.all.compactMap(\.releaseNote)

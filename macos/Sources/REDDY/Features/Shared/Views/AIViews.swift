@@ -83,7 +83,7 @@ struct SmartPicksCard: View {
                     HStack(spacing: 6) {
                         Image(systemName: "sparkles").foregroundStyle(.tint)
                         Text(aiDone ? "Picked for you" : "Smart picks").font(.subheadline.weight(.semibold))
-                        ForEach((a?.intent.summary ?? []).prefix(4), id: \.self) { Text($0).font(.caption2).padding(.horizontal, 7).padding(.vertical, 3).background(Color.accentColor.opacity(0.16), in: Capsule()) }
+                        ForEach((a?.intent.summary ?? []).prefix(4), id: \.self) { Text($0).font(.caption2).padding(.horizontal, 7).padding(.vertical, 3).background(ColorTokens.accent.opacity(0.16), in: Capsule()) }
                         Spacer()
                         if container.aiAvailable, !aiDone { Button(asking ? "Thinking…" : "Ask AI") { askAI() }.buttonStyle(.borderless).font(.callout).disabled(asking).atlas("control.search.askAI") }
                     }
@@ -104,7 +104,7 @@ struct SmartPicksCard: View {
                     }
                 }
                 .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.accentColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(ColorTokens.accent.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .transition(.opacity)
             }
         }

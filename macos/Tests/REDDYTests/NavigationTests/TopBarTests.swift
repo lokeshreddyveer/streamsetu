@@ -8,7 +8,8 @@ import AppKit
 
     private func parts(_ width: CGFloat) -> (m: TopBarMetrics, nav: CGFloat, brand: CGFloat) {
         let m = TopBarMetrics.metrics(for: width)
-        let widths = AppTab.allCases.map { TabLabelMetrics.textWidth($0.title) + 2 * m.tabPadding }
+        // the five tabs are drawn with their icon and name by default (the icon adds the glyph width)
+        let widths = AppTab.allCases.map { TabLabelMetrics.textWidth($0.title) + TopBarItem.glyphWidth + 2 * m.tabPadding }
         return (m, widths.reduce(0, +), TabLabelMetrics.brandWidth)
     }
 
@@ -112,10 +113,11 @@ import AppKit
         return TopBarState(tab: .home, initials: "LR", accountMenuOpen: false, width: width, destination: destination, services: [], showsServicesMenu: true, servicesNav: nav)
     }
 
-    @Test("State A is the five tabs, the pinned services in order, then Services")
+    @Test("State A is the five tabs and Podcasts, the pinned services in order as favicon-only chips, then Services")
     func stateA() {
         let row = TopBarMenuRow.make(for: state(width: 1440, pinned: [.netflix, .hulu]))
-        #expect(row.items.map(\.title) == ["Home", "Live TV", "Movies", "Series", "TV Guide", "Netflix", "Hulu", "Services"])
+        #expect(row.items.map(\.title) == ["Home", "Live TV", "Movies", "Series", "TV Guide", "Podcasts", "Netflix", "Hulu", "Services"])
+        #expect(row.items.filter(\.compact).map(\.title) == ["Netflix", "Hulu"])
         #expect(row.chip == nil && row.overflow.isEmpty)
         #expect(row.items.first { $0.title == "Netflix" }?.atlas == "control.nav.netflix")
         #expect(row.items.first { $0.title == "Hulu" }?.atlas == "control.nav.service")
@@ -144,7 +146,7 @@ import AppKit
             for dest in [TopLevelDestination.streamSetu, .service(all[all.count - 1])] {
                 let st = state(width: w, destination: dest, pinned: all)
                 let row = TopBarMenuRow.make(for: st)
-                let m = TopBarMetrics.metrics(for: w)
+                let m = row.metrics
                 #expect(row.width <= m.centerBudget(width: w, brandWidth: TabLabelMetrics.brandWidth) + 0.5, "width \(w)")
                 let inline = row.pinned.compactMap { if case .service(let s) = $0.kind { s } else { nil } }
                 #expect(inline == all.filter { inline.contains($0) }, "order at \(w)")
@@ -182,13 +184,13 @@ import AppKit
         #expect(model.recents(filter: "hu").isEmpty)
         #expect(model.more(filter: "PRIME") == [.primevideo])
         let e = model.entries(filter: "")
-        #expect(e.count == 10 && Set(e.map(\.provider)).count == 10 && Set(e.map(\.id)).count == 10 && !e.contains { $0.provider == .jiohotstar }, "JioHotstar is on hold and not listed")
+        #expect(e.count == 11 && Set(e.map(\.provider)).count == 11 && Set(e.map(\.id)).count == 11 && !e.contains { $0.provider == .jiohotstar }, "JioHotstar is on hold and not listed")
         // pinned services leave Recent and keep bar order with their position
         nav.pinned = [.peacock, .netflix]
         let m2 = ServicesMenuModel(nav: nav), e2 = m2.entries(filter: "")
         #expect(e2.prefix(2).map(\.provider) == [.peacock, .netflix] && e2.prefix(2).map(\.position) == [1, 2])
         #expect(m2.recents(filter: "") == [.hulu])
-        #expect(e2.count == 10 && Set(e2.map(\.provider)).count == 10)
+        #expect(e2.count == 11 && Set(e2.map(\.provider)).count == 11)
         #expect(m2.entries(filter: "net").map(\.provider) == [.netflix])
     }
 

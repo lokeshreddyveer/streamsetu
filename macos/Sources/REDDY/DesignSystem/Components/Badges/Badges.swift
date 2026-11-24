@@ -3,12 +3,12 @@ import SwiftUI
 struct LiveBadge: View {
     var body: some View {
         HStack(spacing: 4) {
-            Circle().fill(.white).frame(width: 5, height: 5)
+            Circle().fill(ColorTokens.onAccent(ColorTokens.live)).frame(width: 5, height: 5)
             Text("LIVE").font(Typography.micro)
         }
         .padding(.horizontal, 6).padding(.vertical, 3)
         .background(ColorTokens.live, in: Capsule())
-        .foregroundStyle(.white)
+        .foregroundStyle(ColorTokens.onAccent(ColorTokens.live))
     }
 }
 

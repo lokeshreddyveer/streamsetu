@@ -26,7 +26,7 @@ final class AppSettings {
     var customTheme: CustomTheme { didSet { save(customTheme.encoded, "customtheme"); ThemeStore.custom = customTheme } }
     /// Changes whenever the colours in force change, so the window can be rebuilt.
     var themeKey: String { theme == .custom ? "custom-" + customTheme.encoded : theme.rawValue }
-    var accent: AccentChoice { didSet { save(accent.rawValue, "accent") } }
+    var accent: AccentChoice { didSet { save(accent.rawValue, "accent"); ThemeStore.state.userAccent = accent == .coral ? nil : accent.color } }
     var density: LayoutDensity { didSet { save(density.rawValue, "density") } }
     var reduceMotion: Bool { didSet { save(reduceMotion, "reducemotion") } }
     /// Stronger text and outlines for people who find the themes too soft. Also follows the system's Increase Contrast.
@@ -268,6 +268,7 @@ final class AppSettings {
         guideRetentionDays = min(14, max(0, (defaults.object(forKey: "settings.guideretention") as? Int) ?? Defaults.guideRetentionDays))
         guideHoursVisible = [2.0, 3.0, 4.0, 6.0].contains(dbl("guidehours", Defaults.guideHours)) ? dbl("guidehours", Defaults.guideHours) : Defaults.guideHours
         ThemeStore.current = theme
+        ThemeStore.state.userAccent = accent == .coral ? nil : accent.color
     }
 
     // MARK: derived

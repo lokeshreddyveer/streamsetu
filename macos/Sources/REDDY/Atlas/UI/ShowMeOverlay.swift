@@ -103,7 +103,7 @@ struct ShowMeOverlay: View {
 
     private func ring(_ r: CGRect) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.accentColor, lineWidth: 2)
+            RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(ColorTokens.accent, lineWidth: 2)
             RoundedRectangle(cornerRadius: 9, style: .continuous).inset(by: 2).strokeBorder(Color.white.opacity(0.9), lineWidth: 1)
         }
         .frame(width: r.width, height: r.height).offset(x: r.minX, y: r.minY)

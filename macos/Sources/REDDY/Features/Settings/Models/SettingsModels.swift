@@ -27,7 +27,7 @@ enum AccentChoice: String, CaseIterable, Identifiable {
         #if os(macOS)
         case .system: Color(nsColor: .controlAccentColor)
         #else
-        case .system: Color.accentColor
+        case .system: ColorTokens.accent
         #endif
         case .red: Color(hex: 0xEF4444)
         case .orange: Color(hex: 0xF97316)

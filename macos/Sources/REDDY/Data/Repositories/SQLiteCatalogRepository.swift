@@ -212,6 +212,10 @@ final class SQLiteCatalogRepository: CatalogRepository {
                 try c.execute("DELETE FROM \(t) WHERE substr(item_id,1,37)=?", [prefix])
             }
             try c.execute("DELETE FROM watch_history WHERE substr(item_id,1,37)=?", [prefix])
+            // Marks kept for the playlist's items and folders (ids start with the playlist's id): a removed playlist leaves no lock, order or dismissal behind.
+            for (t, col) in [("continue_hidden", "item_id"), ("rec_dismissed", "item_id"), ("locked_categories", "category_id"), ("folder_order", "category_id")] {
+                try c.execute("DELETE FROM \(t) WHERE substr(\(col),1,37)=?", [prefix])
+            }
             try c.execute("DELETE FROM sources WHERE id=?", [id])
         }
     }
@@ -319,7 +323,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
     func channels(_ q: ChannelQuery) throws -> [Channel] {
         guard var (sql, args) = channelFilter(q) else { return [] }
         sql += q.recentlyAdded ? " ORDER BY c.first_seen_at DESC, c.sort_order, c.rowid"
-            : q.sortAlphabetically ? " ORDER BY COALESCE(o.display_name, c.name) COLLATE NOCASE, c.rowid" : " ORDER BY c.source_id, c.sort_order, c.rowid"
+            : q.sortAlphabetically ? " ORDER BY COALESCE(o.display_name, c.name) COLLATE NOCASE, c.rowid" : " ORDER BY s.sort_order, s.created_at, c.source_id, c.sort_order, c.rowid"
         if let l = q.limit { sql += " LIMIT \(l) OFFSET \(q.offset)" }
         return try db.read { try $0.query(sql, args, Self.mapChannel) }
     }
@@ -716,11 +720,11 @@ final class SQLiteCatalogRepository: CatalogRepository {
             let a: [(any SQLConvertible)?] = sourceID.map { [$0] } ?? []
             let src = sourceID == nil ? "" : " AND x.source_id=?"
             func count(_ table: String, _ kind: String) throws -> Int {
-                let total = try c.scalarInt("SELECT COUNT(*) FROM \(table) x WHERE 1=1\(src)", a)
+                let total = try c.scalarInt("SELECT COUNT(*) FROM \(table) x JOIN sources sx ON sx.id = x.source_id AND sx.enabled = 1 WHERE 1=1\(src)", a)
                 let restrictedFolders = "SELECT rc.id FROM categories rc WHERE rc.kind='\(kind)' AND (rc.id IN (SELECT category_id FROM locked_categories) OR rc.id IN (SELECT item_id FROM hidden_items WHERE kind='category'))"
-                let inFolders = try c.scalarInt("SELECT COUNT(*) FROM categories rc JOIN \(table) x ON x.source_id = rc.source_id AND x.category_id = rc.id WHERE rc.id IN (\(restrictedFolders))\(src)", a)
+                let inFolders = try c.scalarInt("SELECT COUNT(*) FROM categories rc JOIN \(table) x ON x.source_id = rc.source_id AND x.category_id = rc.id JOIN sources sx ON sx.id = x.source_id AND sx.enabled = 1 WHERE rc.id IN (\(restrictedFolders))\(src)", a)
                 let hiddenElsewhere = try c.scalarInt("""
-                    SELECT COUNT(*) FROM hidden_items h JOIN \(table) x ON x.id = h.item_id
+                    SELECT COUNT(*) FROM hidden_items h JOIN \(table) x ON x.id = h.item_id JOIN sources sx ON sx.id = x.source_id AND sx.enabled = 1
                     WHERE h.kind <> 'category' AND (x.category_id IS NULL OR x.category_id NOT IN (\(restrictedFolders)))\(src)
                     """, a)
                 return max(0, total - inFolders - hiddenElsewhere)
@@ -750,7 +754,7 @@ final class SQLiteCatalogRepository: CatalogRepository {
         var sql = Self.channelSelect + " WHERE 1=1" + restricted("c")
         var args: [(any SQLConvertible)?] = []
         if let s = sourceID { sql += " AND c.source_id=?"; args.append(s) }
-        sql += " ORDER BY c.source_id, c.sort_order, c.rowid"
+        sql += " ORDER BY s.sort_order, s.created_at, c.source_id, c.sort_order, c.rowid"
         return try db.read { try $0.query(sql, args, Self.mapChannel) }
     }
 }

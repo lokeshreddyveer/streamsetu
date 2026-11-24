@@ -121,7 +121,7 @@ struct ScheduledRecordingsList: View {
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(r.title).lineLimit(1)
-                        Text("\(r.channelName)  ·  \(r.start.formatted(date: .abbreviated, time: .shortened))  ·  " + status(r) + (r.repeats ? "  ·  every week" : "")).font(.caption).foregroundStyle(r.state == .failed || r.state == .missed ? Color.orange : Color.secondary)
+                        Text("\(r.channelName)  ·  \(r.start.formatted(date: .abbreviated, time: .shortened))  ·  " + status(r) + (r.repeats ? "  ·  every week" : "")).font(.caption).foregroundStyle(r.state == .failed || r.state == .missed ? ColorTokens.warning : Color.secondary)
                     }
                     Spacer(minLength: 8)
                     if r.repeats { Button("Stop Repeating") { service.stopRepeating(r.id) }.atlas("setting.scheduledRecordings") }

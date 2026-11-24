@@ -25,7 +25,7 @@ import AppKit
         var url: String { model.webView?.url?.path ?? "" }
     }
 
-    nonisolated static let services: [ProviderID] = [.netflix, .primevideo, .youtube, .jiohotstar]
+    nonisolated static let services: [ProviderID] = [.netflix, .primevideo, .youtube, .spotify, .jiohotstar]
 
     @Test(arguments: services) func loadsRedirectsAndNamesItselfFromTheDefinition(_ id: ProviderID) async throws {
         let rig = try await Rig(id); defer { rig.finish() }
@@ -62,7 +62,17 @@ import AppKit
         #expect(ServiceFailureScreen(phase: .terminated, definition: rig.model.definition)?.actions == [.retry, .openInDefaultBrowser])
     }
 
-    @Test(arguments: [ProviderID.primevideo, .hulu, .crunchyroll, .jiohotstar]) func aServiceThatNeverLeavesTheAppCancelsOffSiteLinksWithANotice(_ id: ProviderID) async throws {
+    @Test func theBlockedLinkNoteGoesAwayByItselfAndAPageChangeClearsItToo() async throws {
+        let saved = ServiceWebModel.blockedLinkLifetime; ServiceWebModel.blockedLinkLifetime = .milliseconds(400); defer { ServiceWebModel.blockedLinkLifetime = saved }
+        #expect(saved == .seconds(6))
+        let rig = try await Rig(.hulu); defer { rig.finish() }
+        rig.show(); _ = await ServiceTestSupport.until { rig.model.phase == .ready }
+        rig.model.load(rig.server.url("/redirect-out"))
+        #expect(await ServiceTestSupport.until { rig.model.blockedLinkHost == "localhost" })
+        #expect(await ServiceTestSupport.until(5) { rig.model.blockedLinkHost == nil }, "dismissed without a click")
+    }
+
+    @Test(arguments: [ProviderID.primevideo, .hulu, .crunchyroll, .spotify, .jiohotstar]) func aServiceThatNeverLeavesTheAppCancelsOffSiteLinksWithANotice(_ id: ProviderID) async throws {
         let rig = try await Rig(id); defer { rig.finish() }
         var launches = 0
         #expect(rig.model.openExternal == nil, "no opener exists")
@@ -88,7 +98,7 @@ import AppKit
 
     @Test func everyServiceThatNeverLeavesTheAppHoldsNoOpener() {
         let blocking = ServiceTestSupport.blocking
-        #expect(blocking.count == 10)
+        #expect(blocking.count == 11)
         for d in blocking {
             let m = ServiceWebModel(definition: d, dataStore: { .nonPersistent() }, openExternal: { _ in Issue.record("launched") })
             #expect(m.openExternal == nil, "\(d.id)")

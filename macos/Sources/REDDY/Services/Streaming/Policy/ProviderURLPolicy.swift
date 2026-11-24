@@ -21,6 +21,15 @@ struct HostRule: Equatable, Sendable {
     var pathPrefixSegments: [String] = []
 }
 
+extension HostRule {
+    /// The exact hosts of Google's sign-in flow for a first-party site: the sign-in pages (including the "Sign in with Google" button's pop-up and
+    /// redirect pages, which live under accounts.google.com/gsi) and the cookie hand-back page. Exact hosts only (never a "google.com" suffix, so
+    /// www, myaccount, mail and every lookalike stay blocked); https only through the policy's own scheme rule; role auth. Static assets and the
+    /// identity script load as sub-resources and need no rule. Every service includes this group (data, not a per-service exception).
+    static let googleSignInHosts = ["accounts.google.com", "accounts.youtube.com"]
+    static var googleSignIn: [HostRule] { googleSignInHosts.map { HostRule(suffix: $0, role: .auth, exactHost: true) } }
+}
+
 /// One address of the provider's OWN official regional or "not available here" pages. EXACT host name only (never a suffix, never a
 /// wildcard subdomain), with an optional shape for the path. It is reached by a redirect from the provider's own site, never loaded by the
 /// app; it lets StreamSetu tell "the provider's server sent this connection to its regional page" from "StreamSetu's own policy refused an
@@ -138,6 +147,12 @@ struct ProviderURLPolicy: Equatable, Sendable {
             guard let segs = segments else { return false }
             return segs.starts(with: r.pathPrefixSegments) || (segs.isEmpty && isRedirect && fromSite)
         }
+    }
+
+    /// One of Google's sign-in hosts (exact) that this policy allows. Only these may open a sign-in pop-up window.
+    func isGoogleSignInHost(_ host: String?) -> Bool {
+        guard let h = host?.lowercased(), HostRule.googleSignInHosts.contains(h) else { return false }
+        return isAllowedHost(h)
     }
 
     /// An active SITE-role rule covers this host (the service's own pages, as opposed to a sign-in or redirect-only host).

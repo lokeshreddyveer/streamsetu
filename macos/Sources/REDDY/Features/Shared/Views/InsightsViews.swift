@@ -71,7 +71,7 @@ struct PrivacyReportView: View {
             Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
             ForEach(items) { item in
                 HStack(alignment: .top, spacing: 10) {
-                    Circle().fill(showStatus ? color(item.status) : Color.blue.opacity(0.6)).frame(width: 8, height: 8).padding(.top, 6)
+                    Circle().fill(showStatus ? color(item.status) : ColorTokens.textTertiary).frame(width: 8, height: 8).padding(.top, 6)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack { Text(item.title).font(.body.weight(.medium)); Spacer(); if showStatus { Text(label(item.status)).font(.caption).foregroundStyle(.secondary) } }
                         Text(item.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)

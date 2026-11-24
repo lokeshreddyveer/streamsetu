@@ -10,7 +10,7 @@ import Foundation
     }
 
     @Test func externalServiceRawValuesAndTitles() {
-        #expect(ExternalService.allCases.map(\.rawValue) == ["netflix", "primevideo", "disneyplus", "hulu", "hbomax", "peacock", "paramountplus", "appletv", "youtube", "crunchyroll", "jiohotstar"])          // nine added by the hub; Netflix stays first
+        #expect(ExternalService.allCases.map(\.rawValue) == ["netflix", "primevideo", "disneyplus", "hulu", "hbomax", "peacock", "paramountplus", "appletv", "youtube", "crunchyroll", "spotify", "jiohotstar"])          // nine added by the hub, then Spotify; Netflix stays first
         #expect(ExternalService.netflix.id == "netflix")
         #expect(ExternalService.netflix.title == "Netflix")
         #expect(ServiceCapabilities.macOS.externalServices == ExternalService.allCases.filter { $0 != .jiohotstar }, "JioHotstar is on hold: defined, not listed")
@@ -34,7 +34,7 @@ import Foundation
 
     @Test func homeAndPolicy() {
         #expect(NetflixURLPolicy.homeURL.absoluteString == "https://www.netflix.com/")
-        #expect(NetflixURLPolicy.production.hostSuffixes == ["netflix.com"])
+        #expect(NetflixURLPolicy.production.hostSuffixes == ["netflix.com"] + HostRule.googleSignInHosts)
         #expect(NetflixURLPolicy.production.inAppSchemes == ["https"])
     }
 

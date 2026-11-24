@@ -231,7 +231,7 @@ import Foundation
         "GuideView.swift": ["gesture.ios.guideDrag"], "HomeView.swift": ["gesture.ios.pullToRefresh"], "LibraryView.swift": ["gesture.ios.pullToRefresh"], "LiveTVView.swift": ["gesture.ios.swipeFavourite"],
         "MoreView.swift": ["gesture.ios.swipePlaylist"], "MultiViewScreen.swift": ["gesture.ios.multiViewTap"], "ChannelManagerView.swift": ["gesture.ios.swipeChannelManager"],
         "LanSyncView.swift": ["gesture.ios.swipePeer"], "LibrarySettingsView.swift": ["gesture.ios.swipeFolderHide"], "PlayerControlsOverlay.swift": ["gesture.mac.playerClick"],
-        "ReddyBottomPlayer.swift": ["gesture.mac.playerHover"], "SeekBar.swift": ["gesture.mac.seekBarDrag"], "FilesView.swift": ["gesture.mac.windowDrop"], "OnYourDeviceView.swift": ["gesture.mac.windowDrop"],
+        "ReddyBottomPlayer.swift": ["gesture.mac.playerHover"], "PodcastTheme.swift": ["control.podcasts.player"], "SeekBar.swift": ["gesture.mac.seekBarDrag"], "FilesView.swift": ["gesture.mac.windowDrop"], "OnYourDeviceView.swift": ["gesture.mac.windowDrop"],
         "LiveTVScreen.swift": ["gesture.mac.channelListDivider"], "MultiViewWindow.swift": ["gesture.mac.multiViewDoubleClick"],
     ]
 }

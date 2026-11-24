@@ -45,5 +45,50 @@ enum ServiceIconStore {
         #endif
     }
 
-    nonisolated private static func decode(_ id: String) -> NSImage? { url(id).flatMap { NSImage(contentsOf: $0) } }
+    nonisolated private static func decode(_ id: String) -> NSImage? { url(id).flatMap { NSImage(contentsOf: $0) }.map(normalized) }
+
+    /// Side, in pixels, of every normalised icon (the sources are 256 px; smaller ones are resampled once, here, never again at draw time).
+    nonisolated static let normalizedSide = 256
+
+    /// The ONE place artwork is made uniform: trims fully transparent margins to the opaque bounding box, centre-crops it to a square, fills any
+    /// still-transparent pixel (the corners of a rounded-corner icon) with the icon's own dominant edge colour, and resamples once to
+    /// `normalizedSide` square. The result is fully opaque, so the shared rounded-square mask never shows a gap. Returns the input on failure.
+    nonisolated static func normalized(_ image: NSImage) -> NSImage {
+        var rect = CGRect(origin: .zero, size: image.size)
+        guard let cg = image.cgImage(forProposedRect: &rect, context: nil, hints: nil), cg.width > 0, cg.height > 0 else { return image }
+        let w = cg.width, h = cg.height
+        let cs = CGColorSpaceCreateDeviceRGB()
+        let info = CGImageAlphaInfo.premultipliedLast.rawValue
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        let ok: Bool = px.withUnsafeMutableBytes { buf in
+            guard let ctx = CGContext(data: buf.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: cs, bitmapInfo: info) else { return false }
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h)); return true
+        }
+        guard ok else { return image }
+        // bounding box of pixels that are not (nearly) transparent; row 0 of the buffer is the top row
+        var minX = w, minY = h, maxX = -1, maxY = -1
+        for y in 0..<h { for x in 0..<w where px[(y * w + x) * 4 + 3] > 16 {
+            if x < minX { minX = x }; if x > maxX { maxX = x }; if y < minY { minY = y }; if y > maxY { maxY = y }
+        } }
+        guard maxX >= minX, maxY >= minY else { return image }
+        let bw = maxX - minX + 1, bh = maxY - minY + 1, side = min(bw, bh)
+        let cx = minX + (bw - side) / 2, cy = minY + (bh - side) / 2
+        // dominant edge colour: mean of the opaque pixels in the outer 3 px ring of the square (premultiplied, so opaque ones only)
+        var r = 0, g = 0, b = 0, n = 0
+        for y in cy..<(cy + side) { for x in cx..<(cx + side) {
+            let edge = x < cx + 3 || x >= cx + side - 3 || y < cy + 3 || y >= cy + side - 3
+            let i = (y * w + x) * 4
+            if edge && px[i + 3] > 240 { r += Int(px[i]); g += Int(px[i + 1]); b += Int(px[i + 2]); n += 1 }
+        } }
+        let fill: CGColor = n > 0 ? CGColor(srgbRed: CGFloat(r) / CGFloat(n) / 255, green: CGFloat(g) / CGFloat(n) / 255, blue: CGFloat(b) / CGFloat(n) / 255, alpha: 1)
+                                  : CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1)
+        guard let crop = cg.cropping(to: CGRect(x: cx, y: cy, width: side, height: side)) else { return image }       // cropping uses top-left origin
+        let out = normalizedSide
+        guard let ctx = CGContext(data: nil, width: out, height: out, bitsPerComponent: 8, bytesPerRow: 0, space: cs, bitmapInfo: info) else { return image }
+        ctx.setFillColor(fill); ctx.fill(CGRect(x: 0, y: 0, width: out, height: out))
+        ctx.interpolationQuality = .high
+        ctx.draw(crop, in: CGRect(x: 0, y: 0, width: out, height: out))
+        guard let result = ctx.makeImage() else { return image }
+        return NSImage(cgImage: result, size: NSSize(width: out, height: out))
+    }
 }

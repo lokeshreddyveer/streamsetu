@@ -77,6 +77,9 @@ final class FolderRowsModel {
         var special: String? = nil
         /// A folder that is locked but open for this session (the PIN was entered): its own titles are listed, not recommendations.
         var sessionUnlocked = false
+        /// "All Playlists": the same-named folders of the other playlists, folded into this row. Their titles and channels fill the row's tiles too (the row opens the first one).
+        var siblings: [String] = []
+        var folderIDs: [String] { [id] + siblings }
     }
     nonisolated static let page = 20
     nonisolated static let tileCount = 12
@@ -124,13 +127,20 @@ final class FolderRowsModel {
             let restricting = c.catalog.isRestricting
             var seen = Set<String>()
             var list: [(Row, Int)] = []
+            var firstIndex: [String: Int] = [:]
             for (i, cat) in cats.enumerated() {
                 let locked = cat.isLocked && restricting
                 if cat.itemCount == 0 && !locked { continue }
                 // Twin playlists list the same folder twice: one row per name.
                 // (a name made only of symbols or emoji has no words: its own spelling is the key, so such folders never collapse into one)
                 let w = IdentityKey.words(cat.name).joined(separator: " ")
-                guard seen.insert(w.isEmpty ? "name:" + cat.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() : w).inserted else { continue }
+                let nameKey = w.isEmpty ? "name:" + cat.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() : w
+                guard seen.insert(nameKey).inserted else {
+                    // The twin folder of another playlist: its titles still count towards this row's tiles (an unlocked one only).
+                    if !locked, let at = firstIndex[nameKey], list[at].0.sourceID != cat.sourceID, !list[at].0.locked { list[at].0.siblings.append(cat.id) }
+                    continue
+                }
+                firstIndex[nameKey] = list.count
                 let rank: Int
                 if pinned.contains(cat.id) { rank = 0 }
                 else if recent.contains(cat.id) { rank = 1 }
@@ -172,8 +182,12 @@ final class FolderRowsModel {
             // Identity not ready (or the folder is unlocked for this session): the folder's own newest titles, read through the recommendation view so a title with a restricted copy is never listed.
             items = await Task.detached { () -> [LibraryItem] in
                 let view: any CatalogRepository = row.sessionUnlocked ? c.catalog : c.catalog.recommendationView
-                let q = VODQuery(sourceID: row.sourceID, categoryID: row.id, sort: .recentlyAdded, limit: Self.tileCount * 3)
-                return kind == .series ? ((try? view.series(q)) ?? []).map { .series($0) } : ((try? view.movies(q)) ?? []).map { .movie($0) }
+                var out: [LibraryItem] = []
+                for id in row.folderIDs {
+                    let q = VODQuery(sourceID: id == row.id ? row.sourceID : nil, categoryID: id, sort: .recentlyAdded, limit: Self.tileCount * 3)
+                    out += kind == .series ? ((try? view.series(q)) ?? []).map { .series($0) } : ((try? view.movies(q)) ?? []).map { .movie($0) }
+                }
+                return out
             }.value
             if Task.isCancelled || ep != epoch { requested.remove(row.id); return }
         }
@@ -205,7 +219,10 @@ extension FolderRowsModel {
                 let by = Dictionary(((try? c.catalog.channels(ChannelQuery(collapseVariants: false, ids: ids))) ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
                 chans = ids.compactMap { by[$0] }.filter { sourceID == nil || $0.sourceID == sourceID }
             default:
-                chans = (try? c.catalog.channels(ChannelQuery(sourceID: row.sourceID, categoryID: row.id, limit: Self.tileCount))) ?? []
+                chans = []
+                for id in row.folderIDs where chans.count < Self.tileCount {
+                    chans += (try? c.catalog.channels(ChannelQuery(sourceID: id == row.id ? row.sourceID : nil, categoryID: id, limit: Self.tileCount - chans.count))) ?? []
+                }
             }
             let g = (try? c.epgRepo.lookup(channelIDs: chans.map(\.id), at: Date())) ?? [:]
             return (chans, g.compactMapValues { $0.now })

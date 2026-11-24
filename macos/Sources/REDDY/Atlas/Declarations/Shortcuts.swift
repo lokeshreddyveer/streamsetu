@@ -9,6 +9,7 @@ enum AtlasShortcuts {
         Group(title: "Moving around", rows: [
             Row(keys: "⌘1 – ⌘5", what: "Home, Live TV, Movies, Series, TV Guide"),
             Row(keys: "⌘6", what: "Services list (Mac only); ⌘0 goes back to StreamSetu"),
+            Row(keys: "⌘7", what: "Podcasts (Mac only)"),
             Row(keys: "⌘K", what: "Search everything"),
             Row(keys: "⌘F", what: "Search within this screen"),
             Row(keys: "⌘N", what: "Add a playlist"),

@@ -46,11 +46,11 @@ struct FranchiseTimeline: View {
             posterView(film, here: here)
                 .scaleEffect(here ? 1 : 0.94, anchor: .bottom)
                 .opacity(here ? 1 : 0.85)
-                .shadow(color: here ? Color.accentColor.opacity(0.45) : .clear, radius: 14, y: 4)
+                .shadow(color: here ? ColorTokens.accent.opacity(0.45) : .clear, radius: 14, y: 4)
                 .accessibilityLabel(here ? "\(film.title), the film you are on" : "Open \(film.title)")
             rail(i, here: here)
             VStack(spacing: 2) {
-                Text(film.year.map(String.init) ?? "").font(.system(size: 13, weight: .semibold)).foregroundStyle(here ? Color.accentColor : .primary)
+                Text(film.year.map(String.init) ?? "").font(.system(size: 13, weight: .semibold)).foregroundStyle(here ? ColorTokens.accent : .primary)
                 Text(film.title).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
             }.frame(width: poster)
         }
@@ -59,7 +59,7 @@ struct FranchiseTimeline: View {
 
     /// One piece of the line through the numbered dots; the part up to the open film is lit.
     private func rail(_ i: Int, here: Bool) -> some View {
-        let lit = Color.accentColor, dim = Color.secondary.opacity(0.3)
+        let lit = ColorTokens.accent, dim = Color.secondary.opacity(0.3)
         return ZStack {
             HStack(spacing: 0) {
                 Rectangle().fill(i == 0 ? .clear : (i <= hereIndex ? lit : dim)).frame(height: 3)
@@ -75,7 +75,7 @@ struct FranchiseTimeline: View {
     @ViewBuilder private func posterView(_ film: LibraryItem, here: Bool) -> some View {
         let art = ArtworkImage(url: film.posterURL, kind: .poster, contentMode: .fill, symbol: "film").frame(width: poster, height: poster * 1.5)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(here ? Color.accentColor : .white.opacity(0.08), lineWidth: here ? 2 : 1))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(here ? ColorTokens.accent : .white.opacity(0.08), lineWidth: here ? 2 : 1))
             .ratingBadge(film.credibleRating)
         if here { art }
         else if useLinks { NavigationLink(value: film) { art }.buttonStyle(.plain).atlas("control.title.franchise") }

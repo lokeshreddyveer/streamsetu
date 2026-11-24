@@ -6,12 +6,20 @@ struct ServiceMenuActions {
     var canGoBack: Bool, canGoForward: Bool
     var back: () -> Void, forward: () -> Void, reload: () -> Void
     var openInBrowser: (() -> Void)?
+    /// "Hide This Element": nil where the picker is not offered (a sign-in or account page, locked, kids profile). Gets the click point in CSS pixels.
+    var hideElement: ((CGPoint) -> Void)?
 }
 
 /// The one web view of a service destination. It adds Back, Forward and Reload (and Open in Default Browser where the service allows it) to the
 /// page's own context menu and removes the items that would download a file or open a new window.
 final class ServiceWebView: WKWebView {
     var menuActions: (() -> ServiceMenuActions)?
+
+    /// A point in the view (AppKit coordinates) as CSS pixels from the page's top-left: flipped when the view is not, divided by the page zoom.
+    static func cssPoint(local: CGPoint, boundsHeight: CGFloat, isFlipped: Bool, pageZoom: CGFloat) -> CGPoint {
+        let zoom = max(pageZoom, 0.1)
+        return CGPoint(x: local.x / zoom, y: (isFlipped ? local.y : boundsHeight - local.y) / zoom)
+    }
 
     override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
         super.willOpenMenu(menu, with: event)
@@ -20,12 +28,14 @@ final class ServiceWebView: WKWebView {
             if id.contains("Download") || id.contains("NewWindow") || id.contains("OpenLinkInNewWindow") || id.contains("OpenImageInNewWindow") { menu.removeItem(item) }
         }
         guard let a = menuActions?() else { return }
+        let cssPoint = Self.cssPoint(local: convert(event.locationInWindow, from: nil), boundsHeight: bounds.height, isFlipped: isFlipped, pageZoom: pageZoom)
         if !menu.items.isEmpty { menu.addItem(.separator()) }
         func add(_ title: String, _ enabled: Bool, _ run: @escaping () -> Void) {
             let item = ClosureMenuItem(title: Localized.string(title), run: run); item.isEnabled = enabled; menu.addItem(item)
         }
         add("Back", a.canGoBack, a.back); add("Forward", a.canGoForward, a.forward); add("Reload", true, a.reload)
         if let open = a.openInBrowser { add("Open in Default Browser", true, open) }
+        if let hide = a.hideElement { add("Hide This Element", true) { hide(cssPoint) } }
     }
 }
 

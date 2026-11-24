@@ -16,7 +16,16 @@ struct ServicesMenuModel {
         var position: Int? = nil
         var id: String { section.rawValue + "." + provider.rawValue }
     }
+    /// One row of the list in the order the arrow keys walk.
+    enum Row: Equatable, Identifiable {
+        case service(Entry)
+        var id: String { switch self { case .service(let e): e.id } }
+    }
     var nav: ServicesNavigationBinding
+
+    func rows(filter: String) -> [Row] {
+        entries(filter: filter).map(Row.service)
+    }
 
     /// A provider-name filter (not a content search): case-insensitive, matches the name or the id.
     static func matches(_ id: ProviderID, filter: String) -> Bool {
@@ -121,18 +130,19 @@ struct ServicesDropdown: View {
     private static let inset: CGFloat = 6
 
     var body: some View {
+        let rows = model.rows(filter: filter)
         let entries = model.entries(filter: filter)
         let listHeight = min(maxListHeight, max(contentHeight, 44))
         let scrolls = contentHeight > maxListHeight + 1
         VStack(alignment: .leading, spacing: 6) {
-            filterField(entries)
+            filterField(rows)
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {
-                        section("Pinned", .pinned, entries)
-                        section("Recent", .recent, entries)
-                        section("More services", .more, entries)
-                        if entries.isEmpty { emptyState }
+                        section("Pinned", .pinned, entries, rows)
+                        section("Recent", .recent, entries, rows)
+                        section("More services", .more, entries, rows)
+                        if rows.isEmpty { emptyState }
                     }
                     .padding(.bottom, 2)
                     .background(GeometryReader { g in
@@ -146,8 +156,8 @@ struct ServicesDropdown: View {
                 .onPreferenceChange(ServicesScrollOffsetKey.self) { scrollOffset = $0 }
                 .mask(fadeMask(scrolls: scrolls, listHeight: listHeight))
                 .onChange(of: highlight) { _, h in
-                    guard entries.indices.contains(h) else { return }
-                    if reduceMotion { proxy.scrollTo(entries[h].id) } else { withAnimation(.easeOut(duration: 0.12)) { proxy.scrollTo(entries[h].id) } }
+                    guard rows.indices.contains(h) else { return }
+                    if reduceMotion { proxy.scrollTo(rows[h].id) } else { withAnimation(.easeOut(duration: 0.12)) { proxy.scrollTo(rows[h].id) } }
                 }
             }
         }
@@ -178,15 +188,15 @@ struct ServicesDropdown: View {
         .padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
     }
 
-    @ViewBuilder private func section(_ title: LocalizedStringKey, _ kind: ServicesMenuModel.Entry.Section, _ entries: [ServicesMenuModel.Entry]) -> some View {
-        let rows = entries.filter { $0.section == kind }
-        if !rows.isEmpty {
-            sectionTitle(title, first: entries.first?.section == kind)
-            ForEach(rows) { row($0, entries) }
+    @ViewBuilder private func section(_ title: LocalizedStringKey, _ kind: ServicesMenuModel.Entry.Section, _ entries: [ServicesMenuModel.Entry], _ all: [ServicesMenuModel.Row]) -> some View {
+        let mine = entries.filter { $0.section == kind }
+        if !mine.isEmpty {
+            sectionTitle(title, first: all.first == .service(mine[0]))
+            ForEach(mine) { row($0, all) }
         }
     }
 
-    private func filterField(_ entries: [ServicesMenuModel.Entry]) -> some View {
+    private func filterField(_ entries: [ServicesMenuModel.Row]) -> some View {
         let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
         return HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").font(.system(size: 12, weight: .medium)).foregroundStyle(filterFocused ? accent : ColorTokens.textSecondary)
@@ -197,8 +207,10 @@ struct ServicesDropdown: View {
                 .onKeyPress(.escape) { if filter.isEmpty { dismiss() } else { filter = "" }; return .handled }
                 .onKeyPress(.return, phases: .down) { press in
                     guard entries.indices.contains(highlight) else { return .handled }
-                    let id = entries[highlight].provider
-                    if press.modifiers.contains(.option) { nav.togglePin(id) } else if !openDisabled { nav.select(id); dismiss() }
+                    switch entries[highlight] {
+                    case .service(let e):
+                        if press.modifiers.contains(.option) { nav.togglePin(e.provider) } else if !openDisabled { nav.select(e.provider); dismiss() }
+                    }
                     return .handled
                 }
                 .accessibilityLabel("Filter services")
@@ -225,9 +237,9 @@ struct ServicesDropdown: View {
             .atlas("control.services.section")
     }
 
-    private func row(_ entry: ServicesMenuModel.Entry, _ entries: [ServicesMenuModel.Entry]) -> some View {
+    private func row(_ entry: ServicesMenuModel.Entry, _ entries: [ServicesMenuModel.Row]) -> some View {
         let id = entry.provider
-        let index = entries.firstIndex(of: entry) ?? 0
+        let index = entries.firstIndex(of: .service(entry)) ?? 0
         return ServicesRow(
             id: id, entry: entry, nav: nav, openDisabled: openDisabled, highlighted: index == highlight,
             onHover: { if $0 { highlight = index } }, dismiss: dismiss)

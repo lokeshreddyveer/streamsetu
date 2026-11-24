@@ -22,7 +22,7 @@ struct AudioOnlyBackdrop: View {
                 }
                 Text(playback.title).font(.system(size: 22, weight: .semibold)).lineLimit(1).foregroundStyle(.white)
                 if let program { Text(program.title).font(.system(size: 14)).foregroundStyle(.white.opacity(0.7)).lineLimit(1) }
-                Levels(active: playback.state == .playing && !reduceMotion)
+                Levels(active: playback.state == .playing && !reduceMotion && AppActivity.shared.isLive)
                 Text("Radio · audio only").font(.system(size: 11, weight: .medium)).tracking(0.8).foregroundStyle(.white.opacity(0.45))
             }
             .padding(30)

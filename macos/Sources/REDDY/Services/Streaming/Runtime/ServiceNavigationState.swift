@@ -13,10 +13,18 @@ final class ServiceNavigationState {
     var canGoBack = false
     var canGoForward = false
     var notice: Notice?
+    /// The selector just hidden with "Hide This Element", offered with Undo for a few seconds; nil otherwise.
+    var hiddenUndo: String?
+    /// A short message about the picker ("Nothing safe to hide there"); nil otherwise.
+    var pickerMessage: String?
+    /// Pick mode is on: the page shows the crosshair overlay and the next click chooses an element.
+    var picking = false
     /// An address outside the site that the page asked to open, held until the person answers (services that confirm only).
     var pendingExternal: URL?
     /// The host (or kind) of an off-site link that was cancelled with a notice (services that never leave the app).
     var blockedLinkHost: String?
+    /// The sign-in window currently shown over the page (Google's), if any.
+    var authPopup: AuthPopup?
     var lastStatusCode: Int?
     /// A page has been shown since the web view was made.
     var hasContent = false

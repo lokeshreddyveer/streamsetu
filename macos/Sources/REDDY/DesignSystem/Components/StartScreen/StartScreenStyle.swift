@@ -40,7 +40,7 @@ enum StartStyle {
     static func isLight(_ color: Color) -> Bool {
         guard let c = NSColor(color).usingColorSpace(.sRGB) else { return false }
         func channel(_ v: CGFloat) -> Double { let d = Double(v); return d <= 0.03928 ? d / 12.92 : pow((d + 0.055) / 1.055, 2.4) }
-        return 0.2126 * channel(c.redComponent) + 0.7152 * channel(c.greenComponent) + 0.0722 * channel(c.blueComponent) > 0.4
+        return 0.2126 * channel(c.redComponent) + 0.7152 * channel(c.greenComponent) + 0.0722 * channel(c.blueComponent) > 0.19
     }
 
     private static func readable(_ hex: UInt32) -> Color {
@@ -76,7 +76,7 @@ struct StartMotionGate: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .environment(\.startMotion, visible && !systemReduce && !(container?.settings.reduceMotion ?? false))
+            .environment(\.startMotion, visible && AppActivity.shared.isLive && !systemReduce && !(container?.settings.reduceMotion ?? false))
             .background(WindowVisibilityReader(visible: $visible).frame(width: 0, height: 0))
     }
 }

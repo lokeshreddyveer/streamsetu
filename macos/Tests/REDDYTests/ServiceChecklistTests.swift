@@ -43,7 +43,7 @@ import Foundation
             if row.externalLinks == "blockWithNotice" { #expect(row.checks.contains("blockedLinkNotice") && !row.checks.contains("defaultBrowserActionUnchanged") && !row.checks.contains { $0.lowercased().contains("browser") }, "\(row.id)") }
             else { #expect(row.checks.contains("defaultBrowserActionUnchanged"), "\(row.id)") }
         }
-        #expect(try fixture().services.first { $0.id == "youtube" }?.defaultOutcomes["signInCompletes"] == "notApplicable")
+        #expect(try fixture().services.first { $0.id == "youtube" }?.defaultOutcomes["signInCompletes"] == nil, "YouTube sign-in (with Google) is applicable now")
     }
 
     @Test func fixtureRecordsExactlyTheOwnerOutcomesOfTheCatalog() throws {

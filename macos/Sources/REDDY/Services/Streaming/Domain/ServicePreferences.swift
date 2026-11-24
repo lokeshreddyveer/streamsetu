@@ -20,11 +20,19 @@ struct ServicePreferences: Equatable, Codable, Sendable {
         ServicePreferences(pinned: ProviderCatalog.defaultPinned.filter(available.contains), recents: [])
     }
 
+    /// `podcastsInBar` is an old key (Podcasts can no longer be hidden): it may be present in saved data and is ignored; it is never written again.
     private enum CodingKeys: String, CodingKey { case pinned, recents }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         pinned = try c.decodeIfPresent([ProviderID].self, forKey: .pinned) ?? ProviderCatalog.defaultPinned
         recents = try c.decodeIfPresent([ProviderID].self, forKey: .recents) ?? []
+    }
+
+    /// The stored form is pinned and recents only.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pinned, forKey: .pinned)
+        try c.encode(recents, forKey: .recents)
     }
 
     // MARK: persistence

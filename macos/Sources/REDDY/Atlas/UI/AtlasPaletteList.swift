@@ -29,7 +29,7 @@ struct AtlasPaletteList: View {
         let question = AtlasPaletteSource.isQuestion(trimmed)
         return Button { ask(trimmed) } label: {
             HStack(spacing: 10) {
-                Image(systemName: "sparkles").frame(width: 20).foregroundStyle(Color.accentColor)
+                Image(systemName: "sparkles").frame(width: 20).foregroundStyle(ColorTokens.accent)
                 Text(AtlasPaletteSource.askTitle(trimmed)).font(.body.weight(.medium)).lineLimit(1)
                 Spacer(minLength: 8)
                 #if os(macOS)
@@ -39,7 +39,7 @@ struct AtlasPaletteList: View {
                 #endif
             }
             .padding(.horizontal, 12).padding(.vertical, 9).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .background(Color.accentColor.opacity(question ? 0.18 : 0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous)).contentShape(Rectangle())
+            .background(ColorTokens.accent.opacity(question ? 0.18 : 0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous)).contentShape(Rectangle())
         }
         .buttonStyle(.plain).accessibilityLabel("Ask Setu: \(trimmed)").accessibilityHint("Opens Setu with this question")
     }
@@ -61,7 +61,7 @@ struct AtlasPaletteList: View {
             .buttonStyle(.plain)
             .accessibilityLabel("\(r.title). \(r.breadcrumb)").accessibilityValue("Row \(index) of \(count)\(r.shortcut.map { ", shortcut \($0)" } ?? "")")
             Button { show(r.id) } label: { Label("Show me", systemImage: "scope").labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle()) }
-                .buttonStyle(.plain).foregroundStyle(Color.accentColor).help("Show me").accessibilityLabel("Show me \(r.title)")
+                .buttonStyle(.plain).foregroundStyle(ColorTokens.accent).help("Show me").accessibilityLabel("Show me \(r.title)")
         }
         .padding(.horizontal, 12).background(Color.secondary.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }

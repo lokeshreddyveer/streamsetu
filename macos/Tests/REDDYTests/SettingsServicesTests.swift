@@ -16,13 +16,13 @@ import Foundation
 
     @Test func listsEveryListedServiceWithItsBadge() {
         let m = StreamingServicesSettingsModel(defaults: defaults())
-        #expect(m.rows.count == 10)
+        #expect(m.rows.count == 11)
         #expect(Set(m.rows.map(\.id)) == Set(ProviderCatalog.all.map(\.id).filter { $0 != .jiohotstar }), "JioHotstar is on hold and has no row")
         #expect(m.rows.first { $0.id == .netflix }?.badge == "Available")
         let verified: Set<ProviderID> = [.netflix, .primevideo, .disneyplus, .hulu, .hbomax, .paramountplus, .appletv, .peacock, .youtube, .crunchyroll]        // owner-confirmed on 2026-11-22
         #expect(m.rows.filter { verified.contains($0.id) }.allSatisfy { $0.badge == "Available" })
         #expect(m.rows.filter { !verified.contains($0.id) }.allSatisfy { $0.badge == "Unverified" })
-        #expect(m.rows.filter { $0.badge == "Unverified" }.isEmpty, "every listed service is owner-confirmed")
+        #expect(m.rows.filter { $0.badge == "Unverified" }.map(\.id) == [.spotify], "Spotify is the one listed service the owner has not confirmed")
         #expect(m.rows.first?.id == .netflix && m.rows.first?.pinned == true)
     }
 
@@ -31,7 +31,7 @@ import Foundation
         defs[2] = copy(defs[2], availability: .disabled)
         defs[3] = copy(defs[3], availability: .registered)
         let m = StreamingServicesSettingsModel(registry: ProviderRegistry(definitions: defs), defaults: defaults())
-        #expect(m.rows.count == 9, "eleven definitions minus the held JioHotstar minus the registered one")
+        #expect(m.rows.count == 10, "twelve definitions minus the held JioHotstar minus the registered one")
         #expect(m.rows.first { $0.id == defs[2].id }?.badge == "Disabled")
         #expect(m.rows.contains { $0.id == defs[3].id } == false)
         #expect(m.rows.first { $0.id == defs[2].id }?.canOpen == false)
@@ -45,10 +45,9 @@ import Foundation
         #expect(m.rows.allSatisfy { !($0.statusLine ?? "").contains("Distribution") })
     }
 
-    @Test func youTubeShowsTheSignInLimitationAndOthersDoNot() {
+    @Test func noServiceShowsASignInLimitationNowThatGoogleSignInIsAllowed() {
         let m = StreamingServicesSettingsModel(defaults: defaults())
-        #expect(m.rows.first { $0.id == .youtube }?.limitation != nil)
-        #expect(m.rows.filter { $0.id != .youtube }.allSatisfy { $0.limitation == nil })
+        #expect(m.rows.allSatisfy { $0.limitation == nil })
     }
 
     @Test func pinUnpinAndReorderUseTheSharedPreferencesAndPersist() {

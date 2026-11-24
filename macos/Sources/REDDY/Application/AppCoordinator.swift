@@ -30,6 +30,8 @@ final class AppCoordinator {
             let c = try AppContainer(openedDatabase: opened)
             container = c
             services.gate = { [weak c] in c?.parental.kidsMode == true || c?.appLock.isLocked == true }
+            services.lockGate = { [weak c] in c?.appLock.isLocked == true }
+            services.kidsGate = { [weak c] in c?.parental.kidsMode == true }
             EnhancementRuntime.shared.isRestricted = { [weak c] in c == nil || c?.parental.kidsMode == true || c?.appLock.isLocked == true }          // page options never run for a kids profile or while locked
             switch c.settings.sidebarLaunch {
             case .expanded: router.sidebarCollapsed = false
@@ -40,7 +42,7 @@ final class AppCoordinator {
             let s = AppState(container: c)
             state = s
             c.artworkMatcher.start()          // artwork is matched in the background, on Wi-Fi, with a TMDB key (own or built in)
-            c.parental.onChange = { [weak s] in s?.reloadFolders(); s?.catalogVersion += 1 }
+            c.parental.onChange = { [weak self, weak s] in s?.reloadFolders(); s?.catalogVersion += 1; self?.services.enforcePodcastsRule() }
             cleanLegacyFiles()
             let migrated = await c.sources.importLegacyPreferences()
             await s.start()
