@@ -288,8 +288,8 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     // Back from the preview goes to the channel it came from; from the channels it goes to the categories; from the categories the shell opens the rail.
     // The folders are a column beside the channels that can be hidden. Choosing a folder or pressing Right hides it; Back from the channels shows it again, and Back from the folders opens the main sidebar.
     LaunchedEffect(Unit) { c.ensureGuide() }
-    val folderNav = remember { app.streamsetu.tv.nav.FolderNav(startOpen = !foldersMode) }
-    LaunchedEffect(foldersMode) { if (foldersMode) folderNav.hide() }
+    // The group list is part of Live TV in both views (the shelves view and the channel list), the same as Movies and Series: it is open when the page is entered.
+    val folderNav = remember { app.streamsetu.tv.nav.FolderNav(startOpen = true) }
     val foldersOpen = folderNav.open
     val focusFolders = folderNav.focusTick
     var folderFocused by remember { mutableStateOf(false) }
@@ -309,7 +309,8 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     DisposableEffect(inPreview, foldersOpen, foldersMode, liveBrowse) {
         val hook: () -> Boolean = {
             when {
-                foldersMode -> { nav.revealSidebar(); true }          // from the rows, Back reaches the main sidebar
+                foldersMode && foldersOpen -> { folderNav.back(); nav.revealSidebar(); true }          // from the groups, Back reaches the main sidebar
+                foldersMode -> { folderNav.show(); true }          // from the rows, Back shows the groups
                 liveBrowse is Browse.Folder && vm.folderRows.openedFromRow -> { vm.folderRows.openedFromRow = false; vm.folderRows.restoreFocus = true; vm.select(Browse.All); true }          // from a folder opened from its row, Back returns to the row
                 inPreview -> { runCatching { focusedRow.requestFocus() }; true }
                 foldersOpen -> { folderNav.back(); nav.revealSidebar(); true }
@@ -339,10 +340,19 @@ fun LiveScreen(vm: LiveSectionViewModel, c: AppContainer, nav: Navigator) {
     val screenH = maxHeight
     val folderW = Tokens.folderPanelWidth
     val channelsW = if (folderNav.open) screenW * 0.22f else screenW * 0.25f
-    if (foldersMode) Box(Modifier.fillMaxSize().padding(top = Tokens.safeVertical)) {
-        app.streamsetu.tv.ui.screens.folders.TvFolderRows(vm.folderRows, ContentKind.CHANNEL, Tokens.posterWidth, false, Modifier,
-            onOpenFolder = { row -> if (row.locked) folderNav.show() else { vm.folderRows.opened(row); vm.folderRows.openedFromRow = true; vm.select(row.browse) } },
-            onOpenCard = {}, onOpenChannel = { ch -> c.play(ChannelPlayable(ch), listOf(ChannelPlayable(ch))); nav.liveFullscreen = true; nav.open(Overlay.Player) }, entry = entry)
+    if (foldersMode) Row(Modifier.fillMaxSize()) {
+        if (foldersOpen) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalFocusEnabled provides true) {
+                FolderPaneHost(vm, Modifier.onFocusChanged { folderFocused = it.hasFocus }.width(folderW).railOnLeft(), entry, focusFolders,
+                    onConfirm = { folderNav.hide(); nav.contentFocusTick++ }, onRight = { folderNav.hide(); nav.contentFocusTick++; true }, onLeft = { folderNav.left(); nav.revealSidebar() })
+            }
+        }
+        Box(Modifier.weight(1f).fillMaxHeight().padding(top = Tokens.safeVertical)) {
+            app.streamsetu.tv.ui.screens.folders.TvFolderRows(vm.folderRows, ContentKind.CHANNEL, Tokens.posterWidth, false, Modifier,
+                onOpenFolder = { row -> if (row.locked) folderNav.show() else { vm.folderRows.opened(row); vm.folderRows.openedFromRow = true; vm.select(row.browse) } },
+                onOpenCard = {}, onOpenChannel = { ch -> c.play(ChannelPlayable(ch), listOf(ChannelPlayable(ch))); nav.liveFullscreen = true; nav.open(Overlay.Player) }, entry = if (foldersOpen) null else entry,
+                emptyNotice = { LibraryFillingNotice(c, Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp)) })
+        }
     } else Row(Modifier.fillMaxSize()) {
         if (foldersOpen) {          // no fade, no slide: the page is split in one pass
             androidx.compose.runtime.CompositionLocalProvider(LocalFocusEnabled provides true) {
@@ -461,7 +471,9 @@ private fun ChannelListHost(vm: LiveSectionViewModel, c: AppContainer, nav: Navi
         list.isEmpty() -> Box(Modifier.fillMaxSize().padding(12.dp), Alignment.Center) {
             // An empty list still has something for the remote to land on, so Right from the folders never loses focus.
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Label(if (browse == Browse.Favorites) "No favorite channels yet. Hold OK on a channel to add one." else "No channels here.", Tokens.small, Tokens.textSecondary, maxLines = 4)
+                val filling by c.fill.filling.collectAsStateWithLifecycle(initialValue = c.fill.fillingNow)
+                if (filling && browse == Browse.All) LibraryFillingNotice(c)
+                else Label(if (browse == Browse.Favorites) "No favorite channels yet. Hold OK on a channel to add one." else "No channels here.", Tokens.body, Tokens.textSecondary, maxLines = 4)
                 TvButton(if (browse == Browse.All) "Choose a folder" else "Show all channels", { if (browse == Browse.All) folderNav.show() else vm.select(Browse.All) }, Modifier.focusRequester(channelEntry), primary = true)
             }
         }
@@ -490,14 +502,14 @@ private fun ChannelRow(grp: ChannelGroup, i: Int, vm: LiveSectionViewModel, nav:
         // [number] [logo] [name over what is on]: the number has its own narrow column so names line up, and a long name wraps to two lines instead of being cut.
         Row(Modifier.padding(horizontal = 8.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (showNumbers.value) Label(ch.number?.toString().orEmpty(), Tokens.caption, if (f || playing) Tokens.goldHighlight else Tokens.textTertiary, FontWeight.SemiBold, modifier = Modifier.width(38.dp), maxLines = 1)
-            if (app.streamsetu.tv.trace.Diag.artwork) Spacer(Modifier.size(28.dp)) else ChannelLogo(ch.logoUrl, ch.name, 28.dp)
+            if (app.streamsetu.tv.trace.Diag.artwork) Spacer(Modifier.size(36.dp)) else ChannelLogo(ch.logoUrl, ch.name, 36.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Label(ch.name, Tokens.small, if (playing) Tokens.goldHighlight else Tokens.text, if (playing || f) FontWeight.SemiBold else FontWeight.Medium, maxLines = if (app.streamsetu.tv.trace.Diag.oneLine) 1 else 2)
                 if (!app.streamsetu.tv.trace.Diag.meta) onNow?.let { title -> Label(title, Tokens.caption, Tokens.textSecondary) }
             }
             if (!app.streamsetu.tv.trace.Diag.meta && grp.variants.size > 1) Label("+${grp.variants.size - 1}", Tokens.caption, Tokens.textTertiary)
             if (!app.streamsetu.tv.trace.Diag.meta) app.streamsetu.tv.ui.screens.settings.GuideDot(availability)
-            if (!app.streamsetu.tv.trace.Diag.meta && favourite) Image(Icons.Filled.Favorite, null, Modifier.size(12.dp), colorFilter = ColorFilter.tint(Tokens.gold))
+            if (!app.streamsetu.tv.trace.Diag.meta && favourite) Image(Icons.Filled.Favorite, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Tokens.gold))
         }
     }
 }
@@ -536,7 +548,7 @@ private const val SETTLE_MS = 170L
 @Composable
 private fun SmallIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     Focusable(onClick, Modifier.padding(start = 4.dp), shape = RoundedCornerShape(50), container = Tokens.card, scaleOnFocus = 1.08f) { f ->
-        Image(icon, label, Modifier.padding(6.dp).size(14.dp), colorFilter = ColorFilter.tint(if (f) Tokens.accent else Tokens.textSecondary))
+        Image(icon, label, Modifier.padding(8.dp).size(20.dp), colorFilter = ColorFilter.tint(if (f) Tokens.accent else Tokens.textSecondary))
     }
 }
 

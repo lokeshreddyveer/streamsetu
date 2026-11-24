@@ -11,7 +11,7 @@ import app.streamsetu.core.data.db.*
  * exactly what is already saved writes nothing at all, even after a restart. Raise [fingerprintVersion] when a parser starts reading more (or other) fields: every saved fingerprint is
  * then out of date and the catalogs are written again once.
  */
-class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: Int = 2) {
+class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: Int = 2, private val deferFirstIdentity: Boolean = false) {
     /** The derived identity of every movie and series (see IdentityStore): written in the same steps as the rows, only for rows that are new or changed. IdentityStore.changes tells what a read changed. */
     val identity = app.streamsetu.core.data.repo.smartmix.IdentityStore(db)
 
@@ -25,11 +25,11 @@ class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: 
         return h
     }
 
-    suspend fun replace(sourceId: String, cats: List<CategoryEntity>, allChannels: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>) =
+    suspend fun replace(sourceId: String, cats: List<CategoryEntity>, allChannels: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>, onProgress: (SyncProgress) -> Unit = {}) =
         // One writer of a source's catalog at a time (a refresh, removing it, clearing an add-on): two that overlapped would write and delete against different snapshots and leave rows that belong to neither.
-        SourceLocks.of(sourceId).withLock { replaceLocked(sourceId, cats, allChannels, mv, sr) }
+        SourceLocks.of(sourceId).withLock { replaceLocked(sourceId, cats, allChannels, mv, sr, onProgress) }
 
-    private suspend fun replaceLocked(sourceId: String, cats: List<CategoryEntity>, allChannels: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>) {
+    private suspend fun replaceLocked(sourceId: String, cats: List<CategoryEntity>, allChannels: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>, onProgress: (SyncProgress) -> Unit) {
         val ch = allChannels.filter { !ChannelFilter.isDivider(it.name) }          // a heading in the provider's list is not a channel and is never stored (the one definition, shared with the import)
         // The screens already show what is saved. If the provider sent exactly the same catalog, nothing is deleted, nothing is inserted and nothing is announced: no list
         // is rebuilt and no row is handed to the screens as new.
@@ -45,19 +45,29 @@ class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: 
         db.catalog().clearFingerprint(sourceId)
         if (was == null || was.version != fingerprintVersion) db.withTransaction { app.streamsetu.core.data.db.SearchIndex.clear(raw, sourceId) }          // an index from before rows had fixed numbers is rebuilt, once
         val prefs = db.extras().channelPrefsNow().associateBy { it.channelId }
-        suspend fun <T> step(rows: List<T>, write: suspend (List<T>) -> Unit) {
-            rows.chunked(STEP).forEach { part ->
+        // [stage] names what the person is told; [size] is the rows per transaction (the large kinds go in bigger steps: fewer commits, the same short wait for a person's own write).
+        suspend fun <T> step(rows: List<T>, stage: SyncProgress.Stage? = null, size: Int = STEP, write: suspend (List<T>) -> Unit) {
+            val t0 = System.nanoTime(); var done = 0
+            if (stage != null && rows.isNotEmpty()) onProgress(SyncProgress(stage, 0, rows.size))
+            rows.chunked(size).forEach { part ->
                 if (SourceLocks.isRemoving(sourceId)) throw SourceRemovedException(sourceId)          // the connection is being removed: stop writing rows for it
-                db.withTransaction { write(part) }; kotlinx.coroutines.delay(PAUSE_MS)
+                db.withTransaction { write(part) }; done += part.size
+                if (stage != null) onProgress(SyncProgress(stage, done, rows.size))
+                kotlinx.coroutines.delay(PAUSE_MS)
             }
+            if (stage != null && rows.isNotEmpty()) SyncLog.stage(stage.name, rows.size, (System.nanoTime() - t0) / 1_000_000)
         }
         val names = cats.associate { it.id to it.name }
         val movieIdentity = safely { identity.begin(sourceId, "MOVIE", names) }.getOrNull()
         val seriesIdentity = safely { identity.begin(sourceId, "SERIES", names) }.getOrNull()
+        // A first read (nothing derived yet for this playlist) writes no identity rows here: deriving 80,000 titles inside the read is what kept a TV stick busy for many minutes. The background fill makes them
+        // soon after (see IdentityStore.backfillStep), and readers use their slower path until enough of the catalog is covered. A refresh of a playlist that has identities derives only what is new or changed, as before.
+        val inlineMovies = movieIdentity?.takeIf { !deferFirstIdentity || it.knownCount > 0 || mv.isEmpty() }
+        val inlineSeries = seriesIdentity?.takeIf { !deferFirstIdentity || it.knownCount > 0 || sr.isEmpty() }
         fun movieRows(p: List<MovieEntity>) = p.map { UnderivedRow(it.id, it.sourceId, it.categoryId, it.title, it.year) }
         fun seriesRows(p: List<SeriesEntity>) = p.map { UnderivedRow(it.id, it.sourceId, it.categoryId, it.title, it.year) }
         step(cats) { c.putCategories(it) }
-        step(ch) { part ->
+        step(ch, SyncProgress.Stage.SAVING_CHANNELS, BULK_STEP) { part ->
             c.putChannels(part)
             part.forEach { r -> prefs[r.id]?.let { p ->          // what the person set on channels (names, guide ids) is put back onto the fresh rows
                 p.name?.let { db.extras().setChannelName(r.id, it) }
@@ -65,12 +75,15 @@ class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: 
             } }
             app.streamsetu.core.data.db.SearchIndex.upsert(raw, part.map { app.streamsetu.core.data.db.SearchHit("CHANNEL", it.id, sourceId, it.categoryId, it.name) })
         }
-        step(mv) { part -> c.putMovies(part); app.streamsetu.core.data.db.SearchIndex.upsert(raw, part.map { app.streamsetu.core.data.db.SearchHit("MOVIE", it.id, sourceId, it.categoryId, it.title) }); safely { movieIdentity?.apply(movieRows(part)) } }          // an identity that could not be written is made by the background fill later, never a failed read
-        step(sr) { part -> c.putSeries(part); app.streamsetu.core.data.db.SearchIndex.upsert(raw, part.map { app.streamsetu.core.data.db.SearchHit("SERIES", it.id, sourceId, it.categoryId, it.title) }); safely { seriesIdentity?.apply(seriesRows(part)) } }
+        // The sort key is written with the row (the same SortKey the database triggers use), so the trigger that would otherwise rewrite every new row about fifteen times has nothing to do (it runs only for a row saved without a key).
+        step(mv, SyncProgress.Stage.SAVING_MOVIES, BULK_STEP) { part -> c.putMovies(part.map { if (it.titleSort.isEmpty()) it.copy(titleSort = app.streamsetu.core.model.SortKey.of(it.title)) else it }); app.streamsetu.core.data.db.SearchIndex.upsert(raw, part.map { app.streamsetu.core.data.db.SearchHit("MOVIE", it.id, sourceId, it.categoryId, it.title) }); safely { inlineMovies?.apply(movieRows(part)) } }          // an identity that could not be written is made by the background fill later, never a failed read
+        step(sr, SyncProgress.Stage.SAVING_SERIES, BULK_STEP) { part -> c.putSeries(part.map { if (it.titleSort.isEmpty()) it.copy(titleSort = app.streamsetu.core.model.SortKey.of(it.title)) else it }); app.streamsetu.core.data.db.SearchIndex.upsert(raw, part.map { app.streamsetu.core.data.db.SearchHit("SERIES", it.id, sourceId, it.categoryId, it.title) }); safely { inlineSeries?.apply(seriesRows(part)) } }
+        val tidy0 = System.nanoTime()
         step(c.categoryIds(sourceId).toSet().minus(cats.map { it.id }.toSet()).toList()) { c.deleteCategories(it) }
         step(c.channelIds(sourceId).toSet().minus(ch.map { it.id }.toSet()).toList()) { gone -> c.deleteChannels(gone); app.streamsetu.core.data.db.SearchIndex.delete(raw, "CHANNEL", gone) }
         step(c.movieIds(sourceId).toSet().minus(mv.map { it.id }.toSet()).toList()) { gone -> c.deleteMovies(gone); app.streamsetu.core.data.db.SearchIndex.delete(raw, "MOVIE", gone); safely { movieIdentity?.removed(gone) } }
         step(c.seriesIds(sourceId).toSet().minus(sr.map { it.id }.toSet()).toList()) { gone -> c.deleteSeries(gone); app.streamsetu.core.data.db.SearchIndex.delete(raw, "SERIES", gone); safely { seriesIdentity?.removed(gone) } }
+        SyncLog.stage("TIDYING", 0, (System.nanoTime() - tidy0) / 1_000_000)
         c.putFingerprint(app.streamsetu.core.data.db.CatalogFingerprintEntity(sourceId, d, expected, fingerprintVersion))
         // Announced only once everything is in, and only when something changed; whether this playlist is now a twin of another is looked at again.
         val changed = listOfNotNull(movieIdentity?.finish(), seriesIdentity?.finish()).any { !it.isEmpty }
@@ -78,7 +91,8 @@ class CatalogStore(private val db: AppDatabase, private val fingerprintVersion: 
     }
 
     private companion object {
-        const val STEP = 500          // rows per transaction
+        const val STEP = 500          // rows per transaction (folders, rows to remove)
+        const val BULK_STEP = 1000    // rows per transaction for channels, movies and series: with no per-row trigger a step of this size is still tens of milliseconds to a few hundred on a TV stick
         const val PAUSE_MS = 8L       // a gap between steps in which a person's own write gets in
     }
 }

@@ -67,7 +67,7 @@ data class MovieEntity(
     val plot: String?,
     val streamRef: String,
     val addedAt: Long,
-    /** The title in lower case, kept by the database itself (triggers made with the table and by the 11 to 12 step), so "A to Z" can be read straight from an index. Never written by the app. */
+    /** The title in lower case, kept by the database itself (triggers made with the table and by the 11 to 12 step), so "A to Z" can be read straight from an index. Empty when a row is made: the catalog write fills it with SortKey.of(title) (and the trigger does it for a row saved without one). */
     @ColumnInfo(defaultValue = "''") val titleSort: String = "",
 )
 

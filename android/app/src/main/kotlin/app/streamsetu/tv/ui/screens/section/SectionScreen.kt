@@ -291,6 +291,7 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                 vm.folderRows, kind, posterSize.tv, densePosters, Modifier.onPreviewKeyEvent { interacted = true; false },
                 onOpenFolder = { row -> if (row.locked) folderNav.show() else { vm.folderRows.opened(row); vm.folderRows.openedFromRow = true; vm.select(row.browse) } },
                 onOpenCard = onOpen, onOpenChannel = {}, entry = null,
+                emptyNotice = { LibraryFillingNotice(c, Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp)) },
             ) else LazyVerticalGrid(
                 GridCells.Fixed(gridColumns), state = gridState, modifier = Modifier.fillMaxSize().railOnLeft().onPreviewKeyEvent { interacted = true; false },
                 contentPadding = PaddingValues(start = Tokens.safeHorizontal, end = Tokens.safeHorizontal, top = 14.dp, bottom = 40.dp),          // room for a poster to grow (1.06) and for its frame and glow at the top and sides
@@ -334,7 +335,14 @@ fun SectionScreen(vm: SectionViewModel, c: AppContainer, nav: Navigator, onOpen:
                 when {
                     list == null -> items(18, key = { "sk$it" }, contentType = { "skeleton" }) { SkeletonPoster() }
                     list.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }, key = "empty", contentType = "empty") {
-                        Box(Modifier.fillMaxWidth().height(200.dp), Alignment.Center) { EmptyText(browse, noun, filter.active, entry, onFilter = { dlg.filterOpen = true }, onAll = { vm.select(Browse.All) }, onFolders = { folderNav.show() }) }
+                        val filling by c.fill.filling.collectAsState(initial = c.fill.fillingNow)
+                        Box(Modifier.fillMaxWidth().height(if (filling) 280.dp else 200.dp), Alignment.Center) {
+                            // While the library is still being filled an empty page is not "no titles": it says so, with progress. The button stays so the remote has something to land on.
+                            if (filling && browse == Browse.All && !filter.active) Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                LibraryFillingNotice(c)
+                                TvButton("Choose a folder", { folderNav.show() }, Modifier.focusRequester(entry), primary = true)
+                            } else EmptyText(browse, noun, filter.active, entry, onFilter = { dlg.filterOpen = true }, onAll = { vm.select(Browse.All) }, onFolders = { folderNav.show() })
+                        }
                     }
                     else -> items(list, key = { it.id }, contentType = { "poster" }) { card ->
                         GridPoster(card, posterSize.tv, showMeta, densePosters, progress, latestBySeries, seriesNote, newSeries, favs, tab, vm, nav, indexById, restore, onOpen, onLong = { dlg.menuRail = null; dlg.menuFor = card })

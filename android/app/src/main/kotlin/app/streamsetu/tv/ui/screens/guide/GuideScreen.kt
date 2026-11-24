@@ -68,6 +68,9 @@ class GuideViewModel @Inject constructor(private val c: AppContainer) : ViewMode
     /** Start of the visible window (ms), moved by the person; null means "now". */
     val windowStart = MutableStateFlow(halfHour(System.currentTimeMillis()) - 30 * 60_000L)
     val hasGuide = MutableStateFlow<Boolean?>(null)
+    /** How many minutes the grid shows: the screen works it out from its width (see [GuideLayout]); the default is three hours. */
+    val windowMinutes = MutableStateFlow(WINDOW_MIN)
+    fun setWindowMinutes(n: Int) { if (n != windowMinutes.value) windowMinutes.value = n }
     val offsetMin: StateFlow<Int> = c.ui.epgOffsetMinutes
     val favs: StateFlow<Set<String>> = c.user.favouriteIds().stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
@@ -94,8 +97,9 @@ class GuideViewModel @Inject constructor(private val c: AppContainer) : ViewMode
     }
 
     /** The rows: the picked channels with only the programmes that overlap the visible window (the next window is fetched when it is asked for). */
-    val rows: StateFlow<List<GuideRow>?> = combine(picked, windowStart, offsetMin) { p, w, o -> Triple(p, w, o) }.mapLatest { (p, start, off) ->
-        val end = start + WINDOW_MIN * 60_000L
+    val rows: StateFlow<List<GuideRow>?> = combine(picked, windowStart, offsetMin, windowMinutes) { p, w, o, m -> listOf(p, w, o, m) }.mapLatest { a ->
+        @Suppress("UNCHECKED_CAST") val p = a[0] as Picked; val start = a[1] as Long; val off = a[2] as Int; val winMin = a[3] as Int
+        val end = start + winMin * 60_000L
         val shift = off * 60_000L
         val t0 = android.os.SystemClock.uptimeMillis()
         app.streamsetu.tv.trace.SSTrace.v { "guide rows start channels=${p.channels.size} now=$t0" }
@@ -133,7 +137,8 @@ class GuideViewModel @Inject constructor(private val c: AppContainer) : ViewMode
 }
 
 private val labelW get() = 260.ui
-private val dpPerMin get() = 4.33f * app.streamsetu.tv.ui.theme.UiScale.k
+/** What one minute would take at the usual size; the screen stretches it so the window fills the room (see [GuideLayout]). */
+private val preferredDpPerMin get() = 4.33f * app.streamsetu.tv.ui.theme.UiScale.k
 /** The height of a guide row at normal text; it grows with larger text so a programme's title and time are never cut off. */
 private val rowH get() = 72.ui
 
@@ -186,7 +191,12 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
     val entry = LocalContentEntry.current ?: remember { FocusRequester() }
     val now by rememberMinute()
     LaunchedEffect(nav.pendingGuideTarget) { nav.pendingGuideTarget?.let { vm.aim(it); nav.pendingGuideTarget = null } }
-    val totalW = (GuideViewModel.WINDOW_MIN * dpPerMin).dp
+    // The grid fills the room between the channel column and the right margin: the window is a whole number of half hours, and the minutes are stretched to the exact width.
+    val trackDp = GuideLayout.trackWidthDp(app.streamsetu.tv.ui.theme.UiScale.widthDp, (Tokens.safeHorizontal + 4.dp).value, Tokens.safeHorizontal.value, labelW.value)
+    val windowMin = GuideLayout.windowMinutes(trackDp, preferredDpPerMin)
+    val dpPerMin = GuideLayout.dpPerMinute(trackDp, windowMin)
+    SideEffect { vm.setWindowMinutes(windowMin) }
+    val totalW = trackDp.dp
     val rowHeight = rowH * maxOf(1f, androidx.compose.ui.platform.LocalDensity.current.fontScale)
 
     Column(Modifier.fillMaxSize().padding(start = Tokens.safeHorizontal + 4.dp, end = Tokens.safeHorizontal, top = 4.dp)) {
@@ -233,9 +243,10 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
         Row(Modifier.fillMaxWidth()) {
             Spacer(Modifier.width(labelW))
             Box(Modifier.width(totalW).heightIn(min = 22.dp)) {
-                for (m in 0 until GuideViewModel.WINDOW_MIN step 30) Label(clock(start + m * 60_000L), Tokens.small, Tokens.textSecondary, FontWeight.SemiBold, modifier = Modifier.offset(x = (m * dpPerMin).dp))
+                val nowX = if (now in start..(start + windowMin * 60_000L)) (now - start) / 60_000f * dpPerMin else null
+                for (m in 0 until windowMin step 30) if (GuideLayout.rulerLabelVisible(m * dpPerMin, nowX)) Label(clock(start + m * 60_000L), Tokens.small, Tokens.textSecondary, FontWeight.SemiBold, modifier = Modifier.offset(x = (m * dpPerMin).dp))
                 // The current time has a marker in the ruler as well as the line down the rows.
-                if (now in start..(start + GuideViewModel.WINDOW_MIN * 60_000L)) Box(Modifier.offset(x = ((now - start) / 60_000f * dpPerMin).dp - 4.dp, y = 2.dp).size(10.dp).background(Tokens.danger, RoundedCornerShape(50)))
+                if (now in start..(start + windowMin * 60_000L)) Box(Modifier.offset(x = ((now - start) / 60_000f * dpPerMin).dp - 4.dp, y = 2.dp).size(10.dp).background(Tokens.danger, RoundedCornerShape(50)))
             }
         }
         val list = rows
@@ -244,7 +255,7 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
         val cellRequesters = remember { HashMap<String, FocusRequester>() }
         val guideScope = rememberCoroutineScope()
         var guideMoving by remember { mutableStateOf(false) }
-        val windowEnd = start + GuideViewModel.WINDOW_MIN * 60_000L
+        val windowEnd = start + windowMin * 60_000L
         fun shown(p: app.streamsetu.core.model.EpgProgram) = ((minOf(p.endMs, windowEnd) - maxOf(p.startMs, start)) / 60_000f * dpPerMin).dp - 2.dp > 40.dp
         // The programmes that have a cell in this window, worked out once for each row when the guide or the window changes (a key press only looks them up, and only these are composed).
         val shownByRow = remember(list, start) { list?.associate { r -> r.channel.id to r.programmes.filter { shown(it) } } }
@@ -302,7 +313,7 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
                                 onFocus = { if (it) nav.memory.remember(app.streamsetu.tv.nav.Tab.GUIDE, row.channel.id, rowIndexById[row.channel.id] ?: 0) }, scaleOnFocus = 1.0f, style = app.streamsetu.tv.ui.components.TvFocusStyle.DENSE, shape = RoundedCornerShape(Tokens.radiusSmall), ringWidth = 2.5.dp, container = Tokens.card.copy(alpha = 0.5f)) { _ ->
                                 Box(Modifier.fillMaxSize(), Alignment.CenterStart) { Label("No information", Tokens.caption, Tokens.textTertiary, modifier = Modifier.padding(start = 8.dp)) }
                             }
-                            val end = start + GuideViewModel.WINDOW_MIN * 60_000L
+                            val end = start + windowMin * 60_000L
                             (shownByRow?.get(row.channel.id) ?: row.programmes).forEach { p ->
                                 val s = maxOf(p.startMs, start); val e = minOf(p.endMs, end)
                                 val w = ((e - s) / 60_000f * dpPerMin).dp - 2.dp
@@ -317,7 +328,7 @@ fun GuideScreen(vm: GuideViewModel, c: AppContainer, nav: Navigator) {
                                     if (p.isLive(now)) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth(((now - p.startMs).toFloat() / (p.endMs - p.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)).height(3.dp).background(Color.White))
                                 }
                             }
-                            if (now in start..(start + GuideViewModel.WINDOW_MIN * 60_000L)) Box(Modifier.offset(x = ((now - start) / 60_000f * dpPerMin).dp).width(3.dp).fillMaxHeight().background(Tokens.danger, RoundedCornerShape(2.dp)))
+                            if (now in start..(start + windowMin * 60_000L)) Box(Modifier.offset(x = ((now - start) / 60_000f * dpPerMin).dp).width(3.dp).fillMaxHeight().background(Tokens.danger, RoundedCornerShape(2.dp)))
                         }
                     }
                 }
@@ -359,7 +370,7 @@ private suspend fun land(rows: List<GuideRow>, channelId: String, startMs: Long?
 private fun Chip2(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier, selected: Boolean = false, maxLabel: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp.Unspecified, onFocus: (Boolean) -> Unit = {}, onClick: () -> Unit) {
     Focusable(onClick, modifier, shape = RoundedCornerShape(50), container = if (selected) Tokens.accent.copy(alpha = 0.22f) else Tokens.elevated, scaleOnFocus = 1.05f, onFocus = onFocus) { f ->
         Row(Modifier.padding(horizontal = 16.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Image(icon, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(if (f || selected) Tokens.accent else Tokens.textSecondary))
+            Image(icon, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(if (f || selected) Tokens.accent else Tokens.textSecondary))
             Label(label, Tokens.small, Tokens.text, if (selected) FontWeight.SemiBold else FontWeight.Medium, maxLines = 1, modifier = if (maxLabel != androidx.compose.ui.unit.Dp.Unspecified) Modifier.widthIn(max = maxLabel) else Modifier)
         }
     }

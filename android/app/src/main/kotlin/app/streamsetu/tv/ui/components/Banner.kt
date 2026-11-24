@@ -180,7 +180,7 @@ fun FeaturedBanner(
         // One shade for the text on the left, one for the page header on top, and the bottom edge melts into the page.
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Tokens.heroTextScrimStrong, Tokens.heroScrimMiddleStop to Tokens.heroTextScrimMiddle, Tokens.heroScrimClearStop to Tokens.heroTextScrimClear)))
         if (topOverlay != null) Box(Modifier.fillMaxWidth().height(120.dp).background(Brush.verticalGradient(0f to Tokens.heroTopScrim, 1f to Color.Transparent)))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.62f to Color.Transparent, 1f to Tokens.heroBottomScrim)))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.3f to Color.Transparent, 0.6f to Tokens.heroBottomScrim.copy(alpha = 0.55f), 1f to Tokens.heroBottomScrim)))
 
         // Title, facts, story and the buttons sit at the bottom left; the column is sized so it never reaches the page header.
         Column(Modifier.align(Alignment.BottomStart).padding(start = startPadding, bottom = 30.dp).widthIn(max = 600.dp).heightIn(max = height - 64.dp), verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom)) {

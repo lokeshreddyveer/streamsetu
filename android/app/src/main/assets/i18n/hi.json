@@ -1,5 +1,15 @@
 {
 "strings": {
+"Your library is being filled": "आपकी लाइब्रेरी भरी जा रही है",
+"Titles appear here as they arrive.": "शीर्षक आते ही यहाँ दिखाई देंगे।",
+"Signing in": "साइन इन हो रहा है",
+"Reading channels": "चैनल पढ़े जा रहे हैं",
+"Reading movies": "फ़िल्में पढ़ी जा रही हैं",
+"Reading series": "सीरीज़ पढ़ी जा रही हैं",
+"Saving channels": "चैनल सहेजे जा रहे हैं",
+"Saving movies": "फ़िल्में सहेजी जा रही हैं",
+"Saving series": "सीरीज़ सहेजी जा रही हैं",
+"Saving cast and directors": "कलाकार और निर्देशक सहेजे जा रहे हैं",
 "Home": "होम",
 "Live TV": "लाइव टीवी",
 "Movies": "फ़िल्में",
@@ -616,6 +626,7 @@
 "Reality Favourites": "पसंदीदा रियलिटी शो"
 },
 "templates": {
+"{} of {}": "{} में से {}",
 "Season {}": "सीज़न {}",
 "{} min left": "{} मिनट बचे",
 "{}m left": "{} मि बचे",

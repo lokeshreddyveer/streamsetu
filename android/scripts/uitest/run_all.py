@@ -10,7 +10,7 @@ Exit code 1 when anything failed.
 """
 import argparse, concurrent.futures as cf, os, re, subprocess, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
-ADB = "adb"
+ADB = os.environ.get("ADB", "adb")          # a wrapper that reconnects before each call can be set here (ADB=/path/to/wrapper)
 ALL = ["Home", "Movies", "Series", "Live TV", "TV Guide", "Search", "Settings", "Settings pages", "Libraries"]
 SPLIT = [["Home", "Movies", "Search", "Libraries"], ["Series", "Live TV", "TV Guide", "Settings", "Settings pages"]]          # Movies and Series on different TVs
 

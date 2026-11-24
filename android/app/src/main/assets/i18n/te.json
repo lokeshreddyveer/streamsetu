@@ -1,5 +1,15 @@
 {
 "strings": {
+"Your library is being filled": "మీ లైబ్రరీ నింపబడుతోంది",
+"Titles appear here as they arrive.": "శీర్షికలు వచ్చినప్పుడు ఇక్కడ కనిపిస్తాయి.",
+"Signing in": "సైన్ ఇన్ అవుతోంది",
+"Reading channels": "ఛానెల్‌లను చదువుతోంది",
+"Reading movies": "సినిమాలను చదువుతోంది",
+"Reading series": "సిరీస్‌లను చదువుతోంది",
+"Saving channels": "ఛానెల్‌లను సేవ్ చేస్తోంది",
+"Saving movies": "సినిమాలను సేవ్ చేస్తోంది",
+"Saving series": "సిరీస్‌లను సేవ్ చేస్తోంది",
+"Saving cast and directors": "నటీనటులు మరియు దర్శకులను సేవ్ చేస్తోంది",
 "Home": "హోమ్",
 "Live TV": "లైవ్ టీవీ",
 "Movies": "సినిమాలు",
@@ -616,6 +626,7 @@
 "Reality Favourites": "ఇష్టమైన రియాలిటీ షోలు"
 },
 "templates": {
+"{} of {}": "{}లో {}",
 "Season {}": "సీజన్ {}",
 "{} min left": "{} నిమిషాలు మిగిలాయి",
 "{}m left": "{} ని మిగిలాయి",

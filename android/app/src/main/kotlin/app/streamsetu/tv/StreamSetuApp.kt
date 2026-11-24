@@ -582,9 +582,11 @@ class AppContainer @Inject constructor(
     }
 
     /** Reads a playlist, then its guide (a guide that cannot be read never fails the playlist). */
-    suspend fun syncWithGuide(sourceId: String): SyncService.Result {
-        val r = sync.sync(sourceId)
+    suspend fun syncWithGuide(sourceId: String, onProgress: (app.streamsetu.core.sync.SyncProgress) -> Unit = {}): SyncService.Result {
+        fill.syncStarted()
+        val r = try { sync.sync(sourceId) { p -> fill.report(p); onProgress(p) } } finally { fill.syncEnded() }
         featuredCache = null
+        fillIdentitiesInBackground()          // a first read leaves the identity rows to this fill
         runCatching {
             val src = sources.get(sourceId) ?: return@runCatching
             val fallback = if (src.type == SourceType.XTREAM) {
@@ -594,6 +596,31 @@ class AppContainer @Inject constructor(
             epg.refresh(src, fallback, resolver.headers(src.id))
         }
         return r
+    }
+
+    private val identityFilling = java.util.concurrent.atomic.AtomicBoolean(false)
+    /** Whether the open library is still being filled (a read or the identity fill is running): Movies and Series show a filling state, not "no titles", while it is. */
+    val fill = LibraryFill()
+
+    /** Titles without an identity row (read before the table existed, or by a first read of a playlist) get one in the background: 2,000 at a time, one job at a time, only while the remote is still, resumed where it stopped. */
+    fun fillIdentitiesInBackground() {
+        if (!identityFilling.compareAndSet(false, true)) return
+        appScope.launch(Dispatchers.IO) {
+            fill.identityRunning(true)
+            try {
+                runCatching {
+                    val identity = app.streamsetu.core.data.repo.smartmix.IdentityStore(db)
+                    var filled = 0
+                    while (true) {
+                        InputClock.awaitIdle(2000)
+                        val n = MaintenanceGate.lock.withLock { identity.backfillStep() }
+                        if (n == 0) break
+                        filled += n; kotlinx.coroutines.delay(60)
+                    }
+                    if (filled > 0) { app.streamsetu.core.data.repo.smartmix.SourceTwins.recompute(db); identity.announceBackfill(filled); smartMix.invalidate() }
+                }
+            } finally { identityFilling.set(false); fill.identityRunning(false) }
+        }
     }
 
     private var guideAt = 0L
@@ -757,18 +784,8 @@ class StreamSetuApp : Application(), coil.ImageLoaderFactory {
             // The search word list is warmed when the remote has been still for a while, and never at the same time as another background job (one at a time, so the screen is not starved).
             InputClock.awaitIdle(5000)
             MaintenanceGate.lock.withLock { runCatching { container.globalSearch.warmUp() } }
-            // Titles read before the identity table existed get their identity in the background: 2,000 at a time, one job at a time, only while the remote is still, and resumed where it stopped.
-            runCatching {
-                val identity = app.streamsetu.core.data.repo.smartmix.IdentityStore(container.db)
-                var filled = 0
-                while (true) {
-                    InputClock.awaitIdle(2000)
-                    val n = MaintenanceGate.lock.withLock { identity.backfillStep() }
-                    if (n == 0) break
-                    filled += n; kotlinx.coroutines.delay(60)
-                }
-                if (filled > 0) { app.streamsetu.core.data.repo.smartmix.SourceTwins.recompute(container.db); identity.announceBackfill(filled); container.smartMix.invalidate() }
-            }
+            // Titles read before the identity table existed get their identity in the background (see AppContainer.fillIdentitiesInBackground).
+            container.fillIdentitiesInBackground()
         }
         CrashReporter.install(this, runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?")
         container.appScope.launch {

@@ -23,12 +23,12 @@ import app.streamsetu.tv.ui.theme.Tokens
  * 12 dp from header to tiles, 12 dp between tiles), a subtitle line of at least 30 dp, two reserved caption lines and one quiet line under each tile. The soft pulse stops with reduced motion.
  */
 @Composable
-fun ShelfSkeleton(tileWidth: Dp = Tokens.posterWidth, tiles: Int = 6, inset: Dp = 16.dp, modifier: Modifier = Modifier) {
+fun ShelfSkeleton(tileWidth: Dp = Tokens.posterWidth, tiles: Int = 6, inset: Dp = Tokens.safeHorizontal, modifier: Modifier = Modifier) {
     val pulse = if (reducedMotion()) null else rememberInfiniteTransition(label = "shelf-skeleton").animateFloat(0.55f, 1f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "pulse")
     val bar = Modifier.clip(RoundedCornerShape(6.dp)).background(Tokens.card)
     Column(modifier.fillMaxWidth().padding(bottom = HomeLayoutTokens.ROW_GAP.dp).alpha(pulse?.value ?: 1f)) {
-        Box(bar.padding(horizontal = inset).width(160.dp).height(18.dp))
-        Box(Modifier.heightIn(min = HomeLayoutTokens.SUBTITLE_MIN_HEIGHT.dp).padding(top = 6.dp)) { Box(bar.width(110.dp).height(12.dp)) }
+        Box(Modifier.padding(horizontal = inset)) { Box(bar.width(160.dp).height(18.dp)) }          // the margin is outside the bar, so the shelf starts where real shelves start
+        Box(Modifier.heightIn(min = HomeLayoutTokens.SUBTITLE_MIN_HEIGHT.dp).padding(start = inset, top = 6.dp)) { Box(bar.width(110.dp).height(12.dp)) }
         Spacer(Modifier.height(HomeLayoutTokens.HEADER_TO_TILES.dp))
         Row(Modifier.padding(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(HomeLayoutTokens.TILE_GAP.dp)) {
             repeat(tiles) {
@@ -41,6 +41,6 @@ fun ShelfSkeleton(tileWidth: Dp = Tokens.posterWidth, tiles: Int = 6, inset: Dp 
     }
 }
 
-/** The three skeleton rows shown while Home loads. */
+/** The skeleton rows shown while Home loads (all of them when nothing is there yet; one when only the last shelf is pending). */
 @Composable
-fun HomeSkeleton(modifier: Modifier = Modifier) = Column(modifier) { repeat(HomeLayoutTokens.SKELETON_ROWS) { ShelfSkeleton() } }
+fun HomeSkeleton(modifier: Modifier = Modifier, rows: Int = HomeLayoutTokens.SKELETON_ROWS) = Column(modifier) { repeat(rows) { ShelfSkeleton() } }

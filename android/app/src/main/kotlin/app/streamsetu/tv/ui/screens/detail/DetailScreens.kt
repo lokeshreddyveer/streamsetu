@@ -7,7 +7,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.lazy.rememberLazyListState
 import app.streamsetu.tv.ui.theme.ui
-import androidx.compose.ui.focus.focusRestorer
+import app.streamsetu.tv.ui.components.safeFocusRestorer
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp
@@ -153,7 +153,7 @@ fun MovieDetailScreen(movie0: Movie, c: AppContainer, nav: Navigator) {
                 Column(pad) {
                     SectionTitle("More like this")
                     val firstRelated = remember { FocusRequester() }
-                    LazyRow(Modifier.bleedStart(24.dp).focusRestorer { firstRelated }, horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(start = 32.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) { itemsIndexed(related, key = { _, r -> r.item.id }) { idx, r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, itemId = m.id, subtitle = r.reason, width = 150.ui, focusRequester = if (idx == 0) firstRelated else null) } }
+                    LazyRow(Modifier.bleedStart(24.dp).safeFocusRestorer { firstRelated }, horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(start = 32.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) { itemsIndexed(related, key = { _, r -> r.item.id }) { idx, r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.MovieDetail(m)) }, itemId = m.id, subtitle = r.reason, width = 150.ui, focusRequester = if (idx == 0) firstRelated else null) } }
                 }
             }
         }
@@ -294,7 +294,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                 Column(pad) {
                     SectionTitle("More like this")
                     val firstSimilar = remember { FocusRequester() }
-                    LazyRow(Modifier.bleedStart(24.dp).focusRestorer { firstSimilar }, horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(start = 32.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) { itemsIndexed(similar, key = { _, r -> r.item.id }) { idx, r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.SeriesDetail(m)) }, itemId = m.id, subtitle = r.reason, width = 150.ui, focusRequester = if (idx == 0) firstSimilar else null) } }
+                    LazyRow(Modifier.bleedStart(24.dp).safeFocusRestorer { firstSimilar }, horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(start = 32.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) { itemsIndexed(similar, key = { _, r -> r.item.id }) { idx, r -> val m = r.item; PosterCard(m.title, m.posterUrl, { nav.close(); nav.open(Overlay.SeriesDetail(m)) }, itemId = m.id, subtitle = r.reason, width = 150.ui, focusRequester = if (idx == 0) firstSimilar else null) } }
                 }
             }
         }
@@ -322,7 +322,7 @@ fun SeriesDetailScreen(vm: SeriesDetailViewModel, c: AppContainer, nav: Navigato
                 Column(Modifier.fillMaxHeight().width(520.ui).graphicsLayer { alpha = panelIn; translationX = (1f - panelIn) * 60.dp.toPx() }.padding(end = Tokens.safeHorizontal, top = Tokens.safeVertical, bottom = Tokens.safeVertical), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Label("Season " + (season ?: ""), Tokens.pageTitle, Tokens.text, FontWeight.Bold)
                     Label("${sheetEps.size} episodes", Tokens.small, Tokens.textSecondary)
-                    LazyColumn(Modifier.weight(1f).focusRestorer(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 6.dp)) {
+                    LazyColumn(Modifier.weight(1f).safeFocusRestorer(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 6.dp)) {
                         itemsIndexed(sheetEps, key = { _, e -> e.id }) { idx, e ->
                             val p = progress[e.id]
                             Focusable({ episodesOpen = false; playEp(e) }, Modifier.then(if (e.id == restoreEpisodeId) Modifier.focusRequester(episodeTarget) else if (idx == 0 && restoreEpisodeId == null) Modifier.focusRequester(sheetFirst) else Modifier).fillMaxWidth(), scaleOnFocus = 1.02f, hairline = true, onLongClick = { episodeMenu = e },

@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
 /** (The text index, search_fts, is a virtual table made outside Room, so dropped-table checking is off.) */
 class DatabaseMigrationTests {
     @get:Rule val helper = MigrationTestHelper(InstrumentationRegistry.getInstrumentation(), AppDatabase::class.java)
-    private val current = 17          // 17 gives the title sort key its accents (the schema is the same as 16); 16 adds the guide hub tables; 15 makes the two TMDB tables Room tables; 14 adds the rating checks; 13 adds the metadata hub tables; 12 adds the lower-case title and year indexes (11 added the canonical identity and Smart Mix tables)
+    private val current = 18          // 18 makes the insert trigger run only for a row saved without a sort key (same schema as 17); 17 gives the title sort key its accents (the schema is the same as 16); 16 adds the guide hub tables; 15 makes the two TMDB tables Room tables; 14 adds the rating checks; 13 adds the metadata hub tables; 12 adds the lower-case title and year indexes (11 added the canonical identity and Smart Mix tables)
 
     private fun SupportSQLiteDatabase.count(table: String) = query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); it.getInt(0) }
 
@@ -50,6 +50,24 @@ class DatabaseMigrationTests {
         assertEquals("eclair", key("n1"))
         // Every key the SQL gives is the key Kotlin gives (so a page cursor equals the stored column).
         for (t in listOf("Zebra", "Émile", "Ørsted", "Apple", "Straße", "తెలుగు")) assertEquals(app.streamsetu.core.model.SortKey.of(t), key("m${listOf("Zebra", "Émile", "Ørsted", "Apple", "Straße", "తెలుగు").indexOf(t)}"))
+        db.close()
+    }
+
+    @Test fun versionSeventeenToEighteenKeepsEveryRowAndKeyAndMakesTheInsertTriggerRunOnlyWithoutAKey() {
+        val titles = listOf("Zebra", "Émile", "Ørsted", "Straße", "తెలుగు")
+        helper.createDatabase("v17", 17).apply {
+            execSQL("INSERT INTO sources (id, name, type, address, enabled, lastSyncAt, status, sortOrder, draft, channelCount, movieCount, seriesCount, lastOpenedAt) VALUES ('s','S','XTREAM','x',1,0,'OK',0,0,0,0,0,0)")
+            for ((i, t) in titles.withIndex()) execSQL("INSERT INTO movies (id, sourceId, categoryId, title, titleSort, streamRef, addedAt) VALUES ('m$i','s','c','$t','${app.streamsetu.core.model.SortKey.of(t)}','r',$i)")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate("v17", 18, true, *AppDatabase.MIGRATIONS)
+        fun key(id: String) = db.query("SELECT titleSort FROM movies WHERE id = '$id'").use { it.moveToFirst(); it.getString(0) }
+        for ((i, t) in titles.withIndex()) assertEquals(app.streamsetu.core.model.SortKey.of(t), key("m$i"))          // the saved keys are untouched
+        assertEquals(titles.size, db.count("movies"))
+        db.execSQL("INSERT INTO movies (id, sourceId, categoryId, title, streamRef, addedAt) VALUES ('n1','s','c','Ünal','r',9)")
+        assertEquals("unal", key("n1"))          // no key given: the trigger makes it
+        db.execSQL("INSERT INTO movies (id, sourceId, categoryId, title, titleSort, streamRef, addedAt) VALUES ('n2','s','c','Ünal','given','r',9)")
+        assertEquals("given", key("n2"))          // a key given with the row is kept
         db.close()
     }
 

@@ -24,6 +24,8 @@ class IdentityStore(private val db: AppDatabase) {
     /** One pass over one kind of one playlist, used by the catalog write: [apply] for each batch written, [removed] for rows that are gone, [finish] at the end. */
     class Pass internal constructor(private val store: IdentityStore, val sourceId: String, val kind: String, private val known: HashMap<String, Long>, private val categoryNames: Map<String, String>) {
         private var added = 0; private var changed = 0; private var removed = 0
+        /** How many rows of this playlist and kind already have an identity: zero for a first read. */
+        val knownCount: Int get() = known.size
         private val addedIds = ArrayList<String>(); private val changedIds = ArrayList<String>(); private val removedIds = ArrayList<String>()
 
         /** Derives and saves the rows of [rows] that are new or whose source words changed. Called inside the transaction that writes the same rows. */

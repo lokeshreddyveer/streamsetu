@@ -2,6 +2,7 @@ package app.streamsetu.core.sync
 
 import app.streamsetu.core.data.repo.toModel
 import app.streamsetu.core.data.db.*
+import app.streamsetu.core.data.db.PersonEntry
 import app.streamsetu.core.data.repo.toEntity
 import app.streamsetu.core.data.repo.SourceRepository
 import app.streamsetu.core.model.*
@@ -10,6 +11,7 @@ import app.streamsetu.core.net.Http
 import app.streamsetu.core.parse.*
 import app.streamsetu.core.security.CredentialStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -22,7 +24,8 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
 
     data class Result(val channels: Int, val movies: Int, val series: Int)
 
-    suspend fun sync(sourceId: String): Result = withContext(Dispatchers.IO) {
+    /** [onProgress] is told what is being done and how far (see [SyncProgress]); it is called from a background thread. */
+    suspend fun sync(sourceId: String, onProgress: (SyncProgress) -> Unit = {}): Result = withContext(Dispatchers.IO + ProgressSink(onProgress)) {
         val source = sources.get(sourceId) ?: error("That playlist no longer exists.")
         sources.setStatus(sourceId, SyncStatus.SYNCING, source.lastSyncAt)
         try {
@@ -208,10 +211,14 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         val user = s.username.orEmpty()
         val pass = credentials.load(SourceRepository.credentialRef(s.id)).orEmpty()
         val host = s.address
+        val report: (SyncProgress) -> Unit = kotlin.coroutines.coroutineContext[ProgressSink]?.report ?: { _ -> }
+        report(SyncProgress(SyncProgress.Stage.SIGNING_IN, 0, 0))
         /** The items of a list, made one at a time as they are read, so the whole answer is never held in memory at once. */
-        fun <T : Any> read(action: String, make: (Int, JsonObject) -> T?): List<T> {
-            val out = ArrayList<T>(); var i = 0
-            Http.get(Xtream.api(host, user, pass, action), xtreamAgent(s)) { resp -> Xtream.forEachObject(resp.body!!.byteStream()) { o -> make(i++, o)?.let { out += it } } }
+        fun <T : Any> read(action: String, stage: SyncProgress.Stage? = null, make: (Int, JsonObject) -> T?): List<T> {
+            val out = ArrayList<T>(); var i = 0; val t0 = System.nanoTime()
+            if (stage != null) report(SyncProgress(stage, 0, 0))
+            Http.get(Xtream.api(host, user, pass, action), xtreamAgent(s)) { resp -> Xtream.forEachObject(resp.body!!.byteStream()) { o -> make(i++, o)?.let { out += it }; if (stage != null && i % 1000 == 0) report(SyncProgress(stage, i, 0)) } }
+            if (stage != null) { report(SyncProgress(stage, out.size, out.size)); SyncLog.stage(stage.name, out.size, (System.nanoTime() - t0) / 1_000_000) }
             return out
         }
         fun fetch(action: String) = read(action) { _, o -> o }
@@ -232,37 +239,43 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
         val radioCategories = categories.filter { it.kind == ContentKind.CHANNEL.name && it.name.contains("radio", ignoreCase = true) }.map { it.id }.toSet()
          cats("get_vod_categories", ContentKind.MOVIE); cats("get_series_categories", ContentKind.SERIES)
 
-        val channels = read("get_live_streams") { i, o ->
+        val channels = read("get_live_streams", SyncProgress.Stage.READING_CHANNELS) { i, o ->
             val id = o.str("stream_id") ?: return@read null
             if (ChannelFilter.isDivider(o.str("name").orEmpty())) return@read null
             ChannelEntity("${s.id}:ch:$id", s.id, o.str("category_id")?.let { "${s.id}:CHANNEL:$it" }, o.str("name") ?: "Channel $id", o.int("num"),
                 o.str("stream_icon"), "live:$id:m3u8", o.str("epg_channel_id"), o.int("tv_archive_duration") ?: 0, i, o.str("added")?.toLongOrNull() ?: 0,
                 radioCategories.contains("${s.id}:CHANNEL:" + o.str("category_id")))
         }
-        val movies = read("get_vod_streams") { _, o ->
+        val movies = read("get_vod_streams", SyncProgress.Stage.READING_MOVIES) { _, o ->
             val id = o.str("stream_id") ?: return@read null
             MovieEntity("${s.id}:mv:$id", s.id, o.str("category_id")?.let { "${s.id}:MOVIE:$it" }, o.str("name") ?: "Movie $id", o.str("stream_icon"),
                 year(o.str("year") ?: o.str("releaseDate")), o.str("rating"), null, "movie:$id:${o.str("container_extension") ?: "mp4"}", o.str("added")?.toLongOrNull() ?: 0)
         }
-        val seriesList = ArrayList<JsonObject>()
-        val series = read("get_series") { _, o ->
-            seriesList += o
+        // Only the cast and directors of each series are kept (not the whole JSON object), so 18,000 series do not stay in memory until the end.
+        val people = ArrayList<PersonEntry>()
+        val series = read("get_series", SyncProgress.Stage.READING_SERIES) { _, o ->
             val id = o.str("series_id") ?: return@read null
+            val names = splitNames(o.str("cast")) + splitNames(o.str("director"))
+            if (names.isNotEmpty()) people += PersonEntry("${s.id}:sr:$id", "SERIES", s.id, names)
             SeriesEntity("${s.id}:sr:$id", s.id, o.str("category_id")?.let { "${s.id}:SERIES:$it" }, o.str("name") ?: "Series $id", o.str("cover"),
                 (o["backdrop_path"] as? kotlinx.serialization.json.JsonArray)?.firstOrNull()?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content },
                 year(o.str("year") ?: o.str("releaseDate")), o.str("rating"), o.str("plot"), id, o.str("last_modified")?.toLongOrNull() ?: 0)
         }
         android.util.Log.i("Sync", "xtream ${s.name}: ${categories.size} folders, ${channels.size} channels, ${movies.size} movies, ${series.size} series")
         replace(s.id, categories, channels, movies, series)
-        // A series list already names the cast and directors: they are kept so a person can be searched for.
+        // A series list already names the cast and directors: they are kept so a person can be searched for. Saved in steps of [PEOPLE_STEP] titles, each one transaction (not one per series).
         runCatching {
             val raw = db.openHelper.writableDatabase
-            seriesList.forEach { o ->
-                val id = o.str("series_id") ?: return@forEach
-                val names = splitNames(o.str("cast")) + splitNames(o.str("director"))
-                if (names.isNotEmpty()) app.streamsetu.core.data.db.PeopleIndex.save(raw, "${s.id}:sr:$id", "SERIES", s.id, names, app.streamsetu.core.data.repo.SearchText::normalize)
+            val t0 = System.nanoTime(); var done = 0
+            report(SyncProgress(SyncProgress.Stage.SAVING_PEOPLE, 0, people.size))
+            for (part in people.chunked(PEOPLE_STEP)) {
+                kotlin.coroutines.coroutineContext.ensureActive()
+                app.streamsetu.core.data.db.PeopleIndex.saveAll(raw, part, app.streamsetu.core.data.repo.SearchText::normalize)
+                done += part.size; report(SyncProgress(SyncProgress.Stage.SAVING_PEOPLE, done, people.size))
+                kotlinx.coroutines.delay(8)
             }
-        }
+            if (people.isNotEmpty()) SyncLog.stage(SyncProgress.Stage.SAVING_PEOPLE.name, people.size, (System.nanoTime() - t0) / 1_000_000)
+        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
         return Result(channels.size, movies.size, series.size)
     }
 
@@ -413,9 +426,10 @@ class SyncService(private val db: AppDatabase, private val sources: SourceReposi
 
     private fun year(s: String?) = s?.take(4)?.toIntOrNull()
 
-    private val store = CatalogStore(db)
+    private val store = CatalogStore(db, deferFirstIdentity = true)          // a first read leaves the identity rows to the background fill
+    private companion object { const val PEOPLE_STEP = 500 }
 
-    private suspend fun replace(sourceId: String, cats: List<CategoryEntity>, ch: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>) = store.replace(sourceId, cats, ch, mv, sr)
+    private suspend fun replace(sourceId: String, cats: List<CategoryEntity>, ch: List<ChannelEntity>, mv: List<MovieEntity>, sr: List<SeriesEntity>) = store.replace(sourceId, cats, ch, mv, sr, kotlin.coroutines.coroutineContext[ProgressSink]?.report ?: { _ -> })
 }
 
 /** Providers put divider rows in the channel list ("####### Bulgaria #######", "=== SPORTS ==="). They are not streams. */

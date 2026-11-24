@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
+import app.streamsetu.tv.ui.components.safeFocusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -40,6 +40,8 @@ fun TvFolderRows(
     onOpenFolder: (FolderRow) -> Unit, onOpenCard: (Card) -> Unit, onOpenChannel: (app.streamsetu.core.model.Channel) -> Unit,
     /** Where the remote lands when it enters the page: the first tile of the first row. */
     entry: FocusRequester? = null,
+    /** Drawn above the placeholder rows while there are no rows yet (the "library is being filled" notice; it draws nothing when nothing is being filled). */
+    emptyNotice: (@Composable () -> Unit)? = null,
 ) {
     val rows by model.rows.collectAsState()
     val total by model.total.collectAsState()
@@ -47,7 +49,8 @@ fun TvFolderRows(
     // The end of the list is near: the next 20 folders.
     LaunchedEffect(listState, rows.size) { snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }.collect { last -> if (last >= rows.size - 4) model.more() } }
     LazyColumn(modifier.fillMaxSize().railOnLeft(), state = listState, contentPadding = PaddingValues(top = 6.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (rows.isEmpty()) items(4, key = { "sk$it" }, contentType = { "skeleton-row" }) { SkeletonRow(posterWidth) }
+        if (rows.isEmpty() && emptyNotice != null) item(key = "empty-notice", contentType = "notice") { emptyNotice() }
+        if (rows.isEmpty()) items(3, key = { "sk$it" }, contentType = { "skeleton-row" }) { SkeletonRow(posterWidth) }
         items(rows, key = { it.key }, contentType = { "folder-row" }) { row -> TvFolderRow(model, kind, row, posterWidth, dense, onOpenFolder, onOpenCard, onOpenChannel, if (row.id == rows.firstOrNull()?.id) entry else null) }
         if (rows.isNotEmpty() && rows.size < total) item(key = "more-rows", contentType = "loading") { SkeletonRow(posterWidth) }
     }
@@ -81,7 +84,7 @@ private fun TvFolderRow(
         val restore = remember { FocusRequester() }
         val rowState = model.rowState(row.id)
         val wantsFocus = model.restoreFocus && model.focused?.first == row.id
-        LazyRow(Modifier.railOnLeft().focusRestorer(), state = rowState, horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = PaddingValues(start = Tokens.safeHorizontal, end = 24.dp, top = 8.dp, bottom = 8.dp)) {
+        LazyRow(Modifier.railOnLeft().safeFocusRestorer(), state = rowState, horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = PaddingValues(start = Tokens.safeHorizontal, end = 24.dp, top = 8.dp, bottom = 8.dp)) {
             when (tiles) {
                 null -> items(6, key = { "sk$it" }, contentType = { "skeleton" }) { Box(Modifier.width(posterWidth).aspectRatio(2f / 3f).clip(RoundedCornerShape(Tokens.radius)).background(Tokens.card)) }
                 is RowTiles.Titles -> {
@@ -97,7 +100,7 @@ private fun TvFolderRow(
                         val mine = wantsFocus && model.focused?.second == t.channel.id
                         ChannelTile(t, { model.focused = row.id to t.channel.id; onOpenChannel(t.channel) }, if (t.channel.id == (tiles as RowTiles.Channels).items.first().channel.id && entry != null) Modifier.focusRequester(entry) else if (mine) Modifier.focusRequester(restore) else Modifier, onFocus = { if (it) model.focused = row.id to t.channel.id })
                     }
-                    item(key = MORE, contentType = "more") { MoreTile("More", Icons.Filled.ChevronRight, 180.dp, dense, { model.focused = row.id to MORE; onOpenFolder(row) }, if (wantsFocus && model.focused?.second == MORE) Modifier.focusRequester(restore) else Modifier, tall = false) }
+                    item(key = MORE, contentType = "more") { MoreTile("More", Icons.Filled.ChevronRight, ChannelTileWidth, dense, { model.focused = row.id to MORE; onOpenFolder(row) }, if (wantsFocus && model.focused?.second == MORE) Modifier.focusRequester(restore) else Modifier, tall = false) }
                 }
             }
         }
@@ -126,7 +129,7 @@ internal fun TvFolderHeader(row: FolderRow, onOpenFolder: (FolderRow) -> Unit) {
 
 @Composable
 internal fun MoreTile(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, width: Dp, dense: Boolean, onClick: () -> Unit, modifier: Modifier, tall: Boolean = true) {
-    Focusable(onClick, modifier.width(width).then(if (tall) Modifier.aspectRatio(2f / 3f) else Modifier.height(96.dp)).semantics { contentDescription = if (label == "More") "More titles in this folder" else label }, container = Tokens.card, scaleOnFocus = if (dense) 1.0f else 1.04f, browse = true) { _ ->
+    Focusable(onClick, modifier.width(width).then(if (tall) Modifier.aspectRatio(2f / 3f) else Modifier.height(ChannelTileHeight)).semantics { contentDescription = if (label == "More") "More titles in this folder" else label }, container = Tokens.card, scaleOnFocus = if (dense) 1.0f else 1.04f, browse = true) { _ ->
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Icon(icon, Tokens.text, 34.dp)
             Label(label, Tokens.body, Tokens.text, FontWeight.SemiBold)
@@ -134,17 +137,26 @@ internal fun MoreTile(label: String, icon: androidx.compose.ui.graphics.vector.I
     }
 }
 
+/** The size of a channel tile in a row (the same on every row, so the rows line up). */
+internal val ChannelTileWidth = 264.dp
+internal val ChannelTileHeight = 104.dp
+
+/**
+ * A channel in a row: the logo (or a styled initials badge), the number and the name, and what is on now with a thin progress bar when the guide has it.
+ * A channel with no guide data shows nothing in place of the old "No guide" text on every card; the layout does not change.
+ */
 @Composable
 internal fun ChannelTile(t: ChannelTileData, onClick: () -> Unit, modifier: Modifier, onFocus: (Boolean) -> Unit) {
-    Focusable(onClick, modifier.width(220.dp).height(96.dp), container = Tokens.card, scaleOnFocus = 1.0f, browse = true, onFocus = onFocus) { _ ->
-        Column(Modifier.fillMaxSize().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChannelLogo(t.channel.logoUrl, t.channel.name, 30.dp)
-                Label(t.channel.name, Tokens.small, Tokens.text, FontWeight.Medium, maxLines = 1)
-            }
-            Label(t.now ?: "No guide", Tokens.caption, Tokens.textSecondary, maxLines = 1)
-            t.progress?.let { p ->
-                Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x33FFFFFF))) { Box(Modifier.fillMaxHeight().fillMaxWidth(p).background(Tokens.accent)) }
+    Focusable(onClick, modifier.width(ChannelTileWidth).height(ChannelTileHeight), container = Tokens.card, scaleOnFocus = 1.0f, browse = true, onFocus = onFocus) { _ ->
+        Row(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ChannelLogo(t.channel.logoUrl, t.channel.name, 48.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Label(t.channel.name, Tokens.row, Tokens.text, FontWeight.SemiBold, maxLines = if (t.now == null) 2 else 1)
+                t.channel.number?.let { n -> if (t.now == null) Label("$n", Tokens.small, Tokens.textTertiary, maxLines = 1) }
+                t.now?.let { now -> Label(now, Tokens.small, Tokens.textSecondary, maxLines = 1) }
+                t.progress?.takeIf { t.now != null }?.let { p ->
+                    Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x33FFFFFF))) { Box(Modifier.fillMaxHeight().fillMaxWidth(p).background(Tokens.accent)) }
+                }
             }
         }
     }

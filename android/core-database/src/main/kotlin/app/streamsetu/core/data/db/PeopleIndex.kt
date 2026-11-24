@@ -6,6 +6,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * Who is in each movie and series (cast and directors), so a person can be searched for. It lives beside the Room tables and is managed here
  * directly, like the text index. [normalize] turns a name into what is compared (lower case, no accents or punctuation).
  */
+/** One title and the people named for it (see [PeopleIndex.saveAll]). */
+class PersonEntry(val itemId: String, val kind: String, val sourceId: String, val names: List<String>)
+
 object PeopleIndex {
     fun create(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS people (itemId TEXT NOT NULL, kind TEXT NOT NULL, sourceId TEXT NOT NULL, name TEXT NOT NULL, norm TEXT NOT NULL, PRIMARY KEY(itemId, norm))")
@@ -28,6 +31,29 @@ object PeopleIndex {
             db.execSQL("INSERT OR REPLACE INTO people_done(itemId, sourceId, doneAt) VALUES (?, ?, ?)", arrayOf(itemId, sourceId, System.currentTimeMillis()))
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
+    }
+
+    /** The people of many titles in ONE transaction with reused statements: the same rows as [save] for each title, without a transaction (and a commit) per title. */
+    fun saveAll(db: SupportSQLiteDatabase, entries: List<PersonEntry>, normalize: (String) -> String) {
+        if (entries.isEmpty()) return
+        val del = db.compileStatement("DELETE FROM people WHERE itemId = ?")
+        val ins = db.compileStatement("INSERT OR IGNORE INTO people(itemId, kind, sourceId, name, norm) VALUES (?, ?, ?, ?, ?)")
+        val done = db.compileStatement("INSERT OR REPLACE INTO people_done(itemId, sourceId, doneAt) VALUES (?, ?, ?)")
+        db.beginTransaction()
+        try {
+            val now = System.currentTimeMillis()
+            for (e in entries) {
+                del.clearBindings(); del.bindString(1, e.itemId); del.executeUpdateDelete()
+                val seen = HashSet<String>()
+                for (name in e.names.take(40)) {
+                    val n = normalize(name)
+                    if (n.length < 3 || !seen.add(n)) continue
+                    ins.clearBindings(); ins.bindString(1, e.itemId); ins.bindString(2, e.kind); ins.bindString(3, e.sourceId); ins.bindString(4, name); ins.bindString(5, n); ins.executeInsert()
+                }
+                done.clearBindings(); done.bindString(1, e.itemId); done.bindString(2, e.sourceId); done.bindLong(3, now); done.executeInsert()
+            }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction(); del.close(); ins.close(); done.close() }
     }
 
     fun markDone(db: SupportSQLiteDatabase, itemId: String, sourceId: String) {

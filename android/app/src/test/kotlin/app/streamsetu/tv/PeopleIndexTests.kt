@@ -5,6 +5,7 @@ import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import app.streamsetu.core.data.db.PeopleIndex
+import app.streamsetu.core.data.db.PersonEntry
 import app.streamsetu.core.data.repo.SearchText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -83,5 +84,22 @@ class PeopleIndexTests {
         PeopleIndex.save(db, "s1:mv:1", "MOVIE", "s1", listOf("Keanu Reeves"), norm)
         PeopleIndex.clear(db, "s1")
         assertTrue(find("keanu").isEmpty())
+    }
+
+    @Test fun savingManyTitlesAtOnceGivesTheSameRowsAsSavingThemOneByOne() {
+        val entries = listOf(
+            PersonEntry("s1:mv:1", "MOVIE", "s1", listOf("Keanu Reeves", "keanu  reeves", "Al", "Chad Stahelski")),          // a repeat and a name that is too short are left out
+            PersonEntry("s1:mv:2", "MOVIE", "s1", listOf("Carrie-Anne Moss")),
+            PersonEntry("s1:sr:9", "SERIES", "s1", (1..60).map { "Person Number $it" }),          // at most forty names
+        )
+        fun dump() = db.query("SELECT itemId, kind, sourceId, name, norm FROM people ORDER BY itemId, norm").use { c -> buildList { while (c.moveToNext()) add((0 until 5).joinToString("|") { c.getString(it) }) } } to
+            db.query("SELECT itemId, sourceId FROM people_done ORDER BY itemId").use { c -> buildList { while (c.moveToNext()) add(c.getString(0) + "|" + c.getString(1)) } }
+        PeopleIndex.saveAll(db, entries, norm); val batched = dump()
+        db.execSQL("DELETE FROM people"); db.execSQL("DELETE FROM people_done")
+        for (e in entries) PeopleIndex.save(db, e.itemId, e.kind, e.sourceId, e.names, norm); val single = dump()
+        assertEquals(single, batched)
+        assertEquals(3, batched.second.size); assertEquals(40, batched.first.count { it.startsWith("s1:sr:9|") })
+        PeopleIndex.saveAll(db, listOf(PersonEntry("s1:mv:1", "MOVIE", "s1", listOf("Someone Else"))), norm)          // saving again replaces what was known about that title
+        assertEquals(setOf("s1:mv:1"), find("someone")); assertTrue(find("keanu").isEmpty())
     }
 }

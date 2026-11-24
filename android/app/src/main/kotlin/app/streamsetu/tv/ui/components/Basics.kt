@@ -545,7 +545,7 @@ fun RatingBadge(value: Double, modifier: Modifier = Modifier, small: Boolean = f
     Row(modifier.background(Tokens.chipScrim, RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp).semantics(mergeDescendants = true) { contentDescription = "Rated $text out of 10" },
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         androidx.compose.foundation.Image(Icons.Filled.Star, null, Modifier.size(if (small) 9.dp else 11.dp), colorFilter = ColorFilter.tint(Tokens.gold))
-        Label(text, if (small) 10.sp else Tokens.caption, Tokens.text, FontWeight.SemiBold, maxLines = 1)
+        Label(text, if (small) 11.sp else Tokens.caption, Tokens.text, FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -648,12 +648,27 @@ fun LandscapeCard(title: String, subtitle: String?, imageUrl: String?, onClick: 
     }
 }
 
+/** Up to two capital letters for a channel with no logo: a provider prefix such as "FR|" or "UK:" is skipped, then the first letters of the first two words. */
+internal fun channelInitials(name: String): String {
+    val cleaned = name.replace(Regex("^\\s*[A-Za-z0-9]{1,4}\\s*[|:\\-]+\\s*"), "").ifBlank { name }
+    val words = cleaned.split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotEmpty() }
+    return when {
+        words.isEmpty() -> "?"
+        words.size == 1 -> words[0].take(2).uppercase()
+        else -> (words[0].take(1) + words[1].take(1)).uppercase()
+    }
+}
+
+/** A calm tint per channel name (one of a few hues at low strength, over the card colour), so the badges differ but never shout. */
+internal fun channelBadgeHue(name: String): Float = (name.hashCode().toLong() and 0x7fffffff).rem(6).toInt() * 60f
+
 @Composable
 fun ChannelLogo(url0: String?, name: String, size: Dp = 30.dp) {
     // A channel with no logo of its own may have one from the public channel database (an overlay; the playlist's own logo always wins).
     val url = if (url0.isNullOrBlank()) app.streamsetu.core.data.guidehub.GuideOverlay.logoForName(name) else url0
-    Box(Modifier.size(size).clip(RoundedCornerShape(Tokens.radius)).background(Tokens.elevated), Alignment.Center) {
-        if (url.isNullOrBlank()) Label(name.take(2).uppercase(), Tokens.row, Tokens.textTertiary, FontWeight.Bold)
+    val badge = androidx.compose.ui.graphics.Color.hsv(channelBadgeHue(name), 0.35f, 0.42f)
+    Box(Modifier.size(size).clip(RoundedCornerShape(Tokens.radiusSmall)).background(if (url.isNullOrBlank()) badge.copy(alpha = 0.55f) else Tokens.elevated), Alignment.Center) {
+        if (url.isNullOrBlank()) Label(channelInitials(name), (size.value * 0.38f).coerceIn(12f, 22f).sp, Tokens.text, FontWeight.Bold)
         else AsyncImage(rememberArtwork(url, size - 10.dp, 1 to 1, 0.dp), name, Modifier.fillMaxSize().padding(5.dp), contentScale = ContentScale.Fit)
     }
 }

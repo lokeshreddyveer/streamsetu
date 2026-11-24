@@ -340,12 +340,7 @@ private fun SetupContent(type: SourceType, draftId: String?, nav: Navigator, vm:
             form = form.copy(address = uri.toString(), name = form.name.ifBlank { Uri.decode(uri.lastPathSegment.orEmpty()).substringAfterLast(':').substringAfterLast('/') })
         }
     }
-    val canTest = when (kind) {
-        SourceType.XTREAM, SourceType.TVHEADEND, SourceType.JELLYFIN, SourceType.EMBY -> form.address.isNotBlank() && form.user.isNotBlank() && form.password.isNotBlank()
-        SourceType.PLEX -> form.address.isNotBlank() && form.password.isNotBlank()
-        SourceType.STALKER -> form.address.isNotBlank() && Regex("""^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$""").matches(form.user.trim())
-        else -> form.address.isNotBlank()
-    }
+    val canTest = canTestSource(kind, form.address, form.user, form.password)
 
     val passed = test as? LibraryViewModel.Test.Passed
     if (passed != null) {
@@ -470,8 +465,10 @@ private fun SetupContent(type: SourceType, draftId: String?, nav: Navigator, vm:
                     if (reduced) Label("Connecting…", Tokens.row, Tokens.text, FontWeight.SemiBold)
                     else { Label("Connecting", Tokens.row, Tokens.text, FontWeight.SemiBold); DotWave(look.focus, 4.dp, Modifier.padding(bottom = 3.dp)) }
                 }
-                IndeterminateBar()
-                Label("Signing in and reading your channels, movies and series. Big lists can take a minute.", Tokens.small, Tokens.textSecondary, maxLines = 3)
+                val progress by vm.progress.collectAsState()
+                val fraction = progress?.fraction
+                if (fraction != null) DeterminateBar(fraction) else IndeterminateBar()
+                Label(progress?.text() ?: "Signing in and reading your channels, movies and series. Big lists can take a minute.", Tokens.small, Tokens.textSecondary, maxLines = 3)
             }
             SetupAction("Cancel test", { vm.cancelTest() }, Modifier.focusRequester(stop), icon = Icons.Filled.Close)
         } else {
@@ -537,6 +534,14 @@ private fun Modifier.slideInFromStart(): Modifier {
     val a = remember { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0f) }
     LaunchedEffect(Unit) { if (!reduced) a.animateTo(1f, androidx.compose.animation.core.tween(320, easing = app.streamsetu.core.ui.motion.Motion.Standard)) }
     return graphicsLayer { alpha = a.value; translationX = (1f - a.value) * -24.dp.toPx() }
+}
+
+/** A bar filled to [fraction] (0 to 1), for a step whose size is known ("Saving movies 12,000 of 66,000"). */
+@Composable
+private fun DeterminateBar(fraction: Float, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(Tokens.elevated).drawBehind {
+        drawRoundRect(Tokens.accent, androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Size(size.width * fraction.coerceIn(0f, 1f), size.height), androidx.compose.ui.geometry.CornerRadius(size.height / 2))
+    })
 }
 
 /** A bar with a moving segment, for waits of unknown length. Only the draw phase runs while it moves. */
@@ -770,4 +775,13 @@ private fun LoginFields(form: LibraryViewModel.Form, addressHint: String, userHi
     FormField(form.address, { onChange(form.copy(address = it)) }, addressHint)
     FormField(form.user, { onChange(form.copy(user = it)) }, userHint)
     FormField(form.password, { onChange(form.copy(password = it)) }, passwordHint, secret = !reveal)
+}
+
+/** Whether the library form holds enough to try a connection. Jellyfin and Emby accept an account with no password (the Jellyfin demo server is one), so the password may stay empty there. */
+internal fun canTestSource(kind: SourceType, address: String, user: String, password: String): Boolean = when (kind) {
+    SourceType.XTREAM, SourceType.TVHEADEND -> address.isNotBlank() && user.isNotBlank() && password.isNotBlank()
+    SourceType.JELLYFIN, SourceType.EMBY -> address.isNotBlank() && user.isNotBlank()
+    SourceType.PLEX -> address.isNotBlank() && password.isNotBlank()
+    SourceType.STALKER -> address.isNotBlank() && Regex("""^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$""").matches(user.trim())
+    else -> address.isNotBlank()
 }

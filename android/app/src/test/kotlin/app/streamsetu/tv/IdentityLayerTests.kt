@@ -50,7 +50,7 @@ class IdentityLayerTests {
         assertEquals(45, runBlocking { db.identity().identityTotal() })
         assertEquals("movies are exactly what was read", mv.sortedBy { it.id }.map { listOf(it.id, it.sourceId, it.categoryId, it.title, it.posterUrl, it.year, it.rating, it.plot, it.streamRef, it.addedAt) },
             runBlocking { db.catalog().moviesByIds(mv.map { it.id }) }.sortedBy { it.id }.map { listOf(it.id, it.sourceId, it.categoryId, it.title, it.posterUrl, it.year, it.rating, it.plot, it.streamRef, it.addedAt) })
-        assertEquals(sr.sortedBy { it.id }, runBlocking { db.catalog().seriesByIds(sr.map { it.id }) }.sortedBy { it.id })
+        assertEquals("series are exactly what was read, with the sort key the write saves with the row", sr.map { it.copy(titleSort = app.streamsetu.core.model.SortKey.of(it.title)) }.sortedBy { it.id }, runBlocking { db.catalog().seriesByIds(sr.map { it.id }) }.sortedBy { it.id })
         val row = runBlocking { db.identity().byItemIds(listOf("A:m3")).single() }
         val d = Derive.derive("MOVIE", mv[3].title, "HINDI DUBBED", mv[3].year)
         assertEquals(d.identityKey, row.identityKey); assertEquals(d.folderKey, row.folderKey); assertEquals("MOVIE|hindi dubbed", row.folderKey); assertEquals(IdentityKey.VERSION, row.identVer)

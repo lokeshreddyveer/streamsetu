@@ -27,6 +27,10 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
         data class Passed(val sourceId: String, val name: String, val channels: Int, val movies: Int, val series: Int) : Test
     }
 
+    /** What the running test is doing right now ("Saving movies 12,000 of 66,000"); null when nothing is running or nothing has been reported yet. */
+    private val _progress = MutableStateFlow<app.streamsetu.core.sync.SyncProgress?>(null)
+    val progress: StateFlow<app.streamsetu.core.sync.SyncProgress?> = _progress
+
     private val _test = MutableStateFlow<Test>(Test.Idle)
     val test: StateFlow<Test> = _test
     private var testing = false
@@ -60,7 +64,7 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
             override suspend fun remove(id: String) = c.sources.remove(id)
             override suspend fun setError(id: String, message: String?) = c.sources.setError(id, message)
         },
-        read = { id -> c.syncWithGuide(id).let { app.streamsetu.core.data.repo.ConnectionTester.Counts(it.channels, it.movies, it.series) } },
+        read = { id -> c.syncWithGuide(id) { p -> _progress.value = p }.let { app.streamsetu.core.data.repo.ConnectionTester.Counts(it.channels, it.movies, it.series) } },
     )
 
     /** The id a new connection keeps from its first Test to the connection it becomes (the setup screen asks for it once). */
@@ -70,6 +74,7 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
         if (testing) return
         testing = true
         testJob = viewModelScope.launch {
+            _progress.value = null
             _test.value = Test.Running
             val label = f.name.ifBlank { f.address.trim().substringAfter("://").substringBefore('/').substringAfterLast('/').take(30).ifBlank { "My connection" } }
             val id = draftId?.takeIf { it.isNotBlank() } ?: newSetupId()
@@ -79,12 +84,12 @@ class LibraryViewModel @Inject constructor(private val c: AppContainer) : ViewMo
                     is app.streamsetu.core.data.repo.ConnectionTester.Result.Passed -> { _test.value = Test.Passed(r.sourceId, label, r.counts.channels, r.counts.movies, r.counts.series); app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.SUCCESS) }
                     is app.streamsetu.core.data.repo.ConnectionTester.Result.Failed -> { app.streamsetu.tv.UISound.play(app.streamsetu.tv.UISoundEvent.ERROR); _test.value = Test.Failed(r.message) }
                 }
-            } finally { testing = false }
+            } finally { testing = false; _progress.value = null }
         }
     }
 
     /** Stops a test that is taking too long. The form is left as it was, ready to be corrected or tested again. */
-    fun cancelTest() { testJob?.cancel(); testJob = null; testing = false; _test.value = Test.Idle }
+    fun cancelTest() { testJob?.cancel(); testJob = null; testing = false; _progress.value = null; _test.value = Test.Idle }
 
     fun resetTest() { _test.value = Test.Idle }
 

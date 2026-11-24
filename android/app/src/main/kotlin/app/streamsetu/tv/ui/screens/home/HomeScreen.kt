@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import app.streamsetu.tv.ui.theme.ui
-import androidx.compose.ui.focus.focusRestorer
+import app.streamsetu.tv.ui.components.safeFocusRestorer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -96,7 +96,10 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
     var heroGaveUp by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(5000); heroGaveUp = true }
     LaunchedEffect(heroReady) { if (heroReady && !interacted && entry != null) { kotlinx.coroutines.delay(40); if (!interacted) { runCatching { entry.requestFocus() }; repeat(2) { kotlinx.coroutines.delay(250); if (!interacted) listState.scrollToItem(0) } } } }
-    val nothingToShow by remember { derivedStateOf { bannerS.value.isEmpty() && !hasResume && !hasLive && !hasFavChannels && !hasFavTitles && !hasMovies && !hasSeries } }
+    val noRows by remember { derivedStateOf { bannerS.value.isEmpty() && !hasResume && !hasLive && !hasFavChannels && !hasFavTitles && !hasMovies && !hasSeries && !hasCats && !hasCols && !hasTonight && !hasLater && !hasForYou && !hasMoreWith } }
+    // "Nothing to show" is said only once the first rows have had their time and nothing is still loading: while a library is being read or filled in the background, the page shows its placeholder instead, so it never flashes an empty message and then fills in.
+    val nothingToShow = noRows && heroGaveUp && mixShelves.isEmpty() && !mixLoading
+    val stillLoading = noRows && !nothingToShow
     androidx.compose.runtime.CompositionLocalProvider(LocalFocusRing provides Color.Unspecified) {
       Box(Modifier.fillMaxSize()) {
         val heroHeight = 300.ui          // about half the screen, so the title and the top of the next row are always in view
@@ -143,7 +146,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     }
                     "later" -> if (hasLater) railItem("Watch Later") { FavouriteRail("Watch Later", vm.watchLater, null, "w", RowKind.WATCH_LATER, c, nav, pad, longOn) }
                     "foryou" -> {
-                        if (mixLoading && mixShelves.isEmpty()) item(key = "mix-skeleton") { app.streamsetu.tv.ui.components.HomeSkeleton(Modifier.testTag("home-skeleton")) }
+                        if (mixLoading && mixShelves.isEmpty()) item(key = "mix-skeleton") { app.streamsetu.tv.ui.components.HomeSkeleton(Modifier.testTag("home-skeleton"), rows = if (hasResume || hasFavTitles || hasLater || hasMovies || hasSeries) 1 else 2) }
                         mixShelves.forEach { sh -> railItem(sh.id) { MixRail(sh, vm, c, nav, pad, longOn) } }
                         if (mixShelves.any { it.genreKey != null }) railItem("Browse by Genre") { BrowseGenreRail(vm, nav, pad) }
                         if (hasForYou && mixShelves.none { it.id == app.streamsetu.core.data.smartmix.ShelfSpec.FOR_YOU }) railItem("For You") { ForYouRail(vm, c, nav, pad, longOn) }
@@ -154,6 +157,7 @@ fun HomeScreen(vm: HomeViewModel, c: AppContainer, nav: Navigator) {
                     "categories" -> if (hasCols || hasCats) railItem("Folders & Collections") { CategoriesRail(vm, nav, pad, onMenu = { catMenu = it }) }
                 }
             }
+            if (stillLoading) item(key = "loading") { app.streamsetu.tv.ui.components.HomeSkeleton(Modifier.testTag("home-loading")) }
             if (nothingToShow) item(key = "empty") {
                 Box(Modifier.fillMaxWidth().height(260.dp), Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Label("Nothing to show yet", Tokens.title, Tokens.text, FontWeight.SemiBold)
@@ -213,7 +217,7 @@ private fun RailFrame(title: String, pad: PaddingValues, reason: String? = null,
             Label(title, Tokens.title, Tokens.text, FontWeight.SemiBold)
             if (reason != null) Label(reason, Tokens.small, Tokens.textTertiary, maxLines = 1)
         }
-        LazyRow(Modifier.railOnLeft().focusRequester(rowEntry).focusRestorer(), horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = pad, content = content)
+        LazyRow(Modifier.railOnLeft().focusRequester(rowEntry).safeFocusRestorer(), horizontalArrangement = Arrangement.spacedBy(Tokens.gutter), contentPadding = pad, content = content)
     }
 }
 

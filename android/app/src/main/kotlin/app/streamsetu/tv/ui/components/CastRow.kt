@@ -10,7 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -97,7 +96,7 @@ fun CastPerson(m: TmdbCast.Member, size: androidx.compose.ui.unit.Dp, tv: Boolea
 @Composable
 fun CastRow(cast: List<TmdbCast.Member>, tv: Boolean, onPerson: (TmdbCast.Member) -> Unit) {
     if (cast.isEmpty()) return
-    LazyRow(if (tv) Modifier.bleedStart(24.dp).focusRestorer() else Modifier, horizontalArrangement = Arrangement.spacedBy(if (tv) 10.dp else 8.dp), contentPadding = PaddingValues(start = if (tv) 32.dp else 16.dp, end = 12.dp)) {
-        items(cast, key = { it.id }, contentType = { "person" }) { m -> CastPerson(m, if (tv) 84.dp else 72.dp, tv) { onPerson(m) } }
+    LazyRow(if (tv) Modifier.bleedStart(24.dp).safeFocusRestorer() else Modifier, horizontalArrangement = Arrangement.spacedBy(if (tv) 10.dp else 8.dp), contentPadding = PaddingValues(start = if (tv) 32.dp else 16.dp, end = 12.dp)) {
+        items(cast.distinctBy { it.id }, key = { it.id }, contentType = { "person" }) { m -> CastPerson(m, if (tv) 84.dp else 72.dp, tv) { onPerson(m) } }
     }
 }

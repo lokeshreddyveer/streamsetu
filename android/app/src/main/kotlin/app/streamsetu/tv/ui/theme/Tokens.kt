@@ -140,9 +140,11 @@ object Tokens {
     val landscapeWidth get() = 240.ui
     val gutter get() = 18.ui
     val screenPadding get() = 40.ui
-    /** About 3.5 % of the width on each side, kept clear of the edge (television-safe area), and about 4 % of the height at the top and bottom. */
-    val safeHorizontal get() = (UiScale.widthDp * 0.035f).coerceIn(24f, 62f).dp
-    val safeVertical get() = (UiScale.heightDp * 0.04f).coerceIn(18f, 30f).dp
+    /** 5 % of the width on each side and 5 % of the height at the top and bottom (48 dp and 27 dp on a 960 x 540 dp television): the overscan-safe area. */
+    val safeHorizontal get() = safeHorizontalFor(UiScale.widthDp).dp
+    val safeVertical get() = safeVerticalFor(UiScale.heightDp).dp
+    fun safeHorizontalFor(widthDp: Float): Float = (widthDp * 0.05f).coerceIn(24f, 64f)
+    fun safeVerticalFor(heightDp: Float): Float = (heightDp * 0.05f).coerceIn(18f, 30f)
     /** The main sidebar takes no width while it is closed; open, it floats over the page. */
     val sidebarCompact = 0.dp
     val sidebarExpanded get() = (UiScale.widthDp * 0.23f).coerceIn(200f, 280f).dp
@@ -150,8 +152,8 @@ object Tokens {
     val folderPanelWidth get() = (UiScale.widthDp * (250f / 960f)).coerceIn(200f, 320f).dp          // 250 dp on a 960 dp wide television: wide enough for most folder names on one or two lines
 
     /** Hero title 40; screen title 32; section title 23; card title 17; navigation 17; metadata 14; badge 13. */
-    val hero = 34.sp; val display = 28.sp; val pageTitle = 28.sp; val title = 20.sp; val heading = 16.sp
-    val nav = 15.sp; val body = 15.sp; val row = 15.sp; val small = 13.sp; val caption = 12.sp; val eyebrow = 11.sp
+    val hero = 34.sp; val display = 28.sp; val pageTitle = 28.sp; val title = 20.sp; val heading = 17.sp
+    val nav = 16.sp; val body = 16.sp; val row = 16.sp; val small = 14.sp; val caption = 13.sp; val eyebrow = 12.sp
 }
 
 /** Poster widths for a 1280 dp wide screen, scaled by the real width (the phone layout keeps its own sizes). */

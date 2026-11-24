@@ -13,7 +13,7 @@ import androidx.room.RoomDatabase
         WatchTimeEntity::class, ChannelPrefEntity::class, ReminderEntity::class, SportsFollowEntity::class, SportsReminderEntity::class, SportsRecordingEntity::class,
         RatingCheckEntity::class, ContentIdentityEntity::class, SourceTwinEntity::class, RecDismissedEntity::class, SmartMixShownEntity::class, SmartMixStateEntity::class, FolderRecentEntity::class, HubIdentityEntity::class, MetadataFactEntity::class, TmdbIdEntity::class, TmdbGenreEntity::class,
         GuideSourceEntity::class, GuideDiagnosticsEntity::class, ChannelGuideMapEntity::class, ChannelEnrichmentEntity::class],
-    version = 17,
+    version = 18,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -32,7 +32,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         /** Every step from the first version to the current one, in order. There is no destructive fallback: a database that cannot be upgraded is never emptied. */
-        val MIGRATIONS: Array<androidx.room.migration.Migration> get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+        val MIGRATIONS: Array<androidx.room.migration.Migration> get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
 
         /**
          * "A to Z" and "Newest year" over the whole library read straight from an index: a lower-case copy of the title (kept by two triggers, so no write path has to know about it) with an
@@ -103,12 +103,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * The insert trigger now runs only for a row saved WITHOUT a sort key (titleSort is empty): the catalog write computes the key in Kotlin (SortKey.of, the same table) and saves it with the row, so
+         * a bulk read no longer fires about fifteen UPDATE statements per new row. Any other way of inserting a row (no key given) is still covered. The two triggers are made again; no table, column or index
+         * changes, so the Room schema is the same as version 17.
+         */
+        val MIGRATION_17_18 = object : androidx.room.migration.Migration(17, 18) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) { ensureSortTriggers(db) }
+        }
+
         /** The triggers that keep titleSort equal to the sort key of the title (see [app.streamsetu.core.model.SortKey]). Safe to run again; made with a new database and by the 11 to 12 step. */
         fun ensureSortTriggers(db: androidx.sqlite.db.SupportSQLiteDatabase) {
             for (t in listOf("movies", "series")) {
                 val body = app.streamsetu.core.model.SortKey.updateStatements(t, "NEW.title", "rowid = NEW.rowid").joinToString("; ")
                 db.execSQL("DROP TRIGGER IF EXISTS ${t}_titlesort_ai"); db.execSQL("DROP TRIGGER IF EXISTS ${t}_titlesort_au")
-                db.execSQL("CREATE TRIGGER IF NOT EXISTS ${t}_titlesort_ai AFTER INSERT ON $t BEGIN $body; END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS ${t}_titlesort_ai AFTER INSERT ON $t WHEN NEW.titleSort = '' BEGIN $body; END")
                 db.execSQL("CREATE TRIGGER IF NOT EXISTS ${t}_titlesort_au AFTER UPDATE OF title ON $t BEGIN $body; END")
             }
         }

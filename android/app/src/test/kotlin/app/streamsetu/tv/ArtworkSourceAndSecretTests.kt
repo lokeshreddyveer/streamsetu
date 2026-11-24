@@ -61,7 +61,7 @@ class ArtworkSourceAndSecretTests {
         // Live TV tiles: no folder name under them (only the channel name and what is on), and a designed placeholder when a channel has no logo.
         val tile = main("ui/screens/folders/FolderRowsScreens.kt").substringAfter("fun ChannelTile").substringBefore("\n}\n")
         assertFalse("folder" in tile.lowercase()); assertTrue("ChannelLogo(" in tile)
-        assertTrue(main("ui/components/Basics.kt").substringAfter("fun ChannelLogo").substringBefore("\n}\n").contains("name.take(2).uppercase()"))
+        assertTrue(main("ui/components/Basics.kt").substringAfter("fun ChannelLogo").substringBefore("\n}\n").contains("channelInitials(name)"))
         // Quality words in folder names stay in capitals.
         assertTrue("\"fhd\"" in File("../data/src/main/kotlin/app/streamsetu/core/data/repo/smartmix/FolderRowsPlan.kt").readText())
     }
