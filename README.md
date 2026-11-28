@@ -31,6 +31,26 @@
 
 <p align="center"><img src="docs/screenshots/mac-slideshow.gif" alt="StreamSetu on Mac, from the opening screen to Home, Live TV, Movies, Series, the TV Guide, Podcasts and Music" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#mac">All Mac screenshots →</a></sub></p>
 
+<table>
+  <tr>
+    <td width="33%" valign="top" align="center"><a href="docs/screenshots/mac-setup-services.png"><img src="docs/screenshots/thumbs/mac-setup-services.png" alt="StreamSetu on Mac: Get set up, pin the streaming services you use" width="100%"></a><br><sub><b>Get set up</b></sub></td>
+    <td width="33%" valign="top" align="center"><a href="docs/screenshots/mac-home.png"><img src="docs/screenshots/thumbs/mac-home.png" alt="StreamSetu on Mac: Home, with a Discover banner, this week's top picks and your sidebar" width="100%"></a><br><sub><b>Home</b></sub></td>
+    <td width="33%" valign="top" align="center"><a href="docs/screenshots/mac-live.png"><img src="docs/screenshots/thumbs/mac-live.png" alt="StreamSetu on Mac: Live TV with channel groups, a channel list and the player" width="100%"></a><br><sub><b>Live TV</b></sub></td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top" align="center"><a href="docs/screenshots/mac-movies-featured.png"><img src="docs/screenshots/thumbs/mac-movies-featured.png" alt="StreamSetu on Mac: Movies, a featured title and folders of posters" width="100%"></a><br><sub><b>Movies</b></sub></td>
+    <td width="33%" valign="top" align="center"><a href="docs/screenshots/mac-series.png"><img src="docs/screenshots/thumbs/mac-series.png" alt="StreamSetu on Mac: Series, a grid of posters with ratings" width="100%"></a><br><sub><b>Series</b></sub></td>
+    <td width="33%" valign="top" align="center"><a href="docs/screenshots/mac-guide.png"><img src="docs/screenshots/thumbs/mac-guide.png" alt="StreamSetu on Mac: the TV Guide, a timeline of programmes per channel" width="100%"></a><br><sub><b>TV Guide</b></sub></td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top" align="center"><a href="docs/screenshots/mac-podcasts.png"><img src="docs/screenshots/thumbs/mac-podcasts.png" alt="StreamSetu on Mac: Podcasts, continue listening and the top shows" width="100%"></a><br><sub><b>Podcasts</b></sub></td>
+    <td width="33%" valign="top" align="center"><a href="docs/screenshots/mac-music-explore.png"><img src="docs/screenshots/thumbs/mac-music-explore.png" alt="StreamSetu on Mac: Music Explore, featured albums and the top charts" width="100%"></a><br><sub><b>Music: Explore</b></sub></td>
+    <td width="33%" valign="top" align="center"><a href="docs/screenshots/mac-music-listen-now.png"><img src="docs/screenshots/thumbs/mac-music-listen-now.png" alt="StreamSetu on Mac: Music Listen Now with synced lyrics beside it" width="100%"></a><br><sub><b>Music: Listen Now</b></sub></td>
+  </tr>
+</table>
+
+<p align="center"><sub>Tap a picture for the full size. <a href="docs/SCREENSHOTS.md#mac">All 28 Mac screens, in order →</a> · <a href="#-music-mac">Every Music screen →</a></sub></p>
+
 ### 📺 Fire TV and Android TV
 
 <p align="center"><img src="docs/screenshots/firetv-slideshow.gif" alt="StreamSetu on Fire TV: Home with the sidebar, Live TV, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#fire-tv-and-android-tv">All Fire TV and Android TV screenshots →</a></sub></p>
