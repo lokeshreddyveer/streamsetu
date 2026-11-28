@@ -3,15 +3,6 @@
   <channel>
     <title>StreamSetu</title>
     <item>
-      <title>StreamSetu 2.19.0</title>
-      <pubDate>Sat, 28 Nov 2026 05:08:21 -0000</pubDate>
-      <sparkle:version>362</sparkle:version>
-      <sparkle:shortVersionString>2.19.0</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[**A new opening and a redesigned Get Set Up for the Mac.** Mac 2.19.0.]]></description>
-      <enclosure url="https://github.com/lokeshreddyveer/streamsetu/releases/download/2026.11.27/StreamSetu-2.19.0.dmg" type="application/octet-stream" sparkle:edSignature="FxBTt6/Gw3UvXmdxBrrpf9uDiQHBlB4pnUOI/iTETeCQFJkPmCfCj3cS7kkKrP5vG6YiAAH/UCJZuwPFY921Bg==" length="167666313"/>
-    </item>
-    <item>
       <title>StreamSetu 2.18.0</title>
       <pubDate>Mon, 23 Nov 2026 19:39:47 -0000</pubDate>
       <sparkle:version>330</sparkle:version>
