@@ -42,9 +42,10 @@ dmg_attach() {   # $1 image file, $2 mount point: read-only, five tries
   done
   return 1
 }
-dmg_detach() {   # $1 mount point: six tries, then -force; returns 1 (and says so) if it is still attached
+dmg_detach() {   # $1 mount point: two plain tries, then -force; returns 1 (and says so) if it is still attached
+  # The images are read-only and are only read, so forcing loses nothing; and while macOS is busy a plain detach can fail for ten seconds at a time (six tries took minutes).
   local i
-  for i in 1 2 3 4 5 6; do
+  for i in 1 2; do
     "$HDIUTIL" detach "$1" -quiet >/dev/null 2>&1 && { rmdir "$1" 2>/dev/null; return 0; }
     sleep "${DMG_RETRY_SLEEP:-3}"
   done
@@ -52,12 +53,14 @@ dmg_detach() {   # $1 mount point: six tries, then -force; returns 1 (and says s
   echo "  ! the disk image at $1 would not detach. Free it with: hdiutil detach $1 -force" >&2
   return 1
 }
-dmg_detach_stale() {   # the names of the disk images: detaches an earlier mount of any of them (an interrupted run, a check that did not let go)
-  local name dev
-  for name in "$@"; do
-    for dev in $("$HDIUTIL" info 2>/dev/null | awk -v n="$name" 'BEGIN{RS="================================================"} index($0, n) {for (i = 1; i <= NF; i++) if ($i ~ /^\/dev\/disk[0-9]+$/) {print $i; break}}'); do
-      if "$HDIUTIL" detach "$dev" -force >/dev/null 2>&1; then echo "  ↺ detached an earlier mount of $name ($dev)"
-      else echo "  ! an earlier mount of $name ($dev) would not detach. Free it with: hdiutil detach $dev -force" >&2; fi
+dmg_detach_stale() {   # a piece of the image path: detaches an earlier mount of any image whose path holds it (an interrupted run, a check that did not let go)
+  # Matched by the repository's macos/dist folder, not by this release's file names: the image that stayed mounted after a release was the OLD 2.19.1 one, whose file
+  # had already been deleted from dist/ while it was mounted, and a version-named match did not see it.
+  local part dev
+  for part in "$@"; do
+    for dev in $("$HDIUTIL" info 2>/dev/null | awk -v n="$part" 'BEGIN{RS="================================================"} index($0, n) {for (i = 1; i <= NF; i++) if ($i ~ /^\/dev\/disk[0-9]+$/) {print $i; break}}'); do
+      if "$HDIUTIL" detach "$dev" -force >/dev/null 2>&1; then echo "  ↺ detached an earlier mount of a StreamSetu disk image ($dev)"
+      else echo "  ! an earlier mount of a StreamSetu disk image ($dev) would not detach. Free it with: hdiutil detach $dev -force" >&2; fi
     done
   done
   return 0
@@ -66,7 +69,7 @@ cleanup() { for m in ${MOUNTS[@]+"${MOUNTS[@]}"}; do dmg_detach "$m" || true; do
 trap cleanup EXIT
 
 if [ -z "$MAC" ]; then DMG_ARM=""; DMG_INTEL=""; fi
-[ -n "$MAC" ] && dmg_detach_stale "$(basename "$DMG_ARM")" "$(basename "$DMG_INTEL")"
+[ -n "$MAC" ] && dmg_detach_stale "/macos/dist/StreamSetu-"
 echo "Verifying release $TAG (${MAC:+Mac $MAC build $MAC_BUILD}${ANDROID:+, Android $ANDROID}${WINDOWS:+, Windows $WINDOWS})"
 
 echo "Files"
@@ -153,7 +156,10 @@ if [ -n "$WINDOWS" ]; then
     [ -f "$z" ] || continue
     N="$(basename "$z")"
     unzip -tq "$z" >/dev/null 2>&1 && ok "$N: the zip is intact" || bad "$N: the zip is damaged"
-    unzip -l "$z" 2>/dev/null | grep -q "StreamSetu.exe" && ok "$N: holds StreamSetu.exe" || bad "$N: no StreamSetu.exe inside"
+    # Read the whole listing first: with pipefail, `unzip -l | grep -q` stops at the first match, unzip then dies on the closed pipe (status 141) and a zip that DOES hold
+    # StreamSetu.exe was reported as not holding it. The real zips have about 500 files (release 2026.11.28 was stopped by that, correctly, but for the wrong reason).
+    ZIP_LIST="$(unzip -l "$z" 2>/dev/null)"
+    grep -q "StreamSetu.exe" <<<"$ZIP_LIST" && ok "$N: holds StreamSetu.exe" || bad "$N: no StreamSetu.exe inside"
     if [ -f "$z.sha256" ]; then
       want="$(awk '{print $1}' "$z.sha256")"; have="$(shasum -a 256 "$z" | awk '{print $1}')"
       [ "$want" = "$have" ] && ok "$N: the checksum is the recorded one" || bad "$N: the checksum differs from the recorded one"

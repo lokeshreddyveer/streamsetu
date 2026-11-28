@@ -24,7 +24,7 @@ make_stubs() {   # $1 = folder
 [ -n "${HDIUTIL_LOG:-}" ] && echo "$*" >> "$HDIUTIL_LOG"
 count() { local f="$STUB_STATE/$1" n; n=$(cat "$f" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$f"; echo "$n"; }
 if [ "$1" = info ] && [ -n "${FAKE_STALE:-}" ]; then
-  printf '================================================\nimage-path      : /somewhere/%s\n/dev/disk9\tGUID_partition_scheme\n/dev/disk9s1\tApple_HFS\t/Volumes/StreamSetu\n' "$FAKE_STALE"; exit 0
+  printf '================================================\nimage-path      : /somewhere/macos/dist/%s\n/dev/disk9\tGUID_partition_scheme\n/dev/disk9s1\tApple_HFS\t/Volumes/StreamSetu\n' "$FAKE_STALE"; exit 0
 fi
 if [ "$1" = detach ] && [ "${DETACH_FAILS:-0}" -gt 0 ] && [ "$(count detach)" -le "$DETACH_FAILS" ]; then
   echo "hdiutil: couldn't unmount: Simulators are still shutting down. Please try again in a few moments." >&2; exit 16
@@ -178,7 +178,7 @@ detaches() { grep -c "^detach " "$HDIUTIL_LOG"; }
 make_root busy-detach; export DETACH_FAILS=2
 if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "a detach that fails twice does not stop the release"; else fail "a busy detach stopped the release:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
 ! grep -q "would not detach" "$ROOT_DIR/out.txt" && ok "...and the detach is retried until it works (nothing left mounted, nothing reported)" || fail "a detach that works on the third try was reported as stuck"
-[ "$(detaches)" -ge 3 ] && ok "the detach was tried again after each failure ($(detaches) calls)" || fail "the detach was not retried ($(detaches) calls)"
+[ "$(detaches)" -ge 3 ] && grep -q "^detach .* -force" "$HDIUTIL_LOG" && ok "the detach was tried twice, then forced ($(detaches) calls)" || fail "the detach was not retried ($(detaches) calls)"
 make_root stuck-detach; export DETACH_FAILS=99
 if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "an image that never detaches does not block a good release"; else fail "a stuck mount blocked a release whose files are fine"; fi
 grep -q "would not detach. Free it with: hdiutil detach" "$ROOT_DIR/out.txt" && ok "...but it is reported, with the command that frees it" || fail "a mount that would not detach was not reported"
@@ -187,9 +187,23 @@ make_root busy-attach; export ATTACH_FAILS=2
 if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "an attach that fails twice (Resource busy) is retried and the release goes through"; else fail "a busy attach stopped the release:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
 make_root dead-attach; export ATTACH_FAILS=99
 if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then fail "a DMG that cannot be opened was accepted"; else grep -q "✘.*the DMG could not be opened" "$ROOT_DIR/out.txt" && ok "a DMG that never opens still blocks the release" || fail "the block for an unopenable DMG says something else"; fi
-make_root stale; export FAKE_STALE="StreamSetu-9.9.9-Intel.dmg"
+make_root stale; export FAKE_STALE="StreamSetu-9.9.8-AppleSilicon.dmg"   # an OLD version: its file was already gone from dist/, as with the real stuck 2.19.1 image
 if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "an earlier mount of the same image does not stop the release"; else fail "a stale mount stopped the release"; fi
-grep -q "detached an earlier mount of StreamSetu-9.9.9-Intel.dmg" "$ROOT_DIR/out.txt" && grep -q "^detach /dev/disk9 -force" "$HDIUTIL_LOG" && ok "...and it was detached first" || fail "an earlier mount of the image was left in place"
+grep -q "detached an earlier mount of a StreamSetu disk image" "$ROOT_DIR/out.txt" && grep -q "^detach /dev/disk9 -force" "$HDIUTIL_LOG" && ok "...and it was detached first" || fail "an earlier mount of the image was left in place"
+
+echo "A real-size Windows zip passes"
+# The real zips hold about 500 files. With pipefail, `unzip -l | grep -q` stops at the first match, unzip then dies on the closed pipe (status 141) and a zip that DOES hold
+# StreamSetu.exe was reported as not holding it (release 2026.11.28 was stopped by that, correctly, but for the wrong reason). StreamSetu.exe is listed first here, then thousands of files.
+make_root bigzip
+( cd windows/native/dist && rm -f StreamSetu-Windows-8.8.8*.zip* && mkdir -p w/data && echo exe > w/StreamSetu.exe && for i in $(seq 1 4000); do : > "w/data/file-$i.txt"; done \
+  && for z in StreamSetu-Windows-8.8.8.zip StreamSetu-Windows-8.8.8-arm64.zip; do zip -q "$z" w/StreamSetu.exe && zip -qr "$z" w/data && shasum -a 256 "$z" > "$z.sha256"; done; rm -rf w )
+git add windows/native/dist && git commit -qm "big zips" && git rev-parse HEAD > macos/dist/StreamSetu-9.9.9.commit && git rev-parse HEAD > android/dist/9.9.9/BUILD-COMMIT.txt
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "a Windows zip with thousands of files that holds StreamSetu.exe goes through"; else fail "a big Windows zip that holds StreamSetu.exe was refused:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
+make_root nozip
+( cd windows/native/dist && rm -f StreamSetu-Windows-8.8.8*.zip* && mkdir -p w/data && echo x > w/other.exe && for i in $(seq 1 4000); do : > "w/data/file-$i.txt"; done \
+  && for z in StreamSetu-Windows-8.8.8.zip StreamSetu-Windows-8.8.8-arm64.zip; do zip -qr "$z" w && shasum -a 256 "$z" > "$z.sha256"; done; rm -rf w )
+git add windows/native/dist && git commit -qm "zips without the exe" && git rev-parse HEAD > macos/dist/StreamSetu-9.9.9.commit && git rev-parse HEAD > android/dist/9.9.9/BUILD-COMMIT.txt
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then fail "a Windows zip without StreamSetu.exe was accepted"; else grep -q "✘.*no StreamSetu.exe inside" "$ROOT_DIR/out.txt" && ok "a big Windows zip WITHOUT StreamSetu.exe is still refused" || fail "the block for a zip without StreamSetu.exe says something else"; fi
 
 echo "Every gate blocks, and GitHub is untouched"
 expect_blocked "wrong signing certificate"       'export SIGNER=0000000000000000000000000000000000000000000000000000000000000000' "is not the pinned release certificate"
