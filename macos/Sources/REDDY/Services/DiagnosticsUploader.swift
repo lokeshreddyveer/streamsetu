@@ -38,7 +38,7 @@ enum LogMasker {
     }
 }
 
-/// Shares a playback log with the developer: after a stream fails for good (only if the person has said yes: it is off until they turn it on, and the first launch asks),
+/// Shares a playback log with the developer: after a stream fails for good (only if the person has turned it on in Settings: it is off by default, and nothing asks),
 /// or when they press Send My Log Now. What is sent is the playback log with server names masked, the app and system version and the device model.
 /// Never a login, a playlist name, a title or a stream address. Sending runs at low priority and only after a failure, never during playback.
 final class DiagnosticsUploader: @unchecked Sendable {
@@ -85,14 +85,14 @@ final class DiagnosticsUploader: @unchecked Sendable {
         self.session = session ?? URLSession(configuration: cfg)
     }
 
-    /// Automatic sharing of the playback log after a failed stream. Off until the person turns it on: the first launch asks, and Settings > Send Feedback has the switch.
-    /// A copy that has never been asked counts as "no". This device only, never synced.
+    /// Automatic sharing of the playback log after a failed stream. Off until the person turns it on in Settings > Send Feedback (the app never asks on its own: there is no first-launch prompt).
+    /// A copy that has never been set counts as "no". This device only, never synced.
     var isEnabled: Bool {
         get { available && (defaults.object(forKey: Self.consentKey) as? Bool ?? false) }
         set { if available { defaults.set(newValue, forKey: Self.consentKey) } }
     }
 
-    /// True once the first-launch notice has been shown, so it is shown once.
+    /// Kept for copies that were asked by an earlier version; nothing asks any more.
     var noticeShown: Bool {
         get { defaults.bool(forKey: Self.noticeKey) }
         set { defaults.set(newValue, forKey: Self.noticeKey) }

@@ -197,7 +197,7 @@ import SwiftUI
         let d = UserDefaults(suiteName: "opening-\(UUID().uuidString)")!
         if introDone { d.set(true, forKey: "intro_done") }
         if let seen { d.set(seen, forKey: "whatsnew_seen_version") }
-        return OpeningCoordinator(memory: LaunchMemory(defaults: d), version: "2.16.1", env: env)
+        return OpeningCoordinator(memory: LaunchMemory(defaults: d), version: "2.16.1", env: env, lingers: false)
     }
 
     @Test func theOpeningEndsOnTimeAloneAndNeverRestarts() throws {
@@ -208,15 +208,15 @@ import SwiftUI
         c.start(reduceMotion: false)          // a rebuilt view or a new window asks again: nothing restarts
         #expect(c.startedAt == first)
         // Past the story's length the frame is the lockup, however late the frame is drawn.
-        #expect(c.storyTime(at: first.addingTimeInterval(30)) == Double(OpeningVariant.firstInstall.holdMs))
+        #expect(c.storyTime(at: first.addingTimeInterval(30)) == Double(OpeningVariant.firstInstall.storyMs))
         c.destinationReady(ok: true, hasSources: false)
         // The story's clock begins when the app's start-up is done (while the screen is still dark): its start is read after that.
         let begun = c.startedAt
         #expect(begun >= first)
         // Nothing ends it early: only the time.
-        c.advance(to: begun.addingTimeInterval(Double(OpeningVariant.firstInstall.holdMs) / 1000 - 0.5))
+        c.advance(to: begun.addingTimeInterval(Double(OpeningVariant.firstInstall.storyMs) / 1000 - 0.5))
         #expect(c.state == .animating)
-        c.advance(to: begun.addingTimeInterval(Double(OpeningVariant.firstInstall.holdMs) / 1000))
+        c.advance(to: begun.addingTimeInterval(Double(OpeningVariant.firstInstall.storyMs) / 1000 + 0.001))
         #expect(c.state == .transitioning)
         let revealed = try #require(c.revealedAt)
         #expect(c.layerOpacity(at: revealed) == 1)
@@ -238,4 +238,21 @@ import SwiftUI
         test.start(reduceMotion: false)
         #expect(test.variant == nil && !test.isVisible)
     }
+
+    #if os(macOS)
+    @Test func theFinishedLogoHoldsForAMomentBeforeTheAppIsRevealed() throws {
+        let d = UserDefaults(suiteName: "opening-\(UUID().uuidString)")!
+        let c = OpeningCoordinator(memory: LaunchMemory(defaults: d), version: "2.16.1", env: [:])      // the hold is on
+        c.start(reduceMotion: false)
+        c.destinationReady(ok: true, hasSources: false)
+        let begun = c.startedAt
+        c.advance(to: begun.addingTimeInterval(Double(OpeningVariant.firstInstall.storyMs) / 1000 + 0.001))
+        #expect(c.state == .transitioning)
+        #expect(c.revealedAt == nil, "the story is over, but the logo is still held: the app is not revealed yet")
+        #expect(c.blocksInput && c.isVisible)
+        #expect(c.lingerSeconds(for: .firstInstall) > 1 && c.lingerSeconds(for: .standard) > 0.5 && c.lingerSeconds(for: .reducedMotion) == 0)
+        // The watchdog's last guard waits for the hold too, so it cannot cut the logo short.
+        #expect(c.lingerSeconds(for: .firstInstall) < 5)
+    }
+    #endif
 }

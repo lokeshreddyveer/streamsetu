@@ -44,8 +44,9 @@ enum OpeningMacStory {
 
     static func frame(_ v: OpeningVariant, at ms: Double) -> OpeningMacFrame {
         guard v != .reducedMotion, v.holdMs > 0 else { return .lockup }
-        if v == .standard { return OpeningMacFrame(t: max(0, min(shortEnd, ms / 1000)), short: true) }
-        return OpeningMacFrame(t: max(0, min(end, ms / Double(v.holdMs) * end)))
+        // The story is stretched on the Mac (OpeningVariant.macStretch): the clock the frame is read from runs slower, so the icons cross at a calmer pace.
+        if v == .standard { return OpeningMacFrame(t: max(0, min(shortEnd, ms / 1000 / v.macStretch)), short: true) }
+        return OpeningMacFrame(t: max(0, min(end, ms / Double(v.storyMs) * end)))
     }
 
     static func unit(_ t: Double, _ r: ClosedRange<Double>) -> Double { min(1, max(0, (t - r.lowerBound) / (r.upperBound - r.lowerBound))) }

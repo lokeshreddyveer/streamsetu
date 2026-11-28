@@ -1,5 +1,5 @@
-<!-- atlas-inputs-sha256: 9b20de153c0878d636d6a0ed0485792282229f7e082339a7b6ee6a4c8f71c6eb -->
-<!-- coverage-body-sha256: 37e5b3a4a24d805904985308e0e6d2f4c27c077d9cd41d0e49614c0a7858f57f -->
+<!-- atlas-inputs-sha256: cb8430b396162501db1ea985815ff00c1baee92b291c3d1a7d51944b542513c0 -->
+<!-- coverage-body-sha256: 03365b2eca8a98b3aa424cd83d9c32f7cab9f8c2a9b81812fbfad0c82f448b43 -->
 # Assistant coverage
 
 Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to rewrite it). Everything Setu can answer about the app is one entry in `macos/Sources/REDDY/Atlas`; this page lists them all. *Reviewed* means the wording was checked against the code by a person or in a test; the rest was written from the code and has not had a second look. Setu answers from these entries with no language model.
@@ -10,7 +10,7 @@ Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to re
 |---|---|---|---|---|---|
 | Screens | 165 | 144 | 122 | 46 | 45 |
 | Settings pages | 24 | 24 | 6 | 18 | 18 |
-| Controls and settings groups | 1752 | 631 | 1548 | 235 | 235 |
+| Controls and settings groups | 1751 | 630 | 1547 | 235 | 235 |
 | Settings | 151 | 151 | 143 | 89 | 90 |
 | Menu commands | 47 | 47 | 47 | 1 | 1 |
 | Keyboard shortcuts | 54 | 54 | 51 | 0 | 3 |
@@ -20,7 +20,7 @@ Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to re
 | How-tos | 78 | 78 | 77 | 60 | 62 |
 | Troubleshooting | 39 | 39 | 39 | 25 | 25 |
 | About Setu and what is new | 23 | 23 | 20 | 18 | 18 |
-| **All** | **2420** | **1278** | 2103 | 551 | 552 |
+| **All** | **2419** | **1277** | 2102 | 551 | 552 |
 
 Entries Setu explains but never changes (app lock, proxy, parental controls and similar): 57.
 
@@ -491,7 +491,6 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.liveTV.fullScreen | Full screen | Live TV | explained only | Mac | yes |
 | control.liveTV.listFilter | Channel list filter | Live TV | explained only | Mac | yes |
 | control.liveTV.streams | Streams menu | Live TV | explained only | Mac | yes |
-| control.logging.share | Share logs notice | Notices | explained only | Mac | yes |
 | control.multiView.addChannel | Add a channel to Multi-View | Multi-View | explained only | Mac | yes |
 | control.multiView.closeAll | Close all tiles | Multi-View | explained only | Mac | yes |
 | control.multiView.layout | Multi-View layout | Multi-View | explained only | Mac | yes |

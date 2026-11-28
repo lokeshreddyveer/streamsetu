@@ -75,6 +75,19 @@ enum OpeningVariant: String, CaseIterable {
 
     /// Where the story ends and the exit (the match-cut, or the fade) begins: the lockup holds here until the app is ready.
     var holdMs: Int { scenes.last?.startMs ?? 0 }
+
+    /// The Mac's full story runs slower than the shared timeline, so each destination icon stays on screen long enough to be read: the same story, stretched by 40 %. The short cut
+    /// (no icons) and Reduce Motion keep their pace. iPhone and iPad keep the shared pace.
+    var macStretch: Double { self == .firstInstall ? 1.4 : 1 }
+
+    /// How long the story itself takes on this platform, in milliseconds (before the logo's hold and the exit).
+    var storyMs: Int {
+        #if os(macOS)
+        Int((Double(holdMs) * macStretch).rounded())
+        #else
+        holdMs
+        #endif
+    }
     /// How long the exit takes.
     var exitMs: Int { durationMs - holdMs }
 }

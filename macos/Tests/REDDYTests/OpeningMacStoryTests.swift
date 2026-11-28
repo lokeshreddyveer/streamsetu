@@ -16,16 +16,17 @@ struct OpeningMacStoryTests {
             for ms in stride(from: 0.0, through: Double(v.holdMs), by: 37) { #expect(OpeningMacStory.frame(v, at: ms) == OpeningMacStory.frame(v, at: ms)) }
         }
         #expect(OpeningMacStory.frame(.firstInstall, at: 0).t == 0)
-        #expect(OpeningMacStory.frame(.firstInstall, at: Double(OpeningVariant.firstInstall.holdMs)) == .lockup)
+        #expect(OpeningMacStory.frame(.firstInstall, at: Double(OpeningVariant.firstInstall.storyMs)) == .lockup)
         #expect(OpeningMacStory.frame(.standard, at: Double(OpeningVariant.standard.holdMs) * 3) == OpeningMacFrame(t: OpeningMacStory.shortEnd, short: true), "the short opening holds its last frame")
         for ms in [0.0, 300, 900] { #expect(OpeningMacStory.frame(.reducedMotion, at: ms) == .lockup, "Reduce Motion is the finished lockup, still") }
     }
 
     @Test func theFullStoryFitsItsLengthAndTheShortOneIsItsOwnThing() {
         let v = OpeningVariant.firstInstall
-        let at = { (t: Double) in OpeningMacStory.frame(v, at: t / OpeningMacStory.end * Double(v.holdMs)).t }
+        let at = { (t: Double) in OpeningMacStory.frame(v, at: t / OpeningMacStory.end * Double(v.storyMs)).t }
         #expect(abs(at(3.0) - 3.0) < 1e-9 && abs(at(5.5) - 5.5) < 1e-9)
         #expect(OpeningVariant.firstInstall.durationMs >= 7000, "the full opening is at least seven seconds")
+        #expect(Double(OpeningVariant.firstInstall.storyMs) >= Double(OpeningVariant.firstInstall.holdMs) * 1.3, "the icons cross at a calmer pace than the shared timeline")
         // Every ordinary launch gets the short opening: no icons, in real seconds, ending where the variant's story ends.
         let f = OpeningMacStory.frame(.standard, at: 1000)
         #expect(f.short && abs(f.t - 1.0) < 1e-9)

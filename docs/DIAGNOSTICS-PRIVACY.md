@@ -4,7 +4,7 @@ StreamSetu can send a playback log to a small service run by the developer (a Su
 
 ## When it is sent
 
-- **Automatic report:** only if the person said yes when the app first asked, or turned it on in Settings → Send Feedback. It is **off until then**. It happens after a stream fails for good, at most once in three hours.
+- **Automatic report:** only if the person turned it on in Settings → Send Feedback (the app never asks on its own). It is **off by default**. It happens after a stream fails for good, at most once in three hours.
 - **By hand:** "Send My Log Now" in Send Feedback, whatever the setting.
 - Never during playback, and never from the Android apps (they do not have this service).
 

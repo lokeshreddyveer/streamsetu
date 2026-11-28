@@ -112,8 +112,8 @@ import Foundation
 
     @Test func theFirstLaunchQuestionIsNeverAskedInABuildThatCannotSend() {
         #expect(!LoggingNotice.shouldAsk(available: false, alreadyShown: false), "nothing to ask about when the build sends no reports")
-        #expect(LoggingNotice.shouldAsk(available: true, alreadyShown: false), "the Mac build still asks once")
-        #expect(!LoggingNotice.shouldAsk(available: true, alreadyShown: true), "and only once")
+        #expect(!LoggingNotice.shouldAsk(available: true, alreadyShown: false), "the Mac build never asks: sharing is off until it is turned on in Settings")
+        #expect(!LoggingNotice.shouldAsk(available: true, alreadyShown: true), "and never again")
     }
 
     @Test func thePrivacyReportOnlyListsTheLogWhereItCanBeSent() {

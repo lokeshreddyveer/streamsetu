@@ -41,7 +41,12 @@ final class OpeningCoordinator {
     private var timers: [Timer] = []
     private let log = Logger(subsystem: "app.streamsetu", category: "startup")
 
-    init(memory: LaunchMemory = LaunchMemory(), version: String = AppRelease.current, env: [String: String] = ProcessInfo.processInfo.environment) {
+    /// Whether the finished lockup stays on screen for a moment before the app is revealed (Mac). Tests of the timing itself turn it off.
+    private let lingers: Bool
+    private var storyEndedAt: Date?
+
+    init(memory: LaunchMemory = LaunchMemory(), version: String = AppRelease.current, env: [String: String] = ProcessInfo.processInfo.environment, lingers: Bool = true) {
+        self.lingers = lingers
         self.memory = memory
         self.version = version
         self.env = env
@@ -65,8 +70,8 @@ final class OpeningCoordinator {
         if let frozenAt { return frozenAt * 1000 }
         guard let variant else { return 0 }
         if let abortedAtMs { return abortedAtMs }
-        if let revealedAt { return min(Double(variant.holdMs) + now.timeIntervalSince(revealedAt) * 1000, Double(variant.holdMs + exitMs(variant))) }
-        return max(0, min(now.timeIntervalSince(startedAt) * 1000, Double(variant.holdMs)))
+        if let revealedAt { return min(Double(variant.storyMs) + now.timeIntervalSince(revealedAt) * 1000, Double(variant.storyMs + exitMs(variant))) }
+        return max(0, min(now.timeIntervalSince(startedAt) * 1000, Double(variant.storyMs)))
     }
 
     /// How long the television takes to fade out over the app. On the Mac the shared exit (150 ms in the short cut) is stretched to half a second: a television dissolving into the
@@ -117,10 +122,10 @@ final class OpeningCoordinator {
         timers.forEach { $0.invalidate() }
         timers.removeAll()
         guard let variant else { return }
-        let end = startedAt.addingTimeInterval(Double(variant.holdMs) / 1000).timeIntervalSinceNow
+        let end = startedAt.addingTimeInterval(Double(variant.storyMs) / 1000).timeIntervalSinceNow
         after(end) { $0.storyEnded() }
         // The hard stop: a second past the story the opening gives way to the app, whatever its start-up is doing.
-        after(end + OpeningCoordinator.overrunSeconds) { $0.abort(reason: "overran the story") }
+        after(end + lingerSeconds(for: variant) + OpeningCoordinator.overrunSeconds) { $0.abort(reason: "overran the story") }
     }
 
     /// How long past the end of the story the opening may stay before it is ended for good.
@@ -149,7 +154,7 @@ final class OpeningCoordinator {
 
     /// Ends the story when its time is up. Called by the timer; tests call it with a time of their choosing.
     func advance(to now: Date) {
-        guard let variant, machine.state == .animating, now.timeIntervalSince(startedAt) * 1000 >= Double(variant.holdMs) else { return }
+        guard let variant, machine.state == .animating, now.timeIntervalSince(startedAt) * 1000 >= Double(variant.storyMs) else { return }
         storyEnded()
     }
 
@@ -204,7 +209,19 @@ final class OpeningCoordinator {
 
     func finishWhatsNew() { showsWhatsNew = false }
 
+    /// How long the finished StreamSetu lockup holds on screen once the story is over, before it gives way to the app: the logo is seen, then the app appears. Mac only; Reduce
+    /// Motion already shows its lockup as a still. Nothing here is ever skipped by the app's start-up: the app is simply not revealed until the hold has passed.
+    func lingerSeconds(for variant: OpeningVariant) -> Double {
+        #if os(macOS)
+        guard lingers else { return 0 }
+        switch variant { case .firstInstall: return 1.6; case .standard: return 0.9; case .reducedMotion: return 0 }
+        #else
+        return 0
+        #endif
+    }
+
     private func storyEnded() {
+        storyEndedAt = Date()
         machine.animationFinished()
         settle()
     }
@@ -212,6 +229,11 @@ final class OpeningCoordinator {
     /// Whichever of the story and the start-up finishes second reveals the app, exactly once.
     private func settle(exit plays: Bool = true) {
         guard machine.state == .transitioning, revealedAt == nil, let variant else { return }
+        // The logo holds first. (A watchdog abort never waits: the opening gives way at once then.)
+        if abortReason == nil, let ended = storyEndedAt {
+            let wait = lingerSeconds(for: variant) - Date().timeIntervalSince(ended)
+            if wait > 0.001 { after(wait) { $0.settle() }; return }
+        }
         revealedAt = Date()
         memory.storySeen(version: version)
         log.info("revealing the app")

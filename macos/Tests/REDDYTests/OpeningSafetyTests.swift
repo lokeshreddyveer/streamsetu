@@ -7,7 +7,7 @@ import SwiftUI
 @Suite("Opening: safety") @MainActor struct OpeningSafetyTests {
     private func coordinator(env: [String: String] = [:]) -> OpeningCoordinator {
         let d = UserDefaults(suiteName: "opening-safety-\(UUID().uuidString)")!
-        return OpeningCoordinator(memory: LaunchMemory(defaults: d), version: "2.16.1", env: env)
+        return OpeningCoordinator(memory: LaunchMemory(defaults: d), version: "2.16.1", env: env, lingers: false)
     }
 
     // MARK: watchdog
