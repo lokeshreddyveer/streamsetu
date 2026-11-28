@@ -13,12 +13,15 @@
 [![Licence](https://img.shields.io/badge/licence-source%20available%2C%20all%20rights%20reserved-0f766e?style=flat-square&labelColor=475569)](#-licence)
 [![Privacy](https://img.shields.io/badge/privacy-no%20account%20%C2%B7%20no%20ads%20%C2%B7%20no%20analytics-0f766e?style=flat-square&labelColor=475569)](#-privacy)
 
-**[⬇️ Download](#-download)** &nbsp;·&nbsp; **[✨ Features](#-features)** &nbsp;·&nbsp; **[🖼️ Screenshots](#%EF%B8%8F-screenshots)** &nbsp;·&nbsp; **[🔒 Privacy](#-privacy)** &nbsp;·&nbsp; **[💬 Support](#-support)**
+**[⬇️ Download](#-download)** &nbsp;·&nbsp; **[✨ Features](#-features)** &nbsp;·&nbsp; **[🖼️ Screenshots](#%EF%B8%8F-screenshots)** &nbsp;·&nbsp; **[🔒 Privacy](#-privacy)** &nbsp;·&nbsp; **[💬 Support](#-support)** &nbsp;·&nbsp; **[⚖️ Legal](#%EF%B8%8F-disclaimer-and-legal-notice)**
 
 </div>
 
 > [!NOTE]
-> StreamSetu is a player only. It provides **no channels, movies, series or subscriptions** and does not ship or link to any content. You bring your own legally obtained playlist or login.
+> StreamSetu is a player only. It provides **no channels, movies, series or subscriptions** and does not ship or link to any content. You bring your own legally obtained playlist or login. It is an independent project and is not affiliated with, funded, authorized or endorsed by any service it can connect to (see the [Disclaimer and legal notice](#%EF%B8%8F-disclaimer-and-legal-notice)).
+
+> [!WARNING]
+> **Music** and some other features reach third-party services through their public or unofficial interfaces, for example YouTube Music, JioSaavn, Deezer and SoundCloud. Using those services this way may be against their terms of service, they can change or stop working without notice, and some are not available in every country. You use them at your own risk and are responsible for following their terms and the laws that apply to you.
 
 ## 🖼️ Screenshots
 
@@ -195,6 +198,20 @@ Read the [Privacy policy](legal/privacy.md) and the [Terms](legal/terms.md).
 ## 💬 Support
 
 Write to contact@lokeshreddy.dev. A diagnostic report (Settings → Diagnostics) contains no logins or provider addresses and is safe to attach.
+
+## ⚖️ Disclaimer and legal notice
+
+StreamSetu is an independent, personal project. It is **not** associated with, sponsored by, authorized by or endorsed by Apple, Google, YouTube, Amazon, Microsoft, Deezer, JioSaavn, SoundCloud, Audius, Spotify, TMDB, Plex, Jellyfin, Emby or any other company or service named in the app or in this repository, or by any of their parent companies, affiliates or subsidiaries.
+
+- **No content, no hosting.** StreamSetu does not host, upload, store, sell, rent, rebroadcast or recommend copyrighted media. It is an interface: it plays the playlists, media servers and accounts that **you** add, and it streams from the public, public-facing or user-authenticated interfaces of the services you choose. No playlist, channel list, key or credential comes with it.
+- **You are responsible.** Only add playlists, accounts and streams that you are legally entitled to access. You alone are responsible for what you play and for following the copyright laws of your country and the terms of service of every provider you use, including YouTube's Terms of Service. Do not use StreamSetu to infringe copyright or to get around any protection on content.
+- **Personal use.** StreamSetu is made for personal, non-commercial use on devices you own or control.
+- **Third-party services can change.** Services reached through public or unofficial interfaces may change, restrict or block access at any time, and some are limited by country. StreamSetu cannot promise that any of them will keep working, and it does not help anyone avoid a regional restriction.
+- **No guarantee about ads or access.** StreamSetu does not promise to remove advertising, to bypass a paywall, or to give access to anything a provider does not already give you.
+- **Trademarks.** All names, logos, trademarks, service marks and other intellectual property mentioned here or in the apps belong to their respective owners and are used only to say what StreamSetu works with. This product uses the TMDB API but is not endorsed or certified by TMDB.
+- **No warranty.** StreamSetu is provided as it is, without warranty of any kind. Streams depend on your provider and your network, and playback is not guaranteed. To the extent the law allows, the author is not liable for any loss or damage from using it.
+
+The full wording is in the [Terms of Use](legal/terms.md) and the [Privacy policy](legal/privacy.md); software from other authors is listed, with its licences, in [Open-source licences](legal/licenses.md).
 
 ## 📜 Licence
 
