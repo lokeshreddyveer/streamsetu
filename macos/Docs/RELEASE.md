@@ -22,10 +22,6 @@ Scripts/verify-release.sh
 
 Unsigned/ad-hoc builds open via right-click → Open (or `xattr -cr StreamSetu.app`).
 
-## The three Mac downloads
-A release has three disk images: `StreamSetu-<v>.dmg` (universal), `StreamSetu-<v>-AppleSilicon.dmg` (arm64) and `StreamSetu-<v>-Intel.dmg` (x86_64). `Scripts/release-signed.sh <version> <build>` builds, signs, notarizes and packages all three
-(`REDDY_ARCH=arm64|x86_64|universal Scripts/build-release.sh` builds one; `DMG_SUFFIX=-AppleSilicon|-Intel Scripts/create-dmg.sh` names it). The in-app updater always offers the universal one.
-
 ## libmpv (MKV / AVI / RTSP / DASH)
 ```sh
 Scripts/fetch-libmpv.sh                    # once: downloads the universal libmpv/FFmpeg/libplacebo/libass stack

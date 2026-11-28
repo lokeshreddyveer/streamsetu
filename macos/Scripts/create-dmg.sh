@@ -1,11 +1,10 @@
 #!/bin/bash
-# Packages dist/StreamSetu.app into dist/StreamSetu-<version><suffix>.dmg with an Applications shortcut.
-#   DMG_SUFFIX=-AppleSilicon | -Intel   names the single-architecture disk images (the universal one has no suffix).
+# Packages dist/StreamSetu.app into dist/StreamSetu-<version>.dmg with an Applications shortcut.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 APP="${1:-dist/StreamSetu.app}"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")"
-DMG="dist/StreamSetu-$VERSION${DMG_SUFFIX:-}.dmg"
+DMG="dist/StreamSetu-$VERSION.dmg"
 STAGE="$(mktemp -d)"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"

@@ -1,6 +1,5 @@
 #!/bin/bash
-# Builds and signs the app and the three DMGs (universal, -AppleSilicon, -Intel), then SENDS each DMG to Apple for notarization without waiting for the answer.
-# RELEASE_FLAVOURS (default "arm64 x86_64 universal") picks which are built.
+# Builds and signs the app and the DMG, then SENDS the DMG to Apple for notarization without waiting for the answer.
 # Apple checks everything inside the DMG, so one submission covers the app too. Finish later with Scripts/finish-release.sh <version>.
 #
 #   Scripts/release-dmg.sh <version> <build>           e.g.  Scripts/release-dmg.sh 2.2.2 222
@@ -35,27 +34,16 @@ echo "▸ Signing as: $(security find-identity -v -p codesigning | grep "${SIGN_
 # the only override is a signed, expiring entry in Scripts/risk-acceptances.json (docs/RELEASE-SECURITY.md).
 mkdir -p dist/security
 python3 ../Scripts/audit-dependencies.py --strict --scope mac --report "dist/security/dependencies-${VERSION:-unknown}.json" --sbom "dist/security/sbom-${VERSION:-unknown}.cdx.json" || { echo "✘ dependency check did not come back clean (see above)."; exit 1; }
-STAGE="$(mktemp -d)"; trap 'rm -rf "$STAGE"' EXIT          # each build starts from an empty dist/, so finished files wait here
-mv dist/security "$STAGE/security"
-for FLAVOUR in ${RELEASE_FLAVOURS:-arm64 x86_64 universal}; do
-  case "$FLAVOUR" in
-    universal) SUFFIX="" ;; arm64) SUFFIX="-AppleSilicon" ;; x86_64) SUFFIX="-Intel" ;;
-    *) echo "✘ unknown flavour '$FLAVOUR' (arm64, x86_64 or universal)"; exit 1 ;;
-  esac
-  echo "▸ ===== $FLAVOUR build ====="
-  REDDY_ARCH="$FLAVOUR" REDDY_BUNDLE_MPV=1 Scripts/build-release.sh "$VERSION" "$BUILD"
-  Scripts/sign-app.sh dist/StreamSetu.app
+REDDY_BUNDLE_MPV=1 Scripts/build-release.sh "$VERSION" "$BUILD"
+Scripts/sign-app.sh dist/StreamSetu.app
 
-  echo "▸ Disk image ($FLAVOUR)…"
-  DMG_SUFFIX="$SUFFIX" Scripts/create-dmg.sh                       # signs the DMG too, because SIGN_IDENTITY is set
-  DMG="dist/StreamSetu-$VERSION$SUFFIX.dmg"
-  echo "▸ Sending the $FLAVOUR disk image to Apple (not waiting for the answer)…"
-  OUT="$(xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" 2>&1)"; echo "$OUT"
-  ID="$(echo "$OUT" | awk '/^ *id:/ {print $2; exit}')"
-  [ -n "$ID" ] || { echo "✘ could not read the submission id"; exit 1; }
-  echo "$ID" > "$STAGE/notarization-$VERSION$SUFFIX.id"
-  mv "$DMG" "$STAGE/"
-done
-mkdir -p dist && mv "$STAGE"/StreamSetu-*.dmg "$STAGE"/notarization-*.id dist/ && mv "$STAGE/security" dist/security
-for f in dist/StreamSetu-$VERSION*.dmg; do echo "✔ $f is built and signed."; done
-echo "  Each is with Apple. When Apple has accepted them, run: Scripts/finish-release.sh $VERSION"
+echo "▸ Disk image…"
+Scripts/create-dmg.sh                       # signs the DMG too, because SIGN_IDENTITY is set
+DMG="dist/StreamSetu-$VERSION.dmg"
+echo "▸ Sending the disk image to Apple (not waiting for the answer)…"
+OUT="$(xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" 2>&1)"; echo "$OUT"
+ID="$(echo "$OUT" | awk '/^ *id:/ {print $2; exit}')"
+[ -n "$ID" ] || { echo "✘ could not read the submission id"; exit 1; }
+echo "$ID" > "dist/notarization-$VERSION.id"
+echo "✔ $DMG is built and signed. Submission $ID is with Apple."
+echo "  When Apple has accepted it, run: Scripts/finish-release.sh $VERSION"

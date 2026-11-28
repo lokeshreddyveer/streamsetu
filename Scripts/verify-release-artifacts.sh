@@ -7,7 +7,7 @@
 #
 # Hard gates (any one failing stops the release; all failures are listed, not only the first):
 #   * the code the files were built from is the committed code (clean tree, and the build records the same commit)
-#   * Mac (each of the three DMGs: universal, Apple silicon, Intel): the DMG is notarized and stapled, the app inside has the architectures its name says (universal: arm64 and x86_64; Apple silicon: arm64 only; Intel: x86_64 only), the app inside is signed with the Hardened Runtime and accepted by Gatekeeper, its version is the one being released, and the packaged app passes
+#   * Mac: the DMG is notarized and stapled, the app inside is universal (arm64 and x86_64), the app inside is signed with the Hardened Runtime and accepted by Gatekeeper, its version is the one being released, and the packaged app passes
 #          macos/Scripts/verify-release.sh (signature, privacy manifest equal to the source, no stray paths, and the smoke test that plays a video through the packaged app)
 #   * Android: both APKs verify, are signed by the pinned release certificate (android/release-signer.sha256), carry exactly the allowed permissions (android/release-permissions.txt),
 #              have the right package and version, are the same file, and match the checksums the build recorded
@@ -24,18 +24,18 @@ HDIUTIL="${HDIUTIL:-hdiutil}"; CODESIGN="${CODESIGN:-codesign}"; SPCTL="${SPCTL:
 BT="$(ls -d "$HOME"/Library/Android/sdk/build-tools/* 2>/dev/null | sort -V | tail -1)"
 APKSIGNER="${APKSIGNER:-$BT/apksigner}"; AAPT="${AAPT:-$BT/aapt}"
 REPO="${RELEASES_REPO:-lokeshreddyveer/streamsetu}"
-DMG="${DMG:-macos/dist/StreamSetu-$MAC.dmg}"; DMG_ARM="${DMG_ARM:-macos/dist/StreamSetu-$MAC-AppleSilicon.dmg}"; DMG_INTEL="${DMG_INTEL:-macos/dist/StreamSetu-$MAC-Intel.dmg}"; TV="${TV:-${ANDROID:+android/dist/$ANDROID/streamsetu-tv-$ANDROID.apk}}"; PHONE="${PHONE:-${ANDROID:+android/dist/$ANDROID/StreamSetu-Android-$ANDROID.apk}}"
+DMG="${DMG:-macos/dist/StreamSetu-$MAC.dmg}"; TV="${TV:-${ANDROID:+android/dist/$ANDROID/streamsetu-tv-$ANDROID.apk}}"; PHONE="${PHONE:-${ANDROID:+android/dist/$ANDROID/StreamSetu-Android-$ANDROID.apk}}"
 FAILED=0; MNT=""; MOUNTS=(); APPS=()
 ok()  { echo "  ✔ $1"; }
 bad() { echo "  ✘ $1"; FAILED=$((FAILED + 1)); }
 cleanup() { for m in ${MOUNTS[@]+"${MOUNTS[@]}"}; do "$HDIUTIL" detach "$m" -quiet >/dev/null 2>&1; rmdir "$m" 2>/dev/null; done; true; }
 trap cleanup EXIT
 
-if [ -z "$MAC" ]; then DMG=""; DMG_ARM=""; DMG_INTEL=""; fi
+if [ -z "$MAC" ]; then DMG=""; fi
 echo "Verifying release $TAG (${MAC:+Mac $MAC build $MAC_BUILD}${MAC:+${ANDROID:+, }}${ANDROID:+Android $ANDROID}${MAC:-${ANDROID:+; no Mac file}}${ANDROID:-; no Android files})"
 
 echo "Files"
-for f in ${DMG:+"$DMG" "$DMG_ARM" "$DMG_INTEL"} ${TV:+"$TV" "$PHONE"} "$NOTES"; do [ -f "$f" ] && ok "$f" || bad "$f is missing"; done
+for f in ${DMG:+"$DMG"} ${TV:+"$TV" "$PHONE"} "$NOTES"; do [ -f "$f" ] && ok "$f" || bad "$f is missing"; done
 
 echo "Source"
 DIRTY="$(git status --porcelain -- macos android ios Scripts web windows 2>/dev/null | grep -v '^??.*dist/' | head -5)"
@@ -46,7 +46,7 @@ for rec in ${MAC:+"macos/dist/StreamSetu-$MAC.commit"} ${ANDROID:+"android/dist/
   else bad "$rec is missing (the build records the commit it was made from)"; fi
 done
 
-# One of the three Mac disk images: $1 the file, $2 the architectures the app inside must have (sorted, space separated).
+# The Mac disk image: $1 the file, $2 the architectures the app inside must have (sorted, space separated).
 verify_mac_dmg() {
   local file="$1" want="$2" name; name="$(basename "$1")"
   echo "  $name"
@@ -75,8 +75,6 @@ verify_mac_dmg() {
 if [ -n "$MAC" ]; then
   echo "Mac"
   [ -f "$DMG" ] && verify_mac_dmg "$DMG" "arm64 x86_64"
-  [ -f "$DMG_ARM" ] && verify_mac_dmg "$DMG_ARM" "arm64"
-  [ -f "$DMG_INTEL" ] && verify_mac_dmg "$DMG_INTEL" "x86_64"
 fi
 
 if [ -n "$ANDROID" ]; then
