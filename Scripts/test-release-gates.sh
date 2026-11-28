@@ -19,7 +19,18 @@ make_stubs() {   # $1 = folder
   mkdir -p "$1"
   cat > "$1/hdiutil" <<'S'
 #!/bin/bash
+# Every call is logged (HDIUTIL_LOG). ATTACH_FAILS and DETACH_FAILS make the first N attach or detach calls fail the way macOS does when it is busy;
+# FAKE_STALE=<image name> makes `info` report an earlier mount of that image.
+[ -n "${HDIUTIL_LOG:-}" ] && echo "$*" >> "$HDIUTIL_LOG"
+count() { local f="$STUB_STATE/$1" n; n=$(cat "$f" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$f"; echo "$n"; }
+if [ "$1" = info ] && [ -n "${FAKE_STALE:-}" ]; then
+  printf '================================================\nimage-path      : /somewhere/%s\n/dev/disk9\tGUID_partition_scheme\n/dev/disk9s1\tApple_HFS\t/Volumes/StreamSetu\n' "$FAKE_STALE"; exit 0
+fi
+if [ "$1" = detach ] && [ "${DETACH_FAILS:-0}" -gt 0 ] && [ "$(count detach)" -le "$DETACH_FAILS" ]; then
+  echo "hdiutil: couldn't unmount: Simulators are still shutting down. Please try again in a few moments." >&2; exit 16
+fi
 if [ "$1" = attach ]; then
+  if [ "${ATTACH_FAILS:-0}" -gt 0 ] && [ "$(count attach)" -le "$ATTACH_FAILS" ]; then echo "hdiutil: attach failed - Resource busy" >&2; exit 16; fi
   DMGFILE="$*"
   while [ $# -gt 0 ]; do [ "$1" = "-mountpoint" ] && MNT="$2"; shift; done
   # Two disk images, no universal one: the Apple silicon app is arm64 and build+1, the Intel app is x86_64 and the build itself.
@@ -131,7 +142,9 @@ make_root() {   # builds a fake repository with good artifacts in $ROOT_DIR
   export GH_LOG="$ROOT_DIR/gh.log" GH_STORE="$ROOT_DIR/gh-store" FAKE_PIN="$PIN" FAKE_PERMS="$PERMS"; : > "$GH_LOG"; mkdir -p "$GH_STORE"
   export RELEASE_ROOT="$ROOT_DIR" HDIUTIL="$STUBS/hdiutil" CODESIGN="$STUBS/codesign" SPCTL="$STUBS/spctl" XCRUN="$STUBS/xcrun" LIPO="$STUBS/lipo" APKSIGNER="$STUBS/apksigner" AAPT="$STUBS/aapt" PYTHON3="$STUBS/python3" GH="$STUBS/gh"
   export MAC=9.9.9 MAC_BUILD=999 ANDROID=9.9.9 WINDOWS=8.8.8
-  unset PARTIAL SIGNER APKSIGNER_RC APK_VERSION APK_PACKAGE EXTRA_PERM STAPLER_RC SPCTL_OPEN_RC SPCTL_EXEC_RC CODESIGN_VERIFY_RC NO_RUNTIME FAKE_APP_VERSION FAKE_APP_BUILD FAKE_ARCHS VERIFY_RC AUDIT_RC GH_TAMPER GH_PRESET_STATE APPCAST_RC REPLACE
+  # The disk-image stand-in keeps its counters here and logs every call; no pause between the retries (they would only slow the tests).
+  export STUB_STATE="$ROOT_DIR/stub-state" HDIUTIL_LOG="$ROOT_DIR/hdiutil.log" DMG_RETRY_SLEEP=0; mkdir -p "$STUB_STATE"; : > "$HDIUTIL_LOG"
+  unset PARTIAL SIGNER APKSIGNER_RC APK_VERSION APK_PACKAGE EXTRA_PERM STAPLER_RC SPCTL_OPEN_RC SPCTL_EXEC_RC CODESIGN_VERIFY_RC NO_RUNTIME FAKE_APP_VERSION FAKE_APP_BUILD FAKE_ARCHS VERIFY_RC AUDIT_RC GH_TAMPER GH_PRESET_STATE APPCAST_RC REPLACE ATTACH_FAILS DETACH_FAILS FAKE_STALE
 }
 
 changes_github() { grep -qE "^release (create|upload|edit|delete)" "$GH_LOG"; }
@@ -158,6 +171,25 @@ grep "^release create" "$GH_LOG" | grep -q "StreamSetu-9.9.9-AppleSilicon.dmg" &
 grep "^release create" "$GH_LOG" | grep -q "StreamSetu-9.9.9.dmg" && fail "a universal DMG was uploaded" || ok "no universal DMG is uploaded"
 grep -q "releases/download/t1/StreamSetu-9.9.9-AppleSilicon.dmg" README.md && grep -q "releases/download/t1/StreamSetu-9.9.9-Intel.dmg" README.md && ok "the README's Mac row links both new DMGs" || fail "the README's Mac row does not link both new DMGs"
 grep -q "^appcast" "$GH_LOG" && [ "$(grep -c "^appcast" "$GH_LOG")" = "1" ] && ok "the update feed is told once (it adds the Apple silicon and the Intel item)" || fail "the update feed was not told exactly once"
+
+echo "A busy disk image does not leave anything mounted, and never hides it"
+# macOS is sometimes busy for a moment (Resource busy; "Simulators are still shutting down"). Those are retried; a mount that will not let go is reported, not hidden.
+detaches() { grep -c "^detach " "$HDIUTIL_LOG"; }
+make_root busy-detach; export DETACH_FAILS=2
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "a detach that fails twice does not stop the release"; else fail "a busy detach stopped the release:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
+! grep -q "would not detach" "$ROOT_DIR/out.txt" && ok "...and the detach is retried until it works (nothing left mounted, nothing reported)" || fail "a detach that works on the third try was reported as stuck"
+[ "$(detaches)" -ge 3 ] && ok "the detach was tried again after each failure ($(detaches) calls)" || fail "the detach was not retried ($(detaches) calls)"
+make_root stuck-detach; export DETACH_FAILS=99
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "an image that never detaches does not block a good release"; else fail "a stuck mount blocked a release whose files are fine"; fi
+grep -q "would not detach. Free it with: hdiutil detach" "$ROOT_DIR/out.txt" && ok "...but it is reported, with the command that frees it" || fail "a mount that would not detach was not reported"
+grep -q "^detach .* -force" "$HDIUTIL_LOG" && ok "...after a forced detach was tried" || fail "a forced detach was not tried"
+make_root busy-attach; export ATTACH_FAILS=2
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "an attach that fails twice (Resource busy) is retried and the release goes through"; else fail "a busy attach stopped the release:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
+make_root dead-attach; export ATTACH_FAILS=99
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then fail "a DMG that cannot be opened was accepted"; else grep -q "✘.*the DMG could not be opened" "$ROOT_DIR/out.txt" && ok "a DMG that never opens still blocks the release" || fail "the block for an unopenable DMG says something else"; fi
+make_root stale; export FAKE_STALE="StreamSetu-9.9.9-Intel.dmg"
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "an earlier mount of the same image does not stop the release"; else fail "a stale mount stopped the release"; fi
+grep -q "detached an earlier mount of StreamSetu-9.9.9-Intel.dmg" "$ROOT_DIR/out.txt" && grep -q "^detach /dev/disk9 -force" "$HDIUTIL_LOG" && ok "...and it was detached first" || fail "an earlier mount of the image was left in place"
 
 echo "Every gate blocks, and GitHub is untouched"
 expect_blocked "wrong signing certificate"       'export SIGNER=0000000000000000000000000000000000000000000000000000000000000000' "is not the pinned release certificate"

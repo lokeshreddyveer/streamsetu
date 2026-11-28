@@ -29,10 +29,44 @@ WIN="${WIN:-${WINDOWS:+windows/native/dist/StreamSetu-Windows-$WINDOWS.zip}}"; W
 FAILED=0; MNT=""; MOUNTS=(); APPS=()
 ok()  { echo "  ✔ $1"; }
 bad() { echo "  ✘ $1"; FAILED=$((FAILED + 1)); }
-cleanup() { for m in ${MOUNTS[@]+"${MOUNTS[@]}"}; do "$HDIUTIL" detach "$m" -quiet >/dev/null 2>&1; rmdir "$m" 2>/dev/null; done; true; }
+
+# Disk images. macOS is sometimes busy for a moment: a mount fails with "Resource busy", or a detach says "Simulators are still shutting down. Please try again in a few
+# moments." (Spotlight or a scan still holding a file does the same). A single try, with the error hidden, left the image mounted after a release (twice), so every attach and
+# detach is retried, a detach that still fails is forced, and an image that will not let go is REPORTED with the command that frees it, never hidden.
+# DMG_RETRY_SLEEP is the pause between tries in seconds (the gate tests set it to 0).
+dmg_attach() {   # $1 image file, $2 mount point: read-only, five tries
+  local i
+  for i in 1 2 3 4 5; do
+    "$HDIUTIL" attach -readonly -nobrowse -noautoopen -mountpoint "$2" "$1" -quiet >/dev/null 2>&1 && return 0
+    sleep "${DMG_RETRY_SLEEP:-2}"
+  done
+  return 1
+}
+dmg_detach() {   # $1 mount point: six tries, then -force; returns 1 (and says so) if it is still attached
+  local i
+  for i in 1 2 3 4 5 6; do
+    "$HDIUTIL" detach "$1" -quiet >/dev/null 2>&1 && { rmdir "$1" 2>/dev/null; return 0; }
+    sleep "${DMG_RETRY_SLEEP:-3}"
+  done
+  "$HDIUTIL" detach "$1" -force -quiet >/dev/null 2>&1 && { rmdir "$1" 2>/dev/null; return 0; }
+  echo "  ! the disk image at $1 would not detach. Free it with: hdiutil detach $1 -force" >&2
+  return 1
+}
+dmg_detach_stale() {   # the names of the disk images: detaches an earlier mount of any of them (an interrupted run, a check that did not let go)
+  local name dev
+  for name in "$@"; do
+    for dev in $("$HDIUTIL" info 2>/dev/null | awk -v n="$name" 'BEGIN{RS="================================================"} index($0, n) {for (i = 1; i <= NF; i++) if ($i ~ /^\/dev\/disk[0-9]+$/) {print $i; break}}'); do
+      if "$HDIUTIL" detach "$dev" -force >/dev/null 2>&1; then echo "  ↺ detached an earlier mount of $name ($dev)"
+      else echo "  ! an earlier mount of $name ($dev) would not detach. Free it with: hdiutil detach $dev -force" >&2; fi
+    done
+  done
+  return 0
+}
+cleanup() { for m in ${MOUNTS[@]+"${MOUNTS[@]}"}; do dmg_detach "$m" || true; done; true; }
 trap cleanup EXIT
 
 if [ -z "$MAC" ]; then DMG_ARM=""; DMG_INTEL=""; fi
+[ -n "$MAC" ] && dmg_detach_stale "$(basename "$DMG_ARM")" "$(basename "$DMG_INTEL")"
 echo "Verifying release $TAG (${MAC:+Mac $MAC build $MAC_BUILD}${ANDROID:+, Android $ANDROID}${WINDOWS:+, Windows $WINDOWS})"
 
 echo "Files"
@@ -62,7 +96,7 @@ verify_mac_dmg() {
   "$XCRUN" stapler validate "$file" >/dev/null 2>&1 && ok "$name: DMG is notarized and stapled" || bad "$name: DMG is not notarized and stapled"
   "$SPCTL" --assess --type open --context context:primary-signature "$file" >/dev/null 2>&1 && ok "$name: Gatekeeper accepts the DMG" || bad "$name: Gatekeeper does not accept the DMG"
   MNT="$(mktemp -d)"
-  if "$HDIUTIL" attach -readonly -nobrowse -noautoopen -mountpoint "$MNT" "$file" -quiet >/dev/null 2>&1; then
+  if dmg_attach "$file" "$MNT"; then
     MOUNTS+=("$MNT")          # kept mounted until the end: the secrets scan below reads each app
     local APP; APP="$(ls -d "$MNT"/*.app 2>/dev/null | head -1)"
     if [ -n "$APP" ]; then
