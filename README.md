@@ -22,6 +22,8 @@
 
 > [!WARNING]
 > **Music** and some other features reach third-party services through their public or unofficial interfaces, for example YouTube Music, JioSaavn, Deezer and SoundCloud. Using those services this way may be against their terms of service, they can change or stop working without notice, and some are not available in every country. You use them at your own risk and are responsible for following their terms and the laws that apply to you.
+>
+> StreamSetu is made for **personal, educational and research purposes only**, to show how a native media player can be built. It is not meant for commercial use, for redistributing content, or for anything that infringes copyright.
 
 ## 🖼️ Screenshots
 
@@ -205,7 +207,7 @@ StreamSetu is an independent, personal project. It is **not** associated with, s
 
 - **No content, no hosting.** StreamSetu does not host, upload, store, sell, rent, rebroadcast or recommend copyrighted media. It is an interface: it plays the playlists, media servers and accounts that **you** add, and it streams from the public, public-facing or user-authenticated interfaces of the services you choose. No playlist, channel list, key or credential comes with it.
 - **You are responsible.** Only add playlists, accounts and streams that you are legally entitled to access. You alone are responsible for what you play and for following the copyright laws of your country and the terms of service of every provider you use, including YouTube's Terms of Service. Do not use StreamSetu to infringe copyright or to get around any protection on content.
-- **Personal use.** StreamSetu is made for personal, non-commercial use on devices you own or control.
+- **Educational purposes only.** StreamSetu is made for personal, educational and research purposes: to learn from and to show how a native media player is built. It is for non-commercial use on devices you own or control, and it is not meant to be used, sold or offered as a service for redistributing content or for anything that infringes copyright.
 - **Third-party services can change.** Services reached through public or unofficial interfaces may change, restrict or block access at any time, and some are limited by country. StreamSetu cannot promise that any of them will keep working, and it does not help anyone avoid a regional restriction.
 - **No guarantee about ads or access.** StreamSetu does not promise to remove advertising, to bypass a paywall, or to give access to anything a provider does not already give you.
 - **Trademarks.** All names, logos, trademarks, service marks and other intellectual property mentioned here or in the apps belong to their respective owners and are used only to say what StreamSetu works with. This product uses the TMDB API but is not endorsed or certified by TMDB.
