@@ -122,7 +122,7 @@ The full table, app by app, is in [docs/FEATURES.md](docs/FEATURES.md). Where a 
 | ⏺️ **Recording** | Record a live channel and schedule a recording from the TV Guide on Mac, Android and TV. Record a programme every week on Mac while the app is open. |
 | ⬇️ **Downloads** | Watch without a connection, with a progress ring, and an Offline Home that shows the downloads that still play. They can delete themselves after you watch them. |
 | 🎙️ **Podcasts** | Search, follow and play, with your place kept. On the Mac the charts follow the country you pick and a row shows your categories. |
-| 🎵 **Music (Mac)** | Listen Now from your own listening, Explore, Recently Added, Library, artist, album and film pages, lyrics, crossfade and Automix, your own sources, and Listen Together. |
+| 🎵 **Music (Mac)** | Listen Now from your own listening, Explore, Recently Added, Library, artist, album and film pages, lyrics, crossfade and Automix, your own sources, and Listen Together. [Every Music screen →](#-music-mac) |
 | 🧭 **Get set up (Mac)** | A short, full-window, three-step setup in your theme: skip adding a playlist and use Music, Podcasts and the streaming services at once. Choose whether Music's own setup runs when you finish, your podcast country and the categories you like, and which services are pinned to the top bar (with their own icons). Open it again any time from Help, Get Set Up. |
 | 📈 **Your week and your usual time** | Time watched and the most watched title each week, an optional Sunday evening notification, and a one-tap play for what you often put on around the same hour. |
 | 📋 **Channel tools** | Hide, rename and check channels, a Channel Manager and a health check. Watch statistics, and subscription end dates for playlists that report them. |
@@ -173,6 +173,41 @@ A Services menu opens eleven streaming services' own sites inside StreamSetu, ea
 - If a service does not load, a message says why.
 - An optional page setting for one service (off by default, asked first) can skip its video ads and community-marked sponsor segments.
 - You sign in with your own account. StreamSetu does not sell or include any service.
+
+### 🎵 Music (Mac)
+
+A music player inside StreamSetu on the Mac. It needs no playlist and no account of its own: songs, albums, artists, playlists and film soundtracks come from the services you choose, and nothing is included. Music reaches third-party services through their public or unofficial interfaces, so read the notice at the top of this page first.
+
+<table>
+  <tr>
+    <td width="33%" valign="top" align="center"><img src="docs/screenshots/mac-music-explore.png" alt="Music, Explore: featured albums, the top charts for your country and the top songs worldwide" width="100%"><br><sub>Explore</sub></td>
+    <td width="33%" valign="top" align="center"><img src="docs/screenshots/mac-music-listen-now.png" alt="Music, Listen Now: continue listening, an album picked from what you play, quick picks, and synced lyrics beside the page" width="100%"><br><sub>Listen Now, with synced lyrics</sub></td>
+    <td width="33%" valign="top" align="center"><img src="docs/screenshots/mac-music-lyrics.png" alt="The full-screen Music player with large synced lyrics" width="100%"><br><sub>The full-screen player</sub></td>
+  </tr>
+</table>
+
+The sidebar: **Listen Now, Explore, Recently Added, Search, Your Library** and **Radio**; under Library, Recently Played, Artists, Albums and Songs; then Downloads, Devices, Listen Together, Settings, Open a Link and your playlists.
+
+<details>
+<summary><b>Every Music screen</b></summary>
+
+| Screen | What it shows | Picture |
+|---|---|---|
+| **Set up Music** | The first-time dialog. It says what each service sees (search words, track titles and your IP address, nothing until you search or play) before you continue, or lets you choose the sources yourself. | [see it](docs/screenshots/mac-music-setup.png) |
+| **Listen Now** | Play recent, Shuffle liked, Start radio and Open Library; Continue listening; an album picked from what you play most; Quick picks. | [see it](docs/screenshots/mac-music-listen-now.png) |
+| **Explore** | Featured albums, the top charts for the country you pick, the top songs worldwide, and a Ragas button. | [see it](docs/screenshots/mac-music-explore.png) |
+| **Recently Added** | New to you today, and shelves of songs in your languages (for example Hindi, English and Telugu). | [see it](docs/screenshots/mac-music-new.png) |
+| **Search** | One search box for songs, artists, albums and playlists, across everything, your library or local files; what is trending; browse by mood; and the queue panel with Autoplay, Stop after this song, Save as playlist and Clear upcoming. | [see it](docs/screenshots/mac-music-search.png) |
+| **Recently played** | What you played last, newest first, with Play, Shuffle and Save as playlist, and a side panel for the artist (Open artist, Start radio, Follow), other versions of the song, the album and more from the artist. | [see it](docs/screenshots/mac-music-recent.png) |
+| **Radio** | Start a station from an artist, a song, a genre or a language; steer it with Familiar, Mixed, Discover, Newly released, Deep cuts, Crowd favourites or Artist only; your stations and Made for you. | [see it](docs/screenshots/mac-music-radio.png) |
+| **Album page** | Play, Shuffle, like, radio, queue and share; tabs for Overview, Tracks, Versions, Credits and About; the credits, and more by the same people. | [see it](docs/screenshots/mac-music-album.png) |
+| **Film page** | A film with its director and music credits, and tabs for Albums, Videos, Gallery, Cast, Crew and About, with the cast one click from their profiles. | [see it](docs/screenshots/mac-music-film.png) |
+| **Full-screen player** | Large lyrics that follow the song, the cover, seek, shuffle and repeat, volume, and lyric controls for romanisation, translation, text size and timing. | [see it](docs/screenshots/mac-music-lyrics.png) |
+| **Translated lyrics** | Lyrics translated on your Mac after you download the languages you want. | [see it](docs/screenshots/mac-music-translate.png) |
+
+All the Mac screens, in order: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md#mac).
+
+</details>
 
 ## 🔒 Privacy
 
