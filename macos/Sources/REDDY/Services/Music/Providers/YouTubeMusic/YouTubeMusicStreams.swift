@@ -173,11 +173,15 @@ actor YouTubeMusicStreamResolver {
     private func resolveWithin(videoID: String, title: String, quality: MusicQuality, durationSeconds: Double, isUpload: Bool) async throws -> YTMResolvedStream {
         let signedIn = await client.isSignedIn
         if isUpload, !signedIn { throw MusicError.notSignedIn("YouTube Music") }
+        // YouTube has refused this connection as a bot: no request is sent while the gate is closed (a signed-in account is never held back).
+        if !signedIn, YouTubeBotGate.shared.isClosed { throw MusicError.rateLimited(retryAfter: YouTubeBotGate.shared.secondsLeft) }
         var outcome = Outcome()
         if let r = await attempt(videoID: videoID, quality: quality, isUpload: isUpload, signedIn: signedIn, durationSeconds: durationSeconds, outcome: &outcome) {
             if !isUpload { store(r, quality: quality) }
+            YouTubeBotGate.shared.reset()
             return r
         }
+        if !signedIn, YouTubeBotGate.shared.isClosed { throw MusicError.rateLimited(retryAfter: YouTubeBotGate.shared.secondsLeft) }
         // Every address YouTube offered had failed once already (a fresh lookup can return the same address) or every client was resting: ask
         // once more with those allowed, checking them again before use. A transient failure never leaves a song with nothing to try.
         if outcome.skippedBad || outcome.skippedParked {
@@ -261,11 +265,14 @@ actor YouTubeMusicStreamResolver {
         var queue = order
         var tried = Set<YTMClientKey>()
         while !queue.isEmpty {
+            // The gate closed while this song was being tried: the other clients would only be refused the same way.
+            if !signedIn, YouTubeBotGate.shared.isClosed { break }
             let key = queue.removeFirst()
             guard tried.insert(key).inserted else { continue }
             let id = client.identity(key)
             // The signature timestamp costs a request; only the clients that send one pay for it.
             if id.useSignatureTimestamp, !stsFetched { sts = await solver.signatureTimestamp(); stsFetched = true }
+            await YouTubeRequestPacer.shared.wait()
             guard let resp = try? await client.player(videoID: videoID, client: key, signatureTimestamp: id.useSignatureTimestamp ? sts : nil, poToken: sessionToken, playlistID: isUpload ? "MLPT" : nil) else { continue }
             outcome.anyAnswer = true
             outcome.answers += 1
@@ -274,7 +281,8 @@ actor YouTubeMusicStreamResolver {
             if status != "OK" {
                 if status == "LOGIN_REQUIRED" { outcome.sawLoginRequired = true }
                 let reason = root.dict("playabilityStatus").map { ($0.str("reason") ?? "") + " " + (YTMJSON.firstString("text", in: $0["errorScreen"] as Any) ?? "") }
-                if let v = YouTubePlayability.from(status: status, reason: reason).verdict { outcome.permanent.append(v) }
+                if !signedIn { YouTubeBotGate.shared.observe(status: status, reason: reason ?? "", videoID: videoID) }
+                if !(YouTubeBotGate.isBotCheck(status: status, reason: reason ?? "")), let v = YouTubePlayability.from(status: status, reason: reason).verdict { outcome.permanent.append(v) }
                 if key == .webRemix, signedIn, ["AGE_CHECK_REQUIRED", "AGE_VERIFICATION_REQUIRED", "LOGIN_REQUIRED", "CONTENT_CHECK_REQUIRED"].contains(status) { queue.insert(.webCreator, at: 0) }
                 continue
             }

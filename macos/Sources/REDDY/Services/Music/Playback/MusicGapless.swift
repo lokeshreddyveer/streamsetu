@@ -160,8 +160,9 @@ extension MusicFailureAction {
 
 enum MusicPlaybackMessages {
     static let deviceLost = "Your audio device is unavailable. Press play once it's back."
-    static let throttledFirst = "The music source is busy. Trying the same song again shortly."
-    static let throttledHold = "The music source is still busy. Press play to try again."
+    /// While YouTube is refusing this connection as a bot, the busy message says so and what helps; otherwise the plain one.
+    static var throttledFirst: String { YouTubeBotGate.shared.isClosed ? YouTubeBotGate.message : "The music source is busy. Trying the same song again shortly." }
+    static var throttledHold: String { YouTubeBotGate.shared.isClosed ? YouTubeBotGate.message : "The music source is still busy. Press play to try again." }
     static let networkRefused = "This music source does not accept this network. Press play to try again, or change the source in Music settings."
     static func skipped(_ kind: MusicFailureKind, title: String) -> String {
         Localized.string(kind == .needsSignIn ? "Skipped (sign-in needed): %@" : "Skipped (unavailable): %@", title)

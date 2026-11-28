@@ -71,7 +71,9 @@ struct MusicSoundtrackHeaderSection: View {
             MusicCoverImage(thumbs: page.coverThumbs, size: nil, corner: 0).artwork(of: nil, slot: .backdrop)
                 .frame(maxWidth: .infinity).frame(height: 360).clipped()
                 .blur(radius: 60).opacity(0.38)
-                .overlay(LinearGradient(colors: [.clear, ColorTokens.background], startPoint: .center, endPoint: .bottom))
+                // Faded away on every side with masks (not a colour laid over it, which shows its edge wherever the page's tone differs): no hard rectangle behind the header.
+                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.3), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.14), .init(color: .black, location: 0.86), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
                 .padding(.horizontal, -MusicSpace.xl).padding(.top, -MusicSpace.xl)
                 .accessibilityHidden(true).allowsHitTesting(false)
         }

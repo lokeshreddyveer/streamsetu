@@ -54,8 +54,10 @@ struct MusicFilmHeader: View {
                 .artwork(of: nil, slot: .filmHero)
                 .frame(maxWidth: .infinity).frame(height: Self.heroHeight).clipped()
                 .opacity(0.62)
-                .overlay(LinearGradient(colors: [.clear, ColorTokens.background], startPoint: .center, endPoint: .bottom))
                 .overlay(LinearGradient(colors: [ColorTokens.background.opacity(0.75), .clear], startPoint: .leading, endPoint: .trailing))
+                // The bottom and the two sides fade away with masks, so no edge shows where the picture ends.
+                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.35), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.05), .init(color: .black, location: 0.95), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
                 .padding(.horizontal, -MusicSpace.xl).padding(.top, -MusicSpace.xl)
                 .accessibilityHidden(true).allowsHitTesting(false)
         }

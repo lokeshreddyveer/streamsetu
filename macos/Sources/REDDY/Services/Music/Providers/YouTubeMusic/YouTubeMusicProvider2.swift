@@ -433,6 +433,8 @@ struct YouTubeMusicFullProvider: MusicMetadataProvider, MusicAudioProvider, Musi
                                      durationMs: track.durationMs > 0 ? track.durationMs : nil, thumbnails: track.thumbnails,
                                      externalURL: "https://music.youtube.com/watch?v=\(vid)", confidence: 1.0)]
         }
+        // While YouTube is refusing this connection as a bot, a guest's searches are not sent either (a signed-in account is never held back).
+        if YouTubeBotGate.shared.isClosed, !(await client.isSignedIn) { throw MusicError.rateLimited(retryAfter: YouTubeBotGate.shared.secondsLeft) }
         let songs = try await searchTracks(YouTubeAudio.query(for: track), page: nil).items
         let candidates = songs.map {
             YouTubeCandidate(videoID: $0.id, title: $0.title, channel: $0.artists.first.map { a in a.name + " - Topic" },

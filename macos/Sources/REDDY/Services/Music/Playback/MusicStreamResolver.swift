@@ -471,6 +471,9 @@ final class MusicStreamResolver {
         // Every provider failed to answer at all: the network is the likely cause, which is not a problem with this song.
         let answered = providers.indices.filter { race.errorKinds[$0] == nil && !race.timedOut.contains($0) }.count
         if answered == 0, networkTrouble > 0 { throw MusicError.network("no music source answered") }
+        // YouTube has refused this connection as a bot (see YouTubeBotGate): trying more songs cannot change that, so it is reported as a busy source. The queue then waits on this song
+        // and says why, instead of skipping through every song and asking YouTube again for each.
+        if YouTubeBotGate.shared.isClosed { throw MusicError.rateLimited(retryAfter: YouTubeBotGate.shared.secondsLeft) }
         throw MusicError.noPlayableSource(t.title)
         }
     }

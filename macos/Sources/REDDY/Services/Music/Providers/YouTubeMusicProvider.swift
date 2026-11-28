@@ -34,11 +34,17 @@ struct YouTubeMusicProvider: MusicMetadataProvider, MusicAudioProvider {
     }
     /// Only the visionOS identity is used: the Android VR and iPhone identities answer, but their links stop working after the first MiB, so a
     /// whole song never plays, and the old iPhone version is refused outright. It needs the anonymous visitor id on every call.
-    private static let playerClients: [PlayerClient] = [
-        PlayerClient(name: "VISIONOS", version: "0.1",
-                     userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
-                     headerID: "101", extra: ["deviceMake": "Apple", "deviceModel": "RealityDevice14,1", "osName": "visionOS", "osVersion": "1.3.21O771"])
-    ]
+    private static let playerClients: [PlayerClient] = {
+        // The same current visionOS identity the main engine sends (one table, which an override file can update), not a copy of its own: two identities from one connection, one of them
+        // years old, is what a bot check notices.
+        let id = YTMClientTable.builtIn[.visionOS]!
+        var extra: [String: String] = [:]
+        if let v = id.deviceMake { extra["deviceMake"] = v }
+        if let v = id.deviceModel { extra["deviceModel"] = v }
+        if let v = id.osName { extra["osName"] = v }
+        if let v = id.osVersion { extra["osVersion"] = v }
+        return [PlayerClient(name: id.clientName, version: id.clientVersion, userAgent: id.userAgent, headerID: id.clientID, extra: extra)]
+    }()
 
     // MARK: metadata (songs only)
 
@@ -64,6 +70,7 @@ struct YouTubeMusicProvider: MusicMetadataProvider, MusicAudioProvider {
     // MARK: audio
 
     func sources(for track: MusicTrack) async throws -> [MusicAudioSource] {
+        if YouTubeBotGate.shared.isClosed { throw MusicError.rateLimited(retryAfter: YouTubeBotGate.shared.secondsLeft) }
         let q = YouTubeAudio.query(for: track)
         let songs = try await searchSongs(q)
         let candidates = songs.map {
@@ -89,21 +96,26 @@ struct YouTubeMusicProvider: MusicMetadataProvider, MusicAudioProvider {
     func streams(for source: MusicAudioSource) async throws -> [MusicStream] {
         if let s = source.streams, !s.isEmpty { return s }
         guard let url = Self.playerURL, source.id.range(of: "^[A-Za-z0-9_-]{6,20}$", options: .regularExpression) != nil else { throw MusicError.notFound }
+        if YouTubeBotGate.shared.isClosed { throw MusicError.rateLimited(retryAfter: YouTubeBotGate.shared.secondsLeft) }
         for client in Self.playerClients {
             let timestamp = await signature.cachedTimestamp()
             guard var obj = await requestPlayer(url, client: client, videoID: source.id, timestamp: timestamp) else { continue }
+            // YouTube's "confirm you're not a bot" answer is counted; once it has closed the gate no further request is sent.
+            YouTubeBotGate.shared.observe(obj, videoID: source.id)
+            if YouTubeBotGate.shared.isClosed { throw MusicError.rateLimited(retryAfter: YouTubeBotGate.shared.secondsLeft) }
             var formats = Self.rawFormats(obj)
             // A ciphered reply must be paired with the player version that solves it, so ask again with that version's timestamp.
             if timestamp == nil, formats.contains(where: { $0.cipher != nil }), let ts = await signature.signatureTimestamp() {
                 if let again = await requestPlayer(url, client: client, videoID: source.id, timestamp: ts) { obj = again; formats = Self.rawFormats(again) }
             }
             let list = await resolve(formats, headers: ["User-Agent": client.userAgent])
-            if !list.isEmpty { return list }
+            if !list.isEmpty { YouTubeBotGate.shared.reset(); return list }
         }
         throw MusicError.noPlayableSource(source.title)
     }
 
     private func requestPlayer(_ url: URL, client: PlayerClient, videoID: String, timestamp: Int?) async -> Any? {
+        await YouTubeRequestPacer.shared.wait()
         var ctx: [String: Any] = ["clientName": client.name, "clientVersion": client.version, "hl": "en", "gl": "US"]
         let vid = await visitor.value(http: http, now: Date())
         if let vid { ctx["visitorData"] = vid }
