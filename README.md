@@ -29,7 +29,7 @@
 
 ### 🖥️ Mac
 
-<p align="center"><img src="docs/screenshots/mac-slideshow.gif" alt="StreamSetu on Mac, from the opening screen to Home, Live TV, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#mac">All Mac screenshots →</a></sub></p>
+<p align="center"><img src="docs/screenshots/mac-slideshow.gif" alt="StreamSetu on Mac, from the opening screen to Home, Live TV, Movies, Series, the TV Guide, Podcasts and Music" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#mac">All Mac screenshots →</a></sub></p>
 
 <p align="center"><img src="docs/screenshots/mac-opening.png" alt="The StreamSetu opening on the Mac: each destination crosses the screen alone with its name and lights in your accent colour, the icons then spin into the StreamSetu symbol and the name slides out from behind it" width="100%"><br><sub>The Mac opening on pure black, in your accent colour (frames from the app's own renderer).</sub></p>
 
