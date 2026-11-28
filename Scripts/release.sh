@@ -55,7 +55,19 @@ if [ "$STATE" = "false" ]; then
   "$GH" release delete "$TAG" --repo "$REPO" --yes
 fi
 DRAFT_MADE=1
-"$GH" release create "$TAG" ${DMG_ARM:+"$DMG_ARM" "$DMG_INTEL"} ${TV:+"$TV" "$PHONE"} ${WIN:+"$WIN" "$WIN_ARM"} --repo "$REPO" --draft --title "$TITLE" --notes-file "$BODY"
+"$GH" release create "$TAG" --repo "$REPO" --draft --title "$TITLE" --notes-file "$BODY"
+# The files go up ONE AT A TIME, each tried up to four times. `gh release create <files>` sends them all at once: about 780 MB together starved the largest Windows zip on
+# this connection ("HTTP 408 Upload body timed out due to inactivity"), which stopped release 2026.11.28 at the upload (the draft was removed, nothing was visible).
+# Nothing is published until every file is up and checked below; a file that will not go up after four tries stops the release and the unpublished draft is removed.
+for f in ${DMG_ARM:+"$DMG_ARM" "$DMG_INTEL"} ${TV:+"$TV" "$PHONE"} ${WIN:+"$WIN" "$WIN_ARM"}; do
+  tries=0
+  until "$GH" release upload "$TAG" "$f" --repo "$REPO" --clobber; do
+    tries=$((tries + 1))
+    if [ "$tries" -ge 4 ]; then echo "✘ $(basename "$f") would not upload after $tries tries. Nothing was published."; exit 1; fi
+    echo "  ! the upload of $(basename "$f") failed (try $tries of 4); trying again"; sleep "${UPLOAD_RETRY_SLEEP:-15}"
+  done
+  echo "  ↑ uploaded $(basename "$f")"
+done
 
 # What arrived must be exactly what was sent.
 for f in ${DMG_ARM:+"$DMG_ARM" "$DMG_INTEL"} ${TV:+"$TV" "$PHONE"} ${WIN:+"$WIN" "$WIN_ARM"}; do

@@ -108,6 +108,11 @@ case "$sub" in
     mkdir -p "$GH_STORE/$tag"
     for a in "${@:4}"; do [ -f "$a" ] && cp "$a" "$GH_STORE/$tag/"; done
     case "$*" in *--draft*) echo true > "$GH_STORE/$tag.state" ;; *) echo false > "$GH_STORE/$tag.state" ;; esac ;;
+  upload)
+    # UPLOAD_FAILS=N: the first N uploads fail the way a timed-out one does (counted in $STUB_STATE)
+    if [ "${UPLOAD_FAILS:-0}" -gt 0 ]; then n=$(cat "$STUB_STATE/upload" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$STUB_STATE/upload"
+      [ "$n" -le "$UPLOAD_FAILS" ] && { echo "HTTP 408: Upload body timed out due to inactivity" >&2; exit 1; }; fi
+    mkdir -p "$GH_STORE/$tag"; [ -f "$4" ] && cp "$4" "$GH_STORE/$tag/" ;;
   edit) case "$*" in *"--draft=false"*) echo false > "$GH_STORE/$tag.state" ;; esac ;;
   delete) rm -rf "$GH_STORE/$tag" "$GH_STORE/$tag.state" ;;
   download) ;;
@@ -143,8 +148,8 @@ make_root() {   # builds a fake repository with good artifacts in $ROOT_DIR
   export RELEASE_ROOT="$ROOT_DIR" HDIUTIL="$STUBS/hdiutil" CODESIGN="$STUBS/codesign" SPCTL="$STUBS/spctl" XCRUN="$STUBS/xcrun" LIPO="$STUBS/lipo" APKSIGNER="$STUBS/apksigner" AAPT="$STUBS/aapt" PYTHON3="$STUBS/python3" GH="$STUBS/gh"
   export MAC=9.9.9 MAC_BUILD=999 ANDROID=9.9.9 WINDOWS=8.8.8
   # The disk-image stand-in keeps its counters here and logs every call; no pause between the retries (they would only slow the tests).
-  export STUB_STATE="$ROOT_DIR/stub-state" HDIUTIL_LOG="$ROOT_DIR/hdiutil.log" DMG_RETRY_SLEEP=0; mkdir -p "$STUB_STATE"; : > "$HDIUTIL_LOG"
-  unset PARTIAL SIGNER APKSIGNER_RC APK_VERSION APK_PACKAGE EXTRA_PERM STAPLER_RC SPCTL_OPEN_RC SPCTL_EXEC_RC CODESIGN_VERIFY_RC NO_RUNTIME FAKE_APP_VERSION FAKE_APP_BUILD FAKE_ARCHS VERIFY_RC AUDIT_RC GH_TAMPER GH_PRESET_STATE APPCAST_RC REPLACE ATTACH_FAILS DETACH_FAILS FAKE_STALE
+  export STUB_STATE="$ROOT_DIR/stub-state" HDIUTIL_LOG="$ROOT_DIR/hdiutil.log" DMG_RETRY_SLEEP=0 UPLOAD_RETRY_SLEEP=0; mkdir -p "$STUB_STATE"; : > "$HDIUTIL_LOG"
+  unset PARTIAL SIGNER APKSIGNER_RC APK_VERSION APK_PACKAGE EXTRA_PERM STAPLER_RC SPCTL_OPEN_RC SPCTL_EXEC_RC CODESIGN_VERIFY_RC NO_RUNTIME FAKE_APP_VERSION FAKE_APP_BUILD FAKE_ARCHS VERIFY_RC AUDIT_RC GH_TAMPER GH_PRESET_STATE APPCAST_RC REPLACE ATTACH_FAILS DETACH_FAILS FAKE_STALE UPLOAD_FAILS
 }
 
 changes_github() { grep -qE "^release (create|upload|edit|delete)" "$GH_LOG"; }
@@ -163,14 +168,30 @@ echo "A good release"
 make_root good
 if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "goes through"; else fail "a good release was refused:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
 create=$(grep -n "^release create" "$GH_LOG" | head -1 | cut -d: -f1); publish=$(grep -n "^release edit .*--draft=false" "$GH_LOG" | head -1 | cut -d: -f1); feed=$(grep -n "^appcast" "$GH_LOG" | head -1 | cut -d: -f1)
-[ -n "$create" ] && grep "^release create" "$GH_LOG" | grep -q -- "--draft" && ok "uploaded as a draft" || fail "the upload was not a draft"
+[ -n "$create" ] && grep -E "^release (create|upload)" "$GH_LOG" | grep -q -- "--draft" && ok "uploaded as a draft" || fail "the upload was not a draft"
 [ -n "$publish" ] && [ "$publish" -gt "$create" ] && ok "published only after the upload" || fail "publish did not come after the upload"
 [ -n "$feed" ] && [ -n "$publish" ] && [ "$feed" -gt "$publish" ] && ok "the update feed was touched only after publishing" || fail "the update feed was not updated after publishing"
 grep -q "release delete" "$GH_LOG" && fail "a good release deleted something" || ok "nothing deleted"
-grep "^release create" "$GH_LOG" | grep -q "StreamSetu-9.9.9-AppleSilicon.dmg" && grep "^release create" "$GH_LOG" | grep -q "StreamSetu-9.9.9-Intel.dmg" && ok "both DMGs were uploaded" || fail "both DMGs were not uploaded"
-grep "^release create" "$GH_LOG" | grep -q "StreamSetu-9.9.9.dmg" && fail "a universal DMG was uploaded" || ok "no universal DMG is uploaded"
+grep -E "^release (create|upload)" "$GH_LOG" | grep -q "StreamSetu-9.9.9-AppleSilicon.dmg" && grep -E "^release (create|upload)" "$GH_LOG" | grep -q "StreamSetu-9.9.9-Intel.dmg" && ok "both DMGs were uploaded" || fail "both DMGs were not uploaded"
+grep -E "^release (create|upload)" "$GH_LOG" | grep -q "StreamSetu-9.9.9.dmg" && fail "a universal DMG was uploaded" || ok "no universal DMG is uploaded"
 grep -q "releases/download/t1/StreamSetu-9.9.9-AppleSilicon.dmg" README.md && grep -q "releases/download/t1/StreamSetu-9.9.9-Intel.dmg" README.md && ok "the README's Mac row links both new DMGs" || fail "the README's Mac row does not link both new DMGs"
 grep -q "^appcast" "$GH_LOG" && [ "$(grep -c "^appcast" "$GH_LOG")" = "1" ] && ok "the update feed is told once (it adds the Apple silicon and the Intel item)" || fail "the update feed was not told exactly once"
+
+echo "Uploads go one file at a time and are retried"
+# `gh release create <files>` sent 780 MB at once and a timed-out upload (HTTP 408) stopped release 2026.11.28. The draft is created empty, then each file goes up on its own.
+make_root upload-one-by-one
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "a release goes through with one upload per file"; else fail "the one-file-at-a-time upload broke a good release"; fi
+grep "^release create" "$GH_LOG" | grep -qE "\.(dmg|apk|zip)" && fail "the draft was created with the files on the same command (all at once)" || ok "the draft is created empty, with no files on the command"
+[ "$(grep -c "^release upload" "$GH_LOG")" = "6" ] && ok "each of the six files has its own upload ($(grep -c "^release upload" "$GH_LOG"))" || fail "wrong number of uploads: $(grep -c "^release upload" "$GH_LOG")"
+make_root upload-retry; export UPLOAD_FAILS=2
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "an upload that times out twice is retried and the release goes through"; else fail "a timed-out upload stopped the release:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
+grep -q "failed (try 2 of 4); trying again" "$ROOT_DIR/out.txt" && ok "...and each failed try is reported" || fail "the failed tries were not reported"
+make_root upload-dead; export UPLOAD_FAILS=99
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then fail "a release went through although a file never uploaded"; else ok "a file that never uploads stops the release"; fi
+grep -q "would not upload after 4 tries" "$ROOT_DIR/out.txt" && ok "...and says which file and how many tries" || fail "the message for a file that never uploads is missing"
+grep -q "^release delete" "$GH_LOG" && ok "...and the unpublished draft is removed" || fail "the draft was left behind"
+grep -q "^release edit .*--draft=false" "$GH_LOG" && fail "it published although a file was missing" || ok "...and nothing was published"
+grep -q "^appcast" "$GH_LOG" && fail "the update feed was touched although a file was missing" || ok "...and the update feed was not touched"
 
 echo "A busy disk image does not leave anything mounted, and never hides it"
 # macOS is sometimes busy for a moment (Resource busy; "Simulators are still shutting down"). Those are retried; a mount that will not let go is reported, not hidden.
@@ -249,8 +270,8 @@ grep -q "^release delete" "$GH_LOG" && fail "the published release was deleted" 
 echo "A release without a Mac file"
 make_root nomac; unset MAC MAC_BUILD; export PARTIAL=1
 if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "goes through"; else fail "an Android-only release was refused:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
-grep "^release create" "$GH_LOG" | grep -q "\.dmg" && fail "a DMG was uploaded" || ok "no DMG uploaded"
-grep "^release create" "$GH_LOG" | grep -q "streamsetu-tv-9.9.9.apk" && ok "the APKs were uploaded" || fail "the APKs were not uploaded"
+grep -E "^release (create|upload)" "$GH_LOG" | grep -q "\.dmg" && fail "a DMG was uploaded" || ok "no DMG uploaded"
+grep -E "^release (create|upload)" "$GH_LOG" | grep -q "streamsetu-tv-9.9.9.apk" && ok "the APKs were uploaded" || fail "the APKs were not uploaded"
 grep -q "^appcast" "$GH_LOG" && fail "the Mac update feed was touched" || ok "the Mac update feed was left alone"
 grep -q "releases/download/old/StreamSetu-1.0.dmg" README.md && ok "the README's Mac row still points at the last Mac release" || fail "the README's Mac row was changed"
 expect_blocked "without a Mac file, a wrong signing certificate still blocks" 'unset MAC MAC_BUILD; export PARTIAL=1; export SIGNER=0000000000000000000000000000000000000000000000000000000000000000' "is not the pinned release certificate"
@@ -259,8 +280,8 @@ expect_blocked "MAC without MAC_BUILD"           'unset MAC_BUILD' "MAC_BUILD"
 echo "A Mac-only release (no Android files)"
 make_root maconly; unset ANDROID WINDOWS; export PARTIAL=1
 if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "goes through"; else fail "a Mac-only release was refused:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
-grep "^release create" "$GH_LOG" | grep -q "StreamSetu-9.9.9-AppleSilicon.dmg" && grep "^release create" "$GH_LOG" | grep -q "StreamSetu-9.9.9-Intel.dmg" && ok "both DMGs were uploaded" || fail "both DMGs were not uploaded"
-grep "^release create" "$GH_LOG" | grep -q "\.apk" && fail "an APK was uploaded" || ok "no APK uploaded"
+grep -E "^release (create|upload)" "$GH_LOG" | grep -q "StreamSetu-9.9.9-AppleSilicon.dmg" && grep -E "^release (create|upload)" "$GH_LOG" | grep -q "StreamSetu-9.9.9-Intel.dmg" && ok "both DMGs were uploaded" || fail "both DMGs were not uploaded"
+grep -E "^release (create|upload)" "$GH_LOG" | grep -q "\.apk" && fail "an APK was uploaded" || ok "no APK uploaded"
 grep -q "^appcast" "$GH_LOG" && ok "the update feed was told" || fail "the update feed was not told"
 expect_blocked "Mac-only: a wrong-architecture app still blocks" 'unset ANDROID WINDOWS; export PARTIAL=1 FAKE_ARCHS=x86_64' "has architectures"
 expect_blocked "nothing given"                   'unset MAC MAC_BUILD ANDROID WINDOWS; export PARTIAL=1' "set MAC"
@@ -274,7 +295,7 @@ expect_blocked "a Windows checksum differs"      'echo tampered >> windows/nativ
 expect_blocked "the notes do not name Windows"   'printf "# Notes\n\n- Mac 9.9.9 and Android 9.9.9.\n" > docs/releases/t1.md' "do not mention Windows"
 make_root all
 if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "a release of every app goes through"; else fail "a full release was refused:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
-for f in StreamSetu-9.9.9-AppleSilicon.dmg StreamSetu-9.9.9-Intel.dmg streamsetu-tv-9.9.9.apk StreamSetu-Android-9.9.9.apk StreamSetu-Windows-8.8.8.zip StreamSetu-Windows-8.8.8-arm64.zip; do grep "^release create" "$GH_LOG" | grep -q "$f" && ok "$f was uploaded" || fail "$f was not uploaded"; done
+for f in StreamSetu-9.9.9-AppleSilicon.dmg StreamSetu-9.9.9-Intel.dmg streamsetu-tv-9.9.9.apk StreamSetu-Android-9.9.9.apk StreamSetu-Windows-8.8.8.zip StreamSetu-Windows-8.8.8-arm64.zip; do grep -E "^release (create|upload)" "$GH_LOG" | grep -q "$f" && ok "$f was uploaded" || fail "$f was not uploaded"; done
 for f in StreamSetu-Windows-8.8.8.zip StreamSetu-Windows-8.8.8-arm64.zip; do grep -q "releases/download/t1/$f" README.md && ok "the README's Windows row links $f" || fail "the README's Windows row does not link $f"; done
 echo "An app that did not change ships its existing files again"
 make_root unchanged; echo "// later" > android/unrelated.txt; git add android/unrelated.txt; git commit -qm "a change to the Android code"
