@@ -90,7 +90,7 @@ if mac:   # a release without a Mac file leaves the Mac row pointing at the last
     # Two Mac files, Apple silicon and Intel (there is no universal one): the whole Mac row is written again, so it is right whatever it said before.
     base = f"../../releases/download/{tag}/StreamSetu-{mac}"
     row = (f"| **Mac** | [`StreamSetu-{mac}-AppleSilicon.dmg`]({base}-AppleSilicon.dmg) (M-series Macs), [`StreamSetu-{mac}-Intel.dmg`]({base}-Intel.dmg) (Intel Macs); "
-           f"one release holds every app | Signed and notarized by Apple. Updates itself, with the file for your Mac. |")
+           f"one release holds every app | Signed and notarized by Apple. Updates itself, with the file for your Mac. Not sure which? Apple menu → About This Mac: a **Chip** named Apple M1 or later is Apple silicon; a **Processor** made by Intel is Intel. |")
     text, n = re.subn(r"(?m)^\| \*\*Mac\*\* \|.*$", lambda m: row, text, count=1)
     if n == 0: sys.exit("the README has no Mac row to update")
 # The television file is streamsetu-tv-<version>.apk (it was StreamSetu-FireTV-<version>.apk before 0.20.0); the phone file is StreamSetu-Android-<version>.apk.
