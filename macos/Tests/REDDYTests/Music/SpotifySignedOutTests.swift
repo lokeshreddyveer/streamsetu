@@ -129,6 +129,8 @@ private func signedOutProvider(_ calls: Calls = Calls(), store: MemorySpotifySec
         #expect(t.artists.map(\.name) == ["Band A", "Band B"] && t.artists.map(\.id) == ["2222222222222222222222", "3333333333333333333333"])
         #expect(t.thumbnails.best(minSide: 600) == "https://img/640")
         #expect(t.directStreams == nil && t.isrc == nil)
+        // The embed page's 30 s preview is captured as previewURL; it is a preview clip, not a full stream, so directStreams stays nil.
+        #expect(t.previewURL == "https://p.scdn.co/mp3-preview/x")
         #expect(calls.hosts() == ["open.spotify.com"])
     }
 

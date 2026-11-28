@@ -3,8 +3,9 @@ import Foundation
 // Stream resolution for YouTube Music tracks: a fixed client order, one signature timestamp per attempt, tail-range validation of every
 // URL, a duration-aware URL cache and a memory of URLs that failed during playback.
 //
-// Client order: WEB_REMIX first when it can stream (it needs a PoToken, so only when a token source is plugged in), then VISIONOS (direct
-// URLs, no cipher, no token), then TVHTML5_SIMPLY. Uploads need an account and use TVHTML5 then WEB_CREATOR.
+// Client order: when signed in, a login-bearing TV client (TVHTML5) goes first so the `/player` request carries the account cookie and
+// SAPISIDHASH and YouTube sees a real signed-in session; it needs no PoToken. Then WEB_REMIX when it can stream (it needs a PoToken, so only
+// when a token source is plugged in), then VISIONOS (direct URLs, no cipher, no token), then the app clients. Uploads use TVHTML5 then WEB_CREATOR.
 
 /// Optional proof-of-origin tokens. No source ships by default; without one, clients that need a token are skipped.
 protocol YouTubePoTokenSource: Sendable {
@@ -239,6 +240,10 @@ actor YouTubeMusicStreamResolver {
         var order: [YTMClientKey] = []
         if isUpload { order = [.tvhtml5, .webCreator] }
         else {
+            // Signed in: a login-bearing TV client goes first so the `/player` request carries the account cookie and SAPISIDHASH. These
+            // clients need no PoToken, so sign-in alone is what gets a normal track past the "confirm you're not a bot" refusal. If their
+            // cipher answer can't be deciphered or is empty, the guest clients below still run, so this never makes a signed-in user worse off.
+            if signedIn { order += [.tvhtml5, .tvSamsung] }
             if client.identity(.webRemix).useWebPoTokens ? hasPoToken : true, failures[videoID].map({ $0 <= now() }) ?? true { order.append(.webRemix) }
             // VISIONOS first (direct URLs, no cipher, no token), then the app clients; the stream probe decides whether a client's URLs really serve a whole song.
             order += YTMClientOrder.guest
@@ -281,7 +286,12 @@ actor YouTubeMusicStreamResolver {
             if status != "OK" {
                 if status == "LOGIN_REQUIRED" { outcome.sawLoginRequired = true }
                 let reason = root.dict("playabilityStatus").map { ($0.str("reason") ?? "") + " " + (YTMJSON.firstString("text", in: $0["errorScreen"] as Any) ?? "") }
-                if !signedIn { YouTubeBotGate.shared.observe(status: status, reason: reason ?? "", videoID: videoID) }
+                // A "not a bot" refusal only counts toward the gate when the request actually carried a visitor id. Without one it is just a
+                // missing identity (a failed bootstrap, e.g. a network blip at launch), not an IP-level bot block — closing the gate then would
+                // wrongly stop every guest lookup, including the ones that work the moment the visitor id is back.
+                let snapNow = await client.session.snapshot()
+                let hadVisitor = !((snapNow.visitorData ?? "").isEmpty)
+                if !signedIn, hadVisitor { YouTubeBotGate.shared.observe(status: status, reason: reason ?? "", videoID: videoID) }
                 if !(YouTubeBotGate.isBotCheck(status: status, reason: reason ?? "")), let v = YouTubePlayability.from(status: status, reason: reason).verdict { outcome.permanent.append(v) }
                 if key == .webRemix, signedIn, ["AGE_CHECK_REQUIRED", "AGE_VERIFICATION_REQUIRED", "LOGIN_REQUIRED", "CONTENT_CHECK_REQUIRED"].contains(status) { queue.insert(.webCreator, at: 0) }
                 continue

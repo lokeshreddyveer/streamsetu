@@ -32,18 +32,21 @@ struct YouTubeMusicProvider: MusicMetadataProvider, MusicAudioProvider {
     private struct PlayerClient: Sendable {
         var name: String; var version: String; var userAgent: String; var headerID: String; var extra: [String: String]; var sdk: Int? = nil
     }
-    /// Only the visionOS identity is used: the Android VR and iPhone identities answer, but their links stop working after the first MiB, so a
-    /// whole song never plays, and the old iPhone version is refused outright. It needs the anonymous visitor id on every call.
+    /// VISIONOS first (direct URLs, whole file), then IOS_PRODUCER as the fallback. IOS_PRODUCER serves the whole song and, unlike VISIONOS,
+    /// still plays when the anonymous visitor id could not be fetched (a launch-time network blip), so a guest keeps playing. Plain IOS and the
+    /// Android VR identity answer but their links stop working after the first MiB — and this provider does not range-probe before use — so they
+    /// are deliberately left out here; the main engine keeps IOS behind its own whole-file probe. The identities track one shared table (an
+    /// override file can update it), not private copies years out of date, which a bot check would notice.
     private static let playerClients: [PlayerClient] = {
-        // The same current visionOS identity the main engine sends (one table, which an override file can update), not a copy of its own: two identities from one connection, one of them
-        // years old, is what a bot check notices.
-        let id = YTMClientTable.builtIn[.visionOS]!
-        var extra: [String: String] = [:]
-        if let v = id.deviceMake { extra["deviceMake"] = v }
-        if let v = id.deviceModel { extra["deviceModel"] = v }
-        if let v = id.osName { extra["osName"] = v }
-        if let v = id.osVersion { extra["osVersion"] = v }
-        return [PlayerClient(name: id.clientName, version: id.clientVersion, userAgent: id.userAgent, headerID: id.clientID, extra: extra)]
+        func client(_ id: YTMClientIdentity) -> PlayerClient {
+            var extra: [String: String] = [:]
+            if let v = id.deviceMake { extra["deviceMake"] = v }
+            if let v = id.deviceModel { extra["deviceModel"] = v }
+            if let v = id.osName { extra["osName"] = v }
+            if let v = id.osVersion { extra["osVersion"] = v }
+            return PlayerClient(name: id.clientName, version: id.clientVersion, userAgent: id.userAgent, headerID: id.clientID, extra: extra, sdk: id.androidSdkVersion)
+        }
+        return [client(YTMClientTable.builtIn[.visionOS]!), client(YTMClientTable.builtIn[.iosProducer]!)]
     }()
 
     // MARK: metadata (songs only)
@@ -97,12 +100,17 @@ struct YouTubeMusicProvider: MusicMetadataProvider, MusicAudioProvider {
         if let s = source.streams, !s.isEmpty { return s }
         guard let url = Self.playerURL, source.id.range(of: "^[A-Za-z0-9_-]{6,20}$", options: .regularExpression) != nil else { throw MusicError.notFound }
         if YouTubeBotGate.shared.isClosed { throw MusicError.rateLimited(retryAfter: YouTubeBotGate.shared.secondsLeft) }
+        // The visitor id is what makes VISIONOS play as a guest; a request without it is refused for a missing identity, not a real bot block.
+        let hadVisitor = await visitor.value(http: http, now: Date()) != nil
         for client in Self.playerClients {
             let timestamp = await signature.cachedTimestamp()
             guard var obj = await requestPlayer(url, client: client, videoID: source.id, timestamp: timestamp) else { continue }
-            // YouTube's "confirm you're not a bot" answer is counted; once it has closed the gate no further request is sent.
-            YouTubeBotGate.shared.observe(obj, videoID: source.id)
-            if YouTubeBotGate.shared.isClosed { throw MusicError.rateLimited(retryAfter: YouTubeBotGate.shared.secondsLeft) }
+            // YouTube's "confirm you're not a bot" answer is counted only when a visitor id was sent; otherwise it is a missing-identity refusal
+            // (a failed bootstrap), which must not close the gate and stop the lookups that work once the visitor id is back.
+            if hadVisitor {
+                YouTubeBotGate.shared.observe(obj, videoID: source.id)
+                if YouTubeBotGate.shared.isClosed { throw MusicError.rateLimited(retryAfter: YouTubeBotGate.shared.secondsLeft) }
+            }
             var formats = Self.rawFormats(obj)
             // A ciphered reply must be paired with the player version that solves it, so ask again with that version's timestamp.
             if timestamp == nil, formats.contains(where: { $0.cipher != nil }), let ts = await signature.signatureTimestamp() {

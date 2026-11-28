@@ -124,6 +124,25 @@ private func client(_ t: StubTransport, session: YouTubeMusicSession = GuestYouT
         #expect(h.count == "SAPISIDHASH 1700000000_".count + 40)
     }
 
+    @Test func visitorIdRetriesSoonAfterAFailedFetchNotAfterAMinute() async {
+        // The visitor id is what lets a guest play (VISIONOS is refused without it). A launch-time network blip must not leave the app
+        // identity-less for a whole minute, so a failed fetch is retried after a few seconds and a success clears the failure.
+        let t = StubTransport { _, n in n <= 1 ? StubTransport.Reply(error: URLError(.notConnectedToInternet)) : ok(#"[["","",["CgtTESTVISITOR"]]]"#) }
+        let http = MusicHTTP(transport: t)
+        let boot = YTMVisitorBootstrap()
+        let t0 = Date(timeIntervalSince1970: 1_000_000)
+        // First fetch fails on the network.
+        #expect(await boot.value(http: http, now: t0) == nil)
+        let afterFirst = t.count
+        // Within the short retry window it does not even hit the network again.
+        #expect(await boot.value(http: http, now: t0.addingTimeInterval(YTMVisitorBootstrap.retryAfterFailure - 1)) == nil)
+        #expect(t.count == afterFirst)
+        // Past the window it tries again and now succeeds.
+        #expect(await boot.value(http: http, now: t0.addingTimeInterval(YTMVisitorBootstrap.retryAfterFailure + 1)) == "CgtTESTVISITOR")
+        // The id is then remembered.
+        #expect(await boot.value(http: http, now: t0.addingTimeInterval(1000)) == "CgtTESTVISITOR")
+    }
+
     @Test func localeAcceptsOnlySafeLanguageCodes() {
         #expect(YTMLocale(hl: "de").acceptLanguage == "de,en;q=0.5")
         #expect(YTMLocale(hl: "en").acceptLanguage == "en-US,en;q=0.9")
@@ -581,6 +600,53 @@ private func client(_ t: StubTransport, session: YouTubeMusicSession = GuestYouT
         do { _ = try await r.resolve(videoID: "vid00000007", title: "T", quality: .high, durationSeconds: 1); Issue.record("expected failure") }
         catch let e as MusicError { if case .network = e {} else { Issue.record("wrong error \(e)") } }
         catch { Issue.record("wrong error") }
+    }
+
+    /// Routes every `/player` by the client it came from, so a reply can depend on the client. The resolver is signed in.
+    private func signedInResolver(_ route: @escaping @Sendable (String) -> StubTransport.Reply) -> (StubTransport, YouTubeMusicStreamResolver) {
+        let t = StubTransport { req, _ in
+            (req.url?.path ?? "") == "/youtubei/v1/player"
+                ? route(req.value(forHTTPHeaderField: "x-youtube-client-name") ?? "")
+                : StubTransport.Reply(status: 206, body: Data())
+        }
+        let c = YouTubeMusicClient(http: MusicHTTP(transport: t), session: FixedSession(signedIn), sleep: { _ in })
+        let solver = YTMStreamURLSolver(http: MusicHTTP(transport: t), runner: nil, useRegistry: { false }, cacheDirectory: nil)
+        return (t, YouTubeMusicStreamResolver(client: c, solver: solver, verifier: nil))
+    }
+
+    @Test func signedInRoutesANormalTrackThroughALoginBearingTVClientFirst() async throws {
+        // Every guest client is given the "not a bot" refusal; only the login-bearing TV client (clientID 7) is served a stream. So the
+        // track plays only because sign-in now routes it through a client that carries the account cookie and SAPISIDHASH.
+        let (t, r) = signedInResolver { clientName in
+            clientName == "7"
+                ? ok(#"{"playabilityStatus":{"status":"OK"},"streamingData":{"expiresInSeconds":"21540","adaptiveFormats":[{"itag":140,"url":"https://stream.test/ok.m4a","mimeType":"audio/mp4; codecs=\"mp4a.40.2\"","bitrate":128000}]}}"#)
+                : ok(#"{"playabilityStatus":{"status":"LOGIN_REQUIRED","reason":"Sign in to confirm you're not a bot"}}"#)
+        }
+        let s = try await r.resolve(videoID: "vid00000010", title: "T", quality: .high, durationSeconds: 200)
+        #expect(s.clientKey == "TVHTML5")
+        // The very first /player request is the login-bearing TV client, and it carries the real cookie + SAPISIDHASH.
+        let firstPlayer = try #require(t.requests.first { ($0.url?.path ?? "").hasSuffix("/player") })
+        #expect(firstPlayer.value(forHTTPHeaderField: "x-youtube-client-name") == "7")
+        #expect(firstPlayer.value(forHTTPHeaderField: "cookie") == "SID=s; SAPISID=abc123")
+        #expect(firstPlayer.value(forHTTPHeaderField: "authorization")?.hasPrefix("SAPISIDHASH ") == true)
+    }
+
+    @Test func aGuestNormalTrackNeverReachesALoginBearingClient() async {
+        // The same refusal for a guest: no login-bearing TV client is ever in a guest's chain, so there is nothing to carry a cookie and the
+        // bot check stands. This is the gap sign-in now closes.
+        let (t, r) = signedInResolverGuest { ok(#"{"playabilityStatus":{"status":"LOGIN_REQUIRED","reason":"Sign in to confirm you're not a bot"}}"#) }
+        _ = try? await r.resolve(videoID: "vid00000011", title: "T", quality: .high, durationSeconds: 1)
+        #expect(!t.requests.contains { ($0.url?.path ?? "").hasSuffix("/player") && $0.value(forHTTPHeaderField: "x-youtube-client-name") == "7" })
+    }
+
+    /// A guest copy of `signedInResolver` (no account), to show which clients a guest's chain uses.
+    private func signedInResolverGuest(_ route: @escaping @Sendable () -> StubTransport.Reply) -> (StubTransport, YouTubeMusicStreamResolver) {
+        let t = StubTransport { req, _ in
+            (req.url?.path ?? "") == "/youtubei/v1/player" ? route() : StubTransport.Reply(status: 206, body: Data())
+        }
+        let c = YouTubeMusicClient(http: MusicHTTP(transport: t), session: GuestYouTubeMusicSession(visitorData: "CgtV"), sleep: { _ in })
+        let solver = YTMStreamURLSolver(http: MusicHTTP(transport: t), runner: nil, useRegistry: { false }, cacheDirectory: nil)
+        return (t, YouTubeMusicStreamResolver(client: c, solver: solver, verifier: nil))
     }
 }
 

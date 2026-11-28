@@ -3,7 +3,8 @@ import Foundation
 // Spotify's public embed pages (open.spotify.com/embed/<kind>/<id>) need no account and no key. Each page carries one JSON blob (`__NEXT_DATA__`)
 // that names the item and lists its songs. That is enough to browse a pasted link and to hand the songs to the audio matcher as metadata only.
 // What the page does NOT carry: ISRC codes, album names for the rows of a playlist, release dates for albums, and more than 100 playlist rows.
-// The page also holds an anonymous web player token; it is never read or used.
+// A track page (and some rows) does carry a short `audioPreview` clip, which is captured as the track's previewURL — a ~30 s preview, never the
+// full recording (that is still matched from an audio provider). The page also holds an anonymous web player token; it is never read or used.
 
 // MARK: - Page reader
 
@@ -60,6 +61,8 @@ struct SpotifyEmbedRow: Sendable, Equatable {
     var artists: [String]
     var durationMs: Int64
     var explicit: Bool
+    /// A ~30 s preview clip when the row carries one (usually only a single-track page does).
+    var previewURL: String? = nil
 }
 
 struct SpotifyEmbedEntity: Sendable {
@@ -77,6 +80,8 @@ struct SpotifyEmbedEntity: Sendable {
     var rows: [SpotifyEmbedRow]
     /// A playlist page lists at most 100 songs; with 100 on it the list may be longer.
     var mayBeTruncated: Bool
+    /// A ~30 s preview clip for a single-track page, when present.
+    var previewURL: String? = nil
 
     static func parse(html: Data, link: SpotifyLink) throws -> SpotifyEmbedEntity {
         let e = try SpotifyEmbedPage.entity(html: html)
@@ -86,7 +91,8 @@ struct SpotifyEmbedEntity: Sendable {
             guard t.str("entityType") == "track", let id = SpotifyEmbedPage.trackID(fromURI: t.str("uri")),
                   let title = t.str("title")?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else { continue }
             rows.append(SpotifyEmbedRow(id: id, title: title, artists: SpotifyEmbedPage.names(fromCredit: t.str("subtitle")),
-                                        durationMs: Int64(t.int("duration") ?? 0), explicit: (t["isExplicit"] as? Bool) ?? false))
+                                        durationMs: Int64(t.int("duration") ?? 0), explicit: (t["isExplicit"] as? Bool) ?? false,
+                                        previewURL: t.dict("audioPreview")?.str("url")))
         }
         let refs: [MusicArtistRef] = e.array("artists").compactMap { a in
             guard let n = a.str("name") else { return nil }
@@ -98,7 +104,8 @@ struct SpotifyEmbedEntity: Sendable {
         return SpotifyEmbedEntity(kind: link.kind, id: link.id, name: name, subtitle: e.str("subtitle"), covers: SpotifyEmbedPage.covers(e),
                                   releaseDate: iso.map { String($0.prefix(10)) }, durationMs: Int64(e.int("duration") ?? 0),
                                   explicit: (e["isExplicit"] as? Bool) ?? false, artistRefs: refs, rows: rows,
-                                  mayBeTruncated: link.kind == .playlist && e.array("trackList").count >= 100)
+                                  mayBeTruncated: link.kind == .playlist && e.array("trackList").count >= 100,
+                                  previewURL: e.dict("audioPreview")?.str("url"))
     }
 
     // MARK: models
@@ -113,13 +120,13 @@ struct SpotifyEmbedEntity: Sendable {
     func trackModel(_ r: SpotifyEmbedRow, album: MusicAlbumRef?, thumbnails: [MusicThumbnail]) -> MusicTrack {
         MusicTrack(id: r.id, providerID: SpotifyProvider.providerID, title: r.title, durationMs: r.durationMs,
                    artists: r.artists.map { MusicArtistRef(id: SpotifyMapper.nameID($0), name: $0) }, album: album, thumbnails: thumbnails,
-                   explicit: r.explicit, externalURL: "https://open.spotify.com/track/\(r.id)")
+                   explicit: r.explicit, previewURL: r.previewURL, externalURL: "https://open.spotify.com/track/\(r.id)")
     }
 
     /// The song a track page describes.
     var singleTrack: MusicTrack {
         MusicTrack(id: id, providerID: SpotifyProvider.providerID, title: name, durationMs: durationMs, artists: artistRefs, thumbnails: covers,
-                   explicit: explicit, externalURL: "https://open.spotify.com/track/\(id)")
+                   explicit: explicit, previewURL: previewURL, externalURL: "https://open.spotify.com/track/\(id)")
     }
 
     /// The rows as tracks. An album's rows carry the album; a playlist's rows have no album on the page, so they show no cover rather than a wrong one.

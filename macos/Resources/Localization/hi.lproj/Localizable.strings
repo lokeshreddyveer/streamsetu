@@ -2423,6 +2423,7 @@
 "Queue order changed" = "कतार का क्रम बदला";
 "The music source is busy. Trying the same song again shortly." = "संगीत स्रोत व्यस्त है। वही गाना थोड़ी देर में फिर आज़माया जाएगा।";
 "The music source is still busy. Press play to try again." = "संगीत स्रोत अब भी व्यस्त है। फिर कोशिश करने के लिए प्ले दबाएँ।";
+"YouTube is asking this connection to prove it isn't a bot. Sign in to YouTube Music in Music Settings, or try again later." = "YouTube इस कनेक्शन से यह साबित करने को कह रहा है कि यह बॉट नहीं है। संगीत सेटिंग्स में YouTube Music में साइन इन करें, या बाद में फिर कोशिश करें।";
 "This music source does not accept this network. Press play to try again, or change the source in Music settings." = "यह संगीत स्रोत इस नेटवर्क को स्वीकार नहीं करता। फिर कोशिश के लिए प्ले दबाएँ, या संगीत सेटिंग्स में स्रोत बदलें।";
 "Next track" = "अगला गाना";
 "Previous track" = "पिछला गाना";

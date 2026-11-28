@@ -39,17 +39,21 @@ struct YTMCookieRotatingTransport: MusicHTTPTransport {
     }
 }
 
-/// Fetches YouTube's anonymous visitor id once and remembers it; a failed attempt is not repeated for a minute.
+/// Fetches YouTube's anonymous visitor id once and remembers it. The visitor id is what lets the guest stream clients (VISIONOS and the rest)
+/// play without signing in: a request sent without it is answered "Sign in to confirm you're not a bot", which is not a real bot block. So a
+/// failed fetch is retried soon (5 s, not a minute) — a launch-time network blip must not leave every guest lookup identity-less for long.
 actor YTMVisitorBootstrap {
     private var cached: String?
     private var failedAt: Date?
+    static let retryAfterFailure: TimeInterval = 5
     func value(http: MusicHTTP, now: Date) async -> String? {
         if let cached { return cached }
-        if let f = failedAt, now.timeIntervalSince(f) < 60 { return nil }
+        if let f = failedAt, now.timeIntervalSince(f) < Self.retryAfterFailure { return nil }
         guard let url = URL(string: "https://music.youtube.com/sw.js_data"),
               let data = try? await http.get(url, headers: ["Accept-Language": "en-US,en;q=0.9"]),
               let v = YouTubeMusicClient.parseVisitorData(data) else { failedAt = now; return nil }
         cached = v
+        failedAt = nil
         return v
     }
 }

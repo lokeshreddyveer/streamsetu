@@ -46,6 +46,9 @@ struct MusicTrack: Codable, Hashable, Sendable, Identifiable {
     var explicit: Bool = false
     var popularity: Int? = nil
     var isrc: String? = nil
+    /// A short (≈30 s) preview clip, when a metadata source provides one (e.g. Spotify's public embed page). Not full audio — the full recording
+    /// is still matched from an audio provider; this is only for an instant preview or as a cross-check signal.
+    var previewURL: String? = nil
     var externalURL: String? = nil
     /// Set when the track already carries its own playable stream (Audius, JioSaavn): the matcher is skipped.
     var directStreams: [MusicStream]? = nil

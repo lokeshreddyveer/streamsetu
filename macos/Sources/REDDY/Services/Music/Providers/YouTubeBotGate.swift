@@ -10,7 +10,8 @@ final class YouTubeBotGate: @unchecked Sendable {
     static let cooldown: TimeInterval = 15 * 60
     /// Two different videos refused within this long close it.
     static let window: TimeInterval = 120
-    static let message = "YouTube is asking this connection to prove it isn't a bot. Sign in to YouTube Music in Music Settings, or try again later."
+    /// Shown to the person, so it goes through Localized (the Hindi and Telugu tables carry it); the key is the English text.
+    static var message: String { Localized.string("YouTube is asking this connection to prove it isn't a bot. Sign in to YouTube Music in Music Settings, or try again later.") }
 
     private let lock = NSLock()
     private var refusals: [(video: String, at: Date)] = []

@@ -1,4 +1,5 @@
 import Foundation
+import Accelerate
 import NaturalLanguage
 
 /// Step 7B: sentence vectors from Apple's on-device model. Optional: when the model is missing the engine runs on BM25 alone.
@@ -42,11 +43,16 @@ struct AtlasEmbeddings: Sendable {
     func rank(_ query: String, limit: Int) -> [(index: Int, score: Double)] {
         let q = Self.normalised(Self.vector(for: query))
         guard !q.isEmpty else { return [] }
+        // One dot product per entry, done by Accelerate: the score is a pass over every entry, so a plain Swift loop here cost about 1.2 million
+        // multiply-adds per query and, unoptimised (a debug build), was the whole query time. The values are the same cosine similarities.
         var out: [(Int, Double)] = []
-        for (i, v) in vectors.enumerated() where v.count == q.count {
-            var s: Float = 0
-            for k in 0..<q.count { s += q[k] * v[k] }
-            out.append((i, Double(s)))
+        out.reserveCapacity(vectors.count)
+        q.withUnsafeBufferPointer { qp in
+            for (i, v) in vectors.enumerated() where v.count == q.count {
+                var s: Float = 0
+                v.withUnsafeBufferPointer { vp in vDSP_dotpr(qp.baseAddress!, 1, vp.baseAddress!, 1, &s, vDSP_Length(q.count)) }
+                out.append((i, Double(s)))
+            }
         }
         return out.sorted { $0.1 > $1.1 }.prefix(limit).map { (index: $0.0, score: $0.1) }
     }

@@ -2423,6 +2423,7 @@
 "Queue order changed" = "క్యూ క్రమం మారింది";
 "The music source is busy. Trying the same song again shortly." = "సంగీత మూలం బిజీగా ఉంది. అదే పాటను కాసేపట్లో మళ్లీ ప్రయత్నిస్తుంది.";
 "The music source is still busy. Press play to try again." = "సంగీత మూలం ఇంకా బిజీగా ఉంది. మళ్లీ ప్రయత్నించడానికి ప్లే నొక్కండి.";
+"YouTube is asking this connection to prove it isn't a bot. Sign in to YouTube Music in Music Settings, or try again later." = "ఈ కనెక్షన్ బాట్ కాదని నిరూపించమని YouTube అడుగుతోంది. సంగీత సెట్టింగ్‌లలో YouTube Musicలో సైన్ ఇన్ చేయండి, లేదా తర్వాత మళ్లీ ప్రయత్నించండి.";
 "This music source does not accept this network. Press play to try again, or change the source in Music settings." = "ఈ సంగీత మూలం ఈ నెట్‌వర్క్‌ను అంగీకరించదు. మళ్లీ ప్రయత్నించడానికి ప్లే నొక్కండి, లేదా సంగీత సెట్టింగ్‌లలో మూలాన్ని మార్చండి.";
 "Next track" = "తదుపరి పాట";
 "Previous track" = "మునుపటి పాట";
