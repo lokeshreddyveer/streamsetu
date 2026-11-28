@@ -55,6 +55,7 @@ import Foundation
         "DesignSystem/Components/PlayerControls/ReddyBottomPlayer.swift": "the now-playing bar (a channel, episode or film in progress)",
         "Features/Series/Views/EpisodeCard.swift": "episodes have no rating of their own",
         "Features/Shared/Views/CastSection.swift": "people",
+        "Features/CommandCenter/Views/TitleManagerView.swift": "a management list row: a small poster only to recognise the title, not a tile to open it",
         "Features/Home/Views/ShelfModeChips.swift": "the Collections tile is a franchise (several titles), so it has no single rating",
         "Features/Podcasts/PodcastsMainView.swift": "podcast cover art: a show, not a film or series",
         "Features/Files/PodcastsView.swift": "podcast cover art: a show, not a film or series",

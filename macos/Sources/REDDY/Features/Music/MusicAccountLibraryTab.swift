@@ -42,7 +42,7 @@ struct MusicAccountLibraryTab: View {
                 LazyVGrid(columns: MusicLayout.gridColumns, spacing: MusicSpace.md) { ForEach(list) { a in MusicCard(artist: a, hub: hub) } }
             }
         }
-        .task(id: source) { await loadAll() }
+        .task(id: "\(source)|\(ytLibrary != nil)|\(spotify != nil)") { await loadAll() }
     }
 
     /// A part that is loading shows placeholders of its final size; one that failed shows nothing (the banner above says so); an empty one is left out.

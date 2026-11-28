@@ -35,7 +35,7 @@ struct MusicGraphFilmCard: View {
             Button(action: action) {
                 VStack(alignment: .leading, spacing: MusicCardGeometry.coverToText) {
                     MusicGraphCover(imageRef: imageRef, aspect: MusicGraphCardMetrics.posterAspect, seed: heading,
-                                    subject: .card(.film, name: title, entity: entity, year: year), hovering: hovering, focused: focused)
+                                    subject: .card(.film, name: title, entity: entity, year: year), slot: .poster, hovering: hovering, focused: focused)
                     VStack(alignment: .leading, spacing: MusicCardGeometry.textSpacing) {
                         Text(verbatim: heading).musicText(.card).lineLimit(2).multilineTextAlignment(.leading).foregroundStyle(ColorTokens.textPrimary)
                         if let subtitle, !subtitle.isEmpty {

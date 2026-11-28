@@ -82,7 +82,7 @@ enum MusicPersonWikidataParser {
         let parts = relationProperty.map { "{ ?item wdt:\($0.prop) wd:\(qid) . BIND(\"\($0.rel.rawValue)\" AS ?rel) }" }.joined(separator: " UNION ")
         return "SELECT ?item ?itemLabel ?rel ?date ?inst ?imdb ?rg ?st ?stLabel WHERE { \(parts) OPTIONAL { ?item wdt:P577 ?date } OPTIONAL { ?item wdt:P31 ?inst } "
             + "OPTIONAL { ?item wdt:P345 ?imdb } OPTIONAL { ?item wdt:P436 ?rg } OPTIONAL { ?item wdt:P406 ?st } "
-            + "SERVICE wikibase:label { bd:serviceParam wikibase:language \"en,ta,te,hi,ml,kn,bn,mr\" . } } LIMIT \(limit)"
+            + "SERVICE wikibase:label { bd:serviceParam wikibase:language \"\(MusicLanguagePolicy.wikidataLabels())\" . } } LIMIT \(limit)"
     }
 
     private static func year(_ s: String?) -> Int? {
@@ -100,10 +100,15 @@ enum MusicPersonWikidataParser {
         var imdb: String?; var rg: String?; var st: [String: String] = [:]
     }
 
+    /// Wikidata's class for one episode of a television series.
+    static let episodeClass = "Q21191270"
+
     private static func works(from accs: [String: Acc], retrievedAt: Date) -> [MusicPersonWork] {
         var out: [MusicPersonWork] = []
         for (qid, a) in accs {
             guard let label = a.label, !label.hasPrefix("Q") || label.count > 12 else { continue }   // an unlabelled item shows its own id: skip
+            // One episode of a show is not a film: the show itself is the credit (Wikidata's "television series episode").
+            if a.inst.contains(episodeClass) { continue }
             let lower = label.lowercased()
             let isFilm = a.imdb?.hasPrefix("tt") == true || !a.inst.isDisjoint(with: filmClasses) || a.rels.contains(.cast) || a.rels.contains(.director)
             let isAlbum = a.rg != nil || !a.inst.isDisjoint(with: albumClasses) || lower.contains("soundtrack") || lower.contains(" album")

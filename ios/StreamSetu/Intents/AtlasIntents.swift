@@ -79,6 +79,7 @@ struct AskSetuIntent: AppIntent {
 
     /// The deterministic answer, or a plain reason there is none.
     @MainActor static func answer(_ question: String) -> String {
+        guard AssistantFeature.isOn else { return "Setu is turned off for now." }
         guard let c = IOSCoordinator.shared.container else { return "StreamSetu is not ready yet. Open the app once and try again." }
         if c.appLock.enabled && c.appLock.isLocked { return "StreamSetu is locked. Unlock it, then ask again." }
         if c.parental.kidsMode { return "Setu is off while a kids profile is in use." }

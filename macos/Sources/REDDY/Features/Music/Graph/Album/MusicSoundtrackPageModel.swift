@@ -61,6 +61,7 @@ final class MusicSoundtrackPageModel {
         // the top of the page loads at once; the shelves load when they come near the screen
         for key in [MusicSoundtrackKey.header, MusicSoundtrackKey.credits, MusicSoundtrackKey.cast] + earlyKeys { ensure(key) }
         earlyKeys = []
+        lateReads = 0
         startSongs()
     }
 
@@ -106,7 +107,7 @@ final class MusicSoundtrackPageModel {
     var displayHeader: MusicSoundtrackHeaderFacts? {
         if let header { return header }
         guard let s = model?.snapshot else { return nil }
-        return MusicSoundtrackHeaderFacts(title: s.name, year: s.year, languageName: MusicSoundtrackBuild.languageName(s.lang), subkind: s.subkind, imageRef: s.imageRef,
+        return MusicSoundtrackHeaderFacts(title: MusicTitleCase.recordTitle(s.name, subkind: s.subkind), year: s.year, languageName: MusicSoundtrackBuild.languageName(s.lang), subkind: s.subkind, imageRef: s.imageRef,
                                           filmHint: s.attrs["filmHint"])
     }
 
@@ -189,6 +190,21 @@ final class MusicSoundtrackPageModel {
             await self?.loadSongs(token: token)
             if let self, self.loadToken == token { self.songsTask = nil }
         }
+    }
+
+    /// How many times a page with no songs has read them again because the graph changed (reset when the page opens), so it can never loop.
+    private var lateReads = 0
+    static let lateReadLimit = 4
+
+    /// The graph changed under the page (enrichment landed). An album the graph had never seen opens with nothing to list: no edition, no songs. When the graph then learns its
+    /// songs (from MusicBrainz, a catalogue, the film), a page still showing none reads them again by itself, quietly, instead of waiting for the person to press Try again.
+    /// A page that already shows songs, or is reading them now, is left alone.
+    func graphChanged() {
+        guard songsTask == nil, tracks.isEmpty, rows.isEmpty, lateReads < Self.lateReadLimit, [SongsState.empty, .noEdition, .idle].contains(songsState) else { return }
+        lateReads += 1
+        let nth = lateReads, limit = Self.lateReadLimit
+        MusicDebugLog.log("album", "graph changed with no songs on the page: reading them again (\(nth) of \(limit))")
+        startSongs()
     }
 
     func retrySongs() {

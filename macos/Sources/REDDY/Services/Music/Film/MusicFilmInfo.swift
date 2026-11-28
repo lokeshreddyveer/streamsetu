@@ -54,6 +54,8 @@ struct MusicFilmCredit: Codable, Hashable, Sendable, Identifiable {
     var popularity: Double
     /// The person's billing in this film (0 is the lead), when the list says it; never the film's place in a filmography.
     var billingOrder: Int? = nil
+    /// The poster's path on the image host, kept so the film has its picture the first time it is seen.
+    var posterPath: String? = nil
     var id: Int { tmdbID }
 }
 
@@ -71,7 +73,8 @@ enum MusicFilmTMDBParser {
         guard let id = r.int("id"), let title = r.str("title") ?? r.str("original_title") else { return nil }
         let date = r.str("release_date") ?? ""
         return MusicFilmCredit(tmdbID: id, title: title, originalTitle: r.str("original_title") ?? title, year: MusicFilmResolver.year(of: date),
-                               language: r.str("original_language"), character: r.str("character"), popularity: (r["popularity"] as? Double) ?? Double(r.int("popularity") ?? 0), billingOrder: r.int("order"))
+                               language: r.str("original_language"), character: r.str("character"), popularity: (r["popularity"] as? Double) ?? Double(r.int("popularity") ?? 0), billingOrder: r.int("order"),
+                               posterPath: r.str("poster_path"))
     }
 
     /// A credit that is the person as themselves, uncredited or archive footage: not a role in the film.

@@ -94,16 +94,18 @@ extension View {
 
 extension View {
     /// Right-click menu and accessibility actions of a native item: Icon and Name, Icon Only, Name Only, the current one checked.
-    func tabModeMenu(_ tab: NavTab, nav: ServicesNavigationBinding) -> some View { modifier(TabModeMenu(tab: tab, nav: nav)) }
+    func tabModeMenu(_ tab: NavTab, nav: ServicesNavigationBinding, extra: AnyView? = nil) -> some View { modifier(TabModeMenu(tab: tab, nav: nav, extra: extra)) }
 }
 
 private struct TabModeMenu: ViewModifier {
     let tab: NavTab
     let nav: ServicesNavigationBinding
+    var extra: AnyView?
     func body(content: Content) -> some View {
         let current = nav.tabModes.mode(tab)
         content
             .contextMenu {
+                if let extra { extra; Divider() }
                 ForEach(TabBarMode.allCases) { m in
                     Button { nav.setTabMode(tab, m) } label: { Label(LocalizedStringKey(m.title), systemImage: m == current ? "checkmark" : "") }.atlas("control.nav.tabMode")
                 }

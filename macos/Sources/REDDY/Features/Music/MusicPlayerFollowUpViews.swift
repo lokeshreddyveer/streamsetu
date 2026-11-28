@@ -28,22 +28,24 @@ struct MusicMarquee: View {
     private var running: Bool { !finished && MusicMarqueeMath.shouldRun(overflowing: overflowing, playing: playing, onScreen: onScreen, reduceMotion: reduceMotion) }
 
     var body: some View {
-        Group {
-            if running {
-                MusicFrameClock(minimumInterval: 1.0 / 30) { tl in
-                    let dx = MusicMarqueeSchedule.offset(elapsed: tl.date.timeIntervalSince(startedAt), textWidth: textWidth)
-                    HStack(spacing: MusicMarqueeMath.gap) {
-                        Text(verbatim: text).font(font).fixedSize()
-                        Text(verbatim: text).font(font).fixedSize()
+        // The plain, truncated line is always what sizes the view, so the box never changes when the marquee starts or stops (a scrolling copy that sized itself made the measured width jump, which
+        // switched the marquee on and off and made the title drift). The scrolling copy is only an overlay, clipped to that box, so no text can come out beyond the player.
+        Text(verbatim: text).font(font).lineLimit(1).truncationMode(.tail).frame(maxWidth: hugging ? nil : .infinity, alignment: .leading)
+            .opacity(running ? 0 : 1)
+            .overlay(alignment: .leading) {
+                if running {
+                    MusicFrameClock(minimumInterval: 1.0 / 30) { tl in
+                        let dx = MusicMarqueeSchedule.offset(elapsed: tl.date.timeIntervalSince(startedAt), textWidth: textWidth)
+                        HStack(spacing: MusicMarqueeMath.gap) {
+                            Text(verbatim: text).font(font).fixedSize()
+                            Text(verbatim: text).font(font).fixedSize()
+                        }
+                        .offset(x: dx)
                     }
-                    .offset(x: dx)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize()
                 }
-                .clipped()
-            } else {
-                Text(verbatim: text).font(font).lineLimit(1).truncationMode(.tail).frame(maxWidth: hugging ? nil : .infinity, alignment: .leading)
             }
-        }
+            .clipped()
         // The natural width of the text is measured once from a hidden copy; the box width comes from the visible container.
         .background(alignment: .leading) {
             Text(verbatim: text).font(font).fixedSize().hidden()

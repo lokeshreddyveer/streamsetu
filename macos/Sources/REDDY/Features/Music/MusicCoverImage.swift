@@ -25,6 +25,8 @@ struct MusicCoverImage: View {
     var subject: MusicArtworkSubject?
     /// Where it is drawn, for the size to request; by default taken from `size` or `artworkClass`.
     var slot: MusicArtworkSlot?
+    /// Which part of a picture that is taller or wider than the frame stays in view: the top for a portrait photo (faces sit high), the centre otherwise.
+    var focus: Alignment = .center
     @Environment(\.displayScale) private var scale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var loaded: MusicDecodedImage?
@@ -33,6 +35,9 @@ struct MusicCoverImage: View {
     @State private var resolvedFor: String?
     @State private var resolvedAddress: String?
     @State private var thumbBroken: String?
+    /// A page cover that arrived only as a small thumbnail asks the resolver once for a better picture of the same thing.
+    @State private var upgradedFor: String?
+    @State private var upgradedAddress: String?
 
     // Private so this file does not depend on the shared token files; reconcile with the motion tokens later.
     private static let arrivalFade = 0.18
@@ -47,6 +52,8 @@ struct MusicCoverImage: View {
 
     private var needed: Int {
         if let size { return Int((size * max(scale, 1)).rounded(.up)) }
+        // A page picture names its slot (hero, poster, viewer…): decode at what that place draws, not at the card default.
+        if let slot { return slot.pixels(scale: scale) }
         if let artworkClass { return artworkClass.pixels(scale: scale) }
         return pixelHint
     }
@@ -71,7 +78,18 @@ struct MusicCoverImage: View {
     }
     /// A picture the person chose for this thing wins over every other.
     private var chosenAddress: String? { subject.flatMap { MusicArtworkOverrides.shared.address(for: $0) } }
-    private var address: String? { chosenAddress ?? thumbAddress ?? resolvedAddressNow }
+    private var upgradedNow: String? { subject.flatMap { upgradedFor == $0.key ? upgradedAddress : nil } }
+    private var address: String? { chosenAddress ?? upgradedNow ?? thumbAddress ?? resolvedAddressNow }
+    /// Only the pictures a page makes large are upgraded (a poster, a portrait, a hero, the viewer), never a row or a card.
+    private var isPageSlot: Bool {
+        switch slot { case .poster?, .filmHero?, .profile?, .viewer?: true; default: false }
+    }
+    /// The width the given thumbnail declares (0 when it says nothing).
+    private var thumbWidth: Int { thumbs.first { $0.url == thumbAddress }?.width ?? 0 }
+    private var wantsUpgrade: Bool {
+        guard let subject, isPageSlot, upgradedFor != subject.key, chosenAddress == nil, thumbAddress != nil else { return false }
+        return thumbWidth > 0 && thumbWidth * 4 < needed * 3
+    }
     private var taskID: String { "\(address ?? "")|\(MusicArtworkBuckets.bucket(forPixels: needed))" }
     /// Identity for the placeholder tint: the seed, else the thing's name, else the first address, so every size of one cover shares a tint.
     private var identity: String { seed ?? subject?.name ?? thumbs.first?.url ?? address ?? "" }
@@ -97,7 +115,7 @@ struct MusicCoverImage: View {
         let shown = loadedFor == taskID ? loaded : cachedImage(address)
         let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
         backdrop
-            .overlay {
+            .overlay(alignment: focus) {
                 if let shown { Image(decorative: shown.cg, scale: 1).resizable().scaledToFill().transition(.opacity) }
             }
             .frame(width: size, height: size)
@@ -106,6 +124,14 @@ struct MusicCoverImage: View {
     }
 
     private func run(_ want: String) async {
+        // A small provider thumbnail drawn large: ask once for a better picture; a different answer changes the address, which runs this again.
+        if wantsUpgrade, let subject {
+            let found = await MusicEntityArtwork.shared.resolve(subject)
+            guard !Task.isCancelled else { return }
+            upgradedFor = subject.key
+            if let a = found?.address, a != thumbAddress { upgradedAddress = a; return }
+            upgradedAddress = nil
+        }
         // Nothing usable yet: ask the artwork resolver once (lazy, shared by every cover of the same thing, cancelled when this one scrolls away).
         if address == nil, let subject, resolvedFor != subject.key {
             let found = await MusicEntityArtwork.shared.resolve(subject)
@@ -117,6 +143,10 @@ struct MusicCoverImage: View {
         var img: MusicDecodedImage?
         if let address { img = await loadLadder(address) }
         guard !Task.isCancelled else { return }
+        if img == nil, let failed = address, failed == upgradedAddress {
+            upgradedAddress = nil   // the better picture would not load: the thumbnail that came with the page is still there to draw
+            return
+        }
         if img == nil, let failed = address {
             failedFor = want
             if let subject {

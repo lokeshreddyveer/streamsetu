@@ -92,6 +92,23 @@ enum MusicTextMatch {
         return c.hasSuffix("vevo") || c.hasSuffix(" official") || c.hasSuffix("official")
     }
 
+    /// True when one part of `candidate` (split at "|", "-", ":" and the like) begins with the wanted title once spaces are ignored. Titles under five letters never qualify.
+    static func startsWithTitle(_ wanted: [String], _ candidate: String) -> Bool {
+        let w = wanted.joined()
+        guard w.count >= 5 else { return false }
+        for part in candidate.components(separatedBy: CharacterSet(charactersIn: "|–—-:")) {
+            if coreTokens(part).joined().hasPrefix(w) { return true }
+        }
+        return false
+    }
+
+    /// True when a candidate's title is plausibly the wanted song's title: the words overlap enough, or one of its parts starts with the wanted title. An unrelated song by the
+    /// same singer, of about the same length, can still score well on artist and length; this is the question the score alone cannot answer.
+    static func titleFits(_ wanted: String, _ candidate: String) -> Bool {
+        let w = coreTokens(wanted)
+        return similarity(w, coreTokens(candidate)) >= 0.5 || startsWithTitle(w, candidate)
+    }
+
     // MARK: scoring
 
     /// How likely a candidate recording is the wanted track. 0...1.
@@ -106,7 +123,12 @@ enum MusicTextMatch {
         var candTitle = coreTokens(candidateTitle)
         let stripped = candTitle.filter { !extraArtistWords.contains($0) }
         if !stripped.isEmpty { candTitle = stripped }
-        let titleSim = similarity(wantedTitle, candTitle)
+        var titleSim = similarity(wantedTitle, candTitle)
+        let durationFit = durationScore(durationMs, candidateDurationMs)
+        // An official video names the song first and the film and cast after it ("Steppa Maar Lyrical Video | Double iSmart | ..."), and a one-word title may be split in two
+        // ("SteppaMaar" and "Steppa Maar"). When some part of the candidate's title starts with the wanted title, spaces ignored, it is that song, but only if its length fits too, so a
+        // promo, a trailer or a cover of the same name never passes on its title alone.
+        if titleSim < 0.8, durationFit > 0.4, startsWithTitle(wantedTitle, candidateTitle) { titleSim = 0.8 }
 
         var artistSim: Float = 0
         let candChannel = candidateArtist.map { tokens(normalize($0)).filter { !noise.contains($0) } } ?? []
@@ -122,7 +144,7 @@ enum MusicTextMatch {
         }
         if artistNorms.isEmpty { artistSim = 0.5 }
 
-        var s = 0.5 * titleSim + 0.3 * artistSim + 0.2 * durationScore(durationMs, candidateDurationMs)
+        var s = 0.5 * titleSim + 0.3 * artistSim + 0.2 * durationFit
         if titleSim < 0.4 { s *= 0.5 }
 
         let wantedMarkers = markers(in: trackTitle)

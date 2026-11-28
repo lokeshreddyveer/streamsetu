@@ -19,6 +19,8 @@ final class MusicNativeNames: @unchecked Sendable {
     static let capacity = 5000
     private var queue: [Request] = []
     private var running = false
+    /// The languages the person's own listening shows (set by the home feed from their plays, never from a list): when a song's own language is not known, its names in these are used.
+    private var preferred: Set<MusicLanguage> = []
 
     enum Kind: Sendable { case recording, person, album }
     struct Request: Sendable { var key: String; var kind: Kind; var uid: String?; var name: String; var track: MusicTrack? }
@@ -73,11 +75,34 @@ final class MusicNativeNames: @unchecked Sendable {
             }
             guard let r = next else { return }
             let store = await MainActor.run { MusicEntityRuntime.shared.store.graph }
-            if let n = await Self.lookup(r, store: store) {
+            let wanted = lock.withLock { preferred }
+            if let n = await Self.lookup(r, store: store, preferred: wanted) {
                 lock.withLock { names[r.key] = n }
                 await MainActor.run { self.revision.value += 1 }
             }
         }
+    }
+
+    /// What the person's listening says about the languages they play. When it changes, the earlier "no native name" answers are asked again.
+    func setPreferred(_ languages: Set<MusicLanguage>) {
+        let languages = languages.subtracting([.latin])
+        let changed = lock.withLock { () -> Bool in
+            guard preferred != languages else { return false }
+            preferred = languages; asked = [:]
+            return true
+        }
+        if changed { Task { @MainActor in self.revision.value += 1 } }
+    }
+
+    /// The languages the person's listening shows, for pages that read names from the graph.
+    var preferredLanguages: Set<MusicLanguage> { lock.withLock { preferred } }
+
+    /// A graph entity's name as the page should draw it: in the script of a language the person listens to, or the entity's own language, when the graph holds
+    /// that name (as the name itself or an alias); otherwise as stored. No language is named here: both sets come from data.
+    nonisolated static func displayName(_ name: String, aliases: [String], entityLanguage: String?, preferred: Set<MusicLanguage>) -> String {
+        var wanted = preferred
+        if let own = entityLanguage.flatMap({ MusicLanguage(stated: $0) }), own != .latin { wanted.insert(own) }
+        return pickPreferred(wanted, from: [name] + aliases) ?? name
     }
 
     /// Forgets every answer (Delete all music data).
@@ -86,17 +111,19 @@ final class MusicNativeNames: @unchecked Sendable {
         revision.value += 1
     }
 
-    static func lookup(_ r: Request, store: any MusicGraphStoring) async -> String? {
+    static func lookup(_ r: Request, store: any MusicGraphStoring, preferred: Set<MusicLanguage> = []) async -> String? {
         switch r.kind {
         case .recording:
             guard let t = r.track else { return nil }
             let languages = await MusicGraphLanguage.languages(of: [t], store: store)
-            guard let language = languages[t.uid] ?? MusicLanguageDetector.stated(t), language != .latin else { return nil }
+            let known = languages[t.uid] ?? MusicLanguageDetector.stated(t)
+            // A song of a known non-Latin language is shown in that language's script. A song whose language is not known may still have names in a language the person listens to: those are used.
+            if known == .latin || (known == nil && preferred.isEmpty) { return nil }
             let id = MusicEntityID.provisional(kind: .recording, providerUID: t.uid)
             let resolved = (try? await store.resolve(id)) ?? id
             var owners = [resolved]
             for e in ((try? await store.edges(of: resolved, predicate: .recordingOf, direction: .outgoing, limit: 2)) ?? []) { owners.append(e.object) }
-            return await nativeText(of: owners, language: language, store: store)
+            return await nativeText(of: owners, language: known, preferring: known == nil ? preferred : [], store: store)
         case .person, .album:
             let kind: MusicEntityKind = r.kind == .person ? .person : .release
             var owners: [MusicEntityID] = []
@@ -115,9 +142,15 @@ final class MusicNativeNames: @unchecked Sendable {
     }
 
     /// The first non-Latin name or alias among the entities whose script is the wanted language's (the entity's own language when none was given).
-    private static func nativeText(of owners: [MusicEntityID], language: MusicLanguage?, store: any MusicGraphStoring) async -> String? {
+    private static func nativeText(of owners: [MusicEntityID], language: MusicLanguage?, preferring: Set<MusicLanguage> = [], store: any MusicGraphStoring) async -> String? {
         for o in owners {
             guard let snap = try? await store.entity(o) else { continue }
+            if language == nil, !preferring.isEmpty {
+                // No language known for this song: any name of it in a language the person listens to.
+                let aliases = ((try? await store.aliases(of: o)) ?? []).map(\.text)
+                if let n = pickPreferred(preferring, from: [snap.name] + aliases) { return n }
+                continue
+            }
             let wanted = language?.script ?? snap.lang.flatMap { MusicLanguage(stated: $0) }?.script
             guard let wanted, wanted != .latin else { continue }
             if !isLatin(snap.name), MusicLanguageDetector.language(of: snap.name) == wanted { return snap.name }
@@ -126,6 +159,12 @@ final class MusicNativeNames: @unchecked Sendable {
             }
         }
         return nil
+    }
+
+    /// The first non-Latin name among these that is in one of the languages the person listens to (the names are in the order given). Pure.
+    nonisolated static func pickPreferred(_ preferring: Set<MusicLanguage>, from names: [String]) -> String? {
+        guard !preferring.isEmpty else { return nil }
+        return names.first { !isLatin($0) && MusicLanguageDetector.language(of: $0).map { preferring.contains($0) } == true }
     }
 
     /// For tests: the pure pick of the alias for a language.

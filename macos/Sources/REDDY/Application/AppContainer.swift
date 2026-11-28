@@ -306,7 +306,8 @@ final class AppContainer {
         }
         parental.onRelock = { [weak self] in self?.sweepRestrictedArtwork() }
         if parental.artworkSweepPending { sweepRestrictedArtwork() }          // the last session ended while unlocked (a crash or a quit): its pictures are still on disk
-        _ = try? memory.purgeRestricted()
+        // The launch purge of what the shelves remember about restricted titles is NOT done here: it asks the database about every remembered title with a heavy query, and here it ran on the main thread
+        // before the indexes it needs existed, which held the window for seconds on a large library (the opening could not even start). It runs below, in the background, after the indexes. (What the shelves remember is only ever written for titles the person may see, so this purge only tidies the record; nothing restricted is shown from it while it waits.)
         _ = metadata.purgeExpired(); hub.purgeExpired()
         let restrictedNow = (try? purge.restrictedFolderIDs()) ?? []
         knownHidden = Set((try? db.read { try $0.query("SELECT item_id FROM hidden_items WHERE kind='category'") { $0.string(0) } }) ?? [])
@@ -315,6 +316,7 @@ final class AppContainer {
             Task.detached(priority: .background) {
                 metadata.purgeStored(inFolders: restrictedNow); hub.purge(inFolders: restrictedNow)          // anything saved about a title that is locked or hidden now
                 SchemaV19.ensureQueryIndexes(db: database)              // the big indexes are built here, never in the launch migration
+                _ = try? memory.purgeRestricted()                       // tidy what the shelves remembered about titles that are locked or hidden now
                 identity.backfillAll()
             }          // titles that have no identity yet, a few thousand at a time
         }

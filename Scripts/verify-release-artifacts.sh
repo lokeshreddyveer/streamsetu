@@ -3,11 +3,11 @@
 #
 #   MAC=<v> MAC_BUILD=<b> ANDROID=<v> TAG=<tag> NOTES=<file> Scripts/verify-release-artifacts.sh
 #   Leave MAC unset for a release without a Mac file (the Mac checks are then skipped; every Android check still runs).
-#   Leave ANDROID unset for a Mac-only release (the Android checks are then skipped; every Mac check still runs). One of the two must be given.
+#   Leave ANDROID or WINDOWS (or MAC) unset to skip that app's checks (release.sh only allows it with PARTIAL=1). One of them must be given.
 #
 # Hard gates (any one failing stops the release; all failures are listed, not only the first):
 #   * the code the files were built from is the committed code (clean tree, and the build records the same commit)
-#   * Mac: the DMG is notarized and stapled, the app inside is universal (arm64 and x86_64), the app inside is signed with the Hardened Runtime and accepted by Gatekeeper, its version is the one being released, and the packaged app passes
+#   * Mac (each of the two DMGs, Apple silicon and Intel; there is no universal one): the DMG is notarized and stapled, the app inside has the architecture its name says (Apple silicon: arm64 only, build+1; Intel: x86_64 only), the app inside is signed with the Hardened Runtime and accepted by Gatekeeper, its version is the one being released, and the packaged app passes
 #          macos/Scripts/verify-release.sh (signature, privacy manifest equal to the source, no stray paths, and the smoke test that plays a video through the packaged app)
 #   * Android: both APKs verify, are signed by the pinned release certificate (android/release-signer.sha256), carry exactly the allowed permissions (android/release-permissions.txt),
 #              have the right package and version, are the same file, and match the checksums the build recorded
@@ -18,37 +18,46 @@
 set -uo pipefail
 ROOT="${RELEASE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"; cd "$ROOT"
 MAC="${MAC:-}"; [ -n "$MAC" ] && : "${MAC_BUILD:?set MAC_BUILD}"
-ANDROID="${ANDROID:-}"; [ -n "$MAC$ANDROID" ] || { echo "set MAC or ANDROID (or both)"; exit 2; }
+ANDROID="${ANDROID:-}"; WINDOWS="${WINDOWS:-}"; [ -n "$MAC$ANDROID$WINDOWS" ] || { echo "set MAC, ANDROID or WINDOWS"; exit 2; }
 : "${TAG:?set TAG}" "${NOTES:?set NOTES}"
 HDIUTIL="${HDIUTIL:-hdiutil}"; CODESIGN="${CODESIGN:-codesign}"; SPCTL="${SPCTL:-spctl}"; XCRUN="${XCRUN:-xcrun}"; LIPO="${LIPO:-lipo}"; GH="${GH:-gh}"; PYTHON3="${PYTHON3:-python3}"
 BT="$(ls -d "$HOME"/Library/Android/sdk/build-tools/* 2>/dev/null | sort -V | tail -1)"
 APKSIGNER="${APKSIGNER:-$BT/apksigner}"; AAPT="${AAPT:-$BT/aapt}"
 REPO="${RELEASES_REPO:-lokeshreddyveer/streamsetu}"
-DMG="${DMG:-macos/dist/StreamSetu-$MAC.dmg}"; TV="${TV:-${ANDROID:+android/dist/$ANDROID/streamsetu-tv-$ANDROID.apk}}"; PHONE="${PHONE:-${ANDROID:+android/dist/$ANDROID/StreamSetu-Android-$ANDROID.apk}}"
+DMG_ARM="${DMG_ARM:-macos/dist/StreamSetu-$MAC-AppleSilicon.dmg}"; DMG_INTEL="${DMG_INTEL:-macos/dist/StreamSetu-$MAC-Intel.dmg}"; TV="${TV:-${ANDROID:+android/dist/$ANDROID/streamsetu-tv-$ANDROID.apk}}"; PHONE="${PHONE:-${ANDROID:+android/dist/$ANDROID/StreamSetu-Android-$ANDROID.apk}}"
+WIN="${WIN:-${WINDOWS:+windows/native/dist/StreamSetu-Windows-$WINDOWS.zip}}"; WIN_ARM="${WIN_ARM:-${WINDOWS:+windows/native/dist/StreamSetu-Windows-$WINDOWS-arm64.zip}}"
 FAILED=0; MNT=""; MOUNTS=(); APPS=()
 ok()  { echo "  ✔ $1"; }
 bad() { echo "  ✘ $1"; FAILED=$((FAILED + 1)); }
 cleanup() { for m in ${MOUNTS[@]+"${MOUNTS[@]}"}; do "$HDIUTIL" detach "$m" -quiet >/dev/null 2>&1; rmdir "$m" 2>/dev/null; done; true; }
 trap cleanup EXIT
 
-if [ -z "$MAC" ]; then DMG=""; fi
-echo "Verifying release $TAG (${MAC:+Mac $MAC build $MAC_BUILD}${MAC:+${ANDROID:+, }}${ANDROID:+Android $ANDROID}${MAC:-${ANDROID:+; no Mac file}}${ANDROID:-; no Android files})"
+if [ -z "$MAC" ]; then DMG_ARM=""; DMG_INTEL=""; fi
+echo "Verifying release $TAG (${MAC:+Mac $MAC build $MAC_BUILD}${ANDROID:+, Android $ANDROID}${WINDOWS:+, Windows $WINDOWS})"
 
 echo "Files"
-for f in ${DMG:+"$DMG"} ${TV:+"$TV" "$PHONE"} "$NOTES"; do [ -f "$f" ] && ok "$f" || bad "$f is missing"; done
+for f in ${DMG_ARM:+"$DMG_ARM" "$DMG_INTEL"} ${TV:+"$TV" "$PHONE"} ${WIN:+"$WIN" "$WIN_ARM"} "$NOTES"; do [ -f "$f" ] && ok "$f" || bad "$f is missing"; done
 
 echo "Source"
 DIRTY="$(git status --porcelain -- macos android ios Scripts web windows 2>/dev/null | grep -v '^??.*dist/' | head -5)"
 if [ -z "$DIRTY" ]; then ok "no uncommitted changes in the code"; else bad "uncommitted changes in the code (a release is built from committed code only):"; echo "$DIRTY" | sed 's/^/      /'; fi
 HEAD_SHA="$(git rev-parse HEAD 2>/dev/null || echo none)"
-for rec in ${MAC:+"macos/dist/StreamSetu-$MAC.commit"} ${ANDROID:+"android/dist/$ANDROID/BUILD-COMMIT.txt"}; do
-  if [ -f "$rec" ]; then [ "$(tr -d '[:space:]' < "$rec")" = "$HEAD_SHA" ] && ok "$rec is this commit" || bad "$rec: the files were built from another commit than HEAD ($HEAD_SHA); build again"
-  else bad "$rec is missing (the build records the commit it was made from)"; fi
-done
+# A build must come from the code being released: the commit it records is HEAD, or the code of that app has not changed between that commit and HEAD (an app that did not change ships its
+# existing files again).
+same_source() {   # $1 the record file, $2 the app's source folder
+  local rec="$1" dir="$2" sha
+  if [ ! -f "$rec" ]; then bad "$rec is missing (the build records the commit it was made from)"; return; fi
+  sha="$(tr -d '[:space:]' < "$rec")"
+  if [ "$sha" = "$HEAD_SHA" ]; then ok "$rec is this commit"
+  elif git cat-file -e "$sha^{commit}" 2>/dev/null && git diff --quiet "$sha" HEAD -- "$dir" 2>/dev/null; then ok "$rec: $dir has not changed since it was built ($(git rev-parse --short "$sha"))"
+  else bad "$rec: the files were built from another commit than HEAD ($HEAD_SHA) and $dir has changed since; build again"; fi
+}
+[ -n "$MAC" ] && same_source "macos/dist/StreamSetu-$MAC.commit" macos
+[ -n "$ANDROID" ] && same_source "android/dist/$ANDROID/BUILD-COMMIT.txt" android
 
-# The Mac disk image: $1 the file, $2 the architectures the app inside must have (sorted, space separated).
+# One Mac disk image: $1 the file, $2 the architectures the app inside must have (sorted, space separated), $3 the build number the app inside must carry.
 verify_mac_dmg() {
-  local file="$1" want="$2" name; name="$(basename "$1")"
+  local file="$1" want="$2" wantbuild="$3" name; name="$(basename "$1")"
   echo "  $name"
   "$XCRUN" stapler validate "$file" >/dev/null 2>&1 && ok "$name: DMG is notarized and stapled" || bad "$name: DMG is not notarized and stapled"
   "$SPCTL" --assess --type open --context context:primary-signature "$file" >/dev/null 2>&1 && ok "$name: Gatekeeper accepts the DMG" || bad "$name: Gatekeeper does not accept the DMG"
@@ -64,7 +73,7 @@ verify_mac_dmg() {
       grep -q "flags=.*runtime" <<<"$SIGN_INFO" && ok "$name: Hardened Runtime is on" || bad "$name: Hardened Runtime is off"
       "$SPCTL" --assess --type execute "$APP" >/dev/null 2>&1 && ok "$name: Gatekeeper accepts the app" || bad "$name: Gatekeeper does not accept the app"
       local V B; V="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist" 2>/dev/null)"; B="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$APP/Contents/Info.plist" 2>/dev/null)"
-      [ "$V" = "$MAC" ] && [ "$B" = "$MAC_BUILD" ] && ok "$name: app is version $V build $B" || bad "$name: the app inside is version '$V' build '$B', not $MAC build $MAC_BUILD"
+      [ "$V" = "$MAC" ] && [ "$B" = "$wantbuild" ] && ok "$name: app is version $V build $B" || bad "$name: the app inside is version '$V' build '$B', not $MAC build $wantbuild"
       local ARCHS; ARCHS="$("$LIPO" -archs "$APP/Contents/MacOS/StreamSetu" 2>/dev/null | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//')"
       [ "$ARCHS" = "$want" ] && ok "$name: the app is $ARCHS" || bad "$name: the app has architectures '$ARCHS', not '$want'"
       if macos/Scripts/verify-release.sh "$APP" > "$(mktemp)" 2>&1; then ok "$name: packaged checks pass (privacy manifest, paths, smoke test)"; else bad "$name: the packaged-app checks failed (run macos/Scripts/verify-release.sh on the app)"; fi
@@ -74,7 +83,9 @@ verify_mac_dmg() {
 }
 if [ -n "$MAC" ]; then
   echo "Mac"
-  [ -f "$DMG" ] && verify_mac_dmg "$DMG" "arm64 x86_64"
+  # The Apple silicon app is build+1 and the Intel app is the build given: the update feed relies on it (macos/Scripts/release-signed.sh).
+  [ -f "$DMG_ARM" ] && verify_mac_dmg "$DMG_ARM" "arm64" "$((MAC_BUILD + 1))"
+  [ -f "$DMG_INTEL" ] && verify_mac_dmg "$DMG_INTEL" "x86_64" "$MAC_BUILD"
 fi
 
 if [ -n "$ANDROID" ]; then
@@ -102,9 +113,23 @@ if [ -f "$SUMS" ]; then
 else bad "$SUMS is missing"; fi
 fi
 
+if [ -n "$WINDOWS" ]; then
+  echo "Windows"
+  for z in "$WIN" "$WIN_ARM"; do
+    [ -f "$z" ] || continue
+    N="$(basename "$z")"
+    unzip -tq "$z" >/dev/null 2>&1 && ok "$N: the zip is intact" || bad "$N: the zip is damaged"
+    unzip -l "$z" 2>/dev/null | grep -q "StreamSetu.exe" && ok "$N: holds StreamSetu.exe" || bad "$N: no StreamSetu.exe inside"
+    if [ -f "$z.sha256" ]; then
+      want="$(awk '{print $1}' "$z.sha256")"; have="$(shasum -a 256 "$z" | awk '{print $1}')"
+      [ "$want" = "$have" ] && ok "$N: the checksum is the recorded one" || bad "$N: the checksum differs from the recorded one"
+    else bad "$z.sha256 is missing"; fi
+  done
+fi
+
 echo "Secrets"
 # No built-in key (TMDB, fanart.tv, TheTVDB) may be in a file git can see or in a shipped file (the scan never prints a key).
-SCAN_ARGS=(); for f in ${TV:+"$TV" "$PHONE"}; do [ -f "$f" ] && SCAN_ARGS+=("$f"); done; for a in ${APPS[@]+"${APPS[@]}"}; do [ -d "$a" ] && SCAN_ARGS+=("$a"); done
+SCAN_ARGS=(); for f in ${TV:+"$TV" "$PHONE"} ${WIN:+"$WIN" "$WIN_ARM"}; do [ -f "$f" ] && SCAN_ARGS+=("$f"); done; for a in ${APPS[@]+"${APPS[@]}"}; do [ -d "$a" ] && SCAN_ARGS+=("$a"); done
 if [ -f Scripts/check_no_secrets.py ]; then
   SECRET_OUT="$(python3 -I Scripts/check_no_secrets.py --repo . ${SCAN_ARGS[@]+"${SCAN_ARGS[@]}"} 2>&1)" && ok "no built-in key in the repository files or the release files" || { bad "a built-in key (or a piece of one) is visible: run Scripts/check-no-secrets.sh"; echo "$SECRET_OUT" | grep FAIL | sed 's/^/      /'; }
 else bad "Scripts/check_no_secrets.py is missing"; fi
@@ -117,6 +142,7 @@ if [ -f "$NOTES" ]; then
   grep -q '^# ' <<<"$(head -1 "$NOTES")" && ok "notes have a title" || bad "the notes' first line must be a '# title'"
   if [ -n "$MAC" ]; then grep -q "$MAC" "$NOTES" && ok "notes name the Mac version" || bad "the notes do not mention Mac $MAC"; fi
   if [ -n "$ANDROID" ]; then grep -q "$ANDROID" "$NOTES" && ok "notes name the Android version" || bad "the notes do not mention Android $ANDROID"; fi
+  if [ -n "$WINDOWS" ]; then grep -q "$WINDOWS" "$NOTES" && ok "notes name the Windows version" || bad "the notes do not mention Windows $WINDOWS"; fi
 fi
 STATE="$("$GH" release view "$TAG" --repo "$REPO" --json isDraft --jq '.isDraft' 2>/dev/null || echo "none")"
 case "$STATE" in

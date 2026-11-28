@@ -85,6 +85,7 @@ struct MusicSoundtrackPage: View {
             // Enrichment adds editions, facts and the album concept after the page opened: read them again (quietly, so the choices stay available).
             try? await Task.sleep(nanoseconds: 600_000_000)
             guard !Task.isCancelled else { return }
+            page.graphChanged()
             extras.loadVersions(force: true)
             extras.loadInfo(provider: page.providerAlbum, force: true)
         }

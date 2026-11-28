@@ -18,12 +18,12 @@ struct SettingsView: View {
     var body: some View {
         // Ask Setu sits in a row of its own above the tabs, not over them: no label or control of any page can ever be hidden under it.
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
+            if AssistantFeature.isOn { HStack(spacing: 0) {
                 Spacer(minLength: 0)
                 Button { AssistantLauncher.shared.ask("I need help with a setting or a problem. What can you check?"); AssistantLauncher.bringMainWindowForward() } label: { Label("Ask Setu", systemImage: "sparkles").font(.callout) }
                     .buttonStyle(.bordered).controlSize(.small).help("Ask the assistant about a setting, or to diagnose a problem").atlas("screen.assistant")
             }
-            .padding(.horizontal, 16).padding(.vertical, 8)
+            .padding(.horizontal, 16).padding(.vertical, 8) }
             TabView(selection: $tab) {
                 GeneralSettingsPage().atlasScreen("screen.settings.general").tabItem { Label("General", systemImage: "gearshape") }.tag(SettingsTab.general)
                 AppearanceSettingsPage().atlasScreen("screen.settings.appearance").tabItem { Label("Appearance", systemImage: "paintbrush") }.tag(SettingsTab.appearance)

@@ -77,17 +77,26 @@ struct FoldersPane: View {
     @Environment(AppState.self) private var state
     @Environment(AppRouter.self) private var router
     @State private var vm = FolderOrderViewModel()
-    @State private var kind: ContentKind = .channel
+    @State private var kind: ContentKind
     @State private var sourceID: UUID?
     @State private var query = ""
+    /// Set when the pane belongs to one manager (Movies, Series): the type picker is not offered.
+    private let fixedKind: ContentKind?
+
+    init(kind: ContentKind? = nil) {
+        _kind = State(initialValue: kind ?? .channel)
+        fixedKind = kind
+    }
 
     private var shown: [CatalogCategory] { query.isEmpty ? vm.folders : vm.folders.filter { $0.name.localizedCaseInsensitiveContains(query) } }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                Picker("Type", selection: $kind) { Text("Live TV").tag(ContentKind.channel); Text("Movies").tag(ContentKind.movie); Text("Series").tag(ContentKind.series) }
-                    .pickerStyle(.segmented).labelsHidden().frame(width: 240).atlas("control.commandCenter.folderScope")
+                if fixedKind == nil {
+                    Picker("Type", selection: $kind) { Text("Live TV").tag(ContentKind.channel); Text("Movies").tag(ContentKind.movie); Text("Series").tag(ContentKind.series) }
+                        .pickerStyle(.segmented).labelsHidden().frame(width: 240).atlas("control.commandCenter.folderScope")
+                }
                 if state.sources.count > 1 {
                     Picker("Playlist", selection: $sourceID) { ForEach(state.sources) { Text($0.name).tag(UUID?.some($0.id)) } }.pickerStyle(.menu).labelsHidden().fixedSize().atlas("control.commandCenter.folderScope")
                 }

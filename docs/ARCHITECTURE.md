@@ -140,7 +140,7 @@ Logins in the Keychain (`KeychainManager`, `LocalCredentialStore`, `SecureStorag
 
 ### 5.11 Build, sign, update
 
-`swift build` (debug); `Scripts/build-release.sh <version> <build>` builds the universal app (arm64 + x86_64, optionally with libmpv via `bundle-libmpv.sh`); `release-signed.sh` runs the dependency gate, builds, signs with Developer ID, notarizes, staples and makes the DMG; `Scripts/dev/mac-build.sh` and `mac-install.sh` build and install locally. Sparkle checks the feed (`SUFeedURL` = the raw `appcast.xml` on GitHub), verifies the EdDSA signature against `SUPublicEDKey`, and offers the universal DMG.
+`swift build` (debug); `Scripts/build-release.sh <version> <build>` builds one app (universal by default for development, or `REDDY_ARCH=arm64|x86_64` for one architecture, optionally with libmpv via `bundle-libmpv.sh`); `release-signed.sh` runs the dependency gate, builds the Apple silicon and the Intel app separately, signs each with Developer ID, notarizes, staples and makes the two DMGs; `Scripts/dev/mac-build.sh` and `mac-install.sh` build and install locally. Sparkle checks the feed (`SUFeedURL` = the raw `appcast.xml` on GitHub), verifies the EdDSA signature against `SUPublicEDKey`, and offers the universal DMG.
 
 ### 5.12 Mac folder trees
 
@@ -2847,7 +2847,7 @@ docs/  (110 files)
 |---|---|---|
 | Unit and integration tests | `macos` (`Scripts/test-serial.sh`, about 6,190 tests, ten minutes), `android` (`./gradlew testDebugUnitTest`, Robolectric), `ios` (`Scripts/test-ios.sh`), Windows (`StreamSetu.Core.Tests`) | Timing-sensitive tests run one at a time on purpose |
 | Static gates | `Scripts/check-host-parity.py`, `audit-dependencies.py --strict`, `check_no_secrets.py`, the Atlas scan, `verify-layering.sh`, the theme-literal scan | Fail the build, not a warning |
-| Build | `macos/Scripts/release-signed.sh` (Mac), `android/build-release.sh` (APK), `ios/Scripts/testflight.sh` (iOS) | Mac: universal, Developer ID signed, notarized, stapled |
+| Build | `macos/Scripts/release-signed.sh` (Mac), `android/build-release.sh` (APK), `ios/Scripts/testflight.sh` (iOS) | Mac: two DMGs (Apple silicon, Intel), Developer ID signed, notarized, stapled |
 | Verify | `Scripts/verify-release-artifacts.sh` | Notarization, signature, version, architectures, privacy manifest, smoke test, signer pin, permissions, checksums, committed code |
 | Publish | `Scripts/release.sh <tag> <notes>` | Verify -> upload as draft -> check the upload -> publish -> Mac update feed -> README table -> website. `ANDROID` unset makes a Mac-only release. Tested by `Scripts/test-release-gates.sh` |
 | Update | Sparkle (Mac), `UpdateManager` (Android), Releases check (Windows), App Store (iOS) | Every update is checked against a signature or SHA-256 |

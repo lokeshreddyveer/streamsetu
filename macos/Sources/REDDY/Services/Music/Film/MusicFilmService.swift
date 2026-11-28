@@ -24,7 +24,7 @@ struct MusicTMDBFilmSource: MusicFilmSource {
 
     func film(for identity: MusicFilmIdentity) async throws -> MusicFilmInfo? {
         guard let tmdb else { return nil }
-        var query = [URLQueryItem(name: "query", value: identity.title), URLQueryItem(name: "include_adult", value: "false"), URLQueryItem(name: "language", value: "en-US")]
+        var query = [URLQueryItem(name: "query", value: identity.title), URLQueryItem(name: "include_adult", value: "false"), URLQueryItem(name: "language", value: MusicLanguagePolicy.tmdbText())]
         var hits = MusicFilmTMDBParser.credits(from: try await tmdb("/3/search/movie", query))
         if hits.isEmpty, let y = identity.year {
             query.append(URLQueryItem(name: "year", value: String(y)))
@@ -34,7 +34,7 @@ struct MusicTMDBFilmSource: MusicFilmSource {
             MusicFilmMatch.score(identity: identity, titles: [h.title, h.originalTitle], year: h.year, language: h.language, popularity: h.popularity).map { (h, $0) }
         }.sorted { $0.1 > $1.1 }
         for (hit, score) in ranked.prefix(3) {
-            let data = try await tmdb("/3/movie/\(hit.tmdbID)", [URLQueryItem(name: "append_to_response", value: "credits"), URLQueryItem(name: "language", value: "en-US")])
+            let data = try await tmdb("/3/movie/\(hit.tmdbID)", [URLQueryItem(name: "append_to_response", value: "credits"), URLQueryItem(name: "language", value: MusicLanguagePolicy.tmdbText())])
             if var info = MusicFilmTMDBParser.film(from: data), MusicFilmMatch.accepts(info, identity: identity) {
                 info.singers = identity.singers
                 info.provenance = MusicFilmProvenance(source: .tmdb, retrievedAt: Date(), confidence: min(1, max(0, score)))

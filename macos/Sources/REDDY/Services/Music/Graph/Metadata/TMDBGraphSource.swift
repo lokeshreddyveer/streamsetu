@@ -108,7 +108,24 @@ struct TMDBGraphSource: MusicMetadataSource {
         }
     }
 
-    static func filmBatch(_ data: Data, now: Date) -> MusicClaimBatch? {
+    /// The poster to keep for a film: from the pictures TMDB lists, the one in the film's own original language first (the poster the film was released with),
+    /// then the person's languages in their order, then a textless one; by votes within a language. Nil when the list has no poster at all.
+    static func bestPoster(from data: Data, original: String?, preferred: [String] = MusicLanguagePolicy.codes()) -> String? {
+        guard let j = MusicSourceKit.json(data) else { return nil }
+        let posters = ((j["images"] as? [String: Any])?["posters"] as? [[String: Any]]) ?? (j["posters"] as? [[String: Any]]) ?? []
+        let order = ([original].compactMap { $0?.lowercased() } + preferred.map { $0.lowercased() })
+        func rank(_ lang: String?) -> Int {
+            guard let l = lang?.lowercased(), !l.isEmpty else { return order.count }       // textless: after every wanted language
+            return order.firstIndex(of: l) ?? order.count + 1
+        }
+        let best = posters.compactMap { p -> (path: String, rank: Int, votes: Double)? in
+            guard let path = MusicSourceKit.string(p["file_path"]) else { return nil }
+            return (path, rank(p["iso_639_1"] as? String), (p["vote_average"] as? Double) ?? 0)
+        }.min { ($0.rank, -$0.votes) < ($1.rank, -$1.votes) }
+        return best?.path
+    }
+
+    static func filmBatch(_ data: Data, now: Date, posterPath: String? = nil) -> MusicClaimBatch? {
         guard var info = MusicFilmTMDBParser.film(from: data, castLimit: MusicFilmGraphReading.castCap) else { return nil }
         let x = extras(data)
         info.wikidataID = x.wikidata
@@ -118,6 +135,11 @@ struct TMDBGraphSource: MusicMetadataSource {
             b.drafts[i].entity.aliases += x.aliases
             let f = facts(data)
             for (k, v) in f where k != "countries" { b.drafts[i].entity.attrs[k] = v }
+            // The film's own poster, so the page and every card that shows it have a picture without a second lookup.
+            if let j = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+               let poster = posterPath ?? Self.bestPoster(from: data, original: j["original_language"] as? String) ?? (j["poster_path"] as? String), !poster.isEmpty {
+                b.drafts[i].entity.imageRef = MusicFilmTMDBParser.imageBase + "w500" + poster
+            }
             // The country of the film, so its industry is named only for what it is: India when it is among the production countries, else the first one listed (a Hindi
             // film made in the UK and France is not Bollywood). Unknown only when TMDB lists none.
             if let list = f["countries"]?.split(separator: "|").map(String.init) { b.drafts[i].entity.country = MusicFilmAboutFacts.industryCountry(list) }
@@ -157,6 +179,23 @@ struct TMDBGraphSource: MusicMetadataSource {
 
     /// The facts of a series from a `tv/{id}` reply: the same facts as a film (tagline, genres, status, companies, rating, backdrop), the number of seasons and the first air date.
     /// Nothing is guessed; a reply without a name gives no batch.
+    /// A person's shows from `combined_credits`: aired shows only, the person as themselves (talk shows, awards, archive) left out, one entry per show.
+    static func tvCredits(from data: Data, thisYear: Int = Calendar.current.component(.year, from: Date())) -> [MusicFilmCredit] {
+        guard let j = MusicSourceKit.json(data), let rows = j["cast"] as? [[String: Any]] else { return [] }
+        var seen = Set<Int>(), out: [MusicFilmCredit] = []
+        for r in rows where (r["media_type"] as? String) == "tv" {
+            guard let id = r["id"] as? Int, let name = MusicSourceKit.string(r["name"]) ?? MusicSourceKit.string(r["original_name"]), seen.insert(id).inserted else { continue }
+            let character = MusicSourceKit.string(r["character"])
+            guard !MusicFilmTMDBParser.isWalkOn(character) else { continue }
+            let year = (MusicSourceKit.string(r["first_air_date"])?.prefix(4)).flatMap { Int($0) }
+            guard let y = year, y <= thisYear else { continue }
+            out.append(MusicFilmCredit(tmdbID: id, title: name, originalTitle: MusicSourceKit.string(r["original_name"]) ?? name, year: y,
+                                       language: MusicSourceKit.string(r["original_language"]), character: character,
+                                       popularity: (r["popularity"] as? Double) ?? 0, posterPath: MusicSourceKit.string(r["poster_path"])))
+        }
+        return out.sorted { $0.popularity > $1.popularity }
+    }
+
     static func seriesBatch(_ data: Data, tmdbID: String, now: Date) -> MusicClaimBatch? {
         guard let j = MusicSourceKit.json(data), let name = MusicSourceKit.string(j["name"]), !name.isEmpty else { return nil }
         var attrs = facts(data)
@@ -171,7 +210,9 @@ struct TMDBGraphSource: MusicMetadataSource {
         var ids = [id]
         if let wd = ((j["external_ids"] as? [String: Any])?["wikidata_id"] as? String), wd.hasPrefix("Q") { ids.append(ExternalID(.wikidata, wd)) }
         let ref = MusicDraftRef.external(.series, id)
-        b.drafts.append(MusicSourceDraft(ref, MusicEntityDraft(kind: .series, name: name, lang: MusicSourceKit.string(j["original_language"]), year: year, attrs: attrs, externalIDs: ids)))
+        b.drafts.append(MusicSourceDraft(ref, MusicEntityDraft(kind: .series, name: name, lang: MusicSourceKit.string(j["original_language"]), year: year,
+                                                                         imageRef: MusicSourceKit.string(j["poster_path"]).flatMap { $0.isEmpty ? nil : MusicFilmTMDBParser.imageBase + "w500" + $0 },
+                                                                         attrs: attrs, externalIDs: ids)))
         // The cast, in billing order, the same way a film's cast is stored (walk-ons left out).
         let cast = (((j["credits"] as? [String: Any])?["cast"] as? [[String: Any]]) ?? [])
             .filter { !MusicFilmTMDBParser.isWalkOn($0["character"] as? String) }
@@ -199,7 +240,7 @@ struct TMDBGraphSource: MusicMetadataSource {
         switch r.facet {
         case MusicFacet.filmSearch:
             guard let t = r.param("title") else { throw MusicSourceError.badRequest("title") }
-            var q = [URLQueryItem(name: "query", value: t), URLQueryItem(name: "include_adult", value: "false"), URLQueryItem(name: "language", value: "en-US")]
+            var q = [URLQueryItem(name: "query", value: t), URLQueryItem(name: "include_adult", value: "false"), URLQueryItem(name: "language", value: MusicLanguagePolicy.tmdbText())]
             if let y = r.param("year") { q.append(URLQueryItem(name: "year", value: y)) }
             var b = MusicClaimBatch(source: .tmdb, license: .termsRestricted, retrievedAt: now, retention: 30 * 86_400, attribution: "TMDB"); b.isSearch = true
             for c in MusicFilmTMDBParser.credits(from: try await gate("/3/search/movie", q)).prefix(8) {
@@ -211,24 +252,42 @@ struct TMDBGraphSource: MusicMetadataSource {
         case MusicFacet.filmCredits:
             if let tv = r.param("tmdbTV") {
                 guard Int(tv) != nil else { throw MusicSourceError.badRequest("tmdbTV") }
-                let d = try await gate("/3/tv/\(tv)", [URLQueryItem(name: "append_to_response", value: "credits,videos,images,external_ids,content_ratings"), URLQueryItem(name: "language", value: "en-US"), URLQueryItem(name: "include_video_language", value: "en,null,te,hi,ta,ml,kn,bn,pa,mr"), URLQueryItem(name: "include_image_language", value: "null,en,hi,te,ta,ml,kn")])
+                let d = try await gate("/3/tv/\(tv)", [URLQueryItem(name: "append_to_response", value: "credits,videos,images,external_ids,content_ratings"), URLQueryItem(name: "language", value: MusicLanguagePolicy.tmdbText()), URLQueryItem(name: "include_video_language", value: MusicLanguagePolicy.tmdbMedia(original: r.param("lang"))), URLQueryItem(name: "include_image_language", value: MusicLanguagePolicy.tmdbMedia(original: r.param("lang")))])
                 guard let b = Self.seriesBatch(d, tmdbID: tv, now: now) else { throw MusicError.network("unexpected reply") }
                 return b
             }
             guard let id = r.param("tmdb"), Int(id) != nil else { throw MusicSourceError.badRequest("tmdb") }
-            let d = try await gate("/3/movie/\(id)", [URLQueryItem(name: "append_to_response", value: "credits,external_ids,alternative_titles,release_dates,videos,images"), URLQueryItem(name: "language", value: "en-US"), URLQueryItem(name: "include_video_language", value: "en,null,te,hi,ta,ml,kn,bn,pa,mr"), URLQueryItem(name: "include_image_language", value: "null,en,hi,te,ta,ml,kn")])
-            guard let b = Self.filmBatch(d, now: now) else { throw MusicError.network("unexpected reply") }
+            let d = try await gate("/3/movie/\(id)", [URLQueryItem(name: "append_to_response", value: "credits,external_ids,alternative_titles,release_dates,videos,images"), URLQueryItem(name: "language", value: MusicLanguagePolicy.tmdbText()), URLQueryItem(name: "include_video_language", value: MusicLanguagePolicy.tmdbMedia(original: r.param("lang"))), URLQueryItem(name: "include_image_language", value: MusicLanguagePolicy.tmdbMedia(original: r.param("lang")))])
+            // The film's own language is only known now. When its posters were not among those asked for, ask for them once, so the poster kept is the one the film was released with.
+            var poster: String?
+            if let original = MusicSourceKit.json(d)?["original_language"] as? String, !MusicLanguagePolicy.codes().contains(original.lowercased()) {
+                if let more = try? await gate("/3/movie/\(id)/images", [URLQueryItem(name: "include_image_language", value: MusicLanguagePolicy.tmdbMedia(original: original))]) {
+                    poster = Self.bestPoster(from: more, original: original)
+                }
+            }
+            guard let b = Self.filmBatch(d, now: now, posterPath: poster) else { throw MusicError.network("unexpected reply") }
             return b
         case MusicFacet.personFilmography:
             guard let id = r.param("tmdbPerson"), Int(id) != nil else { throw MusicSourceError.badRequest("tmdbPerson") }
-            let d = try await gate("/3/person/\(id)/movie_credits", [])
+            let d = try await gate("/3/person/\(id)/combined_credits", [URLQueryItem(name: "language", value: MusicLanguagePolicy.tmdbText())])
             var b = MusicClaimBatch(source: .tmdb, license: .termsRestricted, retrievedAt: now, retention: 30 * 86_400, attribution: "TMDB")
             let person = MusicDraftRef.external(.person, ExternalID(.tmdbPerson, id))
             for c in MusicFilmTMDBParser.filmography(from: d).sorted(by: { $0.popularity > $1.popularity }).prefix(60) {
                 let fid = ExternalID(.tmdbMovie, String(c.tmdbID)), fr = MusicDraftRef.external(.film, fid)
-                b.drafts.append(MusicSourceDraft(fr, MusicEntityDraft(kind: .film, name: c.title, lang: c.language, year: c.year, externalIDs: [fid])))
+                b.drafts.append(MusicSourceDraft(fr, MusicEntityDraft(kind: .film, name: c.title, lang: c.language, year: c.year,
+                                                                                      imageRef: c.posterPath.map { MusicFilmTMDBParser.imageBase + "w500" + $0 }, externalIDs: [fid])))
                 var a = EdgeAttributes(); a.characterName = c.character
                 var cl = MusicClaimDraft(subject: fr, predicate: .hasCast, object: person, role: .actor, attributes: a, order: c.billingOrder, creditLevel: .film, confidence: 0.9, evidence: ["tmdb-movie-credits"])
+                cl.attribution = "TMDB"
+                b.claims.append(cl)
+            }
+            // The shows the person acted in: one series each (never one entry per episode), the same shape as a film credit.
+            for t in Self.tvCredits(from: d).prefix(40) {
+                let sid = ExternalID(.tmdbTV, String(t.tmdbID)), sr = MusicDraftRef.external(.series, sid)
+                b.drafts.append(MusicSourceDraft(sr, MusicEntityDraft(kind: .series, name: t.title, lang: t.language, year: t.year,
+                                                                      imageRef: t.posterPath.map { MusicFilmTMDBParser.imageBase + "w500" + $0 }, externalIDs: [sid])))
+                var a = EdgeAttributes(); a.characterName = t.character
+                var cl = MusicClaimDraft(subject: sr, predicate: .hasCast, object: person, role: .actor, attributes: a, order: nil, creditLevel: .film, confidence: 0.85, evidence: ["tmdb-tv-credits"])
                 cl.attribution = "TMDB"
                 b.claims.append(cl)
             }

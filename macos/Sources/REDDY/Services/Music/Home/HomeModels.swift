@@ -171,6 +171,9 @@ struct HomeSignals: Sendable {
     var films: [HomeFilmPick] = []
     /// Songs for the genres the person listens to most ("More Pop"), found by searching the active source.
     var genreShelves: [HomeSection] = []
+    /// The language of the person's songs where it could be found beyond the title's script (track uid -> language), and new songs in the languages they play most (language -> songs), searched in the active source.
+    var trackLanguages: [String: String] = [:]
+    var languageSongs: [String: [HomeItem]] = [:]
     /// Playlists that feature the artists the person plays most (found by searching the active source).
     var playlistsForYou: [HomeItem] = []
     /// A sample of songs from the music folders the person added.

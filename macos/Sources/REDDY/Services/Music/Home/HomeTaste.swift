@@ -42,6 +42,10 @@ struct HomeTaste: Sendable {
     var artists: [ArtistStat] = []
     /// The share of the person's own weight in each bucket (sums to 1; empty with no data). Used for spread, never shown.
     var bucketShare: [String: Double] = [:]
+    /// A song's language where one was found beyond its title's script (what its source states, or the graph's record of its film or album), by track uid: most titles are in Latin letters and
+    /// say nothing, and without this a person who plays only romanised songs would have no language at all. Songs not in it fall back to the title's script.
+    var languageOf: [String: String] = [:]
+    func bucket(_ t: MusicTrack) -> String { languageOf[t.uid] ?? HomeKeys.bucket(t) }
     var countedPlays = 0
     var daypart: DayPart = .morning
 
@@ -57,8 +61,9 @@ struct HomeTaste: Sendable {
         r.at <= now.addingTimeInterval(3600) && !(r.track.isPodcast ?? false) && counts(r)
     }
 
-    static func build(history: [PlayRecord], liked: [MusicTrack], followed: [MusicArtist], now: Date, calendar: Calendar = .current) -> HomeTaste {
+    static func build(history: [PlayRecord], liked: [MusicTrack], followed: [MusicArtist], now: Date, calendar: Calendar = .current, languageOf: [String: String] = [:]) -> HomeTaste {
         var t = HomeTaste()
+        t.languageOf = languageOf
         t.daypart = DayPart.of(hour: calendar.component(.hour, from: now))
         var stats: [String: TrackStat] = [:]
         var artistW: [String: ArtistStat] = [:]
@@ -110,7 +115,7 @@ struct HomeTaste: Sendable {
         var share: [String: Double] = [:]
         var total = 0.0
         for s in t.tracks {
-            let b = HomeKeys.bucket(s.track)
+            let b = t.bucket(s.track)
             guard !b.isEmpty else { continue }
             share[b, default: 0] += s.weight; total += s.weight
         }

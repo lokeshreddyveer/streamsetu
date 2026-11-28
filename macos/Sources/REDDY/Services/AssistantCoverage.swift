@@ -84,6 +84,8 @@ struct AssistantCoverageRow: Equatable {
         "addPlaylist": covered("modal", "addPlaylist", read: "how-to via source_setup_help; never reads or stores credentials", act: "explains the fields only", restrictions: "n/a (credentials go through the normal form into the Keychain)", error: "no"),
         "about": unsupported("modal", "about", "Nothing for the assistant to read or do."),
         "channelManager": unsupported("modal", "channelManager", "Channel and folder management is not mapped to the registry yet (planned: read-only inspection first, then previewed changes)."),
+        "moviesManager": unsupported("modal", "moviesManager", "Movie management (hide, favorite, watch later, folders) is not mapped to the registry yet; Setu explains it from the Movies manager entry."),
+        "seriesManager": unsupported("modal", "seriesManager", "Series management (hide, favorite, watch later, folders) is not mapped to the registry yet; Setu explains it from the Series manager entry."),
         "unlockRestricted": unsupported("modal", "unlockRestricted", "By design: PINs are entered only in the normal secure form; the assistant never unlocks anything."),
     ]
 
@@ -129,6 +131,8 @@ struct AssistantCoverageRow: Equatable {
         "Features/Streaming/ServicesDropdown.swift": "Services list row menu (move up or down for a pinned service): control.services.move.",
         "DesignSystem/Components/Sidebar/ReddySidebar.swift": "Sidebar folder menu (Move, Hide, Lock, Unlock): explained as context.sidebar.folderReorder and context.sidebar.folderLock; playlist menu row (Remove…): explained as screen.playlistMenu. Not run by Setu.",
         "Features/CommandCenter/Views/CommandCenterView.swift": "Channel and folder manager menus: not mapped yet.",
+        "DesignSystem/Components/Navigation/ReddyTopBar.swift": "Right-click on a main tab: Refresh library, Refresh TV guide, the tab's manager (control.nav.tabRefresh, control.nav.tabRefreshGuide, control.nav.tabManage) and the tab's look (control.nav.tabMode): explained, not run by Setu.",
+        "Features/CommandCenter/Views/TitleManagerView.swift": "Movies and Series manager row menu (Hide or Show, Favorite, Watch later): explained as the Movies manager and Series manager screens, not run by Setu.",
         "Features/Sources/Views/PlaylistManager.swift": "Playlist row menu (Remove…, with the same confirmation as the Remove button): not mapped yet.",
         "Features/Files/FilesView.swift": "Local file menu: not mapped yet.",
         "Features/Music/Graph/Album/MusicSoundtrackSongsSection.swift": "Album song row menu (play, the song menu, song details): explained as control.music.soundtrackSongRow, not run by Setu.",

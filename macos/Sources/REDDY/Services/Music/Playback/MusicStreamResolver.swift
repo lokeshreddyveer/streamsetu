@@ -462,6 +462,8 @@ final class MusicStreamResolver {
             }
         }
         for n in notes.all { log?.record(track: t.title, provider: n.0, reason: n.1) }
+        // The same reasons in the debug log, so "songs do not play" can be read afterwards: which source said what, for which song.
+        MusicDebugLog.log("play", "no stream for \(t.title): " + notes.all.map { "\($0.0 ?? "-"): \($0.1)" }.joined(separator: " | "))
         if let v = unplayable.verdict(videoID: t.videoID ?? t.id) {
             log?.record(track: t.title, provider: "YouTube", reason: v.text)
             throw MusicError.noPlayableSource(t.title + ". " + v.text)

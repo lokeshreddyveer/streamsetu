@@ -79,11 +79,13 @@ struct MusicArtistTimelineView: View {
                 }
             }
             Text(Localized.string("Press a year to see only that year's songs, albums and films.")).font(Typography.caption).foregroundStyle(ColorTokens.textTertiary)
-            ForEach(decades, id: \.self) { d in
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(verbatim: MusicPersonWording.filterDecade(d)).font(Typography.bodyMedium).foregroundStyle(ColorTokens.textSecondary).padding(.bottom, MusicSpace.xxs)
-                    LazyVStack(alignment: .leading, spacing: 0) { ForEach(entries.filter { $0.decade == d }) { row($0) } }
-                }
+            // The same timeline the Movies screen draws for a franchise: a numbered line, one picture per year (the year's album, film or song), the line lit up
+            // to the year the lists are scoped to (all of it when none is).
+            SetuTimeline(sections: decades.map { d in
+                SetuTimelineSection(id: String(d), title: MusicPersonWording.filterDecade(d), nodes: entries.filter { $0.decade == d }.map(node))
+            }, litThrough: state.year.flatMap { y in entries.firstIndex { $0.year == y } }, current: state.year.flatMap { y in entries.firstIndex { $0.year == y } },
+                         posterWidth: 120) { n, _ in
+                if let e = entries.first(where: { String($0.year) == n.id }) { yearCell(e) }
             }
         }
         .task(id: lookupKey) { await loadMilestoneData() }
@@ -122,22 +124,25 @@ struct MusicArtistTimelineView: View {
         if !Task.isCancelled { activeFrom = f?.activeFrom }
     }
 
-    private func row(_ e: MusicArtistTimelineEntry) -> some View {
+    /// One year as a node: its year, the thing that stands for it, and how many more came out that year.
+    private func node(_ e: MusicArtistTimelineEntry) -> SetuTimelineNode {
         var parts: [String] = []
         if e.albums > 0 { parts.append(MusicArtistWording.count(albums: e.albums)) }
         if e.films > 0 { parts.append(MusicArtistWording.count(films: e.films)) }
         if e.songs > 0 { parts.append(MusicArtistWording.count(songs: e.songs)) }
+        let total = e.albums + e.films + e.songs
+        return SetuTimelineNode(id: String(e.year), label: String(e.year), title: e.highlight?.name ?? "", subtitle: parts.joined(separator: " · "),
+                                aspect: e.highlight?.kind == .film || e.highlight?.kind == .series ? MusicGraphCardMetrics.posterAspect : 1, extra: max(total - 1, 0))
+    }
+
+    /// The picture of a year: a poster for a film, a cover for an album or song. Pressing it scopes the Songs, Albums and Films lists to that year.
+    private func yearCell(_ e: MusicArtistTimelineEntry) -> some View {
+        let h = e.highlight
+        let film = h?.kind == .film || h?.kind == .series
         return Button { state.year = e.year; state.pill = MusicArtistTimeline.target(e) } label: {
-            HStack(alignment: .firstTextBaseline, spacing: MusicSpace.sm) {
-                Text(verbatim: String(e.year)).font(Typography.bodyMedium).monospacedDigit().foregroundStyle(ColorTokens.textPrimary).frame(width: 52, alignment: .leading)
-                VStack(alignment: .leading, spacing: 2) {
-                    if let h = e.highlight { Text(verbatim: h.name).font(Typography.bodyMedium).foregroundStyle(ColorTokens.textPrimary).lineLimit(1) }
-                    Text(verbatim: parts.joined(separator: " · ")).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary).lineLimit(1)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(MusicTokens.iconSmall).foregroundStyle(ColorTokens.textTertiary).accessibilityHidden(true)
-            }
-            .frame(minHeight: MusicTokens.hitTarget).contentShape(Rectangle())
+            MusicGraphCover(imageRef: h?.imageRef, aspect: film ? MusicGraphCardMetrics.posterAspect : 1, corner: MusicCorner.card, seed: h?.name ?? String(e.year),
+                            subject: h.map { MusicArtworkSubject.card($0.kind, name: $0.name, entity: $0.id) }, slot: .poster)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain).hoverHighlight().accessibilityLabel(Localized.string("Show only %d", e.year)).atlas("control.music.artistTimelineYear")
     }

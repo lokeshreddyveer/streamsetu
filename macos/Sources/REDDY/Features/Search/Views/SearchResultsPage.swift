@@ -75,7 +75,7 @@ struct SearchResultsPage: View {
     @ViewBuilder private var atlasRows: some View {
         if let container, !model.term.trimmingCharacters(in: .whitespaces).isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                AtlasPaletteList(query: model.term, platform: .mac, appStore: AtlasAssistant.appStore, showAsk: !container.parental.kidsMode, open: onOpenAtlas, show: onShowAtlas, ask: onAsk)
+                AtlasPaletteList(query: model.term, platform: .mac, appStore: AtlasAssistant.appStore, showAsk: AssistantFeature.isOn && !container.parental.kidsMode, open: onOpenAtlas, show: onShowAtlas, ask: onAsk)
             }.padding(.bottom, 8)
         }
     }

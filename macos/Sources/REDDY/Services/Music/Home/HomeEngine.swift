@@ -57,7 +57,7 @@ enum HomeEngine {
         var signals = input
         if ctx.gated || ctx.offline { signals.releases = []; signals.adjacent = []; signals.films = [] }
         let w = ctx.wording
-        let taste = HomeTaste.build(history: signals.history, liked: signals.liked, followed: signals.followed, now: ctx.now, calendar: ctx.calendar)
+        let taste = HomeTaste.build(history: signals.history, liked: signals.liked, followed: signals.followed, now: ctx.now, calendar: ctx.calendar, languageOf: signals.trackLanguages)
         // What was ever played, a recommendations reset or a half-heard song included: nothing below calls such a thing new or unplayed.
         let heard = HomeHeard([signals.allHistory, signals.history])
         // "Next to what you play" is for things the person does not know yet: an answer cached hours ago is checked again against what they have played since.
@@ -147,8 +147,16 @@ enum HomeEngine {
             for (bucket, _) in shares {
                 guard let lang = MusicLanguage(rawValue: bucket) else { continue }
                 var rng = HomeRandom.child(of: ctx.seed, "lang-" + bucket)
-                let stats = taste.tracks.filter { HomeKeys.bucket($0.track) == bucket && playable($0.track) }
-                let drawn = HomeRandom.sample(stats, count: 14, weight: { $0.weight + 0.2 }, using: &rng).map { HomeItem.make($0.track) }
+                let stats = taste.tracks.filter { taste.bucket($0.track) == bucket && playable($0.track) }
+                // The person's own songs in this language, and new songs in it from the source (so the shelf is not limited to what they have already played): about half and half when there are both.
+                // Songs another shelf has already claimed are left out before drawing (so the draw is from what is still free, and the shelf is not emptied by the shelves above it).
+                let freeIDs = Set(claims.fresh(stats.map { HomeItem.make($0.track) }).map(\.id))
+                let free = stats.filter { freeIDs.contains(HomeItem.make($0.track).id) }
+                let own = HomeRandom.sample(free, count: 8, weight: { $0.weight + 0.2 }, using: &rng).map { s -> HomeItem in var i = HomeItem.make(s.track); i.bucket = bucket; return i }
+                let ownKeys = Set(stats.map(\.key))
+                let fresh = (signals.languageSongs[bucket] ?? []).filter { i in i.keys.allSatisfy { !ownKeys.contains($0) && !heard.has($0) } && (i.track.map(playable) ?? true) }
+                let more = HomeRandom.sample(fresh, count: 16 - own.count, weight: { _ in 1 }, using: &rng).map { i -> HomeItem in var i = i; i.bucket = bucket; return i }
+                let drawn = own + more
                 let name = w.s(lang.englishName)
                 finish("languageMix-" + bucket, .languageMix, w.f("More %@", name), reason: w.f("Songs in %@ from what you play and like", name), HomeDiversity.spread(drawn), min: 5)
             }

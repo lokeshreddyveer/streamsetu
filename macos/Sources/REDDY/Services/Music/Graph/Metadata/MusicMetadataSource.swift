@@ -171,7 +171,7 @@ enum MusicSourceKit {
     /// Facet node for a genre, mood or language name: one controlled key per folded name.
     static func facetDraft(_ kind: MusicEntityKind, _ name: String) -> MusicSourceDraft {
         let key = MusicGraphText.fold(name)
-        return MusicSourceDraft(.local(kind, key), MusicEntityDraft(kind: kind, name: name.capitalized))
+        return MusicSourceDraft(.local(kind, key), MusicEntityDraft(kind: kind, name: MusicTitleCase.capitalized(name)))
     }
 
     /// The User-Agent every metadata request carries: the app and its version plus the project address that `MusicHTTP` already sends. Never a

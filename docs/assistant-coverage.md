@@ -1,3 +1,5 @@
+<!-- atlas-inputs-sha256: 9b20de153c0878d636d6a0ed0485792282229f7e082339a7b6ee6a4c8f71c6eb -->
+<!-- coverage-body-sha256: 37e5b3a4a24d805904985308e0e6d2f4c27c077d9cd41d0e49614c0a7858f57f -->
 # Assistant coverage
 
 Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to rewrite it). Everything Setu can answer about the app is one entry in `macos/Sources/REDDY/Atlas`; this page lists them all. *Reviewed* means the wording was checked against the code by a person or in a test; the rest was written from the code and has not had a second look. Setu answers from these entries with no language model.
@@ -6,9 +8,9 @@ Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to re
 
 | Kind | Entries | Reviewed | Mac | iPhone | iPad |
 |---|---|---|---|---|---|
-| Screens | 163 | 142 | 120 | 46 | 45 |
+| Screens | 165 | 144 | 122 | 46 | 45 |
 | Settings pages | 24 | 24 | 6 | 18 | 18 |
-| Controls and settings groups | 1748 | 631 | 1544 | 235 | 235 |
+| Controls and settings groups | 1752 | 631 | 1548 | 235 | 235 |
 | Settings | 151 | 151 | 143 | 89 | 90 |
 | Menu commands | 47 | 47 | 47 | 1 | 1 |
 | Keyboard shortcuts | 54 | 54 | 51 | 0 | 3 |
@@ -18,7 +20,7 @@ Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to re
 | How-tos | 78 | 78 | 77 | 60 | 62 |
 | Troubleshooting | 39 | 39 | 39 | 25 | 25 |
 | About Setu and what is new | 23 | 23 | 20 | 18 | 18 |
-| **All** | **2414** | **1276** | 2097 | 551 | 552 |
+| **All** | **2420** | **1278** | 2103 | 551 | 552 |
 
 Entries Setu explains but never changes (app lock, proxy, parental controls and similar): 57.
 
@@ -159,6 +161,8 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | screen.settings.advanced.licenses | Licenses and notices | Settings > Advanced > About > View Licenses | settings page Advanced | Mac | yes |
 | screen.settings.channelManager | Channel manager | Library settings > Manage > Channel manager | modal channelManager | Mac | yes |
 | screen.settings.guide | Guide settings | Settings > Library > Guide sources | explained only | Mac | yes |
+| screen.settings.moviesManager | Movies manager | Library settings > Manage > Movies manager | modal moviesManager | Mac | yes |
+| screen.settings.seriesManager | Series manager | Library settings > Manage > Series manager | modal seriesManager | Mac | yes |
 | screen.shortcut.addedThisMonth | Added in 30 Days | Sidebar > Added in 30 Days | sidebar addedThisMonth | Mac | yes |
 | screen.shortcut.allChannels | All Channels | Live TV > All Channels | sidebar allChannels | Mac | yes |
 | screen.shortcut.allMovies | All Movies | Movies > All Movies | sidebar allMovies | Mac | yes |
@@ -1778,7 +1782,10 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.nav.service | Service tab | Top bar | explained only | Mac | no |
 | control.nav.service.reload | Reload a service | Top bar | explained only | Mac | no |
 | control.nav.streamsetu | StreamSetu item | Top bar | explained only | Mac | no |
+| control.nav.tabManage | Open the tab's manager (tab menu) | Top bar | explained only | Mac | no |
 | control.nav.tabMode | Top bar item style | Top bar | explained only | Mac | no |
+| control.nav.tabRefresh | Refresh library (tab menu) | Top bar | explained only | Mac | no |
+| control.nav.tabRefreshGuide | Refresh TV guide (tab menu) | Top bar | explained only | Mac | no |
 | control.the external service.dismissNotice | Dismiss notice (the external service) | the external service | explained only | Mac | no |
 | control.the external service.openBlocked | Open blocked link in browser | the external service | explained only | Mac | no |
 | control.the external service.openBrowser | Open in Default Browser (the external service) | the external service | explained only | Mac | no |
@@ -1917,6 +1924,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.sidebar.folderSearch | Search sidebar folders | Sidebar > Folder search | explained only | Mac | no |
 | control.sidebar.folderSearchClear | Clear the folder search | Sidebar > Folder search | explained only | Mac | no |
 | control.sidebar.playlistButton | Choose the playlist | Sidebar > Playlist menu | explained only | Mac | no |
+| control.sidebar.playlistRefresh | Refresh a playlist | Sidebar > Playlist menu | explained only | Mac | no |
 | control.sidebar.playlistRemove | Remove a playlist | Sidebar > Playlist menu | explained only | Mac | no |
 | control.sidebar.playlistRow | A playlist in the menu | Sidebar > Playlist menu | explained only | Mac | no |
 | control.statistics.area | Statistics area | Statistics | explained only | Mac | yes |
@@ -2504,7 +2512,7 @@ Generated from the code by the coverage tests. **Reported, pending independent v
 
 Columns: *UI* = the app has its own control · *Read* = how the assistant looks at it · *Act* = what it can offer (always tap-to-confirm, rechecked by the authorizer) · *Restrictions tested* · *Error path tested* · *Platforms verified*.
 
-**210 rows: 154 covered, 56 unsupported with a reason.**
+**214 rows: 154 covered, 60 unsupported with a reason.**
 
 
 ### agent action
@@ -2580,8 +2588,10 @@ Columns: *UI* = the app has its own control · *Read* = how the assistant looks 
 | Feature | UI wired | Agent read | Agent action | Restrictions tested | Error path tested | Platforms verified |
 |---|---|---|---|---|---|---|
 | DesignSystem/Components/Cards/FeaturedSlideshow.swift | yes | — | — | — | — | **Unsupported:** Featured banner menu: the shared title menu (same as the tiles); partly reachable as favourite, watch_later and play_title. |
+| DesignSystem/Components/Navigation/ReddyTopBar.swift | yes | — | — | — | — | **Unsupported:** Right-click on a main tab: Refresh library, Refresh TV guide, the tab's manager (control.nav.tabRefresh, control.nav.tabRefreshGuide, control.nav.tabManage) and the tab's look (control.nav.tabMode): explained, not run by Setu. |
 | DesignSystem/Components/Sidebar/ReddySidebar.swift | yes | — | — | — | — | **Unsupported:** Sidebar folder menu (Move, Hide, Lock, Unlock): explained as context.sidebar.folderReorder and context.sidebar.folderLock; playlist menu row (Remove…): explained as screen.playlistMenu. Not run by Setu. |
 | Features/CommandCenter/Views/CommandCenterView.swift | yes | — | — | — | — | **Unsupported:** Channel and folder manager menus: not mapped yet. |
+| Features/CommandCenter/Views/TitleManagerView.swift | yes | — | — | — | — | **Unsupported:** Movies and Series manager row menu (Hide or Show, Favorite, Watch later): explained as the Movies manager and Series manager screens, not run by Setu. |
 | Features/Files/FilesView.swift | yes | — | — | — | — | **Unsupported:** Local file menu: not mapped yet. |
 | Features/Files/PodcastsView.swift | yes | — | — | — | — | **Unsupported:** Podcast menu: not mapped yet. |
 | Features/Home/Views/HomeScreen.swift | yes | — | — | — | — | **Unsupported:** Title card menu (favourite, watch later, hide): reachable as the favourite and watch_later tools, not as its own entry. |
@@ -2649,7 +2659,9 @@ Columns: *UI* = the app has its own control · *Read* = how the assistant looks 
 | about | yes | — | — | — | — | **Unsupported:** Nothing for the assistant to read or do. |
 | addPlaylist | yes | how-to via source_setup_help; never reads or stores credentials | explains the fields only | n/a (credentials go through the normal form into the Keychain) | no | macOS · iOS compiled, not run |
 | channelManager | yes | — | — | — | — | **Unsupported:** Channel and folder management is not mapped to the registry yet (planned: read-only inspection first, then previewed changes). |
+| moviesManager | yes | — | — | — | — | **Unsupported:** Movie management (hide, favorite, watch later, folders) is not mapped to the registry yet; Setu explains it from the Movies manager entry. |
 | playlists | yes | sanitized status via source_health | refresh_playlists (offered), open_screen(settings) | yes: AssistantAuthorizer (profile, freshness) | yes: source_health failures | macOS · iOS compiled, not run |
+| seriesManager | yes | — | — | — | — | **Unsupported:** Series management (hide, favorite, watch later, folders) is not mapped to the registry yet; Setu explains it from the Series manager entry. |
 | unlockRestricted | yes | — | — | — | — | **Unsupported:** By design: PINs are entered only in the normal secure form; the assistant never unlocks anything. |
 
 ### setting

@@ -200,11 +200,17 @@ final class MusicHomeFeedModel {
 
         if !gated, !offline {
             let taste = HomeTaste.build(history: signals.history, liked: signals.liked, followed: signals.followed, now: started)
+            // The language of the person's songs, from the graph where the title's script says nothing (most titles are in Latin letters): the "More <language>" shelves follow it.
+            signals.trackLanguages = await MusicHomeSignalLoader.trackLanguages(of: taste.tracks.prefix(300).map(\.track))
+            let languageTaste = HomeTaste.build(history: signals.history, liked: signals.liked, followed: signals.followed, now: started, languageOf: signals.trackLanguages)
+            // The names of songs whose own language is not known follow the languages this person plays (from their listening).
+            MusicNativeNames.shared.setPreferred(Set(languageTaste.bucketShare.filter { $0.value >= 0.15 }.compactMap { MusicLanguage(rawValue: $0.key) }))
             let seeds = MusicHomeSignalLoader.seedArtists(taste: taste, followed: signals.followed, limit: 16)
             async let releases = MusicHomeSignalLoader.releases(hub: hub, seeds: Self.releaseSeeds(seeds, seed: seed))
             async let adjacent = MusicHomeSignalLoader.adjacent(hub: hub, taste: taste, seeds: seeds, visit: seed)
             async let genrePicks = MusicHomeSignalLoader.genreShelves(hub: hub, taste: taste, wording: wording)
             async let playlists = MusicHomeSignalLoader.playlistsForYou(hub: hub, taste: taste)
+            async let languageSongs = MusicHomeSignalLoader.languageSongs(hub: hub, taste: languageTaste)
             async let graphDone: Void = loadGraph(hub: hub, seed: seed, force: true)
             signals.releases = (await releases).filter { r in !r.artists.contains { hub.library.isBlacklisted(artist: $0) } }
             // A song marked Never Play after an answer was cached must not come back from the cache.
@@ -214,6 +220,7 @@ final class MusicHomeFeedModel {
             signals.adjacent = hidden.filter(await adjacent).filter(allowed)
             signals.genreShelves = await genrePicks.map { c in var c = c; c.items = hidden.filter(c.items).filter(allowed); return c }
             signals.playlistsForYou = hidden.filter(await playlists).filter(allowed)
+            signals.languageSongs = (await languageSongs).mapValues { hidden.filter($0).filter(allowed) }
             await graphDone
             signals.films = graph.first { $0.id == "fill.personal.films" }?.tiles.prefix(4).map {
                 HomeFilmPick(entityRaw: $0.entity.rawValue, title: $0.title, subtitle: $0.subtitle, imageURL: $0.imageRef)

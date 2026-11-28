@@ -80,11 +80,17 @@ enum AssistantRouter {
 }
 
 /// Lets any screen open the assistant with a question ("Diagnose this", from the player's error card, or from Settings).
+/// Setu, the assistant, is switched off for now while it is upgraded. One flag: with it off no entry point opens it (the floating button, the Ask row in search, Return and
+/// Shift-Return in the search box, the Help menu item, the Settings button, the player and Add Playlist buttons). Nothing is deleted; set it to true to bring Setu back.
+enum AssistantFeature {
+    static let isOn = false
+}
+
 @MainActor @Observable final class AssistantLauncher {
     static let shared = AssistantLauncher()
     private(set) var request: String?
     private(set) var opens = 0
-    func ask(_ question: String?) { request = question; opens += 1 }
+    func ask(_ question: String?) { guard AssistantFeature.isOn else { return }; request = question; opens += 1 }
     func take() -> String? { defer { request = nil }; return request }
 
     /// Settings is its own window on the Mac: bring the main window to the front so the assistant can be seen.

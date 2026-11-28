@@ -5,7 +5,9 @@ import SwiftUI
 struct MusicFilmGallerySection: View {
     let model: MusicFilmGraphModel
     @State private var viewing: Int?
-    private let columns = [GridItem(.adaptive(minimum: 220, maximum: 320), spacing: MusicSpace.md, alignment: .top)]
+    /// Stills are wide and posters are tall: each kind gets its own grid, so a row never mixes shapes (no ragged gaps, nothing cropped).
+    private let stillColumns = [GridItem(.adaptive(minimum: 280, maximum: 420), spacing: MusicSpace.md, alignment: .top)]
+    private let posterColumns = [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: MusicSpace.md, alignment: .top)]
 
     var body: some View {
         let images = model.overview?.gallery ?? []
@@ -13,11 +15,28 @@ struct MusicFilmGallerySection: View {
             Text(verbatim: model.section(MusicFilmSectionKey.overview).phase == .loaded ? Localized.string("No pictures are available for this film.") : Localized.string("Loading details..."))
                 .musicText(.caption).foregroundStyle(ColorTokens.textTertiary)
         } else {
+            VStack(alignment: .leading, spacing: MusicSpace.xl) {
+                grid(images, kind: .backdrop, columns: stillColumns)
+                grid(images, kind: .poster, columns: posterColumns)
+            }
+            .sheet(isPresented: Binding(get: { viewing != nil }, set: { if !$0 { viewing = nil } })) {
+                MusicFilmGalleryViewer(images: images, index: $viewing)
+            }
+        }
+    }
+}
+
+extension MusicFilmGallerySection {
+    /// One kind of picture as a grid; the index each opens is its place in the whole list, so the viewer steps through everything.
+    @ViewBuilder fileprivate func grid(_ images: [MusicFilmGalleryImage], kind: MusicFilmGalleryImage.Kind, columns: [GridItem]) -> some View {
+        let items = Array(images.enumerated()).filter { $0.element.kind == kind }
+        if !items.isEmpty {
             LazyVGrid(columns: columns, alignment: .leading, spacing: MusicSpace.md) {
-                ForEach(Array(images.enumerated()), id: \.element.id) { i, img in
+                ForEach(items, id: \.element.id) { i, img in
                     Button { viewing = i } label: {
-                        MusicCoverImage(thumbs: [MusicThumbnail(url: img.thumbURL, width: img.kind == .backdrop ? 500 : 342, height: img.kind == .backdrop ? 281 : 513)],
-                                        size: nil, corner: MusicCorner.card, pixelHint: 500)
+                        MusicCoverImage(thumbs: [MusicThumbnail(url: img.thumbURL, width: kind == .backdrop ? 780 : 500, height: kind == .backdrop ? 439 : 750)],
+                                        size: nil, corner: MusicCorner.card, pixelHint: 780)
+                            .artwork(of: nil, slot: .still)
                             .aspectRatio(img.aspect, contentMode: .fit)
                             .frame(maxWidth: .infinity)
                             .contentShape(Rectangle())
@@ -26,9 +45,6 @@ struct MusicFilmGallerySection: View {
                     .accessibilityLabel(Localized.string("Open picture %1$@ of %2$@", String(i + 1), String(images.count)))
                     .atlas("control.music.filmGalleryImage")
                 }
-            }
-            .sheet(isPresented: Binding(get: { viewing != nil }, set: { if !$0 { viewing = nil } })) {
-                MusicFilmGalleryViewer(images: images, index: $viewing)
             }
         }
     }
@@ -52,6 +68,7 @@ struct MusicFilmGalleryViewer: View {
                 let img = images[i]
                 MusicCoverImage(thumbs: [MusicThumbnail(url: img.fullURL, width: img.kind == .backdrop ? 1280 : 780, height: img.kind == .backdrop ? 720 : 1170)],
                                 size: nil, corner: MusicCorner.card, pixelHint: 1280)
+                    .artwork(of: nil, slot: .viewer)
                     .aspectRatio(img.aspect, contentMode: .fit)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .id(img.id)

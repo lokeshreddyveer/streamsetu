@@ -335,6 +335,26 @@ enum MusicSoundtrackShelfRule {
 
 /// Whether a credited name can be a person's: wiki template words and markup that a page parser took for a name ("Infobox", "{{Plainlist", "a=b") are not.
 enum MusicSoundtrackNameGuard {
+    /// The same person's name: the same text once folded to Latin, or the same spelling family (Rahman and Rehman, a native-script name and its Latin spelling).
+    static func sameName(_ a: String, _ b: String) -> Bool {
+        MusicGraphText.latin(a) == MusicGraphText.latin(b) || MusicTransliterationKey.sameKey(a, b)
+    }
+
+    /// The people under the title: one chip per person, however many graph entities hold them and whatever description each carries. The list arrives with the
+    /// best role first, so the first of a name is the one kept. (The Credits section below keeps every entity and tells same-named people apart.)
+    static func listableByName(_ credits: [MusicSoundtrackCredit]) -> [MusicSoundtrackCredit] {
+        var kept: [MusicSoundtrackCredit] = []
+        for c in credits where isPersonName(c.person.name) && !kept.contains(where: { sameName($0.person.name, c.person.name) && !bornInDifferentYears($0.person.detail, c.person.detail) }) { kept.append(c) }
+        return kept
+    }
+
+    /// Two descriptions that both state a birth year, and not the same one: two different people of one name ("b. 1932" and "b. 1951").
+    static func bornInDifferentYears(_ a: String?, _ b: String?) -> Bool {
+        func year(_ s: String?) -> String? { s?.range(of: #"\b(1[5-9]|20)\d\d\b"#, options: .regularExpression).map { String(s![$0]) } }
+        guard let x = year(a), let y = year(b) else { return false }
+        return x != y
+    }
+
     static func isPersonName(_ name: String) -> Bool { MusicPersonNameGuard.isPersonName(name) }
 
     /// The credits worth listing once each: real names only, and one entry per name AND description. The same name with a different description (a birth year, "playback singer")

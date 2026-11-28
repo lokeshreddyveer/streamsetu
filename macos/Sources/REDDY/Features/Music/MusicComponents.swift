@@ -9,13 +9,15 @@ struct MusicArtwork: View {
     let corner: CGFloat
     /// What the picture stands for: with it a missing cover is looked up (a song borrows its album's cover, a person gets their photo).
     var subject: MusicArtworkSubject?
-    init(_ thumbs: [MusicThumbnail], size: CGFloat, corner: CGFloat = 8, subject: MusicArtworkSubject? = nil) {
-        self.thumbs = thumbs; self.size = size; self.corner = corner; self.subject = subject
+    /// Where it is drawn, when a page wants a larger size than the size alone implies (a page cover).
+    var slot: MusicArtworkSlot?
+    init(_ thumbs: [MusicThumbnail], size: CGFloat, corner: CGFloat = 8, subject: MusicArtworkSubject? = nil, slot: MusicArtworkSlot? = nil) {
+        self.thumbs = thumbs; self.size = size; self.corner = corner; self.subject = subject; self.slot = slot
     }
     /// A song's cover; with none of its own it shows its album's, or the film's.
     init(track: MusicTrack, size: CGFloat, corner: CGFloat = 8) { self.init(track.thumbnails, size: size, corner: corner, subject: .derive(track)) }
     var body: some View {
-        MusicCoverImage(thumbs: thumbs, size: size, corner: corner).artwork(of: subject)
+        MusicCoverImage(thumbs: thumbs, size: size, corner: corner).artwork(of: subject, slot: slot)
             .overlay(RoundedRectangle(cornerRadius: corner, style: .continuous).strokeBorder(ColorTokens.line, lineWidth: 0.75))
             .accessibilityHidden(true)
     }

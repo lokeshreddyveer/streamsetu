@@ -14,8 +14,15 @@ export default function Download() {
       <div className="dl-grid">
         <article className="dl">
           <h3>Mac</h3>
-          <p className="muted">Version {latest.mac}. Apple silicon and Intel, macOS 14 or later. Signed and notarized by Apple, and it updates itself.</p>
-          <a className="button" href={d.mac}>Download for Mac</a>
+          <p className="muted">Version {latest.mac}. macOS 14 or later. Signed and notarized by Apple, and it updates itself. Choose the file for your Mac: Apple silicon (M1 or later) or Intel.</p>
+          {d.macSplit ? (
+            <>
+              <a className="button" href={d.macAppleSilicon}>Download for Apple silicon</a>{" "}
+              <a className="button" href={d.macIntel}>Download for Intel</a>
+            </>
+          ) : (
+            <a className="button" href={d.mac}>Download for Mac</a>
+          )}
         </article>
         <article className="dl">
           <h3>iPhone and iPad</h3>

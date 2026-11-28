@@ -36,7 +36,7 @@ struct MenuCommands: Commands {
             Button("Send Feedback…") { openWindow(id: "feedback") }.disabled(locked).atlas("menu.help.sendFeedback")
             Button("Get Set Up…") { NotificationCenter.default.post(name: .openFirstRunSetup, object: nil) }.disabled(locked || serviceShowing).atlas("menu.help.getSetUp")
             Button("Keyboard Shortcuts") { openWindow(id: "shortcuts") }.keyboardShortcut("/", modifiers: .command).disabled(locked).atlas("menu.help.keyboardShortcuts")
-            Button("Ask Setu") { AssistantLauncher.shared.ask(nil) }.keyboardShortcut("/", modifiers: [.command, .option]).disabled(locked || serviceShowing).atlas("menu.help.askSetu")
+            if AssistantFeature.isOn { Button("Ask Setu") { AssistantLauncher.shared.ask(nil) }.keyboardShortcut("/", modifiers: [.command, .option]).disabled(locked || serviceShowing).atlas("menu.help.askSetu") }
         }
         // View menu: the Music sidebar and details panel (HIG: a menu command and a shortcut for hidden panes; titles say Show or Hide; items are greyed out, not hidden).
         CommandGroup(after: .sidebar) {

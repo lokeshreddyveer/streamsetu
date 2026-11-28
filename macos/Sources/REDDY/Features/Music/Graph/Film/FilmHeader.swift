@@ -12,7 +12,7 @@ struct MusicFilmHeader: View {
     @State private var shareLink: URL?
     @Environment(\.reddyAccent) private var accent
 
-    private let posterWidth: CGFloat = 170
+    private let posterWidth: CGFloat = 200
 
     var body: some View {
         let o = model.overview
@@ -20,7 +20,7 @@ struct MusicFilmHeader: View {
         let title = o?.title ?? snap?.name ?? Localized.string("Loading %1$@", model.isSeries ? Localized.string("Series") : Localized.string("Film"))
         HStack(alignment: .bottom, spacing: MusicSpace.xl) {
             MusicGraphCover(imageRef: o?.imageRef ?? snap?.imageRef, aspect: MusicGraphCardMetrics.posterAspect, corner: MusicCorner.card, seed: title,
-                            subject: model.entity.map { MusicArtworkSubject(kind: model.isSeries ? .series : .film, name: title, id: $0.id, year: o?.year ?? snap?.year) })
+                            subject: model.entity.map { MusicArtworkSubject(kind: model.isSeries ? .series : .film, name: title, id: $0.id, year: o?.year ?? snap?.year) }, slot: .poster)
                 .frame(width: posterWidth)
                 .shadow(color: ColorTokens.background.opacity(0.7), radius: MusicSpace.md, y: MusicSpace.xs)
             VStack(alignment: .leading, spacing: MusicSpace.xs) {
@@ -46,16 +46,22 @@ struct MusicFilmHeader: View {
         .background(alignment: .top) { backdrop(o?.backdropURL) }
     }
 
-    /// The film's own wide still, faded into the page so the text on it stays readable. Absent when the source has none.
+    /// The film's own wide still as a real hero: large, sharp (asked at the hero size, never the card size), and faded into the page on its
+    /// bottom and its text side so the words on it stay readable. Absent when the source has none.
     @ViewBuilder private func backdrop(_ url: String?) -> some View {
         if let url {
             MusicCoverImage(thumbs: [MusicThumbnail(url: url, width: 1280, height: 720)], size: nil, corner: 0, pixelHint: 1280)
-                .frame(maxWidth: .infinity).frame(height: 280).clipped().opacity(0.28)
-                .mask(LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom))
+                .artwork(of: nil, slot: .filmHero)
+                .frame(maxWidth: .infinity).frame(height: Self.heroHeight).clipped()
+                .opacity(0.62)
+                .overlay(LinearGradient(colors: [.clear, ColorTokens.background], startPoint: .center, endPoint: .bottom))
+                .overlay(LinearGradient(colors: [ColorTokens.background.opacity(0.75), .clear], startPoint: .leading, endPoint: .trailing))
                 .padding(.horizontal, -MusicSpace.xl).padding(.top, -MusicSpace.xl)
                 .accessibilityHidden(true).allowsHitTesting(false)
         }
     }
+
+    private static let heroHeight: CGFloat = 400
 
     private func factsLine(_ o: MusicFilmOverview?, _ s: MusicEntitySnapshot?) -> String? {
         var parts: [String] = []

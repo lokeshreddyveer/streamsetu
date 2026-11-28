@@ -14,8 +14,8 @@ enum MusicGraphCardWidth {
 enum MusicGraphCardMetrics {
     /// The portrait ratio of a film poster (height over width).
     static let posterAspect: CGFloat = 1.5
-    /// The portrait ratio of a cast photo.
-    static let castAspect: CGFloat = 1.25
+    /// The portrait ratio of a cast photo: the 2:3 of the photos the film sources give, so a face is not cropped to a squarer frame.
+    static let castAspect: CGFloat = 1.5
     static func height(width: CGFloat, aspect: CGFloat, textLines: Int) -> CGFloat {
         width * aspect + MusicCardGeometry.coverToText + CGFloat(textLines) * MusicCardGeometry.titleLineHeight
     }
@@ -31,6 +31,8 @@ struct MusicGraphCover: View {
     var initials: String?
     /// What the picture stands for: a missing poster or photo is looked up (verified, never guessed) and the tile wears the right glyph.
     var subject: MusicArtworkSubject?
+    /// Where it is drawn, so the host is asked for the size that place needs (a poster, a portrait, a hero).
+    var slot: MusicArtworkSlot?
     var hovering = false
     var focused = false
     @Environment(\.reddyAccent) private var accent
@@ -38,7 +40,7 @@ struct MusicGraphCover: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
-        MusicCoverImage(thumbs: MusicGraphThumbs.thumbs(imageRef), artworkClass: .tile, corner: corner, seed: seed.isEmpty ? nil : seed, initials: initials, subject: subject)
+        MusicCoverImage(thumbs: MusicGraphThumbs.thumbs(imageRef), artworkClass: .tile, corner: corner, seed: seed.isEmpty ? nil : seed, initials: initials, subject: subject, slot: slot)
             .aspectRatio(1 / aspect, contentMode: .fit)
             .scaleEffect(hovering && !reduceMotion ? MusicCardGeometry.hoverScale : 1)
             .clipShape(shape)

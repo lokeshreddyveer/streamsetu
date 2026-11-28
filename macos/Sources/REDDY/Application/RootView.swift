@@ -426,6 +426,7 @@ struct MainShell: View {
                             onSwitchPlaylist: { router.playlistMenuOpen = false; if $0 == AppState.allPlaylistsID { state.switchToAllPlaylists() } else { state.switchPlaylist($0) } },
                             onAddPlaylist: { router.playlistMenuOpen = false; router.modal = .addPlaylist },
                             onRemovePlaylist: { id in router.playlistMenuOpen = false; removing = state.sources.first { $0.id == id } },
+                            onRefreshPlaylist: { id in router.playlistMenuOpen = false; refreshLibrary(id == AppState.allPlaylistsID ? nil : id) },
                             onReorder: { state.reorderFolders(tab: tab, entryIDs: $0) },
                             onHideFolder: { state.hideFolder($0) },
                             lockedFolderIDs: container.parental.lockedCategoryIDs,
@@ -502,6 +503,8 @@ struct MainShell: View {
             case .about: AboutDialog()
             case .unlockRestricted: UnlockDialog()
             case .channelManager: ReddyDialog(title: "Channel manager", width: 940, onClose: { router.modal = nil }) { ChannelCommandCenterView().atlasScreen("screen.settings.channelManager").frame(height: 640) }
+            case .moviesManager: ReddyDialog(title: "Movies manager", width: 940, onClose: { router.modal = nil }) { TitleManagerView(kind: .movie).atlasScreen("screen.settings.moviesManager").frame(height: 640) }
+            case .seriesManager: ReddyDialog(title: "Series manager", width: 940, onClose: { router.modal = nil }) { TitleManagerView(kind: .series).atlasScreen("screen.settings.seriesManager").frame(height: 640) }
             }
         }
         .zIndex(7).transition(.opacity.combined(with: .scale(scale: 0.98)))
@@ -584,7 +587,7 @@ struct MainShell: View {
         @Bindable var router = router
         return ReddyTopBar(state: TopBarState(tab: router.tab, initials: initials, accountMenuOpen: router.accountMenuOpen, width: width,
                                                destination: services.active, services: [], servicesDisabled: services.isBlocked,
-                                               showsServicesMenu: true, servicesNav: servicesNav, appReduceMotion: container.settings.reduceMotion, askEnabled: !container.parental.kidsMode),
+                                               showsServicesMenu: true, servicesNav: servicesNav, appReduceMotion: container.settings.reduceMotion, askEnabled: AssistantFeature.isOn && !container.parental.kidsMode),
             query: Binding(get: { router.searchQuery }, set: { setQuery($0) }),
             focusToken: router.topSearchFocus,
             titleOpen: router.movie != nil || router.series != nil,
@@ -593,6 +596,7 @@ struct MainShell: View {
             onResultsFocus: { router.searchResultsFocus += 1 },
             onAsk: { askSetu($0) },
             onSelectTab: { router.navigate($0) },
+            onTabAction: { tab, action in tabAction(tab, action) },
             onToggleAccount: { router.playlistMenuOpen = false; router.accountMenuOpen.toggle() },
             onSelectService: { servicesNav.select($0) },
             onSelectStreamSetu: { services.returnToStreamSetu() },
@@ -616,13 +620,35 @@ struct MainShell: View {
         switch action {
         case .nothing: return
         case .openHighlighted: if let r = search.selected { activate(r) }; return
-        case .ask: if !kids { askSetu(q); return }
+        case .ask: if !kids, AssistantFeature.isOn { askSetu(q); return }
         case .search: break
         }
         if let r = search.selected ?? search.visible.first { activate(r); return }
         guard search.searched, !q.isEmpty else { return }
         if let row = AtlasPaletteSource.rows(for: q, engine: Atlas.engine, platform: .mac, appStore: AtlasAssistant.appStore, limit: 1).first { row.canOpen ? openAtlas(row.id) : showAtlas(row.id); return }
-        if !kids, mode != .forceSearch { askSetu(q) }
+        if !kids, AssistantFeature.isOn, mode != .forceSearch { askSetu(q) }
+    }
+
+    /// Refreshes the library of one playlist (nil: every playlist that is on) and says so; the guide too when asked for it.
+    private func refreshLibrary(_ id: UUID?, guide: Bool = false) {
+        let targets = id.map { [$0] } ?? state.sources.filter(\.enabled).map(\.id)
+        guard !targets.isEmpty else { state.toasts.show("Add a playlist first", symbol: "exclamationmark.circle", kind: .info); return }
+        for t in targets { state.sync(t, forceGuide: guide) }
+        state.toasts.show(guide ? "Refreshing the TV guide…" : "Refreshing your library…", symbol: "arrow.clockwise", kind: .info)
+    }
+
+    /// What the right-click menu of a main tab asks for: refresh the library or the guide, or open the tab's manager.
+    private func tabAction(_ tab: AppTab, _ action: TopBarTabAction) {
+        switch action {
+        case .refreshLibrary: refreshLibrary(nil)
+        case .refreshGuide: refreshLibrary(nil, guide: true)
+        case .manage:
+            switch tab {
+            case .movies: router.modal = .moviesManager
+            case .series: router.modal = .seriesManager
+            default: router.modal = .channelManager
+            }
+        }
     }
 
     private func askSetu(_ q: String) {

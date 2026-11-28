@@ -24,6 +24,8 @@ struct YouTubeMusicProvider: MusicMetadataProvider, MusicAudioProvider {
     private static let playerURL = URL(string: "https://music.youtube.com/youtubei/v1/player?prettyPrint=false")
     /// Filter parameter that limits a YouTube Music search to songs.
     private static let songsFilter = "EgWKAQIIAWoKEAkQBRAKEAMQBA=="
+    /// The same search limited to videos: official videos and lyric videos of songs the song catalogue does not hold.
+    private static let videosFilter = "EgWKAQIQAWoKEAMQBBAJEAoQBQ=="
     private static let webVersion = "1.20260213.01.00"
     private let visitor = YTMVisitorBootstrap()
 
@@ -46,12 +48,12 @@ struct YouTubeMusicProvider: MusicMetadataProvider, MusicAudioProvider {
 
     func track(id: String) async throws -> MusicTrack { throw MusicError.unsupported("track lookup on YouTube Music") }
 
-    private func searchSongs(_ query: String) async throws -> [MusicTrack] {
+    private func searchSongs(_ query: String, filter: String? = nil) async throws -> [MusicTrack] {
         guard let url = Self.searchURL, !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         var client: [String: Any] = ["clientName": "WEB_REMIX", "clientVersion": Self.webVersion, "hl": "en", "gl": "US"]
         let vid = await visitor.value(http: http, now: Date())
         if let vid { client["visitorData"] = vid }
-        let body: [String: Any] = ["context": ["client": client], "query": query, "params": Self.songsFilter]
+        let body: [String: Any] = ["context": ["client": client], "query": query, "params": filter ?? Self.songsFilter]
         var headers = ["Origin": "https://music.youtube.com", "Referer": "https://music.youtube.com/"]
         if let vid { headers["X-Goog-Visitor-Id"] = vid }
         let data = try await http.postJSON(url, body: try JSONSerialization.data(withJSONObject: body), headers: headers)
@@ -71,6 +73,16 @@ struct YouTubeMusicProvider: MusicMetadataProvider, MusicAudioProvider {
         // YouTube Music songs are the official audio uploads, so the channel is treated like a "Topic" channel.
         var ranked = YouTubeAudio.rank(candidates, for: track, providerID: Self.providerID)
         for i in ranked.indices { ranked[i].artist = songs.first { $0.id == ranked[i].id }?.artistLine ?? ranked[i].artist }
+        // Not every song is in the song catalogue (a label may keep its new releases off it). When nothing there is good enough (no song whose title fits, however well its singer and length do), the official videos of the same name are
+        // searched too, and judged by the same title, artist and length rules, so a promo, a cover or another song never takes its place.
+        if !ranked.contains(where: { $0.confidence >= MusicStreamResolver.minimumScore && MusicTextMatch.titleFits(track.title, $0.title) }), let videos = try? await searchSongs(q, filter: Self.videosFilter), !videos.isEmpty {
+            let more = videos.map {
+                YouTubeCandidate(videoID: $0.id, title: $0.title, channel: $0.artists.first?.name, durationMs: $0.durationMs > 0 ? $0.durationMs : nil, thumbnail: $0.thumbnails.first?.url)
+            }
+            var extra = YouTubeAudio.rank(more, for: track, providerID: Self.providerID)
+            for i in extra.indices { extra[i].artist = videos.first { $0.id == extra[i].id }?.artistLine ?? extra[i].artist }
+            ranked = Array((ranked + extra).sorted { $0.confidence > $1.confidence }.prefix(6))
+        }
         return ranked
     }
 

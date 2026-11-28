@@ -102,7 +102,10 @@ struct MusicSoundtrackReader: Sendable {
 
     func person(_ id: MusicEntityID) async -> MusicSoundtrackPerson? {
         guard let s = await entity(id), s.kind.isAgent, !MusicCompilationArtist.isCompilation(s.name) else { return nil }
-        return MusicSoundtrackPerson(id: s.id, name: s.name, imageRef: s.imageRef, detail: Self.rawDetail(s))
+        // The name in the script the person reads (their listening, or the artist's own language) when the graph holds it, so a Telugu composer is not romanized.
+        let aliases = ((try? await store.aliases(of: s.id)) ?? []).map(\.text)
+        let name = MusicNativeNames.displayName(s.name, aliases: aliases, entityLanguage: s.lang, preferred: MusicNativeNames.shared.preferredLanguages)
+        return MusicSoundtrackPerson(id: s.id, name: name, imageRef: s.imageRef, detail: Self.rawDetail(s))
     }
 
     // MARK: the album, its family and its film

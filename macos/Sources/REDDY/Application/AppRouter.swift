@@ -90,7 +90,7 @@ enum Destination: Hashable, Sendable, CaseIterable {
 }
 
 enum ModalRoute: Hashable, Identifiable, Sendable, CaseIterable {
-    case playlists, addPlaylist, about, channelManager, unlockRestricted
+    case playlists, addPlaylist, about, channelManager, moviesManager, seriesManager, unlockRestricted
     var id: Self { self }
 }
 

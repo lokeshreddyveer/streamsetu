@@ -10,15 +10,21 @@ extension MusicSoundtrackReason {
 }
 
 extension MusicSoundtrackHeaderFacts {
-    /// "Soundtrack", "Score", "EP"... the eyebrow over the title.
+    /// "Soundtrack", "Score", "EP"... the eyebrow over the title. What the record IS (a soundtrack of a film) and how it was released (an EP, a single) are two
+    /// facts: a five-song record that belongs to a film reads "Soundtrack · EP", never just "EP".
     var kindLabel: String {
-        switch subkind {
-        case MusicAlbumSubkind.soundtrack.rawValue: Localized.string("Soundtrack")
-        case MusicAlbumSubkind.score.rawValue: Localized.string("Score")
+        let format: String? = switch subkind {
         case MusicAlbumSubkind.ep.rawValue: Localized.string("EP")
         case MusicAlbumSubkind.single.rawValue: Localized.string("Single")
-        case MusicAlbumSubkind.compilation.rawValue: Localized.string("Compilation")
-        default: Localized.string("Album")
+        default: nil
+        }
+        switch subkind {
+        case MusicAlbumSubkind.soundtrack.rawValue: return Localized.string("Soundtrack")
+        case MusicAlbumSubkind.score.rawValue: return Localized.string("Score")
+        case MusicAlbumSubkind.compilation.rawValue: return Localized.string("Compilation")
+        default:
+            if isFilm { return [Localized.string("Soundtrack"), format].compactMap { $0 }.joined(separator: " · ") }
+            return format ?? Localized.string("Album")
         }
     }
 }
@@ -49,6 +55,7 @@ struct MusicSoundtrackHeaderSection: View {
                 HStack(alignment: .bottom, spacing: MusicSpace.lg) { cover; text(h) }
             }
         }
+        .background(alignment: .top) { wash }
         .accessibilityElement(children: .contain)
         // The sheets hang off the whole header, not the cover button: a sheet inherits `.disabled`, and the cover button is disabled when the album has no artwork,
         // which would otherwise open "Your rating and notes" with every control dead.
@@ -58,9 +65,21 @@ struct MusicSoundtrackHeaderSection: View {
         }
     }
 
+    /// The cover's own colours, blurred and faded into the page behind the header: every album gets its own mood without a second picture being fetched.
+    @ViewBuilder private var wash: some View {
+        if !page.coverThumbs.isEmpty {
+            MusicCoverImage(thumbs: page.coverThumbs, size: nil, corner: 0).artwork(of: nil, slot: .backdrop)
+                .frame(maxWidth: .infinity).frame(height: 360).clipped()
+                .blur(radius: 60).opacity(0.38)
+                .overlay(LinearGradient(colors: [.clear, ColorTokens.background], startPoint: .center, endPoint: .bottom))
+                .padding(.horizontal, -MusicSpace.xl).padding(.top, -MusicSpace.xl)
+                .accessibilityHidden(true).allowsHitTesting(false)
+        }
+    }
+
     private var cover: some View {
         Button { showCover = true } label: {
-            MusicArtwork(page.coverThumbs, size: coverSize, corner: MusicCorner.cardLarge, subject: page.model?.snapshot.map { MusicArtworkSubject.derive($0) })
+            MusicArtwork(page.coverThumbs, size: coverSize, corner: MusicCorner.cardLarge, subject: page.model?.snapshot.map { MusicArtworkSubject.derive($0) }, slot: .poster)
                 .shadow(color: MusicInk.scrim(.strong), radius: MusicElevation.floating.shadowRadius, y: MusicElevation.floating.shadowOffsetY)
         }
         .buttonStyle(.plain).disabled(page.coverThumbs.isEmpty)

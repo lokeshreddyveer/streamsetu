@@ -54,9 +54,18 @@ struct MusicExploreLazyShelf: View {
             if hub.gated { resolved = true; return }   // nothing is asked while gated, and the row does not hold its blank space
             // A row that was scrolled past while it waited gives up its place at once (it does not hold the queue for the rows that are on screen now).
             guard await MusicExploreLoadGate.shared.enter() else { return }
-            let r = Task.isCancelled ? nil : await definition.load(hub)
+            var r = Task.isCancelled ? nil : await definition.load(hub)
             await MusicExploreLoadGate.shared.leave()
             if Task.isCancelled { return }
+            // "Nothing" can be a slow moment (a source that did not answer in time) as well as a truly empty list: the row asks once more a few seconds later before it gives up.
+            if r == nil {
+                try? await Task.sleep(nanoseconds: 6_000_000_000)
+                guard !Task.isCancelled else { return }
+                guard await MusicExploreLoadGate.shared.enter() else { return }
+                r = await definition.load(hub)
+                await MusicExploreLoadGate.shared.leave()
+                if Task.isCancelled { return }
+            }
             if let r { section = r.section; provenance = r.provenance; MusicExploreMemory.setShelf(r.section, provenance: r.provenance, id: definition.id) }
             else { MusicExploreMemory.setShelfEmpty(id: definition.id, retries: retries) }
             resolved = true

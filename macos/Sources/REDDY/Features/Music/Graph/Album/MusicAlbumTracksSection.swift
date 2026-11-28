@@ -41,7 +41,7 @@ struct MusicAlbumTracksSection: View {
     private var isPlainView: Bool { query.trimmingCharacters(in: .whitespaces).isEmpty && sort == .releaseOrder && filter == .all }
 
     private var items: [MusicAlbumTrackItem] {
-        page.rows.map { MusicAlbumTrackItem(id: $0.trackUID ?? $0.id.rawValue, title: $0.title, artistLine: $0.singerLine, disc: $0.disc, number: $0.number, durationMs: $0.durationMs, isPlayable: $0.isPlayable) }
+        page.rows.map { MusicAlbumTrackItem(id: $0.trackUID ?? $0.id.rawValue, title: MusicTitleCase.repair($0.title), artistLine: $0.singerLine, disc: $0.disc, number: $0.number, durationMs: $0.durationMs, isPlayable: $0.isPlayable) }
     }
 
     private var rowsByID: [String: MusicSoundtrackSongRow] {

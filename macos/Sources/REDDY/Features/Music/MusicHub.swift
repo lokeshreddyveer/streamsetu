@@ -388,7 +388,7 @@ final class MusicHub {
                 if let hit = hits.first(where: { MusicText.normalize($0.name) == want }) { return hit.id }
             }
             guard let draft = Self.seedDraft(r) else { return nil }
-            return try? await MusicGraphRuntime.shared.store.upsert([draft]).first?.id
+            return await Self.save(draft)
         }
         for k in kinds { if let id = try? await MusicGraphRuntime.shared.index.lookup(providerUID: uid, kind: k) { return id } }
         // An actor comes with a name only: the person the graph already holds under that name (never a second, empty one) is the page.
@@ -397,7 +397,13 @@ final class MusicHub {
             if let hit = hits.first(where: { MusicText.normalize($0.name) == want }) { return hit.id }
         }
         guard let draft = Self.seedDraft(r) else { return nil }
-        return try? await MusicGraphRuntime.shared.store.upsert([draft]).first?.id
+        return await Self.save(draft)
+    }
+
+    /// Saves the entity a provider value stands for. A failure is written to the debug log (it used to be thrown away, so "not available" could not be explained).
+    private static func save(_ draft: MusicEntityDraft) async -> MusicEntityID? {
+        do { return try await MusicGraphRuntime.shared.store.upsert([draft]).first?.id }
+        catch { MusicDebugLog.log("nav", "could not save \(draft.kind) \"\(draft.name)\": \(error)"); return nil }
     }
 
     private static func startingRole(_ r: MusicRoute) -> MusicRole? { if case .actor = r { .actor } else { nil } }

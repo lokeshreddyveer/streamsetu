@@ -558,7 +558,7 @@ struct AssistantBubble: View {
 
     /// iPhone and iPad: the same sparkles button, 48 pt (44 pt minimum tap area), above the bars. The chat is a bottom sheet on iPhone and a popover on a regular-width iPad.
     var body: some View {
-        let shown = AssistantButtonRules.visible(kidsMode: container.parental.kidsMode, onboarding: false, keyboardUp: keyboardUp, chatOpen: isOpen)
+        let shown = AssistantFeature.isOn && AssistantButtonRules.visible(kidsMode: container.parental.kidsMode, onboarding: false, keyboardUp: keyboardUp, chatOpen: isOpen)
         let away = receded && !isOpen
         let wide = sizeClass == .regular
         Group {
@@ -589,7 +589,7 @@ struct AssistantBubble: View {
     }
     #else
     var body: some View {
-        if !container.parental.kidsMode {
+        if AssistantFeature.isOn, !container.parental.kidsMode {
             VStack(alignment: .trailing, spacing: 10) {
                 Spacer(minLength: 0)
                 if isOpen {

@@ -280,6 +280,13 @@ struct MusicProviderEntityPage: View {
     private func resolve() async {
         unavailable = false
         var found = await hub.entityID(for: route)
+        // The graph can be busy for a moment (a first open while it is saving other things). A page that finds nothing asks twice more, a little later, before it says "not available".
+        for pause in [0.4, 1.2] where found == nil {
+            try? await Task.sleep(nanoseconds: UInt64(pause * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            found = await hub.entityID(for: route)
+        }
+        if found == nil { MusicDebugLog.log("nav", "page not available after three tries: \(route.scrollKey)") }
         // An album opened from a provider value lands on the edition the person marked as preferred (the star in the Versions list), when there is one.
         if case .album = route, let e = found {
             let concept = await MusicAlbumReads.albumConcept(MusicSoundtrackReader(MusicEntityRuntime.shared.store.graph), e)

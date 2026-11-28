@@ -28,9 +28,19 @@ function tvFile(r: Release) {
   return major > 0 || minor >= 20 ? `streamsetu-tv-${r.android}.apk` : `StreamSetu-FireTV-${r.android}.apk`;
 }
 
+/** From Mac 2.19.1 a release has two disk images (Apple silicon and Intel) and no universal one; earlier releases have the one file they were published with. */
+function twoMacFiles(version: string) {
+  const [a, b, c] = version.split(".").map((n) => parseInt(n, 10) || 0);
+  return a > 2 || (a === 2 && (b > 19 || (b === 19 && c >= 1)));
+}
+
 export function downloads(r: Release) {
+  const split = twoMacFiles(r.mac);
   return {
-    mac: `${base(r)}/StreamSetu-${r.mac}.dmg`,
+    mac: split ? `${base(r)}/StreamSetu-${r.mac}-AppleSilicon.dmg` : `${base(r)}/StreamSetu-${r.mac}.dmg`,
+    macAppleSilicon: `${base(r)}/StreamSetu-${r.mac}-AppleSilicon.dmg`,
+    macIntel: `${base(r)}/StreamSetu-${r.mac}-Intel.dmg`,
+    macSplit: split,
     tv: `${base(r)}/${tvFile(r)}`,
     android: `${base(r)}/StreamSetu-Android-${r.android}.apk`,
     page: `${site.repo}/releases/tag/${r.tag}`,

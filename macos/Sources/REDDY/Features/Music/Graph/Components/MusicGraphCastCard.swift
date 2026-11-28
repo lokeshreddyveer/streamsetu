@@ -35,7 +35,7 @@ struct MusicGraphCastCard: View {
             Button(action: action) {
                 VStack(alignment: .leading, spacing: MusicCardGeometry.coverToText) {
                     MusicGraphCover(imageRef: imageRef, aspect: MusicGraphCardMetrics.castAspect, seed: name, initials: MusicArtistPortrait.initials(name),
-                                    subject: .card(.person, name: name, entity: entity), hovering: hovering, focused: focused)
+                                    subject: .card(.person, name: name, entity: entity), slot: .profile, hovering: hovering, focused: focused)
                     VStack(alignment: .leading, spacing: MusicCardGeometry.textSpacing) {
                         Text(verbatim: name).musicText(.card).lineLimit(2).multilineTextAlignment(.leading).foregroundStyle(ColorTokens.textPrimary)
                         if let detail, !detail.isEmpty { Text(verbatim: detail).musicText(.caption).lineLimit(1).foregroundStyle(ColorTokens.textTertiary) }

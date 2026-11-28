@@ -347,6 +347,8 @@ struct ReddyTopBar: View {
     /// ⌘Return: hand what is typed to Setu instead of searching.
     var onAsk: (String) -> Void = { _ in }
     var onSelectTab: (AppTab) -> Void
+    /// Right-click on Home, Live TV, Movies, Series or TV Guide: refresh the library or the guide, or open that tab's manager.
+    var onTabAction: (AppTab, TopBarTabAction) -> Void = { _, _ in }
     var onToggleAccount: () -> Void
     var onSelectService: (ExternalService) -> Void = { _ in }
     var onSelectStreamSetu: () -> Void = {}
@@ -463,6 +465,21 @@ struct ReddyTopBar: View {
             .animation(NavTransition.animation(reduceMotion: reduceMotion), value: state.destination.isNative)
     }
 
+    /// What a right-click on a main tab offers besides its look: refresh the library (and the guide on the TV tabs), and open the tab's own manager.
+    private func tabActions(_ item: TopBarItem) -> AnyView? {
+        guard case .tab(let t) = item.kind else { return nil }
+        return AnyView(Group {
+            Button { onTabAction(t, .refreshLibrary) } label: { Label("Refresh library", systemImage: "arrow.clockwise") }.atlas("control.nav.tabRefresh")
+            if t == .liveTV || t == .guide {
+                Button { onTabAction(t, .refreshGuide) } label: { Label("Refresh TV guide", systemImage: "calendar.badge.clock") }.atlas("control.nav.tabRefreshGuide")
+            }
+            if t != .home {
+                Divider()
+                Button { onTabAction(t, .manage) } label: { Label(TopBarTabAction.managerTitle(for: t), systemImage: "slider.horizontal.3") }.atlas("control.nav.tabManage")
+            }
+        })
+    }
+
     @ViewBuilder private var navZone: some View {
         if state.showsServicesMenu { menuNav } else { nav }
     }
@@ -481,7 +498,7 @@ struct ReddyTopBar: View {
         return HStack(spacing: 0) {
             ForEach(row.leading) { item in
                 if let t = item.nativeTab {
-                    navItem(item, selected: item.selected) { activate(item) }.tabModeMenu(t, nav: navBinding).atlasCovers("screen.tab.home")
+                    navItem(item, selected: item.selected) { activate(item) }.tabModeMenu(t, nav: navBinding, extra: tabActions(item)).atlasCovers("screen.tab.home")
                 } else {
                     navItem(item, selected: item.selected) { activate(item) }.atlasCovers("screen.tab.home")
                 }
@@ -513,6 +530,7 @@ struct ReddyTopBar: View {
         return HStack(spacing: 0) {
             ForEach(items) { item in
                 navItem(item, selected: item.selected) { activate(item) }
+                    .contextMenu { if let actions = tabActions(item) { actions } }
                     .atlasCovers("screen.tab.home")
                     .disabled(item.isService && state.servicesDisabled)
             }
@@ -711,6 +729,16 @@ private struct NavButtonStyle: ButtonStyle {
             .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovering)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.08), value: configuration.isPressed)
             .onHover { hovering = $0 }
+    }
+}
+
+/// What the right-click menu of a main tab can ask for.
+enum TopBarTabAction: Equatable, Sendable {
+    case refreshLibrary, refreshGuide, manage
+
+    /// The manager that belongs to the tab: channels for Live TV and the guide, titles for Movies and Series.
+    static func managerTitle(for tab: AppTab) -> String {
+        switch tab { case .movies: "Movies manager…"; case .series: "Series manager…"; default: "Channel manager…" }
     }
 }
 

@@ -1,7 +1,7 @@
 # Release
 
 ```sh
-Scripts/build-release.sh 1.0.0      # universal app (arm64 + x86_64), ad-hoc signed → dist/StreamSetu.app
+Scripts/build-release.sh 1.0.0      # development app (universal by default; REDDY_ARCH=arm64|x86_64 builds one), ad-hoc signed → dist/StreamSetu.app
 Scripts/create-dmg.sh               # dist/StreamSetu-1.0.0.dmg
 Scripts/verify-release.sh           # signature, architectures, metadata, no stray paths or tool names
 Scripts/generate-checksums.sh       # dist/SHA256SUMS.txt
@@ -21,6 +21,12 @@ Scripts/verify-release.sh
 ```
 
 Unsigned/ad-hoc builds open via right-click → Open (or `xattr -cr StreamSetu.app`).
+
+## The two Mac downloads
+A release has two disk images and no universal one: `StreamSetu-<v>-AppleSilicon.dmg` (arm64 only) and `StreamSetu-<v>-Intel.dmg` (x86_64 only). `Scripts/release-signed.sh <version> <build>` builds, signs, notarizes and packages both:
+the Intel app is build `<build>` and the Apple silicon app is `<build>+1`. (`REDDY_ARCH=arm64|x86_64 Scripts/build-release.sh` builds one; `DMG_SUFFIX=-AppleSilicon|-Intel Scripts/create-dmg.sh` names it.)
+
+**The update feed** (`appcast.xml`) has one item for each file. The Apple silicon item carries `sparkle:hardwareRequirements` = `arm64` (Sparkle 2.9 and later; the app ships 2.10) and the higher build, so an Apple silicon Mac is offered that file; an Intel Mac cannot take it and is offered the Intel item. An updater older than Sparkle 2.9 does not read that tag, so an Intel Mac on such a build could be offered the Apple silicon file: that is the one risk of two files, and why the oldest builds should be updated by hand once.
 
 ## libmpv (MKV / AVI / RTSP / DASH)
 ```sh

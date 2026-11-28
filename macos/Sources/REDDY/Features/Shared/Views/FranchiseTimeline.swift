@@ -19,12 +19,9 @@ struct FranchiseTimeline: View {
                         Text("Timeline").font(.system(size: 20, weight: .bold))
                         Text(summary).font(.system(size: 13)).foregroundStyle(.secondary)
                     }
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(alignment: .top, spacing: 0) {
-                            ForEach(Array(films.enumerated()), id: \.element.id) { i, film in
-                                column(i, film)
-                            }
-                        }.padding(.vertical, 4)
+                    SetuTimeline(sections: [SetuTimelineSection(id: "franchise", title: nil, nodes: films.map(node))],
+                                 litThrough: hereIndex, current: hereIndex, posterWidth: poster) { n, here in
+                        if let film = films.first(where: { $0.id == n.id }) { posterView(film, here: here).accessibilityLabel(here ? "\(film.title), the film you are on" : "Open \(film.title)") }
                     }
                 }
             }
@@ -40,36 +37,8 @@ struct FranchiseTimeline: View {
 
     private var hereIndex: Int { films.firstIndex { $0.id == currentID } ?? 0 }
 
-    private func column(_ i: Int, _ film: LibraryItem) -> some View {
-        let here = film.id == currentID
-        return VStack(spacing: 10) {
-            posterView(film, here: here)
-                .scaleEffect(here ? 1 : 0.94, anchor: .bottom)
-                .opacity(here ? 1 : 0.85)
-                .shadow(color: here ? ColorTokens.accent.opacity(0.45) : .clear, radius: 14, y: 4)
-                .accessibilityLabel(here ? "\(film.title), the film you are on" : "Open \(film.title)")
-            rail(i, here: here)
-            VStack(spacing: 2) {
-                Text(film.year.map(String.init) ?? "").font(.system(size: 13, weight: .semibold)).foregroundStyle(here ? ColorTokens.accent : .primary)
-                Text(film.title).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
-            }.frame(width: poster)
-        }
-        .frame(width: poster + 20)
-    }
-
-    /// One piece of the line through the numbered dots; the part up to the open film is lit.
-    private func rail(_ i: Int, here: Bool) -> some View {
-        let lit = ColorTokens.accent, dim = Color.secondary.opacity(0.3)
-        return ZStack {
-            HStack(spacing: 0) {
-                Rectangle().fill(i == 0 ? .clear : (i <= hereIndex ? lit : dim)).frame(height: 3)
-                Rectangle().fill(i == films.count - 1 ? .clear : (i < hereIndex ? lit : dim)).frame(height: 3)
-            }
-            Text("\(i + 1)").font(.system(size: 11, weight: .bold)).foregroundStyle(i <= hereIndex ? Color.white : .secondary)
-                .frame(width: here ? 28 : 22, height: here ? 28 : 22)
-                .background(Circle().fill(i <= hereIndex ? lit : Color.secondary.opacity(0.25)))
-                .overlay(Circle().strokeBorder(.background, lineWidth: 3))
-        }.frame(height: 28)
+    private func node(_ film: LibraryItem) -> SetuTimelineNode {
+        SetuTimelineNode(id: film.id, label: film.year.map(String.init) ?? "", title: film.title)
     }
 
     @ViewBuilder private func posterView(_ film: LibraryItem, here: Bool) -> some View {

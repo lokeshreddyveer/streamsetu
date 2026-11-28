@@ -37,7 +37,7 @@ struct MusicActorMusic: Sendable {
         let key = "actor.\(id)"
         var all: [MusicFilmCredit]
         if let hit = cache.read([MusicFilmCredit].self, key: key) { all = hit ?? [] }
-        else if let tmdb, let d = try? await tmdb("/3/person/\(id)/movie_credits", [URLQueryItem(name: "language", value: "en-US")]) {
+        else if let tmdb, let d = try? await tmdb("/3/person/\(id)/movie_credits", [URLQueryItem(name: "language", value: MusicLanguagePolicy.tmdbText())]) {
             all = Array(MusicFilmTMDBParser.filmography(from: d).sorted { $0.popularity > $1.popularity }.prefix(60))
             cache.write(all.isEmpty ? nil : all, key: key)
         } else { all = [] }

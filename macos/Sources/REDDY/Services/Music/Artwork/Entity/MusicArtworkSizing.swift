@@ -9,6 +9,8 @@ import ImageIO
 /// Where a picture is drawn, and how many pixels that place needs. A ladder lists sizes best first: now-playing tries 720, then 400, then 120.
 enum MusicArtworkSlot: String, CaseIterable, Sendable {
     case avatar, row, backdrop, card, miniPlayer, nowPlaying, theaterWash, mediaSession
+    /// The page pictures: a film's or person's wide hero, a poster, a portrait, a still in a gallery, and the full-size viewer.
+    case filmHero, poster, profile, still, viewer
 
     func ladder(scale: CGFloat = 2) -> [Int] {
         switch self {
@@ -20,6 +22,11 @@ enum MusicArtworkSlot: String, CaseIterable, Sendable {
         case .nowPlaying: [720, 400, 120]
         case .theaterWash: [400]
         case .mediaSession: [512]
+        case .filmHero: scale >= 2 ? [1280, 780] : [780]
+        case .poster: scale >= 2 ? [500, 342] : [342]
+        case .profile: scale >= 2 ? [500, 342] : [342]
+        case .still: scale >= 2 ? [780, 500] : [500]
+        case .viewer: [1280, 780, 500]
         }
     }
 
@@ -64,7 +71,7 @@ enum MusicArtworkURLSizing {
         // Cover Art Archive: `/front-500`
         Rule(pattern: "/front-\\d+$", size: { snap($0, [250, 500, 1200]) }, make: { px, _, _ in "/front-\(px)" }),
         // TMDB posters: `/t/p/w500/`
-        Rule(pattern: "/t/p/w\\d+/", size: { snap($0, [92, 154, 185, 342, 500, 780]) }, make: { px, _, _ in "/t/p/w\(px)/" }),
+        Rule(pattern: "/t/p/w\\d+/", size: { snap($0, [92, 154, 185, 300, 342, 500, 780, 1280]) }, make: { px, _, _ in "/t/p/w\(px)/" }),
         // Wikimedia thumbnails: `/500px-Name.jpg` (standard widths only; other widths are refused by the host)
         Rule(pattern: "/\\d+px-", size: { snap($0, wikimediaWidths) }, make: { px, _, _ in "/\(px)px-" }),
         // Wikimedia `Special:FilePath?width=`

@@ -79,7 +79,7 @@ struct SearchView: View {
                     }.buttonStyle(.press).atlasCovers("screen.ios.tab.search").glossRow()
                 }
             }
-            if !isBlank, let container { AtlasPaletteList(query: router.query, platform: AtlasAssistant.platform, appStore: AtlasAssistant.appStore, showAsk: !container.parental.kidsMode, open: { _ = AtlasOpener.open($0, container: container, router: router, state: state) }, show: { ShowMeController.shared.start(entryID: $0); ShowMeController.shared.openCurrentScreen() }, ask: { AssistantLauncher.shared.ask($0) }).listRowBackground(Color.clear).listRowSeparator(.hidden) }
+            if !isBlank, let container { AtlasPaletteList(query: router.query, platform: AtlasAssistant.platform, appStore: AtlasAssistant.appStore, showAsk: AssistantFeature.isOn && !container.parental.kidsMode, open: { _ = AtlasOpener.open($0, container: container, router: router, state: state) }, show: { ShowMeController.shared.start(entryID: $0); ShowMeController.shared.openCurrentScreen() }, ask: { AssistantLauncher.shared.ask($0) }).listRowBackground(Color.clear).listRowSeparator(.hidden) }
             if !isBlank, let container { SmartPicksCard(container: container, query: router.query, open: { _ in }, useLinks: true).listRowBackground(Color.clear).listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)) }
             if isBlank {
                 EmptyState(symbol: "magnifyingglass", title: "Search your library", message: "Channels, movies, series and episodes from every playlist.")

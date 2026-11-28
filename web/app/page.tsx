@@ -142,7 +142,14 @@ export default function Home() {
             <h2>Get it for your device</h2>
           </Reveal>
           <Reveal className="get-grid">
-            <a href={d.mac}><strong>Mac</strong><small>Version {latest.mac}</small></a>
+            {d.macSplit ? (
+              <>
+                <a href={d.macAppleSilicon}><strong>Mac, Apple silicon</strong><small>M-series, version {latest.mac}</small></a>
+                <a href={d.macIntel}><strong>Mac, Intel</strong><small>Intel Macs, version {latest.mac}</small></a>
+              </>
+            ) : (
+              <a href={d.mac}><strong>Mac</strong><small>Version {latest.mac}</small></a>
+            )}
             <a href={site.testflight}><strong>iPhone and iPad</strong><small>TestFlight, {latest.ios}</small></a>
             <a href={d.android}><strong>Android</strong><small>Phone and tablet, {latest.android}</small></a>
             <a href={d.tv}><strong>Fire TV</strong><small>And Android TV, {latest.android}</small></a>

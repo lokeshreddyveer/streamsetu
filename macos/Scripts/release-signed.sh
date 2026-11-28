@@ -1,5 +1,7 @@
 #!/bin/bash
-# Builds, signs with your Developer ID, notarizes with Apple and staples: the DMG that opens with no Gatekeeper warning.
+# Builds, signs with your Developer ID, notarizes with Apple and staples: the DMGs that open with no Gatekeeper warning.
+# A release has two Mac downloads and no universal one: StreamSetu-<v>-AppleSilicon.dmg (arm64 only) and StreamSetu-<v>-Intel.dmg (x86_64 only). The update feed offers each Mac its own.
+# RELEASE_FLAVOURS (default "x86_64 arm64") picks which are built; the Apple silicon one goes last, so dist/StreamSetu.app is left as the app that runs natively on the Mac that builds it. Builds: Intel <build>, Apple silicon <build>+1.
 #
 #   Scripts/release-signed.sh <version> <build>        e.g.  Scripts/release-signed.sh 2.2.0 220
 #
@@ -34,19 +36,33 @@ echo "▸ Signing as: $(security find-identity -v -p codesigning | grep "${SIGN_
 mkdir -p dist/security
 python3 ../Scripts/audit-dependencies.py --strict --scope mac --report "dist/security/dependencies-$VERSION-$BUILD.json" --sbom "dist/security/sbom-$VERSION-$BUILD.cdx.json" \
   || { echo "✘ dependency check did not come back clean (see above)."; exit 1; }
-REDDY_BUNDLE_MPV=1 Scripts/build-release.sh "$VERSION" "$BUILD"
-Scripts/sign-app.sh dist/StreamSetu.app
+# Each build starts from an empty dist/, so the finished disk images and the dependency report wait in a staging folder and are put back at the end.
+STAGE="$(mktemp -d)"; trap 'rm -rf "$STAGE"' EXIT
+mv dist/security "$STAGE/security"
+for FLAVOUR in ${RELEASE_FLAVOURS:-x86_64 arm64}; do
+  case "$FLAVOUR" in
+    arm64) SUFFIX="-AppleSilicon" ;; x86_64) SUFFIX="-Intel" ;;
+    *) echo "✘ unknown flavour '$FLAVOUR' (arm64 or x86_64; there is no universal download)"; exit 1 ;;
+  esac
+  echo "▸ ===== $FLAVOUR build ====="
+  # The Apple silicon app is build+1 and the Intel app is build: the update feed offers each Mac its own file (the Apple silicon item requires Apple silicon and has the higher build).
+  case "$FLAVOUR" in arm64) FLAVOUR_BUILD=$((BUILD + 1)) ;; *) FLAVOUR_BUILD="$BUILD" ;; esac
+  REDDY_ARCH="$FLAVOUR" REDDY_BUNDLE_MPV=1 Scripts/build-release.sh "$VERSION" "$FLAVOUR_BUILD"
+  Scripts/sign-app.sh dist/StreamSetu.app
 
-echo "▸ Notarizing the app…"
-ZIP="$(mktemp -d)/StreamSetu.zip"
-ditto -c -k --keepParent dist/StreamSetu.app "$ZIP"
-xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
-xcrun stapler staple dist/StreamSetu.app
+  echo "▸ Notarizing the $FLAVOUR app…"
+  ZIP="$(mktemp -d)/StreamSetu.zip"
+  ditto -c -k --keepParent dist/StreamSetu.app "$ZIP"
+  xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
+  xcrun stapler staple dist/StreamSetu.app
 
-echo "▸ Disk image…"
-Scripts/create-dmg.sh                       # signs the DMG too, because SIGN_IDENTITY is set
-Scripts/notarize-dmg.sh "dist/StreamSetu-$VERSION.dmg"
-Scripts/verify-release.sh
-spctl --assess --type open --context context:primary-signature -v "dist/StreamSetu-$VERSION.dmg" 2>&1 | tail -1
-git -C .. rev-parse HEAD > "dist/StreamSetu-$VERSION.commit"          # the commit this DMG was built from; the release checks that it is the one being released
-echo "✔ dist/StreamSetu-$VERSION.dmg is signed, notarized and stapled"
+  echo "▸ Disk image ($FLAVOUR)…"
+  DMG_SUFFIX="$SUFFIX" Scripts/create-dmg.sh                       # signs the DMG too, because SIGN_IDENTITY is set
+  Scripts/notarize-dmg.sh "dist/StreamSetu-$VERSION$SUFFIX.dmg"
+  Scripts/verify-release.sh
+  spctl --assess --type open --context context:primary-signature -v "dist/StreamSetu-$VERSION$SUFFIX.dmg" 2>&1 | tail -1
+  mv "dist/StreamSetu-$VERSION$SUFFIX.dmg" "$STAGE/"
+done
+mkdir -p dist && mv "$STAGE"/StreamSetu-*.dmg dist/ && mv "$STAGE/security" dist/security
+git -C .. rev-parse HEAD > "dist/StreamSetu-$VERSION.commit"          # the commit these DMGs were built from; the release checks that it is the one being released
+for f in dist/StreamSetu-$VERSION*.dmg; do echo "✔ $f is signed, notarized and stapled"; done

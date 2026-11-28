@@ -85,9 +85,11 @@ struct AddSourceForm<ChooserFooter: View>: View {
 
     private var actionRow: some View {
         HStack(spacing: 10) {
-            SecondaryButton(title: "Help me with this", symbol: "sparkles") {
-                AssistantLauncher.shared.ask("How do I add a \(vm.kind.rawValue) source? What do I fill in?"); AssistantLauncher.bringMainWindowForward()
-            }.atlas("screen.addPlaylist")
+            if AssistantFeature.isOn {
+                SecondaryButton(title: "Help me with this", symbol: "sparkles") {
+                    AssistantLauncher.shared.ask("How do I add a \(vm.kind.rawValue) source? What do I fill in?"); AssistantLauncher.bringMainWindowForward()
+                }.atlas("screen.addPlaylist")
+            }
             Spacer()
             Button { if vm.plainHTTPWarning != nil { askAboutHTTP = true } else { submitNow() } } label: {
                 HStack(spacing: 8) {

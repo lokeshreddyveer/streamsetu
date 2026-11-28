@@ -14,7 +14,7 @@ enum MusicHomeSignalLoader {
     static let providerDeadline: TimeInterval = 4
     static let searchDeadline: TimeInterval = 8
 
-    static func forget() { releasesCache = nil; adjacentByArtist = [:]; genreShelvesCache = nil; playlistsCache = nil }
+    static func forget() { releasesCache = nil; adjacentByArtist = [:]; genreShelvesCache = nil; playlistsCache = nil; languageSongsCache = nil; trackLanguageCache = [:] }
 
     private static func provider(_ id: String, hub: MusicHub) -> (any MusicMetadataProvider)? { hub.registry.metadataProvider(id: id) }
 
@@ -101,7 +101,9 @@ enum MusicHomeSignalLoader {
     static func genreShelves(hub: MusicHub, taste: HomeTaste, wording: MusicFillWording) async -> [HomeSection] {
         var weight: [String: Double] = [:], shown: [String: String] = [:]
         for s in taste.tracks where s.plays > 0 || s.liked {
-            for g in MusicInsightsEngine.genreLabels(s.track) { let k = MusicText.normalize(g); weight[k, default: 0] += s.weight; shown[k] = g }
+            // A source that labels a song's genre with a language ("Tamil") says nothing about the person's genre, and a "More <that language>" built from it would search for a language they may not play at
+            // all: languages have their own shelf, drawn from the language the person's songs are really in. Any language the app knows is left out, none named here.
+            for g in MusicInsightsEngine.genreLabels(s.track) where MusicLanguage(stated: g) == nil { let k = MusicText.normalize(g); weight[k, default: 0] += s.weight; shown[k] = g }
         }
         let top = weight.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.prefix(2).compactMap { shown[$0.key] }
         guard !top.isEmpty, let source = hub.registry.activeMetadata else { return [] }
@@ -116,6 +118,59 @@ enum MusicHomeSignalLoader {
             out.append(HomeSection(id: "genrePicks-" + MusicLibraryFacets.foldKey(g), kind: .genrePicks, title: wording.f("More %@", g), reason: wording.f("Because you listen to %@", g), items: Array(items.prefix(16))))
         }
         if !out.isEmpty, !Task.isCancelled { genreShelvesCache = (key, Date(), out) }
+        return out
+    }
+
+    // MARK: the languages the person's songs are in
+
+    private static var trackLanguageCache: [String: (language: String?, at: Date)] = [:]
+    private static let trackLanguageRetry: TimeInterval = 900
+
+    /// The language of the person's songs beyond their titles' script (a source's statement, or the graph's record of the song's film or album), by track uid. Answers are remembered, and a
+    /// song with none is asked again only after a while, so opening Listen Now does not walk the graph for every song each time.
+    static func trackLanguages(of tracks: [MusicTrack]) async -> [String: String] {
+        let now = Date()
+        var out: [String: String] = [:]
+        var todo: [MusicTrack] = []
+        for t in tracks {
+            if let c = trackLanguageCache[t.uid] {
+                if let l = c.language { out[t.uid] = l } else if now.timeIntervalSince(c.at) < trackLanguageRetry { continue } else { todo.append(t) }
+            } else { todo.append(t) }
+        }
+        let asked = Array(todo.prefix(150))
+        let found = await MusicGraphLanguage.languages(of: asked, store: MusicEntityRuntime.shared.store.graph)
+        guard !Task.isCancelled else { return out }
+        for t in asked { trackLanguageCache[t.uid] = (found[t.uid]?.rawValue, now); if let l = found[t.uid] { out[t.uid] = l.rawValue } }
+        return out
+    }
+
+    private static var languageSongsCache: (key: String, at: Date, songs: [String: [HomeItem]])?
+
+    /// New songs in the languages the person plays most (the top two that are not plain Latin script): the active source is searched for "<language> songs", and what it returns is kept only if it is
+    /// not clearly in another language (a title in another script is dropped; a Latin-letter title is kept, since it says nothing). Songs the person has played are left out.
+    static func languageSongs(hub: MusicHub, taste: HomeTaste) async -> [String: [HomeItem]] {
+        let top = taste.bucketShare.filter { !$0.key.isEmpty && $0.key != MusicLanguage.latin.rawValue }.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.prefix(2).map(\.key)
+        guard !top.isEmpty, let source = hub.registry.activeMetadata else { return [:] }
+        let played = Set(taste.tracks.map(\.key))
+        let key = source.id + "|" + top.joined(separator: ",") + "|\(played.count)"
+        if let c = languageSongsCache, c.key == key, Date().timeIntervalSince(c.at) < searchLifetime { return c.songs }
+        var out: [String: [HomeItem]] = [:]
+        for bucket in top {
+            guard let lang = MusicLanguage(rawValue: bucket) else { continue }
+            var found: [MusicTrack] = []
+            for query in [lang.englishName + " songs", "latest " + lang.englishName + " songs"] {
+                let page = try? await MusicStreamResolver.withDeadline(searchDeadline) { try await source.searchTracks(query, page: nil) }
+                found += page?.items ?? []
+            }
+            var seen = Set<String>()
+            let items = found.filter { t in
+                guard !t.thumbnails.isEmpty, !hub.library.isBlacklisted(t), !played.contains(HomeKeys.recording(t)), seen.insert(HomeKeys.recording(t)).inserted else { return false }
+                let own = MusicLanguageDetector.language(of: t)
+                return own == nil || own == .latin || own == lang
+            }.map { var i = HomeItem.make($0); i.bucket = bucket; return i }
+            if !items.isEmpty { out[bucket] = Array(items.prefix(20)) }
+        }
+        if !out.isEmpty, !Task.isCancelled { languageSongsCache = (key, Date(), out) }
         return out
     }
 

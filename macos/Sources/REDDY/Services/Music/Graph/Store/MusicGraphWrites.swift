@@ -54,7 +54,7 @@ enum MusicGraphWrites {
                 UPDATE entity SET subkind = ?, name = ?, name_latin = ?, lang = ?, year = ?, year_end = ?, country = ?, duration_ms = ?, image_ref = ?, attrs = ?,
                   provisional = ?, pinned = ?, updated_at = ? WHERE rid = ?
                 """, [pick(cur.subkind, d.subkind), newName, MusicGraphText.latin(newName), pick(cur.lang, d.lang), pick(cur.year, d.year), pick(cur.yearEnd, d.yearEnd),
-                      pick(cur.country, d.country), pick(cur.durationMs, d.durationMs), pick(cur.imageRef, d.imageRef), MusicGraphReads.encodeAttrs(attrs),
+                      pick(cur.country, d.country), pick(cur.durationMs, d.durationMs), upgrade ? (d.imageRef ?? cur.imageRef) : MusicImageRank.better(stored: cur.imageRef, new: d.imageRef, kind: d.kind), MusicGraphReads.encodeAttrs(attrs),
                       cur.provisional && d.provisional, cur.pinned || d.pinned, t, rid])
         }
 

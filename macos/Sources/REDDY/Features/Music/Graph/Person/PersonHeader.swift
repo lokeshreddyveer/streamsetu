@@ -49,14 +49,15 @@ struct MusicPersonHeaderView: View {
     // MARK: pieces
 
     private var portrait: some View {
-        MusicCoverImage(thumbs: portraitURL.map { [MusicThumbnail(url: $0.absoluteString, width: 400, height: 400)] } ?? [], artworkClass: .artistPortrait, size: 190,
-                        corner: 95, seed: header.names.display, initials: header.initials, subject: subject)
-            .accessibilityHidden(true)
+        var cover = MusicCoverImage(thumbs: portraitURL.map { [MusicThumbnail(url: $0.absoluteString, width: 500, height: 500)] } ?? [], artworkClass: .artistPortrait, size: 190,
+                                    corner: 95, seed: header.names.display, initials: header.initials, subject: subject, slot: .profile)
+        cover.focus = .top
+        return cover.accessibilityHidden(true)
     }
 
     /// The person's own portrait from Wikidata when there is one: a provider's avatar (a channel picture, often a poster or a logo) never stands in for it.
     private var portraitURL: URL? {
-        if let f = wiki?.portraitFile, header.portrait?.origin != .tmdb, let u = MusicPortraitRef.commonsThumbnailURL(file: f, width: 400) { return u }
+        if let f = wiki?.portraitFile, header.portrait?.origin != .tmdb, let u = MusicPortraitRef.commonsThumbnailURL(file: f, width: 500) { return u }
         return header.portrait?.url
     }
 
@@ -113,6 +114,11 @@ struct MusicPersonHeaderView: View {
                                                           transport: transport, tmdb: MusicEntityArtwork.shared.tmdbFetch, lookup: lookup)
         // A slower, older lookup (a role switched away from) never overwrites the newer one.
         if !Task.isCancelled { wiki = loaded }
+        // The id the strict name lookup settled on stays with the person, so no other part of the page has to search the name again.
+        if let qid = loaded?.qid, !Task.isCancelled {
+            await MusicPersonIdentityLink.remember(qid: qid, person: header.id, name: header.names.display, isGroup: header.isGroup, year: nil,
+                                                   hasWikidata: header.wikidataID?.isEmpty == false)
+        }
     }
 
     fileprivate func loadFacts() async {
@@ -161,8 +167,8 @@ struct MusicPersonHeaderView: View {
                     ForEach(options, id: \.mode) { o in
                         Button(MusicArtistWording.radioTitle(o.mode) + " · \(o.count)") { startMode(o.mode, c) }.atlas("control.music.artistRadioMode")
                     }
-                } label: { Label(Localized.string("Radio modes"), systemImage: "dot.radiowaves.left.and.right").musicChipSurface() }
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().disabled(playback.busy).atlas("control.music.artistRadioModes")
+                } label: { Label(Localized.string("Radio modes"), systemImage: "dot.radiowaves.left.and.right") }
+                    .menuStyle(.button).menuIndicator(.hidden).musicButton(.secondary, size: .large).fixedSize().disabled(playback.busy).atlas("control.music.artistRadioModes")
             }
         }
     }
@@ -204,8 +210,8 @@ struct MusicPersonHeaderView: View {
                         else { MusicHiddenRecommendations.shared.hide(artist: artist); MusicToasts.shared.show(Localized.string("Excluded from recommendations.")) }
                     }.atlas("control.music.artistExclude")
                 }
-            } label: { Image(systemName: "ellipsis").accessibilityLabel(Localized.string("More")).musicChipSurface() }
-                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().atlas("control.music.artistMore")
+            } label: { Image(systemName: "ellipsis").font(MusicTokens.iconLarge).accessibilityLabel(Localized.string("More")) }
+                .menuStyle(.button).menuIndicator(.hidden).musicButton(.glassIcon, size: .large).fixedSize().accessibilityLabel(Localized.string("More")).atlas("control.music.artistMore")
         }
     }
 }

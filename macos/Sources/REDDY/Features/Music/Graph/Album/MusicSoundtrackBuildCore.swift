@@ -98,11 +98,9 @@ enum MusicSoundtrackBuild {
             if ($0.role == .musicDirector) != ($1.role == .musicDirector) { return $0.role == .musicDirector }
             return $0.order != $1.order ? $0.order < $1.order : $0.person.name < $1.person.name
         }
-        // One name, one chip: the same composer filed under several graph entities (or a wiki template word taken for a name) is listed once, so the line carries
-        // no "#1Z4X" codes. The Credits section below lists every entity with its role.
-        let unique = MusicSoundtrackNameGuard.listable(sorted)
-        let details = MusicSoundtrackDisambiguator.details(for: unique.map(\.person))
-        return unique.prefix(MusicSoundtrackLimits.composersUsed).map { var c = $0; c.person = MusicSoundtrackDisambiguator.apply(c.person, details); return c }
+        // One person, one chip: the same composer filed under several graph entities (a second spelling, a native-script name, a description that differs) is listed
+        // once, and no disambiguation code is ever written into the line. The Credits section below lists every entity with its role.
+        return MusicSoundtrackNameGuard.listableByName(sorted).prefix(MusicSoundtrackLimits.composersUsed).map { $0 }
     }
 
     static func header(_ r: MusicSoundtrackReader, id: MusicEntityID) async -> MusicSoundtrackHeaderFacts? {
@@ -116,8 +114,10 @@ enum MusicSoundtrackBuild {
         if imageRef == nil { for m in family.members.dropFirst() { if let i = await r.entity(m)?.imageRef { imageRef = i; break } } }
         let lang = await language, eraFacet = await era
         let hint = film == nil ? (snap.attrs["filmHint"] ?? "").trimmingCharacters(in: .whitespaces) : ""
-        var facts = MusicSoundtrackHeaderFacts(title: snap.name, year: snap.year ?? film?.year, languageName: lang?.name ?? languageName(snap.lang ?? film?.language),
-                                               subkind: snap.subkind, imageRef: imageRef ?? film?.imageRef, film: film, filmHint: hint.isEmpty ? nil : hint, makers: makers)
+        let albumAliases = ((try? await r.store.aliases(of: snap.id)) ?? []).map(\.text)
+        let shownName = MusicNativeNames.displayName(snap.name, aliases: albumAliases, entityLanguage: snap.lang, preferred: MusicNativeNames.shared.preferredLanguages)
+        var facts = MusicSoundtrackHeaderFacts(title: MusicTitleCase.recordTitle(shownName, subkind: snap.subkind), year: snap.year ?? film?.year, languageName: lang?.name ?? languageName(snap.lang ?? film?.language),
+                                               subkind: snap.subkind, imageRef: imageRef, film: film, filmHint: hint.isEmpty ? nil : hint, makers: makers)
         facts.languageID = lang?.id; facts.eraID = eraFacet?.id; facts.eraName = eraFacet?.name
         return facts
     }
