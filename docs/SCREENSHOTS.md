@@ -12,7 +12,7 @@
 
 ## Mac
 
-From the opening screen, through every way to connect and the first-run setup, to Home, Live TV, Movies, Series, the TV Guide, Podcasts and Music.
+From the opening screen and the first-run setup, through Home, Live TV, Movies, Series, the TV Guide and Podcasts, to Music.
 
 <p align="center"><img src="screenshots/mac-slideshow.gif" alt="StreamSetu on Mac, from the opening screen to Home, Live TV, Movies, Series, Podcasts and Music" width="100%"></p>
 
@@ -21,95 +21,59 @@ From the opening screen, through every way to connect and the first-run setup, t
 <table>
   <tr>
     <td width="50%" valign="top" align="center"><img src="screenshots/mac-00-start.png" alt="StreamSetu on Mac: The opening screen: choose how to connect" width="100%"><br><sub><b>1</b> &nbsp;The opening screen: choose how to connect</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-01-playlist-link.png" alt="StreamSetu on Mac: Playlist link" width="100%"><br><sub><b>2</b> &nbsp;Playlist link</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-setup-music.png" alt="StreamSetu on Mac: Get set up, step 1: Music" width="100%"><br><sub><b>2</b> &nbsp;Get set up, step 1: Music</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-02-xtream.png" alt="StreamSetu on Mac: Xtream Codes" width="100%"><br><sub><b>3</b> &nbsp;Xtream Codes</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-03-media-server.png" alt="StreamSetu on Mac: Media server" width="100%"><br><sub><b>4</b> &nbsp;Media server</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-setup-podcasts.png" alt="StreamSetu on Mac: Get set up, step 2: Podcasts" width="100%"><br><sub><b>3</b> &nbsp;Get set up, step 2: Podcasts</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-setup-services.png" alt="StreamSetu on Mac: Get set up, step 3: streaming services" width="100%"><br><sub><b>4</b> &nbsp;Get set up, step 3: streaming services</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-04-tv-tuner.png" alt="StreamSetu on Mac: TV tuner or receiver" width="100%"><br><sub><b>5</b> &nbsp;TV tuner or receiver</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-05-playlist-file.png" alt="StreamSetu on Mac: Playlist file" width="100%"><br><sub><b>6</b> &nbsp;Playlist file</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-setup.png" alt="StreamSetu on Mac: Music: first-time setup and what is shared" width="100%"><br><sub><b>5</b> &nbsp;Music: first-time setup and what is shared</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-home.png" alt="StreamSetu on Mac: Home" width="100%"><br><sub><b>6</b> &nbsp;Home</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-06-portal.png" alt="StreamSetu on Mac: Stalker portal" width="100%"><br><sub><b>7</b> &nbsp;Stalker portal</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-07-single-stream.png" alt="StreamSetu on Mac: Single stream" width="100%"><br><sub><b>8</b> &nbsp;Single stream</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-live.png" alt="StreamSetu on Mac: Live TV" width="100%"><br><sub><b>7</b> &nbsp;Live TV</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-movies-featured.png" alt="StreamSetu on Mac: Movies: featured" width="100%"><br><sub><b>8</b> &nbsp;Movies: featured</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-setup-music.png" alt="StreamSetu on Mac: Get set up, step 1: Music" width="100%"><br><sub><b>9</b> &nbsp;Get set up, step 1: Music</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-setup-podcasts.png" alt="StreamSetu on Mac: Get set up, step 2: Podcasts" width="100%"><br><sub><b>10</b> &nbsp;Get set up, step 2: Podcasts</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-title.png" alt="StreamSetu on Mac: Title page: details, versions and cast" width="100%"><br><sub><b>9</b> &nbsp;Title page: details, versions and cast</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-person.png" alt="StreamSetu on Mac: Person page" width="100%"><br><sub><b>10</b> &nbsp;Person page</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-setup-services.png" alt="StreamSetu on Mac: Get set up, step 3: streaming services" width="100%"><br><sub><b>11</b> &nbsp;Get set up, step 3: streaming services</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-setup.png" alt="StreamSetu on Mac: Music: first-time setup and what is shared" width="100%"><br><sub><b>12</b> &nbsp;Music: first-time setup and what is shared</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-series.png" alt="StreamSetu on Mac: Series" width="100%"><br><sub><b>11</b> &nbsp;Series</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-series-title.png" alt="StreamSetu on Mac: Series page: versions, seasons and episodes" width="100%"><br><sub><b>12</b> &nbsp;Series page: versions, seasons and episodes</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-home.png" alt="StreamSetu on Mac: Home" width="100%"><br><sub><b>13</b> &nbsp;Home</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-services-panel.png" alt="StreamSetu on Mac: Home with the Services panel open" width="100%"><br><sub><b>14</b> &nbsp;Home with the Services panel open</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-series-episodes.png" alt="StreamSetu on Mac: Series page: episodes, cast and more like this" width="100%"><br><sub><b>13</b> &nbsp;Series page: episodes, cast and more like this</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-series-start.png" alt="StreamSetu on Mac: Series page: play from the first episode" width="100%"><br><sub><b>14</b> &nbsp;Series page: play from the first episode</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-service.png" alt="StreamSetu on Mac: A streaming service inside the app" width="100%"><br><sub><b>15</b> &nbsp;A streaming service inside the app</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-live.png" alt="StreamSetu on Mac: Live TV" width="100%"><br><sub><b>16</b> &nbsp;Live TV</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-guide.png" alt="StreamSetu on Mac: TV Guide" width="100%"><br><sub><b>15</b> &nbsp;TV Guide</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-channel-manager.png" alt="StreamSetu on Mac: Channel manager" width="100%"><br><sub><b>16</b> &nbsp;Channel manager</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-live-menu.png" alt="StreamSetu on Mac: Live TV: channel menu" width="100%"><br><sub><b>17</b> &nbsp;Live TV: channel menu</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-movies.png" alt="StreamSetu on Mac: Movies" width="100%"><br><sub><b>18</b> &nbsp;Movies</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-podcasts.png" alt="StreamSetu on Mac: Podcasts" width="100%"><br><sub><b>17</b> &nbsp;Podcasts</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-podcast-show.png" alt="StreamSetu on Mac: A podcast and its episodes" width="100%"><br><sub><b>18</b> &nbsp;A podcast and its episodes</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-movies-featured.png" alt="StreamSetu on Mac: Movies: featured" width="100%"><br><sub><b>19</b> &nbsp;Movies: featured</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-all-movies.png" alt="StreamSetu on Mac: All Movies" width="100%"><br><sub><b>20</b> &nbsp;All Movies</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-listen-now.png" alt="StreamSetu on Mac: Music: Listen Now, with synced lyrics beside it" width="100%"><br><sub><b>19</b> &nbsp;Music: Listen Now, with synced lyrics beside it</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-explore.png" alt="StreamSetu on Mac: Music: Explore" width="100%"><br><sub><b>20</b> &nbsp;Music: Explore</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-movies-menu.png" alt="StreamSetu on Mac: Movies: title menu" width="100%"><br><sub><b>21</b> &nbsp;Movies: title menu</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-folder-menu.png" alt="StreamSetu on Mac: Movies: folder menu" width="100%"><br><sub><b>22</b> &nbsp;Movies: folder menu</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-new.png" alt="StreamSetu on Mac: Music: Recently Added, with lyrics over the page" width="100%"><br><sub><b>21</b> &nbsp;Music: Recently Added, with lyrics over the page</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-search.png" alt="StreamSetu on Mac: Music: Search, with the queue open" width="100%"><br><sub><b>22</b> &nbsp;Music: Search, with the queue open</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-title.png" alt="StreamSetu on Mac: Title page: details, versions and cast" width="100%"><br><sub><b>23</b> &nbsp;Title page: details, versions and cast</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-title-more.png" alt="StreamSetu on Mac: Title page: episodes, cast and more like this" width="100%"><br><sub><b>24</b> &nbsp;Title page: episodes, cast and more like this</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-recent.png" alt="StreamSetu on Mac: Music: Recently played, with the artist panel" width="100%"><br><sub><b>23</b> &nbsp;Music: Recently played, with the artist panel</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-radio.png" alt="StreamSetu on Mac: Music: Radio" width="100%"><br><sub><b>24</b> &nbsp;Music: Radio</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-title-versions.png" alt="StreamSetu on Mac: Title page: versions" width="100%"><br><sub><b>25</b> &nbsp;Title page: versions</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-search.png" alt="StreamSetu on Mac: Search" width="100%"><br><sub><b>26</b> &nbsp;Search</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-album.png" alt="StreamSetu on Mac: Music: album page with credits" width="100%"><br><sub><b>25</b> &nbsp;Music: album page with credits</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-film.png" alt="StreamSetu on Mac: Music: a film page with its cast" width="100%"><br><sub><b>26</b> &nbsp;Music: a film page with its cast</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-person.png" alt="StreamSetu on Mac: Person page" width="100%"><br><sub><b>27</b> &nbsp;Person page</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-series.png" alt="StreamSetu on Mac: Series" width="100%"><br><sub><b>28</b> &nbsp;Series</sub></td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-series-title.png" alt="StreamSetu on Mac: Series page: versions, seasons and episodes" width="100%"><br><sub><b>29</b> &nbsp;Series page: versions, seasons and episodes</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-series-episodes.png" alt="StreamSetu on Mac: Series page: episodes, cast and more like this" width="100%"><br><sub><b>30</b> &nbsp;Series page: episodes, cast and more like this</sub></td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-series-start.png" alt="StreamSetu on Mac: Series page: play from the first episode" width="100%"><br><sub><b>31</b> &nbsp;Series page: play from the first episode</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-guide.png" alt="StreamSetu on Mac: TV Guide" width="100%"><br><sub><b>32</b> &nbsp;TV Guide</sub></td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-channel-manager.png" alt="StreamSetu on Mac: Channel manager" width="100%"><br><sub><b>33</b> &nbsp;Channel manager</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-podcasts.png" alt="StreamSetu on Mac: Podcasts" width="100%"><br><sub><b>34</b> &nbsp;Podcasts</sub></td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-podcast-show.png" alt="StreamSetu on Mac: A podcast and its episodes" width="100%"><br><sub><b>35</b> &nbsp;A podcast and its episodes</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-explore.png" alt="StreamSetu on Mac: Music: Explore" width="100%"><br><sub><b>36</b> &nbsp;Music: Explore</sub></td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-listen-now.png" alt="StreamSetu on Mac: Music: Listen Now, with synced lyrics beside it" width="100%"><br><sub><b>37</b> &nbsp;Music: Listen Now, with synced lyrics beside it</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-new.png" alt="StreamSetu on Mac: Music: Recently Added, with lyrics over the page" width="100%"><br><sub><b>38</b> &nbsp;Music: Recently Added, with lyrics over the page</sub></td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-search.png" alt="StreamSetu on Mac: Music: Search, with the queue open" width="100%"><br><sub><b>39</b> &nbsp;Music: Search, with the queue open</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-recent.png" alt="StreamSetu on Mac: Music: Recently played, with the artist panel" width="100%"><br><sub><b>40</b> &nbsp;Music: Recently played, with the artist panel</sub></td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-translate.png" alt="StreamSetu on Mac: Music: translated lyrics (language download)" width="100%"><br><sub><b>41</b> &nbsp;Music: translated lyrics (language download)</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-album.png" alt="StreamSetu on Mac: Music: album page with credits" width="100%"><br><sub><b>42</b> &nbsp;Music: album page with credits</sub></td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-lyrics.png" alt="StreamSetu on Mac: Music: the full-screen player with lyrics" width="100%"><br><sub><b>43</b> &nbsp;Music: the full-screen player with lyrics</sub></td>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-film.png" alt="StreamSetu on Mac: Music: a film page with its cast" width="100%"><br><sub><b>44</b> &nbsp;Music: a film page with its cast</sub></td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-radio.png" alt="StreamSetu on Mac: Music: Radio" width="100%"><br><sub><b>45</b> &nbsp;Music: Radio</sub></td>
-    <td width="50%"></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-lyrics.png" alt="StreamSetu on Mac: Music: the full-screen player with lyrics" width="100%"><br><sub><b>27</b> &nbsp;Music: the full-screen player with lyrics</sub></td>
+    <td width="50%" valign="top" align="center"><img src="screenshots/mac-music-translate.png" alt="StreamSetu on Mac: Music: translated lyrics (language download)" width="100%"><br><sub><b>28</b> &nbsp;Music: translated lyrics (language download)</sub></td>
   </tr>
 </table>
 
