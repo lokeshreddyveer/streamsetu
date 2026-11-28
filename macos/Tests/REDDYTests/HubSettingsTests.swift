@@ -7,7 +7,13 @@ import Foundation
 
     /// Provider names may be spoken only in Settings, About and the credits (and the TheTVDB footer). Files below still hold older wording that belongs to other work in progress
     /// (the matcher's error texts, the assistant's knowledge and the Atlas declarations, the title page); that list must only shrink.
-    static let allowed: [String] = ["Features/Settings/", "Services/Hub/", "Features/Shared/Views/TMDBAttribution.swift", "Features/Shared/Views/ServiceCredits.swift", "Services/ArtworkSettingsModel.swift", "Services/LegalText.swift", "Services/PrivacyReport.swift"]
+    static let allowed: [String] = ["Features/Settings/", "Services/Hub/", "Features/Shared/Views/TMDBAttribution.swift", "Features/Shared/Views/ServiceCredits.swift", "Services/ArtworkSettingsModel.swift", "Services/LegalText.swift", "Services/PrivacyReport.swift",
+                                  // Music's metadata layer: source ids, hosts and the attribution each licence asks for (shown only on the credits and Metadata sources surfaces), and the film credit line.
+                                  "Services/Music/Graph/Metadata/", "Services/Music/Film/MusicFilmInfo.swift",
+                                  // Picture sources: the credit each licence asks for next to a picture, and the Music Settings line that names where pictures come from.
+                                  "Services/Music/Artwork/Entity/MusicArtworkProviderSources.swift", "Features/Music/Settings/MusicMetadataSettingsSection.swift",
+                                  // The connected pages: the credit the TMDB licence asks for next to film data, bios and portraits that came from TMDB, and the source names shown under credits.
+                                  "Features/Music/Graph/Film/MusicFilmWording.swift", "Features/Music/Graph/Album/MusicSoundtrackRanking.swift", "Services/Music/Graph/Person/MusicPersonHeaderModel.swift", "Services/Music/Graph/Credits/MusicSongCredits.swift"]
     static let pending: [String] = ["Atlas/", "Services/MetadataMatchService.swift", "Services/ArtworkAutoMatcher.swift", "Services/AssistantKnowledge.swift", "Services/AssistantToolbox.swift", "Services/AskLibrary.swift", "Services/AskBrain.swift"]
 
     @Test func providerNamesAppearOnlyInSettingsAboutAndCredits() throws {

@@ -26,6 +26,9 @@ enum Normalise {
         "and", "or", "for", "with", "when", "why", "if", "this", "that", "there", "you", "your", "be", "we", "our", "at", "from", "by", "as", "please", "want", "need", "like", "tell",
         "show", "find", "get", "go", "turn", "set", "change", "make", "enable", "disable", "use", "see", "hey", "setu", "not", "so", "up", "then", "i", "some", "any", "about", "all",
         "which", "who", "has", "have", "was", "were", "just", "also", "into", "out", "way", "thing", "things", "option", "setting", "settings", "happens", "happen",
+        // Hinglish and Telugu question and filler words: they carry the intent (see IntentDetector), not the topic.
+        "kaise", "kese", "kaisay", "kaisey", "kahan", "kahaan", "kidhar", "kyun", "kyu", "kyon", "kya", "hai", "hain", "ho", "raha", "rahi", "rahe", "nahi", "nahin", "karna", "karu", "karun", "kare", "karein", "karo",
+        "ela", "ekkada", "enduku", "endhuku", "cheyali", "cheyyali", "cheyyandi", "ledu", "enti", "idi", "naku", "naa", "ka", "ki", "ke", "ko", "se", "mein", "par", "mera", "meri", "mere", "dekhe", "dekhna", "dekhu", "batao", "bataiye", "kavali",
     ]
 
     /// Light suffix stripper. Applied to indexed text and queries alike, so it only has to be consistent.

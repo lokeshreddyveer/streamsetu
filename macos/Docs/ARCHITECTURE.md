@@ -32,6 +32,14 @@ External       M3U playlists · Xtream-compatible APIs · XMLTV · user-authoriz
 6. **Playback state lives outside views.** `PlaybackCoordinator` owns the engines; channel switching swaps the
    item inside one long-lived `AVPlayer`, so no view or window is rebuilt.
 
+## The opening
+
+`Features/Opening/`. One process-owned `OpeningCoordinator` keeps the clock, the launch variant (first install, short cut, Reduce Motion), the app-ready hand-off and the
+exactly-once reveal; `TimelineView` only draws. The shared timeline and `motion/specification/opening-motion.json` drive the iOS, Android and Windows openings and the
+Mac's variant lengths. On the Mac the story itself is `OpeningMacStory` (a pure function of time: icon positions, focus, convergence, spin, symbol, wordmark reveal) drawn by
+`OpeningMacRenderer` in one `Canvas` on pure black. It reuses the app's own navigation icons (`OpeningIcons`, rendered once before the first frame) and the header's
+`EclipseGeometry` symbol, and reads the saved theme once per run (`OpeningTheme`, for the accent), so no frame mixes two themes. Reduce Motion is the finished lockup, still.
+
 ## Concurrency
 
 Swift 6 language mode with strict concurrency. Services that hold state are actors (`CatalogSyncService`,

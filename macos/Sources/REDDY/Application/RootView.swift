@@ -93,6 +93,7 @@ struct MainShell: View {
     let services: ServiceNavigation
     let hosts: ServiceHostRegistry
     private let podcasts = PodcastsHub.shared
+    private let music = MusicHub.shared
     @State private var servicePrefs = ServicePreferences.load()
     @State private var tabModes = TopBarTabModes.load()
     @State private var switchingProfile = false
@@ -100,15 +101,18 @@ struct MainShell: View {
     @State private var program: EPGProgram?
     @State private var nextProgram: EPGProgram?
     @State private var folderQuery = ""
+    /// A folder whose Unlock was asked while restricted content was locked: unlocked when the PIN is accepted, so the person need not ask again.
+    @State private var pendingUnlockFolder: String?
     /// A playlist the person asked to remove from the playlist menu; the same confirmation as in the playlist manager.
     @State private var removing: PlaylistSource?
     @State private var width: CGFloat = 1440
     @State private var search: GlobalSearchModel
     @State private var dropTargeted = false
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(router: AppRouter, keys: PlayerKeyMonitor, container: AppContainer, state: AppState, services: ServiceNavigation = ServiceNavigation(), hosts: ServiceHostRegistry = ServiceHostRegistry()) {
+    init(router: AppRouter, keys: PlayerKeyMonitor, container: AppContainer, state: AppState, services: ServiceNavigation = ServiceNavigation(), hosts: ServiceHostRegistry = ServiceHostRegistry(ownership: .shared)) {
         self.router = router; self.keys = keys; self.container = container; self.state = state; self.services = services; self.hosts = hosts
         _search = State(initialValue: GlobalSearchModel(service: container.globalSearch))
     }
@@ -146,10 +150,12 @@ struct MainShell: View {
                     if services.navExpanded, podcasts.player.current != nil, playback.current == nil { PodcastPlayerBar(hub: podcasts) }          // a podcast: its own audio bar
                 }
                 .animation(reduceMotion ? nil : AnimationTokens.standard, value: surface)
+                .overlayPreferenceValue(PlaylistMenuBoundsKey.self) { menu in playlistClickAway(menu) }
                 overlays
             }
             if !state.needsOnboarding && services.navExpanded {          // the Setu button would sit over the service's own controls
-                AssistantBubble(container: container, bottomInset: max(20, PlayerSurfaceModel.reservedBottom(surface, isLive: playback.isLive) + podcastBarInset(playback)),
+                AssistantBubble(container: container, bottomInset: max(20, PlayerSurfaceModel.reservedBottom(surface, isLive: playback.isLive) + podcastBarInset(playback) + musicBarInset(playback)),
+                                trailingInset: musicPanelInset,
                                 open: { PlayActions.open($0, router: router) },
                                 look: { (screen: assistantScreenName, item: router.movie.map { .movie($0) } ?? router.series.map { .series($0) }, search: router.searchQuery) },
                                 perform: { p in
@@ -181,11 +187,33 @@ struct MainShell: View {
         .reddyTheme(container.settings)
         .loggingNotice()
         .onChange(of: router.tab) { _, _ in folderQuery = "" }
-        .background(ServiceGuards(services: services, hosts: hosts, router: router, playback: playback, lock: container.appLock, podcast: podcasts.player))
-        .onAppear { podcasts.attach(container: container, pauseServices: { hosts.pauseAll() }) }
+        // a folder that was hidden or emptied must not stay selected: the list would show nothing
+        .background(StaleFolderGuard(state: state, router: router))
+        .background(PendingFolderUnlock(parental: container.parental, pending: $pendingUnlockFolder))
+        .background(ServiceWebParkingAnchor().frame(width: 1, height: 1))
+        .overlay { FirstRunSetupHost(services: services, state: state, blocked: { container.parental.kidsMode || container.appLock.isLocked }) }
+        .background(ServiceGuards(services: services, hosts: hosts, router: router, playback: playback, lock: container.appLock, podcast: podcasts.player, music: music, profileID: container.profiles.activeID))
+        .onAppear {
+            PodcastGlobalSearch.install(service: container.podcasts, allowed: { services.podcastsAllowed })
+            MusicAssistantRegistry.handler = MusicAssistantBridge(hub: music, showMusic: { services.selectMusic() })
+            podcasts.attach(container: container, ownership: hosts.ownership)
+            music.attach(ownership: hosts.ownership, allowed: services.musicAllowed)
+            // The native video player is one participant of the audio coordinator (Podcasts and every service register themselves). It claims before it starts
+            // (`PlaybackCoordinator.claimAudio`); another source taking the audio pauses it, or stops it for Podcasts as before.
+            hosts.ownership.register(ClosureAudioParticipant(.nativePlayer,
+                isPlaying: { playback.state == .playing || playback.state == .buffering },
+                pause: { if playback.isActive { playback.pause() } },
+                yieldAudio: { claimant in
+                    switch claimant {
+                    case .podcasts, .music: if playback.current != nil { playback.stop() }
+                    default: if playback.isActive { playback.pause() }
+                    }
+                }))
+        }
         .onChange(of: AtlasNavRequests.shared.window) { _, id in if let id { openWindow(id: id); AtlasNavRequests.shared.window = nil } }          // Setu opening a window
         .onChange(of: container.settings.hideEmptyFolders) { _, _ in state.reloadFolders() }
-        .onChange(of: router.selection) { _, _ in router.clearSearch(); search.clear() }
+        // Navigation ends a search in the router itself; the results model is emptied when the search ends.
+        .onChange(of: router.isSearching) { _, searching in if !searching { search.clear() } }
         .onChange(of: state.activeSourceID) { _, new in container.screens.removeAll { $0.source != new }; container.filterOptionsStore.invalidate(); folderQuery = ""; router.closeDetail(); router.clearSearch(); search.clear(); pruneFolderSelections() }
         .modifier(PlaylistScopeEffects(state: state, router: router, removing: $removing))
         .onOpenURL { handleOpen($0) }
@@ -200,6 +228,8 @@ struct MainShell: View {
         .onChange(of: container.settings.rememberFolders) { _, on in router.rememberFolders = on }
         .onAppear {
             ShowMeController.shared.opener = { id in AtlasOpener.open(id, container: container, router: router, state: state).isDone }
+            let settings = openSettings
+            AtlasNavRequests.shared.settingsOpener = { NSApp.activate(); settings() }
             router.rememberFolders = container.settings.rememberFolders
             if router.isSearching { search.term = router.searchQuery; search.schedule() }
         }
@@ -221,6 +251,17 @@ struct MainShell: View {
         services.navExpanded && podcasts.player.current != nil && playback.current == nil ? PodcastPlayerBar.height : 0
     }
 
+    /// Room Music's player bar takes at the bottom, so the assistant button sits above its volume slider and icons.
+    private func musicBarInset(_ playback: PlaybackCoordinator) -> CGFloat {
+        // What the bar takes now: the full bar, the thin line, or the small "Show player" pill, as the Music shell reports it.
+        services.navExpanded && services.active == .music && music.player.current != nil && playback.current == nil ? MusicChromeState.shared.barInset + 8 : 0
+    }
+
+    /// Room the Music side panel takes at the right, so the Setu button sits beside it and not over its lyrics, rows and volume.
+    private var musicPanelInset: CGFloat {
+        services.navExpanded && services.active == .music && music.player.current != nil ? MusicChromeState.shared.panelOccupiedWidth : 0
+    }
+
     /// The native screen, or the service that replaced it (the destination state decides; nothing else).
     @ViewBuilder private var mainContent: some View {
         Group {
@@ -230,6 +271,8 @@ struct MainShell: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if services.active == .podcasts, services.podcastsAllowed {
                 PodcastsMainView().frame(maxWidth: .infinity, maxHeight: .infinity).transition(.opacity)
+            } else if services.active == .music, services.musicAllowed {
+                MusicMainView().frame(maxWidth: .infinity, maxHeight: .infinity).transition(.opacity)
             } else if let id = services.activeService {
                 // One host view for every embedded service; a disabled one shows the native unavailable screen. Both were checked by the same capability gate in `select`.
                 if let model = hosts.model(for: id) {
@@ -265,6 +308,7 @@ struct MainShell: View {
         if container.appLock.isLocked { return false }
         var handled = false
         for provider in providers {
+            if SidebarFolderDrag.isFolder(provider) { continue }          // a sidebar folder being moved is not a playlist
             if provider.canLoadObject(ofClass: URL.self) {
                 handled = true
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
@@ -301,6 +345,7 @@ struct MainShell: View {
             if let p = PendingAdd.fromFile(url) { present(p) } else { state.toasts.show("StreamSetu can't open that kind of file.", symbol: "exclamationmark.triangle", kind: .warning) }
             return
         }
+        if MusicAutomation.handle(url) { return }
         guard let link = DeepLink.parse(url) else { state.toasts.show("That link isn't one StreamSetu understands.", symbol: "link.badge.plus", kind: .warning); return }
         let playback = container.playback
         switch link {
@@ -322,6 +367,7 @@ struct MainShell: View {
         case .playMovie(let title): playMovie(titled: title)
         case .findSeries(let title): router.navigate(.series); router.searchQuery = title; search.term = title; search.schedule()
         case .atlas(let id): _ = AtlasOpener.open(id, container: container, router: router, state: state)
+        case .music(let target): if services.selectMusic() { Task { await music.openLink(target) } }
         }
     }
 
@@ -362,19 +408,20 @@ struct MainShell: View {
     private var sidebar: some View {
         let tab = router.tab
         let vs = SidebarViewState(
-            title: tab == .guide ? "TV Guide" : tab.title,
+            title: tab.title,
             pinned: SidebarModel.pinned(for: tab),
             folders: state.folderEntries(for: tab),
             selection: router.selection,
             collapsed: router.sidebarCollapsed,
             playlistName: state.libraryName,
-            playlists: (state.canCombinePlaylists ? [PlaylistEntry(id: AppState.allPlaylistsID, name: "All Playlists")] : []) + state.sources.filter(\.enabled).map { PlaylistEntry(id: $0.id, name: $0.name) },
+            playlists: (state.canCombinePlaylists ? [PlaylistEntry(id: AppState.allPlaylistsID, name: Localized.string("All Playlists"))] : []) + state.sources.filter(\.enabled).map { PlaylistEntry(id: $0.id, name: $0.name) },
             activePlaylistID: state.showsAllPlaylists ? AppState.allPlaylistsID : state.activeSourceID,
             playlistMenuOpen: router.playlistMenuOpen,
-            folderSectionTitle: tab == .home ? "Folders" : tab == .liveTV || tab == .guide ? "Groups" : "Folders")
+            folderSectionTitle: tab == .liveTV || tab == .guide ? "Groups" : "Folders",
+            revealToken: router.folderReveal)
         return ReddySidebar(state: vs, folderQuery: $folderQuery,
                             onSelect: { router.select($0) },
-                            onToggleCollapse: { withAnimation(.smooth(duration: 0.28)) { router.sidebarCollapsed.toggle() } },
+                            onToggleCollapse: { router.closeMenus(); withAnimation(.smooth(duration: 0.28)) { router.sidebarCollapsed.toggle() } },
                             onTogglePlaylistMenu: { router.accountMenuOpen = false; router.playlistMenuOpen.toggle() },
                             onSwitchPlaylist: { router.playlistMenuOpen = false; if $0 == AppState.allPlaylistsID { state.switchToAllPlaylists() } else { state.switchPlaylist($0) } },
                             onAddPlaylist: { router.playlistMenuOpen = false; router.modal = .addPlaylist },
@@ -382,10 +429,11 @@ struct MainShell: View {
                             onReorder: { state.reorderFolders(tab: tab, entryIDs: $0) },
                             onHideFolder: { state.hideFolder($0) },
                             lockedFolderIDs: container.parental.lockedCategoryIDs,
-                            parentalAvailable: container.parental.hasPIN,
-                            parentalUnlocked: container.parental.isUnlocked,
+                            parentalAvailable: container.parental.canChangeFolderLocks,
                             onLockFolder: { id, locked in
-                                if locked || container.parental.isUnlocked { container.parental.setFolder(id, locked: locked) } else { router.modal = .unlockRestricted }
+                                router.closeMenus()
+                                if locked || container.parental.isUnlocked { container.parental.setFolder(id, locked: locked) }
+                                else { pendingUnlockFolder = id; router.modal = .unlockRestricted }   // the unlock is done once the PIN has been accepted
                             })
             .zIndex(2)
     }
@@ -399,17 +447,15 @@ struct MainShell: View {
 
     @ViewBuilder private var overlays: some View {
         @Bindable var router = router
-        if router.accountMenuOpen || router.playlistMenuOpen {
+        if router.accountMenuOpen {
             Color.clear.contentShape(Rectangle()).onTapGesture { router.closeMenus() }
-                .padding(.top, router.accountMenuOpen ? 0 : LayoutTokens.headerHeight)
-                .padding(.leading, router.playlistMenuOpen ? LayoutTokens.sidebarWidth : 0)
                 .zIndex(2)
         }
         if router.accountMenuOpen {
             VStack { HStack { Spacer(); ReddyAccountMenu(name: state.libraryName ?? "StreamSetu",
                                                          onChannelManager: { router.closeMenus(); router.modal = .channelManager },
                                                          onAbout: { router.closeMenus(); router.modal = .about },
-                                                         restricted: container.parental.hasPIN ? (container.parental.isUnlocked ? .unlocked : .locked) : nil,
+                                                         restricted: container.parental.canChangeFolderLocks ? (container.parental.isUnlocked ? .unlocked : .locked) : nil,
                                                          onRestricted: { router.closeMenus(); if container.parental.isUnlocked { container.parental.lockNow() } else { router.modal = .unlockRestricted } },
                                                          profiles: container.profiles.profiles, activeProfileID: container.profiles.activeID, canAddProfile: container.profiles.canAdd,
                                                          onPickProfile: { p in
@@ -430,6 +476,17 @@ struct MainShell: View {
                 .zIndex(8).transition(.opacity.combined(with: .scale(scale: 0.98)))
         }
         if PlayerSurfaceModel.showsExpanded(container.playback.primarySurface) { scrim { container.playback.isExpanded = false }; expandedPlayer.zIndex(8) }
+    }
+
+    /// While the playlist menu is open, a click anywhere beside the sidebar and below the top bar closes it; the menu itself is left alone.
+    @ViewBuilder private func playlistClickAway(_ menu: Anchor<CGRect>?) -> some View {
+        if router.playlistMenuOpen {
+            GeometryReader { g in
+                Color.clear
+                    .contentShape(PlaylistClickAwayShape(top: LayoutTokens.headerHeight, leading: ReddySidebar.sidebarWidth(collapsed: router.sidebarCollapsed), menu: menu.map { g[$0] }), eoFill: true)
+                    .onTapGesture { router.closeMenus() }
+            }
+        }
     }
 
     private func scrim(_ close: @escaping () -> Void) -> some View {
@@ -518,25 +575,29 @@ struct MainShell: View {
             },
             tabModes: tabModes,
             setTabMode: { tab, mode in var m = tabModes; m.set(mode, for: tab); tabModes = m; m.save() },
-            podcastsAvailable: services.podcastsAllowed)
+            podcastsAvailable: services.podcastsAllowed,
+            musicAvailable: services.musicAllowed,
+            playing: hosts.backgroundPlayingIDs)
     }
 
     private var topBar: some View {
         @Bindable var router = router
         return ReddyTopBar(state: TopBarState(tab: router.tab, initials: initials, accountMenuOpen: router.accountMenuOpen, width: width,
                                                destination: services.active, services: [], servicesDisabled: services.isBlocked,
-                                               showsServicesMenu: true, servicesNav: servicesNav),
+                                               showsServicesMenu: true, servicesNav: servicesNav, appReduceMotion: container.settings.reduceMotion, askEnabled: !container.parental.kidsMode),
             query: Binding(get: { router.searchQuery }, set: { setQuery($0) }),
             focusToken: router.topSearchFocus,
             titleOpen: router.movie != nil || router.series != nil,
             onSubmit: { submitSearch() },
+            onSubmitMode: { submitSearch($0) },
             onResultsFocus: { router.searchResultsFocus += 1 },
             onAsk: { askSetu($0) },
             onSelectTab: { router.navigate($0) },
             onToggleAccount: { router.playlistMenuOpen = false; router.accountMenuOpen.toggle() },
             onSelectService: { servicesNav.select($0) },
             onSelectStreamSetu: { services.returnToStreamSetu() },
-            onSelectPodcasts: { if services.selectPodcasts() { router.closeMenus() } })
+            onSelectPodcasts: { if services.selectPodcasts() { router.closeMenus() } },
+            onSelectMusic: { if services.selectMusic() { router.closeMenus() } })
     }
 
     private var searchResultsPage: some View {
@@ -545,15 +606,23 @@ struct MainShell: View {
             .atlasScreen("screen.searchResults")
     }
 
-    /// Return in the top search: a question goes to Setu; otherwise the best library result; with no library result, the best screen or setting; with nothing at all, Setu.
-    private func submitSearch() {
+    /// Return in the top search. A row the person highlighted always opens (a song called "How Deep Is Your Love" is never swallowed). With no row highlighted, `SearchIntent` picks the default: a question or
+    /// request goes to Setu; anything else opens the best library result, then the best screen or setting, then (not in a kids profile) Setu. Shift+Return forces Setu, Option+Return forces a plain search.
+    private func submitSearch(_ mode: SearchIntent.ReturnMode = .automatic) {
         let q = router.searchQuery.trimmingCharacters(in: .whitespaces)
         let kids = container.parental.kidsMode
-        if !kids, AtlasPaletteSource.isQuestion(q) { askSetu(q); return }
+        let action = SearchIntent.returnAction(query: q, mode: mode, hasHighlightedRow: search.userHighlighted && search.selected != nil)
+        SetuRouterLog.searchReturn(query: q, mode: String(describing: mode), action: String(describing: action), kids: kids)
+        switch action {
+        case .nothing: return
+        case .openHighlighted: if let r = search.selected { activate(r) }; return
+        case .ask: if !kids { askSetu(q); return }
+        case .search: break
+        }
         if let r = search.selected ?? search.visible.first { activate(r); return }
         guard search.searched, !q.isEmpty else { return }
         if let row = AtlasPaletteSource.rows(for: q, engine: Atlas.engine, platform: .mac, appStore: AtlasAssistant.appStore, limit: 1).first { row.canOpen ? openAtlas(row.id) : showAtlas(row.id); return }
-        if !kids { askSetu(q) }
+        if !kids, mode != .forceSearch { askSetu(q) }
     }
 
     private func askSetu(_ q: String) {
@@ -621,9 +690,6 @@ struct MainShell: View {
     }
 }
 
-private extension View {
-}
-
 /// Where plain keys (Space, arrows, letters, Escape) go. Esc first closes a native layer that is open (popup, search, dialog, menu); every other plain key goes to the web page while a service shows, so typing, Space, arrows and the page's own full-screen exit work. Keys with Command are menu commands and are never seen here.
 enum ServiceKeyRouting {
     static func bypassesNativeKeys(serviceActive: Bool, popupPlayerUp: Bool) -> Bool { serviceActive && !popupPlayerUp }
@@ -636,10 +702,33 @@ enum ServiceKeyRouting {
         router.closeDetail(); router.modal = nil; router.closeMenus()
         collapsePlayer(); pausePlayer()
     }
-    /// The app's own player started: the service's sound stops.
-    static func playerStarted(pauseServiceMedia: () -> Void) { pauseServiceMedia() }
-    /// A Kids profile or the lock came on, or the person began a search: back to StreamSetu (which also stops the service's media).
+    // Changed: `playerStarted` is gone. The native player claims the audio itself, before it starts (`PlaybackCoordinator.claimAudio`); no view polls for it.
+    /// A Kids profile, the lock or a block came on: back to StreamSetu and the service's media stops.
     static func leave(services: ServiceNavigation, pauseServiceMedia: () -> Void) { services.returnToStreamSetu(); pauseServiceMedia() }
+    /// The person began a search: back to StreamSetu's results. A playing service is not stopped by that (media stops only when something else starts).
+    static func searchStarted(services: ServiceNavigation) { services.returnToStreamSetu() }
+}
+
+/// Finishes an Unlock Folder that waited for the PIN: when restricted content becomes unlocked the folder is unlocked, once. Cancelling the PIN drops the request.
+private struct PendingFolderUnlock: View {
+    let parental: ParentalControls
+    @Binding var pending: String?
+    var body: some View {
+        Color.clear.onChange(of: parental.isUnlocked) { _, unlocked in
+            guard let id = pending else { return }
+            pending = nil
+            if unlocked { parental.setFolder(id, locked: false) }
+        }
+    }
+}
+
+/// A folder that was hidden or emptied must not stay selected.
+private struct StaleFolderGuard: View {
+    let state: AppState
+    let router: AppRouter
+    var body: some View {
+        Color.clear.onChange(of: state.folders) { _, f in router.resetStaleFolderSelections(folders: f) }
+    }
 }
 
 /// Keeps an outside service from running where it should not.
@@ -650,19 +739,25 @@ private struct ServiceGuards: View {
     let playback: PlaybackCoordinator
     let lock: AppLock
     let podcast: PodcastPlayer
+    let music: MusicHub
+    var profileID: String? = nil
     var body: some View {
         Color.clear
-            .onChange(of: playback.isActive) { _, active in if active { ServiceGuardActions.playerStarted(pauseServiceMedia: { hosts.pauseAll() }); podcast.otherMediaStarted() } }
-            .onChange(of: services.activeService) { _, now in if now != nil { podcast.otherMediaStarted() } }
             .onChange(of: services.podcastsAllowed) { _, allowed in if !allowed { podcast.close() } }
             .onChange(of: lock.isLocked) { _, locked in if locked { podcast.close() } }
-            .onChange(of: playback.currentChannel?.id) { _, _ in if playback.isActive { ServiceGuardActions.playerStarted(pauseServiceMedia: { hosts.pauseAll() }) } }
-            .onChange(of: services.isBlocked) { _, blocked in if blocked { ServiceGuardActions.leave(services: services, pauseServiceMedia: { hosts.pauseAll() }) } }
-            .onChange(of: lock.isLocked) { _, locked in if locked { ServiceGuardActions.leave(services: services, pauseServiceMedia: { hosts.pauseAll() }) } }
+            .onChange(of: services.musicAllowed) { _, allowed in if allowed { music.resumeAfterGate() } else { music.shutDown() } }
+            .onChange(of: lock.isLocked) { _, locked in if locked { music.shutDown() } else if services.musicAllowed { music.resumeAfterGate() } }
+            .onChange(of: services.isBlocked) { _, blocked in if blocked { ServiceGuardActions.leave(services: services, pauseServiceMedia: { hosts.safetyStop(.blocked) }) } }
+            .onChange(of: profileID) { _, _ in hosts.safetyStop(.profileSwitched) }          // another profile never inherits a playing service
+            .onChange(of: lock.isLocked) { _, locked in if locked { ServiceGuardActions.leave(services: services, pauseServiceMedia: { hosts.safetyStop(.locked) }) } }
             // typing in the top search shows native results, so the app returns to StreamSetu first: the selected item and the content always agree
-            .onChange(of: router.isSearching) { _, searching in if searching, services.activeService != nil { ServiceGuardActions.leave(services: services, pauseServiceMedia: { hosts.pauseAll() }) } }
+            .onChange(of: router.isSearching) { _, searching in if searching, services.activeService != nil { ServiceGuardActions.searchStarted(services: services) } }
+            // Music and Podcasts are not "services", so every way in (top bar, ⌘7, ⌘8, a link, Setu) is caught here: nothing of the native screens stays open over them.
+            .onChange(of: services.active) { _, now in
+                if now == .music || now == .podcasts { router.closeDetail(); router.modal = nil; router.closeMenus() }
+            }
             .onChange(of: services.activeService) { _, now in
-                hosts.pauseAll(except: now)          // media stops on every switch and on returning to StreamSetu; nothing resumes by itself
+                // no pause on a switch: a service keeps playing in the background and stops only when something else starts. Only the native video player yields.
                 if now != nil { ServiceGuardActions.serviceEntered(router: router, collapsePlayer: { playback.isExpanded = false; playback.isFullscreen = false }, pausePlayer: { if playback.isActive { playback.pause() } }) }
             }
     }

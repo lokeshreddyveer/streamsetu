@@ -53,6 +53,7 @@ import AppKit
         for id: ProviderID in [.netflix, .primevideo, .hulu] {
             nav.select(id)
             #expect(await ServiceTestSupport.until { r.model(for: id)?.webView != nil })
+            await r.media.settleProbes()          // Changed: a service just hidden is held until its one probe returns (a page may be playing); the budget applies once that settles
             #expect(r.liveIDs.count <= 2, "after \(id)")
         }
         #expect(r.liveIDs == [.hulu, .primevideo], "the oldest hidden one was released")
@@ -63,20 +64,21 @@ import AppKit
         #expect(await ServiceTestSupport.until { r.model(for: .netflix)?.phase == .ready })
         #expect(r.model(for: .netflix)?.webView?.configuration.websiteDataStore === store)
         #expect(r.liveIDs.count <= 2 && r.liveIDs.contains(.netflix))
-        nav.returnToStreamSetu(); r.handleMemoryPressure(critical: true)
+        nav.returnToStreamSetu(); await r.media.settleProbes(); r.handleMemoryPressure(critical: true)          // Changed: the hide probe settles first
         #expect(r.liveIDs.isEmpty, "critical memory releases every hidden web view")
     }
 
     @Test func aHundredServiceSwitchesStayWithinBudgetAndLoadOnlyOnReturn() async throws {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         let server = try ServiceFixtureServer(); try await server.start(); defer { server.stop() }
         let r = Self.registry(server)
         let nav = ServiceNavigation(capabilities: .macOS); nav.hosts = r
         let order: [ProviderID] = [.netflix, .hulu, .youtube, .peacock, .appletv]
         var worst = 0
-        for i in 0..<100 { nav.select(order[i % order.count]); worst = max(worst, r.liveIDs.count) }
+        for i in 0..<100 { nav.select(order[i % order.count]); await r.media.settleProbes(); worst = max(worst, r.liveIDs.count) }          // Changed: count after each hide probe settles
         print("MEASURE 100 service switches: most live web views at once \(worst), models made \(r.createdIDs.count)")
         #expect(worst <= 2)
-        nav.returnToStreamSetu(); r.handleMemoryPressure(critical: true)
+        nav.returnToStreamSetu(); await r.media.settleProbes(); r.handleMemoryPressure(critical: true)
         #expect(r.liveIDs.isEmpty)
     }
 

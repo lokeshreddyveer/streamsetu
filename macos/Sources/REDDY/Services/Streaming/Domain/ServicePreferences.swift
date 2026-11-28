@@ -100,3 +100,18 @@ struct ServicePreferences: Equatable, Codable, Sendable {
         if recents.count > Self.maxRecents { recents.removeLast(recents.count - Self.maxRecents) }
     }
 }
+
+// MARK: - keep services playing in the background
+
+extension ServicePreferences {
+    /// "Keep services playing in the background". Stored beside the preferences (its own key, so the stored form of the pins is unchanged). Default ON.
+    /// On: a service keeps playing when another destination shows (as far as WebKit allows without a visible page; see the Settings caption).
+    /// Off: the previous behaviour, a switch pauses.
+    static let keepPlayingDefaultsKey = "streaming.servicePreferences.keepPlayingInBackground"
+    static func keepsPlayingInBackground(_ defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: keepPlayingDefaultsKey) as? Bool ?? true
+    }
+    static func setKeepsPlayingInBackground(_ on: Bool, in defaults: UserDefaults = .standard) {
+        defaults.set(on, forKey: keepPlayingDefaultsKey)
+    }
+}

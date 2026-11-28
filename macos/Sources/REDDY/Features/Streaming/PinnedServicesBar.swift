@@ -28,9 +28,14 @@ struct ServicesNavigationBinding {
     var setTabMode: (NavTab, TabBarMode) -> Void = { _, _ in }
     /// False where Podcasts cannot be opened at all (a Kids profile, a locked app): then it is not in the bar. One rule decides.
     var podcastsAvailable = true
+    /// The same rule for Music. Off until the shell turns it on, so the bar's six-item layouts stay as they were.
+    var musicAvailable = false
+    /// Services playing in the background right now (not the one showing): each gets a small speaker badge on its chip and its list row.
+    var playing: Set<ProviderID> = []
 
     static var empty: ServicesNavigationBinding { ServicesNavigationBinding() }
 
+    func isPlaying(_ id: ProviderID) -> Bool { playing.contains(id) }
     func isPinned(_ id: ProviderID) -> Bool { pinned.contains(id) }
     func canMoveLeft(_ id: ProviderID) -> Bool { (pinned.firstIndex(of: id) ?? 0) > 0 }
     func canMoveRight(_ id: ProviderID) -> Bool { pinned.firstIndex(of: id).map { $0 < pinned.count - 1 } ?? false }
@@ -45,14 +50,17 @@ extension ServiceAvailability {
 
 /// The accessible name and value of a service control, in one place so the bar, the menu and the tests agree.
 enum ServiceAccessibility {
-    static func openLabel(_ id: ProviderID, availability: ServiceAvailability, active: Bool, pinned: Bool, position: Int? = nil) -> String {
+    static func openLabel(_ id: ProviderID, availability: ServiceAvailability, active: Bool, pinned: Bool, position: Int? = nil, playing: Bool = false) -> String {
         var parts = [id.title]
         if let b = availability.badgeTitle { parts.append(b) }
         if let n = position { parts.append("position \(n)") }
         if active { parts.append("open now") }
         if pinned { parts.append("pinned") }
+        if playing { parts.append(playingLabel) }
         return parts.joined(separator: ", ")
     }
+    /// The accessible name of the speaker badge on a service that plays in the background.
+    static let playingLabel = "Playing"
     static func pinLabel(_ id: ProviderID, pinned: Bool) -> String { pinned ? "Unpin \(id.title)" : "Pin \(id.title)" }
 }
 

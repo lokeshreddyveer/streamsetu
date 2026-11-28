@@ -64,6 +64,8 @@ struct ServicesMenuModel {
 struct ServiceGlyph: View {
     let id: ProviderID
     var size: CGFloat = 24
+    /// A small speaker badge in the corner: the service is playing in the background. Static (no animation), drawn inside the glyph's own size.
+    var playing = false
     static func initial(for id: ProviderID) -> String { String(id.title.first.map { Character($0.uppercased()) } ?? "?") }
     @Environment(\.reddyAccent) private var accent
     var body: some View {
@@ -82,6 +84,14 @@ struct ServiceGlyph: View {
         .overlay(shape.strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5))
         .overlay(shape.inset(by: 0.5).strokeBorder(LinearGradient(colors: [Color.white.opacity(0.16), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.5)), lineWidth: 0.5))
         .shadow(color: .black.opacity(0.28), radius: 1.5, y: 1)
+        .overlay(alignment: .bottomTrailing) {
+            if playing {
+                let d = max(10, size * 0.46)
+                Image(systemName: "speaker.wave.2.fill").font(.system(size: d * 0.58, weight: .bold)).foregroundStyle(.white)
+                    .frame(width: d, height: d).background(accent, in: Circle()).overlay(Circle().strokeBorder(Color.black.opacity(0.55), lineWidth: 1))
+                    .offset(x: d * 0.18, y: d * 0.18)
+            }
+        }
         .accessibilityHidden(true)
     }
 }
@@ -268,7 +278,7 @@ private struct ServicesRow: View {
         HStack(spacing: 0) {
             Button { nav.select(id); dismiss() } label: {
                 HStack(spacing: 10) {
-                    ServiceGlyph(id: id, size: 30)
+                    ServiceGlyph(id: id, size: 30, playing: nav.isPlaying(id))
                     Text(id.title).font(Typography.bodyMedium).fontWeight(isActive ? .semibold : .medium).foregroundStyle(ColorTokens.textPrimary).lineLimit(1)
                     Spacer(minLength: 6)
                     status(availability, active: isActive)
@@ -278,7 +288,7 @@ private struct ServicesRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(ServicesRowPressStyle(shape: shape)).focusable(false).disabled(openDisabled)
-            .accessibilityLabel(Text(ServiceAccessibility.openLabel(id, availability: availability, active: isActive, pinned: pinned, position: entry.position)))
+            .accessibilityLabel(Text(ServiceAccessibility.openLabel(id, availability: availability, active: isActive, pinned: pinned, position: entry.position, playing: nav.isPlaying(id))))
             .accessibilityHint("Opens this service")
             .accessibilityAddTraits(isActive ? .isSelected : [])
             .atlas("control.services.open")

@@ -286,7 +286,7 @@ struct AskLibrary: @unchecked Sendable {
             if kinds.contains(.movie) { found += ((try? catalog.movies(q)) ?? []).map { .movie($0) } }
             if kinds.contains(.series), intent.maxMinutes == nil { found += ((try? catalog.series(q)) ?? []).map { .series($0) } }
             if let startSet { pool = pool.filter { id, _ in found.contains { $0.id == id } || (!hasFilters && intent.keywords.isEmpty && startSet.contains(id)) } }
-            else { for item in found { add(item, "Matches your words", 0.5) } }
+            else { for item in found { add(item, intent.keywords.isEmpty && !hasFilters ? "In your library" : "Matches your words", 0.5) } }
         }
         // Meaning: a mood or theme ("feel-good heist") is matched against each title's genre and plot, not just its name.
         if !nothingFromPeople, !intent.keywords.isEmpty, semantic.isAvailable {

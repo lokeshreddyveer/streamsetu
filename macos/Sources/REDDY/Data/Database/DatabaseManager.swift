@@ -16,11 +16,14 @@ final class DatabaseManager: @unchecked Sendable {
     /// Page cache of each read connection, in KiB (SQLite's own default is 2,000 KiB).
     static let defaultReaderCacheKiB = 32_768
 
-    init(path: String, readerCount: Int = DatabaseManager.defaultReaderCount, readerCacheKiB: Int = DatabaseManager.defaultReaderCacheKiB) throws {
+    /// `migrator` brings the file up to date on the writer before the readers open. The default is the app's own migration list; another store
+    /// (the music graph) passes its own, so its file never receives the app's tables.
+    init(path: String, readerCount: Int = DatabaseManager.defaultReaderCount, readerCacheKiB: Int = DatabaseManager.defaultReaderCacheKiB,
+         migrator: (Connection) throws -> Void = DatabaseMigrator.migrate) throws {
         self.path = path
         writer = try Connection(path: path, readOnly: false)
         try writer.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON; PRAGMA temp_store=MEMORY; PRAGMA busy_timeout=5000;")
-        try DatabaseMigrator.migrate(writer)
+        try migrator(writer)
         var pool: [Reader] = []
         for i in 0..<max(1, readerCount) {
             let c = try Connection(path: path, readOnly: true)

@@ -38,6 +38,7 @@ struct UnlockSheet: View {
     private func unlock() {
         guard let p = container?.parental else { return }
         switch p.unlock(pin: pin) {
+        case .noPIN where p.kidsMode: error = ParentalControls.kidsUnlockNote; pin = ""
         case .unlocked, .noPIN: dismiss(); onUnlocked()
         case .wrongPIN(let n): error = "That isn't the PIN. \(n) tries left."; pin = ""
         case .tooManyAttempts(let t): error = "Too many tries. Wait \(Int(t.rounded(.up))) seconds."; pin = ""

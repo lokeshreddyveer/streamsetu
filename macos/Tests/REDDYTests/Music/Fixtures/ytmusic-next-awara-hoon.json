@@ -1,0 +1,123 @@
+{
+ "contents": {
+  "singleColumnMusicWatchNextResultsRenderer": {
+   "tabbedRenderer": {
+    "watchNextTabbedResultsRenderer": {
+     "tabs": [
+      {
+       "tabRenderer": {
+        "content": {
+         "musicQueueRenderer": {
+          "content": {
+           "playlistPanelRenderer": {
+            "contents": [
+             {
+              "playlistPanelVideoRenderer": {
+               "title": {
+                "runs": [
+                 {
+                  "text": "Awara Hoon"
+                 }
+                ]
+               },
+               "longBylineText": {
+                "runs": [
+                 {
+                  "text": "Mukesh",
+                  "navigationEndpoint": {
+                   "browseEndpoint": {
+                    "browseId": "UCfIz1rBXcbgR4D4QW_ee_1g",
+                    "browseEndpointContextSupportedConfigs": {
+                     "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                     }
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "text": " • "
+                 },
+                 {
+                  "text": "Classic Revival Ek Pyar Ka Naghma Hai",
+                  "navigationEndpoint": {
+                   "browseEndpoint": {
+                    "browseId": "MPREb_jLrKgzx2PEV",
+                    "browseEndpointContextSupportedConfigs": {
+                     "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                     }
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "text": " • "
+                 },
+                 {
+                  "text": "2000"
+                 }
+                ]
+               },
+               "thumbnail": {
+                "thumbnails": [
+                 {
+                  "url": "https://yt3.googleusercontent.com/ZLZDMn0E0qHLbDNR32bu2xeT6tm_RjxiFiklRc0xs-TfSSu316HlLyWKLd_hbGYcJI8a3ps7wqQ1JuH8=w60-h60-l90-rj",
+                  "width": 60,
+                  "height": 60
+                 }
+                ]
+               },
+               "lengthText": {
+                "runs": [
+                 {
+                  "text": "3:01"
+                 }
+                ]
+               },
+               "selected": true,
+               "navigationEndpoint": {
+                "watchEndpoint": {
+                 "videoId": "pToh0-oCCj8",
+                 "params": "OAHyAQIIAeoEC3BUb2gwLW9DQ2o4",
+                 "watchEndpointMusicSupportedConfigs": {
+                  "watchEndpointMusicConfig": {
+                   "hasPersistentPlaylistPanel": true,
+                   "musicVideoType": "MUSIC_VIDEO_TYPE_ATV"
+                  }
+                 }
+                }
+               },
+               "videoId": "pToh0-oCCj8",
+               "shortBylineText": {
+                "runs": [
+                 {
+                  "text": "Mukesh"
+                 }
+                ]
+               },
+               "canReorder": true,
+               "queueNavigationEndpoint": {
+                "queueAddEndpoint": {
+                 "queueTarget": {
+                  "videoId": "pToh0-oCCj8"
+                 },
+                 "queueInsertPosition": "INSERT_AT_END",
+                 "params": "Q0FJJTNE"
+                }
+               }
+              }
+             }
+            ]
+           }
+          }
+         }
+        }
+       }
+      }
+     ]
+    }
+   }
+  }
+ }
+}

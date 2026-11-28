@@ -101,7 +101,8 @@ import Foundation
         var c = AtlasConversation()
         let a = AtlasFixture.engine.answer("qwzx plorf", conversation: &c)
         #expect(a.decision == .weak)
-        #expect(a.text.contains("not sure"))
+        // changed: the fallback says plainly it has no topic and offers what it can explain, never a guess or a dead end.
+        #expect(a.text.contains("not sure") || a.text.contains("do not have a topic"))
     }
 
     @Test func entriesSurviveAJSONRoundTrip() throws {

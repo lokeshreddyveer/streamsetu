@@ -81,6 +81,9 @@ import AppKit
         v.closeAllMediaPresentations()
     }
 
+    /// Closes full-screen and picture-in-picture only; playback is left as it is (a hidden service keeps playing).
+    func closePresentationsNow() { webView?.closeAllMediaPresentations() }
+
     /// For a hidden service: pause, close presentations, then suspend playback. A pause alone is one-off, so a page's own script (autoplay of
     /// the next title, an ad, a retried play) could start sound again while the retained view is out of sight; suspension is the supported
     /// public setting that keeps the page from playing until it is lifted. The three calls reach the web process in this order.

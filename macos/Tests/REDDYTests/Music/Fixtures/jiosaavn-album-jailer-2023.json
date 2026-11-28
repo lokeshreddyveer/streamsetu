@@ -1,0 +1,267 @@
+{
+ "id": "47094777",
+ "title": "Jailer",
+ "subtitle": "Various Artists,  Anirudh Ravichander",
+ "header_desc": "2023 · Tamil Album · Various Artists and Anirudh Ravichander",
+ "type": "album",
+ "perma_url": "https://www.jiosaavn.com/album/jailer/LSe0d94xZgE_",
+ "image": "https://c.saavncdn.com/187/Jailer-Tamil-2023-20230728081443-150x150.jpg",
+ "language": "tamil",
+ "year": "2023",
+ "play_count": "",
+ "explicit_content": "0",
+ "list_count": "8",
+ "list_type": "song",
+ "list": [
+  {
+   "id": "nHs_0eEA",
+   "title": "Kaavaalaa",
+   "subtitle": "Shilpa Rao, Anirudh Ravichander, Arunraja Kamaraj - Jailer",
+   "header_desc": "",
+   "type": "song",
+   "perma_url": "https://www.jiosaavn.com/song/kaavaalaa/HiAYbkRVcnI",
+   "image": "https://c.saavncdn.com/187/Jailer-Tamil-2023-20230728081443-150x150.jpg",
+   "language": "tamil",
+   "year": "2023",
+   "play_count": "21388986",
+   "explicit_content": "0",
+   "list_count": "0",
+   "list_type": "",
+   "list": "",
+   "more_info": {
+    "music": "Anirudh Ravichander, Shilpa Rao, Arunraja Kamaraj",
+    "album_id": "47094777",
+    "album": "Jailer",
+    "label": "Sun Pictures",
+    "label_id": "3957852",
+    "origin": "album",
+    "is_dolby_content": false,
+    "320kbps": "true",
+    "album_url": "https://www.jiosaavn.com/album/jailer/LSe0d94xZgE_",
+    "duration": "190",
+    "rights": {
+     "code": "1",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": "Pro Only"
+    },
+    "cache_state": "",
+    "has_lyrics": "true",
+    "lyrics_snippet": "Vaa Nu Kaavaalaiya Nu Kaavaalaiyaa",
+    "has_trivia": "1",
+    "starred": "false",
+    "copyright_text": "(P) 2022 Sun Pictures",
+    "artistMap": {
+     "primary_artists": [
+      {
+       "id": "455148",
+       "name": "Shilpa Rao",
+       "role": "primary_artists",
+       "image": "https://c.saavncdn.com/artists/Shilpa_Rao_002_20230321111415_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/shilpa-rao-songs/IVd,BmJX7sA_"
+      },
+      {
+       "id": "455663",
+       "name": "Anirudh Ravichander",
+       "role": "primary_artists",
+       "image": "https://c.saavncdn.com/artists/Anirudh_Ravichander_003_20260121134149_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/anirudh-ravichander-songs/lBzQd8c-xCY_"
+      },
+      {
+       "id": "718052",
+       "name": "Arunraja Kamaraj",
+       "role": "primary_artists",
+       "image": "https://c.saavncdn.com/artists/Arunraja_Kamaraj_003_20240319071402_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/arunraja-kamaraj-songs/c4n74R6BXfA_"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "id": "455663",
+       "name": "Anirudh Ravichander",
+       "role": "music",
+       "image": "https://c.saavncdn.com/artists/Anirudh_Ravichander_003_20260121134149_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/anirudh-ravichander-songs/lBzQd8c-xCY_"
+      },
+      {
+       "id": "455148",
+       "name": "Shilpa Rao",
+       "role": "music",
+       "image": "https://c.saavncdn.com/artists/Shilpa_Rao_002_20230321111415_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/shilpa-rao-songs/IVd,BmJX7sA_"
+      },
+      {
+       "id": "718052",
+       "name": "Arunraja Kamaraj",
+       "role": "music",
+       "image": "https://c.saavncdn.com/artists/Arunraja_Kamaraj_003_20240319071402_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/arunraja-kamaraj-songs/c4n74R6BXfA_"
+      },
+      {
+       "id": "486697",
+       "name": "Tamannaah Bhatia",
+       "role": "starring",
+       "image": "https://c.saavncdn.com/artists/Tamannaah_Bhatia_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/tamannaah-bhatia-songs/y7hd-ikE10I_"
+      },
+      {
+       "id": "457969",
+       "name": "Rajinikanth",
+       "role": "starring",
+       "image": "https://c.saavncdn.com/artists/Rajinikanth_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/rajinikanth-songs/E-hZmoCP5VU_"
+      },
+      {
+       "id": "460901",
+       "name": "Sunil",
+       "role": "starring",
+       "image": "https://c.saavncdn.com/artists/Sunil_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/sunil-songs/PjIkKd8Dodo_"
+      }
+     ]
+    },
+    "release_date": "2023-07-28",
+    "label_url": "/label/sun-pictures-albums/x8IWFHp-4js_",
+    "vlink": "https://jiotunepreview.jio.com/content/Converted/010910621957263.mp3",
+    "lyrics_id": ""
+   }
+  },
+  {
+   "id": "XYZr-OZk",
+   "title": "Jailer Theme (Instrumental)",
+   "subtitle": "Anirudh Ravichander - Jailer",
+   "header_desc": "",
+   "type": "song",
+   "perma_url": "https://www.jiosaavn.com/song/jailer-theme-instrumental/KDExQ1l-bVg",
+   "image": "https://c.saavncdn.com/187/Jailer-Tamil-2023-20230728081443-150x150.jpg",
+   "language": "tamil",
+   "year": "2023",
+   "play_count": "5577594",
+   "explicit_content": "0",
+   "list_count": "0",
+   "list_type": "",
+   "list": "",
+   "more_info": {
+    "music": "Anirudh Ravichander",
+    "album_id": "47094777",
+    "album": "Jailer",
+    "label": "Sun Pictures",
+    "label_id": "3957852",
+    "origin": "album",
+    "is_dolby_content": false,
+    "320kbps": "true",
+    "album_url": "https://www.jiosaavn.com/album/jailer/LSe0d94xZgE_",
+    "duration": "62",
+    "rights": {
+     "code": "1",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": "Pro Only"
+    },
+    "cache_state": "",
+    "has_lyrics": "false",
+    "lyrics_snippet": "",
+    "has_trivia": "false",
+    "starred": "false",
+    "copyright_text": "(P) 2022 Sun Pictures",
+    "artistMap": {
+     "primary_artists": [
+      {
+       "id": "455663",
+       "name": "Anirudh Ravichander",
+       "role": "primary_artists",
+       "image": "https://c.saavncdn.com/artists/Anirudh_Ravichander_003_20260121134149_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/anirudh-ravichander-songs/lBzQd8c-xCY_"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "id": "455663",
+       "name": "Anirudh Ravichander",
+       "role": "music",
+       "image": "https://c.saavncdn.com/artists/Anirudh_Ravichander_003_20260121134149_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/anirudh-ravichander-songs/lBzQd8c-xCY_"
+      },
+      {
+       "id": "455663",
+       "name": "Anirudh Ravichander",
+       "role": "singer",
+       "image": "https://c.saavncdn.com/artists/Anirudh_Ravichander_003_20260121134149_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/anirudh-ravichander-songs/lBzQd8c-xCY_"
+      },
+      {
+       "id": "457969",
+       "name": "Rajinikanth",
+       "role": "starring",
+       "image": "https://c.saavncdn.com/artists/Rajinikanth_150x150.jpg",
+       "type": "artist",
+       "perma_url": "https://www.jiosaavn.com/artist/rajinikanth-songs/E-hZmoCP5VU_"
+      }
+     ]
+    },
+    "release_date": "2023-07-28",
+    "label_url": "/label/sun-pictures-albums/x8IWFHp-4js_",
+    "vlink": "https://jiotunepreview.jio.com/content/Converted/010910621993116.mp3"
+   }
+  }
+ ],
+ "more_info": {
+  "artistMap": {
+   "primary_artists": [
+    {
+     "id": "455494",
+     "name": "Various Artists",
+     "role": "",
+     "image": "",
+     "type": "artist",
+     "perma_url": "https://www.jiosaavn.com/artist/various-artists-songs/ztKx8IUBme8_"
+    },
+    {
+     "id": "455663",
+     "name": " Anirudh Ravichander",
+     "role": "",
+     "image": "https://c.saavncdn.com/artists/Anirudh_Ravichander_003_20260121134149_150x150.jpg",
+     "type": "artist",
+     "perma_url": "https://www.jiosaavn.com/artist/-anirudh-ravichander-songs/lBzQd8c-xCY_"
+    }
+   ],
+   "featured_artists": [],
+   "artists": [
+    {
+     "id": "455494",
+     "name": "Various Artists",
+     "role": "",
+     "image": "",
+     "type": "artist",
+     "perma_url": "https://www.jiosaavn.com/artist/various-artists-songs/ztKx8IUBme8_"
+    },
+    {
+     "id": "455663",
+     "name": " Anirudh Ravichander",
+     "role": "",
+     "image": "https://c.saavncdn.com/artists/Anirudh_Ravichander_003_20260121134149_150x150.jpg",
+     "type": "artist",
+     "perma_url": "https://www.jiosaavn.com/artist/-anirudh-ravichander-songs/lBzQd8c-xCY_"
+    }
+   ]
+  },
+  "song_count": "8",
+  "copyright_text": "(C) 2022 Sun Pictures",
+  "is_dolby_content": false,
+  "label_url": "/label/sun-pictures-albums/x8IWFHp-4js_"
+ }
+}

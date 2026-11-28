@@ -66,8 +66,6 @@ enum Shortcut: String, Hashable, Sendable, CaseIterable {
         case .guide: [.allChannels, .favorites]
         }
     }
-
-    var folderKind: ContentKind? { nil }
 }
 
 enum SidebarSelection: Hashable, Sendable {
@@ -85,6 +83,8 @@ enum Destination: Hashable, Sendable, CaseIterable {
     case home, liveTV, movies, series, guide
     /// Podcasts in the main window (Mac). Elsewhere nothing handles it and it does nothing.
     case podcasts
+    /// Music in the main window (Mac). Elsewhere nothing handles it and it does nothing.
+    case music
     case favorites, continueWatching, history, collections
     case channelManager, playlists
 }
@@ -92,6 +92,12 @@ enum Destination: Hashable, Sendable, CaseIterable {
 enum ModalRoute: Hashable, Identifiable, Sendable, CaseIterable {
     case playlists, addPlaylist, about, channelManager, unlockRestricted
     var id: Self { self }
+}
+
+/// Words a typed command puts into one screen's own search box.
+struct ScreenQuery: Equatable, Sendable {
+    var tab: AppTab
+    var words: String
 }
 
 /// Navigation state. A fresh launch always starts at Home → Discover; nothing here is restored from a previous run.
@@ -118,22 +124,42 @@ final class AppRouter {
     var topSearchFocus = 0
     /// Bumped by ↓ in the search field to move keyboard focus into the results.
     var searchResultsFocus = 0
-    /// Category to preselect in a tab (set by other screens, consumed once).
-    var pendingFolder: String?
-    /// Words for the next list screen's own search box, set by a command typed in the top search ("open movies: top rated telugu"). Consumed once.
-    var libraryQuery: String?
+    /// Words for one screen's own search box, set by a command typed in the top search ("open movies: top rated telugu"). Only that screen takes them, once.
+    var screenQuery: ScreenQuery?
+    /// Goes up each time a folder is opened by a link or a result, so the sidebar shows its row even when it was already the selected one.
+    private(set) var folderReveal = 0
     /// Filters for the next Movies / Series list (a genre chosen on Home), best rated first. Consumed once.
     var libraryFilter: LibraryFilter?
     /// Called before any navigation to a native screen or title; the macOS shell uses it to leave an outside service first. Nil elsewhere.
     @ObservationIgnored var onNavigate: (() -> Void)?
     /// Opens Podcasts in the main window; set by the macOS shell (the destination state owns it). Nil elsewhere.
     @ObservationIgnored var onOpenPodcasts: (() -> Void)?
+    /// Opens Music in the main window; set by the macOS shell. Nil elsewhere.
+    @ObservationIgnored var onOpenMusic: (() -> Void)?
 
     static func defaultSelection(for tab: AppTab) -> SidebarSelection { .shortcut(Shortcut.pinned(for: tab)[0]) }
 
     var selection: SidebarSelection { selections[tab] ?? Self.defaultSelection(for: tab) }
 
-    func select(_ s: SidebarSelection) { selections[tab] = s }
+    /// A sidebar choice: the chosen list is shown, so search results and open menus leave, also when the row was already the selected one.
+    func select(_ s: SidebarSelection) { selections[tab] = s; selectionTick &+= 1; closeMenus(); endSearch() }
+
+    /// Counts every sidebar choice, including one of the row that is already selected (`selection` itself does not change then, so a screen that must react to
+    /// the click, like Live TV leaving its toolbar list, watches this).
+    private(set) var selectionTick = 0
+
+    /// A collection chosen from search: the Collections page opens on it (taken once).
+    var pendingCollectionID: String?
+
+    /// The words waiting for this screen's search box, if any. Another screen's words are left alone.
+    func takeScreenQuery(for tab: AppTab) -> String? {
+        guard let q = screenQuery, q.tab == tab else { return nil }
+        screenQuery = nil
+        return q.words
+    }
+
+    /// Navigation ends a search here, at the moment it happens, so words set right after it (a link that opens a screen and searches) stay.
+    private func endSearch() { if !searchQuery.isEmpty { clearSearch() } }
 
     /// Forgets a remembered folder that the open scope cannot show: a folder of a playlist that was removed or switched off, or (with one playlist open) of another playlist.
     /// A list left pointing at such a folder would show nothing. Folder ids start with their playlist's id.
@@ -144,14 +170,24 @@ final class AppRouter {
         }
     }
 
+    /// After the folder lists were read again: a remembered folder that is no longer in its list (hidden, emptied) goes back to the tab's first shortcut.
+    /// A kind whose list has not been read yet (nil) is left alone.
+    func resetStaleFolderSelections(folders: [ContentKind: [SidebarEntry]]) {
+        for (tab, sel) in selections {
+            guard let kind = SidebarModel.categoryKind(for: tab), let list = folders[kind] else { continue }
+            if let fixed = SidebarModel.selectionAfterReload(sel, folders: list, tab: tab) { selections[tab] = fixed }
+        }
+    }
+
     func navigate(_ tab: AppTab, _ selection: SidebarSelection? = nil) {
         onNavigate?()
         self.tab = tab
         selections[tab] = selection ?? (rememberFolders ? selections[tab] : nil) ?? Self.defaultSelection(for: tab)
         playlistMenuOpen = false; accountMenuOpen = false
+        endSearch()
     }
 
-    func openFolder(_ tab: AppTab, categoryID: String) { navigate(tab, .folder(categoryID)) }
+    func openFolder(_ tab: AppTab, categoryID: String) { navigate(tab, .folder(categoryID)); folderReveal += 1 }
 
     func go(_ d: Destination) {
         onNavigate?()
@@ -162,6 +198,7 @@ final class AppRouter {
         case .series: navigate(.series, .shortcut(.library))
         case .guide: navigate(.guide, .shortcut(.allChannels))
         case .podcasts: onOpenPodcasts?()
+        case .music: onOpenMusic?()
         case .favorites: navigate(.home, .shortcut(.favorites))
         case .continueWatching: navigate(.home, .shortcut(.continueWatching))
         case .history: navigate(.home, .shortcut(.recentlyWatched))

@@ -30,6 +30,8 @@ enum DatabaseMigrator {
         Migration(version: 23, sql: SchemaV23.sql),
         Migration(version: 24, sql: SchemaV24.sql),
         Migration(version: 25, sql: SchemaV25.sql),
+        Migration(version: 26, sql: SchemaV26.sql),          // a no-op that keeps the numbers consecutive (see SchemaV26)
+        Migration(version: 27, sql: SchemaV27.sql),          // removes the tables of a feature that was withdrawn (version 26 was only ever used by development builds)
     ]
 
     static var latestVersion: Int { migrations.last?.version ?? 0 }

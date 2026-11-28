@@ -1,0 +1,593 @@
+{
+ "contents": {
+  "twoColumnBrowseResultsRenderer": {
+   "secondaryContents": {
+    "sectionListRenderer": {
+     "contents": [
+      {
+       "musicShelfRenderer": {
+        "contents": [
+         {
+          "musicResponsiveListItemRenderer": {
+           "flexColumns": [
+            {
+             "musicResponsiveListItemFlexColumnRenderer": {
+              "text": {
+               "runs": [
+                {
+                 "text": "Kaavaali (From \"Jailer\")",
+                 "navigationEndpoint": {
+                  "watchEndpoint": {
+                   "videoId": "SsNxaqLDqas",
+                   "playlistId": "OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU",
+                   "watchEndpointMusicSupportedConfigs": {
+                    "watchEndpointMusicConfig": {
+                     "musicVideoType": "MUSIC_VIDEO_TYPE_OMV"
+                    }
+                   }
+                  }
+                 }
+                }
+               ]
+              },
+              "displayPriority": "MUSIC_RESPONSIVE_LIST_ITEM_COLUMN_DISPLAY_PRIORITY_HIGH"
+             }
+            },
+            {
+             "musicResponsiveListItemFlexColumnRenderer": {
+              "text": {},
+              "displayPriority": "MUSIC_RESPONSIVE_LIST_ITEM_COLUMN_DISPLAY_PRIORITY_HIGH"
+             }
+            },
+            {
+             "musicResponsiveListItemFlexColumnRenderer": {
+              "text": {
+               "runs": [
+                {
+                 "text": "115M plays"
+                }
+               ]
+              },
+              "displayPriority": "MUSIC_RESPONSIVE_LIST_ITEM_COLUMN_DISPLAY_PRIORITY_HIGH"
+             }
+            }
+           ],
+           "fixedColumns": [
+            {
+             "musicResponsiveListItemFixedColumnRenderer": {
+              "text": {
+               "runs": [
+                {
+                 "text": "3:11"
+                }
+               ]
+              },
+              "displayPriority": "MUSIC_RESPONSIVE_LIST_ITEM_COLUMN_DISPLAY_PRIORITY_HIGH",
+              "size": "MUSIC_RESPONSIVE_LIST_ITEM_FIXED_COLUMN_SIZE_SMALL"
+             }
+            }
+           ],
+           "playlistItemData": {
+            "playlistSetVideoId": "7125420930B2133F",
+            "videoId": "SsNxaqLDqas"
+           },
+           "itemHeight": "MUSIC_RESPONSIVE_LIST_ITEM_HEIGHT_MEDIUM",
+           "index": {
+            "runs": [
+             {
+              "text": "1"
+             }
+            ]
+           },
+           "multiSelectCheckbox": {
+            "checkboxRenderer": {
+             "onSelectionChangeCommand": {
+              "updateMultiSelectStateCommand": {
+               "multiSelectParams": "CAMSKU9MQUs1dXlfbGQtNUU0R1l3TFdQLUNDTi1XMjhoQTNBcklCUk44SVpV",
+               "multiSelectItem": "Ch8KC1NzTnhhcUxEcWFzEhA3MTI1NDIwOTMwQjIxMzNG"
+              }
+             },
+             "checkedState": "CHECKBOX_CHECKED_STATE_UNCHECKED"
+            }
+           }
+          }
+         }
+        ],
+        "shelfDivider": {
+         "musicShelfDividerRenderer": {
+          "hidden": true
+         }
+        },
+        "contentsMultiSelectable": true
+       }
+      }
+     ]
+    }
+   },
+   "tabs": [
+    {
+     "tabRenderer": {
+      "content": {
+       "sectionListRenderer": {
+        "contents": [
+         {
+          "musicResponsiveHeaderRenderer": {
+           "thumbnail": {
+            "musicThumbnailRenderer": {
+             "thumbnail": {
+              "thumbnails": [
+               {
+                "url": "https://yt3.googleusercontent.com/5xzA1hmVxXpUe1jCP-B0Vn6MwDDIp9KnZ4pBc1hUgWR4c9o1QRuxeWcATc_unFhhY6qbgE37GqxlHIks=w60-h60-l90-rj",
+                "width": 60,
+                "height": 60
+               }
+              ]
+             },
+             "thumbnailCrop": "MUSIC_THUMBNAIL_CROP_UNSPECIFIED",
+             "thumbnailScale": "MUSIC_THUMBNAIL_SCALE_UNSPECIFIED"
+            }
+           },
+           "buttons": [
+            {
+             "toggleButtonRenderer": {
+              "isToggled": false,
+              "isDisabled": false,
+              "defaultIcon": {
+               "iconType": "BOOKMARK_BORDER"
+              },
+              "toggledIcon": {
+               "iconType": "BOOKMARK"
+              },
+              "defaultNavigationEndpoint": {
+               "modalEndpoint": {
+                "modal": {
+                 "modalWithTitleAndButtonRenderer": {
+                  "title": {
+                   "runs": [
+                    {
+                     "text": "Save this for later"
+                    }
+                   ]
+                  },
+                  "content": {
+                   "runs": [
+                    {
+                     "text": "Save favorites to your library after signing in"
+                    }
+                   ]
+                  },
+                  "button": {
+                   "buttonRenderer": {
+                    "style": "STYLE_BLUE_TEXT",
+                    "isDisabled": false,
+                    "text": {
+                     "runs": [
+                      {
+                       "text": "Sign in"
+                      }
+                     ]
+                    },
+                    "navigationEndpoint": {
+                     "signInEndpoint": {
+                      "hack": true
+                     }
+                    }
+                   }
+                  }
+                 }
+                }
+               }
+              },
+              "toggledAccessibilityData": {}
+             }
+            },
+            {
+             "musicPlayButtonRenderer": {
+              "playNavigationEndpoint": {
+               "watchPlaylistEndpoint": {
+                "playlistId": "OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU"
+               }
+              },
+              "playIcon": {
+               "iconType": "PLAY_ARROW"
+              },
+              "pauseIcon": {
+               "iconType": "PAUSE"
+              },
+              "iconColor": 4278387459,
+              "backgroundColor": 0,
+              "activeBackgroundColor": 0,
+              "loadingIndicatorColor": 14745645,
+              "playingIcon": {
+               "iconType": "PAUSE"
+              },
+              "iconLoadingColor": 0,
+              "activeScaleFactor": 1,
+              "accessibilityPlayData": {},
+              "accessibilityPauseData": {}
+             }
+            },
+            {
+             "menuRenderer": {
+              "items": [
+               {
+                "menuNavigationItemRenderer": {
+                 "text": {
+                  "runs": [
+                   {
+                    "text": "Shuffle play"
+                   }
+                  ]
+                 },
+                 "icon": {
+                  "iconType": "MUSIC_SHUFFLE"
+                 },
+                 "navigationEndpoint": {
+                  "watchPlaylistEndpoint": {
+                   "playlistId": "OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU",
+                   "params": "wAEB8gECKAE%3D"
+                  }
+                 }
+                }
+               },
+               {
+                "menuNavigationItemRenderer": {
+                 "text": {
+                  "runs": [
+                   {
+                    "text": "Start mix"
+                   }
+                  ]
+                 },
+                 "icon": {
+                  "iconType": "MIX"
+                 },
+                 "navigationEndpoint": {
+                  "watchPlaylistEndpoint": {
+                   "playlistId": "RDAMPLOLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU",
+                   "params": "wAEB"
+                  }
+                 }
+                }
+               },
+               {
+                "menuServiceItemRenderer": {
+                 "text": {
+                  "runs": [
+                   {
+                    "text": "Play next"
+                   }
+                  ]
+                 },
+                 "icon": {
+                  "iconType": "QUEUE_PLAY_NEXT"
+                 },
+                 "serviceEndpoint": {
+                  "queueAddEndpoint": {
+                   "queueTarget": {
+                    "playlistId": "OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU",
+                    "onEmptyQueue": {
+                     "watchEndpoint": {
+                      "playlistId": "OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU"
+                     }
+                    }
+                   },
+                   "queueInsertPosition": "INSERT_AFTER_CURRENT_VIDEO",
+                   "commands": [
+                    {
+                     "addToToastAction": {
+                      "item": {
+                       "notificationTextRenderer": {
+                        "successResponseText": {
+                         "runs": [
+                          {
+                           "text": "Album will play next"
+                          }
+                         ]
+                        }
+                       }
+                      }
+                     }
+                    }
+                   ]
+                  }
+                 }
+                }
+               },
+               {
+                "menuServiceItemRenderer": {
+                 "text": {
+                  "runs": [
+                   {
+                    "text": "Add to queue"
+                   }
+                  ]
+                 },
+                 "icon": {
+                  "iconType": "ADD_TO_REMOTE_QUEUE"
+                 },
+                 "serviceEndpoint": {
+                  "queueAddEndpoint": {
+                   "queueTarget": {
+                    "playlistId": "OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU",
+                    "onEmptyQueue": {
+                     "watchEndpoint": {
+                      "playlistId": "OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU"
+                     }
+                    }
+                   },
+                   "queueInsertPosition": "INSERT_AT_END",
+                   "commands": [
+                    {
+                     "addToToastAction": {
+                      "item": {
+                       "notificationTextRenderer": {
+                        "successResponseText": {
+                         "runs": [
+                          {
+                           "text": "Album added to queue"
+                          }
+                         ]
+                        }
+                       }
+                      }
+                     }
+                    }
+                   ]
+                  }
+                 }
+                }
+               },
+               {
+                "menuNavigationItemRenderer": {
+                 "text": {
+                  "runs": [
+                   {
+                    "text": "Save to playlist"
+                   }
+                  ]
+                 },
+                 "icon": {
+                  "iconType": "ADD_TO_PLAYLIST"
+                 },
+                 "navigationEndpoint": {
+                  "modalEndpoint": {
+                   "modal": {
+                    "modalWithTitleAndButtonRenderer": {
+                     "title": {
+                      "runs": [
+                       {
+                        "text": "Save this for later"
+                       }
+                      ]
+                     },
+                     "content": {
+                      "runs": [
+                       {
+                        "text": "Make playlists and share them after signing in"
+                       }
+                      ]
+                     },
+                     "button": {
+                      "buttonRenderer": {
+                       "style": "STYLE_BLUE_TEXT",
+                       "isDisabled": false,
+                       "text": {
+                        "runs": [
+                         {
+                          "text": "Sign in"
+                         }
+                        ]
+                       },
+                       "navigationEndpoint": {
+                        "signInEndpoint": {
+                         "hack": true
+                        }
+                       }
+                      }
+                     }
+                    }
+                   }
+                  }
+                 }
+                }
+               },
+               {
+                "menuNavigationItemRenderer": {
+                 "text": {
+                  "runs": [
+                   {
+                    "text": "Go to artist"
+                   }
+                  ]
+                 },
+                 "icon": {
+                  "iconType": "ARTIST"
+                 },
+                 "navigationEndpoint": {
+                  "browseEndpoint": {
+                   "browseId": "UCbRSywya_rl8YS15Lo9ttsA",
+                   "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                     "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                   }
+                  }
+                 }
+                }
+               },
+               {
+                "menuNavigationItemRenderer": {
+                 "text": {
+                  "runs": [
+                   {
+                    "text": "Share"
+                   }
+                  ]
+                 },
+                 "icon": {
+                  "iconType": "SHARE"
+                 },
+                 "navigationEndpoint": {
+                  "shareEntityEndpoint": {
+                   "serializedShareEntity": "EilPTEFLNXV5X2xkLTVFNEdZd0xXUC1DQ04tVzI4aEEzQXJJQlJOOElaVQ%3D%3D",
+                   "sharePanelType": "SHARE_PANEL_TYPE_UNIFIED_SHARE_PANEL"
+                  }
+                 }
+                }
+               }
+              ]
+             }
+            }
+           ],
+           "title": {
+            "runs": [
+             {
+              "text": "Kaavaali (From \"Jailer\")"
+             }
+            ]
+           },
+           "subtitle": {
+            "runs": [
+             {
+              "text": "Single"
+             },
+             {
+              "text": " • "
+             },
+             {
+              "text": "2023"
+             }
+            ]
+           },
+           "straplineTextOne": {
+            "runs": [
+             {
+              "text": "Anirudh Ravichander",
+              "navigationEndpoint": {
+               "browseEndpoint": {
+                "browseId": "UCbRSywya_rl8YS15Lo9ttsA",
+                "browseEndpointContextSupportedConfigs": {
+                 "browseEndpointContextMusicConfig": {
+                  "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                 }
+                }
+               }
+              }
+             },
+             {
+              "text": ", "
+             },
+             {
+              "text": "Sindhuja Srinivasan",
+              "navigationEndpoint": {
+               "browseEndpoint": {
+                "browseId": "UCbcxpDaOl6qXALoSasq97qw",
+                "browseEndpointContextSupportedConfigs": {
+                 "browseEndpointContextMusicConfig": {
+                  "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                 }
+                }
+               }
+              }
+             },
+             {
+              "text": " & "
+             },
+             {
+              "text": "Sri Sai Kiran",
+              "navigationEndpoint": {
+               "browseEndpoint": {
+                "browseId": "UCWvyaNipTelWSRKSjDpWpsA",
+                "browseEndpointContextSupportedConfigs": {
+                 "browseEndpointContextMusicConfig": {
+                  "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                 }
+                }
+               }
+              }
+             }
+            ]
+           },
+           "straplineThumbnail": {
+            "musicThumbnailRenderer": {
+             "thumbnail": {
+              "thumbnails": [
+               {
+                "url": "https://lh3.googleusercontent.com/wBG4jypwBcEGHd-qSbM2_4B46WPEhlOCjusCOEkxdnsoIC4WLS9LmFARZsE854pB-vAEYlsp4x2yiHE=w60-h60-p-l90-rj",
+                "width": 60,
+                "height": 60
+               }
+              ]
+             },
+             "thumbnailCrop": "MUSIC_THUMBNAIL_CROP_UNSPECIFIED",
+             "thumbnailScale": "MUSIC_THUMBNAIL_SCALE_UNSPECIFIED"
+            }
+           },
+           "secondSubtitle": {
+            "runs": [
+             {
+              "text": "1 song"
+             },
+             {
+              "text": " • "
+             },
+             {
+              "text": "3 minutes, 11 seconds"
+             }
+            ]
+           }
+          }
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  }
+ },
+ "microformat": {
+  "microformatDataRenderer": {
+   "urlCanonical": "https://music.youtube.com/playlist?list=OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU",
+   "title": "Kaavaali (From \"Jailer\")",
+   "description": "Single • Anirudh Ravichander, Sindhuja Srinivasan, and Sri Sai Kiran",
+   "thumbnail": {
+    "thumbnails": [
+     {
+      "url": "https://yt3.googleusercontent.com/5xzA1hmVxXpUe1jCP-B0Vn6MwDDIp9KnZ4pBc1hUgWR4c9o1QRuxeWcATc_unFhhY6qbgE37GqxlHIks=w544-h544-l90-rj",
+      "width": 544,
+      "height": 544
+     }
+    ]
+   },
+   "siteName": "YouTube Music",
+   "appName": "YouTube Music",
+   "androidPackage": "com.google.android.apps.youtube.music",
+   "iosAppStoreId": "1017492454",
+   "ogType": "music.album",
+   "urlApplinksWeb": "https://music.youtube.com/playlist?list=OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU&feature=applinks",
+   "urlApplinksIos": "vnd.youtube.music://music.youtube.com/playlist?list=OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU&feature=applinks",
+   "urlApplinksAndroid": "vnd.youtube.music://music.youtube.com/playlist?list=OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU&feature=applinks",
+   "urlTwitterIos": "vnd.youtube.music://music.youtube.com/playlist?list=OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU&feature=twitter-deep-link",
+   "urlTwitterAndroid": "vnd.youtube.music://music.youtube.com/playlist?list=OLAK5uy_ld-5E4GYwLWP-CCN-W28hA3ArIBRN8IZU&feature=twitter-deep-link",
+   "twitterCardType": "summary",
+   "twitterSiteHandle": "@youtubemusic"
+  }
+ },
+ "background": {
+  "musicThumbnailRenderer": {
+   "thumbnail": {
+    "thumbnails": [
+     {
+      "url": "https://yt3.googleusercontent.com/5xzA1hmVxXpUe1jCP-B0Vn6MwDDIp9KnZ4pBc1hUgWR4c9o1QRuxeWcATc_unFhhY6qbgE37GqxlHIks=w60-h60-l90-rj",
+      "width": 60,
+      "height": 60
+     }
+    ]
+   },
+   "thumbnailCrop": "MUSIC_THUMBNAIL_CROP_UNSPECIFIED",
+   "thumbnailScale": "MUSIC_THUMBNAIL_SCALE_UNSPECIFIED"
+  }
+ }
+}

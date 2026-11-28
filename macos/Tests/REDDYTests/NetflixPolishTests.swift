@@ -140,7 +140,8 @@ import SwiftUI
         print("MEASURE media: after only removing the view -> paused=\(pausedAfterRemoval), state=\(stateAfterRemoval.rawValue)")
         win.contentView = web
         // 2. the supported approach used by the app
-        model.serviceBecameHidden()
+        // Changed: hiding alone keeps a service playing (owner request); the stop rule (another service, the native player or Podcasts starting) calls pauseMedia.
+        model.serviceBecameHidden(); model.pauseMedia()
         try? await Task.sleep(for: .milliseconds(600))
         let stateAfterLeave = await web.requestMediaPlaybackState(), pausedAfterLeave = await paused()
         print("MEASURE media: after serviceBecameHidden (pauseAllMediaPlayback + closeAllMediaPresentations) -> paused=\(pausedAfterLeave), state=\(stateAfterLeave.rawValue)")

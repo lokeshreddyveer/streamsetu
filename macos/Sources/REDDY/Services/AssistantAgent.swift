@@ -11,6 +11,8 @@ struct AssistantContext: Sendable, Equatable {
     var searchText: String?
     var library = ""
     var taste: String?
+    /// One line from Music (the screen and the song), when Music is on this device.
+    var music: String?
 
     var text: String {
         var t = "Screen: " + (screen.isEmpty ? "unknown" : screen) + "\n"
@@ -18,6 +20,7 @@ struct AssistantContext: Sendable, Equatable {
         if let openItem { t += "Title page open: \(openItem)\n" }
         if let searchText, !searchText.isEmpty { t += "Typed in the search box: \(searchText)\n" }
         if !library.isEmpty { t += "Library: \(library)\n" }
+        if let music { t += "\(music)\n" }
         if let taste { t += "They usually watch: \(taste)\n" }
         return t
     }
@@ -42,6 +45,8 @@ struct AssistantContext: Sendable, Equatable {
         case toggleList(id: String, kind: ContentKind, watchLater: Bool, on: Bool, title: String)
         /// Takes the person to any screen, page or window the atlas knows by id. Rechecked against the atlas when tapped.
         case openAtlas(id: String)
+        /// Something in Music (a control, a song or artist to play, a Music screen, the chart country). Carried out by the Music module through `MusicAssistantRegistry`.
+        case music(MusicAssistantAction)
     }
     let id = UUID()
     let kind: Kind
@@ -62,11 +67,12 @@ struct AssistantContext: Sendable, Equatable {
         case .copyReport: "Copy a redacted problem report"
         case .playItem(_, _, let t): "Play “\(t)”"
         case .openAtlas(let id): "Open “\(Atlas.entry(id)?.title ?? id)”"
+        case .music(let a): a.title
         case .toggleList(_, _, let later, let on, let t): on ? "Add “\(t)” to \(later ? "Watch Later" : "Favorites")" : "Remove “\(t)” from \(later ? "Watch Later" : "Favorites")"
         }
     }
     var symbol: String {
-        switch kind { case .command(let c): c.symbol; case .setting: "gearshape"; case .playback(let a): AssistantPlayback.symbol(a); case .refresh: "arrow.clockwise"; case .retry: "arrow.clockwise"; case .engine: "gearshape.2"; case .track(let a, _, _): a ? "speaker.wave.2" : "captions.bubble"; case .syncGuide: "calendar.badge.clock"; case .copyReport: "doc.on.clipboard"; case .playItem: "play.fill"; case .toggleList(_, _, let later, _, _): later ? "bookmark" : "heart"; case .openAtlas: "arrow.up.forward.app" }
+        switch kind { case .command(let c): c.symbol; case .setting: "gearshape"; case .playback(let a): AssistantPlayback.symbol(a); case .refresh: "arrow.clockwise"; case .retry: "arrow.clockwise"; case .engine: "gearshape.2"; case .track(let a, _, _): a ? "speaker.wave.2" : "captions.bubble"; case .syncGuide: "calendar.badge.clock"; case .copyReport: "doc.on.clipboard"; case .playItem: "play.fill"; case .toggleList(_, _, let later, _, _): later ? "bookmark" : "heart"; case .openAtlas: "arrow.up.forward.app"; case .music(let a): a.symbol }
     }
 }
 

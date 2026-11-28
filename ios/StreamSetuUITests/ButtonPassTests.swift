@@ -6,7 +6,7 @@ import XCTest
 extension AtlasWalkTests {
     /// Not tapped by the pass: they change, remove or spend something. The word that matched is written next to the control in the log.
     static let notTapped = try! NSRegularExpression(pattern: "delete|remove|reset|clear|erase|sign out|log out|logout|lock|purchase|buy|subscribe|restore|forget|disconnect|cancel reminder|start fresh|repair|quit|stop|wipe|empty", options: .caseInsensitive)
-    static let qa = "/private/tmp/claude-501/-Users-lokeshreddyveerabhadra-Desktop/15e886d1-784e-4b4a-ac5f-1b6e16917e13/scratchpad/qa"
+    static let qa = ProcessInfo.processInfo.environment["STREAMSETU_QA_DIR"] ?? NSTemporaryDirectory() + "streamsetu-qa"
 
     private var kind: String { UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone" }
 

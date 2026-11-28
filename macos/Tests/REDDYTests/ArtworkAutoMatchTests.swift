@@ -232,7 +232,10 @@ private struct Rig {
         #expect(rig2.clock.elapsed >= 1.2, "30 requests need at least 1.3 virtual seconds at about 22 a second (got \(rig2.clock.elapsed))")
         #expect(rig2.http.maxParallel <= ArtworkAutoMatcher.workers)
         let ts = rig2.http.times.sorted()
-        for i in 0..<(ts.count - 10) { #expect(ts[i + 10] - ts[i] > 0.1, "no burst: ten requests are never sent together (virtual time is shared, so only a loose bound is stable)") }
+        // Changed: with fewer than ten requests (the run above did not finish) `0..<(count - 10)` is not a range and the trap took the whole test process down; the count is already
+        // checked above, so here the loop simply has nothing to walk.
+        try #require(ts.count == 30, "the burst check needs every request's time")
+        for i in 0..<max(0, ts.count - 10) { #expect(ts[i + 10] - ts[i] > 0.1, "no burst: ten requests are never sent together (virtual time is shared, so only a loose bound is stable)") }
     }
 
     @Test func aRateLimitHoldsEverythingForRetryAfterAndThenContinues() async throws {

@@ -41,6 +41,7 @@ extension SearchDestination {
         case .programme(let channelID): .playProgramme(channelID: channelID)
         case .folder(let categoryID, let kind): PhoneRoutes.folderTab(for: kind).map { .showFolder(tab: $0, kind: kind, categoryID: categoryID) } ?? .unavailable
         case .collection(let id): .showCollection(id: id)
+        case .music, .podcast: .unavailable
         }
     }
 }

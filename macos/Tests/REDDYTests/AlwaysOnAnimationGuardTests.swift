@@ -6,6 +6,7 @@ import Foundation
 struct AlwaysOnAnimationGuardTests {
     /// file (relative to Sources/REDDY) -> (patterns allowed, count allowed, reason)
     static let allowed: [String: (Int, String)] = [
+        "Features/Music/Visualizer/MusicVisualizerViews.swift": (1, "the visualizer draws only while it is on screen and music is playing (paused otherwise), is capped by the chosen frame rate, stops under Reduce Motion, Study, Background and Battery saving modes, and is off by default"),
         "DesignSystem/Components/Motion/BrandMotion.swift": (4, "loader, empty art, shimmer, pulse halo: all stop with Reduce Motion, off screen and while the app is in the background (AppActivity)"),
         "DesignSystem/Components/Images/ArtworkImage.swift": (1, "placeholder shimmer: only while a picture loads, gated by AppActivity and Reduce Motion"),
         "DesignSystem/Components/StartScreen/StartScreenStyle.swift": (5, "welcome screen only; every loop is gated by StartMotionGate (window visible, app live, Reduce Motion)"),
@@ -13,6 +14,7 @@ struct AlwaysOnAnimationGuardTests {
         "Features/Opening/OpeningRenderer.swift": (1, "launch animation: pauses when frozen or Reduce Motion, ends after a few seconds"),
         "Features/Opening/OpeningCoordinator.swift": (1, "one-shot timer (repeats: false) that ends the launch animation"),
         "Features/Opening/OpeningView.swift": (1, "launch animation: paused once frozen"),
+        "Features/Music/Lyrics/MusicLyricsStrip.swift": (1, "lyric clock tick: paused unless audio is advancing"),
         "DesignSystem/Components/PlayerControls/AudioOnlyBackdrop.swift": (1, "radio level bars: paused unless playing, the app is live and Reduce Motion is off"),
         "DesignSystem/Components/Sidebar/ReddySidebar.swift": (1, "drag auto-scroll timer: exists only during a drag"),
         "Features/Player/Views/MultiViewWindow.swift": (1, "60 s guide refresh in the multi-view window only"),

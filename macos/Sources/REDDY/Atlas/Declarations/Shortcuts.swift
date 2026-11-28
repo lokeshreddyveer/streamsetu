@@ -10,6 +10,7 @@ enum AtlasShortcuts {
             Row(keys: "⌘1 – ⌘5", what: "Home, Live TV, Movies, Series, TV Guide"),
             Row(keys: "⌘6", what: "Services list (Mac only); ⌘0 goes back to StreamSetu"),
             Row(keys: "⌘7", what: "Podcasts (Mac only)"),
+            Row(keys: "⌘8", what: "Music (Mac only)"),
             Row(keys: "⌘K", what: "Search everything"),
             Row(keys: "⌘F", what: "Search within this screen"),
             Row(keys: "⌘N", what: "Add a playlist"),
@@ -40,6 +41,14 @@ enum AtlasShortcuts {
             Row(keys: "⌘.", what: "Stop"),
             Row(keys: "⇧⌘M", what: "Open Multi-View"),
             Row(keys: "⇧⌘P", what: "Open the player in its own window"),
+        ]),
+        Group(title: "Music", rows: [
+            Row(keys: "⌘K", what: "In Music: quick search of songs, albums and artists (elsewhere it searches everything)"),
+            Row(keys: "Space or ;", what: "In Music: play or pause"),
+            Row(keys: "← →", what: "In Music: back or forward 10 seconds"),
+            Row(keys: "↑ ↓", what: "In Music: volume up or down"),
+            Row(keys: "⌘F", what: "In Music: open the full search page"),
+            Row(keys: "⌘[", what: "In Music: go back one page"),
         ]),
     ]
 

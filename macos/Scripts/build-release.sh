@@ -3,6 +3,8 @@
 # Usage: Scripts/build-release.sh [version] [build-number]
 #   SIGN_IDENTITY="Developer ID Application: …"  -> use Scripts/sign-app.sh afterwards for distribution
 #   REDDY_BUNDLE_MPV=1                           -> also embed libmpv (see Scripts/bundle-libmpv.sh)
+#   REDDY_ARCH=arm64 | x86_64 | universal       -> one architecture on its own (about half the build time; Apple silicon: arm64, Intel: x86_64). Default: universal.
+#                                                  A single-architecture build also leaves a copy named dist/StreamSetu-<arch>.app next to dist/StreamSetu.app.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 python3 ../legal/sync-legal.py --check
@@ -15,8 +17,17 @@ rm -rf "$DIST" && mkdir -p "$DIST"
 python3 ../Scripts/gen-builtin-key.py tmdb Sources/REDDY/Generated/GeneratedTMDB.swift
 python3 ../Scripts/gen-builtin-key.py fanart Sources/REDDY/Generated/GeneratedFanart.swift
 python3 ../Scripts/gen-builtin-key.py tvdb Sources/REDDY/Generated/GeneratedTVDB.swift
+python3 ../Scripts/gen-builtin-key.py lastfm Sources/REDDY/Generated/GeneratedLastFM.swift
+python3 ../Scripts/gen-builtin-key.py lastfmsecret Sources/REDDY/Generated/GeneratedLastFMSecret.swift
+python3 ../Scripts/gen-builtin-key.py acoustid Sources/REDDY/Generated/GeneratedAcoustID.swift
+python3 ../Scripts/gen-builtin-key.py setlistfm Sources/REDDY/Generated/GeneratedSetlistFM.swift
 echo "▸ Compiling (release)…"
-if swift build -c release --arch arm64 --arch x86_64 >/dev/null 2>&1; then
+ARCH_CHOICE="${REDDY_ARCH:-universal}"
+if [ "$ARCH_CHOICE" = "arm64" ] || [ "$ARCH_CHOICE" = "x86_64" ]; then
+  swift build -c release --arch "$ARCH_CHOICE"
+  BIN="$(swift build -c release --arch "$ARCH_CHOICE" --show-bin-path)/REDDY"; echo "  $ARCH_CHOICE-only binary"
+  ARCHS=" $(lipo -archs "$BIN" 2>/dev/null) "; [[ "$ARCHS" == *" $ARCH_CHOICE "* && "$ARCHS" != *" $([ "$ARCH_CHOICE" = arm64 ] && echo x86_64 || echo arm64) "* ]] || { echo "✘ $BIN is not a $ARCH_CHOICE-only binary:$ARCHS"; exit 1; }
+elif swift build -c release --arch arm64 --arch x86_64 >/dev/null 2>&1; then
   # Where SwiftPM puts a multi-arch build depends on its version (.build/apple/... before Swift 6.4, .build/out/... from it), so it is asked.
   BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/REDDY"; echo "  universal binary via SwiftPM multi-arch build"
   ARCHS=" $(lipo -archs "$BIN" 2>/dev/null) "; [[ "$ARCHS" == *" arm64 "* && "$ARCHS" == *" x86_64 "* ]] || { echo "✘ $BIN is not a universal (arm64 + x86_64) binary:$ARCHS"; exit 1; }
@@ -45,6 +56,19 @@ cp Resources/Branding/TMDBLogo.png "$APP/Contents/Resources/TMDBLogo.png"
 mkdir -p "$APP/Contents/Resources/ServiceIcons" && cp Resources/ServiceIcons/*.png "$APP/Contents/Resources/ServiceIcons/"
 # The YouTube ad-skipping rules (data only; checked name by name when loaded).
 cp Resources/youtube-ads.json "$APP/Contents/Resources/youtube-ads.json"
+# fpcalc (opt-in: Scripts/fetch-fpcalc.sh fetches it). With it, recognising songs by sound needs nothing installed; without it the app looks for the person's own.
+if [ -x Resources/Helpers/fpcalc ]; then
+  cp Resources/Helpers/fpcalc "$APP/Contents/MacOS/fpcalc"
+  cp Resources/Notices/Chromaprint-NOTICE.txt "$APP/Contents/Resources/Chromaprint-NOTICE.txt"
+  [ -f Resources/Helpers/fpcalc-LICENSE.txt ] && cp Resources/Helpers/fpcalc-LICENSE.txt "$APP/Contents/Resources/Chromaprint-LICENSE.txt"
+  echo "  included fpcalc"
+fi
+# The karaoke model (opt-in: Scripts/fetch-karaoke-model.sh builds it). A build without it has karaoke "Not set up"; with it, karaoke works with no download.
+if [ -d Resources/Models/SpleeterVocals2.mlmodelc ]; then
+  mkdir -p "$APP/Contents/Resources/Models" && cp -R Resources/Models/SpleeterVocals2.mlmodelc "$APP/Contents/Resources/Models/"
+  cp Resources/Notices/Spleeter-NOTICE.txt "$APP/Contents/Resources/Models/SpleeterVocals2-NOTICE.txt"
+  echo "  included the karaoke model ($(du -sh Resources/Models/SpleeterVocals2.mlmodelc | cut -f1))"
+fi
 # The layers of the opening's television (TuneIn-<layer>.png), from the shared motion assets at the root of the repository.
 for LAYER in ../motion/assets/tune-in/*.png; do cp "$LAYER" "$APP/Contents/Resources/TuneIn-$(basename "$LAYER")"; done
 echo "APPL????" > "$APP/Contents/PkgInfo"
@@ -85,3 +109,7 @@ else
   codesign --force --deep --sign - --options runtime --entitlements Configuration/REDDY.entitlements "$APP"
 fi
 echo "✔ $APP  (version $VERSION, build $BUILD)"
+if [ "$ARCH_CHOICE" = "arm64" ] || [ "$ARCH_CHOICE" = "x86_64" ]; then
+  rm -rf "$DIST/StreamSetu-$ARCH_CHOICE.app" && cp -R "$APP" "$DIST/StreamSetu-$ARCH_CHOICE.app"
+  echo "✔ $DIST/StreamSetu-$ARCH_CHOICE.app  ($ARCH_CHOICE only)"
+fi

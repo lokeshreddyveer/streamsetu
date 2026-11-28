@@ -2,18 +2,18 @@ import Foundation
 
 /// The six native items of the top bar's first group. Podcasts is one of them; none of them can be hidden.
 enum NavTab: String, CaseIterable, Identifiable, Sendable {
-    case home, liveTV, movies, series, guide, podcasts
+    case home, liveTV, movies, series, guide, podcasts, music
     var id: String { rawValue }
     var appTab: AppTab? {
-        switch self { case .home: .home; case .liveTV: .liveTV; case .movies: .movies; case .series: .series; case .guide: .guide; case .podcasts: nil }
+        switch self { case .home: .home; case .liveTV: .liveTV; case .movies: .movies; case .series: .series; case .guide: .guide; case .podcasts, .music: nil }
     }
     init(_ tab: AppTab) {
         switch tab { case .home: self = .home; case .liveTV: self = .liveTV; case .movies: self = .movies; case .series: self = .series; case .guide: self = .guide }
     }
-    var title: String { appTab?.title ?? "Podcasts" }
+    var title: String { switch self { case .podcasts: "Podcasts"; case .music: "Music"; default: appTab?.title ?? "" } }
     /// The symbol before the name: Podcasts keeps its microphone, Home is the house the StreamSetu chip already uses, TV Guide the calendar of the guide button on Live TV.
     var symbol: String {
-        switch self { case .home: "house.fill"; case .liveTV: "tv"; case .movies: "film"; case .series: "rectangle.stack.fill"; case .guide: "calendar"; case .podcasts: "mic.fill" }
+        switch self { case .home: "house.fill"; case .liveTV: "tv"; case .movies: "film"; case .series: "rectangle.stack.fill"; case .guide: "calendar"; case .podcasts: "mic.fill"; case .music: "music.note" }
     }
 }
 

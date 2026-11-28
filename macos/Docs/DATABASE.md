@@ -69,6 +69,8 @@ Logins and tokens (Keychain), artwork (disk cache under `~/Library/Caches/REDDY`
 - **v23** `rating_checks`: titles whose the details service rating was looked up once (found or not), so they are not asked about again until the record expires.
 - **v24** the metadata hub: `hub_identity` (the id crosswalk, with `miss_until`: a service did not know the title's ids, cleared when new ids arrive) and `metadata_facts` (single facts with source, quality, expiry, `miss_until` and `fail_count`). Purged on expiry, when a folder is locked or hidden, and per service when it is switched off.
 - **v25** the guide hub: a registry of guide sources, per-source channels and programmes, the channel-to-guide map, overrides, public channel-database enrichment, field provenance and diagnostics. Additive; the `epg_*` tables keep working.
+- **v26** nothing: the number was used by development builds for a feature that was withdrawn before release, and stays taken so the versions are consecutive.
+- **v27** removes the tables of a feature that was withdrawn before release (development builds had created them as v26). Nothing else refers to them; a database that never had them is unchanged.
 
 `playback_sessions` keeps the latest 20,000 sessions; the statistics page is computed from it and nothing else.
 

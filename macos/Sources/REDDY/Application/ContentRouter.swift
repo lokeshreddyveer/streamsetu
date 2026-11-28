@@ -10,7 +10,7 @@ struct ContentRouter: View {
     /// The folder being viewed, when it is PIN-locked and the app is locked: the content is replaced by an unlock prompt.
     private var lockedFolder: String? {
         guard case .folder(let id) = router.selection, let p = container?.parental, p.isRestricting, p.isLocked(id) else { return nil }
-        return state.folderName(id) ?? "This folder"
+        return state.folderName(id) ?? Localized.string("This folder")
     }
 
     var body: some View {

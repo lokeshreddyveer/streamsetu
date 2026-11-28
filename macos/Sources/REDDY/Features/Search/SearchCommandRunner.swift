@@ -21,7 +21,8 @@ import AppKit
         return (nil, ch)
     }
 
-    static func run(_ cmd: SearchCommand, container c: AppContainer, router: AppRouter, state: AppState) {
+    /// False when the screen asked for could not be opened (the person is told).
+    @discardableResult static func run(_ cmd: SearchCommand, container c: AppContainer, router: AppRouter, state: AppState) -> Bool {
         func done() { router.clearSearch() }
         switch cmd.kind {
         case .go(let target, let library):
@@ -41,10 +42,17 @@ import AppKit
             case .statistics: router.navigate(.home, .shortcut(.statistics))
             case .downloads, .settings:
                 #if os(macOS)
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                // Downloads live in the Library tab of Settings; Settings opens on its last tab.
+                if !AtlasNavRequests.shared.showSettings(tab: target == .downloads ? SettingsTab.library.rawValue : nil) {
+                    state.toasts.show(Localized.string("Settings could not be opened."), symbol: "exclamationmark.triangle", kind: .warning)
+                    done()
+                    return false
+                }
                 #endif
+            case .featured, .recentlyAdded, .unwatched, .unwatchedFavorites, .addedThisMonth, .newEpisodes:
+                if let s = Shortcut(rawValue: target.rawValue), let tab = SidebarModel.tab(for: s, current: router.tab) { router.navigate(tab, .shortcut(s)) }
             }
-            router.libraryQuery = library
+            router.screenQuery = library.flatMap { words in target.searchBoxTab.map { ScreenQuery(tab: $0, words: words) } }
             done()
         case .play(let name):
             let hit = find(name, in: c)
@@ -63,14 +71,22 @@ import AppKit
             if let id = c.settings.lastChannelID, let ch = (try? c.catalog.channel(id: id)) ?? nil { c.playback.play(channel: ch); c.playback.isExpanded = true; done() }
             else { state.toasts.show("No last channel yet.", symbol: "dot.radiowaves.left.and.right", kind: .info) }
         case .favourite(let name, let on):
-            guard let item = find(name, in: c).item else { state.toasts.show("Nothing named “\(name)” in your library.", symbol: "magnifyingglass", kind: .warning); return }
+            let hit = find(name, in: c)
+            // A channel can be a favourite too ("favourite BBC One"): the name matched no title, so the channel is the answer.
+            if hit.item == nil, let ch = hit.channel {
+                if state.isFavorite(ch.id) != on { state.toggleFavorite(ch.id, kind: .channel) }
+                state.toasts.show(on ? "Added “\(ch.name)” to Favorites." : "Removed “\(ch.name)” from Favorites.", symbol: "heart", kind: .info)
+                return true
+            }
+            guard let item = hit.item else { state.toasts.show("Nothing named “\(name)” in your library.", symbol: "magnifyingglass", kind: .warning); return true }
             if state.isFavorite(item.id) != on { state.toggleFavorite(item.id, kind: item.kind) }
             state.toasts.show(on ? "Added “\(item.title)” to Favorites." : "Removed “\(item.title)” from Favorites.", symbol: "heart", kind: .info)
         case .watchLater(let name, let on):
-            guard let item = find(name, in: c).item else { state.toasts.show("Nothing named “\(name)” in your library.", symbol: "magnifyingglass", kind: .warning); return }
+            guard let item = find(name, in: c).item else { state.toasts.show("Nothing named “\(name)” in your library.", symbol: "magnifyingglass", kind: .warning); return true }
             if state.isWatchLater(item.id) != on { state.toggleWatchLater(item.id, kind: item.kind) }
             state.toasts.show(on ? "Added “\(item.title)” to Watch Later." : "Removed “\(item.title)” from Watch Later.", symbol: "bookmark", kind: .info)
         }
+        return true
     }
 
     /// Carries out a suggestion from the assistant and says what really happened. A title is read from the catalog again and the parental state checked now; "played" means the stream is playing,
@@ -90,7 +106,7 @@ import AppKit
         switch kind {
         case .command(let cmd):
             switch cmd.kind {
-            case .go: run(cmd, container: c, router: router, state: state); return .done(nil)
+            case .go: return run(cmd, container: c, router: router, state: state) ? .done(nil) : .failed("Settings could not be opened.")
             case .resume:
                 guard let next = (try? c.history.continueWatching(limit: 1))?.first else { return .failed("There is nothing to resume yet.") }
                 var key: String?
@@ -110,7 +126,14 @@ import AppKit
                 guard c.assistantAccessAllowed(categoryID: item.categoryID) else { return .failed(locked) }
                 PlayActions(container: c, toasts: state.toasts).play(item); return await watch(item.isSeries ? nil : item.id)
             case .favourite(let name, let on), .watchLater(let name, let on):
-                guard let item = find(name, in: c).item else { return .failed("Nothing named “\(name)” is in your library.") }
+                let hit = find(name, in: c)
+                var wantsLater = false; if case .watchLater = cmd.kind { wantsLater = true }
+                if hit.item == nil, let ch = hit.channel {
+                    guard !wantsLater else { return .failed("A channel cannot be saved to Watch Later. Favourite it instead.") }
+                    if state.isFavorite(ch.id) != on { state.toggleFavorite(ch.id, kind: .channel) }
+                    return state.isFavorite(ch.id) == on ? .done((on ? "Added" : "Removed") + " “\(ch.name)” " + (on ? "to " : "from ") + "Favorites.") : .failed("I could not update Favorites. Try it from the channel’s page.")
+                }
+                guard let item = hit.item else { return .failed("Nothing named “\(name)” is in your library.") }
                 var later = false; if case .watchLater = cmd.kind { later = true }
                 return toggle(item, later: later, on: on)
             }

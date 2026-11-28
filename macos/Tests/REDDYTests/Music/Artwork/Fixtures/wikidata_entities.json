@@ -1,0 +1,179 @@
+{
+ "entities": {
+  "Q5512526": {
+   "type": "item",
+   "id": "Q5512526",
+   "labels": {
+    "en": {
+     "language": "en",
+     "value": "G. V. P. Prakash Kumar"
+    }
+   },
+   "aliases": {
+    "en": [
+     {
+      "language": "en",
+      "value": "G V Prakash Kumar"
+     }
+    ]
+   },
+   "claims": {
+    "P106": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P106",
+       "hash": "f9297a95dae016a21c3094b33ce10828ad6539e6",
+       "datavalue": {
+        "value": {
+         "entity-type": "item",
+         "numeric-id": 36834,
+         "id": "Q36834"
+        },
+        "type": "wikibase-entityid"
+       },
+       "datatype": "wikibase-item"
+      },
+      "type": "statement",
+      "id": "Q5512526$56DED2DF-E4AF-46E3-9914-B9D8C27562D8",
+      "rank": "normal"
+     },
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P106",
+       "hash": "758295c4843ebfb766fc8236d4849374401bd73e",
+       "datavalue": {
+        "value": {
+         "entity-type": "item",
+         "numeric-id": 33999,
+         "id": "Q33999"
+        },
+        "type": "wikibase-entityid"
+       },
+       "datatype": "wikibase-item"
+      },
+      "type": "statement",
+      "id": "Q5512526$3681e8a6-476a-9c10-6984-ae7ece84cc43",
+      "rank": "normal"
+     }
+    ],
+    "P434": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P434",
+       "hash": "391f538410a1423d5910b0ac356ec8729ff5e501",
+       "datavalue": {
+        "value": "a740619d-27d6-46da-a438-7b9bc70d6633",
+        "type": "string"
+       },
+       "datatype": "external-id"
+      },
+      "type": "statement",
+      "id": "Q5512526$4185715B-E31A-4748-90FF-2EADA8B15467",
+      "rank": "normal"
+     }
+    ],
+    "P345": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P345",
+       "hash": "ae1dbe98e1abe86708951edf5e5ebc35f0a4ee38",
+       "datavalue": {
+        "value": "nm1574854",
+        "type": "string"
+       },
+       "datatype": "external-id"
+      },
+      "type": "statement",
+      "id": "Q5512526$430709FF-1E52-48A4-A261-52AFE53CF1E0",
+      "rank": "normal"
+     }
+    ],
+    "P4985": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P4985",
+       "hash": "d7cf5f8791aa4128edb6386097f2df1fc7db4a7d",
+       "datavalue": {
+        "value": "584950",
+        "type": "string"
+       },
+       "datatype": "external-id"
+      },
+      "type": "statement",
+      "id": "Q5512526$5B5C7FAD-19A8-4687-B1CB-36277E949D48",
+      "rank": "normal"
+     }
+    ]
+   },
+   "sitelinks": {
+    "enwiki": {
+     "site": "enwiki",
+     "title": "G. V. Prakash Kumar",
+     "badges": []
+    }
+   }
+  },
+  "Q63135778": {
+   "type": "item",
+   "id": "Q63135778",
+   "labels": {
+    "en": {
+     "language": "en",
+     "value": "Soorarai Pottru"
+    }
+   },
+   "aliases": {
+    "en": []
+   },
+   "claims": {
+    "P345": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P345",
+       "hash": "80d73ed326c0603aef08e6c6451ea292adcf4ea2",
+       "datavalue": {
+        "value": "tt10189514",
+        "type": "string"
+       },
+       "datatype": "external-id"
+      },
+      "type": "statement",
+      "id": "Q63135778$9646C8E4-3C14-4415-9AE9-9588CA2CF1BF",
+      "rank": "normal"
+     }
+    ],
+    "P4947": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P4947",
+       "hash": "c8acc85f54b3b4cfc8f98e1a49e633953dbaa609",
+       "datavalue": {
+        "value": "595228",
+        "type": "string"
+       },
+       "datatype": "external-id"
+      },
+      "type": "statement",
+      "id": "Q63135778$29B7A0EB-7A8E-4BAE-A81F-9AFAB7F02C65",
+      "rank": "normal"
+     }
+    ]
+   },
+   "sitelinks": {
+    "enwiki": {
+     "site": "enwiki",
+     "title": "Soorarai Pottru",
+     "badges": []
+    }
+   }
+  }
+ },
+ "success": 1
+}

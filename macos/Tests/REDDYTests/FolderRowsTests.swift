@@ -41,9 +41,14 @@ import Foundation
     }
 
     @Test func aLockedFolderShowsNoCountAndNoTilesAndHiddenOnesAreAbsent() async throws {
-        try c.catalog.setCategoryLocked("f40", true, family: false)
+        // Folders are locked and restricted through their owner, ParentalControls. Setting the catalog's flag by hand was overwritten: hiding a folder makes the owner
+        // recompute the flag (AppContainer runs foldersHiddenChanged on the main actor), and from the PIN and Kids mode it wrote false. The PIN is removed at the end so
+        // nothing is left in the shared defaults for the next test.
+        #expect(c.parental.setPIN("2468"))
+        defer { _ = c.parental.removePIN(current: "2468") }
+        #expect(c.parental.setFolder("f40", locked: true))
         try c.favoritesRepo.hide("f5", kind: "category")
-        c.catalog.restriction.isActive = true
+        c.parental.lockNow()
         let m = FolderRowsModel(kind: .movie)
         await m.reload(c, sourceID: nil, profile: "main")
         let locked = try #require(m.rows.first { $0.id == "f40" })

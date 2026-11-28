@@ -43,6 +43,12 @@ import Foundation
             AITool(name: "select_track", help: "Offer a button to choose an audio or subtitle track of what is playing (by language or name), or turn subtitles off.", params: [.init(name: "kind", kind: .oneOf(["audio", "subtitle"]), help: "Track kind"), s("choice", "Language or name, or 'off' for subtitles")]),
             AITool(name: "sync_guide", help: "Offer a button to refresh the TV guide.", params: []),
             AITool(name: "problem_report", help: "Prepare a redacted problem report (no logins, addresses or tokens) and offer to copy it.", params: []),
+            AITool(name: "music_now_playing", help: "What is playing in the Music tab (song, artist, album, shuffle, repeat, queue size) and which Music screen is open.", params: []),
+            AITool(name: "music_search", help: "Look songs, artists and albums up in Music, by name. Use it to find the exact name before music_play, or to answer 'do you have…' questions about music.", params: [s("query", "Song, artist or album")]),
+            AITool(name: "music_play", help: "Offer a button to play something in Music: a song, an artist's top songs, an album or a playlist, optionally shuffled.", params: [s("query", "What to play"), .init(name: "kind", kind: .oneOf(MusicAssistantAction.kinds), help: "What it is", required: false), .init(name: "shuffle", kind: .boolean, help: "true to shuffle", required: false)]),
+            AITool(name: "music_control", help: "Offer a button to control Music: play, pause, next, previous, shuffle, repeat, like, volume, mute, lyrics, queue.", params: [.init(name: "action", kind: .oneOf(MusicAssistantAction.controls), help: "The action")]),
+            AITool(name: "music_open", help: "Offer a button to open a Music screen (Listen Now, Explore, Search, Library, Radio, Downloads, Devices, Listen Together, Settings).", params: [.init(name: "screen", kind: .oneOf(MusicAssistantAction.screens), help: "Screen")]),
+            AITool(name: "music_country", help: "Offer a button to change the country of the Music charts (an ISO code like in or us, or worldwide).", params: [s("country", "ISO code or worldwide")]),
             AITool(name: "web_lookup", help: "A short summary from Wikipedia about a film, series, actor or topic.", params: [s("topic", "Topic")]),
             AITool(name: "web_titles", help: "The titles Wikipedia lists on the filmography page of a person (an actor, director) or franchise: plain names, to hand to check_library. Say that they came from Wikipedia, not from your memory.", params: [s("person", "The person or franchise")]),
         ]
@@ -57,7 +63,7 @@ import Foundation
             ]
         }
         // The most useful first: the on-device model has a small window, so it gets only the first few.
-        let order = ["search_everything", "check_library", "diagnose_playback", "source_health", "guide_status", "find_setting", "find_help", "change_setting", "control_playback", "play_title", "tv_guide",
+        let order = ["search_everything", "check_library", "diagnose_playback", "source_health", "guide_status", "find_setting", "find_help", "change_setting", "control_playback", "music_play", "music_control", "play_title", "tv_guide",
                      "search_library", "open_screen", "title_details", "recommend_engine", "now_playing", "switch_engine", "select_track", "retry_playback", "sync_guide", "source_setup_help", "problem_report", "web_lookup", "web_titles"]
         t.sort { (order.firstIndex(of: $0.name) ?? 99) < (order.firstIndex(of: $1.name) ?? 99) }
         return compact ? Array(t.prefix(10)) : t
@@ -71,13 +77,14 @@ import Foundation
         case "check_library": text = "Checking your library for those titles…"
         case "title_details", "similar_titles": text = "Reading about that title…"
         case "tv_guide": text = "Checking the TV guide…"
-        case "now_playing", "diagnose_playback", "recommend_engine": text = "Looking at the player…"
+        case "now_playing", "diagnose_playback", "recommend_engine", "music_now_playing": text = "Looking at the player…"
         case "source_health": text = "Checking the playlist…"
         case "guide_status": text = "Checking the guide…"
         case "source_setup_help": text = "Looking that up…"
         case "find_setting": text = "Looking up the settings…"
         case "find_help": text = "Looking that up…"
         case "web_lookup", "web_titles": text = "Reading Wikipedia…"
+        case "music_search": text = "Searching Music…"
         case "watch_stats": text = "Adding up your viewing…"
         default: text = "Working on it…"
         }
@@ -103,6 +110,30 @@ import Foundation
             let list = SimilarService(catalog: c.catalog).suggestions(for: seed, extras: nil).prefix(10).map(\.item.title)
             return list.isEmpty ? "Nothing similar found." : "Similar titles in the library: " + list.joined(separator: "; ")
         case "tv_guide": return tvGuide(str("query"))
+        case "music_now_playing":
+            guard let h = MusicAssistantRegistry.handler else { return Self.noMusic }
+            return h.nowPlaying()
+        case "music_search":
+            guard let h = MusicAssistantRegistry.handler else { return Self.noMusic }
+            return await h.search(str("query"))
+        case "music_play":
+            guard MusicAssistantRegistry.handler != nil else { return Self.noMusic }
+            let q = str("query"); guard !q.isEmpty else { return "Say what to play." }
+            let kind = MusicAssistantAction.kinds.contains(str("kind")) ? str("kind") : "any"
+            let shuffle = a["shuffle"]?.flag ?? false
+            propose(.music(.play(query: q, kind: kind, shuffle: shuffle))); return "Offered: play \(q) in Music. The person must tap the button."
+        case "music_control":
+            guard MusicAssistantRegistry.handler != nil else { return Self.noMusic }
+            guard MusicAssistantAction.controls.contains(str("action")) else { return "Unknown action." }
+            propose(.music(.control(str("action")))); return "Offered: \(MusicAssistantAction.control(str("action")).title). The person must tap the button."
+        case "music_open":
+            guard MusicAssistantRegistry.handler != nil else { return Self.noMusic }
+            guard MusicAssistantAction.screens.contains(str("screen")) else { return "Unknown Music screen." }
+            propose(.music(.open(str("screen")))); return "Offered: \(MusicAssistantAction.open(str("screen")).title). The person must tap the button."
+        case "music_country":
+            guard MusicAssistantRegistry.handler != nil else { return Self.noMusic }
+            let c = str("country"); guard !c.isEmpty else { return "Say which country." }
+            propose(.music(.country(c))); return "Offered: " + MusicAssistantAction.country(c).title + ". The person must tap the button."
         case "now_playing": return nowPlaying()
         case "diagnose_playback": return present(AssistantDiagnostics.playback(c.playbackEvidence()))
         case "recommend_engine":
@@ -186,6 +217,8 @@ import Foundation
         default: return "Unknown tool."
         }
     }
+
+    private static let noMusic = "Music is not available on this device."
 
     /// Records an offer, with who it was for and what it concerns, so it can be rechecked when tapped.
     private func propose(_ k: AssistantProposal.Kind, item: LibraryItem? = nil, categoryID: String? = nil, targetID: String? = nil) {
@@ -293,7 +326,7 @@ import Foundation
         if !LocalIntent.parse(text, hasPerson: { PeopleIndex(db: container.db).canonicalName(for: $0) }).people.isEmpty { return nil }
         step("search_everything")
         let found = await searchEverything(text)
-        guard !found.hasPrefix("Nothing named"), let summary = lastEverything else { return nil }
+        guard !found.hasPrefix("Nothing named"), let summary = lastEverything, !summary.isEmpty else { return nil }
         let title = text.trimmingCharacters(in: .whitespacesAndNewlines)
         var say = "Found **\(title)**: \(summary)."
         if lastAnswer?.results.isEmpty == false { say += " Tap a poster to open it." }
@@ -387,16 +420,16 @@ import Foundation
         lastEverything = nil
         if merged.values.allSatisfy(\.isEmpty) { return "Nothing named “\(q)” in any playlist: no live channel, movie, series, episode or guide entry." }
         var counts: [String] = []
-        for (kind, one, many) in [(SearchResultKind.channel, "live channel", "live channels"), (.series, "series", "series"), (.movie, "movie", "movies"), (.episode, "episode", "episodes"), (.programme, "guide entry", "guide entries")] {
+        for (kind, one, many) in [(SearchResultKind.channel, "live channel", "live channels"), (.series, "series", "series"), (.movie, "movie", "movies"), (.episode, "episode", "episodes"), (.programme, "guide entry", "guide entries"), (.podcast, "podcast", "podcasts"), (.music, "song or album", "songs and albums")] {
             let n = merged[kind]?.count ?? 0
             if n > 0 { counts.append("\(n) " + (n == 1 ? one : many)) }
         }
         lastEverything = counts.joined(separator: ", ")
         var out: [String] = []
-        for kind in [SearchResultKind.channel, .series, .movie, .episode, .programme] {
+        for kind in [SearchResultKind.channel, .series, .movie, .episode, .programme, .podcast, .music] {
             let rows = (merged[kind] ?? []).sorted { $0.score > $1.score }
             guard !rows.isEmpty else { continue }
-            let list = rows.prefix(8).map { r in r.title + (r.sourceName.map { " [\($0)]" } ?? "") + (r.subtitle.isEmpty ? "" : " — " + r.subtitle) }
+            let list = rows.prefix(8).map { r in r.title + (r.subtitle.isEmpty ? "" : " — " + r.subtitle) }
             out.append("\(kind.groupTitle) (\(rows.count)): " + list.joined(separator: "; "))
         }
         // Posters for the movies and series found
@@ -535,7 +568,10 @@ import Foundation
     func localReply(_ text: String) async -> AssistantReply {
         let lower = text.lowercased()
         if let offers = container.assistantCommandProposals(text) { proposals.append(contentsOf: offers); return reply("I can do that:") }
-        if let found = await discoveryReply(text) { return found }
+        // A request to play something ("play something relaxing") is a request for media, not a question about the app, even when the search box would hand it to Setu.
+        let asksToPlay = text.trimmingCharacters(in: .whitespaces).lowercased().hasPrefix("play ")
+        let aboutTheApp = AssistantRouter.isAppHelp(text) || (SearchIntent.classify(text) == .ask && !asksToPlay)
+        if !aboutTheApp, let found = await discoveryReply(text) { return found }
         let intent = AssistantRouter.route(text)
         if intent == .unsupported {
             return reply("StreamSetu is a player: it does not provide channels, playlists or IPTV subscriptions, and I can’t recommend where to get them. You add sources you are entitled to use (Settings → Library → Manage), and I can help with that, with finding things in them, or with playback problems.")
@@ -562,6 +598,12 @@ import Foundation
                 parts += gs.map(\.body)
                 return reply(parts.joined(separator: "\n\n") + "\n\n(Add an AI in Settings → Library (Trakt, Debrid and AI) for open conversation.)")
             }
+        }
+        // A question about the app that nothing above could answer: say what is nearby and offer to open it. It is never turned into a library search.
+        if aboutTheApp {
+            let near = AtlasAssistant.nearbyReply(for: text, engine: Atlas.engine, container: container)
+            proposals.append(contentsOf: near.proposals)
+            return reply(near.text + (near.chips.isEmpty ? "" : "\n\nClosest topics: " + near.chips.joined(separator: ", ") + "."))
         }
         // Anything else: a name or a request. Search everything for it, and read it as a request too.
         let everywhere = await searchEverything(text)

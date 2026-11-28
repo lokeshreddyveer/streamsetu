@@ -109,7 +109,7 @@ private struct LibraryScreenContent: View {
         .onChange(of: topRow) { _, id in if !showsFolders, let id { vm.scrollAnchor = id } }
         .onDisappear { vm.trimForRetention() }
         .onAppear { state.reloadWatched(); takeLibraryQuery(); takeLibraryFilter() }
-        .onChange(of: router.libraryQuery) { _, _ in takeLibraryQuery() }
+        .onChange(of: router.screenQuery) { _, _ in takeLibraryQuery() }
         .onChange(of: router.libraryFilter) { _, _ in takeLibraryFilter() }
         .task(id: taskKey) {
             guard let c = container else { return }
@@ -211,8 +211,7 @@ private struct LibraryScreenContent: View {
 
     /// A command typed in the top search put words for this list's own search box: they are used once, so the filters and ordering in them apply here.
     private func takeLibraryQuery() {
-        guard let q = router.libraryQuery else { return }
-        router.libraryQuery = nil
+        guard let q = router.takeScreenQuery(for: kind == .movie ? .movies : .series) else { return }
         vm.search = q
         if let c = container { vm.scheduleSearch(c, selection: selection, source: state.activeSourceID) }
     }

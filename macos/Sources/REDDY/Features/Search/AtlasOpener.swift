@@ -12,7 +12,7 @@ import AppKit
             guard let t = AppTab(rawValue: raw) else { return .failed("\(e.title) is not a tab on this Mac.") }
             router.navigate(t); router.clearSearch(); return .done("Opened \(e.title).")
         case .shortcut(let raw):
-            guard let s = Shortcut(rawValue: raw), let tab = AppTab.allCases.first(where: { Shortcut.pinned(for: $0).contains(s) }) else { return .failed("\(e.title) is not in the sidebar on this Mac.") }
+            guard let s = Shortcut(rawValue: raw), let tab = SidebarModel.tab(for: s, current: router.tab) else { return .failed("\(e.title) is not in the sidebar on this Mac.") }
             router.navigate(tab, .shortcut(s)); router.clearSearch(); return .done("Opened \(e.title).")
         case .destination(let name):
             guard let d = Destination.allCases.first(where: { String(describing: $0) == name }) else { return .failed("I could not open \(e.title).") }
@@ -22,15 +22,14 @@ import AppKit
             router.modal = m; return .done("Opened \(e.title).")
         case .settingsPage(let tab):
             #if os(macOS)
-            AtlasNavRequests.shared.settingsTab = tab
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            guard AtlasNavRequests.shared.showSettings(tab: tab) else { return .failed("Settings could not be opened.") }
             #endif
             return .done("Opened Settings, \(tab) tab. \(e.title) is in \(e.path.joined(separator: " > ")).")
         case .window(let id):
             AtlasNavRequests.shared.window = id
             return .done("Opened \(e.title).")
         case .searchCommand(let word):
-            if let t = CommandTarget(rawValue: word) { SearchCommandRunner.run(.init(kind: .go(t, library: nil)), container: c, router: router, state: state); return .done("Opened \(e.title).") }
+            if let t = CommandTarget(rawValue: word) { return SearchCommandRunner.run(.init(kind: .go(t, library: nil)), container: c, router: router, state: state) ? .done("Opened \(e.title).") : .failed("Settings could not be opened.") }
             if word == "askSetu" { AssistantLauncher.shared.ask(nil); return .done("Setu is open.") }
             if word == "focusScreen" { router.focusCurrentScreenSearch(); return .done("The search box of this screen has the cursor.") }
             router.focusTopSearch()

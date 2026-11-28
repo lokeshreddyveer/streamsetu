@@ -20,8 +20,11 @@ make_stubs() {   # $1 = folder
   cat > "$1/hdiutil" <<'S'
 #!/bin/bash
 if [ "$1" = attach ]; then
+  DMGFILE="$*"
   while [ $# -gt 0 ]; do [ "$1" = "-mountpoint" ] && MNT="$2"; shift; done
-  mkdir -p "$MNT/StreamSetu.app/Contents"
+  case "$DMGFILE" in *-AppleSilicon.dmg*) ARCHS="arm64" ;; *-Intel.dmg*) ARCHS="x86_64" ;; *) ARCHS="arm64 x86_64" ;; esac
+  [ -n "${WRONG_ARCH_FOR:-}" ] && case "$DMGFILE" in *"$WRONG_ARCH_FOR"*) ARCHS="arm64 x86_64" ;; esac
+  mkdir -p "$MNT/StreamSetu.app/Contents/MacOS"; echo "$ARCHS" > "$MNT/StreamSetu.app/Contents/MacOS/StreamSetu"
   /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string ${FAKE_APP_VERSION:-9.9.9}" -c "Add :CFBundleVersion string ${FAKE_APP_BUILD:-999}" "$MNT/StreamSetu.app/Contents/Info.plist" >/dev/null 2>&1
 fi
 exit 0
@@ -46,6 +49,10 @@ S
 #!/bin/bash
 [ "$1 $2" = "stapler validate" ] && exit "${STAPLER_RC:-0}"
 exit 0
+S
+  cat > "$1/lipo" <<'S'
+#!/bin/bash
+cat "$2"
 S
   cat > "$1/apksigner" <<'S'
 #!/bin/bash
@@ -106,18 +113,18 @@ make_root() {   # builds a fake repository with good artifacts in $ROOT_DIR
   printf '#!/bin/bash\necho "appcast $*" >> "$GH_LOG"\nexit "${APPCAST_RC:-0}"\n' > macos/Scripts/update-appcast.sh
   chmod +x Scripts/*.sh macos/Scripts/*.sh macos/Scripts/appcast_add.py
   echo 'VERSION = "1.0"' > ios/Scripts/generate-project.py
-  printf 'Download `StreamSetu-1.0.dmg` here: https://x/releases/download/old/StreamSetu-1.0.dmg\n' > README.md
+  printf '| **Mac** | [`StreamSetu-1.0.dmg`](../../releases/download/old/StreamSetu-1.0.dmg) | Signed. |\n' > README.md
   echo "$PIN" > android/release-signer.sha256; echo "$PERMS" > android/release-permissions.txt
-  echo "dmg bytes" > macos/dist/StreamSetu-9.9.9.dmg
+  for d in StreamSetu-9.9.9.dmg StreamSetu-9.9.9-AppleSilicon.dmg StreamSetu-9.9.9-Intel.dmg; do echo "dmg bytes $d" > "macos/dist/$d"; done
   echo "apk bytes" > android/dist/9.9.9/streamsetu-tv-9.9.9.apk; cp android/dist/9.9.9/streamsetu-tv-9.9.9.apk android/dist/9.9.9/StreamSetu-Android-9.9.9.apk
   ( cd android/dist/9.9.9 && shasum -a 256 streamsetu-tv-9.9.9.apk StreamSetu-Android-9.9.9.apk > SHA256SUMS-9.9.9.txt )
   printf '# 9 November 2026\n\n- Mac 9.9.9 and Android 9.9.9.\n' > docs/releases/t1.md
   git init -q . && git config user.email t@example.com && git config user.name t && git add -A && git commit -qm base
   git rev-parse HEAD > macos/dist/StreamSetu-9.9.9.commit; git rev-parse HEAD > android/dist/9.9.9/BUILD-COMMIT.txt          # untracked, like the real dist folders
   export GH_LOG="$ROOT_DIR/gh.log" GH_STORE="$ROOT_DIR/gh-store" FAKE_PIN="$PIN" FAKE_PERMS="$PERMS"; : > "$GH_LOG"; mkdir -p "$GH_STORE"
-  export RELEASE_ROOT="$ROOT_DIR" HDIUTIL="$STUBS/hdiutil" CODESIGN="$STUBS/codesign" SPCTL="$STUBS/spctl" XCRUN="$STUBS/xcrun" APKSIGNER="$STUBS/apksigner" AAPT="$STUBS/aapt" PYTHON3="$STUBS/python3" GH="$STUBS/gh"
+  export RELEASE_ROOT="$ROOT_DIR" HDIUTIL="$STUBS/hdiutil" CODESIGN="$STUBS/codesign" SPCTL="$STUBS/spctl" XCRUN="$STUBS/xcrun" LIPO="$STUBS/lipo" APKSIGNER="$STUBS/apksigner" AAPT="$STUBS/aapt" PYTHON3="$STUBS/python3" GH="$STUBS/gh"
   export MAC=9.9.9 MAC_BUILD=999 ANDROID=9.9.9
-  unset SIGNER APKSIGNER_RC APK_VERSION APK_PACKAGE EXTRA_PERM STAPLER_RC SPCTL_OPEN_RC SPCTL_EXEC_RC CODESIGN_VERIFY_RC NO_RUNTIME FAKE_APP_VERSION FAKE_APP_BUILD VERIFY_RC AUDIT_RC GH_TAMPER GH_PRESET_STATE APPCAST_RC REPLACE
+  unset SIGNER APKSIGNER_RC APK_VERSION APK_PACKAGE EXTRA_PERM STAPLER_RC SPCTL_OPEN_RC SPCTL_EXEC_RC CODESIGN_VERIFY_RC NO_RUNTIME FAKE_APP_VERSION FAKE_APP_BUILD WRONG_ARCH_FOR VERIFY_RC AUDIT_RC GH_TAMPER GH_PRESET_STATE APPCAST_RC REPLACE
 }
 
 changes_github() { grep -qE "^release (create|upload|edit|delete)" "$GH_LOG"; }
@@ -140,6 +147,9 @@ create=$(grep -n "^release create" "$GH_LOG" | head -1 | cut -d: -f1); publish=$
 [ -n "$publish" ] && [ "$publish" -gt "$create" ] && ok "published only after the upload" || fail "publish did not come after the upload"
 [ -n "$feed" ] && [ -n "$publish" ] && [ "$feed" -gt "$publish" ] && ok "the update feed was touched only after publishing" || fail "the update feed was not updated after publishing"
 grep -q "release delete" "$GH_LOG" && fail "a good release deleted something" || ok "nothing deleted"
+for d in StreamSetu-9.9.9.dmg StreamSetu-9.9.9-AppleSilicon.dmg StreamSetu-9.9.9-Intel.dmg; do grep "^release create" "$GH_LOG" | grep -q "$d" && ok "$d was uploaded" || fail "$d was not uploaded"; done
+for f in StreamSetu-9.9.9.dmg StreamSetu-9.9.9-AppleSilicon.dmg StreamSetu-9.9.9-Intel.dmg; do grep -q "releases/download/t1/$f" README.md && ok "the README's Mac row links $f" || fail "the README's Mac row does not link $f"; done
+grep -q "^appcast" "$GH_LOG" && [ "$(grep -c "^appcast" "$GH_LOG")" = "1" ] && ok "the update feed is told once (the universal DMG is its file)" || fail "the update feed was not told exactly once"
 
 echo "Every gate blocks, and GitHub is untouched"
 expect_blocked "wrong signing certificate"       'export SIGNER=0000000000000000000000000000000000000000000000000000000000000000' "is not the pinned release certificate"
@@ -147,6 +157,9 @@ expect_blocked "APK signature does not verify"   'export APKSIGNER_RC=1' "signat
 expect_blocked "wrong Android version"           'export APK_VERSION=1.2.3' "version is not 9.9.9"
 expect_blocked "wrong Android package"           'export APK_PACKAGE=com.example.other' "wrong package name"
 expect_blocked "an extra permission"             'export EXTRA_PERM=android.permission.READ_SMS' "permissions differ"
+expect_blocked "the Intel DMG is missing"        'rm macos/dist/StreamSetu-9.9.9-Intel.dmg' "StreamSetu-9.9.9-Intel.dmg is missing"
+expect_blocked "the Apple silicon DMG is missing" 'rm macos/dist/StreamSetu-9.9.9-AppleSilicon.dmg' "StreamSetu-9.9.9-AppleSilicon.dmg is missing"
+expect_blocked "the Apple silicon DMG holds a universal app" 'export WRONG_ARCH_FOR=AppleSilicon' "has architectures"
 expect_blocked "DMG not notarized"               'export STAPLER_RC=1' "DMG is not notarized"
 expect_blocked "Gatekeeper refuses the DMG"      'export SPCTL_OPEN_RC=1' "Gatekeeper does not accept the DMG"
 expect_blocked "Gatekeeper refuses the app"      'export SPCTL_EXEC_RC=1' "Gatekeeper does not accept the app"
@@ -187,6 +200,15 @@ grep -q "^appcast" "$GH_LOG" && fail "the Mac update feed was touched" || ok "th
 grep -q "releases/download/old/StreamSetu-1.0.dmg" README.md && ok "the README's Mac row still points at the last Mac release" || fail "the README's Mac row was changed"
 expect_blocked "without a Mac file, a wrong signing certificate still blocks" 'unset MAC MAC_BUILD; export SIGNER=0000000000000000000000000000000000000000000000000000000000000000' "is not the pinned release certificate"
 expect_blocked "MAC without MAC_BUILD"           'unset MAC_BUILD' "MAC_BUILD"
+
+echo "A Mac-only release (no Android files)"
+make_root maconly; unset ANDROID
+if Scripts/release.sh t1 docs/releases/t1.md > "$ROOT_DIR/out.txt" 2>&1; then ok "goes through"; else fail "a Mac-only release was refused:"; grep "✘" "$ROOT_DIR/out.txt" | sed 's/^/        /'; fi
+for d in StreamSetu-9.9.9.dmg StreamSetu-9.9.9-AppleSilicon.dmg StreamSetu-9.9.9-Intel.dmg; do grep "^release create" "$GH_LOG" | grep -q "$d" && ok "$d was uploaded" || fail "$d was not uploaded"; done
+grep "^release create" "$GH_LOG" | grep -q "\.apk" && fail "an APK was uploaded" || ok "no APK uploaded"
+grep -q "^appcast" "$GH_LOG" && ok "the update feed was told" || fail "the update feed was not told"
+expect_blocked "Mac-only: a wrong architecture still blocks" 'unset ANDROID; export WRONG_ARCH_FOR=Intel' "has architectures"
+expect_blocked "neither Mac nor Android given"   'unset MAC MAC_BUILD ANDROID' "set MAC"
 
 echo "The update feed cannot get a duplicate entry"
 F="$TMP/appcast.xml"

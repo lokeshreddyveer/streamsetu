@@ -298,6 +298,24 @@ final class SQLiteCatalogRepository: CatalogRepository {
         }
     }
 
+    /// Repair: a drag that moved nothing used to save every folder's place, which froze the provider's order and made every folder count as pinned.
+    /// A kind whose saved places are in exactly the provider's order is let go, so it follows the provider again; an order that differs is kept.
+    /// Returns how many saved places were removed.
+    @discardableResult func releaseUnchangedFolderOrder() throws -> Int {
+        try db.write { c in
+            var released = 0
+            for kind in [ContentKind.channel, .movie, .series] {
+                let from = "SELECT cat.id FROM categories cat JOIN folder_order fo ON fo.category_id=cat.id WHERE cat.kind=? ORDER BY "
+                let provider = try c.query(from + "cat.sort_order, cat.name COLLATE SETU_LOCALE", [kind.rawValue]) { $0.string(0) }
+                let saved = try c.query(from + "fo.position, cat.sort_order, cat.name COLLATE SETU_LOCALE", [kind.rawValue]) { $0.string(0) }
+                guard provider.count > 1, saved == provider else { continue }
+                for id in saved { try c.execute("DELETE FROM folder_order WHERE category_id=?", [id]) }
+                released += saved.count
+            }
+            return released
+        }
+    }
+
     /// Puts the given folders back to the provider's order.
     func clearFolderOrder(_ categoryIDs: [String]) throws {
         try db.write { c in for id in categoryIDs { try c.execute("DELETE FROM folder_order WHERE category_id=?", [id]) } }

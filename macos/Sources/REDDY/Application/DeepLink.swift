@@ -15,6 +15,7 @@ enum DeepLink: Equatable {
     case remote(RemoteCommand)
     /// Opens the screen or setting the Atlas knows by this id (Spotlight results and the Open Setting shortcut use it). Only the id's shape is checked here; the Atlas decides whether it exists.
     case atlas(id: String)
+    case music(MusicLinkTarget)
 
     enum RemoteCommand: String, Equatable { case pause, resume, stop, next, previous, last }
 
@@ -33,6 +34,7 @@ enum DeepLink: Equatable {
         let action = (comps?.host?.isEmpty == false ? comps?.host : comps?.path.split(separator: "/").first.map(String.init))?.lowercased() ?? ""
         func value(_ name: String) -> String? { comps?.queryItems?.first { $0.name.lowercased() == name }?.value?.trimmingCharacters(in: .whitespacesAndNewlines) }
         switch action {
+        case "music": return MusicDeepLinks.parse(url).map { .music($0) }
         case "add":
             guard let address = value("url"), let addr = validAddress(address) else { return nil }
             return .addPlaylist(address: addr, name: value("name").flatMap { $0.isEmpty ? nil : String($0.prefix(80)) })

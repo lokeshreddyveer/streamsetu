@@ -368,6 +368,7 @@ final class PlaybackCoordinator {
         var request = PlaybackRequest(itemID: id, kind: .movie, sourceID: LocalMedia.sourceID, title: title, url: url, isLive: false)
         request.headers = headers
         if resume ?? settings.resumeAutomatically, let p = try? historyRepo.progress(for: id), !p.completed, p.positionSeconds > 10 { request.startPosition = p.positionSeconds }
+        claimAudio()
         tapAt = Date()
         state = .resolving
         switchedEngine = false
@@ -395,12 +396,12 @@ final class PlaybackCoordinator {
     }
 
     func pause() { if state == .playing || state == .buffering { engine.pause() } }
-    func resume() { if state == .paused { Task { try? await engine.play() } } }
+    func resume() { if state == .paused { claimAudio(); Task { try? await engine.play() } } }
 
     func togglePause() {
         switch state {
         case .playing, .buffering: engine.pause()
-        case .paused: Task { try? await engine.play() }
+        case .paused: claimAudio(); Task { try? await engine.play() }
         case .ended: seek(to: 0)
         case .failed: retryNow()
         default: break
@@ -729,8 +730,13 @@ final class PlaybackCoordinator {
         isPrivate = false          // whatever starts next is an ordinary play unless it asks to be private (after the previous one's progress was handled above)
     }
 
+    /// Called BEFORE any native play starts (a channel, film, episode, file, or a resume): takes the audio from every other participant through `AudioOwnership`
+    /// (a podcast and every service pause) synchronously, so nothing depends on a poll noticing it afterwards. Tests replace it.
+    @ObservationIgnored var claimAudio: () -> Void = { AudioOwnership.shared.claim(.nativePlayer, reason: .nativePlay) }
+
     private func begin(_ resolve: @escaping () throws -> PlaybackRequest) {
         if let b = viewingGuard?.block() { viewingBlock = b; stop(); return }
+        claimAudio()
         tapAt = Date()
         state = .resolving
         switchedEngine = false

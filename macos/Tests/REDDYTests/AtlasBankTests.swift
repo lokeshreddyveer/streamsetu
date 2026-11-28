@@ -135,10 +135,12 @@ struct BankFile: Decodable, Sendable { let entries: [BankQuestion] }
     }
 
     @Test func gridOfEmbeddingWeightsAndTheReport() async throws {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         let bank = try Self.load()
         let source = AtlasEmbeddings.source ?? "none"
-        let emb = AtlasEmbeddings.build(entries: AtlasFixture.entries)
-        let engine = AtlasFixture.engine.with(embeddings: emb)
+        // Changed: the embeddings are built off the main actor (Sendable values); built inline they held it for seconds in a full run while other main-actor tests waited.
+        let entries = AtlasFixture.entries, base = AtlasFixture.engine
+        let engine = await Task.detached(priority: .userInitiated) { base.with(embeddings: AtlasEmbeddings.build(entries: entries)) }.value
         var lines: [String] = ["Embedding source on this machine: \(source) (NLEmbedding sentence model installed: \(AtlasEmbeddings.sentence != nil); word vectors installed: \(AtlasEmbeddings.words != nil))", ""]
         lines.append("Weight grid (MRR@10 over answerable questions):")
         var cache: [Also: Run] = [:]

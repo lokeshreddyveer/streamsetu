@@ -1,1 +1,14 @@
 /* English is the language the app is written in; keys are the text itself. */
+
+"Search countries" = "Search countries";
+"No country found" = "No country found";
+
+"Could not reach the music service. Check your connection and try again." = "Could not reach the music service. Check your connection and try again.";
+
+"This music source does not offer that." = "This music source does not offer that.";
+"Something went wrong. Try again in a moment." = "Something went wrong. Try again in a moment.";
+"Something went wrong." = "Something went wrong.";
+"Cancelled." = "Cancelled.";
+
+"Loading content" = "Loading content";
+"This page is not available right now." = "This page is not available right now.";

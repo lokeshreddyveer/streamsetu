@@ -26,6 +26,8 @@
 
 <p align="center"><img src="docs/screenshots/mac-slideshow.gif" alt="StreamSetu on Mac, from the opening screen to Home, Live TV, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#mac">All Mac screenshots →</a></sub></p>
 
+<p align="center"><img src="docs/screenshots/mac-opening.png" alt="The StreamSetu opening on the Mac: each destination crosses the screen alone with its name and lights in your accent colour, the icons then spin into the StreamSetu symbol and the name slides out from behind it" width="100%"><br><sub>The Mac opening on pure black, in your accent colour (frames from the app's own renderer).</sub></p>
+
 ### 📺 Fire TV and Android TV
 
 <p align="center"><img src="docs/screenshots/firetv-slideshow.gif" alt="StreamSetu on Fire TV: Home with the sidebar, Live TV, Movies and Series" width="100%"><br><sub><a href="docs/SCREENSHOTS.md#fire-tv-and-android-tv">All Fire TV and Android TV screenshots →</a></sub></p>
@@ -116,7 +118,9 @@ The full table, app by app, is in [docs/FEATURES.md](docs/FEATURES.md). Where a 
 | 🔔 **Guide alerts and reminders** | Add a word such as a sport, a team or a show and get a reminder when a programme with it is coming up, and set reminders for programmes. |
 | ⏺️ **Recording** | Record a live channel and schedule a recording from the TV Guide on Mac, Android and TV. Record a programme every week on Mac while the app is open. |
 | ⬇️ **Downloads** | Watch without a connection, with a progress ring, and an Offline Home that shows the downloads that still play. They can delete themselves after you watch them. |
-| 🎙️ **Podcasts** | Search, follow and play, with your place kept. |
+| 🎙️ **Podcasts** | Search, follow and play, with your place kept. On the Mac the charts follow the country you pick and a row shows your categories. |
+| 🎵 **Music (Mac)** | Listen Now from your own listening, Explore, Recently Added, Library, artist, album and film pages, lyrics, crossfade and Automix, your own sources, and Listen Together. |
+| 🧭 **Get set up (Mac)** | A short, full-window, three-step setup in your theme: skip adding a playlist and use Music, Podcasts and the streaming services at once. Choose whether Music's own setup runs when you finish, your podcast country and the categories you like, and which services are pinned to the top bar (with their own icons). Open it again any time from Help, Get Set Up. |
 | 📈 **Your week and your usual time** | Time watched and the most watched title each week, an optional Sunday evening notification, and a one-tap play for what you often put on around the same hour. |
 | 📋 **Channel tools** | Hide, rename and check channels, a Channel Manager and a health check. Watch statistics, and subscription end dates for playlists that report them. |
 | 🙈 **Watch Privately** | Play one title, series or channel without leaving history, resume points, statistics or anything to sync. |
@@ -131,7 +135,7 @@ The full table, app by app, is in [docs/FEATURES.md](docs/FEATURES.md). Where a 
 | 🧒 **Kids profile** | Keeps locked folders hidden, with viewing limits: minutes a day and night hours, and the profile's PIN adds time. |
 | 🛂 **Parental controls** | Restrict what each profile can see. |
 | 🧾 **Privacy report** | What is kept on the device and what can leave it, with each item's current state. |
-| 🎨 **Look and feel** | Themes and accent colours, screen reader labels, an opening where the television tunes in (Automatic or Off, and a still picture with Reduce Motion), and Hindi and Telugu on the main screens. |
+| 🎨 **Look and feel** | Themes and accent colours, screen reader labels, an opening (Automatic or Off, and a still picture with Reduce Motion; on the Mac it is pure black: the first time, your app's destination icons cross the screen one at a time with their names, each lighting in your accent colour at the centre, then come together and spin into the StreamSetu symbol, and the name slides out from behind it; on every launch after that, the symbol turns once, as in the top bar, and the name slides out), and Hindi and Telugu on the main screens. |
 
 ### 🤖 Assistant and search
 

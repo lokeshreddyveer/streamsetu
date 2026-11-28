@@ -34,8 +34,23 @@ struct MenuCommands: Commands {
         }
         CommandGroup(replacing: .help) {
             Button("Send Feedback…") { openWindow(id: "feedback") }.disabled(locked).atlas("menu.help.sendFeedback")
+            Button("Get Set Up…") { NotificationCenter.default.post(name: .openFirstRunSetup, object: nil) }.disabled(locked || serviceShowing).atlas("menu.help.getSetUp")
             Button("Keyboard Shortcuts") { openWindow(id: "shortcuts") }.keyboardShortcut("/", modifiers: .command).disabled(locked).atlas("menu.help.keyboardShortcuts")
             Button("Ask Setu") { AssistantLauncher.shared.ask(nil) }.keyboardShortcut("/", modifiers: [.command, .option]).disabled(locked || serviceShowing).atlas("menu.help.askSetu")
+        }
+        // View menu: the Music sidebar and details panel (HIG: a menu command and a shortcut for hidden panes; titles say Show or Hide; items are greyed out, not hidden).
+        CommandGroup(after: .sidebar) {
+            let chrome = MusicChromeState.shared
+            let musicOn = services?.active == .music
+            Button(chrome.sidebarIsExpanded ? "Collapse Music Sidebar" : "Expand Music Sidebar") { chrome.sidebarToggleRequest += 1 }
+                .keyboardShortcut("s", modifiers: [.control, .command]).disabled(locked || !musicOn || !chrome.canToggleSidebar).atlas("menu.view.musicSidebar")
+            Button(chrome.panelShown ? "Hide Details Panel" : "Show Details Panel") { chrome.panelToggleRequest += 1 }
+                .keyboardShortcut("i", modifiers: [.control, .command]).disabled(locked || !musicOn || !chrome.canTogglePanel).atlas("menu.view.musicPanel")
+        }
+        CommandGroup(after: .toolbar) {
+            let musicOn = services?.active == .music
+            Button("Music Command Palette") { MusicChromeState.shared.paletteOpen = true }
+                .keyboardShortcut("k", modifiers: [.command, .shift]).disabled(locked || !musicOn).atlas("menu.view.musicPalette")
         }
         CommandMenu("Navigate") {
             ForEach(Array(AppTab.allCases.enumerated()), id: \.offset) { i, tab in
@@ -44,6 +59,7 @@ struct MenuCommands: Commands {
             if let services, !services.isKidsProfile {
                 // ⌘7 opens Podcasts in the main window, whether or not it has its place in the top bar.
                 Button("Podcasts") { services.selectPodcasts() }.keyboardShortcut("7").disabled(locked).atlas("menu.navigate.podcasts")
+                Button("Music") { services.selectMusic() }.keyboardShortcut("8").disabled(locked).atlas("menu.navigate.music")
             }
             if let services, !services.services.isEmpty {
                 // ⌘6 opens the Services list in the top bar (never one particular service; there are no per-service shortcuts). ⌘0 goes back to StreamSetu, to the section that was open (⌘1 to ⌘5 also leave the service and open that tab).
@@ -51,8 +67,9 @@ struct MenuCommands: Commands {
                 Button("StreamSetu") { services.returnToStreamSetu() }.keyboardShortcut("0").disabled(locked || services.navExpanded).atlas("menu.navigate.streamsetu")
             }
             Divider()
-            Button("Search") { router.focusTopSearch() }.keyboardShortcut("k").disabled(locked).atlas("menu.navigate.search")
-            Button("Search in This Screen") { router.focusCurrentScreenSearch() }.keyboardShortcut("f").disabled(locked || serviceShowing).atlas("menu.navigate.searchThisScreen")
+            // Music has its own Search (⌘F) and Quick Search (⌘K): while it is open these two would take the keys first and search the rest of the app instead.
+            Button("Search") { router.focusTopSearch() }.keyboardShortcut("k").disabled(locked || services?.active == .music).atlas("menu.navigate.search")
+            Button("Search in This Screen") { router.focusCurrentScreenSearch() }.keyboardShortcut("f").disabled(locked || serviceShowing || services?.active == .music).atlas("menu.navigate.searchThisScreen")
             Divider()
             Button("Shuffle Recommendations") { state?.shuffleRecommendations() }.keyboardShortcut("r", modifiers: [.command, .shift]).disabled(locked).atlas("menu.navigate.shuffle")
         }

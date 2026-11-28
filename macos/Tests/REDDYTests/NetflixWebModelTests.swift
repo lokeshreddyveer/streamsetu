@@ -18,7 +18,7 @@ import AppKit
             if server == nil { try await self.server.start() }
             model = NetflixWebModel(policy: NetflixWebModelTests.policy, homeURL: self.server.url("/home"), dataStore: store, releaseAfter: releaseAfter, slowAfter: slowAfter)
             window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 600), styleMask: [.titled], backing: .buffered, defer: false)
-            model.openExternal = { [unowned self] u in self.opened.append(u) }
+            model.openExternal = { [weak self] u in self?.opened.append(u) }
             model.isAppActive = { true }
             nonisolated(unsafe) var clock = Date(); model.now = { clock = clock.addingTimeInterval(3); return clock }
         }

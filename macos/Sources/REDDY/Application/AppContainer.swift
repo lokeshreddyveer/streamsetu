@@ -147,6 +147,7 @@ final class AppContainer {
         let box = matchProfile
         let matchStore = MatchStateStore(defaults: settings.defaultsStore, profileID: { box.id })
         metadata.lookupsAllowed = { matchStore.enabled }
+        let filmTMDB = metadata; MusicFilmTMDBGate.shared.install { path, query in try await filmTMDB.get(path, query: query) }          // Music's film info asks through the app's one TMDB client
         let providerDetails = details
         metadata.setProviderLookup { c in c.isSeries ? await providerDetails.extras(series: c.id)?.tmdbID : await providerDetails.extras(movie: c.id)?.tmdbID }          // the provider's own TMDB id for a title that is opened
         artworkMatcher = ArtworkAutoMatcher(service: metadata, store: matchStore, network: matchNetwork)

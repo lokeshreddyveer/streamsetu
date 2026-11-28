@@ -15,6 +15,10 @@ final class OpeningCoordinator {
 
     private(set) var machine = StartupMachine()
     private(set) var variant: OpeningVariant?
+    #if os(macOS)
+    /// The person's saved theme and accent, read once when the opening starts (and again for a replay), so every frame of a run uses one theme.
+    private(set) var theme = OpeningTheme.read()
+    #endif
     /// When the opening started. Set once per run, here, never when a view is recomputed.
     private(set) var startedAt = Date()
     /// When the exit began (the app is revealed underneath).
@@ -60,8 +64,19 @@ final class OpeningCoordinator {
     func storyTime(at now: Date) -> Double {
         if let frozenAt { return frozenAt * 1000 }
         guard let variant else { return 0 }
-        if let revealedAt { return min(Double(variant.holdMs) + now.timeIntervalSince(revealedAt) * 1000, Double(variant.durationMs)) }
-        return min(now.timeIntervalSince(startedAt) * 1000, Double(variant.holdMs))
+        if let abortedAtMs { return abortedAtMs }
+        if let revealedAt { return min(Double(variant.holdMs) + now.timeIntervalSince(revealedAt) * 1000, Double(variant.holdMs + exitMs(variant))) }
+        return max(0, min(now.timeIntervalSince(startedAt) * 1000, Double(variant.holdMs)))
+    }
+
+    /// How long the television takes to fade out over the app. On the Mac the shared exit (150 ms in the short cut) is stretched to half a second: a television dissolving into the
+    /// app needs that long to read as a fade.
+    func exitMs(_ v: OpeningVariant) -> Int {
+        #if os(macOS)
+        return v == .reducedMotion ? v.exitMs : max(v.exitMs, 500)
+        #else
+        return v.exitMs
+        #endif
     }
 
     var drawnVariant: OpeningVariant { frozenAt != nil ? frozenVariant : (variant ?? .reducedMotion) }
@@ -70,7 +85,7 @@ final class OpeningCoordinator {
     /// Reduce Motion still simply fades).
     func layerOpacity(at now: Date) -> Double {
         guard let revealedAt else { return 1 }
-        let t = now.timeIntervalSince(revealedAt) / max(0.05, Double(drawnVariant.exitMs) / 1000)
+        let t = now.timeIntervalSince(revealedAt) / max(0.05, Double(exitMs(drawnVariant)) / 1000)
         if drawnVariant == .reducedMotion { return 1 - OpeningEasing.cubicInOut(t) }
         return 1 - OpeningEasing.smoothstep((t - 0.3) / 0.7)
     }
@@ -81,6 +96,10 @@ final class OpeningCoordinator {
         started = true
         startedAt = Date()
         OpeningArt.preload()
+        #if os(macOS)
+        OpeningIcons.preload()
+        theme = OpeningTheme.read()
+        #endif
         if forceWhatsNew { showsWhatsNew = true }
         guard frozenAt == nil else { return }
         suppressed = LaunchPlan.suppressed(env)
@@ -106,6 +125,8 @@ final class OpeningCoordinator {
 
     /// How long past the end of the story the opening may stay before it is ended for good.
     static let overrunSeconds = 1.0
+    /// The moment of the story the watchdog stopped it at; the layer fades from that frame.
+    private var abortedAtMs: Double?
     /// Why the opening was cut short, if the watchdog ended it.
     private(set) var abortReason: String?
 
@@ -119,9 +140,11 @@ final class OpeningCoordinator {
         log.error("opening aborted: \(reason, privacy: .public)")
         timers.forEach { $0.invalidate() }
         timers.removeAll()
+        // The frame on screen is kept and faded out over the app (a hard cut here, with What's New coming straight up, is what a stalled start looked like).
+        abortedAtMs = storyTime(at: Date())
         machine.animationFinished()
         machine.initFinished(ok: true)
-        settle(exit: false)
+        settle()
     }
 
     /// Ends the story when its time is up. Called by the timer; tests call it with a time of their choosing.
@@ -144,6 +167,12 @@ final class OpeningCoordinator {
             scheduleEnd()
         }
         variantSettled = true
+        // The story begins when the app's own start-up is done: the database, the services and the first screen are built on the main thread right before this, and a clock that
+        // ran through that work skipped frames of the opening (the screen stays dark until then). A short pause lets the first screen settle.
+        if variant != nil, variant != .reducedMotion, revealedAt == nil, Date().timeIntervalSince(startedAt) < 0.2 {   // only while the screen is still dark: a story already under way is never rewound
+            startedAt = Date().addingTimeInterval(0.3)
+            scheduleEnd()
+        }
         if variant == nil {
             machine.initFinished(ok: ok)
             memory.storySeen(version: version)
@@ -160,6 +189,9 @@ final class OpeningCoordinator {
         log.info("replaying the full story")
         machine = StartupMachine()
         variant = .firstInstall
+        #if os(macOS)
+        theme = OpeningTheme.read()          // a replay uses the theme selected now
+        #endif
         variantSettled = true
         revealedAt = nil
         startedAt = Date()
@@ -183,7 +215,7 @@ final class OpeningCoordinator {
         revealedAt = Date()
         memory.storySeen(version: version)
         log.info("revealing the app")
-        if plays { after(Double(variant.exitMs) / 1000) { $0.exitEnded() } } else { exitEnded() }
+        if plays { after(Double(exitMs(variant)) / 1000) { $0.exitEnded() } } else { exitEnded() }
     }
 
     private func exitEnded() {

@@ -5,14 +5,15 @@ struct ReddyApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var coordinator = AppCoordinator()
 
-    init() { ServiceIconStore.preload() }
+    init() { ServiceIconStore.preload(); OpeningArt.preload() }   // the opening's layers are decoded before its first frame, not after its clock has started
 
     var body: some Scene {
         WindowGroup("StreamSetu", id: "main") {
             RootView(coordinator: coordinator)
                 .scrollIndicators(.hidden)
                 .lockedBehind(coordinator.container?.appLock)
-                .id(coordinator.container?.settings.themeKey ?? "")        // a theme change rebuilds the window so every view reads the new colours
+                .onChange(of: coordinator.container?.settings.themeKey, initial: true) { _, key in coordinator.themeKeyChanged(key) }
+                .id(coordinator.themeChanges)        // a theme change rebuilds the window so every view reads the new colours (the container arriving does not)
                 .task { await coordinator.boot() }
         }
         .windowStyle(.hiddenTitleBar)

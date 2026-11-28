@@ -83,6 +83,10 @@ final class ParentalControls {
     // MARK: PIN
 
     var hasPIN: Bool { defaults.string(forKey: Keys.hash) != nil }
+    /// Whether Lock and Unlock may be offered: a PIN exists and no kids profile is in use (which can never unlock, so the offer would do nothing).
+    var canChangeFolderLocks: Bool { hasPIN && !kidsMode }
+    /// Shown wherever a PIN would be asked for while a kids profile is in use.
+    nonisolated static let kidsUnlockNote = "A kids profile keeps locked folders hidden. Switch to an adult profile to unlock them."
     /// Folders are hidden right now.
     var isRestricting: Bool { kidsMode || (hasPIN && !isUnlocked) }
     var unlockMinutes: Int {

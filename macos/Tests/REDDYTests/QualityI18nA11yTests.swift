@@ -10,7 +10,7 @@ import Foundation
     }
     private func specifiers(_ s: String) -> [String] {
         let re = try! NSRegularExpression(pattern: "%(\\d+\\$)?(@|d|lld|ld|f|\\.\\df|%)")
-        return re.matches(in: s, range: NSRange(s.startIndex..., in: s)).map { String(s[Range($0.range, in: s)!]) }.filter { $0 != "%%" }
+        return re.matches(in: s, range: NSRange(s.startIndex..., in: s)).map { String(s[Range($0.range, in: s)!]).replacingOccurrences(of: #"%\d+\$"#, with: "%", options: .regularExpression) }.filter { $0 != "%%" }   // a positional %1$lld (a translation that reorders the words) counts as %lld
     }
 
     @Test func hindiAndTeluguKeepTheEnglishFormatSpecifiers() throws {

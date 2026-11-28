@@ -1,5 +1,3 @@
-<!-- atlas-inputs-sha256: cba8920cfa2b259a41e6d2cbe91323ce2ae4792c42a1a1cd5dd4d1f0019d22d1 -->
-<!-- coverage-body-sha256: 73e5a44aa5e389d2f80456973f09d1e8c145b3fee3d672756a0f8c93114ebb90 -->
 # Assistant coverage
 
 Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to rewrite it). Everything Setu can answer about the app is one entry in `macos/Sources/REDDY/Atlas`; this page lists them all. *Reviewed* means the wording was checked against the code by a person or in a test; the rest was written from the code and has not had a second look. Setu answers from these entries with no language model.
@@ -8,21 +6,21 @@ Generated from the atlas by `AtlasCoverageTests` (set `ATLAS_DOCS_WRITE=1` to re
 
 | Kind | Entries | Reviewed | Mac | iPhone | iPad |
 |---|---|---|---|---|---|
-| Screens | 122 | 118 | 79 | 45 | 44 |
-| Settings pages | 24 | 24 | 8 | 18 | 18 |
-| Controls and settings groups | 433 | 376 | 229 | 222 | 222 |
-| Settings | 109 | 106 | 101 | 98 | 99 |
-| Menu commands | 42 | 42 | 42 | 1 | 1 |
-| Keyboard shortcuts | 31 | 31 | 28 | 0 | 3 |
+| Screens | 163 | 142 | 120 | 46 | 45 |
+| Settings pages | 24 | 24 | 6 | 18 | 18 |
+| Controls and settings groups | 1748 | 631 | 1544 | 235 | 235 |
+| Settings | 151 | 151 | 143 | 89 | 90 |
+| Menu commands | 47 | 47 | 47 | 1 | 1 |
+| Keyboard shortcuts | 54 | 54 | 51 | 0 | 3 |
 | Context menus | 44 | 44 | 39 | 27 | 27 |
 | Gestures and long presses | 35 | 35 | 11 | 24 | 20 |
-| Siri and Shortcuts | 7 | 7 | 0 | 7 | 7 |
-| How-tos | 65 | 65 | 64 | 61 | 62 |
-| Troubleshooting | 23 | 23 | 23 | 21 | 21 |
-| About Setu and what is new | 17 | 17 | 14 | 16 | 16 |
-| **All** | **952** | **888** | 638 | 540 | 540 |
+| Siri and Shortcuts | 8 | 8 | 0 | 8 | 8 |
+| How-tos | 78 | 78 | 77 | 60 | 62 |
+| Troubleshooting | 39 | 39 | 39 | 25 | 25 |
+| About Setu and what is new | 23 | 23 | 20 | 18 | 18 |
+| **All** | **2414** | **1276** | 2097 | 551 | 552 |
 
-Entries Setu explains but never changes (app lock, proxy, parental controls and similar): 49.
+Entries Setu explains but never changes (app lock, proxy, parental controls and similar): 57.
 
 ## Screens
 
@@ -43,6 +41,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | screen.destination.home | Go to Home | Home > Discover | destination home | Mac | yes |
 | screen.destination.liveTV | Go to Live TV | Live TV > All Channels | destination liveTV | Mac | yes |
 | screen.destination.movies | Go to Movies | Movies > All Movies | destination movies | Mac | yes |
+| screen.destination.music | Music | Music | destination music | Mac | yes |
 | screen.destination.playlists | Go to Playlists | Playlists | destination playlists | Mac | yes |
 | screen.destination.podcasts | Podcasts | Podcasts | destination podcasts | Mac | no |
 | screen.destination.series | Go to Series | Series > Library | destination series | Mac | yes |
@@ -51,6 +50,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | screen.filesAndServers | Files and Servers | File > Files and Servers | window files | Mac | yes |
 | screen.folderRows | Folder rows | Movies or Series > Folders view | explained only | Mac | yes |
 | screen.guide.grid | Guide grid | TV Guide > Grid | tab TV Guide | Mac | yes |
+| screen.home.offline | Offline Home | Home | tab Home | Mac, iPhone, iPad | yes |
 | screen.integrations | Trakt, Debrid and AI | Settings > Library > Integrations | settings page Library | Mac | yes |
 | screen.ios.addPlaylist | Add Playlist | Playlists > Add | modal ios.addPlaylist | iPhone, iPad | yes |
 | screen.ios.catchUp | Earlier on a channel | Player > Catch-up | explained only | iPhone, iPad | yes |
@@ -99,6 +99,45 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | screen.modal.about | About StreamSetu | StreamSetu menu > About StreamSetu | modal about | Mac | yes |
 | screen.modal.unlockRestricted | Unlock restricted content | Account menu > Unlock restricted content | modal unlockRestricted | Mac | yes |
 | screen.multiview | Multi-View | Playback > Open Multi-View | window multiview | Mac | yes |
+| screen.music.actor | Music with an actor | Music > Actor | destination music | Mac | no |
+| screen.music.alternatives | Choose another audio source | Music > Player > Choose another audio source | destination music | Mac | no |
+| screen.music.blacklist | Never Play List | Music > Settings > Never Play List | destination music | Mac | no |
+| screen.music.collection | Music Collection | Music > Explore > Collection | destination music | Mac | no |
+| screen.music.devices | Music Devices | Music > Devices | destination music | Mac | yes |
+| screen.music.downloads | Music Downloads | Music > Downloads | destination music | Mac | yes |
+| screen.music.entity | Music Song, Album, Person or Film Page | Music > Page | destination music | Mac | no |
+| screen.music.explore | Music Explore | Music > Explore | destination music | Mac | yes |
+| screen.music.exploreRegion | Explore | Music > Explore | destination music | Mac | yes |
+| screen.music.facet | Language, era, region or genre page | Music > Explore > Languages and eras | destination music | Mac | no |
+| screen.music.film | Film page | Music > Film | destination music | Mac | no |
+| screen.music.home | Music Listen Now | Music > Listen Now | destination music | Mac | yes |
+| screen.music.import | Import to Music | Music > Your Library > Import | destination music | Mac | no |
+| screen.music.karaoke | Karaoke settings | Music > Settings > Playback > Karaoke | destination music | Mac | no |
+| screen.music.library | Your Music Library | Music > Your Library | destination music | Mac | yes |
+| screen.music.libraryTabs | Library tabs | Music > Your Library | destination music | Mac | yes |
+| screen.music.listenNowPersonal | Listen Now, your personal page | Music > Listen Now | destination music | Mac | yes |
+| screen.music.lyricsEditor | Lyrics editor | Music > Player > Lyrics editor | destination music | Mac | no |
+| screen.music.miniPlayerWindow | Mini player | Music > Player bar > Mini player | destination music | Mac | yes |
+| screen.music.palette | Music quick search | Music > Quick search | destination music | Mac | no |
+| screen.music.person | Music person page | Music > Person | destination music | Mac | yes |
+| screen.music.player | Music Now Playing | Music > Player | destination music | Mac | yes |
+| screen.music.radio | Music Radio | Music > Radio | destination music | Mac | yes |
+| screen.music.recentlyAdded | Music Recently Added | Music > Recently Added | destination music | Mac | no |
+| screen.music.room | Listen Together | Music > Listen Together | destination music | Mac | yes |
+| screen.music.search | Music Search | Music > Search | destination music | Mac | yes |
+| screen.music.settings | Music Settings | Music > Settings | destination music | Mac | yes |
+| screen.music.settingsMap | Music settings: which tab holds what | Music > Settings | destination music | Mac | yes |
+| screen.music.setup | Set up Music | Music > Set up | destination music | Mac | no |
+| screen.music.shortcutsList | Music keyboard shortcuts list | Music | destination music | Mac | yes |
+| screen.music.sidePanel | Music side panel tabs | Music > Side panel | destination music | Mac | yes |
+| screen.music.sidebarLibrary | Library group in the Music sidebar | Music > Sidebar > Library | destination music | Mac | yes |
+| screen.music.sidebarPlaylists | Playlists group in the Music sidebar | Music > Sidebar > Playlists | destination music | Mac | yes |
+| screen.music.smartPlaylist | Smart playlist | Music > Your library > Playlists > Made for you | destination music | Mac | no |
+| screen.music.song | Music Song Page | Music > Page | destination music | Mac | no |
+| screen.music.soundtrack | Music Album and Soundtrack Page | Music > Album | destination music | Mac | no |
+| screen.music.sources | Audio sources | Music > Settings > Plugins & Sources > Added sources | destination music | Mac | yes |
+| screen.music.stats | Music statistics | Statistics > Music | destination music | Mac | no |
+| screen.music.theatre | Theatre mode | Music > Player | destination music | Mac | yes |
 | screen.onYourDevice | On Your Device | File > Files and Servers > On Your Device | window files | Mac, iPhone, iPad | yes |
 | screen.onboarding | Welcome and first run | First run | explained only | Mac | yes |
 | screen.opening | Opening and What's New | Settings > Appearance > Opening | settings page Appearance | Mac | yes |
@@ -173,17 +212,18 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | screen.ios.settings.vpn | VPN | Library > Settings > VPN | settings page vpn | iPhone, iPad | yes |
 | screen.settings.advanced | Advanced settings | Settings > Advanced | settings page Advanced | Mac | yes |
 | screen.settings.appearance | Appearance settings | Settings > Appearance | settings page Appearance | Mac | yes |
-| screen.settings.backup | Backup and Restore | Settings > Backup and Restore | settings page backup | Mac, iPhone, iPad | yes |
+| screen.settings.backup | Backup and Restore | Settings > Backup and Restore | settings page backup | iPhone, iPad | yes |
 | screen.settings.general | General settings | Settings > General | settings page General | Mac | yes |
 | screen.settings.library | Library settings | Settings > Library | settings page Library | Mac | yes |
 | screen.settings.playback | Playback settings | Settings > Playback | settings page Playback | Mac | yes |
 | screen.settings.privacy | Privacy settings | Settings > Privacy | settings page Privacy | Mac | yes |
-| screen.settings.storage | Storage and Maintenance | Settings > Storage and Maintenance | settings page storage | Mac, iPhone, iPad | yes |
+| screen.settings.storage | Storage and Maintenance | Settings > Storage and Maintenance | settings page storage | iPhone, iPad | yes |
 
 ## Controls and settings groups
 
 | Id | Title | Where | Opens | Platforms | Reviewed |
 |---|---|---|---|---|---|
+| control.addSource.helpMeWithThis | Help me with this (Add Playlist) | Add Playlist > Help me with this | explained only | Mac | yes |
 | control.addSource.type | Choose the kind of playlist | Add Playlist > Type | explained only | Mac | yes |
 | control.commandCenter.bulkAction | Bulk action on selected channels | Channel Manager > Channels | explained only | Mac | yes |
 | control.commandCenter.favorite | Favourite a channel | Channel Manager > Channels | explained only | Mac | yes |
@@ -224,6 +264,8 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.files.play | Play a file | Files and Servers | explained only | Mac | yes |
 | control.guide.diagnostics | Refresh all guides | Settings > Library > Guide sources > Refresh all guides | explained only | Mac, iPhone, iPad | yes |
 | control.guide.programmeAction | Programme actions | TV Guide > Programme | explained only | Mac | yes |
+| control.guide.removeGuide | Add or remove a guide, Guide name | Settings > Library > Guide sources | settings page Library | Mac, iPhone, iPad | yes |
+| control.home.clearContinue | Clear Continue Watching, Recently Watched or Everything | Home > Continue Watching | explained only | Mac, iPhone, iPad | yes |
 | control.home.clearMenu | Clear menu | Home | explained only | Mac | yes |
 | control.home.collection | Collection | Home > Discover | explained only | Mac, iPhone, iPad | no |
 | control.home.collectionDone | Close collection | Home > Discover | explained only | Mac | no |
@@ -233,6 +275,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.home.genre | Browse by genre | Home > Discover | explained only | Mac | yes |
 | control.home.nowPlayingElsewhere | Play here | Home | explained only | Mac | yes |
 | control.home.shelfMode | Shelf mode | Home | explained only | Mac, iPhone, iPad | yes |
+| control.integrations.traktSignIn | Sign in to Trakt, Save Keys, Remove Keys, Save Token | Settings > Library > Trakt | settings page Library | Mac, iPhone, iPad | yes |
 | control.ios.about.legal | Privacy Policy, Terms and Licenses | Settings > About > Privacy Policy, Terms and Licenses | explained only | iPhone, iPad | yes |
 | control.ios.addPlaylist.back | All connection types | Playlists > Add Playlist > All connection types | explained only | iPhone, iPad | yes |
 | control.ios.addPlaylist.chooseFile | Choose a file | Playlists > Add Playlist > Choose a file | explained only | iPhone, iPad | yes |
@@ -313,7 +356,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.ios.icloud.syncNow | Sync Now | Settings > iCloud Sync > Sync Now | explained only | iPhone, iPad | yes |
 | control.ios.ipad.folder | Folder in the column | iPad > Folders > Folder in the column | explained only | iPhone, iPad | yes |
 | control.ios.ipad.folderColumn | Show or hide folders | iPad > Folders > Show or hide folders | explained only | iPhone, iPad | yes |
-| control.ios.ipad.searchShortcut | Search shortcut | iPad > Sidebar > Search shortcut | explained only | iPhone, iPad | yes |
+| control.ios.ipad.searchShortcut | Open Search with the keyboard | iPad > Sidebar > Search shortcut | explained only | iPhone, iPad | yes |
 | control.ios.lan.add | Add a Device | Settings > Sync on this network > Add a Device | explained only | iPhone, iPad | yes |
 | control.ios.lan.syncNow | Sync Now | Settings > Sync on this network > Sync Now | explained only | iPhone, iPad | yes |
 | control.ios.library.folderMenu | Folder filter | Movies or Series > Folder filter | explained only | iPhone, iPad | yes |
@@ -452,7 +495,1286 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.multiView.sets | Saved sets of channels | Multi-View | explained only | Mac | yes |
 | control.multiView.tileButton | Tile buttons | Multi-View | explained only | Mac | yes |
 | control.multiView.tileRetry | Retry or change a tile's channel | Multi-View | explained only | Mac | yes |
+| control.music.account | Music account menu | Music > Sidebar > Account | explained only | Mac | yes |
+| control.music.accountsAddAccount | Add account | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsAddAnotherGoogleAccount | Add another Google account | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsCancel | Cancel | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsCancelSignIn | Cancel sign in | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsChooseAChannel | Choose a channel | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsClose | Close | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsCurrentChannel | Current channel | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsInneraccountrowButton | An account row | Music > Sidebar > Account | explained only | Mac | yes |
+| control.music.accountsInnerbodyButton | Account menu item | Music > Sidebar > Account | explained only | Mac | yes |
+| control.music.accountsOk | OK | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsRemove | Remove | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsRemoveAccount | Remove account | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsSignInToYoutubeMusicWith | Sign in to the external service Music with Google | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsSignInWithGoogle | Sign in with Google | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsSignOut | Sign out | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsSignOutOfYoutubeMusic | Sign out of the external service Music | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsSwitch | Switch | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsSwitchChannel | Switch channel | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsSwitchTo | Switch to | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsSwitchYoutubeChannel | Switch the external service channel | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsTryLoadingTheChannelsAgain | Try loading the channels again | Music > Accounts | explained only | Mac | yes |
+| control.music.accountsTrySigningInAgain | Try signing in again | Music > Accounts | explained only | Mac | yes |
+| control.music.acoustidCancel | Cancel connection | Music > Menus | explained only | Mac | no |
+| control.music.acoustidConnect | Connect AcoustID | Music > Menus | explained only | Mac | no |
+| control.music.acoustidConnectClose | Close | Music > Menus | explained only | Mac | no |
+| control.music.acoustidCopyCode | Copy code | Music > Menus | explained only | Mac | no |
+| control.music.acoustidDisconnect | Disconnect | Music > Menus | explained only | Mac | no |
+| control.music.acoustidOpen | Open approval page | Music > Menus | explained only | Mac | no |
+| control.music.acoustidRetry | Try connecting again | Music > Menus | explained only | Mac | no |
+| control.music.addToPlaylist | Add to playlist | Music > Menu | explained only | Mac | no |
+| control.music.albumAddToPlaylist | Add the album to a playlist | Music > Album | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesAddToPlaylist | Add to Playlist | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesAddToQueue | Add to Queue | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesBack | Back | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesCancel | Cancel | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesDeletePlaylist | Delete Playlist | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesEditPlaylist | Edit Playlist | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesLoadMore | Load more | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesPlayAll | Play all | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesPlayNext | Play Next | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesSaveACopyToYourLibrary | Save a copy to Your library as a playlist | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesShare | Share | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesShuffleAll | Shuffle all | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtistAndPlaylistPagesStartRadio | Start Radio | Music > Album > artist and playlist pages | explained only | Mac | no |
+| control.music.albumArtworkNext | Next album picture | Music > Album | explained only | Mac | no |
+| control.music.albumArtworkPage | Choose an album picture | Music > Album | explained only | Mac | no |
+| control.music.albumArtworkPrevious | Previous album picture | Music > Album | explained only | Mac | no |
+| control.music.albumCompareClose | Close the comparison | Music > Album | explained only | Mac | no |
+| control.music.albumCompareEditions | Compare editions | Music > Album | explained only | Mac | no |
+| control.music.albumCompareOpen | Open the compared edition | Music > Album | explained only | Mac | no |
+| control.music.albumContributorClose | Close the contributor list | Music > Album | explained only | Mac | no |
+| control.music.albumContributorOpen | Open the contributor page | Music > Album | explained only | Mac | no |
+| control.music.albumContributorSongs | Songs of a contributor | Music > Album | explained only | Mac | no |
+| control.music.albumCoverClose | Close the cover window | Music > Album | explained only | Mac | no |
+| control.music.albumCoverOpen | Open the album cover | Music > Album | explained only | Mac | no |
+| control.music.albumCoverZoomIn | Zoom in on the album cover | Music > Album | explained only | Mac | no |
+| control.music.albumCoverZoomOut | Zoom out of the album cover | Music > Album | explained only | Mac | no |
+| control.music.albumDiscMenu | Disc menu | Music > Album | explained only | Mac | no |
+| control.music.albumDiscToggle | Collapse or expand a disc | Music > Album | explained only | Mac | no |
+| control.music.albumDownload | Download the album | Music > Album | explained only | Mac | no |
+| control.music.albumExport | Export the tracklist | Music > Album | explained only | Mac | no |
+| control.music.albumFilmCard | Open the film of this soundtrack | Music > Album | explained only | Mac | no |
+| control.music.albumGoToArtist | Go to the album artist | Music > Album | explained only | Mac | no |
+| control.music.albumGoToFilm | Go to the film | Music > Album | explained only | Mac | no |
+| control.music.albumHideEdition | Hide an edition | Music > Album | explained only | Mac | no |
+| control.music.albumInformation | Album information | Music > Album | explained only | Mac | no |
+| control.music.albumNotesField | Notes about the album | Music > Album | explained only | Mac | no |
+| control.music.albumPersonal | Your rating and notes | Music > Album | explained only | Mac | no |
+| control.music.albumPersonalClose | Close your rating and notes | Music > Album | explained only | Mac | no |
+| control.music.albumPersonalSave | Save your rating and notes | Music > Album | explained only | Mac | no |
+| control.music.albumPlayMode | Choose how to play the album | Music > Album | explained only | Mac | no |
+| control.music.albumPlayModesMenu | Album play options | Music > Album | explained only | Mac | no |
+| control.music.albumPlayUnplayed | Play the songs you have not played | Music > Album | explained only | Mac | no |
+| control.music.albumRadioButton | Start a radio from the album | Music > Album | explained only | Mac | no |
+| control.music.albumRatingStar | Rate the album | Music > Album | explained only | Mac | no |
+| control.music.albumRefresh | Refresh album details | Music > Album | explained only | Mac | no |
+| control.music.albumRestoreEdition | Restore a hidden edition | Music > Album | explained only | Mac | no |
+| control.music.albumSelectAll | Select or clear all songs | Music > Album | explained only | Mac | no |
+| control.music.albumSelectLike | Like the chosen songs | Music > Album | explained only | Mac | no |
+| control.music.albumSelectPlayNext | Play the chosen songs next | Music > Album | explained only | Mac | no |
+| control.music.albumSelectPlaylist | Add the chosen songs to a playlist | Music > Album | explained only | Mac | no |
+| control.music.albumSelectQueue | Add the chosen songs to the queue | Music > Album | explained only | Mac | no |
+| control.music.albumSelectToggle | Select songs of the album | Music > Album | explained only | Mac | no |
+| control.music.albumSetPreferred | Set the preferred edition | Music > Album | explained only | Mac | no |
+| control.music.albumShowEditions | Show other editions | Music > Album | explained only | Mac | no |
+| control.music.albumTagsField | Collection tags | Music > Album | explained only | Mac | no |
+| control.music.albumTrackFilter | Filter the songs of an album | Music > Album | explained only | Mac | no |
+| control.music.albumTrackSearch | Search inside an album | Music > Album | explained only | Mac | no |
+| control.music.albumTrackSort | Sort the songs of an album | Music > Album | explained only | Mac | no |
+| control.music.albumTrackSortMenu | Sort and filter menu of an album | Music > Album | explained only | Mac | no |
+| control.music.albumTracksRetry | Try loading the missing songs again | Music > Album | explained only | Mac | no |
+| control.music.albumVersionMenu | Edition options | Music > Album | explained only | Mac | no |
+| control.music.albumVersionOpen | Open another version of the album | Music > Album | explained only | Mac | no |
+| control.music.albumViewArtwork | View album artwork | Music > Album | explained only | Mac | no |
+| control.music.albumViewCredits | View album credits | Music > Album | explained only | Mac | no |
+| control.music.artistAddToQueue | Add the artist's top songs to the queue | Music > Artist > More | explained only | Mac | no |
+| control.music.artistAlbumDecade | Filter albums by decade | Music > Artist > Albums | explained only | Mac | no |
+| control.music.artistAlbumLayout | Albums as grid or list | Music > Artist > Albums | explained only | Mac | no |
+| control.music.artistAlbumRow | Open an album from the list | Music > Artist > Albums | explained only | Mac | no |
+| control.music.artistAlbumType | Filter albums by type | Music > Artist > Albums | explained only | Mac | no |
+| control.music.artistAlbumsMore | Show more albums | Music > Artist > Albums | explained only | Mac | no |
+| control.music.artistAwardsMore | Show more awards | Music > Artist > About | explained only | Mac | no |
+| control.music.artistCombine | Combine with a collaborator | Music > Artist > Collaborators | explained only | Mac | no |
+| control.music.artistCopyLink | Copy the artist's link | Music > Artist > More | explained only | Mac | no |
+| control.music.artistCreatePlaylist | Create a playlist from the artist | Music > Artist > More | explained only | Mac | no |
+| control.music.artistExclude | Exclude or include an artist in recommendations | Music > Artist > More | explained only | Mac | no |
+| control.music.artistExplore | Explore songs by language or decade | Music > Artist | explained only | Mac | no |
+| control.music.artistFavorite | Favorite an artist | Music > Artist | explained only | Mac | no |
+| control.music.artistFilmCredit | Filter films by credit | Music > Artist > Films | explained only | Mac | no |
+| control.music.artistFilmDecade | Filter films by decade | Music > Artist > Films | explained only | Mac | no |
+| control.music.artistFilmDirector | Filter films by director | Music > Artist > Films | explained only | Mac | no |
+| control.music.artistFilmGenre | Filter films by genre | Music > Artist > Films | explained only | Mac | no |
+| control.music.artistFilmIndustry | Filter films by industry | Music > Artist > Films | explained only | Mac | no |
+| control.music.artistFilmSoundtrack | Films with a soundtrack | Music > Artist > Films | explained only | Mac | no |
+| control.music.artistFilmsMore | Show more films | Music > Artist > Films | explained only | Mac | no |
+| control.music.artistListeningMore | Show more unplayed songs | Music > Artist > Your listening | explained only | Mac | no |
+| control.music.artistMilestone | Open a career milestone | Music > Artist > Timeline | explained only | Mac | no |
+| control.music.artistMore | More actions for an artist | Music > Artist > More | explained only | Mac | no |
+| control.music.artistPill | Switch an artist page section | Music > Artist | explained only | Mac | no |
+| control.music.artistPlayNext | Play the artist's top songs next | Music > Artist > More | explained only | Mac | no |
+| control.music.artistRadioMode | Start one radio mode | Music > Artist > Radio | explained only | Mac | no |
+| control.music.artistRadioModes | Radio modes | Music > Artist > Radio | explained only | Mac | no |
+| control.music.artistShare | Share the artist | Music > Artist > More | explained only | Mac | no |
+| control.music.artistSongDecade | Filter an artist's songs by decade | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistSongFilm | Filter an artist's songs by film | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistSongLanguage | Filter an artist's songs by language | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistSongLiked | Only songs you liked | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistSongSearch | Search an artist's songs | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistSongSort | Sort an artist's songs | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistSongType | Filter an artist's songs by type | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistSongYearFrom | Songs from a year | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistSongYearTo | Songs up to a year | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistSongsMore | Show more songs | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistSongsPlay | Play these songs | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistSongsShuffle | Shuffle these songs | Music > Artist > Songs | explained only | Mac | no |
+| control.music.artistTimelineYear | Open a year of the timeline | Music > Artist > Timeline | explained only | Mac | no |
+| control.music.artistTopPlayed | Play one of your most played songs | Music > Artist > Your listening | explained only | Mac | no |
+| control.music.artistWebsite | Open the artist's official website | Music > Artist > About | explained only | Mac | no |
+| control.music.artistYearClear | Clear the year filter | Music > Artist | explained only | Mac | no |
+| control.music.artworkCacheClear | Picture cache | Music > Menus | explained only | Mac | no |
+| control.music.artworkCacheConfirm | Clear cache | Music > Menus | explained only | Mac | no |
+| control.music.artworkChoose | Choose picture | Music > Menus | explained only | Mac | no |
+| control.music.artworkCoverSettings | Cover settings | Music > Menus | explained only | Mac | no |
+| control.music.artworkMenu | Manage artwork | Music > Menus | explained only | Mac | no |
+| control.music.artworkOnline | Find pictures online | Music > Settings > Plugins & Sources > Metadata sources | explained only | Mac | no |
+| control.music.artworkReset | Use automatic artwork | Music > Menus | explained only | Mac | no |
+| control.music.audioBack | Back to the audio settings | Music > Now Playing | explained only | Mac | no |
+| control.music.audioCrossfade | Crossfade length | Music > Now Playing | explained only | Mac | no |
+| control.music.audioEffectsOpen | Open tempo, pitch and reverb | Music > Now Playing | explained only | Mac | no |
+| control.music.audioEqualizerOpen | Open the equalizer | Music > Now Playing | explained only | Mac | no |
+| control.music.audioNormalize | Normalise volume | Music > Now Playing | explained only | Mac | no |
+| control.music.audioQualityChip | Audio quality chip | Music > Player bar | destination music | Mac | yes |
+| control.music.audioSignalOpen | Open signal information | Music > Now Playing | explained only | Mac | no |
+| control.music.automationAPIOn | A p i on | Music > Menus | explained only | Mac | no |
+| control.music.automationAddAlarm | Add alarm | Music > Menus | explained only | Mac | no |
+| control.music.automationAddKey | Add key | Music > Menus | explained only | Mac | no |
+| control.music.automationAddPlay | Add play | Music > Menus | explained only | Mac | no |
+| control.music.automationAddRule | Add rule | Music > Menus | explained only | Mac | no |
+| control.music.automationAddStop | Add stop | Music > Menus | explained only | Mac | no |
+| control.music.automationAddTrigger | Add trigger | Music > Menus | explained only | Mac | no |
+| control.music.automationArgument | Argument | Music > Menus | explained only | Mac | no |
+| control.music.automationClose | Close | Music > Menus | explained only | Mac | no |
+| control.music.automationCommand | Command | Music > Menus | explained only | Mac | no |
+| control.music.automationCopyToken | Copy token | Music > Menus | explained only | Mac | no |
+| control.music.automationDay | Day | Music > Menus | explained only | Mac | no |
+| control.music.automationDelete | Delete | Music > Menus | explained only | Mac | no |
+| control.music.automationEnabled | Enabled | Music > Menus | explained only | Mac | no |
+| control.music.automationEvent | Event | Music > Menus | explained only | Mac | no |
+| control.music.automationFade | Fade | Music > Menus | explained only | Mac | no |
+| control.music.automationGlobal | Global | Music > Menus | explained only | Mac | no |
+| control.music.automationKeyDelete | Key delete | Music > Menus | explained only | Mac | no |
+| control.music.automationLaunchOn | Launch on | Music > Menus | explained only | Mac | no |
+| control.music.automationPermission | Permission | Music > Menus | explained only | Mac | no |
+| control.music.automationRecordKey | Record key | Music > Menus | explained only | Mac | no |
+| control.music.automationResetToken | Reset token | Music > Menus | explained only | Mac | no |
+| control.music.automationRuleDelete | Rule delete | Music > Menus | explained only | Mac | no |
+| control.music.automationRuleEnabled | Rule enabled | Music > Menus | explained only | Mac | no |
+| control.music.automationRuleMatch | Rule match | Music > Menus | explained only | Mac | no |
+| control.music.automationShowToken | Show token | Music > Menus | explained only | Mac | no |
+| control.music.automationTab | Tab | Music > Menus | explained only | Mac | no |
+| control.music.automationTime | Time | Music > Menus | explained only | Mac | no |
+| control.music.automationTriggerDelete | Trigger delete | Music > Menus | explained only | Mac | no |
+| control.music.automationTriggerEnabled | Trigger enabled | Music > Menus | explained only | Mac | no |
+| control.music.autoplayMenuToggle | Autoplay in the shuffle menu | Music > Player and queue | explained only | Mac | yes |
+| control.music.backPill | Back pill and history | Music > Page top | destination music | Mac | yes |
+| control.music.backToTop | Back to top | Music > Pages | explained only | Mac | no |
+| control.music.bannerDismiss | Close the results banner | Music > Pages | explained only | Mac | no |
+| control.music.bannerRetry | Try the missing results again | Music > Pages | explained only | Mac | no |
+| control.music.blockedSongsAllowAgain | Allow again | Music > Blocked songs | explained only | Mac | no |
+| control.music.blockedSongsCancel | Cancel | Music > Blocked songs | explained only | Mac | no |
+| control.music.blockedSongsClearAll | Clear All | Music > Blocked songs | explained only | Mac | no |
+| control.music.blockedSongsClearTheWholeNeverPlayList | Clear the whole never-play list | Music > Blocked songs | explained only | Mac | no |
+| control.music.cardPlay | Play from a card | Music > Cards | explained only | Mac | no |
+| control.music.categoryPlay | Play a category | Music > Explore | explained only | Mac | no |
+| control.music.categoryShowSongs | Show every song of a category | Music > Explore | explained only | Mac | no |
+| control.music.categoryShuffle | Shuffle a category | Music > Explore | explained only | Mac | no |
+| control.music.categoryTile | Music category | Music > Search | explained only | Mac | no |
+| control.music.chartChooseVersion | Play this version | Music > Charts > Rows | explained only | Mac | no |
+| control.music.chartChooseVersionMenu | Choose version (row menu) | Music > Charts > Rows | explained only | Mac | no |
+| control.music.chartPlay | Play a chart | Music > Explore | explained only | Mac | no |
+| control.music.chartShowUnavailable | Show or hide unavailable chart songs | Music > Explore | explained only | Mac | no |
+| control.music.chartShuffle | Shuffle a chart | Music > Explore | explained only | Mac | no |
+| control.music.chartVersionChip | Choose a version of a chart song | Music > Charts > Rows | explained only | Mac | no |
+| control.music.chooseAnotherSourceCancel | Cancel | Music > Choose another source | explained only | Mac | no |
+| control.music.chooseAnotherSourceResetToAutomaticMatching | Reset to automatic matching | Music > Choose another source | explained only | Mac | no |
+| control.music.chooseAnotherSourceSArtist | Choose this copy of the song | Music > Choose another source | explained only | Mac | yes |
+| control.music.chooseAnotherSourceUseTheSelectedRecordingForThis | Use the selected recording for this song | Music > Choose another source | explained only | Mac | no |
+| control.music.classicalChoose | Choose classical raga | Music > Menus | explained only | Mac | no |
+| control.music.classicalImport | Choose dataset folder | Music > Menus | explained only | Mac | no |
+| control.music.classicalImportStop | Stop reading the dataset | Music > Menus | explained only | Mac | no |
+| control.music.classicalKind | Ragas or Talas | Music > Menus | explained only | Mac | no |
+| control.music.classicalPlay | Play classical recording | Music > Menus | explained only | Mac | no |
+| control.music.classicalSearch | Search classical ragas | Music > Menus | explained only | Mac | no |
+| control.music.classicalTradition | Carnatic or Hindustani | Music > Menus | explained only | Mac | no |
+| control.music.collectionMenuDownload | Download an album or playlist | Music > Menus | explained only | Mac | no |
+| control.music.collectionMenuEdit | Edit playlist | Music > Menus | explained only | Mac | no |
+| control.music.collectionMenuExport | Export playlist | Music > Menus | explained only | Mac | no |
+| control.music.collectionMenuExportFormat | Export format | Music > Menus | explained only | Mac | no |
+| control.music.collectionMenuRemoveDuplicates | Remove duplicates | Music > Menus | explained only | Mac | no |
+| control.music.collectionMenuSelect | Select multiple | Music > Menus | explained only | Mac | no |
+| control.music.collectionMenuSort | Sort tracks | Music > Menus | explained only | Mac | no |
+| control.music.collectionMenuSortKey | Sort by | Music > Menus | explained only | Mac | no |
+| control.music.collectionMenuSortReverse | Reverse order | Music > Menus | explained only | Mac | no |
+| control.music.combineClear | Remove person | Music > Menus | explained only | Mac | no |
+| control.music.combineClose | Close | Music > Menus | explained only | Mac | no |
+| control.music.combineComposer | Composed by | Music > Menus | explained only | Mac | no |
+| control.music.combineDecade | Decade | Music > Menus | explained only | Mac | no |
+| control.music.combineKind | Kind of music | Music > Menus | explained only | Mac | no |
+| control.music.combineLanguage | Language | Music > Menus | explained only | Mac | no |
+| control.music.combineLyricist | Written by | Music > Menus | explained only | Mac | no |
+| control.music.combineOpenFilm | Open a film from Combine | Music > Combine | explained only | Mac | no |
+| control.music.combineOpenPossible | Open possible match | Music > Menus | explained only | Mac | no |
+| control.music.combineOpenSong | Open song | Music > Menus | explained only | Mac | no |
+| control.music.combinePickPerson | Choose person | Music > Menus | explained only | Mac | no |
+| control.music.combinePlayAll | Play all | Music > Menus | explained only | Mac | no |
+| control.music.combineRaga | Raga | Music > Menus | explained only | Mac | no |
+| control.music.combineRun | Find songs | Music > Menus | explained only | Mac | no |
+| control.music.combineSinger | Sung by | Music > Menus | explained only | Mac | no |
+| control.music.comments | Song comments | Music > Player | explained only | Mac | no |
+| control.music.commentsCancel | Cancel | Music > Comments | explained only | Mac | no |
+| control.music.commentsDelete | Delete | Music > Comments | explained only | Mac | no |
+| control.music.commentsEdit | Edit | Music > Comments | explained only | Mac | no |
+| control.music.commentsMusiccommentsviewactionsButton | Comment actions | Music > Comments | explained only | Mac | yes |
+| control.music.commentsMusiccommentsviewcomposerKeyboardShortcut | Send a comment | Music > Comments | explained only | Mac | yes |
+| control.music.commentsMusiccommentsviewcomposerOnTapGesture | Music comments view composer click | Music > Comments | explained only | Mac | no |
+| control.music.commentsMusiccommentsviewmessageblockButton | A comment | Music > Comments | explained only | Mac | yes |
+| control.music.commentsMusiccommentsviewsortrowButton | Sort comments | Music > Comments | explained only | Mac | yes |
+| control.music.commentsMusiccommentsviewthreadviewButton | Open replies | Music > Comments | explained only | Mac | yes |
+| control.music.commentsReply | Reply | Music > Comments | explained only | Mac | no |
+| control.music.commentsShowLess | Show less | Music > Comments | explained only | Mac | no |
+| control.music.commentsShowMoreReplies | Show more replies | Music > Comments | explained only | Mac | no |
+| control.music.commentsTryAgain | Try Again | Music > Comments | explained only | Mac | no |
+| control.music.concertOpen | Open the full setlist | Music > Menus | explained only | Mac | no |
+| control.music.concertPlay | Play the songs I have | Music > Menus | explained only | Mac | no |
+| control.music.concertRow | Concert | Music > Menus | explained only | Mac | no |
+| control.music.concertsMore | Show more concerts | Music > Menus | explained only | Mac | no |
+| control.music.contextClose | Close the details panel | Music > Details panel | explained only | Mac | no |
+| control.music.contextScrim | Close the details panel by clicking outside | Music > Details panel | explained only | Mac | no |
+| control.music.contextTab | Details panel tab | Music > Details panel | explained only | Mac | yes |
+| control.music.contextToggle | Show or hide the details panel | Music > Page top right | explained only | Mac | yes |
+| control.music.convertBitrate | Quality | Music > Menus | explained only | Mac | no |
+| control.music.convertCancel | Cancel this conversion | Music > Menus | explained only | Mac | no |
+| control.music.convertCancelAll | Cancel all conversions | Music > Menus | explained only | Mac | no |
+| control.music.convertChannels | Channels | Music > Menus | explained only | Mac | no |
+| control.music.convertChoose | Choose files | Music > Menus | explained only | Mac | no |
+| control.music.convertClearFiles | Clear files | Music > Menus | explained only | Mac | no |
+| control.music.convertClearList | Clear the list | Music > Menus | explained only | Mac | no |
+| control.music.convertClose | Close audio tools | Music > Menus | explained only | Mac | no |
+| control.music.convertDepth | Bit depth | Music > Menus | explained only | Mac | no |
+| control.music.convertDiscFormat | Format of the imported tracks | Music > Menus | explained only | Mac | no |
+| control.music.convertDiscImport | Import the disc | Music > Menus | explained only | Mac | no |
+| control.music.convertDiscLook | Look for a disc | Music > Menus | explained only | Mac | no |
+| control.music.convertEmbedCover | Store a picture in a file | Music > Menus | explained only | Mac | no |
+| control.music.convertExtractCover | Save cover from a file | Music > Menus | explained only | Mac | no |
+| control.music.convertFolder | Choose the output folder | Music > Menus | explained only | Mac | no |
+| control.music.convertFormat | Output format | Music > Menus | explained only | Mac | no |
+| control.music.convertJoin | Join into one file | Music > Menus | explained only | Mac | no |
+| control.music.convertJoinName | Name of the joined file | Music > Menus | explained only | Mac | no |
+| control.music.convertPreset | Conversion preset | Music > Menus | explained only | Mac | no |
+| control.music.convertPresetName | Preset name | Music > Menus | explained only | Mac | no |
+| control.music.convertRate | Sample rate | Music > Menus | explained only | Mac | no |
+| control.music.convertReveal | Show the new file in Finder | Music > Menus | explained only | Mac | no |
+| control.music.convertSavePreset | Save preset | Music > Menus | explained only | Mac | no |
+| control.music.convertSplit | Split into tracks | Music > Menus | explained only | Mac | no |
+| control.music.convertSplitChoose | Choose the CD image | Music > Menus | explained only | Mac | no |
+| control.music.convertSplitFormat | Format of the split tracks | Music > Menus | explained only | Mac | no |
+| control.music.convertStart | Convert | Music > Menus | explained only | Mac | no |
+| control.music.convertTab | Audio tools section | Music > Menus | explained only | Mac | no |
+| control.music.convertTrimEnd | Keep until | Music > Menus | explained only | Mac | no |
+| control.music.convertTrimStart | Keep from | Music > Menus | explained only | Mac | no |
+| control.music.creditsAlbum | Open the song's album | Music > Details panel > Credits | explained only | Mac | no |
+| control.music.creditsFilm | Open the song's film | Music > Details panel > Credits | explained only | Mac | no |
+| control.music.creditsPerson | Open a credited person | Music > Details panel > Credits | explained only | Mac | no |
+| control.music.devicesAllowOtherDevicesToControlThis | Allow other devices to control this one | Music > Devices | explained only | Mac | yes |
+| control.music.devicesCancel | Cancel | Music > Devices | explained only | Mac | yes |
+| control.music.devicesConnectTo | Connect to | Music > Devices | explained only | Mac | yes |
+| control.music.devicesCopyCode | Copy code | Music > Devices | explained only | Mac | yes |
+| control.music.devicesDisconnect | Disconnect | Music > Devices | explained only | Mac | yes |
+| control.music.devicesLookForMyDevices | Look for my devices | Music > Devices | explained only | Mac | yes |
+| control.music.devicesMusicdevicespagepairedrowButton | A paired device | Music > Devices | explained only | Mac | yes |
+| control.music.devicesMusicdevicespagetransportButton | Transport of the controlled device | Music > Devices | explained only | Mac | yes |
+| control.music.devicesPair | Pair | Music > Devices | explained only | Mac | yes |
+| control.music.devicesPairWith | Pair with | Music > Devices | explained only | Mac | yes |
+| control.music.devicesRemove | Remove | Music > Devices | explained only | Mac | yes |
+| control.music.devicesSendThisDeviceSQueueTo | Send this device's queue to | Music > Devices | explained only | Mac | yes |
+| control.music.devicesShowAPairingCodeForAnother | Show a pairing code for another device | Music > Devices | explained only | Mac | yes |
+| control.music.devicesStopLooking | Stop looking | Music > Devices | explained only | Mac | yes |
+| control.music.devicesTryAgain | Try again | Music > Devices | explained only | Mac | yes |
+| control.music.downloadsCancelDownloadOf | Cancel download of | Music > Downloads | explained only | Mac | no |
+| control.music.downloadsGroupOpen | Open a downloads group | Music > Downloads | explained only | Mac | no |
+| control.music.downloadsPlayOffline | Play offline | Music > Downloads | explained only | Mac | no |
+| control.music.downloadsRemoveDownloadOf | Remove download of | Music > Downloads | explained only | Mac | no |
+| control.music.downloadsTryAgain | Try again | Music > Downloads | explained only | Mac | no |
+| control.music.effectsCancel | Cancel | Music > Effects | explained only | Mac | yes |
+| control.music.effectsDeletePreset | Delete preset | Music > Effects | explained only | Mac | yes |
+| control.music.effectsDone | Done | Music > Effects | explained only | Mac | yes |
+| control.music.effectsEqualizer | Equalizer | Music > Effects | explained only | Mac | yes |
+| control.music.effectsMusiceffectspopoverreverbblockButton | Reverb amount | Music > Player bar > Effects | explained only | Mac | yes |
+| control.music.effectsPopover | Tempo, pitch and reverb | Music > Player bar > Effects | destination music | Mac | yes |
+| control.music.effectsPreset | Preset | Music > Effects | explained only | Mac | yes |
+| control.music.effectsResetAllEffects | Reset all effects | Music > Effects | explained only | Mac | yes |
+| control.music.effectsResetPitch | Reset pitch | Music > Effects | explained only | Mac | yes |
+| control.music.effectsResetTempo | Reset tempo | Music > Effects | explained only | Mac | yes |
+| control.music.effectsReverb | Reverb | Music > Effects | explained only | Mac | yes |
+| control.music.effectsSavePreset | Save preset | Music > Effects | explained only | Mac | yes |
+| control.music.effectsSaveTheCurrentSoundAsA | Save the current sound as a preset | Music > Effects | explained only | Mac | yes |
+| control.music.effectsTempoPitchAndReverb | Tempo, pitch and reverb | Music > Effects | explained only | Mac | yes |
+| control.music.eqAddBand | Add band | Music > Menus | explained only | Mac | no |
+| control.music.eqAutoPreamp | Automatic preamp | Music > Equalizer | explained only | Mac | no |
+| control.music.eqBalance | Balance | Music > Menus | explained only | Mac | no |
+| control.music.eqBalanceCentre | Centre balance | Music > Menus | explained only | Mac | no |
+| control.music.eqBandOn | Band on or off | Music > Menus | explained only | Mac | no |
+| control.music.eqBandShape | Band shape | Music > Menus | explained only | Mac | no |
+| control.music.eqImport | Import an equalizer preset file | Music > Equalizer | explained only | Mac | no |
+| control.music.eqMono | Mono | Music > Menus | explained only | Mac | no |
+| control.music.eqPad | Drag the bass and treble pad | Music > Equalizer | explained only | Mac | no |
+| control.music.eqPresetApply | Use equalizer preset | Music > Menus | explained only | Mac | no |
+| control.music.eqPresetCancel | Cancel saving preset | Music > Menus | explained only | Mac | no |
+| control.music.eqPresetDelete | Delete this preset | Music > Menus | explained only | Mac | no |
+| control.music.eqPresetDeleteMenu | Delete a preset | Music > Menus | explained only | Mac | no |
+| control.music.eqPresetSaveConfirm | Save preset | Music > Menus | explained only | Mac | no |
+| control.music.eqRememberPerOutput | Remember for each output | Music > Menus | explained only | Mac | no |
+| control.music.eqRemoveBand | Remove band | Music > Menus | explained only | Mac | no |
+| control.music.eqSavePreset | Save equalizer preset | Music > Menus | explained only | Mac | no |
+| control.music.eqYourPresets | Your equalizer presets | Music > Menus | explained only | Mac | no |
+| control.music.equalizerAutomaticPreamp | Automatic preamp | Music > Equalizer | explained only | Mac | no |
+| control.music.equalizerBackToEffects | Back to effects | Music > Equalizer | explained only | Mac | no |
+| control.music.equalizerCentreTheTonePad | Centre the tone pad | Music > Equalizer | explained only | Mac | no |
+| control.music.equalizerEqualizer | Equalizer | Music > Equalizer | explained only | Mac | no |
+| control.music.equalizerEqualizerPreset | Equalizer preset | Music > Equalizer | explained only | Mac | no |
+| control.music.equalizerImportAnEqualizerPresetFile | Import an equalizer preset file | Music > Equalizer | explained only | Mac | no |
+| control.music.equalizerResetTheEqualizer | Reset the equalizer | Music > Equalizer | explained only | Mac | no |
+| control.music.equalizerStereoWidening | Stereo widening | Music > Equalizer | explained only | Mac | no |
+| control.music.errorRetry | Try a failed page again | Music > Pages | explained only | Mac | no |
+| control.music.expandedPlayerChooseAnotherAudioSource | Choose another audio source | Music > Expanded player | explained only | Mac | no |
+| control.music.expandedPlayerClose | Close | Music > Expanded player | explained only | Mac | no |
+| control.music.expandedPlayerCloseFullWindowNowPlaying | Close full-window Now Playing | Music > Expanded player | explained only | Mac | no |
+| control.music.expandedPlayerMusicexpandedplayertopbarButton | Full-window player top controls | Music > Now Playing | explained only | Mac | yes |
+| control.music.expandedPlayerMusicexpandedtransportbodyButton | Full-window player transport | Music > Now Playing | explained only | Mac | yes |
+| control.music.expandedPlayerNext | Next | Music > Expanded player | explained only | Mac | no |
+| control.music.expandedPlayerPrevious | Previous | Music > Expanded player | explained only | Mac | no |
+| control.music.expandedPlayerRetry | Retry in the full-window player | Music > Expanded player | explained only | Mac | no |
+| control.music.exploreChartShowAll | Show all chart songs | Music > Menus | explained only | Mac | no |
+| control.music.exploreFeatureCards | Explore feature cards | Music > Explore | destination music | Mac | yes |
+| control.music.exploreGenre | Open a genre | Music > Explore | explained only | Mac | no |
+| control.music.exploreHeroOpen | Open the featured item | Music > Explore | explained only | Mac | no |
+| control.music.exploreHeroPlay | Play the featured item | Music > Explore | explained only | Mac | yes |
+| control.music.exploreLanguageTile | Language tile on Explore | Music > Explore > Languages | destination music | Mac | yes |
+| control.music.exploreRagas | Ragas | Music > Menus | explained only | Mac | no |
+| control.music.exploreSeeAllBack | Back to Explore | Music > Menus | explained only | Mac | no |
+| control.music.exploreSeeAllPage | Explore shelf, full page | Music > Menus | explained only | Mac | no |
+| control.music.exploreSeeAllPlay | Play the whole Explore list | Music > Menus | explained only | Mac | no |
+| control.music.exploreShuffleChart | Shuffle the chart | Music > Explore > Chart | destination music | Mac | yes |
+| control.music.facetSearch | Search for the language or era | Music > Explore > Languages and eras | explained only | Mac | no |
+| control.music.filmActor | Open an actor | Music > Film info | explained only | Mac | no |
+| control.music.filmAddToPlaylist | Add the film's songs to a playlist | Music > Film > Add to playlist | explained only | Mac | no |
+| control.music.filmAddToQueue | Add the film's songs to the queue | Music > Film > More | explained only | Mac | no |
+| control.music.filmCastSeeAll | See the whole cast | Music > Film > Overview | explained only | Mac | no |
+| control.music.filmCrewSearch | Search the film's crew | Music > Film > Crew | explained only | Mac | no |
+| control.music.filmCrewSearchClear | Clear the crew search | Music > Film > Crew | explained only | Mac | no |
+| control.music.filmDubbedVersion | Open a dubbed soundtrack | Music > Film > Versions | explained only | Mac | no |
+| control.music.filmFavourite | Like the film's songs | Music > Film > Favorite | explained only | Mac | no |
+| control.music.filmGalleryClose | Close the picture | Music > Film > Gallery | explained only | Mac | no |
+| control.music.filmGalleryImage | Open a film picture | Music > Film > Gallery | explained only | Mac | no |
+| control.music.filmGalleryNext | Next picture | Music > Film > Gallery | explained only | Mac | no |
+| control.music.filmGalleryPrevious | Previous picture | Music > Film > Gallery | explained only | Mac | no |
+| control.music.filmInfoComposer | Open the music director | Music > Film info > Composer | explained only | Mac | no |
+| control.music.filmInfoDirector | Open the director | Music > Film info > Director | explained only | Mac | no |
+| control.music.filmInfoSinger | Open a singer | Music > Film info > Singers | explained only | Mac | no |
+| control.music.filmPlayNext | Play the film's songs next | Music > Film > More | explained only | Mac | no |
+| control.music.filmRadio | Film radio | Music > Film > Radio | explained only | Mac | no |
+| control.music.filmShare | Share the film | Music > Film > Share | explained only | Mac | no |
+| control.music.filmShareCopyLink | Copy the film's link | Music > Film > Share | explained only | Mac | no |
+| control.music.filmSharePicker | Share the film with the system picker | Music > Film > Share | explained only | Mac | no |
+| control.music.filmSynopsisMore | Show more of the synopsis | Music > Film > Synopsis | explained only | Mac | no |
+| control.music.filmTrailer | Watch the trailer | Music > Film > About | explained only | Mac | no |
+| control.music.filmVideoLink | Open a film video | Music > Film > Videos | explained only | Mac | no |
+| control.music.filmViewFilm | View film | Music > Film info | explained only | Mac | no |
+| control.music.filmViewInfo | View film info | Music > Film > More | explained only | Mac | no |
+| control.music.filmWatchMovie | Watch Movie | Music > Film > Watch Movie | explained only | Mac | no |
+| control.music.franchiseClose | Close | Music > Menus | explained only | Mac | no |
+| control.music.franchiseFilm | Franchise film | Music > Menus | explained only | Mac | no |
+| control.music.franchiseOpen | Franchise | Music > Menus | explained only | Mac | no |
+| control.music.graphCastCard | Cast card | Music > Pages | explained only | Mac | no |
+| control.music.graphCreditChip | Credited person | Music > Pages | explained only | Mac | no |
+| control.music.graphFilmCard | Film card | Music > Pages | explained only | Mac | no |
+| control.music.healthApplyRename | Rename files | Music > Menus | explained only | Mac | no |
+| control.music.healthClose | Close library health | Music > Menus | explained only | Mac | no |
+| control.music.healthDeep | Open every file | Music > Menus | explained only | Mac | no |
+| control.music.healthExport | Export list | Music > Menus | explained only | Mac | no |
+| control.music.healthPreview | Preview renaming | Music > Menus | explained only | Mac | no |
+| control.music.healthReadOnly | Read-only collection | Music > Menus | explained only | Mac | no |
+| control.music.healthReveal | Show in Finder | Music > Menus | explained only | Mac | no |
+| control.music.healthRun | Check my library | Music > Menus | explained only | Mac | no |
+| control.music.healthStop | Stop the check | Music > Menus | explained only | Mac | no |
+| control.music.healthTab | Library health section | Music > Menus | explained only | Mac | no |
+| control.music.healthTemplate | Rename template | Music > Menus | explained only | Mac | no |
+| control.music.healthUndo | Undo this change | Music > Menus | explained only | Mac | no |
+| control.music.healthUnlock | Unlock file | Music > Menus | explained only | Mac | no |
+| control.music.homeChartCountry | Country picker | Music > Explore > Country | explained only | Mac | yes |
+| control.music.homeContinueCard | Continue listening card | Music > Listen Now > Continue listening | explained only | Mac | yes |
+| control.music.homeHeroOpen | Open the featured item | Music > Home | explained only | Mac | no |
+| control.music.homeHeroPlay | Play the featured item | Music > Home | explained only | Mac | no |
+| control.music.homeHeroTitle | Hero title | Music > Listen Now | explained only | Mac | no |
+| control.music.homeMixPlay | Play a mix | Music > Listen Now | explained only | Mac | no |
+| control.music.homeMixPlayNext | Play a mix next | Music > Listen Now | explained only | Mac | no |
+| control.music.homeMixQueue | Add a mix to the queue | Music > Listen Now | explained only | Mac | no |
+| control.music.homeMixShuffle | Shuffle a mix | Music > Listen Now | explained only | Mac | no |
+| control.music.homeMoreExplore | Explore more: Explore | Music > Listen Now | explained only | Mac | no |
+| control.music.homeMoreLibrary | Explore more: Your Library | Music > Listen Now | explained only | Mac | no |
+| control.music.homeMoreRadio | Explore more: Radio | Music > Listen Now | explained only | Mac | no |
+| control.music.homeMusichomepagebodyButton | A card on Listen Now | Music > Listen Now | explained only | Mac | yes |
+| control.music.homeOpenLibrary | Open Library | Music > Listen Now | explained only | Mac | yes |
+| control.music.homePlayRecent | Play recent | Music > Listen Now | explained only | Mac | yes |
+| control.music.homeRefresh | Refresh Listen Now | Music > Listen Now | explained only | Mac | no |
+| control.music.homeShuffleLiked | Shuffle liked | Music > Listen Now | explained only | Mac | yes |
+| control.music.homeStartRadio | Start radio | Music > Listen Now | explained only | Mac | yes |
+| control.music.homeTile | Listen Now tile | Music > Listen Now | explained only | Mac | no |
+| control.music.homeTilePlay | Play a mix | Music > Listen Now > Made for you | explained only | Mac | no |
+| control.music.homeTopTrackLike | Like a top track | Music > Listen Now > Your top tracks | explained only | Mac | no |
+| control.music.homeTopTrackMenu | Top track menu | Music > Listen Now | explained only | Mac | no |
+| control.music.homeTopTrackMore | More actions for a top track | Music > Listen Now > Your top tracks | explained only | Mac | no |
+| control.music.homeTopTrackRow | Top track row | Music > Listen Now > Your top tracks | explained only | Mac | no |
+| control.music.homeTopTrackText | Top track title | Music > Listen Now | explained only | Mac | no |
+| control.music.homeWelcomeExplore | Explore charts | Music > Listen Now | explained only | Mac | no |
+| control.music.homeWelcomeImport | Import or open a link | Music > Listen Now | explained only | Mac | no |
+| control.music.homeWelcomeRadio | Start a radio | Music > Listen Now | explained only | Mac | no |
+| control.music.identifyClose | Close | Music > Menus | explained only | Mac | no |
+| control.music.identifyFill | Fill empty details | Music > Menus | explained only | Mac | no |
+| control.music.identifyReplace | Use these details | Music > Menus | explained only | Mac | no |
+| control.music.identifyWrite | Also write into the files | Music > Menus | explained only | Mac | no |
+| control.music.import | Import playlists | Music > Your Library | explained only | Mac | no |
+| control.music.importBack | Back | Music > Import | explained only | Mac | no |
+| control.music.importCancel | Cancel | Music > Import | explained only | Mac | no |
+| control.music.importChange | Change | Music > Import | explained only | Mac | no |
+| control.music.importChangepickerbodyButton | Change what is imported | Music > Import | explained only | Mac | yes |
+| control.music.importChooseFile | Choose file | Music > Import | explained only | Mac | no |
+| control.music.importClose | Close | Music > Import | explained only | Mac | no |
+| control.music.importContinue | Continue | Music > Import | explained only | Mac | no |
+| control.music.importCopyMissingSongs | Copy missing songs | Music > Import | explained only | Mac | no |
+| control.music.importCreate | Create | Music > Import | explained only | Mac | no |
+| control.music.importFindSongs | Find songs | Music > Import | explained only | Mac | no |
+| control.music.importImportAnother | Import another | Music > Import | explained only | Mac | no |
+| control.music.importKeepBrowsing | Keep browsing | Music > Import | explained only | Mac | no |
+| control.music.importKeepUpToDateWithSpotify | Keep up to date with the external service | Music > Import | explained only | Mac | no |
+| control.music.importLeaveOut | Leave out | Music > Import | explained only | Mac | no |
+| control.music.importLooksRight | Looks right | Music > Import | explained only | Mac | no |
+| control.music.importOpen | Open | Music > Import | explained only | Mac | no |
+| control.music.importSearch | Search | Music > Import | explained only | Mac | no |
+| control.music.importSelectAll | Select all | Music > Import | explained only | Mac | no |
+| control.music.importSelectNone | Select none | Music > Import | explained only | Mac | no |
+| control.music.importShow | Show | Music > Import | explained only | Mac | no |
+| control.music.importSongs | songs | Music > Import | explained only | Mac | no |
+| control.music.importStartOver | Start over | Music > Import | explained only | Mac | no |
+| control.music.importStop | Stop | Music > Import | explained only | Mac | no |
+| control.music.importTryAgain | Try again | Music > Import | explained only | Mac | no |
+| control.music.importTryAgainAt | Try again at | Music > Import | explained only | Mac | no |
+| control.music.importUpdateAutomatically | Update automatically | Music > Import | explained only | Mac | no |
+| control.music.jumpToPlaying | Jump to the playing song | Music > Song lists | explained only | Mac | no |
+| control.music.karaoke | Karaoke | Music > Player > Lyrics | explained only | Mac | no |
+| control.music.karaokeAgreeToTheLicenceAndDownload | Agree to the licence and download | Music > Karaoke | explained only | Mac | no |
+| control.music.karaokeCancel | Cancel | Music > Karaoke | explained only | Mac | no |
+| control.music.karaokeClear | Clear | Music > Karaoke | explained only | Mac | no |
+| control.music.karaokeClearPreparedSongs | Clear prepared songs | Music > Karaoke | explained only | Mac | no |
+| control.music.karaokeDelete | Delete | Music > Karaoke | explained only | Mac | no |
+| control.music.karaokeDeleteModel | Delete model | Music > Karaoke | explained only | Mac | no |
+| control.music.karaokeDismiss | Dismiss | Music > Karaoke | explained only | Mac | no |
+| control.music.karaokeDownload | Download the karaoke model | Music > Settings > Playback > Karaoke | explained only | Mac | yes |
+| control.music.karaokeGet | Get | Music > Karaoke | explained only | Mac | no |
+| control.music.karaokeNotNow | Not now | Music > Karaoke | explained only | Mac | no |
+| control.music.karaokeUse | Use | Music > Karaoke | explained only | Mac | no |
+| control.music.libraryAddQueue | Add these songs to the queue | Music > Your Library | explained only | Mac | no |
+| control.music.libraryChip | Remove an active filter | Music > Your Library | explained only | Mac | no |
+| control.music.libraryClearFilters | Clear all filters | Music > Your Library | explained only | Mac | no |
+| control.music.libraryCombine | Combine | Music > Menus | explained only | Mac | no |
+| control.music.libraryDownload | Download these songs | Music > Your Library | explained only | Mac | no |
+| control.music.libraryDownloads | Open Downloads | Music > Your Library | explained only | Mac | no |
+| control.music.libraryEmptyAction | Fill an empty library | Music > Your Library | explained only | Mac | no |
+| control.music.libraryEntityPlay | Play this item | Music > Your Library | explained only | Mac | no |
+| control.music.libraryEntityQueue | Add this item to the queue | Music > Your Library | explained only | Mac | no |
+| control.music.libraryEntityShuffle | Shuffle this item | Music > Your Library | explained only | Mac | no |
+| control.music.libraryFacetChip | Genre or language chip | Music > Your Library | explained only | Mac | no |
+| control.music.libraryFacetMenu | Genre or language menu | Music > Your Library | explained only | Mac | no |
+| control.music.libraryFacetPicker | Genre or language filter | Music > Your Library | explained only | Mac | no |
+| control.music.libraryFilter | Filter this tab | Music > Your Library | explained only | Mac | no |
+| control.music.libraryFilterClear | Clear the filter text | Music > Your Library | explained only | Mac | no |
+| control.music.libraryFolderCancel | Cancel a folder dialog | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.libraryFolderChoose | Choose the playlists in a folder | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.libraryFolderCreate | Create a playlist folder | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.libraryFolderDelete | Delete a playlist folder | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.libraryFolderDone | Done choosing playlists for a folder | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.libraryFolderNew | New playlist folder | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.libraryFolderRename | Rename a playlist folder | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.libraryFolderToggle | Put a playlist in the folder | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.libraryLocalCrumb | Go back up the folder path | Music > Your Library > Local files | explained only | Mac | no |
+| control.music.libraryLocalCrumbRoot | All music folders | Music > Your Library > Local files | explained only | Mac | no |
+| control.music.libraryLocalFolderRow | Open a music folder | Music > Your Library > Local files | explained only | Mac | no |
+| control.music.libraryLocalFolders | Browse Local files by folder | Music > Your Library > Local files | explained only | Mac | no |
+| control.music.libraryLocalPlayFolder | Play folder | Music > Your Library > Local files | explained only | Mac | no |
+| control.music.libraryLocalShuffleFolder | Shuffle folder | Music > Your Library > Local files | explained only | Mac | no |
+| control.music.libraryMore | More library actions | Music > Your Library | explained only | Mac | no |
+| control.music.libraryNewPlaylist | New playlist | Music > Your Library | explained only | Mac | no |
+| control.music.libraryPageBack | Your library | Music > Menus | explained only | Mac | no |
+| control.music.libraryPlay | Play these songs | Music > Your Library | explained only | Mac | no |
+| control.music.libraryPlayNext | Play these songs next | Music > Your Library | explained only | Mac | no |
+| control.music.libraryQuickLink | Library quick links | Music > Your Library | explained only | Mac | no |
+| control.music.libraryRecentlyAdded | Recently Added | Music > Sidebar > Library | destination music | Mac | yes |
+| control.music.libraryRow | Library row | Music > Your Library | explained only | Mac | no |
+| control.music.librarySelect | Select songs | Music > Your Library | explained only | Mac | no |
+| control.music.libraryShowMore | Show more history | Music > Your Library | explained only | Mac | no |
+| control.music.libraryShuffle | Shuffle these songs | Music > Your Library | explained only | Mac | no |
+| control.music.librarySongActions | More actions for these songs | Music > Your Library | explained only | Mac | no |
+| control.music.librarySort | Sort the library tab | Music > Your Library | explained only | Mac | no |
+| control.music.librarySortReverse | Reverse the sort | Music > Your Library | explained only | Mac | no |
+| control.music.librarySource | Filter the library by source | Music > Your Library | explained only | Mac | no |
+| control.music.libraryTab | Library section | Music > Menus | explained only | Mac | no |
+| control.music.libraryTabMenu | Choose a library section | Music > Your Library | explained only | Mac | no |
+| control.music.libraryViewMode | Choose how the library is shown | Music > Your Library | explained only | Mac | no |
+| control.music.listColumns | Choose song list columns | Music > Song lists | explained only | Mac | no |
+| control.music.listFilter | Filter a song list | Music > Song lists | explained only | Mac | no |
+| control.music.listScrollEnd | Scroll to the end of a song list | Music > Song lists | explained only | Mac | no |
+| control.music.listSelect | Select songs | Music > Song lists | explained only | Mac | no |
+| control.music.listSort | Sort a song list | Music > Song lists | explained only | Mac | no |
+| control.music.listeningRoomAddToTheQueue | Add to the queue | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomCopyCode | Copy code | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomCopyInvite | Copy invite | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomDoNotAdd | Do not add | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomEndRoom | End room | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomJoin | Join | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomJoinTheRoomOn | Join the room on | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomLeaveTheRoom | Leave the room | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomLetIn | Let in | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomLookForRooms | Look for rooms | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomMusicroompagesuggestmenuButton | Suggest a song to the host | Music > Listen Together | explained only | Mac | yes |
+| control.music.listeningRoomRefuse | Refuse | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomRemoveFromTheRoom | Remove from the room | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomShareInvite | Share invite | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomShowANewRoomCode | Show a new room code | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomStartARoomOnThisDevice | Start a room on this device | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomStopLooking | Stop looking | Music > Listening room | explained only | Mac | yes |
+| control.music.listeningRoomSuggestASongToTheHost | Suggest a song to the host | Music > Listening room | explained only | Mac | yes |
+| control.music.loadMoreRetry | Try loading more again | Music > Song lists | explained only | Mac | no |
+| control.music.lyricsAlignment | Lyrics alignment | Music > Lyrics | explained only | Mac | no |
+| control.music.lyricsAutomaticFirstMatchInYourOrder | Automatic: first match in your order | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsBackToThisSong | Back to this song | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsBadLyrics | Bad lyrics | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsBrowse | Scroll the lyrics yourself | Music > Lyrics | explained only | Mac | no |
+| control.music.lyricsCancelPickingLines | Cancel picking lines | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsCopyTheLyricsAsText | Copy the lyrics as text | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsDone | Done | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsEditWordEdge | Drag the edge of a word in the lyrics editor | Music > Lyrics > Editor | explained only | Mac | no |
+| control.music.lyricsEditorAddABreakBelow | Add a break below | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorAddALine | Add a line | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorAddALineBelow | Add a line below | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorAddAnInstrumentalBreak | Add an instrumental break | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorBackToEditing | Back to editing | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorCancel | Cancel | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorChooseWhereTheLyricsStartFrom | Choose where the lyrics start from | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorCloseTheEditor | Close the editor | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorDelete | Delete | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorDiscardDraft | Discard draft | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorEditorStep | Editor step | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorEveryone | Everyone | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorFlowwordsbodyButton | Lyrics editor: word | Music > Lyrics > Editor | explained only | Mac | yes |
+| control.music.lyricsEditorGoToTheNextLineTo | Go to the next line to do | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorGoToTheTimingStep | Go to the timing step | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorImportAFile | Import a file | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorJoinWithNextLine | Join with next line | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorLineActions | Line actions | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorLoadTheNewVersion | Load the new version | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorLookingAtOtherSources | Looking at other sources | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorLoopTheLine | Loop the line | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorMusiclyricseditorviewcontrolsButton | Lyrics editor: playback controls | Music > Lyrics > Editor | explained only | Mac | yes |
+| control.music.lyricsEditorMusiclyricseditorviewlinelistButton | Lyrics editor: lines | Music > Lyrics > Editor | explained only | Mac | yes |
+| control.music.lyricsEditorMusiclyricseditorviewpreviewButton | Lyrics editor: preview | Music > Lyrics > Editor | explained only | Mac | yes |
+| control.music.lyricsEditorMusiclyricseditorviewtextstepButton | Lyrics editor: text step | Music > Lyrics > Editor | explained only | Mac | yes |
+| control.music.lyricsEditorMusiclyricstimelinestripbodyOnTapGesture | Music lyrics timeline strip body click | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorNoSinger | No singer | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorPasteText | Paste text | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorPreview | Preview | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorReloadTheStartingLyrics | Reload the starting lyrics | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorRestartThisLine | Restart this line | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorSendLyrics | Send lyrics | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorSendMineOnTop | Send mine on top | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorSinger | Singer | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorSinger1 | Singer 1 | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorSinger2 | Singer 2 | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorSingerOfThisLine | Singer of this line | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorSplitTheWordsAgain | Split the words again | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorSubmitTheseLyricsToTheCommunity | Submit these lyrics to the community lyrics service | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorTapAWordStartsNow | Tap: a word starts now | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorToggleTheSelectedWordAsA | Toggle the selected word as a background vocal | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorUseThisText | Use this text | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorVoiceBeingTimed | Voice being timed | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsEditorWatchThePreview | Watch the preview | Music > Lyrics editor | explained only | Mac | no |
+| control.music.lyricsGoodLyrics | Good lyrics | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsJumpToCurrentLine | Jump to current line | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsLargerLyricsText | Larger lyrics text | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsLongPress | Hold a lyric line | Music > Lyrics | explained only | Mac | no |
+| control.music.lyricsLyricsSourceChooseAnother | Choose another lyrics source | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsMusiclyricsrowbodyButton | A lyric line | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsMusiclyricssourcepickercontributionrowButton | A lyrics contribution | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsMusiclyricstoolbartoggleButton | A lyrics toolbar toggle | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsPickLinesToShare | Pick lines to share | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsPreviewFull | Open the full lyrics | Music > Details panel > Lyrics | explained only | Mac | no |
+| control.music.lyricsPreviewLine | Play from a lyric line | Music > Details panel > Lyrics | explained only | Mac | no |
+| control.music.lyricsReason | Reason | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsReportAProblemWithTheseLyrics | Report a problem with these lyrics | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsResetTheLyricsOffset | Reset the lyrics offset | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsSearchAgain | Search for lyrics again | Music > Details panel > Lyrics | explained only | Mac | no |
+| control.music.lyricsSearchSourcesWithTheseWords | Search sources with these words | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsSent | Sent | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsSharePickedLines | Share picked lines | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsShowLyricsEarlier | Show lyrics earlier | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsShowLyricsLater | Show lyrics later | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsShowTheAppNameOnThe | Show the app name on the card | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsSmallerLyricsText | Smaller lyrics text | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsStripClear | More see-through lyrics background | Music > Menus | explained only | Mac | no |
+| control.music.lyricsStripClose | Close lyrics | Music > Menus | explained only | Mac | no |
+| control.music.lyricsStripLarger | Larger lyrics text | Music > Menus | explained only | Mac | no |
+| control.music.lyricsStripLine | Lyric line | Music > Menus | explained only | Mac | no |
+| control.music.lyricsStripPanel | Open lyrics in the side panel | Music > Menus | explained only | Mac | no |
+| control.music.lyricsStripPanelLink | Open unsynced lyrics in the side panel | Music > Menus | explained only | Mac | no |
+| control.music.lyricsStripRetry | Try loading lyrics again | Music > Menus | explained only | Mac | no |
+| control.music.lyricsStripRomanisation | Show romanisation in the lyrics strip | Music > Lyrics | explained only | Mac | no |
+| control.music.lyricsStripSmaller | Smaller lyrics text | Music > Menus | explained only | Mac | no |
+| control.music.lyricsStripSolid | More solid lyrics background | Music > Menus | explained only | Mac | no |
+| control.music.lyricsStripStyle | Lyrics style | Music > Menus | explained only | Mac | no |
+| control.music.lyricsStripStyleChoice | Lyrics strip style | Music > Menus | explained only | Mac | no |
+| control.music.lyricsStripTranslation | Show translation on the strip | Music > Menus | explained only | Mac | no |
+| control.music.lyricsTranslateTheLyricsOnThisDevice | Translate the lyrics on this device | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsUseTheStoryLayout | Use the story layout | Music > Lyrics | explained only | Mac | yes |
+| control.music.lyricsVia | via | Music > Lyrics | explained only | Mac | yes |
+| control.music.mainWindowBack | Back | Music > Main window | explained only | Mac | no |
+| control.music.mainWindowCloseComments | Close comments | Music > Main window | explained only | Mac | no |
+| control.music.mainWindowClosePanel | Close panel | Music > Main window | explained only | Mac | no |
+| control.music.mainWindowForward | Forward | Music > Main window | explained only | Mac | no |
+| control.music.mainWindowMusicmainviewpaletteOnTapGesture | Music main view palette click | Music > Main window | explained only | Mac | no |
+| control.music.mainWindowQuickSearch | Quick Search | Music > Main window | explained only | Mac | no |
+| control.music.mainWindowSearch | Search | Music > Main window | explained only | Mac | no |
+| control.music.marksBookmarkAdd | Bookmark here | Music > Menus | explained only | Mac | no |
+| control.music.marksBookmarkJump | Go to bookmark | Music > Menus | explained only | Mac | no |
+| control.music.marksBookmarkName | Bookmark name | Music > Menus | explained only | Mac | no |
+| control.music.marksBookmarkNext | Next bookmark | Music > Menus | explained only | Mac | no |
+| control.music.marksBookmarkPrev | Previous bookmark | Music > Menus | explained only | Mac | no |
+| control.music.marksBookmarkRemove | Remove bookmark | Music > Menus | explained only | Mac | no |
+| control.music.marksBoundsClear | Reset start, stop and skips | Music > Menus | explained only | Mac | no |
+| control.music.marksChapter | Chapter | Music > Menus | explained only | Mac | no |
+| control.music.marksClose | Close song navigation | Music > Menus | explained only | Mac | no |
+| control.music.marksEnd | Stop here | Music > Menus | explained only | Mac | no |
+| control.music.marksIntro | Intro to skip | Music > Menus | explained only | Mac | no |
+| control.music.marksLoopA | Loop start (A) | Music > Menus | explained only | Mac | no |
+| control.music.marksLoopB | Loop end (B) | Music > Menus | explained only | Mac | no |
+| control.music.marksLoopClear | Clear loop | Music > Menus | explained only | Mac | no |
+| control.music.marksLoopToggle | Repeat this part | Music > Menus | explained only | Mac | no |
+| control.music.marksOutro | Outro to skip | Music > Menus | explained only | Mac | no |
+| control.music.marksSkipSave | Save skips | Music > Menus | explained only | Mac | no |
+| control.music.marksSkipSilence | Skip the silence at the ends | Music > Menus | explained only | Mac | no |
+| control.music.marksStart | Start here | Music > Menus | explained only | Mac | no |
+| control.music.marksWaveform | Waveform | Music > Menus | explained only | Mac | no |
+| control.music.menuBarItem | Music menu bar item | Music > Settings > Playback | destination music | Mac | yes |
+| control.music.menuChip | Filter menu | Music > Menus | explained only | Mac | no |
+| control.music.menuChipChoice | Filter choice | Music > Menus | explained only | Mac | no |
+| control.music.metaAlbum | Album field | Music > Menus | explained only | Mac | no |
+| control.music.metaAlbumArtist | Album artist field | Music > Menus | explained only | Mac | no |
+| control.music.metaArtist | Artist field | Music > Menus | explained only | Mac | no |
+| control.music.metaCancel | Cancel | Music > Menus | explained only | Mac | no |
+| control.music.metaDisc | Disc number field | Music > Menus | explained only | Mac | no |
+| control.music.metaGenre | Genre field | Music > Menus | explained only | Mac | no |
+| control.music.metaSave | Save | Music > Menus | explained only | Mac | no |
+| control.music.metaTitle | Title field | Music > Menus | explained only | Mac | no |
+| control.music.metaTrack | Track number field | Music > Menus | explained only | Mac | no |
+| control.music.metaWriteFiles | Write changes into the files | Music > Menus | explained only | Mac | no |
+| control.music.metaYear | Year field | Music > Menus | explained only | Mac | no |
+| control.music.metadataSource | Switch a metadata source | Music > Settings > Plugins & Sources > Metadata sources | explained only | Mac | no |
+| control.music.miniPlayerBackToTheApp | Back to the app | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerDislike | Dislike | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerDislikeRemoveThisSongFromThe | Dislike: remove this song from the queue | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerEmptyBack | Back to the app from an empty mini player | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerMakeTheMiniPlayerLarger | Make the mini player larger | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerMakeTheMiniPlayerSmaller | Make the mini player smaller | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerMusicminiplayerviewcompactlayoutButton | Mini player compact controls | Music > Mini player | explained only | Mac | yes |
+| control.music.miniPlayerMusicminiplayerviewfulllayoutButton | Mini player controls | Music > Mini player | explained only | Mac | yes |
+| control.music.miniPlayerMusicminiplayerviewtopclusterButton | Mini player top buttons | Music > Mini player | explained only | Mac | yes |
+| control.music.miniPlayerNext | Next | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerOpenTheMiniPlayer | Open the mini player | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerPlay | Play | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerPrevious | Previous | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerQueueOrLyrics | Queue or lyrics | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerRepeat | Repeat | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerRetry | Retry in the mini player | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerShuffle | Shuffle | Music > Mini player | explained only | Mac | no |
+| control.music.miniPlayerTheatreMode | Theatre mode | Music > Mini player | explained only | Mac | no |
+| control.music.modesChoose | Choose a listening mode | Music > Menus | explained only | Mac | no |
+| control.music.modesClose | Close listening modes | Music > Menus | explained only | Mac | no |
+| control.music.modesOpen | Listening mode | Music > Menus | explained only | Mac | no |
+| control.music.musicClear | Clear | Music > Music | explained only | Mac | no |
+| control.music.musicClearPlaybackProblems | Clear playback problems | Music > Music | explained only | Mac | no |
+| control.music.musicCopyPlaybackDiagnostics | Copy playback diagnostics | Music > Music | explained only | Mac | no |
+| control.music.musicCouldNotLoadTryAgain | Try again after a page could not load | Music > Pages | explained only | Mac | yes |
+| control.music.musicDone | Done | Music > Music | explained only | Mac | no |
+| control.music.musicFindLyricsForThisTrack | Find lyrics for this track | Music > Music | explained only | Mac | no |
+| control.music.musicMusicheaderbarbarButton | Music page buttons (Refresh, side panel) | Music > Page top right | explained only | Mac | yes |
+| control.music.musicMusicpaletterowviewButton | A quick-search result | Music > Keyboard | explained only | Mac | yes |
+| control.music.musicPlaylist | Playlist | Music > Music | explained only | Mac | no |
+| control.music.musicSaveThePaxsenixKey | Save the PaxSenix key | Music > Settings > Lyrics > Lyrics sources | explained only | Mac | yes |
+| control.music.musicTryAgain | Try Again | Music > Music | explained only | Mac | no |
+| control.music.networkBack | Back | Music > Menus | explained only | Mac | no |
+| control.music.networkClose | Close | Music > Menus | explained only | Mac | no |
+| control.music.networkNode | Collaborator | Music > Menus | explained only | Mac | no |
+| control.music.networkOpen | Open page | Music > Menus | explained only | Mac | no |
+| control.music.networkOpenFromPerson | Collaborator network | Music > Menus | explained only | Mac | no |
+| control.music.nowPlayingArtwork | Now Playing cover | Music > Now Playing | explained only | Mac | no |
+| control.music.nowPlayingAudioSettings | Audio settings | Music > Now Playing | explained only | Mac | no |
+| control.music.nowPlayingLinkChip | Now Playing link chip | Music > Now Playing | explained only | Mac | no |
+| control.music.nowPlayingMode | Choose a Now Playing layout | Music > Now Playing | explained only | Mac | no |
+| control.music.nowPlayingModeMenu | Now Playing layout | Music > Now Playing | explained only | Mac | no |
+| control.music.nowPlayingTitleLink | Now Playing song title | Music > Now Playing | explained only | Mac | no |
+| control.music.nowPlayingUpNext | Up next preview | Music > Now Playing | explained only | Mac | no |
+| control.music.nowPlayingViewArtwork | View the cover large | Music > Now Playing | explained only | Mac | no |
+| control.music.openALinkCancel | Cancel | Music > Open a link | explained only | Mac | no |
+| control.music.openALinkOpen | Open | Music > Open a link | explained only | Mac | no |
+| control.music.openLink | Open a music link | Music > Sidebar > More > Open a Link | explained only | Mac | yes |
+| control.music.outputDevice | Choose the output device for Music | Music > Settings > Playback > Output device | explained only | Mac | no |
+| control.music.pageMenu | Page menu | Music > Pages | explained only | Mac | no |
+| control.music.palette | Quick search in Music | Music > Keyboard | explained only | Mac | yes |
+| control.music.paletteField | Palette field | Music > Menus | explained only | Mac | no |
+| control.music.paletteItem | Palette item | Music > Menus | explained only | Mac | no |
+| control.music.panelResize | Resize the details panel | Music > Details panel | explained only | Mac | no |
+| control.music.panelTabShortcut | Open a panel tab with the keyboard | Music > Details panel | explained only | Mac | no |
+| control.music.perfClear | Clear responsiveness numbers | Music > Menus | explained only | Mac | no |
+| control.music.perfCopy | Copy responsiveness report | Music > Menus | explained only | Mac | no |
+| control.music.perfPages | Pages opened | Music > Menus | explained only | Mac | no |
+| control.music.perfPlays | Play presses | Music > Menus | explained only | Mac | no |
+| control.music.perfSlow | Slow moments | Music > Menus | explained only | Mac | no |
+| control.music.personDidYouMean | Did you mean another person | Music > Person | explained only | Mac | no |
+| control.music.personFollow | Follow a person | Music > Person | explained only | Mac | no |
+| control.music.personLanguageFilter | Language filter | Music > Person page | explained only | Mac | no |
+| control.music.personPlay | Play a person | Music > Person | explained only | Mac | no |
+| control.music.personRadio | Start radio from a person | Music > Person | explained only | Mac | no |
+| control.music.personRagaChip | Open raga | Music > Menus | explained only | Mac | no |
+| control.music.personRole | Switch a person's role | Music > Person | explained only | Mac | no |
+| control.music.personShowAll | Show all of a section | Music > Person | explained only | Mac | no |
+| control.music.personShuffle | Shuffle a person | Music > Person | explained only | Mac | no |
+| control.music.personSongOpen | Open a song from a person page | Music > Person | explained only | Mac | no |
+| control.music.personSongPlay | Play one song of a person | Music > Person | explained only | Mac | no |
+| control.music.playerAndQueueAutoplay | Autoplay | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueBackTo | Back to | Music > Player and queue | explained only | Mac | no |
+| control.music.playerAndQueueCancelSleepTimer | Cancel Sleep Timer | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueChooseAnotherAudioSource | Choose Another Audio Source | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueClearQueue | Clear the queue | Music > Queue | explained only | Mac | yes |
+| control.music.playerAndQueueComments | Comments | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueEditLyrics | Edit lyrics | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueGoToAlbum | Go to album | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueGoToArtist | Go to artist | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueLyrics | Lyrics (player bar) | Music > Player bar | explained only | Mac | yes |
+| control.music.playerAndQueueMoreActionsFor | More actions for | Music > Player and queue | explained only | Mac | no |
+| control.music.playerAndQueueMorePlayerActions | More player actions | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueMusicnowplayingpaneldetailsButton | Now Playing details | Music > Side panel > Now Playing | explained only | Mac | yes |
+| control.music.playerAndQueueMusicplayerbarcompactbarKeyboardShortcut | Compact player bar controls | Music > Player bar | explained only | Mac | yes |
+| control.music.playerAndQueueMusicplayerbarextrasButton | Mute and volume (player bar) | Music > Player bar | explained only | Mac | yes |
+| control.music.playerAndQueueMusicplayerbartrackinfoButton | Like the playing song (heart) | Music > Player bar | explained only | Mac | yes |
+| control.music.playerAndQueueMusicplayerbartransportButton | Shuffle and repeat (player bar) | Music > Player bar | explained only | Mac | yes |
+| control.music.playerAndQueueMusicplayerbartransportKeyboardShortcut | Play or pause (player bar) | Music > Player bar | explained only | Mac | yes |
+| control.music.playerAndQueueMusicsleepitemsbodyButton | A sleep timer choice | Music > Player bar > Sleep timer | explained only | Mac | yes |
+| control.music.playerAndQueueNext | Next | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueOpenFullWindow | Open Full Window | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueOpenFullWindowNowPlaying | Open full-window Now Playing | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueOpenNowPlaying | Open Now Playing | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueuePlay | Play | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueuePrevious | Previous | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueQueue | Queue (player bar) | Music > Player bar | explained only | Mac | yes |
+| control.music.playerAndQueueRemoveFromQueue | Remove from queue | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueRetryPlayingThisTrack | Retry playing this track | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueSleepTimer | Sleep timer | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerAndQueueUseFullPlayerBar | Use Full Player Bar | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerBarAudioQuality | Audio quality | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerBarMore | More player actions | Music > Player bar | destination music | Mac | yes |
+| control.music.playerBarOutput | Output device | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerBarOutputDevice | Choose an output device | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerBarPill | Floating player bar | Music > Player bar | destination music | Mac | yes |
+| control.music.playerBarVolumeStep | Volume up or down | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerHide | Hide player | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerHideShow | Hide or show the player bar | Music > Player bar | destination music | Mac | yes |
+| control.music.playerRestore | Show player | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerStop | Stop playback | Music > Player and queue | explained only | Mac | yes |
+| control.music.playerTimeToggle | Time left or total length | Music > Now Playing | explained only | Mac | no |
+| control.music.playerWaveSeek | Drag the song position | Music > Player | explained only | Mac | no |
+| control.music.playlistAddAllToPlaylist | Add all songs to another playlist | Music > Your Library > Playlist | explained only | Mac | no |
+| control.music.playlistAddDescription | Add a description to a playlist | Music > Your Library > Playlist | explained only | Mac | no |
+| control.music.playlistAddToQueue | Add the playlist to the queue | Music > Playlist | explained only | Mac | no |
+| control.music.playlistChangeCover | Change the playlist cover | Music > Your Library > Playlist | explained only | Mac | no |
+| control.music.playlistCover | Choose a playlist cover | Music > Your Library > Playlist | explained only | Mac | no |
+| control.music.playlistDelete | Delete the playlist | Music > Your Library > Playlist | explained only | Mac | no |
+| control.music.playlistDescriptionMore | Show more or less of a description | Music > Playlist | explained only | Mac | no |
+| control.music.playlistDownload | Download the playlist | Music > Playlist | explained only | Mac | no |
+| control.music.playlistDuplicate | Duplicate the playlist | Music > Your Library > Playlist | explained only | Mac | no |
+| control.music.playlistEdit | Edit a playlist | Music > Your Library > Playlist | explained only | Mac | no |
+| control.music.playlistEditDescription | Edit the playlist description | Music > Your Library > Playlist | explained only | Mac | no |
+| control.music.playlistExport | Export a playlist | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistExportMenu | Export As menu | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistFindAnotherVersion | Find another version of a song | Music > Playlist | explained only | Mac | no |
+| control.music.playlistIconButton | Playlist action button | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistImportCreate | Create playlist from the file | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistImportFile | Import a playlist file | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistMerge | Merge | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistMergeChoice | Playlist to merge with | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistMergeDelete | Remove the original playlists afterwards | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistMergeDrop | Leave out songs that appear more than once | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistMergeOpen | Merge with other playlists | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistMoreMenu | Playlist menu | Music > Playlist | explained only | Mac | no |
+| control.music.playlistPlayNext | Play the playlist next | Music > Playlist | explained only | Mac | no |
+| control.music.playlistRemoveRepeats | Remove repeated songs | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistRename | Rename the playlist | Music > Your Library > Playlist | explained only | Mac | no |
+| control.music.playlistRepeatsOpen | Find repeated songs | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistShare | Share the playlist | Music > Playlist | explained only | Mac | no |
+| control.music.playlistStatsOpen | Playlist statistics | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistSuggestionAdd | Add a suggested song | Music > Playlist | explained only | Mac | no |
+| control.music.playlistSuggestionPlay | Play a suggested song | Music > Playlist | explained only | Mac | no |
+| control.music.playlistSuggestionsRefresh | Show other suggestions | Music > Playlist | explained only | Mac | no |
+| control.music.playlistTitleField | Playlist name field | Music > Your Library > Playlist | explained only | Mac | no |
+| control.music.playlistTitleRename | Rename a playlist in place | Music > Your Library > Playlist | explained only | Mac | no |
+| control.music.playlistToolsCancel | Cancel | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistToolsClose | Close | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.playlistViewAs | Choose how songs are drawn | Music > Playlist | explained only | Mac | no |
+| control.music.playlistsCancel | Cancel | Music > Playlists | explained only | Mac | no |
+| control.music.playlistsClose | Close | Music > Playlists | explained only | Mac | no |
+| control.music.playlistsRemoveTheCoverPicture | Remove the cover picture | Music > Playlists | explained only | Mac | no |
+| control.music.playlistsSave | Save | Music > Playlists | explained only | Mac | no |
+| control.music.queueBackPrevious | Back to the previous queue | Music > Queue | explained only | Mac | no |
+| control.music.queueJumpCurrent | Jump to the playing song in the queue | Music > Queue | explained only | Mac | no |
+| control.music.queueKeepAuto | Keep an autoplay song | Music > Player and queue | explained only | Mac | yes |
+| control.music.queueMoveBottom | Move a queue song to the bottom | Music > Queue | explained only | Mac | no |
+| control.music.queueMoveDown | Move down | Music > Menus | explained only | Mac | no |
+| control.music.queueMoveNext | Move to play next | Music > Menus | explained only | Mac | no |
+| control.music.queueMoveUp | Move up | Music > Menus | explained only | Mac | no |
+| control.music.queueOptionsMenu | Queue options menu | Music > Queue | explained only | Mac | no |
+| control.music.queueRedo | Redo a queue change | Music > Queue | explained only | Mac | no |
+| control.music.queueRemoveAutoplayGroup | Remove autoplay songs | Music > Queue | explained only | Mac | no |
+| control.music.queueRestoreOrder | Restore the original queue order | Music > Queue | explained only | Mac | no |
+| control.music.queueSaveAsPlaylist | Save the queue as a playlist | Music > Queue | explained only | Mac | no |
+| control.music.queueSearchClear | Clear the queue search | Music > Queue | explained only | Mac | no |
+| control.music.queueSearchToggle | Search the queue | Music > Queue | explained only | Mac | no |
+| control.music.queueSelectAll | Select every upcoming song | Music > Queue | explained only | Mac | no |
+| control.music.queueSelectDone | Finish selecting in the queue | Music > Queue | explained only | Mac | no |
+| control.music.queueSelectRemove | Remove the selected songs | Music > Queue | explained only | Mac | no |
+| control.music.queueSelectRow | Select this queue song | Music > Queue | explained only | Mac | no |
+| control.music.queueSelectStart | Select songs in the queue | Music > Queue | explained only | Mac | no |
+| control.music.queueSelectToPlaylist | Add the selected songs to a playlist | Music > Queue | explained only | Mac | no |
+| control.music.queueStopAfter | Stop after this song | Music > Queue | explained only | Mac | no |
+| control.music.queueStopAfterRow | Stop after this queue song | Music > Queue | explained only | Mac | no |
+| control.music.queueUndo | Undo a queue change | Music > Queue | explained only | Mac | no |
+| control.music.radioDelete | Delete a station | Music > Radio | explained only | Mac | no |
+| control.music.radioDuplicate | Make a copy of a station | Music > Radio | explained only | Mac | no |
+| control.music.radioEditAdd | Add the typed seed | Music > Radio > Edit station | explained only | Mac | no |
+| control.music.radioEditAddField | Add to a station | Music > Radio > Edit station | explained only | Mac | no |
+| control.music.radioEditDone | Finish editing a station | Music > Radio > Edit station | explained only | Mac | no |
+| control.music.radioEditName | Station name | Music > Radio > Edit station | explained only | Mac | no |
+| control.music.radioEditRemoveSeed | Stop following a seed | Music > Radio > Edit station | explained only | Mac | no |
+| control.music.radioEditSeeds | Edit what a station follows | Music > Radio | explained only | Mac | no |
+| control.music.radioEntityStart | Start radio from a name or film | Music > Radio > From names and films | explained only | Mac | no |
+| control.music.radioMode | Station mode | Music > Radio | explained only | Mac | no |
+| control.music.radioNew | New station | Music > Radio | explained only | Mac | no |
+| control.music.radioNotForAWhile | Not for a while | Music > Radio > Player | explained only | Mac | no |
+| control.music.radioNowArtist | Open the radio's artist | Music > Radio | explained only | Mac | no |
+| control.music.radioNowCard | Now on radio card | Music > Radio | explained only | Mac | no |
+| control.music.radioNowSong | Open the radio's song | Music > Radio | explained only | Mac | no |
+| control.music.radioRegion | Radio country | Music > Radio > Country | explained only | Mac | yes |
+| control.music.radioRename | Rename a station | Music > Radio | explained only | Mac | no |
+| control.music.radioRetry | Try the station again | Music > Radio | explained only | Mac | no |
+| control.music.radioSeedChip | Open what a station follows | Music > Radio | explained only | Mac | no |
+| control.music.radioSeedClear | Clear the station field | Music > Radio | explained only | Mac | no |
+| control.music.radioSeedField | Start a station field | Music > Radio | explained only | Mac | no |
+| control.music.radioSeedStart | Start the typed station | Music > Radio | explained only | Mac | no |
+| control.music.radioSeedSuggestion | Pick a station suggestion | Music > Radio | explained only | Mac | no |
+| control.music.radioStart | Play a radio station | Music > Radio | explained only | Mac | no |
+| control.music.radioStationCard | Play a station card | Music > Radio | explained only | Mac | no |
+| control.music.radioStop | Stop radio | Music > Radio | explained only | Mac | no |
+| control.music.radioThumb | Thumbs up and down | Music > Radio | explained only | Mac | no |
+| control.music.radioThumbDown | Thumbs down | Music > Radio > Player | explained only | Mac | no |
+| control.music.radioThumbUp | Thumbs up | Music > Radio > Player | explained only | Mac | no |
+| control.music.ragaChoose | Choose raga | Music > Menus | explained only | Mac | no |
+| control.music.ragaClose | Close | Music > Menus | explained only | Mac | no |
+| control.music.ragaLanguage | Raga song language | Music > Menus | explained only | Mac | no |
+| control.music.ragaMode | Film songs or Classical | Music > Menus | explained only | Mac | no |
+| control.music.ragaPlaySong | Play raga song | Music > Menus | explained only | Mac | no |
+| control.music.ragaSearch | Search ragas | Music > Menus | explained only | Mac | no |
+| control.music.recapEarlier | Earlier recap | Music > Menus | explained only | Mac | no |
+| control.music.recapLater | Later recap | Music > Menus | explained only | Mac | no |
+| control.music.recapPeriod | Recap period | Music > Menus | explained only | Mac | no |
+| control.music.recapPlay | Play this recap | Music > Menus | explained only | Mac | no |
+| control.music.recentlyAddedRow | Recently added item | Music > Menus | explained only | Mac | no |
+| control.music.relatedAlbumTrack | Play a song from the album | Music > Details panel > Related | explained only | Mac | no |
+| control.music.relatedArtistFollow | Follow or unfollow the song's artist | Music > Details panel > Related | explained only | Mac | no |
+| control.music.relatedArtistName | Open an artist by name | Music > Details panel > Related | explained only | Mac | no |
+| control.music.relatedArtistRadio | Start radio from the song's artist | Music > Details panel > Related | explained only | Mac | no |
+| control.music.relatedMoreFrom | More from a music director, lyricist or film | Music > Related | explained only | Mac | no |
+| control.music.relatedOpenAlbum | Open the song's album | Music > Details panel > Related | explained only | Mac | no |
+| control.music.relatedOpenArtist | Open the song's artist | Music > Details panel > Related | explained only | Mac | no |
+| control.music.relatedSongRadio | Start a song radio | Music > Related | explained only | Mac | no |
+| control.music.relatedVersions | Other versions and recordings | Music > Related | explained only | Mac | no |
+| control.music.rowContextLink | Music director, film or actor link on a song row | Music > Song rows | explained only | Mac | no |
+| control.music.searchArtistRow | Artist | Music > Search | explained only | Mac | no |
+| control.music.searchBestMatchRadio | Start radio from the best match | Music > Search > Best match | explained only | Mac | no |
+| control.music.searchClearRecentSearches | Clear recent searches | Music > Search | explained only | Mac | no |
+| control.music.searchClearSearch | Clear search | Music > Search | explained only | Mac | no |
+| control.music.searchDidYouMean | Did you mean | Music > Search | explained only | Mac | no |
+| control.music.searchEntityFilter | Search type filter | Music > Search > Filters | explained only | Mac | no |
+| control.music.searchField | Music search field | Music > Search | explained only | Mac | no |
+| control.music.searchLoadMoreResults | Load more results | Music > Search | explained only | Mac | no |
+| control.music.searchPlay | Play | Music > Search | explained only | Mac | no |
+| control.music.searchRecent | Recent searches | Music > Search | destination music | Mac | yes |
+| control.music.searchRemoveFromRecentSearches | Remove from recent searches | Music > Search | explained only | Mac | no |
+| control.music.searchScope | Where to search | Music > Search | destination music | Mac | yes |
+| control.music.searchScopeChoice | Where to search | Music > Menus | explained only | Mac | no |
+| control.music.searchSearchFor | Search for | Music > Search | explained only | Mac | no |
+| control.music.searchTrendingChip | Trending search | Music > Search | explained only | Mac | no |
+| control.music.searchTypeChips | Search result types | Music > Search | destination music | Mac | yes |
+| control.music.seeAll | See all results | Music > Search | explained only | Mac | no |
+| control.music.settingsA11yHaptic | Trackpad tap for playback actions | Music > Menus | explained only | Mac | no |
+| control.music.settingsA11yLarge | Large controls | Music > Menus | explained only | Mac | no |
+| control.music.settingsA11yLimit | Loudest allowed volume | Music > Menus | explained only | Mac | no |
+| control.music.settingsA11yLimitOn | Limit the volume | Music > Menus | explained only | Mac | no |
+| control.music.settingsA11yNoVisualizer | Never show visualizers | Music > Menus | explained only | Mac | no |
+| control.music.settingsA11yOverlay | Stronger text over pictures | Music > Menus | explained only | Mac | no |
+| control.music.settingsA11ySimple | Simplified player | Music > Menus | explained only | Mac | no |
+| control.music.settingsA11ySound | Sound for playback actions | Music > Menus | explained only | Mac | no |
+| control.music.settingsAcoustIDConnect | Connect AcoustID | Music > Menus | explained only | Mac | no |
+| control.music.settingsAcoustIDField | AcoustID key field | Music > Menus | explained only | Mac | no |
+| control.music.settingsAcoustIDKey | AcoustID key | Music > Menus | explained only | Mac | no |
+| control.music.settingsAcoustIDRemove | Remove AcoustID key | Music > Menus | explained only | Mac | no |
+| control.music.settingsAcoustIDSave | Save AcoustID key | Music > Menus | explained only | Mac | no |
+| control.music.settingsAudioTools | Audio tools | Music > Menus | explained only | Mac | no |
+| control.music.settingsAutomation | Automation | Music > Menus | explained only | Mac | no |
+| control.music.settingsAutomixClear | Clear | Music > Settings > Automix | explained only | Mac | no |
+| control.music.settingsAutomixClearTheAnalysisCache | Clear the analysis cache | Music > Settings > Automix | explained only | Mac | no |
+| control.music.settingsAutomixEqualizer | Equalizer | Music > Settings > Automix | explained only | Mac | no |
+| control.music.settingsAutomixOpenTheEqualizer | Open the equalizer | Music > Settings > Automix | explained only | Mac | no |
+| control.music.settingsClearSearch | Clear search | Music > Settings | explained only | Mac | no |
+| control.music.settingsCloseSettings | Close settings | Music > Settings | explained only | Mac | no |
+| control.music.settingsDataAndPrivacyCancel | Cancel | Music > Settings > Data and privacy | explained only | Mac | no |
+| control.music.settingsDataAndPrivacyDeleteEverything | Delete everything | Music > Settings > Data and privacy | explained only | Mac | no |
+| control.music.settingsDataAndPrivacyExportYourMusicLibrary | Export your music library | Music > Settings > Data and privacy | explained only | Mac | no |
+| control.music.settingsDataAndPrivacyImportAMusicLibrary | Import a music library | Music > Settings > Data and privacy | explained only | Mac | no |
+| control.music.settingsDetails | Details | Music > Settings | explained only | Mac | no |
+| control.music.settingsDisclosure | More options | Music > Settings | explained only | Mac | no |
+| control.music.settingsExtrasAddAMusicFolder | Add a music folder | Music > Settings > Extras | explained only | Mac | no |
+| control.music.settingsExtrasCancel | Cancel | Music > Settings > Extras | explained only | Mac | no |
+| control.music.settingsExtrasCheckPluginsForUpdates | Check plugins for updates | Music > Settings > Extras | explained only | Mac | no |
+| control.music.settingsExtrasRemove | Remove | Music > Settings > Extras | explained only | Mac | no |
+| control.music.settingsExtrasRescan | Rescan | Music > Settings > Extras | explained only | Mac | no |
+| control.music.settingsExtrasRescanAll | Rescan all | Music > Settings > Extras | explained only | Mac | no |
+| control.music.settingsExtrasStopScan | Stop scan | Music > Settings > Extras | explained only | Mac | no |
+| control.music.settingsExtrasThoroughRescanOfAllFolders | Thorough rescan of all folders | Music > Settings > Extras | explained only | Mac | no |
+| control.music.settingsExtrasUpdate | Update | Music > Settings > Extras | explained only | Mac | no |
+| control.music.settingsFpcalc | Fingerprint tool | Music > Menus | explained only | Mac | no |
+| control.music.settingsHiddenRecommendations | Hidden recommendations | Music > Menus | explained only | Mac | no |
+| control.music.settingsLibraryHealth | Library health | Music > Menus | explained only | Mac | no |
+| control.music.settingsListeningMode | Listening mode | Music > Menus | explained only | Mac | no |
+| control.music.settingsMoreInformation | More information | Music > Settings | explained only | Mac | no |
+| control.music.settingsMoveDown | Move down | Music > Settings | explained only | Mac | no |
+| control.music.settingsMoveUp | Move up | Music > Settings | explained only | Mac | no |
+| control.music.settingsMusicsettingspagerailrowButton | Settings tab | Music > Settings | explained only | Mac | yes |
+| control.music.settingsMusicsettingspageresultrowButton | Settings search result | Music > Settings | explained only | Mac | yes |
+| control.music.settingsMusicsourcerowbodyOnTapGesture | Music source row body click | Music > Settings | explained only | Mac | no |
+| control.music.settingsMusicsourcerowbodyToggle | Music source row body Toggle | Music > Settings | explained only | Mac | no |
+| control.music.settingsOwnInstanceRemoveYourOwnServerAddresses | Remove your own server addresses | Music > Settings > Own instance | explained only | Mac | no |
+| control.music.settingsOwnInstanceTest | Test | Music > Settings > Own instance | explained only | Mac | no |
+| control.music.settingsPauseOnDisconnect | Pause when headphones disconnect | Music > Menus | explained only | Mac | no |
+| control.music.settingsPlaybackClearCache | Clear cache | Music > Settings > Playback | explained only | Mac | no |
+| control.music.settingsPluginsSourcesAddAPlugin | Add a plugin | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPluginsSourcesCancel | Cancel | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPluginsSourcesClose | Close | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPluginsSourcesHowPluginsWork | How plugins work | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPluginsSourcesInstall | Install | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPluginsSourcesInstallAPluginFromAFile | Install a plugin from a file | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPluginsSourcesLogs | Logs | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPluginsSourcesRemove | Remove | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPluginsSourcesReviewPluginFromAddress | Review plugin from address | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPluginsSourcesSaveAndSignIn | Save and sign in | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPluginsSourcesSignOut | Sign out | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPluginsSourcesUpdate | Update | Music > Settings > Plugins & Sources | explained only | Mac | no |
+| control.music.settingsPreferredArtists | Artists you like | Music > Menus | explained only | Mac | no |
+| control.music.settingsPreferredGenres | Genres you like | Music > Menus | explained only | Mac | no |
+| control.music.settingsPreferredLanguages | Languages you like | Music > Menus | explained only | Mac | no |
+| control.music.settingsPrivateListening | Private listening | Music > Menus | explained only | Mac | no |
+| control.music.settingsRedoSetup | Redo setup | Music > Menus | explained only | Mac | no |
+| control.music.settingsResetConfirm | Confirm reset | Music > Menus | explained only | Mac | no |
+| control.music.settingsResetRecommendations | Reset recommendations | Music > Menus | explained only | Mac | no |
+| control.music.settingsResume | Remember my place | Music > Menus | explained only | Mac | no |
+| control.music.settingsRolesMetadata | Metadata | Music > Settings > Roles | explained only | Mac | no |
+| control.music.settingsRolesOpenScrobbling | Open scrobbling | Music > Settings > Roles | explained only | Mac | no |
+| control.music.settingsRolesOpenTheLyricsSources | Open the lyrics sources | Music > Settings > Roles | explained only | Mac | no |
+| control.music.settingsScrobblingAddACleanupRule | Add a cleanup rule | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingCancel | Cancel | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingCancelLastFmSignIn | Cancel Last.fm sign-in | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingConnectLastFm | Connect Last.fm | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingConnectListenbrainz | Connect ListenBrainz | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingDisconnectLastFm | Disconnect Last.fm | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingDisconnectListenbrainz | Disconnect ListenBrainz | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingEditWhatThisTrackScrobblesAs | Edit what this track scrobbles as | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingEmptyRule | Empty rule | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingField | Field | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingMusicscrobblesettingssectioncleanupButton | Scrobble cleanup rules | Music > Settings > Plugins & Sources > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingMusicscrobblesettingssectionrulerowButton | A scrobble cleanup rule | Music > Settings > Plugins & Sources > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingOn | On | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingOpenListenbrainzSettings | Open ListenBrainz settings | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingOpenProfile | Open profile | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingRemoveEdit | Remove edit | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingRemoveTheEditForThisTrack | Remove the edit for this track | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingSave | Save | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsScrobblingVerifyYourMetabrainzEmail | Verify your MetaBrainz email | Music > Settings > Scrobbling | explained only | Mac | yes |
+| control.music.settingsSearch | Search Music settings | Music > Settings | explained only | Mac | no |
+| control.music.settingsSeekBack | Skip back length | Music > Menus | explained only | Mac | no |
+| control.music.settingsSeekForward | Skip forward length | Music > Menus | explained only | Mac | no |
+| control.music.settingsShortcutsCancelRecording | Cancel recording | Music > Settings > Playback > Player > Global hotkeys | explained only | Mac | yes |
+| control.music.settingsShortcutsClear | Clear | Music > Settings > Playback > Player > Global hotkeys | explained only | Mac | yes |
+| control.music.settingsShortcutsUseDefault | Use default | Music > Settings > Playback > Player > Global hotkeys | explained only | Mac | yes |
+| control.music.settingsSonic | Sound analysis | Music > Menus | explained only | Mac | no |
+| control.music.settingsSonicForget | Forget analysis | Music > Menus | explained only | Mac | no |
+| control.music.settingsSonicToggle | Sound analysis switch | Music > Menus | explained only | Mac | no |
+| control.music.settingsTidyDuplicates | Find repeated songs | Music > Menus | explained only | Mac | no |
+| control.music.settingsTidyMissing | Check for missing files | Music > Menus | explained only | Mac | no |
+| control.music.settingsWatchFolders | Watch folders for changes | Music > Menus | explained only | Mac | no |
+| control.music.settingsYourMusicServerAddTheMusicServer | Add the music server | Music > Settings > Your music server | explained only | Mac | no |
+| control.music.settingsYourMusicServerRemove | Remove | Music > Settings > Your music server | explained only | Mac | no |
+| control.music.settingsYourMusicServerTest | Test | Music > Settings > Your music server | explained only | Mac | no |
+| control.music.settingsYourMusicServerTestTheServerDetails | Test the server details | Music > Settings > Your music server | explained only | Mac | no |
+| control.music.setupArtist | Pick an artist | Music > Menus | explained only | Mac | no |
+| control.music.setupArtistSearch | Add an artist | Music > Menus | explained only | Mac | no |
+| control.music.setupBack | Back | Music > Menus | explained only | Mac | no |
+| control.music.setupCardDismiss | Not now | Music > Menus | explained only | Mac | no |
+| control.music.setupCardOpen | Set up | Music > Menus | explained only | Mac | no |
+| control.music.setupContinue | Continue Music setup | Music > Set up | explained only | Mac | no |
+| control.music.setupCustomize | Choose sources myself | Music > Set up | explained only | Mac | no |
+| control.music.setupExtra | Optional extra | Music > Menus | explained only | Mac | no |
+| control.music.setupFolder | Choose a music folder in setup | Music > Menus | explained only | Mac | no |
+| control.music.setupGenre | Genre | Music > Menus | explained only | Mac | no |
+| control.music.setupGenreLike | Like this genre | Music > Menus | explained only | Mac | no |
+| control.music.setupGenreLove | Love this genre | Music > Menus | explained only | Mac | no |
+| control.music.setupGenreNo | Not for me | Music > Menus | explained only | Mac | no |
+| control.music.setupGroupButtons | Select recommended or turn all off | Music > Set up > Customize | explained only | Mac | no |
+| control.music.setupNext | Continue or Done | Music > Menus | explained only | Mac | no |
+| control.music.setupShared | What is shared | Music > Set up | explained only | Mac | no |
+| control.music.setupSkip | Skip setup | Music > Menus | explained only | Mac | no |
+| control.music.setupSonic | Sound analysis in setup | Music > Menus | explained only | Mac | no |
+| control.music.setupSource | Music source switch | Music > Set up > Choose sources | explained only | Mac | no |
+| control.music.share | Share a song, album, artist or playlist | Music > Menu | explained only | Mac | no |
+| control.music.shareClose | Close | Music > Share | explained only | Mac | no |
+| control.music.shareCopyLink | Copy link | Music > Share | explained only | Mac | no |
+| control.music.sharePublic | Public | Music > Share | explained only | Mac | no |
+| control.music.shareShare | Share | Music > Share | explained only | Mac | no |
+| control.music.shareStartAt | Start at | Music > Share | explained only | Mac | no |
+| control.music.sharedPartsClose | Close | Music > Shared parts | explained only | Mac | no |
+| control.music.sharedPartsMoreActionsFor | More actions for | Music > Shared parts | explained only | Mac | no |
+| control.music.sharedPartsMusiccardbodyContextMenu | Music card body context menu | Music > Shared parts | explained only | Mac | no |
+| control.music.sharedPartsMusiccardcardButton | A card | Music > Cards | explained only | Mac | yes |
+| control.music.sharedPartsMusicchipbodyButton | A chip | Music > Pages | explained only | Mac | yes |
+| control.music.sharedPartsMusicemptystatebodyButton | Empty page action | Music > Pages | explained only | Mac | yes |
+| control.music.sharedPartsMusicinlinelinkbodyButton | A name that is a link | Music > Links | explained only | Mac | yes |
+| control.music.sharedPartsMusictrackrowbodyButton | A song row | Music > Song lists | explained only | Mac | yes |
+| control.music.sharedPartsMusictrackrowbodyContextMenu | Music track row body context menu | Music > Shared parts | explained only | Mac | no |
+| control.music.sharedPartsMusictrackrowbodyOnTapGesture | Music track row body click | Music > Shared parts | explained only | Mac | no |
+| control.music.sharedPartsPlay | Play | Music > Shared parts | explained only | Mac | no |
+| control.music.sheetFieldClear | Clear the search box | Music > Menus | explained only | Mac | no |
+| control.music.shelfPageBack | Previous cards in a shelf | Music > Shelves | explained only | Mac | no |
+| control.music.shelfPageForward | Next cards in a shelf | Music > Shelves | explained only | Mac | no |
+| control.music.shelfSeeAll | See all of a shelf | Music > Shelves | explained only | Mac | no |
+| control.music.showAll | Show all in a shelf | Music > Shelves | explained only | Mac | no |
+| control.music.shuffleMode | Shuffle style | Music > Player and queue | explained only | Mac | yes |
+| control.music.shuffleQueueMenu | Shuffle options in the queue | Music > Player and queue | explained only | Mac | yes |
+| control.music.shuffleReshuffle | Reshuffle | Music > Player and queue | explained only | Mac | yes |
+| control.music.sidePanelButton | Side panel button | Music > Page top right | destination music | Mac | yes |
+| control.music.sidebar | Music sidebar | Music > Sidebar | explained only | Mac | yes |
+| control.music.sidebarFold | Fold a sidebar group | Music > Sidebar | destination music | Mac | yes |
+| control.music.sidebarNewPlaylist | Create a new playlist from the sidebar | Music > Sidebar > Playlists | explained only | Mac | no |
+| control.music.sidebarNowPlaying | Now playing card | Music > Sidebar | explained only | Mac | yes |
+| control.music.sidebarOpenLink | Open a Link (sidebar) | Music > Sidebar > More > Open a Link | destination music | Mac | yes |
+| control.music.sidebarRecent | Recently played album | Music > Sidebar | explained only | Mac | yes |
+| control.music.sidebarToggle | Keep the Music sidebar open or auto-hide it | Music > Sidebar | explained only | Mac | yes |
+| control.music.sleepTimerMusic | Music sleep timer | Music > Player bar > Sleep timer | destination music | Mac | yes |
+| control.music.smartAddRule | Add a rule | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartChipMenu | Smart playlist menu | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartDelete | Delete a smart playlist | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartDuplicate | Duplicate a smart playlist | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartEdit | Edit a smart playlist | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartField | Rule field | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartKeep | Keep as playlist | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartMatch | Match all or any rule | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartNew | New smart playlist | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartOperator | Rule comparison | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartPlaylistHide | Hide a smart playlist | Music > Your library > Playlists > Made for you | explained only | Mac | no |
+| control.music.smartPlaylistSave | Save a smart playlist as a playlist | Music > Your library > Playlists > Made for you | explained only | Mac | no |
+| control.music.smartRedraw | Draw again | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartRemoveRule | Remove a rule | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartSave | Save a smart playlist | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.smartSort | Smart playlist sort | Music > Your Library > Playlists | explained only | Mac | no |
+| control.music.songInfoRaga | Raga | Music > Menus | explained only | Mac | no |
+| control.music.songListsClearFilter | Clear filter | Music > Song lists | explained only | Mac | no |
+| control.music.songListsMusictracklistcolumnmenuToggle | Music track list column menu Toggle | Music > Song lists | explained only | Mac | no |
+| control.music.songListsMusictracklisttoolbuttonButton | Song list tool button | Music > Song lists | explained only | Mac | yes |
+| control.music.songListsMusictracklisttoolsKeyboardShortcut | Keys for song lists | Music > Song lists | explained only | Mac | yes |
+| control.music.songListsSortBy | Sort by | Music > Song lists | explained only | Mac | no |
+| control.music.songListsSwitchToDescending | Switch to descending | Music > Song lists | explained only | Mac | no |
+| control.music.songMenusAddAnyway | Add anyway (duplicates) | Music > Song menus > Add to playlist | explained only | Mac | yes |
+| control.music.songMenusAddToPlaylist | Add to Playlist | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusAddToQueue | Add to Queue | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusAllowAgain | Allow Again | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusAllowThisTrackAgain | Allow This Track Again | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusBack | Back | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusCancelSelection | Cancel selection | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusChooseAnotherAudioSource | Choose Another Audio Source | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusClear | Clear | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusClose | Close | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusConvert | Convert | Music > Menus | explained only | Mac | no |
+| control.music.songMenusDownload | Download | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusEditDetails | Edit song details | Music > Menus | explained only | Mac | no |
+| control.music.songMenusEditScrobble | Edit Scrobble | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusFindCredits | Find film and music director | Music > Song menu > Go to | explained only | Mac | no |
+| control.music.songMenusFindMissingDetails | Find missing details | Music > Menus | explained only | Mac | no |
+| control.music.songMenusGoTo | Go to | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusGoToConnected | Go to a connected page | Music > Song menu > Go to | explained only | Mac | no |
+| control.music.songMenusGoToMenu | Go to | Music > Song menu > Go to | explained only | Mac | no |
+| control.music.songMenusGoToSong | Go to Song | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusHideArtist | Hide songs by this artist | Music > Menus | explained only | Mac | no |
+| control.music.songMenusHideRecommendation | Hide recommendation | Music > Menus | explained only | Mac | no |
+| control.music.songMenusHideSong | Hide this song | Music > Menus | explained only | Mac | no |
+| control.music.songMenusIdentifyBySound | Identify by sound | Music > Menus | explained only | Mac | no |
+| control.music.songMenusInYourLibrary | In Your Library | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusLockFile | Lock file against changes | Music > Menus | explained only | Mac | no |
+| control.music.songMenusMinusCircle | Never Play This Track | Music > Song menus | explained only | Mac | yes |
+| control.music.songMenusMusicaddtoplaylistsheetpickButton | Pick a playlist to add to | Music > Song menus > Add to playlist | explained only | Mac | yes |
+| control.music.songMenusMusicselectionbarbodyButton | Selection bar actions | Music > Song lists > Selection | explained only | Mac | yes |
+| control.music.songMenusMusicselectionbariconButton | Selection bar icon actions | Music > Song lists > Selection | explained only | Mac | yes |
+| control.music.songMenusNewPlaylist | New Playlist | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusPlay | Play | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusPlayNext | Play Next | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusRemoveDislike | Remove Dislike | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusRemoveFromLibrary | Remove from Library | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusRemoveFromLikedSongs | Remove from Liked Songs | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusRemoveFromThisPlaylist | Remove from This Playlist | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusSaveToYourLibrary | Save to Your Library | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusSelectAll | Select all | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusShare | Share | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusShuffle | Shuffle | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusSkipDuplicates | Skip duplicates | Music > Song menus > Add to playlist | explained only | Mac | yes |
+| control.music.songMenusSongInformation | Song information | Music > Menus | explained only | Mac | no |
+| control.music.songMenusSoundsLike | Sounds Like | Music > Menus | explained only | Mac | no |
+| control.music.songMenusStartRadio | Start Radio | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusSuggestToRoom | Suggest to Room | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusTempoPitchAndReverb | Tempo, Pitch and Reverb | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusTrackMarks | Loop, Bookmarks and Skips | Music > Menus | explained only | Mac | no |
+| control.music.songMenusUnblock | Unblock | Music > Song menus | explained only | Mac | no |
+| control.music.songMenusViewCredits | View credits | Music > Menus | explained only | Mac | no |
+| control.music.songMenusViewLyrics | View lyrics | Music > Menus | explained only | Mac | no |
+| control.music.songMenusVisualizer | Visualizer | Music > Menus | explained only | Mac | no |
+| control.music.songPageAddToQueue | Add this song to the queue | Music > Song page | explained only | Mac | no |
+| control.music.songPageAlbum | Open the song's album | Music > Song page | explained only | Mac | no |
+| control.music.songPageCard | Open a related song or film | Music > Song page | explained only | Mac | no |
+| control.music.songPageFilm | Open the song's film | Music > Song page | explained only | Mac | no |
+| control.music.songPageFindCopy | Find a playable copy | Music > Song page | explained only | Mac | no |
+| control.music.songPageLike | Like this song | Music > Song page | explained only | Mac | no |
+| control.music.songPageLyricsExpand | Show all lyrics | Music > Song page | explained only | Mac | no |
+| control.music.songPageLyricsSearch | Search for lyrics again | Music > Song page | explained only | Mac | no |
+| control.music.songPageMore | More ways to play this song | Music > Song page | explained only | Mac | no |
+| control.music.songPageOriginal | Open the original recording | Music > Song page | explained only | Mac | no |
+| control.music.songPagePerson | Open a credited person | Music > Song page | explained only | Mac | no |
+| control.music.songPagePlay | Play this song | Music > Song page | explained only | Mac | no |
+| control.music.songPagePlayFromSource | Play from a source | Music > Song page | explained only | Mac | no |
+| control.music.songPagePlayNext | Play this song next | Music > Song page | explained only | Mac | no |
+| control.music.songPagePlaylist | Open a playlist that holds the song | Music > Song page | explained only | Mac | no |
+| control.music.songPageSample | Sampled song | Music > Menus | explained only | Mac | no |
+| control.music.songPageStartRadio | Start radio from this song | Music > Song | explained only | Mac | no |
+| control.music.songPageVersion | Open another version of the song | Music > Song page | explained only | Mac | no |
+| control.music.sonicClose | Close | Music > Menus | explained only | Mac | no |
+| control.music.sonicEnergy | Energy direction | Music > Menus | explained only | Mac | no |
+| control.music.sonicJourneyChange | Choose another destination | Music > Menus | explained only | Mac | no |
+| control.music.sonicJourneyPick | Pick the destination | Music > Menus | explained only | Mac | no |
+| control.music.sonicJourneySearch | Search the destination | Music > Menus | explained only | Mac | no |
+| control.music.sonicMode | Sounds Like mode | Music > Menus | explained only | Mac | no |
+| control.music.sonicPlay | Play song | Music > Menus | explained only | Mac | no |
+| control.music.sonicPlayAll | Play all | Music > Menus | explained only | Mac | no |
+| control.music.soundcloudChapter | Jump to a chapter of a mix | Music > Now Playing > Chapters | explained only | Mac | no |
+| control.music.soundcloudMoreShelf | More uploads by the artist | Music > Artist page | explained only | Mac | no |
+| control.music.soundtrackAddToPlaylist | Add album to a playlist | Music > Album | explained only | Mac | no |
+| control.music.soundtrackExploreLink | Continue exploring | Music > Album | explained only | Mac | no |
+| control.music.soundtrackFavourite | Save album to Your library | Music > Album | explained only | Mac | no |
+| control.music.soundtrackFilmChip | Film of this soundtrack | Music > Album | explained only | Mac | no |
+| control.music.soundtrackShare | Share album | Music > Album | explained only | Mac | no |
+| control.music.soundtrackSongDetails | Song details | Music > Album | explained only | Mac | no |
+| control.music.soundtrackSongRow | Play a song of the album | Music > Album | explained only | Mac | no |
+| control.music.soundtrackSongsRetry | Try loading the rest of the songs | Music > Album | explained only | Mac | no |
+| control.music.soundtrackViewFilm | View film | Music > Album | explained only | Mac | no |
+| control.music.sources | Added audio sources | Music > Settings > Plugins & Sources > Added sources | explained only | Mac | yes |
+| control.music.sourcesAddThisAddon | Add this addon | Music > Sources | explained only | Mac | no |
+| control.music.sourcesAddonQuality | Addon quality | Music > Sources | explained only | Mac | no |
+| control.music.sourcesCancel | Cancel | Music > Sources | explained only | Mac | no |
+| control.music.sourcesRemove | Remove a source | Music > Settings > Plugins & Sources > Added sources | explained only | Mac | yes |
+| control.music.sourcesTest | Test | Music > Sources | explained only | Mac | no |
+| control.music.sourcesTestThisAddressWithoutSaving | Test this address without saving | Music > Sources | explained only | Mac | no |
+| control.music.stationMode | Choose station mode | Music > Menus | explained only | Mac | no |
+| control.music.stationModeMenu | Station mode | Music > Menus | explained only | Mac | no |
+| control.music.stationRetry | Try the station again | Music > Menus | explained only | Mac | no |
+| control.music.stationStop | Stop station | Music > Menus | explained only | Mac | no |
+| control.music.statistics01 | A ranked item in Music statistics | Statistics > Music | explained only | Mac | yes |
+| control.music.statisticsClearListeningHistory | Clear Listening History | Music > Statistics | explained only | Mac | no |
+| control.music.statisticsMusicstatsviewtopartistsButton | A top artist in Music statistics | Statistics > Music | explained only | Mac | yes |
+| control.music.statisticsPlays | plays | Music > Statistics | explained only | Mac | no |
+| control.music.statisticsRange | Range | Music > Statistics | explained only | Mac | no |
+| control.music.subsonicAdd | Add a music server | Music > Settings > Plugins & Sources > Your music server | explained only | Mac | no |
+| control.music.subsonicConvert | Convert audio on the music server | Music > Settings > Plugins & Sources > Your music server | explained only | Mac | no |
+| control.music.subsonicOwnNetwork | This is my own server on my network | Music > Settings > Plugins & Sources > Your music server | explained only | Mac | no |
+| control.music.subsonicRemove | Remove a music server | Music > Settings > Plugins & Sources > Your music server | explained only | Mac | no |
+| control.music.subsonicTest | Test a music server | Music > Settings > Plugins & Sources > Your music server | explained only | Mac | no |
+| control.music.subsonicUse | Use my music server | Music > Settings > Plugins & Sources > Your music server | explained only | Mac | no |
+| control.music.suggestFill | Put a suggestion in the search field | Music > Search | explained only | Mac | no |
+| control.music.suggestSearch | Search the typed words | Music > Search | explained only | Mac | no |
+| control.music.theatreClose | Close | Music > Theatre | explained only | Mac | no |
+| control.music.theatreCloseTheatreMode | Close theatre mode | Music > Theatre | explained only | Mac | no |
+| control.music.theatreLyricsColumn | Lyrics column | Music > Theatre | explained only | Mac | no |
+| control.music.theatreMusictheatreviewdockButton | Theatre controls | Music > Theatre | explained only | Mac | yes |
+| control.music.theatreMusictheatreviewstageButton | Theatre stage | Music > Theatre | explained only | Mac | yes |
+| control.music.theatreNext | Next | Music > Theatre | explained only | Mac | no |
+| control.music.theatrePrevious | Previous | Music > Theatre | explained only | Mac | no |
+| control.music.theatreQueueColumn | Queue column | Music > Theatre | explained only | Mac | no |
+| control.music.theatreRepeat | Repeat | Music > Theatre | explained only | Mac | no |
+| control.music.theatreShuffle | Shuffle | Music > Theatre | explained only | Mac | no |
+| control.music.thoroughRescan | Thorough rescan of local folders | Music > Settings > Local folders | explained only | Mac | no |
+| control.music.tidyClose | Close | Music > Menus | explained only | Mac | no |
+| control.music.tidyKeepBest | Keep best | Music > Menus | explained only | Mac | no |
+| control.music.tidyLocate | Locate | Music > Menus | explained only | Mac | no |
+| control.music.tidyRemoveAllExtras | Remove all extras | Music > Menus | explained only | Mac | no |
+| control.music.tidyRemoveMissing | Remove missing song | Music > Menus | explained only | Mac | no |
+| control.music.tidyTab | Tidy tab | Music > Menus | explained only | Mac | no |
+| control.music.topResultPlay | Play the top result | Music > Search | explained only | Mac | no |
+| control.music.topResultRadio | Start radio from the top result | Music > Search | explained only | Mac | no |
+| control.music.trackSheetClose | Close | Music > Menus | explained only | Mac | no |
+| control.music.visualizerClose | Close visualizer | Music > Menus | explained only | Mac | no |
+| control.music.visualizerColour | Visualizer colours | Music > Menus | explained only | Mac | no |
+| control.music.visualizerFPS | Visualizer frame rate | Music > Menus | explained only | Mac | no |
+| control.music.visualizerFullScreen | Visualizer full screen | Music > Menus | explained only | Mac | no |
+| control.music.visualizerMode | Visualizer look | Music > Menus | explained only | Mac | no |
+| control.music.visualizerPreset | Visualizer preset | Music > Menus | explained only | Mac | no |
+| control.music.visualizerPresets | Visualizer presets | Music > Menus | explained only | Mac | no |
+| control.music.visualizerSecondDisplay | Visualizer on the other display | Music > Menus | explained only | Mac | no |
+| control.music.visualizerSensitivity | Visualizer sensitivity | Music > Menus | explained only | Mac | no |
+| control.music.visualizerSmoothing | Visualizer smoothness | Music > Menus | explained only | Mac | no |
+| control.music.wheelFilm | Movie on the connection wheel | Music > Menus | explained only | Mac | no |
+| control.music.wheelPeople | People on the connection wheel | Music > Menus | explained only | Mac | no |
+| control.music.wheelPerson | Person on the connection wheel | Music > Menus | explained only | Mac | no |
+| control.music.wheelPersonChoice | Choose a person | Music > Menus | explained only | Mac | no |
+| control.music.yourLibraryCancel | Cancel | Music > Your Library | explained only | Mac | no |
+| control.music.yourLibraryCreate | Create | Music > Your Library | explained only | Mac | no |
+| control.music.yourLibraryCreateAPlaylist | Create a playlist | Music > Your Library | explained only | Mac | no |
+| control.music.yourLibraryExportABackupOfYourMusic | Export a backup of your music library | Music > Your Library | explained only | Mac | no |
+| control.music.yourLibraryImportABackupOfYourMusic | Import a backup of your music library | Music > Your Library | explained only | Mac | no |
+| control.music.yourLibraryOpenTheListOfSongsAnd | Open the list of songs and artists you never want to hear | Music > Your Library | explained only | Mac | no |
 | control.nav.the external service | the external service tab | Top bar | explained only | Mac | no |
+| control.nav.searchIcon | Search icon | Top bar | explained only | Mac | no |
 | control.nav.service | Service tab | Top bar | explained only | Mac | no |
 | control.nav.service.reload | Reload a service | Top bar | explained only | Mac | no |
 | control.nav.streamsetu | StreamSetu item | Top bar | explained only | Mac | no |
@@ -461,6 +1783,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.the external service.openBlocked | Open blocked link in browser | the external service | explained only | Mac | no |
 | control.the external service.openBrowser | Open in Default Browser (the external service) | the external service | explained only | Mac | no |
 | control.the external service.retry | Try Again (the external service) | the external service | explained only | Mac | no |
+| control.onboarding.skip | Skip for now | First run | explained only | Mac | no |
 | control.page.sort | Sort menu | Pages | explained only | Mac | yes |
 | control.player.audio | Audio menu | Player | explained only | Mac | yes |
 | control.player.back | Back from the player | Player | explained only | Mac | yes |
@@ -477,6 +1800,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.player.miniExpand | Expand the mini player | Player > Bottom bar | explained only | Mac | yes |
 | control.player.overflow | Player overflow menu | Player | explained only | Mac | yes |
 | control.player.pip | Picture in Picture | Player | explained only | Mac | yes |
+| control.player.privateBadge | Private viewing indicator | Player | explained only | Mac, iPhone, iPad | yes |
 | control.player.quality | Quality menu | Player | explained only | Mac | yes |
 | control.player.queue | Queue menu | Player | explained only | Mac | yes |
 | control.player.record | Record | Player | explained only | Mac | yes |
@@ -492,6 +1816,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.player.videoSize | Video size menu | Player | explained only | Mac | yes |
 | control.podcasts.category | Podcast categories | Podcasts > Discover | explained only | Mac | yes |
 | control.podcasts.follow | Follow or unfollow a podcast | Files and Servers > Podcasts | explained only | Mac | yes |
+| control.podcasts.myCategory | Your podcast category | Podcasts | explained only | Mac | no |
 | control.podcasts.nowPlaying | Podcast Now Playing panel | Podcasts > Player | explained only | Mac | yes |
 | control.podcasts.play | Play a podcast episode | Files and Servers > Podcasts | explained only | Mac | yes |
 | control.podcasts.player | Podcast player controls | Podcasts > Player | explained only | Mac | yes |
@@ -500,8 +1825,12 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.podcasts.sleep | Podcast sleep timer | Podcasts > Player | explained only | Mac | yes |
 | control.podcasts.sort | Sort podcast episodes | Podcasts > Show | explained only | Mac | yes |
 | control.podcasts.speed | Podcast speed and skips | Podcasts > Player | explained only | Mac | yes |
+| control.profiles.add | Add a profile, PIN to open it, Kids profile | Settings > Library > Profiles > Add | settings page Library | Mac, iPhone, iPad | yes |
+| control.profiles.remove | Remove a profile | Settings > Library > Profiles | settings page Library | Mac, iPhone, iPad | yes |
 | control.search.askAI | Ask AI for picks | Search | explained only | Mac, iPhone, iPad | yes |
+| control.search.askSetuRow | Ask Setu row in the search results | Top bar > Search > Ask Setu row | explained only | Mac | yes |
 | control.search.idea | Search ideas | Search | explained only | Mac, iPhone, iPad | yes |
+| control.search.topBar | Search or ask Setu (top search box) | Top bar > Search | explained only | Mac | yes |
 | control.series.seasonPicker | Season picker | Series > Title page | explained only | Mac | yes |
 | control.service.authPopupClose | Close sign-in window | Services | explained only | Mac | no |
 | control.service.dismissNotice | Dismiss notice (service) | Services | explained only | Mac | no |
@@ -521,6 +1850,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.services.pin | Pin or unpin a service | Top bar > Services | explained only | Mac | no |
 | control.services.section | Services list section | Top bar > Services | explained only | Mac | no |
 | control.settings.artworkTrending | Use the movie database weekly trending | Settings > Library > Artwork and details | explained only | Mac | yes |
+| control.settings.askSetu | Ask Setu (Settings header) | Settings > Ask Setu | explained only | Mac | yes |
 | control.settings.backupContents | What a backup contains | Settings > Library > Backup | explained only | Mac | yes |
 | control.settings.checkForUpdates | Check for updates | Settings > Advanced > About | explained only | Mac | yes |
 | control.settings.clearArtworkCache | Clear artwork cache | Settings > Advanced > Reset | explained only | Mac | yes |
@@ -543,6 +1873,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.settings.lanPairDevice | Pair with a nearby device | Settings > General > Sync on this network | explained only | Mac | yes |
 | control.settings.lanSyncNow | Sync on this network now | Settings > General > Sync on this network | explained only | Mac | yes |
 | control.settings.moreSources | More sources | Settings > Library > More sources | explained only | Mac | yes |
+| control.settings.openNetworkSettings | Open Network Settings (Local Network) | Settings > Privacy | settings page Privacy | Mac | yes |
 | control.settings.refreshNow | Refresh playlists now | Settings > Library > Catalog | explained only | Mac | yes |
 | control.settings.removeEverything | Remove all playlists and data | Settings > Advanced > Remove everything | explained only | Mac | yes |
 | control.settings.resetAllPreferences | Reset all preferences | Settings > Advanced > Reset | explained only | Mac | yes |
@@ -556,6 +1887,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.settings.servicesClear | Clear a service's data | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.servicesDiagnosticsClear | Clear | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.servicesDiagnosticsCopy | Copy hosts | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.settings.servicesKeepPlaying | Keep services playing in the background | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.servicesMove | Move a service (Settings) | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.servicesOpen | Open a service (Settings) | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.servicesPin | Pin a service (Settings) | Settings > Privacy > Streaming services | explained only | Mac | no |
@@ -566,13 +1898,35 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | control.settings.tidyPages | Tidy pages (per service) | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.topBarReset | Reset top bar to defaults | Settings > Privacy > Streaming services | explained only | Mac | no |
 | control.settings.topBarTabs | Top bar item styles | Settings > Privacy > Streaming services | explained only | Mac | no |
+| control.setu.answerButtons | Buttons under a Setu answer | Setu | explained only | Mac, iPhone, iPad | yes |
+| control.setu.modelMenu | Setu engine menu and Allow online AI services | Setu > Engine menu | settings page Library | Mac, iPhone, iPad | yes |
+| control.setu.newChat | Start a new chat with Setu | Setu > New chat | explained only | Mac, iPhone, iPad | yes |
+| control.setu.shareScreen | Share my screen with Setu (eye button) | Setu > Eye button | explained only | Mac, iPhone, iPad | yes |
+| control.setu.starterChips | Setu starter questions | Setu | explained only | Mac, iPhone, iPad | yes |
+| control.setup.back | Back to the previous step | Help > Get Set Up | explained only | Mac | no |
+| control.setup.done | Save Get Set Up | Help > Get Set Up | explained only | Mac | no |
+| control.setup.music | Set up Music when I finish | Help > Get Set Up | explained only | Mac | no |
+| control.setup.musicLater | Set up Music later | Help > Get Set Up | explained only | Mac | no |
+| control.setup.next | Continue to the next step | Help > Get Set Up | explained only | Mac | no |
+| control.setup.notNow | Skip Get Set Up | Help > Get Set Up | explained only | Mac | no |
+| control.setup.podcastGenre | Podcast category | Help > Get Set Up | explained only | Mac | no |
+| control.setup.podcastRegion | Podcast charts region | Help > Get Set Up | explained only | Mac | no |
+| control.setup.service | Pin a streaming service | Help > Get Set Up | explained only | Mac | no |
 | control.shelf.scrollArrow | Shelf arrows | Home > Shelves | explained only | Mac | yes |
 | control.sidebar.collapse | Collapse the sidebar | Sidebar | explained only | Mac | yes |
+| control.sidebar.folderSearch | Search sidebar folders | Sidebar > Folder search | explained only | Mac | no |
+| control.sidebar.folderSearchClear | Clear the folder search | Sidebar > Folder search | explained only | Mac | no |
+| control.sidebar.playlistButton | Choose the playlist | Sidebar > Playlist menu | explained only | Mac | no |
+| control.sidebar.playlistRemove | Remove a playlist | Sidebar > Playlist menu | explained only | Mac | no |
+| control.sidebar.playlistRow | A playlist in the menu | Sidebar > Playlist menu | explained only | Mac | no |
+| control.statistics.area | Statistics area | Statistics | explained only | Mac | yes |
+| control.statistics.weeklyDigest | Your week and the Sunday evening notification | Home > Statistics > Your week | sidebar statistics | Mac, iPhone, iPad | yes |
 | control.title.folderPath | Open the folder a title is in | Title page | explained only | Mac, iPhone, iPad | yes |
 | control.title.franchise | Films in the same franchise | Title page | explained only | Mac, iPhone, iPad | yes |
 | control.title.otherLanguages | Other languages | Title page | explained only | Mac, iPhone, iPad | no |
 | control.title.trailer | Watch the trailer | Title page | explained only | Mac, iPhone, iPad | yes |
 | control.title.version | Choose a version | Title page | explained only | Mac, iPhone, iPad | yes |
+| control.tonight.usualTime | Your usual time | Home > Tonight > Your usual time | sidebar tonight | Mac, iPhone, iPad | yes |
 | screen.settings.advanced.about | About | Settings > Advanced > About | settings page Advanced | Mac | yes |
 | screen.settings.advanced.diagnostics | Diagnostics | Settings > Advanced > Diagnostics | settings page Advanced | Mac | yes |
 | screen.settings.advanced.removeEverything | Remove everything | Settings > Advanced > Remove everything | settings page Advanced | Mac | yes |
@@ -638,7 +1992,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | setting.castReading | Cast and directors | Settings > Library > Cast and directors | settings page Library | Mac, iPhone, iPad | yes |
 | setting.catalogRefresh | Refresh playlists | Settings > Library > Catalog | settings page Library | Mac, iPhone, iPad | yes |
 | setting.catchupClock | Catch-up provider's clock | Settings > Library > Manage > Playlists > Guide | modal playlists | Mac | yes |
-| setting.clickBehavior | Open channels with | Settings > General > Browsing | settings page General | Mac, iPhone, iPad | yes |
+| setting.clickBehavior | Open channels with | Settings > General > Browsing | settings page General | Mac | yes |
 | setting.collapseDuplicates | Group quality variants | Settings > General > Browsing | settings page General | Mac, iPhone, iPad | yes |
 | setting.customTheme | Custom theme colours | Settings > Appearance > Theme | settings page Appearance | Mac, iPhone, iPad | yes |
 | setting.debrid | Debrid | Settings > Library > Debrid | settings page Library | Mac, iPhone, iPad | yes |
@@ -646,8 +2000,8 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | setting.defaultChannelSort | Channel order | Settings > General > Browsing | settings page General | Mac, iPhone, iPad | yes |
 | setting.defaultLibrarySort | Movies and series order | Settings > General > Browsing | settings page General | Mac, iPhone, iPad | yes |
 | setting.defaultVideoSize | Default video size | Settings > Playback > Video | settings page Playback | Mac | yes |
-| setting.deinterlace | Deinterlacing | Settings > Playback > Advanced video | settings page Playback | Mac, iPhone, iPad | yes |
-| setting.density | Density | Settings > Appearance > Appearance | settings page Appearance | Mac, iPhone, iPad | yes |
+| setting.deinterlace | Deinterlacing | Settings > Playback > Advanced video | settings page Playback | Mac | yes |
+| setting.density | Density | Settings > Appearance > Appearance | settings page Appearance | Mac | yes |
 | setting.downloads | Downloads | Settings > Library > Downloads | settings page Library | Mac, iPhone, iPad | yes |
 | setting.downloadsDeleteWatched | Delete a download after I have watched it | Settings > Library > Downloads | settings page Library | Mac, iPhone, iPad | yes |
 | setting.downloadsWifiOnly | Downloads only on Wi-Fi | Downloads > Only on Wi-Fi | explained only | iPhone, iPad | yes |
@@ -655,13 +2009,13 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | setting.enginePreference | Player engine | Settings > Playback > Player engine | settings page Playback | Mac, iPhone, iPad | yes |
 | setting.guide.addXMLTV | Add a guide address | Settings > Library > Guide sources > Add | explained only | Mac, iPhone, iPad | yes |
 | setting.guide.enrichLogos | Fill missing logos | Settings > Library > Guide sources > Fill missing logos, genres and countries | explained only | Mac, iPhone, iPad | yes |
-| setting.guide.enrichmentEnabled | Use the public channel database | Settings > Guide > Public channel database | explained only | Mac, iPhone, iPad | no |
+| setting.guide.enrichmentEnabled | Use the public channel database | Settings > Library > Guide sources | explained only | Mac, iPhone, iPad | yes |
 | setting.guide.freshness | Guide warnings | Settings > Library > Guide sources | explained only | Mac, iPhone, iPad | yes |
 | setting.guide.publicDatabase | Public channel database | Settings > Library > Guide sources > Fill missing logos, genres and countries | explained only | Mac, iPhone, iPad | yes |
-| setting.guide.reminderLeadMinutes | Remind me before | Settings > Guide > Reminders | explained only | Mac, iPhone, iPad | no |
+| setting.guide.reminderLeadMinutes | Remind me before (guide reminders) | TV Guide > Reminders | explained only | Mac, iPhone, iPad | yes |
 | setting.guide.sources | Guide sources | Settings > Library > Guide sources | explained only | Mac, iPhone, iPad | yes |
 | setting.guide.timeZoneMode | Guide time zone | Settings > Library > Playlists | explained only | Mac, iPhone, iPad | yes |
-| setting.guideHoursVisible | Guide hours shown | TV Guide screen > Hours visible | explained only | Mac, iPhone, iPad | yes |
+| setting.guideHoursVisible | Guide hours shown | TV Guide screen > Hours visible | explained only | Mac | yes |
 | setting.guideRefresh | Refresh the programme guide | Settings > Library > Programme guide | settings page Library | Mac, iPhone, iPad | yes |
 | setting.guideRetentionDays | Keep past programmes | Settings > Library > Programme guide | settings page Library | Mac, iPhone, iPad | yes |
 | setting.guideShift | Guide time shift | Settings > Library > Manage > Playlists > Guide | modal playlists | Mac | yes |
@@ -673,8 +2027,49 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | setting.keywordAlerts | Guide alerts | Settings > Library > Guide alerts | settings page Library | Mac, iPhone, iPad | yes |
 | setting.lanSync | Sync on this network | Settings > Library > Sync on this network | settings page Library | Mac, iPhone, iPad | yes |
 | setting.language | App language | Settings > Appearance > Appearance | settings page Appearance | Mac, iPhone, iPad | yes |
-| setting.liveRewind | Pause and rewind live TV | Settings > Playback > Live TV | settings page Playback | Mac, iPhone, iPad | yes |
+| setting.liveRewind | Pause and rewind live TV | Settings > Playback > Live TV | settings page Playback | Mac | yes |
 | setting.maintenance | Maintenance and reset | Settings > Library > Maintenance | settings page Library | Mac, iPhone, iPad | yes |
+| setting.music.adaptiveColours | Adapt colours to artwork | Music > Settings > General > Appearance | destination music | Mac | yes |
+| setting.music.animatedArtwork | Animated artwork | Music > Settings > Playback > Animated artwork | destination music | Mac | yes |
+| setting.music.audioCache | Audio cache | Music > Settings > Library & Data > Audio cache | destination music | Mac | yes |
+| setting.music.audioQuality | Audio quality | Music > Settings > Playback > Audio | destination music | Mac | yes |
+| setting.music.automix | Automix | Music > Settings > Playback > Automix | destination music | Mac | yes |
+| setting.music.autoplay | Autoplay | Music > Settings > Playback > Player | destination music | Mac | yes |
+| setting.music.backup | Export or import your music library | Music > Settings > Library & Data > Backup | destination music | Mac | yes |
+| setting.music.catalogueInfo | Catalogue information | Music > Settings > Playback > Catalogue information | destination music | Mac | yes |
+| setting.music.crossfade | Crossfade | Music > Settings > Playback > Player | destination music | Mac | yes |
+| setting.music.deleteAllData | Delete all music data | Music > Settings > Privacy & About > Your data | destination music | Mac | yes |
+| setting.music.devicesAllowControl | Allow other devices to control this one | Music > Settings > Devices > This device | destination music | Mac | yes |
+| setting.music.equalizer | Equalizer | Music > Settings > Playback > Equalizer | destination music | Mac | yes |
+| setting.music.globalHotkeys | Use global hotkeys | Music > Settings > Playback > Player > Global hotkeys | destination music | Mac | yes |
+| setting.music.karaoke | Karaoke: remove vocals | Music > Settings > Playback > Karaoke | destination music | Mac | yes |
+| setting.music.keepShuffleOn | Queue: keep shuffle on for new queues | Music > Settings > Playback > Queue | destination music | Mac | yes |
+| setting.music.localFolders | Local folders | Music > Settings > Plugins & Sources > Local folders | destination music | Mac | yes |
+| setting.music.lyricsBlur | Soft blur and glow on lyrics | Music > Settings > Lyrics > Lyrics display | destination music | Mac | yes |
+| setting.music.lyricsOffset | Lyrics timing offset | Music > Settings > Lyrics > Lyrics display | destination music | Mac | yes |
+| setting.music.lyricsSources | Lyrics sources | Music > Settings > Lyrics > Lyrics sources | destination music | Mac | yes |
+| setting.music.menuBarItem | Menu bar item | Music > Settings > Playback > Player > Windows | destination music | Mac | yes |
+| setting.music.normalizeVolume | Normalise volume | Music > Settings > Playback > Player | destination music | Mac | yes |
+| setting.music.outputDevice | Output device (Play through) | Music > Settings > Playback > Output device | destination music | Mac | yes |
+| setting.music.paxsenixKey | PaxSenix key | Music > Settings > Lyrics > Lyrics sources | destination music | Mac | yes |
+| setting.music.playOnStart | Start playing when the app opens | Music > Settings > Playback > Player | destination music | Mac | yes |
+| setting.music.pluginUpdates | Plugin updates | Music > Settings > Plugins & Sources > Plugin updates | destination music | Mac | yes |
+| setting.music.preferWordByWord | Prefer word-by-word lyrics | Music > Settings > Lyrics > Lyrics display | destination music | Mac | yes |
+| setting.music.queueMoveNotDuplicate | Queue: move instead of duplicating | Music > Settings > Playback > Queue | destination music | Mac | yes |
+| setting.music.reduceMotion | Reduce motion (Music) | Music > Settings > General > Appearance | destination music | Mac | yes |
+| setting.music.scrobbling | Scrobbling | Music > Settings > Plugins & Sources > Scrobbling | destination music | Mac | yes |
+| setting.music.shuffleWholeQueue | Queue: shuffle the whole queue | Music > Settings > Playback > Queue | destination music | Mac | yes |
+| setting.music.skipNonMusic | Skip non-music parts | Music > Settings > Playback > Audio | destination music | Mac | yes |
+| setting.music.tagDownloads | Write song details into downloads | Music > Settings > Playback > Audio | destination music | Mac | yes |
+| setting.music.textSize | Music text size | Music > Settings > General > Appearance | destination music | Mac | yes |
+| setting.music.theatre | Theatre mode options | Music > Settings > Playback > Theatre mode | destination music | Mac | yes |
+| setting.music.trackNotifications | Notify when the song changes | Music > Settings > Playback > Player > Windows | destination music | Mac | yes |
+| setting.music.trackNotificationsFocused | Also notify when StreamSetu is open | Music > Settings > Playback > Player > Windows | destination music | Mac | yes |
+| setting.music.translateLyricsInto | Translate lyrics into | Music > Settings > Lyrics > Lyrics display | destination music | Mac | yes |
+| setting.music.videoMode | Show music videos | Music > Settings > Playback > Player look | destination music | Mac | yes |
+| setting.music.wavySeekBar | Wavy seek bar | Music > Settings > Playback > Player look | destination music | Mac | yes |
+| setting.music.windowTitle | Show the song in the window title | Music > Settings > Playback > Player > Windows | destination music | Mac | yes |
+| setting.music.youtubeMusicAccount | the external service Music account | Music > Settings > Plugins & Sources > the external service Music | destination music | Mac | yes |
 | setting.notificationPermission | Notification permission | Settings > General > Notifications | settings page General | Mac | yes |
 | setting.opening | Opening | Settings > Appearance > Appearance | settings page Appearance | Mac, iPhone, iPad | yes |
 | setting.opensubtitlesKey | OpenSubtitles account and key | Settings > Playback > Subtitles online | settings page Playback | Mac, iPhone, iPad | yes |
@@ -690,21 +2085,21 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | setting.proxy | Proxy | Settings > Privacy > Proxy | settings page Privacy | Mac, iPhone, iPad | yes |
 | setting.proxyHost | Proxy address | Settings > Privacy > Proxy | settings page Privacy | Mac, iPhone, iPad | yes |
 | setting.proxyPort | Proxy port | Settings > Privacy > Proxy | settings page Privacy | Mac, iPhone, iPad | yes |
-| setting.recordings | Recordings | Settings > Library > Recordings | settings page Library | Mac, iPhone, iPad | yes |
+| setting.recordings | Recordings | Settings > Library > Recordings | settings page Library | Mac | yes |
 | setting.reduceMotion | Reduce animation | Settings > Appearance > Appearance | settings page Appearance | Mac, iPhone, iPad | yes |
 | setting.refreshOnOpen | Refresh when the app opens | Settings > Library > Catalog | settings page Library | Mac, iPhone, iPad | yes |
 | setting.rememberFolders | Remember last folder | Settings > General > Browsing | settings page General | Mac, iPhone, iPad | yes |
 | setting.rememberPerTitle | Remember settings for each title | Settings > Playback > Remembered choices | settings page Playback | Mac, iPhone, iPad | yes |
 | setting.rememberPosition | Remember playback position | Settings > Playback > Behaviour | settings page Playback | Mac, iPhone, iPad | yes |
 | setting.remindersEnabled | Programme reminders | Settings > General > Notifications | settings page General | Mac, iPhone, iPad | yes |
-| setting.renderingProfile | Scaling quality | Settings > Playback > Advanced video | settings page Playback | Mac, iPhone, iPad | yes |
+| setting.renderingProfile | Scaling quality | Settings > Playback > Advanced video | settings page Playback | Mac | yes |
 | setting.resumeAutomatically | Resume automatically | Settings > Playback > Behaviour | settings page Playback | Mac, iPhone, iPad | yes |
 | setting.resumeLastChannel | Resume the last channel | Settings > General > At launch | settings page General | Mac, iPhone, iPad | yes |
 | setting.scheduledRecordings | Scheduled recordings | Settings > Library > Recordings | settings page Library | Mac | yes |
 | setting.showDiagnosticsOverlay | Show stream information | Settings > Playback > Troubleshooting | settings page Playback | Mac, iPhone, iPad | yes |
-| setting.sidebarLaunch | Sidebar at launch | Settings > Appearance > Appearance | settings page Appearance | Mac, iPhone, iPad | yes |
-| setting.stereoDownmix | Downmix to stereo | Settings > Playback > Advanced audio | settings page Playback | Mac, iPhone, iPad | yes |
-| setting.storage.guideBannerDismissed | Guide warning dismissed (guide.banner.dismissed) | Settings > Guide > Warnings | explained only | Mac, iPhone, iPad | no |
+| setting.sidebarLaunch | Sidebar at launch | Settings > Appearance > Appearance | settings page Appearance | Mac | yes |
+| setting.stereoDownmix | Downmix to stereo | Settings > Playback > Advanced audio | settings page Playback | Mac | yes |
+| setting.storage.guideBannerDismissed | Guide warning dismissed | TV Guide | explained only | Mac, iPhone, iPad | yes |
 | setting.storage.ipadFoldersLive | Folder column in Live TV | Live TV > Folders | explained only | iPad | yes |
 | setting.storage.liveChannelListCollapsed | Hide the channel list | Live TV > Toolbar > Hide channel list | explained only | Mac | yes |
 | setting.storage.liveChannelListWidth | Width of the channel list | Live TV > Divider | explained only | Mac | yes |
@@ -725,10 +2120,11 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | setting.theme | Theme | Settings > Appearance > Theme | settings page Appearance | Mac, iPhone, iPad | yes |
 | setting.the movie database | the movie database key (artwork and details) | Settings > Library > Artwork and details | settings page Library | Mac, iPhone, iPad | yes |
 | setting.tmdbKey | the movie database key | Settings > Library > Artwork and details | settings page Library | Mac, iPhone, iPad | yes |
-| setting.toneMapping | HDR tone mapping | Settings > Playback > Advanced video | settings page Playback | Mac, iPhone, iPad | yes |
+| setting.toneMapping | HDR tone mapping | Settings > Playback > Advanced video | settings page Playback | Mac | yes |
 | setting.trakt | Trakt | Settings > Library > Trakt | settings page Library | Mac, iPhone, iPad | yes |
 | setting.userAgent | User-Agent and headers for one playlist | Settings > Library > Manage > Playlists > Connection > Advanced connection | modal playlists | Mac, iPhone, iPad | yes |
 | setting.videoQuality | Preferred quality | Settings > Playback > Video | settings page Playback | Mac, iPhone, iPad | yes |
+| setting.viewingLimits | Viewing limits for a kids profile | Settings > Library > Profiles > Limits | settings page Library | Mac, iPhone, iPad | yes |
 | setting.volume | Volume | Player > Volume | explained only | Mac, iPhone, iPad | yes |
 | setting.vpn | VPN | Settings > Privacy > VPN | settings page Privacy | Mac, iPhone, iPad | yes |
 
@@ -742,11 +2138,13 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | menu.file.openVideoFile | Open Video File… | Menu bar > File > Open Video File… | explained only | Mac, iPhone, iPad | yes |
 | menu.file.refreshAll | Refresh All Playlists | Menu bar > File > Refresh All Playlists | explained only | Mac | yes |
 | menu.help.askSetu | Ask Setu | Menu bar > Help > Ask Setu | search askSetu | Mac | yes |
+| menu.help.getSetUp | Get Set Up… | Menu bar > Help > Get Set Up… | window main | Mac | yes |
 | menu.help.keyboardShortcuts | Keyboard Shortcuts | Menu bar > Help > Keyboard Shortcuts | window shortcuts | Mac | yes |
 | menu.help.sendFeedback | Send Feedback… | Menu bar > Help > Send Feedback… | window feedback | Mac | yes |
 | menu.navigate.home | Home | Menu bar > Navigate > Home | tab Home | Mac | yes |
 | menu.navigate.liveTV | Live TV | Menu bar > Navigate > Live TV | tab Live TV | Mac | yes |
 | menu.navigate.movies | Movies | Menu bar > Navigate > Movies | tab Movies | Mac | yes |
+| menu.navigate.music | Music | Menu bar > Navigate > Music | destination music | Mac | yes |
 | menu.navigate.podcasts | Podcasts | Menu bar > Navigate > Podcasts | destination podcasts | Mac | yes |
 | menu.navigate.search | Search | Menu bar > Navigate > Search | search focus | Mac | yes |
 | menu.navigate.searchThisScreen | Search in This Screen | Menu bar > Navigate > Search in This Screen | search focusScreen | Mac | yes |
@@ -778,6 +2176,9 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | menu.services.reload | Reload | Menu bar > Services > Reload | explained only | Mac | yes |
 | menu.services.zoomIn | Zoom In | Menu bar > Services > Zoom In | explained only | Mac | yes |
 | menu.services.zoomOut | Zoom Out | Menu bar > Services > Zoom Out | explained only | Mac | yes |
+| menu.view.musicPalette | Music Command Palette | Menu bar > View > Music Command Palette | explained only | Mac | yes |
+| menu.view.musicPanel | Show or Hide Details Panel | Menu bar > View > Show or Hide Details Panel | explained only | Mac | yes |
+| menu.view.musicSidebar | Collapse or Expand Music Sidebar | Menu bar > View > Collapse or Expand Music Sidebar | explained only | Mac | yes |
 
 ## Keyboard shortcuts
 
@@ -798,6 +2199,24 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | shortcut.multiView.fill | Multi-View: fill the window | Keyboard > Multi-View | explained only | Mac | yes |
 | shortcut.multiView.mute | Multi-View: mute | Keyboard > Multi-View | explained only | Mac | yes |
 | shortcut.multiView.number | Multi-View: pick a tile with 1 to 4 | Keyboard > Multi-View | explained only | Mac | yes |
+| shortcut.music.forward | Forward and back between pages | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.globalHotkeys | Global hotkeys | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.like | Like or unlike the playing song | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.mute | Mute | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.nextPrev | Next and previous song | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.optionSpace | Option Space plays or pauses (works while typing) | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.playPause | Play or pause | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.queueUndo | Undo and redo in the queue | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.refresh | Refresh the page | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.roomLock | Keys in a listening room | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.search | Search keys in Music | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.seekKeys | Skip ten seconds | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.selectAll | Select all songs | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.shuffleRepeat | Shuffle and repeat keys | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.theatreKey | Theatre mode key | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.toggleNowPlaying | Open or close Now Playing | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.volumeKeys | Volume keys | Keyboard > Music | explained only | Mac | yes |
+| shortcut.music.zoom | Zoom Music | Keyboard > Music | explained only | Mac | yes |
 | shortcut.person.arrows | Person page: switch between all and your library | Keyboard > Person page | explained only | Mac | yes |
 | shortcut.photos.keys | Photo viewer: arrows and Esc | Keyboard > Photo viewer | explained only | Mac | yes |
 | shortcut.player.channelList | Open the channel list | Keyboard > Player | explained only | Mac | yes |
@@ -810,9 +2229,14 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | shortcut.player.seekJL | J and L skip 10 seconds | Keyboard > Player | explained only | Mac | yes |
 | shortcut.player.space | Play or pause | Keyboard > Player | explained only | Mac | yes |
 | shortcut.player.upDown | Up and down arrows in full screen | Keyboard > Player | explained only | Mac | yes |
+| shortcut.podcasts.keys | Podcasts keys | Keyboard > Podcasts | explained only | Mac | yes |
+| shortcut.search.askSetu | Return in the search box asks Setu for a question | Keyboard > Search | search focus | Mac | yes |
 | shortcut.search.down | Down arrow moves into the results | Keyboard > Search | explained only | Mac | yes |
 | shortcut.search.escape | Esc clears the search | Keyboard > Search | explained only | Mac | yes |
+| shortcut.search.forceAsk | Shift Return in the search box always asks Setu | Keyboard > Search | explained only | Mac | yes |
+| shortcut.search.forceSearch | Option Return in the search box always searches | Keyboard > Search | explained only | Mac | yes |
 | shortcut.search.results | Arrows and Return in search results | Keyboard > Search results | explained only | Mac | yes |
+| shortcut.setu.send | Send a message to Setu | Keyboard > Setu | explained only | Mac | yes |
 | shortcut.slideshow.keys | Featured banner: arrows and Space | Keyboard > Featured banner | explained only | Mac | yes |
 
 ## Context menus
@@ -910,6 +2334,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 |---|---|---|---|---|---|
 | intent.askSetu | Ask Setu | Setu button | explained only | iPhone, iPad | yes |
 | intent.nextChannel | Next Channel | Siri and Shortcuts | explained only | iPhone, iPad | yes |
+| intent.openSetting | Open a Setting (Siri and Shortcuts) | Siri and Shortcuts | explained only | iPhone, iPad | yes |
 | intent.pausePlayback | Pause StreamSetu | Siri and Shortcuts | explained only | iPhone, iPad | yes |
 | intent.playChannel | Play a Channel | Siri and Shortcuts | explained only | iPhone, iPad | yes |
 | intent.resumePlayback | Resume StreamSetu | Siri and Shortcuts | explained only | iPhone, iPad | yes |
@@ -932,7 +2357,7 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | guide.continueWatchingAndHistory | Continue Watching and history | Help > Continue Watching and history | explained only | Mac, iPhone, iPad | yes |
 | guide.favoritesAndWatchLater | Favorites and Watch Later | Help > Favorites and Watch Later | explained only | Mac, iPhone, iPad | yes |
 | guide.guideProblems | Guide problems | Help > Guide problems | explained only | Mac, iPhone, iPad | yes |
-| guide.keyboard | Keyboard | Help > Keyboard | explained only | Mac, iPhone, iPad | yes |
+| guide.keyboard | Keyboard | Help > Keyboard | explained only | Mac, iPad | yes |
 | guide.liveTvAndTheGuide | Live TV and the guide | Help > Live TV and the guide | explained only | Mac, iPhone, iPad | yes |
 | guide.playbackProblems | Playback problems | Help > Playback problems | explained only | Mac, iPhone, iPad | yes |
 | guide.playerEngines | Player engines | Help > Player engines | explained only | Mac, iPhone, iPad | yes |
@@ -971,6 +2396,19 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | recipe.makeCollection | Make a collection | Collections | sidebar collections | Mac, iPhone, iPad | yes |
 | recipe.moveToNewDevice | Move to a new device | Settings > Library > Backup | settings page Library | Mac, iPhone, iPad | yes |
 | recipe.multiView | Watch several channels at once | Playback > Open Multi-View | explained only | Mac, iPhone, iPad | yes |
+| recipe.music.addLanguage | Add a language to Music | Music > Explore > Languages | destination music | Mac | yes |
+| recipe.music.blockSong | Never play a song or artist | Music > Never Play list | destination music | Mac | yes |
+| recipe.music.changeCountry | Change the country for charts | Music > Explore | destination music | Mac | yes |
+| recipe.music.connectLastFm | Connect Last.fm or ListenBrainz | Music > Settings > Plugins & Sources > Scrobbling | destination music | Mac | yes |
+| recipe.music.downloadSongs | Download songs to play offline | Music > Downloads | destination music | Mac | yes |
+| recipe.music.findFavouriteSongs | Find the songs I liked | Music > Your Library > Songs | destination music | Mac | yes |
+| recipe.music.importPlaylist | Import a playlist | Music > Your Library | destination music | Mac | yes |
+| recipe.music.pairDevice | Pair another device to control Music | Music > Devices | destination music | Mac | yes |
+| recipe.music.setSleepTimer | Set a sleep timer for Music | Music > Player bar > Sleep timer | destination music | Mac | yes |
+| recipe.music.signInYouTubeMusic | Sign in to the external service Music | Music > Settings > Plugins & Sources > the external service Music | destination music | Mac | yes |
+| recipe.music.startListenTogether | Start a Listen Together room | Music > Listen Together | destination music | Mac | yes |
+| recipe.music.turnOnCrossfade | Turn on crossfade | Music > Settings > Playback > Player | destination music | Mac | yes |
+| recipe.music.useEqualizer | Use the equalizer | Music > Player bar > Equalizer | destination music | Mac | yes |
 | recipe.pasteAnyAddress | Paste any address and let the app work it out | Add Playlist | modal addPlaylist | Mac, iPhone, iPad | yes |
 | recipe.record | Record a live channel | Player > Record this channel | explained only | Mac | yes |
 | recipe.refreshPlaylist | Refresh a playlist | File > Refresh All Playlists | explained only | Mac, iPhone, iPad | yes |
@@ -990,7 +2428,9 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 
 | Id | Title | Where | Opens | Platforms | Reviewed |
 |---|---|---|---|---|---|
+| diag.appLock | Locked out, or Touch ID fails | Settings > Privacy > App lock | settings page Privacy | Mac | yes |
 | diag.artwork | Why posters are missing or wrong | Troubleshooting > Artwork | explained only | Mac, iPhone, iPad | yes |
+| diag.backupRestore | A restored playlist is off or asks for a login | Settings > Library > Backup | settings page Library | Mac, iPhone, iPad | yes |
 | diag.blackScreen | Why the picture is black or frozen | Troubleshooting > Picture | explained only | Mac, iPhone, iPad | yes |
 | diag.castSearch | Why a search by actor finds nothing | Troubleshooting > Search | explained only | Mac, iPhone, iPad | yes |
 | diag.channelsEmpty | Why a playlist shows no channels | Troubleshooting > Playlists | explained only | Mac, iPhone, iPad | yes |
@@ -999,42 +2439,62 @@ Entries Setu explains but never changes (app lock, proxy, parental controls and 
 | diag.engine | Which player engine to use | Troubleshooting > Player engine | explained only | Mac, iPhone, iPad | yes |
 | diag.guide | Why the TV guide is empty or the times are wrong | Troubleshooting > TV Guide | explained only | Mac, iPhone, iPad | yes |
 | diag.hdrWashed | Why HDR video looks dull or washed out | Troubleshooting > Picture | explained only | Mac | yes |
+| diag.libraryRebuilt | "Your library was rebuilt" and the Recovery folder | Settings > Advanced | settings page Advanced | Mac, iPhone, iPad | yes |
 | diag.liveBehind | Why live TV is behind real time | Troubleshooting > Live TV | explained only | Mac, iPhone, iPad | yes |
 | diag.lockedHidden | Why a folder or title has disappeared (locked folders) | Troubleshooting > Parental controls | explained only | Mac, iPhone, iPad | yes |
+| diag.multiviewLimit | "Your provider's limit" alert in Multi-View | Multi-View | explained only | Mac | yes |
+| diag.music.devicesNotFound | Devices cannot be found | Music > Devices | destination music | Mac | yes |
+| diag.music.noChartsForCountry | No charts for my country | Music > Explore | destination music | Mac | yes |
+| diag.music.noLyrics | No lyrics are showing | Music > Side panel > Lyrics | destination music | Mac | yes |
+| diag.music.noSourceOn | No music source is switched on | Music > Listen Now | destination music | Mac | yes |
+| diag.music.pairingLocked | Pairing is locked | Music > Devices | destination music | Mac | yes |
+| diag.music.panelButtonMissing | The side panel button is missing | Music > Page top right | destination music | Mac | yes |
+| diag.music.playerBarGone | The player bar is gone | Music > Player bar | destination music | Mac | yes |
+| diag.music.sidebarNamesMissing | The sidebar shows only icons | Music > Sidebar | destination music | Mac | yes |
+| diag.music.songWontPlay | A song will not play | Music > Player bar | destination music | Mac | yes |
 | diag.noPipAirplay | Why Picture in Picture or AirPlay is not available | Troubleshooting > Player engine | explained only | Mac, iPhone, iPad | yes |
 | diag.noSound | Why there is no sound | Troubleshooting > Sound | explained only | Mac, iPhone, iPad | yes |
 | diag.playback | Why a stream will not play or keeps buffering | Troubleshooting > Playback | explained only | Mac, iPhone, iPad | yes |
 | diag.profileFavourites | Why favourites or history are missing | Troubleshooting > Profiles | explained only | Mac, iPhone, iPad | yes |
+| diag.proxyDns | Nothing loads after proxy, App DNS or VPN | Settings > Privacy | settings page Privacy | Mac, iPhone, iPad | yes |
 | diag.recording | Why a recording fails or did not happen | Troubleshooting > Recordings | explained only | Mac | yes |
 | diag.reminders | Why programme reminders do not appear | Troubleshooting > Reminders | explained only | Mac, iPhone, iPad | yes |
 | diag.searchEmpty | Why search finds nothing | Troubleshooting > Search | explained only | Mac, iPhone, iPad | yes |
 | diag.source | Why a playlist will not load or its login is rejected | Troubleshooting > Playlists | explained only | Mac, iPhone, iPad | yes |
+| diag.streamingService | A streaming service page will not open | Services | explained only | Mac | yes |
 | diag.subtitlesMissing | Why subtitles do not show | Troubleshooting > Subtitles | explained only | Mac, iPhone, iPad | yes |
 | diag.subtitlesOutOfSync | Why subtitles or sound are out of sync | Troubleshooting > Subtitles | explained only | Mac, iPhone, iPad | yes |
 | diag.sync | Why sync between devices is not working | Troubleshooting > Sync | explained only | Mac, iPhone, iPad | yes |
+| diag.viewingBlock | "That's enough for today" or "It's time to rest" | Settings > Library > Profiles | settings page Library | Mac, iPhone, iPad | yes |
 | diag.vpnPause | Why playback stops when a VPN drops | Troubleshooting > VPN | explained only | Mac, iPhone, iPad | yes |
 
 ## About Setu and what is new
 
 | Id | Title | Where | Opens | Platforms | Reviewed |
 |---|---|---|---|---|---|
+| behaviour.music.countryRules | How the country choice works | Music > Explore > Country | destination music | Mac | yes |
+| behaviour.music.notifications | Song-change notifications | Music > Settings > Playback | destination music | Mac | yes |
 | meta.canDoHere | What can I do here? | Setu | explained only | Mac, iPhone, iPad | yes |
+| meta.compareToOthers | StreamSetu compared with other apps | About | modal about | Mac, iPhone, iPad | yes |
+| meta.deepLinks | streamsetu:// links | Help > Links | explained only | Mac, iPhone, iPad | yes |
+| meta.differencesByPlatform | What is not on every app | About | modal about | Mac, iPhone, iPad | yes |
+| meta.pricing | Price and licence | About > Licenses | modal about | Mac, iPhone, iPad | yes |
 | meta.privacySetu | What Setu sends and keeps | Setu > Privacy | explained only | Mac, iPhone, iPad | yes |
+| meta.setuCanChange | What Setu can change, and what it never changes | Setu > What I can do | explained only | Mac, iPhone, iPad | yes |
+| meta.setuTools | What Setu can look up | Setu > What I can do | explained only | Mac, iPhone, iPad | yes |
+| meta.smartMix | Smart Mix: how Home picks titles | Home > Discover | sidebar discover | Mac, iPhone, iPad | yes |
+| meta.supportedDevices | Which devices and system versions | About | modal about | Mac, iPhone, iPad | yes |
+| meta.supportedFormats | What streams and files play | Settings > Playback > Player engine | settings page Playback | Mac, iPhone, iPad | yes |
+| meta.whatIsStreamSetu | What StreamSetu is and is not | About | modal about | Mac, iPhone, iPad | yes |
 | meta.whatsNew | What's new | About > What's new | modal about | Mac, iPhone, iPad | yes |
 | meta.whatsNew.2026.11.02 | New on Fire TV and Android in November | About > What's new | explained only | none | yes |
 | meta.whatsNew.2026.11.07 | New in Mac 2.16.0 | About > What's new | modal about | Mac, iPhone, iPad | yes |
 | meta.whatsNew.2026.11.21 | New in Mac 2.17.0 and iPhone 1.3 | About > What's new | modal about | Mac, iPhone, iPad | yes |
-| meta.whatsNew.next.1 | Coming: Title pages | About > What's new | modal about | Mac, iPhone, iPad | yes |
-| meta.whatsNew.next.10 | Coming: The Setu assistant is on | About > What's new | modal about | iPhone, iPad | yes |
-| meta.whatsNew.next.11 | Coming: Setu upgrade | About > What's new | modal about | iPhone, iPad | yes |
-| meta.whatsNew.next.2 | Coming: Genre shelves | About > What's new | modal about | Mac, iPhone, iPad | yes |
-| meta.whatsNew.next.3 | Coming: Stars on every tile | About > What's new | modal about | Mac, iPhone, iPad | yes |
-| meta.whatsNew.next.4 | Coming: Better matching of titles to artwork and details | About > What's new | modal about | Mac, iPhone, iPad | yes |
-| meta.whatsNew.next.5 | Coming: More artwork and details from four sources | About > What's new | modal about | Mac, iPhone, iPad | yes |
-| meta.whatsNew.next.6 | Coming: the movie database works out of the box | About > What's new | modal about | Mac, iPhone, iPad | yes |
-| meta.whatsNew.next.7 | Coming: Privacy Policy and credits updated | About > What's new | modal about | Mac, iPhone, iPad | yes |
-| meta.whatsNew.next.8 | Coming: Search fixes | About > What's new | modal about | Mac, iPhone, iPad | yes |
-| meta.whatsNew.next.9 | Coming: Speed work | About > What's new | modal about | Mac, iPhone, iPad | yes |
+| meta.whatsNew.2026.11.23 | New in Mac 2.18.0 and iPhone and iPad 1.4 | About > What's new | modal about | Mac, iPhone, iPad | yes |
+| meta.whatsNew.2026.11.23.ios | New in iPhone and iPad 1.4: the Setu assistant | About > What's new | modal about | iPhone, iPad | yes |
+| meta.whatsNew.2026.11.23.mac | New in Mac 2.18.0: streaming services inside the app | About > What's new | modal about | Mac | yes |
+| meta.whatsNew.music | New in the Mac app: Music | About > What's new | destination music | Mac | yes |
+| meta.widgetsAndActivity | Widgets and Live Activity | Help > Widgets | explained only | iPhone, iPad | yes |
 
 ---
 
@@ -1044,7 +2504,7 @@ Generated from the code by the coverage tests. **Reported, pending independent v
 
 Columns: *UI* = the app has its own control · *Read* = how the assistant looks at it · *Act* = what it can offer (always tap-to-confirm, rechecked by the authorizer) · *Restrictions tested* · *Error path tested* · *Platforms verified*.
 
-**179 rows: 138 covered, 41 unsupported with a reason.**
+**210 rows: 154 covered, 56 unsupported with a reason.**
 
 
 ### agent action
@@ -1060,6 +2520,11 @@ Columns: *UI* = the app has its own control · *Read* = how the assistant looks 
 | library.resume | same service: HistoryRepository.continueWatching + PlaybackCoordinator.play | — | control, scope profile, inputs: none, no confirmation | yes: AssistantAuthorizer tests | yes: stale, profile, locked folder | iOS, macOS |
 | library.watchLater | same service: AppState.toggleWatchLater | — | libraryChange, scope profile, inputs: title: library item, on: bool, no confirmation | yes: AssistantAuthorizer tests | yes: stale, profile, locked folder | iOS, macOS |
 | live.lastChannel | same service: AppSettings.lastChannelID + PlaybackCoordinator.play | — | control, scope profile, inputs: none, no confirmation | yes: AssistantAuthorizer tests | yes: stale, profile, locked folder | iOS, macOS |
+| music.control | same service: MusicPlayer / MusicLibrary (the same calls the player bar uses) | — | control, scope session, inputs: action: play|pause|next|previous|shuffle_on|shuffle_off|repeat_off|repeat_all|repeat_one|like|unlike|volume_up|volume_down|mute|unmute|show_lyrics|show_queue, no confirmation | yes: AssistantAuthorizer tests | yes: stale, profile, locked folder | macOS |
+| music.country | same service: MusicRegionChoice (the same choice the country picker sets) | — | preference, scope profile, inputs: country: ISO code or worldwide, no confirmation | yes: AssistantAuthorizer tests | yes: stale, profile, locked folder | macOS |
+| music.open | same service: MusicHub.nav | — | control, scope session, inputs: screen: listen_now|explore|search|library|radio|downloads|devices|listen_together|settings, no confirmation | yes: AssistantAuthorizer tests | yes: stale, profile, locked folder | macOS |
+| music.play | same service: MusicHub.play / playShuffled (the same calls the play buttons use) | — | control, scope session, inputs: query: text, kind: song|artist|album|playlist|any, shuffle: bool, no confirmation | yes: AssistantAuthorizer tests | yes: stale, profile, locked folder | macOS |
+| music.radio | same service: MusicQueueActions.startRadio | — | control, scope session, inputs: from: song or artist name, or what is playing, no confirmation | yes: AssistantAuthorizer tests | yes: stale, profile, locked folder | macOS |
 | navigation.open | same service: AppRouter.navigate / SearchCommandRunner | — | control, scope session, inputs: target: screen, filter: text?, no confirmation | yes: AssistantAuthorizer tests | yes: stale, profile, locked folder | iOS, macOS |
 | navigation.openAtlas | same service: AtlasOpener (the same router calls the buttons use) | — | control, scope session, inputs: id: atlas entry with a way to open it, no confirmation | yes: AssistantAuthorizer tests | yes: stale, profile, locked folder | iOS, macOS |
 | player.control | same service: PlaybackCoordinator | — | control, scope session, inputs: action: pause|play|mute|unmute|volume_up|volume_down|forward|back|next_episode|stop, no confirmation | yes: AssistantAuthorizer tests | yes: stale, profile, locked folder | iOS, macOS |
@@ -1081,6 +2546,12 @@ Columns: *UI* = the app has its own control · *Read* = how the assistant looks 
 | find_help | n/a | read | — | n/a (read only) | yes | macOS · iOS compiled, not run |
 | find_setting | n/a | read | — | n/a (read only) | yes | macOS · iOS compiled, not run |
 | guide_status | n/a | read | — | n/a (read only) | yes | macOS · iOS compiled, not run |
+| music_control | n/a | — | offers; authorizer rechecks | yes: tested | yes | macOS · iOS compiled, not run |
+| music_country | n/a | — | offers; authorizer rechecks | yes: tested | yes | macOS · iOS compiled, not run |
+| music_now_playing | n/a | read | — | n/a (read only) | yes | macOS · iOS compiled, not run |
+| music_open | n/a | — | offers; authorizer rechecks | yes: tested | yes | macOS · iOS compiled, not run |
+| music_play | n/a | — | offers; authorizer rechecks | yes: tested | yes | macOS · iOS compiled, not run |
+| music_search | n/a | read (sends only the words to the Music source the person turned on) | — | n/a (read only) | yes | macOS · iOS compiled, not run |
 | now_playing | n/a | read | — | n/a (read only) | yes | macOS · iOS compiled, not run |
 | open_screen | n/a | — | offers; authorizer rechecks | yes: tested | yes | macOS · iOS compiled, not run |
 | play_title | n/a | — | offers; authorizer rechecks | yes: tested | yes | macOS · iOS compiled, not run |
@@ -1109,12 +2580,31 @@ Columns: *UI* = the app has its own control · *Read* = how the assistant looks 
 | Feature | UI wired | Agent read | Agent action | Restrictions tested | Error path tested | Platforms verified |
 |---|---|---|---|---|---|---|
 | DesignSystem/Components/Cards/FeaturedSlideshow.swift | yes | — | — | — | — | **Unsupported:** Featured banner menu: the shared title menu (same as the tiles); partly reachable as favourite, watch_later and play_title. |
-| DesignSystem/Components/Sidebar/ReddySidebar.swift | yes | — | — | — | — | **Unsupported:** Sidebar folder menu (lock, hide, rename) and playlist menu row (Remove…): not mapped yet. |
+| DesignSystem/Components/Sidebar/ReddySidebar.swift | yes | — | — | — | — | **Unsupported:** Sidebar folder menu (Move, Hide, Lock, Unlock): explained as context.sidebar.folderReorder and context.sidebar.folderLock; playlist menu row (Remove…): explained as screen.playlistMenu. Not run by Setu. |
 | Features/CommandCenter/Views/CommandCenterView.swift | yes | — | — | — | — | **Unsupported:** Channel and folder manager menus: not mapped yet. |
 | Features/Files/FilesView.swift | yes | — | — | — | — | **Unsupported:** Local file menu: not mapped yet. |
 | Features/Files/PodcastsView.swift | yes | — | — | — | — | **Unsupported:** Podcast menu: not mapped yet. |
 | Features/Home/Views/HomeScreen.swift | yes | — | — | — | — | **Unsupported:** Title card menu (favourite, watch later, hide): reachable as the favourite and watch_later tools, not as its own entry. |
 | Features/LiveTV/Views/LiveTVScreen.swift | yes | — | — | — | — | **Unsupported:** Channel menu (favourite, reminders, versions): partly reachable as favourite and play_title. |
+| Features/Music/Autoplay/MusicShuffleAutoplayViews.swift | yes | — | — | — | — | **Unsupported:** Shuffle style menu (Smart, True random, Smart Shuffle, Reshuffle, Autoplay): explained as control.music.shuffleMode and its neighbours, not run by Setu. |
+| Features/Music/Graph/Album/MusicSoundtrackSongsSection.swift | yes | — | — | — | — | **Unsupported:** Album song row menu (play, the song menu, song details): explained as control.music.soundtrackSongRow, not run by Setu. |
+| Features/Music/Home/MusicHomeContinue.swift | yes | — | — | — | — | **Unsupported:** Listen Now Continue listening tile: the song menu, explained as control.music.homeContinueCard. |
+| Features/Music/Home/MusicHomeRows.swift | yes | — | — | — | — | **Unsupported:** Listen Now top-tracks row: the song menu, explained as control.music.homeTopTrackRow. |
+| Features/Music/Home/MusicHomeTile.swift | yes | — | — | — | — | **Unsupported:** Listen Now mix tile menu (Play, Shuffle, Play next, Add to queue): explained as control.music.homeTile, not run by Setu. |
+| Features/Music/MusicCards.swift | yes | — | — | — | — | **Unsupported:** Music card menus (play, play next, add to queue, radio, add to playlist, share): explained as control.music.* entries, not run by Setu. |
+| Features/Music/MusicComponents.swift | yes | — | — | — | — | **Unsupported:** Music card and song row menus (play, play next, add to queue, radio, add to playlist, share): explained as control.music.* entries, not run by Setu. |
+| Features/Music/MusicLibraryContent.swift | yes | — | — | — | — | **Unsupported:** Library grid card and row menus (the same card menu): explained as control.music.* entries, not run by Setu. |
+| Features/Music/MusicLibraryRows.swift | yes | — | — | — | — | **Unsupported:** Library song row menu (the same song menu): explained as control.music.* entries, not run by Setu. |
+| Features/Music/MusicNowPlayingPanel.swift | yes | — | — | — | — | **Unsupported:** Now Playing artwork menu (view album, view artwork): explained as control.music.* entries, not run by Setu. |
+| Features/Music/MusicPlayerBar.swift | yes | — | — | — | — | **Unsupported:** Player bar menus (the shuffle button's menu and the more menu): explained as control.music.* entries, not run by Setu. |
+| Features/Music/MusicPlayerViews.swift | yes | — | — | — | — | **Unsupported:** Queue and now-playing row menu (Go to album, artist, film): explained as control.music.* entries, not run by Setu. |
+| Features/Music/MusicRadioStationCards.swift | yes | — | — | — | — | **Unsupported:** Radio station card menu (Start, Edit, Make a copy, Delete): explained under the Radio station controls, not run by Setu. |
+| Features/Music/MusicSearchPage.swift | yes | — | — | — | — | **Unsupported:** Music search result menu (the same card menu): explained as control.music.* entries, not run by Setu. |
+| Features/Music/MusicSearchSuggest.swift | yes | — | — | — | — | **Unsupported:** Music search suggestion menu (play and the song menu): explained as control.music.* entries, not run by Setu. |
+| Features/Music/MusicSidebar.swift | yes | — | — | — | — | **Unsupported:** Sidebar playlist menu (Play, Shuffle, Rename, Delete): explained as the playlist page's own controls (control.music.albumArtistAndPlaylistPages*), not run by Setu. |
+| Features/Music/Playlist/MusicSmartPlaylistScreens.swift | yes | — | — | — | — | **Unsupported:** Smart playlist chip menu in the Playlists tab (Edit, Duplicate, Delete): explained as control.music.smartEdit, control.music.smartDuplicate and control.music.smartDelete, not run by Setu. |
+| Features/Music/Settings/MusicSettingsComponents.swift | yes | — | — | — | — | **Unsupported:** Music settings row menu: explained as control.music.* entries, not run by Setu. |
+| Features/Music/Setup/MusicSetupSheet.swift | yes | — | — | — | — | **Unsupported:** Genre chip menu (Like, Love, Not for me) in setup: explained as control.music.setupGenre*, not run by Setu. |
 | Features/Player/Views/MultiViewWindow.swift | yes | — | — | — | — | **Unsupported:** Multi-view tile menu: not mapped yet. |
 | Features/Podcasts/PodcastShowPage.swift | yes | — | — | — | — | **Unsupported:** Podcast episode menu (Play Next, Add to Up Next, Mark as Played): context.podcasts.episode. |
 | Features/Podcasts/PodcastsMainView.swift | yes | — | — | — | — | **Unsupported:** Podcast menu in the main window (Unfollow): context.podcasts.show. |
@@ -1137,6 +2627,7 @@ Columns: *UI* = the app has its own control · *Read* = how the assistant looks 
 | Home | yes | screen name, search text | open_screen, search_everything | n/a | yes | macOS · iOS compiled, not run |
 | LiveTV | yes | search_everything, tv_guide, now_playing | play_title, open_screen | yes: AssistantAuthorizer | yes | macOS · iOS compiled, not run |
 | Movies | yes | search_library, title_details, similar_titles | play_title, favourite, watch_later, open_screen with filters | yes: AssistantAuthorizer | yes | macOS · iOS compiled, not run |
+| Music | yes | — | — | — | — | **Unsupported:** The Music section of the main window: Setu points to its screens and settings and explains each control (control.music.*), but does not search, queue or play songs for you. |
 | the external service | yes | — | — | — | — | **Unsupported:** One of the outside websites (streaming services) shown in a web view (Mac only), with the Services menu and pinned items in the top bar. Setu does not read or control any of them: nothing is injected into the page, and sign-in, cookies and playback stay between the person and the website. |
 | Onboarding | yes | — | — | — | — | **Unsupported:** First-run screens; the assistant is not shown there. |
 | Opening | yes | — | — | — | — | **Unsupported:** The opening and What's New at launch; the assistant is not shown there. |
@@ -1242,22 +2733,22 @@ Columns: *UI* = the app has its own control · *Read* = how the assistant looks 
 
 | Feature | UI wired | Agent read | Agent action | Restrictions tested | Error path tested | Platforms verified |
 |---|---|---|---|---|---|---|
-| addedThisMonth | yes | — | — | — | — | **Unsupported:** No destination in open_screen yet. |
+| addedThisMonth | yes | screen name | open_screen(addedThisMonth) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | allChannels | yes | screen name | open_screen(liveTV) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | allMovies | yes | screen name | open_screen(movies) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | collections | yes | screen name | open_screen(collections) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | continueWatching | yes | screen name | open_screen(continueWatching), resume_watching | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | discover | yes | screen name | open_screen(discover) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | favorites | yes | screen name | open_screen(favorites), favourite | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
-| featured | yes | — | — | — | — | **Unsupported:** No destination in open_screen yet. |
+| featured | yes | screen name | open_screen(featured) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | library | yes | screen name | open_screen(series) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
-| newEpisodes | yes | — | — | — | — | **Unsupported:** No destination in open_screen yet. |
-| recentlyAdded | yes | — | — | — | — | **Unsupported:** Reachable by typing 'newest' as a Movies/Series filter, but not as its own destination. |
+| newEpisodes | yes | screen name | open_screen(newEpisodes) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
+| recentlyAdded | yes | screen name | open_screen(recentlyAdded) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | recentlyWatched | yes | screen name | open_screen(recentlyWatched) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | statistics | yes | screen name; totals via watch_stats | open_screen(statistics) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | tonight | yes | screen name | open_screen(tonight) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
-| unwatched | yes | screen name | open_screen(movies, filter: unwatched) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
-| unwatchedFavorites | yes | — | — | — | — | **Unsupported:** No destination in open_screen yet. |
+| unwatched | yes | screen name | open_screen(unwatched) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
+| unwatchedFavorites | yes | screen name | open_screen(unwatchedFavorites) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | watchHistory | yes | screen name; viewing totals via watch_stats | open_screen(history) | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 | watchLater | yes | screen name | open_screen(watchLater), watch_later | yes: AssistantAuthorizer | n/a | macOS · iOS compiled, not run |
 

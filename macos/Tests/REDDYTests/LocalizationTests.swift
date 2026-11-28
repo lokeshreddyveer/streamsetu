@@ -40,6 +40,17 @@ import Foundation
         #expect(TitlePageLogic.remainingText(2700) == "45m left")
     }
 
+    /// The wording of the app's main sidebar: menu entries, search box, playlist menu and every shortcut title, in both languages and translated.
+    @Test func mainSidebarWordingHasHindiAndTelugu() throws {
+        let hi = try table("hi"), te = try table("te")
+        var keys = ["Move to Top", "Move Up", "Move Down", "Move to Bottom", "Hide Folder", "Unlock Folder", "Lock Folder with PIN", "Locked", "No matching folders", "Add playlist", "Clear folder search",
+                    "Search sidebar folders", "Search folders", "none", "No playlist", "All Playlists", "Uncategorized", "Select playlist", "Playlists", "Remove…", "Expand sidebar", "Collapse sidebar", "Folders", "Groups"]
+        keys += Shortcut.allCases.map(\.title)
+        keys += AppTab.allCases.map(\.title)
+        for k in keys { #expect(hi[k] != nil && te[k] != nil, "no Hindi/Telugu for: \(k)") }
+        for k in keys { #expect(hi[k] != k && te[k] != k, "not translated: \(k)") }
+    }
+
     @Test func theLanguagePickerKnowsItsLanguages() {
         #expect(AppLanguage.allCases.map(\.rawValue) == ["system", "en", "hi", "te"])
         #expect(AppLanguage.system.locale == nil && AppLanguage.hi.locale?.identifier == "hi")

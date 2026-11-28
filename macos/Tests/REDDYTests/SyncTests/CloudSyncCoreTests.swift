@@ -142,9 +142,13 @@ import Foundation
         // a refresh on A changes only device-local columns: nothing to send
         try a.catalog.updateSyncStatus(sourceID: src.id, status: "completed", lastSync: Date())
         #expect(try a.core.pending().isEmpty)
+        // The sync clock is SQLite's 'now' (milliseconds, identical within one step), and a remote change wins only if its time is strictly later. This is a later
+        // edit as a person makes it: a few milliseconds after the first. (Equal timestamps are a design item of their own: see failure-log 11 and F11b.)
+        Thread.sleep(forTimeInterval: 0.01)
         try a.catalog.setEnabled(false, sourceID: src.id)
         try ship(a, to: b)
-        #expect(try b.catalog.source(id: src.id)?.enabled == false)
+        let arrived = try b.catalog.source(id: src.id)
+        #expect(arrived?.enabled == false)
         let storedID = try b.db.read { try $0.queryOne("SELECT id FROM sources") { $0.string(0) } } ?? ""
         let removed = try SyncCore.jsonArray([storedID])
         let res = try b.core.apply([SyncRow(table: "sources", key: removed, values: nil, modified: Date().timeIntervalSince1970 + 100)])

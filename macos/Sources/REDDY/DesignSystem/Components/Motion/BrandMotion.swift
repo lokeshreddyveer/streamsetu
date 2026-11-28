@@ -401,7 +401,8 @@ private struct StaggeredAppear: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var systemReduce
     @State private var shown = false
     func body(content: Content) -> some View {
-        let delay = BrandMotion.staggerDelay(index: index)
+        // Nothing rises in underneath the opening: the screen is already settled when it is revealed.
+        let delay = OpeningCoordinator.shared.isVisible ? nil : BrandMotion.staggerDelay(index: index)
         let still = BrandMotion.reduced(systemReduce)
         content
             .opacity(shown || delay == nil ? 1 : 0)

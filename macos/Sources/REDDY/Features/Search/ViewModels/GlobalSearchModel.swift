@@ -10,6 +10,8 @@ final class GlobalSearchModel {
     var tab: SearchTab = .all
     private(set) var results = GlobalSearchResults()
     private(set) var selectedID: String?
+    /// True once the person moved to a row with the arrow keys or the pointer. The row that is only first by default does not count: bare Return uses this to decide between opening a row and `SearchIntent`.
+    private(set) var userHighlighted = false
     private(set) var loading = false
     private(set) var searched = false
     /// Extra pages the user asked for, per kind.
@@ -39,6 +41,7 @@ final class GlobalSearchModel {
         task?.cancel()
         generation += 1
         let gen = generation, text = term
+        userHighlighted = false
         guard isActive else { reset(); return }
         pages = [:]
         loading = true
@@ -88,7 +91,7 @@ final class GlobalSearchModel {
     }
 
     private func tabFor(_ kind: SearchResultKind) -> SearchTab {
-        switch kind { case .channel: .liveTV; case .movie: .movies; case .series: .series; case .episode: .episodes; case .programme: .tvGuide; case .folder, .collection: .all }
+        switch kind { case .channel: .liveTV; case .movie: .movies; case .series: .series; case .episode: .episodes; case .programme: .tvGuide; case .folder, .collection, .music, .podcast: .all }
     }
 
     // MARK: selection
@@ -98,13 +101,14 @@ final class GlobalSearchModel {
         guard !items.isEmpty else { return }
         let i = items.firstIndex { $0.id == selectedID } ?? (delta > 0 ? -1 : 0)
         selectedID = items[((i + delta) % items.count + items.count) % items.count].id
+        userHighlighted = true
     }
-    func select(_ id: String) { selectedID = id }
+    func select(_ id: String) { selectedID = id; userHighlighted = true }
 
     func clear() { reset(); term = "" }
 
     private func reset() {
         task?.cancel(); generation += 1
-        results = GlobalSearchResults(); selectedID = nil; searched = false; loading = false; pages = [:]; tab = .all
+        results = GlobalSearchResults(); selectedID = nil; userHighlighted = false; searched = false; loading = false; pages = [:]; tab = .all
     }
 }

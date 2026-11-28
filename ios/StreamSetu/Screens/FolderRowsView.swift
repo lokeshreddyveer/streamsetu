@@ -17,7 +17,7 @@ struct FolderRowsView: View {
         _model = State(initialValue: FolderRowsModel(kind: kind))
     }
 
-    private var reloadKey: String { "\(kind.rawValue)-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(container?.parental.restrictionRevision ?? 0)-\(container?.profiles.activeID ?? "")" }
+    private var reloadKey: String { "\(kind.rawValue)-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(state.folderLayoutRevision)-\(container?.parental.restrictionRevision ?? 0)-\(container?.profiles.activeID ?? "")" }
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 22) {
@@ -114,7 +114,7 @@ struct LiveFolderRowsView: View {
     @State private var model = FolderRowsModel(kind: .channel)
     @State private var topRow: String?
 
-    private var reloadKey: String { "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(container?.parental.restrictionRevision ?? 0)-\(container?.profiles.activeID ?? "")" }
+    private var reloadKey: String { "\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(state.folderLayoutRevision)-\(container?.parental.restrictionRevision ?? 0)-\(container?.profiles.activeID ?? "")" }
 
     var body: some View {
         ScrollView {

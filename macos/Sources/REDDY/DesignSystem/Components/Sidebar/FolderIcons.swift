@@ -22,6 +22,8 @@ enum FolderIcons {
         (["animation", "animated"], ["paintpalette", "sparkles"]),
         (["music", "mtv", "vevo", "hits", "radio fm", "songs"], ["music.note", "music.quarternote.3"]),
         (["radio"], ["dot.radiowaves.left.and.right", "radio"]),
+        // before "science" below, or "Science Fiction" would be read as a science channel
+        (["sci-fi", "scifi", "science fiction"], ["sparkles", "wand.and.stars"]),
         (["documentary", "discovery", "nature", "history", "geographic", "science"], ["globe.europe.africa", "binoculars"]),
         (["weather"], ["cloud.sun", "cloud.sun.fill"]),
         (["shopping", "shop", "qvc"], ["bag", "cart"]),
@@ -31,7 +33,7 @@ enum FolderIcons {
         (["action", "adventure"], ["bolt", "bolt.fill"]),
         (["romance", "romantic", "love"], ["heart", "heart.fill"]),
         (["thriller", "crime", "mystery", "detective"], ["eye", "magnifyingglass"]),
-        (["sci-fi", "scifi", "science fiction", "fantasy"], ["sparkles", "wand.and.stars"]),
+        (["fantasy"], ["sparkles", "wand.and.stars"]),
         (["drama", "entertainment", "general", "variety"], ["theatermasks", "tv"]),
         (["movie", "film", "cinema", "hollywood", "bollywood", "tollywood", "kollywood"], ["film", "film.stack"]),
         (["series", "tv show", "shows", "episodes", "season"], ["rectangle.stack", "play.rectangle.on.rectangle"]),
@@ -43,10 +45,17 @@ enum FolderIcons {
         (["adult", "xxx", "18+"], ["lock"]),
         (["india", "indian", "hindi", "telugu", "tamil", "malayalam", "kannada", "bengali", "punjabi", "marathi", "pakistan", "bangla", "asia", "arabic", "arab", "turk", "korea", "japan", "china", "thai"], ["globe.asia.australia", "globe"]),
         (["uk", "britain", "british", "europe", "france", "french", "german", "italy", "italian", "spain", "spanish", "portugal", "dutch", "nordic"], ["globe.europe.africa", "globe"]),
-        (["usa", "us ", "united states", "america", "canada", "latin", "brazil", "mexico"], ["globe.americas", "globe"]),
+        (["usa", "us", "united states", "america", "canada", "latin", "brazil", "mexico"], ["globe.americas", "globe"]),
         (["favorite", "favourite", "my list"], ["heart", "star"]),
         (["recent", "new", "latest"], ["clock", "sparkles"]),
     ]
+
+    /// A name as the rules compare it: lower case, with everything but letters, digits, "+" and "/" turned into a space.
+    private static func spaced(_ text: String) -> String { text.lowercased().map { $0.isLetter || $0.isNumber || "+/".contains($0) ? String($0) : " " }.joined() }
+    /// The rule words normalized the same way as the names, so "sci-fi" meets "Sci-Fi". A rule word is a word: spaces at its ends never decide a match.
+    private static let normalizedRules: [(words: [String], symbols: [String])] = rules.map { rule in
+        (rule.words.map { spaced($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }, rule.symbols)
+    }
 
     private static func exists(_ symbol: String) -> Bool {
         #if canImport(AppKit)
@@ -58,9 +67,10 @@ enum FolderIcons {
 
     /// Words are matched as whole words (or word starts), so "Sports" matches "sport" but "Newsroom" doesn't match "us".
     static func symbol(for name: String) -> String {
-        let lower = " " + name.lowercased().map { $0.isLetter || $0.isNumber || "+/".contains($0) ? String($0) : " " }.joined() + " "
-        for rule in rules {
-            for w in rule.words where lower.contains(" " + w) && (w.count > 3 || lower.contains(" " + w + " ") || lower.contains(" " + w + "s ")) {
+        let lower = " " + spaced(name) + " "
+        for rule in normalizedRules {
+            for w in rule.words {
+                guard lower.contains(" " + w), w.count > 3 || lower.contains(" " + w + " ") || lower.contains(" " + w + "s ") else { continue }
                 if let s = rule.symbols.first(where: exists) { return s }
             }
         }

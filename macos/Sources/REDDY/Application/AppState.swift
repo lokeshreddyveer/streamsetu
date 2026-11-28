@@ -71,14 +71,29 @@ final class AppState {
     static let allPlaylistsID = UUID(uuidString: "00000000-0000-0000-0000-0000000000A1")!
     /// Folder (category) entries for the active playlist, per kind. Never contains demo or invented folders.
     private(set) var folders: [ContentKind: [SidebarEntry]] = [:]
+    /// Goes up when a folder order or a folder's visibility was saved, so views built from the folders themselves (the Movies and Series Folders view) read them again.
+    private(set) var folderLayoutRevision = 0
+    /// The saved folders changed: the sidebar and every folder view read them again.
+    func folderLayoutSaved() { folderLayoutRevision += 1; reloadFolders() }
+    nonisolated static let folderOrderRepairKey = "folders.releaseUnchangedOrder.v1"
+    /// One-time repair of saved folder orders that change nothing (see `releaseUnchangedFolderOrder`). Tried again at the next start if it could not run.
+    func repairFolderOrderOnce() {
+        guard !defaults.bool(forKey: Self.folderOrderRepairKey), (try? container.catalog.releaseUnchangedFolderOrder()) != nil else { return }
+        defaults.set(true, forKey: Self.folderOrderRepairKey)
+    }
     private let defaults: UserDefaults
 
     private let container: AppContainer
     private var observerID: UUID?
 
-    init(container: AppContainer, defaults: UserDefaults = .standard) { self.container = container; self.defaults = defaults }
+    init(container: AppContainer, defaults: UserDefaults = .standard) { self.container = container; self.defaults = defaults; self.setupSkipped = defaults.bool(forKey: Self.setupSkippedKey) }
 
-    var needsOnboarding: Bool { loaded && sources.isEmpty }
+    /// The person chose to go on without adding a source (they only want Music, Podcasts or the streaming services): the welcome screen does not cover the app.
+    static let setupSkippedKey = "app.setup.skippedSources"
+    var setupSkipped = false
+    func skipSources() { setupSkipped = true; defaults.set(true, forKey: Self.setupSkippedKey) }
+
+    var needsOnboarding: Bool { loaded && sources.isEmpty && !setupSkipped }
     var isSyncing: Bool { syncProgress.values.contains { $0.state.isBusy } }
 
     @ObservationIgnored nonisolated(unsafe) private var landedObserver: NSObjectProtocol?
@@ -119,6 +134,7 @@ final class AppState {
 
     func start() async {
         watchLandedArtwork()
+        repairFolderOrderOnce()
         await reloadAsync()
         loaded = true
         observerID = await container.sync.addObserver { [weak self] p in
@@ -196,7 +212,7 @@ final class AppState {
     var hasLibrary: Bool { activeSource != nil || showsAllPlaylists }
     /// Combining needs at least two playlists that are switched on.
     var canCombinePlaylists: Bool { sources.filter(\.enabled).count >= 2 }
-    var libraryName: String? { showsAllPlaylists ? "All Playlists" : activeSource?.name }
+    var libraryName: String? { showsAllPlaylists ? Localized.string("All Playlists") : activeSource?.name }
 
     /// Shows every enabled playlist together. Playback is stopped, as it is for any switch.
     func switchToAllPlaylists() {
@@ -225,6 +241,7 @@ final class AppState {
     /// (a folder of another playlist opens an empty list) and both are read for the new scope. An answer for a scope that is no longer open is dropped.
     private func scopeChanged() {
         folders = [:]
+        folderLoadGeneration += 1          // a folder read started for the old scope is dropped
         scopeLoad?.cancel()
         let c = container
         scopeLoad = Task { @MainActor [weak self] in
@@ -292,22 +309,32 @@ final class AppState {
         let byID = Dictionary(current.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         var ordered = entryIDs.compactMap { byID[$0] }
         ordered += current.filter { e in !entryIDs.contains(e.id) }          // anything not mentioned (e.g. Uncategorized) keeps its place at the end
+        guard ordered.map(\.id) != current.map(\.id) else { return }          // nothing moved: nothing is saved, so the provider's order is not frozen
         folders[kind] = ordered
         let c = container
         let categoryIDs = ordered.compactMap { e -> String? in if case .folder(let id) = e.selection, id != CatalogCategory.uncategorizedID { id } else { nil } }
-        Task.detached { try? c.catalog.setFolderOrder(categoryIDs) }
+        let previous = folderOrderSave
+        folderOrderSave = Task { @MainActor [weak self] in
+            await previous?.value
+            await Task.detached { try? c.catalog.setFolderOrder(categoryIDs) }.value
+            self?.folderLayoutSaved()          // only after the order is saved, so the read sees it
+        }
     }
+    @ObservationIgnored private var folderOrderSave: Task<Void, Never>?
+    /// Waits for the folder order saved so far (tests).
+    func settleFolderOrder() async { await folderOrderSave?.value }
 
     func hideFolder(_ id: String) {
         let c = container
         Task { @MainActor in
+            await folderOrderSave?.value
             await Task.detached { try? c.favoritesRepo.hide(id, kind: "category") }.value
-            reloadFolders()
+            folderLayoutSaved()
         }
     }
 
     func folderName(_ id: String) -> String? {
-        if id == CatalogCategory.uncategorizedID { return "Uncategorized" }
+        if id == CatalogCategory.uncategorizedID { return Localized.string("Uncategorized") }
         for list in folders.values { if let e = list.first(where: { if case .folder(let f) = $0.selection { f == id } else { false } }) { return e.title } }
         return nil
     }
@@ -315,7 +342,10 @@ final class AppState {
     func reloadFolders() {
         let c = container, sid = activeSourceID, hideEmpty = container.settings.hideEmptyFolders
         let names = Dictionary(sources.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
-        Task { @MainActor in
+        folderLoadGeneration += 1
+        let generation = folderLoadGeneration
+        folderLoad?.cancel()
+        folderLoad = Task { @MainActor in
             let result = await Task.detached { () -> [ContentKind: [SidebarEntry]] in
                 var out: [ContentKind: [SidebarEntry]] = [:]
                 for k in [ContentKind.channel, .movie, .series] {
@@ -326,9 +356,12 @@ final class AppState {
                 }
                 return out
             }.value
-            if sid == self.activeSourceID { self.folders = result }
+            // an older read that finishes after a newer one was asked for must not overwrite it
+            if generation == self.folderLoadGeneration, sid == self.activeSourceID { self.folders = result }
         }
     }
+    @ObservationIgnored private var folderLoadGeneration = 0
+    @ObservationIgnored private var folderLoad: Task<Void, Never>?
 
     /// `reload()` with its reads off the main actor. A newer call makes an older one stale (its result is dropped), and a playlist switch while it ran drops it too.
     /// Returns when the result was applied or dropped.

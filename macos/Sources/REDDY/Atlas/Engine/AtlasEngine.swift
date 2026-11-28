@@ -22,6 +22,8 @@ struct SetuEngine: Sendable {
     private let index: BM25Index
     private let spell: SpellCorrector
     private let byID: [String: Int]
+    /// Aliases made only of common words, by their words: the only way such a question can be found (see `retrieve`).
+    private let aliasKeys: [String: [Int]]
 
     init(entries: [AtlasEntry], embeddings: AtlasEmbeddings? = nil) {
         self.entries = entries
@@ -29,11 +31,20 @@ struct SetuEngine: Sendable {
         index = BM25Index(entries: entries)
         spell = SpellCorrector(vocabulary: index.vocabulary)
         byID = Dictionary(entries.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { a, _ in a })
+        var keys: [String: [Int]] = [:]
+        for (i, e) in entries.enumerated() {
+            for alias in e.aliases {
+                let words = Normalise.words(alias)
+                guard !words.isEmpty, words.allSatisfy({ Normalise.stopWords.contains($0) }) else { continue }
+                keys[words.joined(separator: " "), default: []].append(i)
+            }
+        }
+        aliasKeys = keys
     }
 
-    func with(embeddings e: AtlasEmbeddings?) -> SetuEngine { var c = SetuEngine(entries: entries, embeddings: e, index: index, spell: spell, byID: byID); c.embeddingWeight = embeddingWeight; return c }
-    private init(entries: [AtlasEntry], embeddings: AtlasEmbeddings?, index: BM25Index, spell: SpellCorrector, byID: [String: Int]) {
-        self.entries = entries; self.embeddings = embeddings; self.index = index; self.spell = spell; self.byID = byID
+    func with(embeddings e: AtlasEmbeddings?) -> SetuEngine { var c = SetuEngine(entries: entries, embeddings: e, index: index, spell: spell, byID: byID, aliasKeys: aliasKeys); c.embeddingWeight = embeddingWeight; return c }
+    private init(entries: [AtlasEntry], embeddings: AtlasEmbeddings?, index: BM25Index, spell: SpellCorrector, byID: [String: Int], aliasKeys: [String: [Int]]) {
+        self.entries = entries; self.embeddings = embeddings; self.index = index; self.spell = spell; self.byID = byID; self.aliasKeys = aliasKeys
     }
 
     func entry(_ id: String) -> AtlasEntry? { byID[id].map { entries[$0] } }
@@ -48,6 +59,11 @@ struct SetuEngine: Sendable {
         let keep = raw.filter { !Normalise.stopWords.contains($0) || Synonyms.keyWords.contains($0) }
         let corrected = keep.map { Synonyms.keyWords.contains($0) ? $0 : spell.correct($0) }
         let content = corrected.filter { !Normalise.stopWords.contains($0) }
+        // A question made only of common words ("can Setu change my settings") has no word the index holds. It matches an entry's alias written the same way, word for word.
+        if content.isEmpty, let hit = aliasKeys[raw.joined(separator: " ")], !hit.isEmpty {
+            let hits = hit.prefix(limit).map { Hit(entry: entries[$0], score: 1, bm25Rank: nil, embeddingRank: nil) }
+            return Retrieval(hits: hits, confidence: 1, ratio: 99, decision: .confident, intent: intent, correctedQuery: raw.joined(separator: " "))
+        }
         var terms: [(term: String, weight: Double)] = content.map { (Normalise.stem($0), 1.0) }
         let seen = Set(terms.map(\.term))
         for x in Set(Synonyms.expansions(for: corrected)) where !seen.contains(Normalise.stem(x)) { terms.append((Normalise.stem(x), 0.6)) }

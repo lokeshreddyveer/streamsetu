@@ -1,0 +1,59 @@
+{
+ "_note": "Documented OpenSubsonic song sample (contributors, artists, albumArtists, displayComposer); not recorded from a live server.",
+ "id": "tr-4821",
+ "title": "Awaara Hoon",
+ "album": "Awaara",
+ "albumId": "al-77",
+ "artist": "Mukesh",
+ "artistId": "ar-12",
+ "year": 1951,
+ "genre": "Soundtrack",
+ "track": 3,
+ "discNumber": 1,
+ "duration": 188,
+ "artists": [
+  {
+   "id": "ar-12",
+   "name": "Mukesh"
+  }
+ ],
+ "albumArtists": [
+  {
+   "id": "ar-30",
+   "name": "Shankar-Jaikishan"
+  }
+ ],
+ "displayComposer": "Shankar-Jaikishan",
+ "contributors": [
+  {
+   "role": "composer",
+   "subRole": "",
+   "artist": {
+    "id": "ar-30",
+    "name": "Shankar-Jaikishan"
+   }
+  },
+  {
+   "role": "lyricist",
+   "artist": {
+    "id": "ar-31",
+    "name": "Shailendra"
+   }
+  },
+  {
+   "role": "performer",
+   "subRole": "tabla",
+   "artist": {
+    "id": "ar-40",
+    "name": "Sattar Khan"
+   }
+  },
+  {
+   "role": "engineer",
+   "artist": {
+    "id": "ar-41",
+    "name": "Someone Else"
+   }
+  }
+ ]
+}

@@ -37,6 +37,13 @@ enum Localized {
         return string(isOne(n, code: code) ? one : other, n.formatted())
     }
 
+    /// The language code in use ("en", "hi", "te"), for keys of saved copies of text that was translated when it was fetched.
+    nonisolated static var activeCode: String {
+        let code = language.value.rawValue
+        if code == "system" { return Locale.preferredLanguages.first.map { String($0.prefix(2)) } ?? "en" }
+        return code
+    }
+
     private nonisolated static func table() -> Bundle? {
         var code = language.value.rawValue
         if code == "system" { code = Locale.preferredLanguages.first.map { String($0.prefix(2)) } ?? "en" }

@@ -93,7 +93,8 @@ struct TopBarHarness2: View { @ObservedObject var d: TopBarDriver; var body: som
 
     /// A live window resize is followed at once: a frame taken right after the width changes equals the settled frame at that width,
     /// so nothing springs, pops or leaves a second edge behind.
-    @Test func resizeTracksTheWindowWithoutAnimation() throws {
+    @Test func resizeTracksTheWindowWithoutAnimation() async throws {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         _ = NSApplication.shared
         let saved = ThemeStore.current; defer { ThemeStore.current = saved }
         ThemeStore.current = .liquidGlass

@@ -625,6 +625,7 @@ struct WatchLaterPage: View {
 struct CollectionsPage: View {
     @Environment(\.container) private var container
     @Environment(AppState.self) private var state
+    @Environment(AppRouter.self) private var router
     @State private var collections: [CatalogCollection] = []
     @State private var selectedID: String?
     @State private var channels: [Channel] = []
@@ -675,6 +676,8 @@ struct CollectionsPage: View {
     private func load() async {
         guard let c = container else { return }
         collections = (try? c.favoritesRepo.collections()) ?? []
+        // A collection chosen in search opens first (taken once, and only if it still exists).
+        if let want = router.pendingCollectionID { router.pendingCollectionID = nil; if collections.contains(where: { $0.id == want }) { selectedID = want } }
         if selectedID == nil || !collections.contains(where: { $0.id == selectedID }) { selectedID = collections.first?.id }
         await loadItems()
     }

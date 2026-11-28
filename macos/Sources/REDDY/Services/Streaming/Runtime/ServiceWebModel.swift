@@ -62,6 +62,10 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
     @ObservationIgnored var onMemoryPressure: ((Bool) -> Void)?
     /// Cross-provider check on a termination: answers whether an automatic reload is still allowed.
     @ObservationIgnored var onTermination: ((ProviderID, Date) -> TerminationAction)?
+    /// The service can no longer play: the person signed out (the session flag went from on to off) or its website data is being cleared. The registry stops its media.
+    @ObservationIgnored var onEligibilityLost: ((ProviderID, MediaSafetyStop) -> Void)?
+    /// True while this hidden service is playing (or may be): the retention time does not release it then. Set by the registry.
+    @ObservationIgnored var holdsHiddenView: () -> Bool = { false }
     @ObservationIgnored private let defaults: UserDefaults
     /// Tidy pages and the hidden elements of this service (shared preferences; tests pass their own).
     @ObservationIgnored var tidyStore: TidyStore = .shared
@@ -257,14 +261,20 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
         else if phase == .terminated { reload() }
     }
 
+    /// Hiding does not stop the media: a service keeps playing in the background until something else starts (see `ServiceMediaPolicy`). Only a
+    /// full-screen or picture-in-picture presentation is closed, because it belongs to the screen that is no longer showing. The page is never
+    /// suspended here, and nothing resumes by itself when it shows again. The retention time does not release a view that is playing.
     func serviceBecameHidden() {
         isVisible = false
-        pauseMedia()
+        lifecycle.closePresentationsNow()
         releaseTask?.cancel()
         releaseTask = Task { [weak self, releaseAfter] in
-            try? await Task.sleep(for: releaseAfter)
-            guard !Task.isCancelled else { return }
-            self?.releaseResources()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: releaseAfter)
+                guard !Task.isCancelled, let self else { return }
+                if self.holdsHiddenView() { continue }          // playing in the background: look again after another period
+                self.releaseResources(); return
+            }
         }
         onBecameHidden?(definition.id)
     }
@@ -360,6 +370,7 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
     /// The same, saying how many records the store still holds afterwards (none when it all went).
     func clearServiceDataReporting() async -> SessionClearing.ClearReport {
         isClearing = true
+        onEligibilityLost?(definition.id, .dataCleared)          // its sound stops and its badge clears before the page is torn down
         releaseWebView()
         let report = await SessionClearing.clear(dataStore)
         state.lastURL = nil; state.pendingURL = nil
@@ -385,7 +396,9 @@ final class ServiceWebModel: NSObject, ExternalServiceHost, ServiceWebEvents {
     /// cookie object is fetched, so no cookie name, value or flag is ever in memory here.
     func refreshSessionFlag() async {
         let records = await dataStore.dataRecords(ofTypes: [WKWebsiteDataTypeCookies])
+        let was = state.hasSession
         state.hasSession = records.contains { Self.recordBelongs($0.displayName, to: definition) }
+        if was && !state.hasSession { onEligibilityLost?(definition.id, .signedOut) }          // signed out inside the page: nothing keeps playing for an account that is gone
     }
 
     /// A record's name is the site it belongs to (usually the registrable domain, e.g. "apple.com"): it counts when it is one of the service's

@@ -55,6 +55,7 @@ import AppKit
     }
 
     @Test func aHundredNavigationCyclesBetweenServicesStayBoundedInMemoryAndCPU() async throws {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         let server = try ServiceFixtureServer(); try await server.start(); defer { server.stop() }
         _ = NSApplication.shared
         let r = ServiceWebLifecycleTests.registry(server)
@@ -76,6 +77,7 @@ import AppKit
         for i in 1...100 {
             let id = order[i % order.count]
             let t = Date(); await show(id); lat.append(Date().timeIntervalSince(t) * 1000)
+            await r.media.settleProbes()          // Changed: a service just hidden is held until its one probe returns (background playback); count what has settled
             worstLive = max(worstLive, r.liveIDs.count)
             if i % 20 == 0 { trend.append("\(i):\(Int(footprintMB()))"); webRSS = max(webRSS, rssKB(webPID(r.model(for: id)?.webView)) / 1024) }
         }
@@ -86,7 +88,7 @@ import AppKit
         #expect(worstLive <= 2, "never more than two live web views")
         #expect(growth < 150, "memory growth over 100 cycles stays bounded")
         window.contentView = nil
-        nav.returnToStreamSetu(); r.handleMemoryPressure(critical: true)
+        nav.returnToStreamSetu(); await r.media.settleProbes(); r.pauseAll(); r.handleMemoryPressure(critical: true)          // Changed: a page that still plays is kept until paused (critical pressure releases what is not playing)
         #expect(r.liveIDs.isEmpty)
         try? await Task.sleep(for: .milliseconds(300))
         print("MEASURE after releasing every hidden web view: host footprint \(Int(footprintMB())) MB (baseline before cycles \(Int(base)) MB)")

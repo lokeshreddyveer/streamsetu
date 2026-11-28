@@ -9,4 +9,13 @@ import Observation
     /// A Settings tab name ("Playback"), taken when the Settings window shows it.
     var settingsTab: String?
     func takeSettingsTab() -> String? { defer { settingsTab = nil }; return settingsTab }
+    /// Opens the Settings window. Since macOS 14 only a view's `openSettings` action does that (the old `showSettingsWindow:` selector does nothing), so the main window installs it here.
+    @ObservationIgnored var settingsOpener: (() -> Void)?
+    /// Opens Settings, on `tab` when given. False when no window has installed the opener; no tab is left waiting then, so a later manual open does not jump.
+    @discardableResult func showSettings(tab: String? = nil) -> Bool {
+        guard let open = settingsOpener else { return false }
+        if let tab { settingsTab = tab }
+        open()
+        return true
+    }
 }

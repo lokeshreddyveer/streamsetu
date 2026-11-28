@@ -535,6 +535,8 @@ struct AssistantBubble: View {
     let container: AppContainer
     /// Room to leave under the bubble (a player bar, a tab bar).
     var bottomInset: CGFloat = 20
+    /// Room to leave at its right (a side panel the page shows beside the content, so the button never sits over it). The Mac button only.
+    var trailingInset: CGFloat = 0
     /// While a long page scrolls down the button steps aside (it comes back with the bar): it never sits over content or next to the minimised bar.
     var receded = false
     var open: (LibraryItem) -> Void
@@ -606,7 +608,7 @@ struct AssistantBubble: View {
                 }
                 .buttonStyle(.plain).help("Assistant").accessibilityLabel(isOpen ? "Close assistant" : "Open assistant").atlas("screen.assistant")
             }
-            .padding(.trailing, 20).padding(.bottom, bottomInset).padding(.top, 70)
+            .padding(.trailing, 20 + trailingInset).padding(.bottom, bottomInset).padding(.top, 70)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             .animation(.easeInOut(duration: 0.2), value: isOpen)
             .onChange(of: launcher.opens) { _, _ in

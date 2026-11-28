@@ -15,6 +15,12 @@ struct PINField: View {
     }
 }
 
+/// What a refused PIN says, in the language in use.
+enum PINMessage {
+    static func wrong(_ triesLeft: Int) -> String { Localized.string("That isn't the PIN. %@ left.", Localized.plural(triesLeft, one: "%@ try", other: "%@ tries")) }
+    static func wait(_ seconds: TimeInterval) -> String { Localized.string("Too many tries. Wait %@ seconds.", String(Int(seconds.rounded(.up)))) }
+}
+
 /// Asks for the PIN to show locked folders for a while.
 struct UnlockDialog: View {
     @Environment(\.container) private var container
@@ -38,9 +44,9 @@ struct UnlockDialog: View {
         guard let p = container?.parental else { return }
         switch p.unlock(pin: pin) {
         case .unlocked: router.modal = nil
-        case .wrongPIN(let left): message = "That isn't the PIN. \(Localized.plural(left, one: "%@ try", other: "%@ tries")) left."; pin = ""
-        case .tooManyAttempts(let t): message = "Too many tries. Wait \(Int(t.rounded(.up))) seconds."; pin = ""
-        case .noPIN: router.modal = nil
+        case .wrongPIN(let left): message = PINMessage.wrong(left); pin = ""
+        case .tooManyAttempts(let t): message = PINMessage.wait(t); pin = ""
+        case .noPIN: if p.kidsMode { message = ParentalControls.kidsUnlockNote; pin = "" } else { router.modal = nil }
         }
     }
 }
@@ -105,8 +111,8 @@ struct ParentalSettingsGroup: View {
                             ForEach([5, 15, 30, 60, 120], id: \.self) { Text("\($0) minutes").tag($0) }
                         }.pickerStyle(.menu).fixedSize()
                     }
-                    SettingsRow(title: "Right now", atlas: "setting.parental", detail: p.isUnlocked ? "Locked folders are visible." : "Locked folders are hidden.", divider: false) {
-                        if p.isUnlocked { Button("Lock Now") { p.lockNow() } } else { Button("Unlock…") { showUnlock = true } }
+                    SettingsRow(title: "Right now", atlas: "setting.parental", detail: p.kidsMode ? ParentalControls.kidsUnlockNote : p.isUnlocked ? "Locked folders are visible." : "Locked folders are hidden.", divider: false) {
+                        if p.kidsMode { EmptyView() } else if p.isUnlocked { Button("Lock Now") { p.lockNow() } } else { Button("Unlock…") { showUnlock = true } }
                     }
                 }
             }
@@ -121,8 +127,8 @@ struct ParentalSettingsGroup: View {
                 promptSheet(title: "Unlock", note: "Enter your PIN to show locked folders.", pin: $unlockPIN, error: unlockError, action: "Unlock") {
                     switch p.unlock(pin: unlockPIN) {
                     case .unlocked, .noPIN: showUnlock = false; unlockPIN = ""; unlockError = nil
-                    case .wrongPIN(let n): unlockError = "That isn't the PIN. \(n) left."; unlockPIN = ""
-                    case .tooManyAttempts(let t): unlockError = "Too many tries. Wait \(Int(t.rounded(.up))) seconds."; unlockPIN = ""
+                    case .wrongPIN(let n): unlockError = PINMessage.wrong(n); unlockPIN = ""
+                    case .tooManyAttempts(let t): unlockError = PINMessage.wait(t); unlockPIN = ""
                     }
                 }
             }
@@ -153,11 +159,15 @@ struct LockedFolderView: View {
         VStack(spacing: 14) {
             Image(systemName: "lock.fill").font(.system(size: 34, weight: .light)).foregroundStyle(ColorTokens.textSecondary)
             Text("“\(name)” is locked").font(Typography.title)
-            Text("Enter your PIN to see what's inside. It locks again after \(container?.parental.unlockMinutes ?? 15) minutes.")
-                .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
-            PINField(title: "PIN", text: $pin, onSubmit: submit)
-            if let message { Text(message.loc).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
-            PrimaryButton(title: "Unlock", symbol: "lock.open", action: submit).disabled(pin.count < 4).atlas("setting.parental")
+            if container?.parental.kidsMode == true {
+                Text(ParentalControls.kidsUnlockNote.loc).font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
+            } else {
+                Text("Enter your PIN to see what's inside. It locks again after \(container?.parental.unlockMinutes ?? 15) minutes.")
+                    .font(Typography.caption).foregroundStyle(ColorTokens.textSecondary)
+                PINField(title: "PIN", text: $pin, onSubmit: submit)
+                if let message { Text(message.loc).font(Typography.caption).foregroundStyle(ColorTokens.warning) }
+                PrimaryButton(title: "Unlock", symbol: "lock.open", action: submit).disabled(pin.count < 4).atlas("setting.parental")
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -166,8 +176,8 @@ struct LockedFolderView: View {
         guard let p = container?.parental else { return }
         switch p.unlock(pin: pin) {
         case .unlocked, .noPIN: break
-        case .wrongPIN(let left): message = "That isn't the PIN. \(left) \(left == 1 ? "try" : "tries") left."; pin = ""
-        case .tooManyAttempts(let t): message = "Too many tries. Wait \(Int(t.rounded(.up))) seconds."; pin = ""
+        case .wrongPIN(let left): message = PINMessage.wrong(left); pin = ""
+        case .tooManyAttempts(let t): message = PINMessage.wait(t); pin = ""
         }
     }
 }

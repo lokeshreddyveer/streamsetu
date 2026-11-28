@@ -67,6 +67,7 @@ final class AdvancedSettingsViewModel {
         do {
             try await Task.detached { try reset.removeEverything() }.value
             await c.artwork.clear()
+            await MusicHub.shared.wipeAll()
             state.reload(); state.catalogVersion += 1
             resetMessage = .init(text: "All playlists and library data were removed from this Mac.")
         } catch { resetMessage = .init(text: "Couldn't remove everything: \(error.localizedDescription)", kind: .failure) }

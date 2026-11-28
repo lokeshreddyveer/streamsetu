@@ -3,6 +3,8 @@ import Foundation
 /// Where a typed request can take the person.
 enum CommandTarget: String, CaseIterable, Sendable {
     case discover, tonight, liveTV, movies, series, guide, favorites, watchLater, continueWatching, recentlyWatched, history, collections, statistics, downloads, settings
+    /// Smart lists of the sidebar, each reached by its own selection.
+    case featured, recentlyAdded, unwatched, unwatchedFavorites, addedThisMonth, newEpisodes
 
     var title: String {
         switch self {
@@ -21,6 +23,12 @@ enum CommandTarget: String, CaseIterable, Sendable {
         case .statistics: "Statistics"
         case .downloads: "Downloads"
         case .settings: "Settings"
+        case .featured: "Featured"
+        case .recentlyAdded: "Recently Added"
+        case .unwatched: "Unwatched"
+        case .unwatchedFavorites: "Unwatched Favorites"
+        case .addedThisMonth: "Added in 30 Days"
+        case .newEpisodes: "New Episodes"
         }
     }
 
@@ -41,11 +49,28 @@ enum CommandTarget: String, CaseIterable, Sendable {
         case .statistics: "chart.bar"
         case .downloads: "arrow.down.circle"
         case .settings: "gearshape"
+        case .featured: "sparkle"
+        case .recentlyAdded: "clock.arrow.circlepath"
+        case .unwatched: "eye.slash"
+        case .unwatchedFavorites: "heart.slash"
+        case .addedThisMonth: "calendar.badge.plus"
+        case .newEpisodes: "sparkles.tv"
+        }
+    }
+
+    /// The tab whose own search box takes a command's filter words; nil for a screen without one.
+    var searchBoxTab: AppTab? {
+        switch self {
+        case .liveTV: .liveTV
+        case .movies: .movies
+        case .series: .series
+        default: nil
         }
     }
 
     /// The words that name it. Longest first, so "watch history" is not read as "watch".
     static let synonyms: [(phrase: String, target: CommandTarget)] = [
+        ("featured", .featured), ("recently added", .recentlyAdded), ("new episodes", .newEpisodes), ("unwatched favorites", .unwatchedFavorites), ("unwatched favourites", .unwatchedFavorites), ("added this month", .addedThisMonth), ("unwatched", .unwatched),
         ("continue watching", .continueWatching), ("recently watched", .recentlyWatched), ("watch history", .history), ("watch later", .watchLater), ("tv guide", .guide), ("live tv", .liveTV), ("tv shows", .series), ("what's on tonight", .tonight), ("whats on tonight", .tonight),
         ("favourites", .favorites), ("favorites", .favorites), ("favs", .favorites), ("watchlist", .watchLater), ("saved", .watchLater), ("history", .history), ("recent", .recentlyWatched), ("guide", .guide), ("epg", .guide), ("schedule", .guide),
         ("channels", .liveTV), ("live", .liveTV), ("movies", .movies), ("films", .movies), ("series", .series), ("shows", .series), ("tonight", .tonight), ("collections", .collections), ("stats", .statistics), ("statistics", .statistics),
@@ -153,11 +178,30 @@ enum SearchCommands {
             if words.contains(phrase.split(separator: " ").last.map(String.init) ?? phrase), words.count >= 2 {
                 let q = NaturalQuery.parse(t)
                 // Only what the screen's own search understands is put in its box: unexplained words ("today", "folder") would make it show "No matches".
-                if q.isStructured { return .go(target, library: cleanedFilter(t)) }
+                if q.isStructured {
+                    let words = target == .liveTV ? channelFilter(t) : cleanedFilter(t)
+                    return .go(target, library: words.isEmpty ? nil : words)
+                }
                 if hadVerb { return .go(target, library: nil) }
             }
         }
         return nil
+    }
+
+    /// Words that name a kind or an order of titles. Live TV's search box matches a channel's name, group, genre and language, so these would match nothing there.
+    private static let notAChannelWord: Set<String> = ["top", "best", "highest", "rated", "newest", "latest", "oldest", "recent", "recently", "shortest", "longest", "first", "added", "unwatched", "unseen", "watched",
+        "favourite", "favourites", "favorite", "favorites", "new", "movies", "movie", "films", "film", "series", "shows", "channels", "channel", "live", "tv", "a", "z", "to", "az", "za"]
+
+    /// The words of a channel request that Live TV's own search can use ("telugu channels" -> "telugu"). A word that was ruled out ("not sports") is left out with its "not".
+    static func channelFilter(_ text: String) -> String {
+        var keep: [String] = []
+        var negated = false
+        for w in cleanedFilter(text).split(separator: " ").map(String.init) {
+            if ["not", "no", "without"].contains(w) { negated = true; continue }
+            if negated { negated = false; continue }
+            if !notAChannelWord.contains(w) { keep.append(w) }
+        }
+        return keep.joined(separator: " ")
     }
 
     /// The words of a filter that mean something to the library (a language, year, genre, ordering, "unwatched", a kind) with the rest dropped, and the kind itself kept.

@@ -3,7 +3,13 @@ import SwiftUI
 /// The frames of every marked control on screen, in the coordinate space of whoever reads them (the Show-me host). Merged up the view tree; a later marker with the same id wins.
 struct AtlasFramesKey: PreferenceKey {
     static var defaultValue: [String: Anchor<CGRect>] { [:] }
-    static func reduce(value: inout [String: Anchor<CGRect>], nextValue: () -> [String: Anchor<CGRect>]) { value.merge(nextValue()) { _, new in new } }
+    /// Called for every node of the view tree each time anything under it updates, and almost always with nothing to merge (markers record only while Show-me runs), so the empty cases return before any dictionary work.
+    static func reduce(value: inout [String: Anchor<CGRect>], nextValue: () -> [String: Anchor<CGRect>]) {
+        let next = nextValue()
+        if next.isEmpty { return }
+        if value.isEmpty { value = next; return }
+        value.merge(next) { _, new in new }
+    }
 }
 
 /// The screens that are on screen right now (innermost last), for the engine's "this screen" boost and for Show-me's "open <screen> first".

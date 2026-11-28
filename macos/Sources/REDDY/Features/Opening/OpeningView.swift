@@ -37,20 +37,28 @@ private struct OpeningStage: View {
         // At most 60 frames a second (a 120 Hz screen would otherwise draw twice as many).
         TimelineView(.animation(minimumInterval: 1.0 / 60, paused: coordinator.frozenAt != nil)) { context in
             let now = context.date
+            #if os(macOS)
+            OpeningMacCanvas(theme: coordinator.theme, icons: OpeningIcons.current,
+                             frame: { OpeningMacStory.frame(coordinator.drawnVariant, at: coordinator.storyTime(at: now)) },
+                             onDraw: { ms in
+                                 if coordinator.frozenAt == nil { monitor.frame(drawMs: ms) { [coordinator] reason in coordinator.abort(reason: reason) } }
+                             })
+                .opacity(coordinator.layerOpacity(at: now))
+            #else
             Canvas { ctx, size in
                 let began = CACurrentMediaTime()
                 let ms = coordinator.storyTime(at: now)
-                // The layers are decoded once, elsewhere; a frame only reads them.
                 OpeningRenderer.draw(&ctx, size: size, frame: OpeningTimeline.frame(coordinator.drawnVariant, at: ms), art: OpeningArt.current, time: ms)
                 if coordinator.frozenAt == nil {
                     monitor.frame(drawMs: (CACurrentMediaTime() - began) * 1000) { [coordinator] reason in coordinator.abort(reason: reason) }
                 }
             }
             .opacity(coordinator.layerOpacity(at: now))
+            #endif
         }
         .ignoresSafeArea()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("StreamSetu. A silver television is tuned in: its screen glows, the teal ribbon wraps around it and the play button lights up.")
+        .accessibilityLabel("StreamSetu. StreamSetu. The destination icons arrive one after another, settle into a row, and make way for the StreamSetu name.")
     }
 }
 
@@ -67,13 +75,13 @@ enum WhatsNewContent {
 
     static var rows: [Row] {
         var rows = [
-            Row(symbol: "sparkles.tv", title: "A new look", text: "The silver television with its teal ribbon, on your home screen and inside the app."),
+            Row(symbol: "sparkles", title: "A new opening", text: "Each destination takes the stage in turn, then they come together as the StreamSetu symbol."),
             Row(symbol: "bolt", title: "Start in seconds", text: "Paste a link or choose how you connect, on a redesigned welcome."),
         ]
         #if os(macOS)
         rows += [
-            Row(symbol: "contextualmenu.and.cursorarrow", title: "Menus that stay open", text: "The player's More menu no longer closes before you choose."),
-            Row(symbol: "rectangle.on.rectangle", title: "A clearer picture", text: "No dark band behind the player controls."),
+            Row(symbol: "slider.horizontal.3", title: "Get set up", text: "Choose your Music, Podcasts and streaming services any time from the Help menu."),
+            Row(symbol: "music.note", title: "Music, refined", text: "Explore by language, a redesigned Settings, and smoother crossfades."),
         ]
         #endif
         return rows
@@ -113,11 +121,11 @@ struct WhatsNewView: View {
                     }
                     .padding(.top, 32)
                     Button(action: onDone) {
-                        Text("Continue").font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        Text("Continue").font(.system(size: 15, weight: .semibold)).foregroundStyle(StartStyle.isLight(ColorTokens.accent) ? Color(hex: 0x0B0D12) : .white)
                             .frame(minWidth: 180, minHeight: 46)
-                            .background(Capsule().fill(Color(hex: 0x1FA7B8)))
+                            .background(Capsule().fill(ColorTokens.accent))
                             .overlay(Capsule().strokeBorder(.white.opacity(0.18)))
-                            .shadow(color: Color(hex: 0x3CC6D6).opacity(0.3), radius: 12, y: 4)
+                            .shadow(color: ColorTokens.accent.opacity(0.3), radius: 12, y: 4)
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)

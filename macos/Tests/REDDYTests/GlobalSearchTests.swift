@@ -141,6 +141,7 @@ import Foundation
     // MARK: scale, empties, bounds
 
     @Test func largeCatalogsAreSearchedInBoundedPages() async throws {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         let c = try container()
         let src = try TestSupport.makeSource(c.db, name: "Big", type: .xtream)
         let movies = (0..<20_000).map { TestSupport.movie(src, "\($0)", "Epic Journey \($0)", year: 2000 + $0 % 25) }

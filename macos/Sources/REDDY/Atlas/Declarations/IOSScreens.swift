@@ -63,7 +63,7 @@ enum AtlasIOSScreens {
         c("control.ios.home.upNext", "Next episode card", "Plays the next unwatched episode of a series you follow.", ["Home", "Next episode card"], reviewed: true),
         c("control.ios.ipad.folder", "Folder in the column", "Shows the titles of that folder. A locked folder asks for the PIN.", ["iPad", "Folders", "Folder in the column"], reviewed: true),
         c("control.ios.ipad.folderColumn", "Show or hide folders", "Opens or closes the folder column. Option-Command-0 does the same.", ["iPad", "Folders", "Show or hide folders"], reviewed: true),
-        c("control.ios.ipad.searchShortcut", "Search shortcut", "Command-F opens Search with a keyboard.", ["iPad", "Sidebar", "Search shortcut"], reviewed: true),
+        c("control.ios.ipad.searchShortcut", "Open Search with the keyboard", "Command-F opens Search with a keyboard.", ["iPad", "Sidebar", "Search shortcut"], reviewed: true),
         c("control.ios.library.folderMenu", "Folder filter", "Shows only one folder of this tab. A locked folder asks for the PIN.", ["Movies or Series", "Folder filter"], reviewed: true),
         c("control.ios.library.search", "Search", "Searches within movies or series.", ["Movies or Series", "Search"], reviewed: true),
         c("control.ios.library.shelf", "Shelf chip", "Switches between the shelves of this tab: All, Favourites, Watch Later, Unwatched, Unwatched Favourites and Added in 30 Days, plus New Episodes on Series.", ["Movies or Series", "Shelf chip"], reviewed: true),

@@ -96,6 +96,13 @@ struct OnboardingView: View {
                 }.disabled(restore.phase == .looking).atlas("screen.onboarding")
                 if restore.phase == .looking { ProgressView().controlSize(.small) }
             }
+            // Music, Podcasts and the streaming services need no source: nobody has to add a playlist to reach them.
+            VStack(alignment: .leading, spacing: 4) {
+                SecondaryButton(title: "Skip for now", symbol: "forward.end") { state.skipSources() }.atlas("control.onboarding.skip")
+                Text("Music, Podcasts and your streaming services work without a source.").font(Typography.caption).foregroundStyle(StartStyle.textSecondary(true))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 6)
             if restore.phase != .idle {
                 Text(restore.detail).font(Typography.caption).foregroundStyle(restore.phase == .nothingFound ? ColorTokens.warning : StartStyle.textSecondary(true))
                     .fixedSize(horizontal: false, vertical: true)

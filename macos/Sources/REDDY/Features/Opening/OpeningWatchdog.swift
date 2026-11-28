@@ -9,6 +9,9 @@ struct OpeningWatchdog {
     /// Frames ignored at the start (the first draws warm caches).
     var warmup = 2
     var window = 4
+    /// Frame times are judged over a longer stretch: a single stall while the app builds underneath (a database read, a hub starting) skips a few frames of a time-driven
+    /// story and is not a reason to cut it. Only frames that keep arriving far too rarely over this many are.
+    var intervalWindow = 24
     var maxMeanDrawMs = 12.0
     var maxMeanIntervalMs = 50.0
     private(set) var seen = 0
@@ -23,12 +26,16 @@ struct OpeningWatchdog {
         seen += 1
         guard seen > warmup else { return nil }
         draws.append(drawMs); times.append(t)
-        if draws.count > window { draws.removeFirst(); times.removeFirst() }
-        guard draws.count == window else { return nil }
-        let mean = draws.reduce(0, +) / Double(window)
-        if mean > maxMeanDrawMs { tripped = "slow draw: \(Int(mean)) ms per frame"; return tripped }
-        let interval = (times.last! - times.first!) / Double(window - 1) * 1000
-        if interval > maxMeanIntervalMs { tripped = "slow frames: \(Int(interval)) ms apart"; return tripped }
+        if draws.count > window { draws.removeFirst() }
+        if times.count > intervalWindow { times.removeFirst() }
+        if draws.count == window {
+            let mean = draws.reduce(0, +) / Double(window)
+            if mean > maxMeanDrawMs { tripped = "slow draw: \(Int(mean)) ms per frame"; return tripped }
+        }
+        if times.count == intervalWindow {
+            let interval = (times.last! - times.first!) / Double(intervalWindow - 1) * 1000
+            if interval > maxMeanIntervalMs { tripped = "slow frames: \(Int(interval)) ms apart"; return tripped }
+        }
         return nil
     }
 

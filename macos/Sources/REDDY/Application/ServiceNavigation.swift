@@ -9,9 +9,11 @@ enum TopLevelDestination: Equatable, Sendable {
     case streamSetu
     /// StreamSetu's own Podcasts screen (a native destination without a sidebar). It is not an `AppTab`: the five tabs keep their meaning.
     case podcasts
+    /// StreamSetu's own Music screen (a native destination with its own sidebar inside the page).
+    case music
     case service(ProviderID)
 
-    var rawValue: String { switch self { case .streamSetu: "streamSetu"; case .podcasts: "podcasts"; case .service(let s): "service." + s.rawValue } }
+    var rawValue: String { switch self { case .streamSetu: "streamSetu"; case .podcasts: "podcasts"; case .music: "music"; case .service(let s): "service." + s.rawValue } }
     /// StreamSetu's own screens (a tab or Podcasts), as opposed to a service's website.
     var isNative: Bool { if case .service = self { false } else { true } }
 }
@@ -30,6 +32,7 @@ struct DestinationState: Equatable, Sendable {
     init(rawValue: String?, capabilities: ServiceCapabilities = .current) {
         self.capabilities = capabilities
         if rawValue == "podcasts" { active = .podcasts; lastNative = .podcasts }
+        else if rawValue == "music" { active = .music; lastNative = .music }
         else if let raw = rawValue, raw.hasPrefix("service."), let s = ProviderID(rawValue: String(raw.dropFirst(8))), capabilities.allows(s) { active = .service(s) }
     }
 
@@ -48,6 +51,7 @@ struct DestinationState: Equatable, Sendable {
     /// Native navigation to a tab (or any native screen other than Podcasts).
     mutating func selectStreamSetu() { active = .streamSetu; lastNative = .streamSetu }
     mutating func selectPodcasts() { active = .podcasts; lastNative = .podcasts }
+    mutating func selectMusic() { active = .music; lastNative = .music }
     /// Leaving a service: back to the native destination that was open before it.
     mutating func returnFromService() { guard activeService != nil else { return }; active = lastNative }
 }
@@ -97,6 +101,8 @@ final class ServiceNavigation {
     var isBlocked: Bool { gate() }
     /// The one rule for Podcasts: not while the app is locked and not for a Kids profile.
     var podcastsAllowed: Bool { !lockGate() && !kidsGate() }
+    /// The one rule for Music: the same as Podcasts (not while locked, not for a Kids profile).
+    var musicAllowed: Bool { !lockGate() && !kidsGate() }
     /// A Kids profile is in use (Podcasts is then not offered anywhere).
     var isKidsProfile: Bool { kidsGate() }
 
@@ -129,6 +135,15 @@ final class ServiceNavigation {
         return true
     }
 
+    /// Opens Music in the main window. Refused while the app is locked or a Kids profile is in use. A service that was showing stops first.
+    @discardableResult func selectMusic() -> Bool {
+        guard musicAllowed else { return false }
+        let previous = state.activeService
+        state.selectMusic()
+        if let previous { resolve(previous)?.serviceBecameHidden() }
+        return true
+    }
+
     /// From a service back to where StreamSetu was (the last tab, or Podcasts). Does nothing when no service shows.
     func returnToStreamSetu() {
         guard let previous = state.activeService else { return }
@@ -138,6 +153,8 @@ final class ServiceNavigation {
 
     /// A profile switch to Kids while Podcasts is open: leave it (nothing else changes).
     func enforcePodcastsRule() { if state.active == .podcasts, !podcastsAllowed { leaveForTab() } }
+    /// The same for Music.
+    func enforceMusicRule() { if state.active == .music, !musicAllowed { leaveForTab() } }
 
     /// Native navigation (a tab, a title, a search result, a link) always leaves a service or Podcasts first.
     func leaveForTab() {
@@ -150,5 +167,6 @@ final class ServiceNavigation {
     func attach(to router: AppRouter) {
         router.onNavigate = { [weak self] in self?.leaveForTab() }
         router.onOpenPodcasts = { [weak self] in self?.selectPodcasts() }
+        router.onOpenMusic = { [weak self] in self?.selectMusic() }
     }
 }

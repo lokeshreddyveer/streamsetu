@@ -2,14 +2,14 @@
 
 Everything lives in this one repository: the source, the download files (GitHub Releases) and the Mac update feed (`appcast.xml` at the root).
 
-One release holds every app, named by date (for example `2026.10.14`). Its files are the Mac DMG, the two Android APKs and the Windows zips (x64 and arm64), and its notes have a section for each app plus the SHA-256 of every file. iPhone and iPad builds go to TestFlight and, once approved, the App Store; they are listed in the notes.
+One release holds every app, named by date (for example `2026.10.14`). Its files are the three Mac DMGs (`StreamSetu-<v>.dmg`, universal, which is also the one the in-app updater offers; `StreamSetu-<v>-AppleSilicon.dmg`, arm64 only; `StreamSetu-<v>-Intel.dmg`, x86_64 only), the two Android APKs and the Windows zips (x64 and arm64), and its notes have a section for each app plus the SHA-256 of every file. iPhone and iPad builds go to TestFlight and, once approved, the App Store; they are listed in the notes.
 
-1. Mac: `macos/Scripts/release-signed.sh <version> <build>` (builds, signs, notarizes; the DMG lands in `macos/dist/`).
+1. Mac: `macos/Scripts/release-signed.sh <version> <build>` (builds the Apple silicon, Intel and universal apps one after another, signs and notarizes each; the three DMGs land in `macos/dist/`; `RELEASE_FLAVOURS="universal"` builds just one). Or `release-dmg.sh` to send all three to Apple without waiting, then `finish-release.sh <version>` once Apple has answered.
 2. Android and Fire TV: `android/build-release.sh <version> <code>` (tests, signs; the APKs land in `android/dist/<version>/`).
 3. iPhone and iPad: `ios/Scripts/testflight.sh`. The version (`VERSION` in `ios/Scripts/generate-project.py`) is the one people see; the build number in that file is only a placeholder, because the script passes the real build number (last uploaded + 1, or the one you give it) on the command line at archive time. The release notes name that build (for example `ios-1.3-build-78.md`).
 4. Write `docs/releases/<tag>.md`: one section per app.
 5. Windows (optional): the build runs in a private repository on GitHub's Windows machines; download its zip to `windows/native/dist/StreamSetu-Windows-<version>.zip`.
-6. `MAC=<v> MAC_BUILD=<b> ANDROID=<v> [WINDOWS=<v>] Scripts/release.sh <tag> docs/releases/<tag>.md` uploads everything (the Windows zip too, when `WINDOWS` is set) and adds the Mac DMG to the update feed.
+6. `MAC=<v> MAC_BUILD=<b> ANDROID=<v> [WINDOWS=<v>] Scripts/release.sh <tag> docs/releases/<tag>.md` uploads everything (the Windows zip too, when `WINDOWS` is set) and adds the universal Mac DMG to the update feed. It verifies all three DMGs first (notarized and stapled, signed, the right version, and the architectures the name says: universal has arm64 and x86_64, Apple silicon only arm64, Intel only x86_64) and uploads all three.
 
 The same script refreshes the website in `web/` (version numbers and What's new) and restarts it on this Mac at http://localhost:4300 with `web/host.sh`. New features also need a line in `web/content/site.ts`, so the Features page and the home page stay true.
 

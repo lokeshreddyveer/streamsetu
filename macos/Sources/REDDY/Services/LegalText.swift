@@ -154,6 +154,10 @@ The source code of the LGPL and GPL components is available from the project sit
 - **SponsorBlock** (Mac app, optional, off by default). The sponsor-segment times come from SponsorBlock, by Ajay Ramachandran and contributors (https://sponsor.ajay.app), whose database and API are licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0, https://creativecommons.org/licenses/by-nc-sa/4.0/). StreamSetu stays free of charge and does not sell this data; if that ever changes, permission must first be asked from the SponsorBlock author. The licence applies to the data, not to StreamSetu's own code. The data is read only while you watch, is not changed, and is kept in memory only.
 - **Service names and logos** are trademarks of their owners, shown only to identify the service.
 
+## On-device models
+
+- **Spleeter** (Mac app, Karaoke, off by default). The model that takes the vocals out of a song is Deezer's Spleeter two-stem separator, converted to Core ML and included in the app. It runs on your device and sends nothing anywhere. Copyright (c) 2019-present, Deezer SA. Released under the MIT licence: permission is granted, free of charge, to use, copy, modify, merge, publish, distribute, sublicense and sell copies of the software, provided the copyright notice and this permission notice are included in all copies or substantial portions of it. The software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement; in no event shall the authors or copyright holders be liable for any claim, damages or other liability arising from, out of or in connection with the software or its use. https://github.com/deezer/spleeter
+
 ## Website
 
 The StreamSetu web player uses **hls.js** (Apache 2.0) and **mpegts.js** (Apache 2.0), and **Next.js** and **React** (MIT).

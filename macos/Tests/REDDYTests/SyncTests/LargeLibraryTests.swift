@@ -14,7 +14,17 @@ import Foundation
         return r
     }
 
+    nonisolated static func timedOff<T>(_ label: String, _ budget: Double, _ body: () throws -> T) rethrows -> T {
+        let started = Date()
+        let r = try body()
+        let took = Date().timeIntervalSince(started)
+        print("PERF \(label): \(String(format: "%.3f", took)) s")
+        #expect(took < budget, "\(label) took \(took)s (budget \(budget)s)")
+        return r
+    }
+
     @Test(.timeLimit(.minutes(5))) func everyEverydayOperationStaysFast() async throws {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         let c = try AppContainer(databasePath: FileManager.default.temporaryDirectory.appendingPathComponent("reddy-big-\(UUID().uuidString).sqlite").path, credentials: InMemoryCredentialStore())
         let src = try TestSupport.makeSource(c.db, type: .xtream)
         let folders = 120
@@ -26,8 +36,13 @@ import Foundation
         }
         let movies: [Movie] = (0..<40_000).map { TestSupport.movie(src, "m\($0)", "Movie Title \($0)", year: 1980 + $0 % 45) }
 
-        _ = try timed("import 100,000 channels", 120) { try c.indexer.commitChannels(source: src, categories: cats, channels: channels) }
-        _ = try timed("import 40,000 movies", 60) { try c.indexer.commitMovies(source: src, categories: [], movies: movies) }
+        // Changed: the two imports run in a detached task (the indexer is Sendable and the app imports off the main thread too). Inline they held the main actor for about ten seconds
+        // in one piece in a full run, and every other main-actor test waited. Same budgets.
+        let indexer = c.indexer
+        try await Task.detached(priority: .userInitiated) {
+            _ = try Self.timedOff("import 100,000 channels", 120) { try indexer.commitChannels(source: src, categories: cats, channels: channels) }
+            _ = try Self.timedOff("import 40,000 movies", 60) { try indexer.commitMovies(source: src, categories: [], movies: movies) }
+        }.value
 
         let folderList = try timed("sidebar folder list (120 folders, with counts)", 3) { try c.catalog.categories(sourceID: src.id, kind: .channel, includeHidden: false) }
         #expect(folderList.count == folders && folderList.reduce(0) { $0 + $1.itemCount } > 0)

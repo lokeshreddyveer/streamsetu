@@ -17,13 +17,15 @@ import AppKit
 
     private func paused(_ web: WKWebView) async -> Bool { ((try? await web.evaluateJavaScript("document.getElementById('a').paused")) as? Bool) ?? true }          // test-only read of the local fixture
 
-    @Test func switchingToAnotherServicePausesTheFirstAndNeverResumesIt() async throws {
+    // Changed from "switching pauses the first": a service now keeps playing while another destination shows (owner request). It stops only when
+    // something else starts playing (ServiceMediaPolicy), and still never resumes by itself.
+    @Test func switchingToAnotherServiceKeepsTheFirstPlayingUntilSomethingElseStarts() async throws {
         let server = try ServiceFixtureServer(); server.media = wav(); try await server.start(); defer { server.stop() }
         _ = NSApplication.shared
         let r = ServiceWebLifecycleTests.registry(server)
         let nav = ServiceNavigation(capabilities: .macOS); nav.hosts = r
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 600), styleMask: [.titled], backing: .buffered, defer: false)
-        defer { nav.returnToStreamSetu(); r.handleMemoryPressure(critical: true); win.contentView = nil }
+        defer { nav.returnToStreamSetu(); r.pauseAll(); r.handleMemoryPressure(critical: true); win.contentView = nil }
         nav.select(.youtube)
         let first = try #require(r.model(for: .youtube))
         win.contentView = first.hostedView(); first.hostedView().frame = win.contentView!.bounds
@@ -39,12 +41,17 @@ import AppKit
             playing = await web.requestMediaPlaybackState() == .playing
         }
         #expect(playing, "the silent local audio started playing before the switch")
-        nav.select(.hulu)          // service to service: the first stops first
-        try? await Task.sleep(for: .milliseconds(600))
+        nav.select(.hulu)          // service to service: the first keeps playing, in the background
+        try? await Task.sleep(for: .milliseconds(800))
+        let during = await web.requestMediaPlaybackState()
+        print("MEASURE media switch: playing before=\(playing), state while another service shows=\(during.rawValue)")
+        let stillPaused = await paused(web)
+        #expect(during == .playing && !stillPaused, "switching does not stop the sound")
+        #expect(!first.isMediaSuspended, "a background service is not suspended")
+        r.otherMediaStarted(from: .service(.hulu))          // the other service starts playing: only now the first stops
         var after = await web.requestMediaPlaybackState(), isPaused = await paused(web)
-        for _ in 0..<20 where after == .playing || !isPaused { try? await Task.sleep(for: .milliseconds(250)); after = await web.requestMediaPlaybackState(); isPaused = await paused(web) }          // the pause is asynchronous: wait for it, bounded
-        print("MEASURE media switch: playing before=\(playing), after switch state=\(after.rawValue) paused=\(isPaused)")
-        #expect(after != .playing && isPaused, "switching stops the sound")
+        for _ in 0..<20 where after == .playing || !isPaused { try? await Task.sleep(for: .milliseconds(250)); after = await web.requestMediaPlaybackState(); isPaused = await paused(web) }
+        #expect(after != .playing && isPaused, "another service starting stops it")
         nav.select(.youtube)
         try? await Task.sleep(for: .milliseconds(800))
         let back = await web.requestMediaPlaybackState()
@@ -68,14 +75,18 @@ import AppKit
         await r.pauseAllAndWait()          // completion is awaited: returns only after every page has paused
         #expect(a.webView != nil && b.webView != nil, "pausing never releases or reloads")
         #expect(a.phase == .ready && b.phase == .ready)
-        a.serviceBecameHidden(); b.serviceBecameHidden(); r.handleMemoryPressure(critical: true)
+        a.serviceBecameHidden(); b.serviceBecameHidden()
+        r.pauseAll()          // Changed: the pages' paused state is also recorded (critical pressure keeps a view that is still recorded as playing)
+        r.handleMemoryPressure(critical: true)
         #expect(r.liveIDs.isEmpty)
     }
 
+    // Changed: `ServiceGuardActions.playerStarted` is gone; the coordinator does it (see AudioOwnershipTests for the full matrix).
     @Test func theAppsOwnPlayerStartingStopsServiceMedia() {
-        var stopped = 0
-        ServiceGuardActions.playerStarted(pauseServiceMedia: { stopped += 1 })
-        #expect(stopped == 1)
+        let o = AudioOwnership(); let service = FakeAudioParticipant(.service(.hulu), playing: true)
+        o.register(service)
+        o.claim(.nativePlayer, reason: .nativePlay)
+        #expect(!service.isPlaying)
     }
 
     @Test func noMediaCallResumesOrUsesPrivateWays() throws {
@@ -101,8 +112,11 @@ import AppKit
         var playing = false
         for _ in 0..<30 where !playing { try? await Task.sleep(for: .milliseconds(300)); playing = await web.requestMediaPlaybackState() == .playing }
         #expect(!m.isMediaSuspended, "a showing service is not suspended")
+        // Changed: hiding alone no longer suspends (a hidden service keeps playing); a stop rule (another service or the player starts) does.
         m.serviceBecameHidden()
-        #expect(m.isMediaSuspended, "hiding suspends playback, not only a one-off pause")
+        #expect(!m.isMediaSuspended, "hiding alone does not suspend playback")
+        m.pauseMedia()
+        #expect(m.isMediaSuspended, "a stop rule suspends playback, not only a one-off pause")
         // the page asks to play every 150 ms: for two seconds it must never be playing
         var everPlaying = false
         for _ in 0..<10 { try? await Task.sleep(for: .milliseconds(200)); if await web.requestMediaPlaybackState() == .playing { everPlaying = true } }
@@ -130,7 +144,8 @@ import AppKit
             playing = await web.requestMediaPlaybackState() == .playing
         }
         #expect(playing)
-        m.serviceBecameHidden()
+        m.serviceBecameHidden()          // changed: hiding keeps playing; the stop rule is what pauses and suspends
+        m.pauseMedia()
         #expect(await ServiceTestSupport.until(10) { m.isMediaSuspended })
         try? await Task.sleep(for: .milliseconds(600))
         m.serviceBecameVisible()

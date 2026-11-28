@@ -1,0 +1,145 @@
+{
+ "onResponseReceivedActions": [
+  {
+   "openPopupAction": {
+    "popup": {
+     "dismissableDialogRenderer": {
+      "title": "Song credits",
+      "sections": [
+       {
+        "dismissableDialogContentSectionRenderer": {
+         "title": {
+          "runs": [
+           {
+            "text": "Performed by"
+           }
+          ]
+         },
+         "subtitle": {
+          "runs": [
+           {
+            "text": "Mukesh"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "dismissableDialogContentSectionRenderer": {
+         "title": {
+          "runs": [
+           {
+            "text": "Written by"
+           }
+          ]
+         },
+         "subtitle": {
+          "runs": [
+           {
+            "text": "Shankar-jaikishan"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "dismissableDialogContentSectionRenderer": {
+         "title": {
+          "runs": [
+           {
+            "text": "Produced by"
+           }
+          ]
+         },
+         "subtitle": {
+          "runs": [
+           {
+            "text": "N/a"
+           }
+          ]
+         }
+        }
+       }
+      ],
+      "metadata": {
+       "musicMultiRowListItemRenderer": {
+        "thumbnail": {
+         "musicThumbnailRenderer": {
+          "thumbnail": {
+           "thumbnails": [
+            {
+             "url": "https://yt3.googleusercontent.com/ZLZDMn0E0qHLbDNR32bu2xeT6tm_RjxiFiklRc0xs-TfSSu316HlLyWKLd_hbGYcJI8a3ps7wqQ1JuH8=w60-h60-l90-rj",
+             "width": 60,
+             "height": 60
+            }
+           ]
+          },
+          "thumbnailCrop": "MUSIC_THUMBNAIL_CROP_UNSPECIFIED",
+          "thumbnailScale": "MUSIC_THUMBNAIL_SCALE_ASPECT_FIT"
+         }
+        },
+        "subtitle": {
+         "runs": [
+          {
+           "text": "Mukesh",
+           "navigationEndpoint": {
+            "browseEndpoint": {
+             "browseId": "UCfIz1rBXcbgR4D4QW_ee_1g",
+             "browseEndpointContextSupportedConfigs": {
+              "browseEndpointContextMusicConfig": {
+               "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+              }
+             }
+            }
+           }
+          }
+         ]
+        },
+        "title": {
+         "runs": [
+          {
+           "text": "Awara Hoon",
+           "navigationEndpoint": {
+            "watchEndpoint": {
+             "videoId": "pToh0-oCCj8",
+             "watchEndpointMusicSupportedConfigs": {
+              "watchEndpointMusicConfig": {
+               "musicVideoType": "MUSIC_VIDEO_TYPE_ATV"
+              }
+             }
+            }
+           }
+          }
+         ]
+        },
+        "secondTitle": {
+         "runs": [
+          {
+           "text": "Song"
+          },
+          {
+           "text": " • "
+          },
+          {
+           "text": "2000"
+          }
+         ]
+        },
+        "description": {
+         "runs": [
+          {
+           "text": "Lyrics not available"
+          }
+         ]
+        },
+        "displayStyle": "MUSIC_MULTI_ROW_LIST_ITEM_DISPLAY_STYLE_SIMPLE_EXPANDED"
+       }
+      },
+      "displayStyle": "DISMISSABLE_DIALOG_DISPLAY_STYLE_TRACK_CREDITS"
+     }
+    },
+    "popupType": "DIALOG"
+   }
+  }
+ ]
+}

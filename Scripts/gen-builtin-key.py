@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes the (gitignored) Swift file that carries one optional built-in service key, scrambled.
 
-usage: gen-builtin-key.py NAME OUT.swift        NAME is tmdb, fanart or tvdb
+usage: gen-builtin-key.py NAME OUT.swift        NAME is tmdb, fanart, tvdb, lastfm, lastfmsecret, acoustid or setlistfm
 The key comes from the environment variable named below or from ~/Documents/keys/<file> (the folder can be moved with $STREAMSETU_KEYS_DIR).
 With neither, OUT is deleted and the build simply has no built-in key. The key is never printed. In the file it exists only as bytes XOR-ed with a fresh
 random mask, split into shuffled chunks; the mask is stored apart, and the program joins them in memory only while a request is being made.
@@ -12,6 +12,11 @@ KEYS = {
     "tmdb":   ("STREAMSETU_TMDB_TOKEN", "tmdb-read-token.txt", "GeneratedTMDB", "STREAMSETU_BUILTIN_TMDB"),
     "fanart": ("STREAMSETU_FANART_KEY", "fanart-api-key.txt", "GeneratedFanart", "STREAMSETU_BUILTIN_FANART"),
     "tvdb":   ("STREAMSETU_TVDB_KEY", "thetvdb-api-key.txt", "GeneratedTVDB", "STREAMSETU_BUILTIN_TVDB"),
+    # Last.fm has two values in one file (lines api_key=... and shared_secret=...): the part after # names the line.
+    "lastfm":       ("STREAMSETU_LASTFM_KEY", "lastfm-api-key.txt#api_key", "GeneratedLastFM", "STREAMSETU_BUILTIN_LASTFM"),
+    "setlistfm": ("STREAMSETU_SETLISTFM_KEY", "setlistfm-api-key.txt", "GeneratedSetlistFM", "STREAMSETU_BUILTIN_SETLISTFM"),
+    "acoustid": ("STREAMSETU_ACOUSTID_APP_KEY", "acoustid-application-key.txt", "GeneratedAcoustID", "STREAMSETU_BUILTIN_ACOUSTID"),
+    "lastfmsecret": ("STREAMSETU_LASTFM_SECRET", "lastfm-api-key.txt#shared_secret", "GeneratedLastFMSecret", "STREAMSETU_BUILTIN_LASTFM_SECRET"),
 }
 
 def main(name, out):
@@ -19,9 +24,17 @@ def main(name, out):
     tok = os.environ.get(env, "").strip()
     if not tok:
         d = os.environ.get("STREAMSETU_KEYS_DIR") or os.path.expanduser("~/Documents/keys")
+        fname, _, field = fname.partition("#")
         p = os.path.join(d, fname)
         if os.path.isfile(p):
-            tok = open(p).read().strip()
+            text = open(p).read()
+            if field:
+                for line in text.splitlines():
+                    k, _, v = line.partition("=")
+                    if k.strip() == field:
+                        tok = v.strip()
+            else:
+                tok = text.strip()
     if not tok or any(c.isspace() for c in tok):
         if os.path.exists(out):
             os.remove(out)
@@ -49,5 +62,5 @@ def main(name, out):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3 or sys.argv[1] not in KEYS:
-        sys.exit("usage: gen-builtin-key.py tmdb|fanart|tvdb OUT.swift")
+        sys.exit("usage: gen-builtin-key.py tmdb|fanart|tvdb|lastfm|lastfmsecret|acoustid|setlistfm OUT.swift")
     main(sys.argv[1], sys.argv[2])

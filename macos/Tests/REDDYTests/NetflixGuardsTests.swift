@@ -16,13 +16,16 @@ import AppKit
         #expect(collapsed == 1 && paused == 1)
     }
 
+    // Changed: the shell no longer pauses services when `isActive` turns on; the player claims the audio before it starts (PlaybackCoordinator.claimAudio).
     @Test func theNativePlayerStartingStopsTheServiceMedia() {
-        var stopped = 0
-        ServiceGuardActions.playerStarted(pauseServiceMedia: { stopped += 1 })
-        #expect(stopped == 1)
+        let o = AudioOwnership(); let service = FakeAudioParticipant(.service(.hulu), playing: true)
+        o.register(service)
+        o.claim(.nativePlayer, reason: .nativePlay)
+        #expect(service.pauseCount == 1 && !service.isPlaying)
     }
 
-    @Test func kidsLockAndSearchLeaveTheServiceAndStopItsMedia() {
+    // Changed: search is no longer in this list; it leaves the service but does not stop its media (see aSearchWhileAServiceShowsLeavesIt).
+    @Test func kidsLockAndBlockLeaveTheServiceAndStopItsMedia() {
         for _ in 0..<3 {
             let nav = ServiceNavigation(capabilities: .macOS)
             nav.select(.netflix)
@@ -40,8 +43,9 @@ import AppKit
         nav.attach(to: router); nav.select(.netflix)
         router.searchQuery = "matrix"
         #expect(router.isSearching)
-        ServiceGuardActions.leave(services: nav, pauseServiceMedia: {})          // what the shell does when isSearching turns on
+        ServiceGuardActions.searchStarted(services: nav)          // what the shell does when isSearching turns on: back to StreamSetu, media untouched
         #expect(nav.navExpanded)
+        #expect(ServiceMediaPolicy.searchStarted().isEmpty, "typing in the top search never pauses a service")
     }
 
     // MARK: navigation errors -> the state the person sees

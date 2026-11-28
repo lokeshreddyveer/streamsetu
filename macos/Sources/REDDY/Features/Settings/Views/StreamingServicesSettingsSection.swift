@@ -304,6 +304,20 @@ struct StreamingServicesSettingsSection: View {
     @Environment(\.streamingServicesActions) private var actions
     @State private var model = StreamingServicesSettingsModel()
 
+    @State private var keepPlaying = ServicePreferences.keepsPlayingInBackground()
+
+    /// "Keep services playing in the background". Honest wording: a service that is not on screen keeps playing only as far as the system and the web engine allow.
+    private var keepPlayingToggle: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle(isOn: Binding(get: { keepPlaying }, set: { keepPlaying = $0; ServicePreferences.setKeepsPlayingInBackground($0); actions.preferencesChanged?() })) {
+                Text("Keep services playing in the background")
+            }
+            .atlas("control.settings.servicesKeepPlaying")
+            Text("A service keeps playing when you switch away and stops when something else starts. This is best effort: it depends on what macOS and the service's page allow when the page is not on screen. Off, switching away pauses it.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     var body: some View {
         SettingsGroup(title: "Streaming Services", footer: "Pin services to the top bar and put them in order. Unpinning only hides a service from the bar; it never signs you out or clears anything. Each service keeps its own sign-in on this Mac. Signing in with Google is allowed; if a sign-in page says this browser or app is not secure, that page refuses embedded browsers and StreamSetu cannot change it.") {
             VStack(alignment: .leading, spacing: 16) {
@@ -311,6 +325,7 @@ struct StreamingServicesSettingsSection: View {
                     Text(verbatim: note).font(Typography.row).foregroundStyle(ColorTokens.textSecondary).fixedSize(horizontal: false, vertical: true)
                 }
                 TopBarSettingsGroup(model: model)
+                keepPlayingToggle
                 ForEach(model.rows) { row in
                     ServiceSettingsRow(row: row, model: model, enhancements: model.enhancements, canClear: model.canClear)
                 }

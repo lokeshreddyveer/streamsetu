@@ -210,14 +210,17 @@ import SwiftUI
         // Past the story's length the frame is the lockup, however late the frame is drawn.
         #expect(c.storyTime(at: first.addingTimeInterval(30)) == Double(OpeningVariant.firstInstall.holdMs))
         c.destinationReady(ok: true, hasSources: false)
+        // The story's clock begins when the app's start-up is done (while the screen is still dark): its start is read after that.
+        let begun = c.startedAt
+        #expect(begun >= first)
         // Nothing ends it early: only the time.
-        c.advance(to: first.addingTimeInterval(Double(OpeningVariant.firstInstall.holdMs) / 1000 - 0.5))
+        c.advance(to: begun.addingTimeInterval(Double(OpeningVariant.firstInstall.holdMs) / 1000 - 0.5))
         #expect(c.state == .animating)
-        c.advance(to: first.addingTimeInterval(Double(OpeningVariant.firstInstall.holdMs) / 1000))
+        c.advance(to: begun.addingTimeInterval(Double(OpeningVariant.firstInstall.holdMs) / 1000))
         #expect(c.state == .transitioning)
         let revealed = try #require(c.revealedAt)
         #expect(c.layerOpacity(at: revealed) == 1)
-        #expect(c.layerOpacity(at: revealed.addingTimeInterval(Double(OpeningVariant.firstInstall.exitMs) / 1000)) <= 0.0001)
+        #expect(c.layerOpacity(at: revealed.addingTimeInterval(Double(c.exitMs(.firstInstall)) / 1000)) <= 0.0001)
         // Once the app is revealed the layer takes no input.
         #expect(!c.blocksInput)
     }

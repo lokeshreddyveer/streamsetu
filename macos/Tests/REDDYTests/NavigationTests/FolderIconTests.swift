@@ -3,22 +3,24 @@ import Testing
 
 @Suite("Folder icons") struct FolderIconTests {
     @Test func namesGetFittingSymbols() {
-        let cases: [(String, String)] = [
-            ("News", "newspaper"), ("UK | Entertainment", "theatermasks"), ("Sports HD", "sportscourt"), ("Cricket Live", "figure.cricket"),
-            ("Kids", "teddybear.fill"), ("Documentary", "globe.europe.africa"), ("Music", "music.note"), ("Radio | Pop", "dot.radiowaves.left.and.right"),
-            ("NETFLIX MOVIES", "play.rectangle"), ("Marvel Movies Collection", "film"), ("Romantic Movies", "heart"), ("US | Premium", "crown"),
-            ("INDIAN (4K)", "globe.asia.australia"), ("Weather", "cloud.sun"), ("Shopping", "bag"), ("Arabic News", "newspaper"),
+        // each name and the symbols its first matching rule may give (the first one this Mac has is used)
+        let cases: [(String, Set<String>)] = [
+            ("News", ["newspaper", "newspaper.fill"]), ("UK | Entertainment", ["theatermasks", "tv"]), ("Sports HD", ["sportscourt", "trophy"]), ("Cricket Live", ["figure.cricket", "sportscourt"]),
+            ("Kids", ["teddybear.fill", "figure.and.child.holdinghands", "face.smiling"]), ("Documentary", ["globe.europe.africa", "binoculars"]), ("Music", ["music.note", "music.quarternote.3"]),
+            ("Radio | Pop", ["dot.radiowaves.left.and.right", "radio"]), ("NETFLIX MOVIES", ["film", "film.stack"]), ("Marvel Movies Collection", ["film", "film.stack"]),
+            ("Romantic Movies", ["heart", "heart.fill"]), ("US | Premium", ["crown", "star.fill"]), ("INDIAN (4K)", ["4k.tv", "tv"]), ("Weather", ["cloud.sun", "cloud.sun.fill"]),
+            ("Shopping", ["bag", "cart"]), ("Arabic News", ["newspaper", "newspaper.fill"]),
         ]
-        for (name, expected) in cases { #expect(FolderIcons.symbol(for: name) == expected || FolderIcons.symbol(for: name) != "folder", "“\(name)”") }
+        for (name, allowed) in cases { #expect(allowed.contains(FolderIcons.symbol(for: name)), "“\(name)” → \(FolderIcons.symbol(for: name))") }
         #expect(FolderIcons.symbol(for: "News") == "newspaper")
         #expect(FolderIcons.symbol(for: "Sports") == "sportscourt")
-        #expect(FolderIcons.symbol(for: "Kids") != "folder")
+        #expect(FolderIcons.symbol(for: "Kids") == "teddybear.fill")
     }
 
     @Test func unknownNamesAndNearMissesGetAPlainFolder() {
         #expect(FolderIcons.symbol(for: "Zxqv 12") == "folder")
         #expect(FolderIcons.symbol(for: "") == "folder")
-        #expect(FolderIcons.symbol(for: "Newsroom Plus") == "folder" || FolderIcons.symbol(for: "Newsroom Plus") == "newspaper")
+        #expect(FolderIcons.symbol(for: "Newsroom Plus") == "newspaper", "a word start counts for words longer than three letters")
         #expect(FolderIcons.symbol(for: "Business") == "folder", "“us” inside a word doesn't count")
     }
 

@@ -43,20 +43,23 @@ final class PodcastCatalogService: @unchecked Sendable {
     private let fetch: @Sendable (URL) async throws -> Data
     private let directory: URL
     private let now: @Sendable () -> Date
-    let region: String
+    /// The region the charts are asked for: the one given to the initialiser (tests), else the person's choice in setup, else the system's.
+    private let fixedRegion: String?
+    var region: String { fixedRegion ?? PodcastCatalogService.region() }
 
-    init(region: String = PodcastCatalogService.region(), directory: URL = PodcastCatalogService.defaultDirectory, now: @escaping @Sendable () -> Date = { Date() },
+    init(region: String? = nil, directory: URL = PodcastCatalogService.defaultDirectory, now: @escaping @Sendable () -> Date = { Date() },
          fetch: @escaping @Sendable (URL) async throws -> Data = { url in
              var r = URLRequest(url: url, timeoutInterval: 20); r.setValue("StreamSetu", forHTTPHeaderField: "User-Agent")
              return try await HTTPClient.app.exchange(r).data
          }) {
-        self.region = region; self.directory = directory; self.now = now; self.fetch = fetch
+        self.fixedRegion = region; self.directory = directory; self.now = now; self.fetch = fetch
     }
 
     static var defaultDirectory: URL { FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("podcast-catalog", isDirectory: true) }
 
     /// The two-letter region of the system locale, lower case; "us" when there is none.
     static func region(_ locale: Locale = .current) -> String {
+        if locale == .current, let chosen = PodcastPreferences.region() { return chosen }
         let r = locale.region?.identifier.lowercased() ?? ""
         return r.count == 2 && r.allSatisfy(\.isLetter) ? r : "us"
     }

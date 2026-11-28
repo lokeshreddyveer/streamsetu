@@ -117,7 +117,7 @@ import AppKit
     func stateA() {
         let row = TopBarMenuRow.make(for: state(width: 1440, pinned: [.netflix, .hulu]))
         #expect(row.items.map(\.title) == ["Home", "Live TV", "Movies", "Series", "TV Guide", "Podcasts", "Netflix", "Hulu", "Services"])
-        #expect(row.items.filter(\.compact).map(\.title) == ["Netflix", "Hulu"])
+        #expect(row.items.filter(\.compact).map(\.title) == ["Netflix", "Hulu", "Services"], "the Services button is an icon only")
         #expect(row.chip == nil && row.overflow.isEmpty)
         #expect(row.items.first { $0.title == "Netflix" }?.atlas == "control.nav.netflix")
         #expect(row.items.first { $0.title == "Hulu" }?.atlas == "control.nav.service")

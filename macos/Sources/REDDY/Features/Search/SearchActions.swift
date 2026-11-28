@@ -17,8 +17,15 @@ enum SearchActions {
         case .folder(let categoryID, let kind):
             useFor(r.sourceID, state)
             router.openFolder(kind == .channel ? .liveTV : kind == .movie ? .movies : .series, categoryID: categoryID)
-        case .collection:
+        case .collection(let id):
+            router.pendingCollectionID = id
             router.go(.collections)
+        case .podcast(let feedURL, let title, let author, let artwork):
+            router.go(.podcasts)
+            PodcastsHub.shared.open(PodcastSubscription(feedURL: feedURL, title: title, author: author, artwork: artwork))
+        case .music(let target):
+            router.go(.music)
+            MusicSearchOpener.open(target)
         }
     }
 

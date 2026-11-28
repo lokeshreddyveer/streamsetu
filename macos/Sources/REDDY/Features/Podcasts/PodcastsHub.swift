@@ -67,11 +67,13 @@ final class PodcastsHub {
     }
 
     /// Connects Podcasts to the running app: the same followed shows as the Files window, the library player that a podcast stops, services' media, the media keys.
-    func attach(container: AppContainer, pauseServices: @escaping () -> Void) {
+    func attach(container: AppContainer, ownership: AudioOwnership = .shared) {
         service = container.podcasts; reloadFollowing()
-        let playback = container.playback
-        player.stopLibrary = { if playback.current != nil { playback.stop() } }
-        player.pauseServices = pauseServices
+        let player = self.player
+        // Podcasts is one participant of the audio coordinator: another source taking the audio pauses it (the native player is stopped by Podcasts, not the reverse).
+        ownership.register(ClosureAudioParticipant(.podcasts, isPlaying: { player.isPlaying }, pause: { player.pause() }))
+        player.claimAudio = { [weak ownership] in _ = ownership?.claim(.podcasts, reason: .podcastPlay) }
+        player.releaseAudio = { [weak ownership] in _ = ownership?.release(.podcasts, reason: .stopped) }
         if remote == nil { let r = PodcastRemote(player: player, artwork: container.artwork); r.isLocked = { [weak container] in container?.appLock.isLocked ?? false }; remote = r }
     }
 

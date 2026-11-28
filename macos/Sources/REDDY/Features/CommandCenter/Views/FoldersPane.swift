@@ -19,7 +19,9 @@ final class FolderOrderViewModel {
     }
 
     func move(from: IndexSet, to: Int, _ c: AppContainer, _ state: AppState) {
+        let before = folders.map(\.id)
         folders.move(fromOffsets: from, toOffset: to)
+        guard folders.map(\.id) != before else { return }          // dropped where it was: nothing is saved
         save(c, state)
     }
 
@@ -42,7 +44,7 @@ final class FolderOrderViewModel {
         Task {
             await Task.detached { try? c.catalog.clearFolderOrder(ids) }.value
             await load(c, sourceID: sourceID, kind: kind)
-            state.reloadFolders()
+            state.folderLayoutSaved()
             say("Back to the provider's order")
         }
     }
@@ -51,7 +53,7 @@ final class FolderOrderViewModel {
         if on { hidden.insert(id) } else { hidden.remove(id) }
         Task {
             await Task.detached { if on { try? c.favoritesRepo.hide(id, kind: "category") } else { try? c.favoritesRepo.unhide(id) } }.value
-            state.reloadFolders()
+            state.folderLayoutSaved()
         }
     }
 
@@ -59,7 +61,7 @@ final class FolderOrderViewModel {
         let ids = folders.map(\.id)
         Task {
             await Task.detached { try? c.catalog.setFolderOrder(ids) }.value
-            state.reloadFolders()
+            state.folderLayoutSaved()
             say("Order saved")
         }
     }
@@ -106,7 +108,7 @@ struct FoldersPane: View {
                 List {
                     ForEach(shown) { f in
                         FolderRow(folder: f, hidden: vm.hidden.contains(f.id), canReorder: query.isEmpty,
-                                  lock: container?.parental.hasPIN == true ? (container?.parental.isLocked(f.id) ?? false) : nil,
+                                  lock: container?.parental.canChangeFolderLocks == true ? (container?.parental.isLocked(f.id) ?? false) : nil,
                                   onLock: { if let p = container?.parental { if !p.setFolder(f.id, locked: $0) { router.modal = .unlockRestricted } } },
                                   onHide: { if let c = container { vm.setHidden($0, f.id, c, state) } },
                                   onShift: { d, edge in if let c = container { vm.shift(f.id, by: d, toEdge: edge, c, state) } })
@@ -128,7 +130,7 @@ private struct FolderRow: View {
     let folder: CatalogCategory
     let hidden: Bool
     let canReorder: Bool
-    /// nil when no PIN exists (no lock control); otherwise whether this folder is locked.
+    /// nil when no PIN exists or a kids profile is in use (no lock control); otherwise whether this folder is locked.
     var lock: Bool?
     var onLock: (Bool) -> Void = { _ in }
     let onHide: (Bool) -> Void

@@ -1,0 +1,97 @@
+{
+ "type": "Person",
+ "name": "G. V. Prakash Kumar",
+ "id": "a740619d-27d6-46da-a438-7b9bc70d6633",
+ "relations": [
+  {
+   "end": null,
+   "target-type": "url",
+   "direction": "forward",
+   "type-id": "769085a1-c2f7-4c24-a532-2375a77693bd",
+   "source-credit": "",
+   "attribute-values": {},
+   "type": "free streaming",
+   "ended": false,
+   "attribute-ids": {},
+   "attributes": [],
+   "url": {
+    "resource": "https://open.spotify.com/artist/5VVN3xZw1i2qihfITZlvCZ",
+    "id": "bf2039a9-ff0f-4b69-b127-35409de14baa"
+   },
+   "target-credit": "",
+   "begin": null
+  },
+  {
+   "target-type": "url",
+   "direction": "forward",
+   "end": null,
+   "source-credit": "",
+   "attribute-values": {},
+   "type-id": "769085a1-c2f7-4c24-a532-2375a77693bd",
+   "ended": false,
+   "attribute-ids": {},
+   "type": "free streaming",
+   "url": {
+    "id": "77871b01-164d-4da3-8c85-496a8b02883d",
+    "resource": "https://www.deezer.com/artist/4102526"
+   },
+   "target-credit": "",
+   "begin": null,
+   "attributes": []
+  },
+  {
+   "type": "free streaming",
+   "ended": false,
+   "attribute-ids": {},
+   "attributes": [],
+   "target-credit": "",
+   "url": {
+    "resource": "https://www.deezer.com/artist/5769405",
+    "id": "8a1d6865-ed17-46dc-b17c-8fe6fea80e51"
+   },
+   "begin": null,
+   "end": null,
+   "target-type": "url",
+   "direction": "forward",
+   "type-id": "769085a1-c2f7-4c24-a532-2375a77693bd",
+   "attribute-values": {},
+   "source-credit": ""
+  },
+  {
+   "target-credit": "",
+   "url": {
+    "resource": "https://www.imdb.com/name/nm1574854/",
+    "id": "04200934-07c6-4945-8493-d2abe0854aa9"
+   },
+   "begin": null,
+   "attributes": [],
+   "ended": false,
+   "attribute-ids": {},
+   "type": "IMDb",
+   "attribute-values": {},
+   "source-credit": "",
+   "type-id": "94c8b0cc-4477-4106-932c-da60e63de61c",
+   "target-type": "url",
+   "direction": "forward",
+   "end": null
+  },
+  {
+   "type-id": "689870a4-a1e4-4912-b17f-7b2664215698",
+   "attribute-values": {},
+   "source-credit": "",
+   "end": null,
+   "direction": "forward",
+   "target-type": "url",
+   "attributes": [],
+   "begin": null,
+   "target-credit": "",
+   "url": {
+    "resource": "https://www.wikidata.org/wiki/Q5512526",
+    "id": "f17e8739-b33a-4eac-862f-53a3c3187aa7"
+   },
+   "type": "wikidata",
+   "attribute-ids": {},
+   "ended": false
+  }
+ ]
+}

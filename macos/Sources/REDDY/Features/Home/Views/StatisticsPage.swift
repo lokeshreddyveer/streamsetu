@@ -4,10 +4,15 @@ import SwiftUI
 struct StatisticsPage: View {
     @Environment(\.container) private var container
     @Environment(AppState.self) private var state
+    @Environment(AppRouter.self) private var router
     @Environment(\.reddyAccent) private var accent
     @State private var range = Range.month
     @State private var stats: ViewingStatistics?
     @State private var confirmReset = false
+    @State private var area = Area.viewing
+
+    /// Viewing statistics are the original page; Music shows listening statistics counted on this device.
+    enum Area: String, CaseIterable, Identifiable { case viewing = "Viewing", music = "Music"; var id: Self { self } }
 
     enum Range: String, CaseIterable, Identifiable {
         case week = "7 days", month = "30 days", all = "All time"
@@ -21,14 +26,25 @@ struct StatisticsPage: View {
         }
     }
 
+    /// A top artist whose credit was linked opens its page in Music, on the source its songs came from; a plain-line credit has no id to open and stays disabled.
+    private func openMusicArtist(_ top: MusicTopArtist) {
+        guard let id = top.linkedID, !top.providerID.isEmpty else { return }
+        router.onOpenMusic?()
+        MusicHub.shared.open(artist: MusicArtist(id: id, providerID: top.providerID, name: top.name, thumbnails: top.thumbnails))
+    }
+
     var body: some View {
         PageScroll(title: "Statistics", trailing: AnyView(controls)) {
-            if let container { WeeklyDigestCard(container: container) }
-            if let s = stats {
-                if s.isEmpty {
-                    EmptyStateView(symbol: "chart.bar", title: "Nothing to show yet", message: "Watch something and your viewing time appears here. It covers everyone who uses this Mac, and your other devices when iCloud sync is on.").frame(height: 260)
-                } else { content(s) }
-            } else { ProgressView().controlSize(.small) }
+            if area == .music {
+                MusicStatsView(stats: MusicStats.shared, onOpenArtist: openMusicArtist)
+            } else {
+                if let container { WeeklyDigestCard(container: container) }
+                if let s = stats {
+                    if s.isEmpty {
+                        EmptyStateView(symbol: "chart.bar", title: "Nothing to show yet", message: "Watch something and your viewing time appears here. It covers everyone who uses this Mac, and your other devices when iCloud sync is on.").frame(height: 260)
+                    } else { content(s) }
+                } else { ProgressView().controlSize(.small) }
+            }
         }
         .task(id: "\(range.rawValue)-\(state.catalogVersion)") { await load() }
         .confirmationDialog("Reset viewing statistics?", isPresented: $confirmReset, titleVisibility: .visible) {
@@ -38,9 +54,13 @@ struct StatisticsPage: View {
 
     private var controls: some View {
         HStack(spacing: 10) {
-            Picker("Range", selection: $range) { ForEach(Range.allCases) { Text($0.rawValue).tag($0) } }
-                .pickerStyle(.segmented).labelsHidden().fixedSize().atlas("screen.shortcut.statistics")
-            Button { confirmReset = true } label: { Label("Reset", systemImage: "trash") }.disabled(stats?.isEmpty ?? true).atlas("screen.shortcut.statistics")
+            Picker("Statistics for", selection: $area) { ForEach(Area.allCases) { Text($0.rawValue.loc).tag($0) } }
+                .pickerStyle(.segmented).labelsHidden().fixedSize().atlas("control.statistics.area")
+            if area == .viewing {
+                Picker("Range", selection: $range) { ForEach(Range.allCases) { Text($0.rawValue).tag($0) } }
+                    .pickerStyle(.segmented).labelsHidden().fixedSize().atlas("screen.shortcut.statistics")
+                Button { confirmReset = true } label: { Label("Reset", systemImage: "trash") }.disabled(stats?.isEmpty ?? true).atlas("screen.shortcut.statistics")
+            }
         }
     }
 

@@ -20,6 +20,11 @@ enum IntentDetector {
         }
         if starts(["hi", "hello", "hey", "thanks", "thank you", "good morning", "good evening"]) && t.split(separator: " ").count <= 4 { return Result(intent: .chat, value: nil) }
         if has(["shortcut", "shortcuts", "hotkey", "hotkeys", "keyboard", "key for", "key to", "keys", "⌘", "cmd", "command k"]) { return Result(intent: .shortcutFor, value: nil) }
+        // Hinglish and Telugu in Latin letters: the same intents, found by their question words (the topic words are matched as usual).
+        if has(["nahi aa raha", "nahi aa rahi", "nahi aa rahe", "nahi chal raha", "nahi chal rahi", "nahi ho raha", "nahi dikh raha", "nahi mil raha", "kaam nahi kar", "ledu", "enduku", "endhuku", "kyun", "kyu", "kyon", "kyu nahi"]) { return Result(intent: .whyBroken, value: nil) }
+        if has(["kahan", "kahaan", "kidhar", "ekkada", "kahan hai", "kidhar hai"]) { return Result(intent: .whereIs, value: nil) }
+        if has(["kaise", "kese", "kaisay", "kaisey", "ela cheyali", "ela cheyyali", "ela", "cheyali", "cheyyali", "kaise kare", "kaise karu", "kaise karein"]) { return Result(intent: .howDoI, value: nil) }
+        if has(["kya hai", "kya hota", "enti", "idi enti", "matlab kya"]) { return Result(intent: .whatDoes, value: nil) }
         if has(["not working", "does not work", "do not work", "no sound", "black screen", "buffering", "stutters", "stuttering", "lags", "freezes", "freezing", "keeps stopping", "keeps freezing", "empty", "wrong", "broken", "error", "fails", "failing", "wont", "will not", "does not play", "stuck", "out of sync"])
             || starts(["why"]) {
             return Result(intent: .whyBroken, value: nil)

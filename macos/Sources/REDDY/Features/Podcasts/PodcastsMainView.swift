@@ -158,6 +158,19 @@ struct PodcastsDiscoverPage: View {
                 ForEach(cont, id: \.ref.id) { item in PodcastEpisodeCard(hub: hub, ref: item.ref, progress: item.progress) }
             }
         }
+        let mine = PodcastPreferences.genres()
+        if !mine.isEmpty {
+            PodcastsSectionTitle(title: "Your categories")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(mine) { g in
+                        Button { hub.openGenre(g) } label: { Text(LocalizedStringKey(g.title)).font(Typography.bodyMedium).padding(.horizontal, 14).padding(.vertical, 8) }
+                            .buttonStyle(.plain).background(Capsule().fill(ColorTokens.elevated)).overlay(Capsule().strokeBorder(ColorTokens.line))
+                            .accessibilityLabel(Text(LocalizedStringKey(g.title))).atlas("control.podcasts.myCategory")
+                    }
+                }
+            }
+        }
         PodcastsSectionTitle(title: "Top Shows")
         switch hub.top {
         case .idle, .loading: CoverSkeleton()

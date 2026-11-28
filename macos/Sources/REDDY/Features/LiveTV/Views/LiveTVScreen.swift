@@ -2,6 +2,14 @@ import SwiftUI
 
 /// Live TV. Finds the model kept for this profile and playlist (search, list, selection and the loaded channels survive a tab switch) and shows it.
 struct LiveTVScreen: View {
+    /// The Guide understands a group and Favorites; any other Live TV row (Recently Added, Recently Watched...) opens it on all channels.
+    nonisolated static func guideSelection(from s: SidebarSelection) -> SidebarSelection {
+        switch s {
+        case .folder: s
+        case .shortcut(let sc): sc == .favorites ? s : .shortcut(.allChannels)
+        }
+    }
+
     @Environment(\.container) private var container
     @Environment(AppState.self) private var state
 
@@ -51,18 +59,30 @@ private struct LiveTVScreenContent: View {
             await vm.reload(c)
             if !Task.isCancelled { vm.loadedKey = taskKey }
         }
+        // A sidebar click leaves the toolbar's own list, so the click shows what was chosen.
+        .onChange(of: router.selectionTick) { _, _ in vm.listID = nil }   // a click on the row that is already selected also leaves the toolbar's list
+        .onAppear { takeScreenQuery() }
+        .onChange(of: router.screenQuery) { _, _ in takeScreenQuery() }
         .onDisappear { vm.trimForRetention() }
         .task(id: "\(playback?.current?.itemID ?? "")-\(state.catalogVersion)") { if let c = container { await vm.loadDetails(for: currentChannel, c) } }
         .task { while !Task.isCancelled { try? await Task.sleep(nanoseconds: 60_000_000_000); if let c = container { await vm.refreshNowNext(c); await vm.loadDetails(for: currentChannel, c) } } }
     }
 
+    /// A command typed in the top search put words for this list's own search box: they are used once.
+    private func takeScreenQuery() {
+        guard let q = router.takeScreenQuery(for: .liveTV) else { return }
+        vm.listID = nil
+        vm.search = q
+        if let c = container { vm.scheduleSearch(c) }
+    }
+
     // MARK: channel list
 
     private var folderLabel: String {
-        if let id = vm.listID, let l = vm.lists.first(where: { $0.id == id }) { return "List · \(l.name)" }
+        if let id = vm.listID, let l = vm.lists.first(where: { $0.id == id }) { return Localized.string("List") + " · " + l.name }
         switch router.selection {
-        case .folder(let id): return state.folderName(id) ?? "Group"
-        case .shortcut(let s): return s.title
+        case .folder(let id): return state.folderName(id) ?? Localized.string("Group")
+        case .shortcut(let s): return Localized.string(s.title)
         }
     }
 
@@ -140,11 +160,11 @@ private struct LiveTVScreenContent: View {
             Button { state.toggleFavorite(ch.id, kind: .channel) } label: {
                 Label(state.isFavorite(ch.id) ? "Favorited" : "Favorite", systemImage: state.isFavorite(ch.id) ? "heart.fill" : "heart")
             }.buttonStyle(SecondaryButtonStyle()).atlas("control.liveTV.favorite")
-            Button { router.navigate(.guide, .shortcut(.allChannels)) } label: { Label("TV Guide", systemImage: "calendar") }.buttonStyle(SecondaryButtonStyle()).atlas("screen.tab.guide")
+            Button { router.navigate(.guide, LiveTVScreen.guideSelection(from: router.selection)) } label: { Label("TV Guide", systemImage: "calendar") }.buttonStyle(SecondaryButtonStyle()).atlas("screen.tab.guide")
             Button { playback?.isFullscreen = true } label: { Label("Full screen", systemImage: "arrow.up.left.and.arrow.down.right") }.buttonStyle(SecondaryButtonStyle()).atlas("control.liveTV.fullScreen")
             if vm.variants.count > 1 {
                 Menu {
-                    ForEach(vm.variants, id: \.variant.id) { v in Button { play(v.variant) } label: { Label(v.label, systemImage: v.variant.id == ch.id ? "checkmark" : "") } }
+                    ForEach(vm.variants, id: \.variant.id) { v in Button { play(v.variant) } label: { if v.variant.id == ch.id { Label(v.label, systemImage: "checkmark") } else { Text(verbatim: v.label) } } }
                 } label: { Label("Streams", systemImage: "square.stack.3d.up") }.menuStyle(.button).buttonStyle(SecondaryButtonStyle()).fixedSize().atlas("control.liveTV.streams")
             }
             Spacer(minLength: 0)
@@ -245,9 +265,9 @@ struct LiveToolbar: View {
             .accessibilityLabel(listCollapsed ? "Show channel list" : "Hide channel list").atlas("setting.storage.liveChannelListCollapsed")
             if !lists.isEmpty || activeListID != nil {
                 Menu {
-                    Button { activeListID = nil } label: { Label("Everything in this view", systemImage: activeListID == nil ? "checkmark" : "") }
+                    Button { activeListID = nil } label: { if activeListID == nil { Label("Everything in this view", systemImage: "checkmark") } else { Text("Everything in this view") } }
                     Divider()
-                    ForEach(lists) { l in Button { activeListID = l.id } label: { Label("\(l.name) (\(l.itemCount))", systemImage: activeListID == l.id ? "checkmark" : "") } }
+                    ForEach(lists) { l in Button { activeListID = l.id } label: { if activeListID == l.id { Label("\(l.name) (\(l.itemCount))", systemImage: "checkmark") } else { Text(verbatim: "\(l.name) (\(l.itemCount))") } } }
                 } label: { Label(activeListID == nil ? "Lists" : "List on", systemImage: "list.star") }
                     .menuStyle(.button).fixedSize().help("Your own channel lists, like Sports or Kids").atlas("control.liveTV.listFilter")
             }

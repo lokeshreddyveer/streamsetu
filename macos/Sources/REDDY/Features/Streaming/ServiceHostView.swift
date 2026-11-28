@@ -6,10 +6,56 @@ private final class WebContainer: NSView {
     func attach(_ web: NSView) {
         guard web.superview !== self else { return }
         subviews.forEach { $0.removeFromSuperview() }          // a web view made again after clearing replaces the old one
+        ServiceWebParking.shared.unpark(web)
         web.removeFromSuperview()
         web.frame = bounds; web.autoresizingMask = [.width, .height]
         addSubview(web)
     }
+}
+
+/// Where a service's web view waits while another destination shows, WHEN PARKING IS ON. EXPERIMENTAL and OFF by default: `isEnabled` is the one place
+/// that decides, from the UserDefaults key `services.parking.enabled` (absent means off; the integrator can change the default there after measuring).
+/// On: it is a 1 by 1 point clipped view in the main window (an ordinary subview, never hidden), so WebKit sees the page as still in a window and its media
+/// keeps playing; the page keeps its size. Off: the web view is only detached; the model still holds it (retained, not released), and whether WebKit
+/// keeps playing a detached view is what the opt-in continuity test measures (REDDY_BACKGROUND_AUDIO=1, both modes). Ownership, the badge, the router and
+/// eviction do not depend on this switch. It is not part of the accessibility tree and takes no clicks.
+@MainActor final class ServiceWebParking {
+    static let shared = ServiceWebParking()
+    static let defaultsKey = "services.parking.enabled"
+    /// The single decision point for parking. Default false.
+    static func isEnabled(_ defaults: UserDefaults = .standard) -> Bool { defaults.bool(forKey: defaultsKey) }
+    private(set) weak var view: NSView?
+    var defaults: UserDefaults = .standard
+    func register(_ v: NSView?) { view = v }
+    /// Moves a web view into the parking view when parking is on and a window exists; otherwise it is simply detached (the model keeps it).
+    func park(_ web: NSView) {
+        guard Self.isEnabled(defaults), let host = view, host.window != nil else { web.removeFromSuperview(); return }
+        let wasParked = web.superview === host
+        web.autoresizingMask = []
+        host.addSubview(web)
+        if !wasParked { MediaDiagnostics.shared.parked(+1) }
+    }
+    /// A parked view left the parking view (shown again, released).
+    func unpark(_ web: NSView) {
+        guard let host = view, web.superview === host else { return }
+        web.removeFromSuperview(); MediaDiagnostics.shared.parked(-1)
+    }
+}
+
+private final class ParkingView: NSView {
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func accessibilityChildren() -> [Any]? { [] }
+    override func isAccessibilityElement() -> Bool { false }
+}
+
+/// Put once in the main window's background: provides the parking view.
+struct ServiceWebParkingAnchor: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let v = ParkingView(); v.wantsLayer = true; v.layer?.masksToBounds = true
+        ServiceWebParking.shared.register(v); return v
+    }
+    func updateNSView(_ view: NSView, context: Context) { ServiceWebParking.shared.register(view) }
 }
 
 private struct ServiceWebRepresentable: NSViewRepresentable {
@@ -19,7 +65,8 @@ private struct ServiceWebRepresentable: NSViewRepresentable {
     // while the service's data is being cleared must not start a web process on that store.
     func makeNSView(context: Context) -> NSView { let c = WebContainer(); if let w = model.webView { c.attach(w) }; return c }
     func updateNSView(_ view: NSView, context: Context) { if let w = model.webView { (view as? WebContainer)?.attach(w) } }
-    static func dismantleNSView(_ view: NSView, coordinator: ()) { view.subviews.forEach { $0.removeFromSuperview() } }
+    // The web view is parked, not removed: a service keeps playing while another destination shows (it is released by the registry's retention).
+    static func dismantleNSView(_ view: NSView, coordinator: ()) { view.subviews.forEach { ServiceWebParking.shared.park($0) } }
 }
 
 /// A service destination: the web view filling the content area, and StreamSetu's own states over it. No address bar, no tabs. Titles,

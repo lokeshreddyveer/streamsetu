@@ -1,0 +1,8 @@
+fpcalc, from Chromaprint 1.6.2 (https://acoustid.org/chromaprint)
+
+StreamSetu includes Chromaprint 1.6.2 (unmodified source, vendored in Sources/CChromaprint with its LICENSE.md, using Apple's vDSP for the FFT) to make the fingerprint inside the app. Only if a file cannot be read that way does it run fpcalc, a separate program, to turn the first two minutes of a song you choose into a short acoustic fingerprint. The fingerprint and the
+song's length (never the audio) are then sent to AcoustID to recognise the recording.
+
+Chromaprint's own code is MIT licensed. It includes parts of FFmpeg under the GNU Lesser General Public License 2.1, so as a whole it is LGPL 2.1.
+The source of Chromaprint is available at https://github.com/acoustid/chromaprint. fpcalc is not modified, is not linked into StreamSetu, and can be replaced
+by any build of fpcalc that you install: StreamSetu looks for the one you choose in Settings first.

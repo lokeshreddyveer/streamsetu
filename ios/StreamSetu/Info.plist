@@ -2,10 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleLocalizations</key>
-	<array><string>en</string><string>hi</string><string>te</string></array>
-	<key>LSApplicationQueriesSchemes</key>
-	<array><string>vlc-x-callback</string><string>infuse</string><string>nplayer-http</string><string>outplayer</string></array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>app.streamsetu.refresh</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
@@ -41,27 +41,18 @@
 			</array>
 		</dict>
 	</array>
-	<key>UTImportedTypeDeclarations</key>
-	<array>
-		<dict>
-			<key>UTTypeIdentifier</key><string>org.matroska.mkv</string>
-			<key>UTTypeDescription</key><string>Matroska video</string>
-			<key>UTTypeConformsTo</key><array><string>public.movie</string></array>
-			<key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>mkv</string></array></dict>
-		</dict>
-		<dict>
-			<key>UTTypeIdentifier</key><string>public.avi-movie-extra</string>
-			<key>UTTypeDescription</key><string>AVI video</string>
-			<key>UTTypeConformsTo</key><array><string>public.movie</string></array>
-			<key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>avi</string></array></dict>
-		</dict>
-	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>hi</string>
+		<string>te</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
@@ -81,6 +72,15 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>vlc-x-callback</string>
+		<string>infuse</string>
+		<string>nplayer-http</string>
+		<string>outplayer</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
@@ -89,250 +89,687 @@
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
-		<!-- Providers are often plain http, so arbitrary loads stay on; StreamSetu's own services and the third-party services it uses are held to HTTPS. -->
 		<key>NSExceptionDomains</key>
 		<dict>
-			<key>cloudflare-dns.com</key>
+			<key>soundcloud.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>dns.adguard-dns.com</key>
+			<key>163.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>dns.google</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>dns.quad9.net</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>controld.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>supabase.co</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>themoviedb.org</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>tmdb.org</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>fanart.tv</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>thetvdb.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>tvmaze.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>iptv-org.github.io</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>opensubtitles.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>trakt.tv</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>wikipedia.org</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>wikimedia.org</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>github.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>githubusercontent.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>googleapis.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>groq.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>openai.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>anthropic.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>openrouter.ai</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>nvidia.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>ollama.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-			</dict>
-			<key>real-debrid.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
 			<key>alldebrid.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>premiumize.me</key>
+			<key>anthropic.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>itunes.apple.com</key>
+			<key>apple.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>rss.marketingtools.apple.com</key>
+			<key>atomix.one</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>youtube.com</key>
+			<key>audioscrobbler.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>sponsor.ajay.app</key>
+			<key>audius.co</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>primevideo.com</key>
+			<key>betterlyrics.org</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>disneyplus.com</key>
+			<key>binimum.org</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>hulu.com</key>
+			<key>boidu.dev</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>hbomax.com</key>
+			<key>chocolatemoo53.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>peacocktv.com</key>
+			<key>cloudflare-dns.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>paramountplus.com</key>
+			<key>controld.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>tv.apple.com</key>
+			<key>coverartarchive.org</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
 			<key>crunchyroll.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>spotify.com</key>
+			<key>deezer.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>jiohotstar.com</key>
+			<key>discogs.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>disneyplus.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>dns.adguard-dns.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>dns.google</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>dns.quad9.net</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>dzcdn.net</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>ducks.party</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>fanart.tv</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>genius.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>github.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>githubusercontent.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>google.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>googleapis.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>googlevideo.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>groq.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>hbomax.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
 			<key>hotstar.com</key>
 			<dict>
-				<key>NSIncludesSubdomains</key><true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>hulu.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>imdb.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>invidious.io</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>iptv-org.github.io</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>itunes.apple.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>jiohotstar.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>jiosaavn.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>kavin.rocks</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>kugou.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>last.fm</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>libre.fm</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>acoustid.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>setlist.fm</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>listenbrainz.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>lrc.red</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>lrclib.net</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>lyrics-plus-backend.vercel.app</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>lyricsplus-seven.vercel.app</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>lyricsplus.prjktla.my.id</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>lyricsplus.prjktla.workers.dev</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>media-amazon.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>media-imdb.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>megalobiz.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>metabrainz.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>musicbrainz.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>musixmatch.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>nadeko.net</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>navidrome.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>nvidia.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>ollama.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>omdbapi.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>openai.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>openrouter.ai</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>opensubtitles.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>paramountplus.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>paxsenix.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>peacocktv.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>premiumize.me</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>primevideo.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>private.coffee</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>qq.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>real-debrid.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>rss.marketingtools.apple.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>simpmusic.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>sponsor.ajay.app</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>spotify.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>supabase.co</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>themoviedb.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>thetvdb.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>tmdb.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>trakt.tv</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>tv.apple.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>tvmaze.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>wikidata.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>wikimedia.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>wikipedia.org</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>yewtu.be</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>youtu.be</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>youtube.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
 		</dict>
 	</dict>
-	<key>NSFaceIDUsageDescription</key>
-	<string>StreamSetu uses Face ID to unlock the app when you turn on App Lock.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>StreamSetu shows the videos and pictures on this device so you can play and view them. They stay on this device; nothing is copied or sent.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>StreamSetu saves a picture from a video to your photos only when you tap Save Frame.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_hdhomerun._tcp</string>
 		<string>_streamsetu-sync._tcp</string>
 	</array>
+	<key>NSFaceIDUsageDescription</key>
+	<string>StreamSetu uses Face ID to unlock the app when you turn on App Lock.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>StreamSetu plays streams from servers you add, including ones on your home network, and syncs with your other devices on the same Wi-Fi.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>StreamSetu saves a picture from a video to your photos only when you tap Save Frame.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>StreamSetu shows the videos and pictures on this device so you can play and view them. They stay on this device; nothing is copied or sent.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
 	<key>UIBackgroundModes</key>
-	<array><string>audio</string><string>remote-notification</string><string>processing</string></array>
-	<key>BGTaskSchedulerPermittedIdentifiers</key>
-	<array><string>app.streamsetu.refresh</string></array>
+	<array>
+		<string>audio</string>
+		<string>remote-notification</string>
+		<string>processing</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
@@ -357,7 +794,42 @@
 	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Dark</string>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.movie</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Matroska video</string>
+			<key>UTTypeIdentifier</key>
+			<string>org.matroska.mkv</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>mkv</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.movie</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>AVI video</string>
+			<key>UTTypeIdentifier</key>
+			<string>public.avi-movie-extra</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>avi</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

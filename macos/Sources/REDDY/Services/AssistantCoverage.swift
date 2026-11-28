@@ -73,13 +73,11 @@ struct AssistantCoverageRow: Equatable {
         "recentlyWatched": ("screen name", "open_screen(recentlyWatched)"), "watchHistory": ("screen name; viewing totals via watch_stats", "open_screen(history)"),
         "favorites": ("screen name", "open_screen(favorites), favourite"), "watchLater": ("screen name", "open_screen(watchLater), watch_later"), "collections": ("screen name", "open_screen(collections)"),
         "statistics": ("screen name; totals via watch_stats", "open_screen(statistics)"),
-        "featured": nil, "allMovies": ("screen name", "open_screen(movies)"), "recentlyAdded": nil, "library": ("screen name", "open_screen(series)"), "allChannels": ("screen name", "open_screen(liveTV)"),
-        "unwatched": ("screen name", "open_screen(movies, filter: unwatched)"), "unwatchedFavorites": nil, "addedThisMonth": nil, "newEpisodes": nil,
+        "featured": ("screen name", "open_screen(featured)"), "allMovies": ("screen name", "open_screen(movies)"), "recentlyAdded": ("screen name", "open_screen(recentlyAdded)"), "library": ("screen name", "open_screen(series)"), "allChannels": ("screen name", "open_screen(liveTV)"),
+        "unwatched": ("screen name", "open_screen(unwatched)"), "unwatchedFavorites": ("screen name", "open_screen(unwatchedFavorites)"), "addedThisMonth": ("screen name", "open_screen(addedThisMonth)"), "newEpisodes": ("screen name", "open_screen(newEpisodes)"),
     ]
-    static let shortcutsNotOffered: [String: String] = [
-        "featured": "No destination in open_screen yet.", "recentlyAdded": "Reachable by typing 'newest' as a Movies/Series filter, but not as its own destination.",
-        "unwatchedFavorites": "No destination in open_screen yet.", "addedThisMonth": "No destination in open_screen yet.", "newEpisodes": "No destination in open_screen yet.",
-    ]
+    /// Every sidebar shortcut now has an open_screen destination, so none is left out.
+    static let shortcutsNotOffered: [String: String] = [:]
 
     static let modals: [String: AssistantCoverageRow] = [
         "playlists": covered("modal", "playlists", read: "sanitized status via source_health", act: "refresh_playlists (offered), open_screen(settings)", restrictions: "yes: AssistantAuthorizer (profile, freshness)", error: "yes: source_health failures"),
@@ -104,6 +102,7 @@ struct AssistantCoverageRow: Equatable {
         "Home": covered("feature", "Home", read: "screen name, search text", act: "open_screen, search_everything", restrictions: "n/a", error: "yes"),
         "LiveTV": covered("feature", "LiveTV", read: "search_everything, tv_guide, now_playing", act: "play_title, open_screen", restrictions: "yes: AssistantAuthorizer", error: "yes"),
         "Movies": covered("feature", "Movies", read: "search_library, title_details, similar_titles", act: "play_title, favourite, watch_later, open_screen with filters", restrictions: "yes: AssistantAuthorizer", error: "yes"),
+        "Music": unsupported("feature", "Music", "The Music section of the main window: Setu points to its screens and settings and explains each control (control.music.*), but does not search, queue or play songs for you."),
         "Netflix": unsupported("feature", "Netflix", "One of the outside websites (streaming services) shown in a web view (Mac only), with the Services menu and pinned items in the top bar. Setu does not read or control any of them: nothing is injected into the page, and sign-in, cookies and playback stay between the person and the website."),
         "Streaming": unsupported("feature", "Streaming", "One of the outside websites (streaming services) shown in a web view (Mac only), with the Services menu and pinned items in the top bar. Setu does not read or control any of them: nothing is injected into the page, and sign-in, cookies and playback stay between the person and the website."),
         "Onboarding": unsupported("feature", "Onboarding", ui: "yes", "First-run screens; the assistant is not shown there."),
@@ -120,12 +119,31 @@ struct AssistantCoverageRow: Equatable {
 
     /// Files that contain a context menu. None are mapped to the registry yet.
     static let contextMenus: [String: String] = [
+        "Features/Music/MusicSidebar.swift": "Sidebar playlist menu (Play, Shuffle, Rename, Delete): explained as the playlist page's own controls (control.music.albumArtistAndPlaylistPages*), not run by Setu.",
+        "Features/Music/Playlist/MusicSmartPlaylistScreens.swift": "Smart playlist chip menu in the Playlists tab (Edit, Duplicate, Delete): explained as control.music.smartEdit, control.music.smartDuplicate and control.music.smartDelete, not run by Setu.",
+        "Features/Music/MusicRadioStationCards.swift": "Radio station card menu (Start, Edit, Make a copy, Delete): explained under the Radio station controls, not run by Setu.",
+        "Features/Music/Home/MusicHomeTile.swift": "Listen Now mix tile menu (Play, Shuffle, Play next, Add to queue): explained as control.music.homeTile, not run by Setu.",
+        "Features/Music/Home/MusicHomeContinue.swift": "Listen Now Continue listening tile: the song menu, explained as control.music.homeContinueCard.",
+        "Features/Music/Home/MusicHomeRows.swift": "Listen Now top-tracks row: the song menu, explained as control.music.homeTopTrackRow.",
         "Features/Streaming/PinnedServicesBar.swift": "Service pill menu (reload, pin or unpin, move left or right, clear data): control.services.pillmenu.",
         "Features/Streaming/ServicesDropdown.swift": "Services list row menu (move up or down for a pinned service): control.services.move.",
-        "DesignSystem/Components/Sidebar/ReddySidebar.swift": "Sidebar folder menu (lock, hide, rename) and playlist menu row (Remove…): not mapped yet.",
+        "DesignSystem/Components/Sidebar/ReddySidebar.swift": "Sidebar folder menu (Move, Hide, Lock, Unlock): explained as context.sidebar.folderReorder and context.sidebar.folderLock; playlist menu row (Remove…): explained as screen.playlistMenu. Not run by Setu.",
         "Features/CommandCenter/Views/CommandCenterView.swift": "Channel and folder manager menus: not mapped yet.",
         "Features/Sources/Views/PlaylistManager.swift": "Playlist row menu (Remove…, with the same confirmation as the Remove button): not mapped yet.",
         "Features/Files/FilesView.swift": "Local file menu: not mapped yet.",
+        "Features/Music/Graph/Album/MusicSoundtrackSongsSection.swift": "Album song row menu (play, the song menu, song details): explained as control.music.soundtrackSongRow, not run by Setu.",
+        "Features/Music/Autoplay/MusicShuffleAutoplayViews.swift": "Shuffle style menu (Smart, True random, Smart Shuffle, Reshuffle, Autoplay): explained as control.music.shuffleMode and its neighbours, not run by Setu.",
+        "Features/Music/MusicPlayerBar.swift": "Player bar menus (the shuffle button's menu and the more menu): explained as control.music.* entries, not run by Setu.",
+        "Features/Music/Setup/MusicSetupSheet.swift": "Genre chip menu (Like, Love, Not for me) in setup: explained as control.music.setupGenre*, not run by Setu.",
+        "Features/Music/MusicNowPlayingPanel.swift": "Now Playing artwork menu (view album, view artwork): explained as control.music.* entries, not run by Setu.",
+        "Features/Music/MusicPlayerViews.swift": "Queue and now-playing row menu (Go to album, artist, film): explained as control.music.* entries, not run by Setu.",
+        "Features/Music/MusicCards.swift": "Music card menus (play, play next, add to queue, radio, add to playlist, share): explained as control.music.* entries, not run by Setu.",
+        "Features/Music/MusicComponents.swift": "Music card and song row menus (play, play next, add to queue, radio, add to playlist, share): explained as control.music.* entries, not run by Setu.",
+        "Features/Music/MusicLibraryContent.swift": "Library grid card and row menus (the same card menu): explained as control.music.* entries, not run by Setu.",
+        "Features/Music/MusicLibraryRows.swift": "Library song row menu (the same song menu): explained as control.music.* entries, not run by Setu.",
+        "Features/Music/MusicSearchPage.swift": "Music search result menu (the same card menu): explained as control.music.* entries, not run by Setu.",
+        "Features/Music/MusicSearchSuggest.swift": "Music search suggestion menu (play and the song menu): explained as control.music.* entries, not run by Setu.",
+        "Features/Music/Settings/MusicSettingsComponents.swift": "Music settings row menu: explained as control.music.* entries, not run by Setu.",
         "Features/Podcasts/PodcastsMainView.swift": "Podcast menu in the main window (Unfollow): context.podcasts.show.",
         "Features/Files/PodcastsView.swift": "Podcast menu: not mapped yet.",
         "Features/Podcasts/PodcastShowPage.swift": "Podcast episode menu (Play Next, Add to Up Next, Mark as Played): context.podcasts.episode.",
@@ -149,6 +167,7 @@ struct AssistantCoverageRow: Equatable {
         "favourite": "offers; authorizer rechecks", "watch_later": "offers; authorizer rechecks", "resume_watching": "offers; authorizer rechecks", "refresh_playlists": "offers; authorizer rechecks",
         "retry_playback": "offers; authorizer rechecks", "switch_engine": "offers; authorizer rechecks", "select_track": "offers; authorizer rechecks", "sync_guide": "offers; authorizer rechecks",
         "problem_report": "offers; authorizer rechecks",
+        "music_now_playing": "read", "music_search": "read (sends only the words to the Music source the person turned on)", "music_play": "offers; authorizer rechecks", "music_control": "offers; authorizer rechecks", "music_open": "offers; authorizer rechecks", "music_country": "offers; authorizer rechecks",
     ]
 
     /// One example of every action kind, so each can be described by the registry.
@@ -156,7 +175,8 @@ struct AssistantCoverageRow: Equatable {
         [.command(.init(kind: .go(.discover, library: nil))), .command(.init(kind: .play("x"))), .command(.init(kind: .resume)), .command(.init(kind: .lastChannel)),
          .command(.init(kind: .favourite("x", on: true))), .command(.init(kind: .watchLater("x", on: true))), .setting(id: "theme", value: "x"), .playback("pause"), .refresh, .retry,
          .engine("mpv"), .track(audio: true, id: nil, label: ""), .syncGuide, .copyReport(""),
-         .playItem(id: "x", isChannel: false, title: "x"), .toggleList(id: "x", kind: .movie, watchLater: false, on: true, title: "x"), .openAtlas(id: "screen.tab.home")]
+         .playItem(id: "x", isChannel: false, title: "x"), .toggleList(id: "x", kind: .movie, watchLater: false, on: true, title: "x"), .openAtlas(id: "screen.tab.home"),
+         .music(.control("pause")), .music(.play(query: "x", kind: "song", shuffle: false)), .music(.radio(query: nil)), .music(.open("explore")), .music(.country("in"))]
     }
 
     // MARK: the matrix

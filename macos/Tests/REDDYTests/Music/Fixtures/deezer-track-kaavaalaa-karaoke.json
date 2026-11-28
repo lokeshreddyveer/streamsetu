@@ -1,0 +1,40 @@
+{
+ "id": 2385199085,
+ "title": "Kaavaalaa (From \"Jailer\") (Originally Performed by Anirudh Ravichander, Shilpa Rao & Arunraja Kamaraj) (Karaoke Version)",
+ "title_short": "Kaavaalaa (From \"Jailer\") (Originally Performed by Anirudh Ravichander, Shilpa Rao & Arunraja Kamaraj)",
+ "title_version": "(Karaoke Version)",
+ "isrc": "AUXN22347814",
+ "link": "https://www.deezer.com/track/2385199085",
+ "duration": 185,
+ "track_position": 32,
+ "disk_number": 1,
+ "rank": 2000,
+ "release_date": "2023-07-30",
+ "explicit_lyrics": false,
+ "explicit_content_lyrics": 2,
+ "explicit_content_cover": 2,
+ "bpm": 0,
+ "contributors": [
+  {
+   "id": 63495032,
+   "name": "Backing Business",
+   "link": "https://www.deezer.com/artist/63495032",
+   "type": "artist",
+   "role": "Main"
+  }
+ ],
+ "artist": {
+  "id": 63495032,
+  "name": "Backing Business",
+  "link": "https://www.deezer.com/artist/63495032",
+  "type": "artist"
+ },
+ "album": {
+  "id": 469276085,
+  "title": "Pristine Karaoke, Vol. 113",
+  "link": "https://www.deezer.com/album/469276085",
+  "release_date": "2023-07-30",
+  "type": "album"
+ },
+ "type": "track"
+}

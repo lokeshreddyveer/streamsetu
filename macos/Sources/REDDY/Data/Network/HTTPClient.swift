@@ -47,6 +47,12 @@ final class HTTPClient: @unchecked Sendable {
 
     /// A small request/response through this client's session: the body and the status come back as they are, whatever the status.
     func exchange(_ request: URLRequest, maxBytes: Int = 8_000_000) async throws -> (data: Data, status: Int) {
+        let r = try await exchangeWithResponse(request, maxBytes: maxBytes)
+        return (r.data, r.response?.statusCode ?? 0)
+    }
+
+    /// The same exchange, with the whole response so a caller can read headers (a retry hint, for one).
+    func exchangeWithResponse(_ request: URLRequest, maxBytes: Int = 8_000_000) async throws -> (data: Data, response: HTTPURLResponse?) {
         // Read as a stream and stop at the limit, so a hostile server cannot make the app hold more than that; a redirect to another host drops the logins we sent.
         let (bytes, response) = try await session.bytes(for: request, delegate: RedirectCredentialGuard())
         if response.expectedContentLength > Int64(maxBytes) { throw NetworkError.tooLarge(limit: Int64(maxBytes)) }
@@ -55,7 +61,26 @@ final class HTTPClient: @unchecked Sendable {
             data.append(byte)
             if data.count > maxBytes { throw NetworkError.tooLarge(limit: Int64(maxBytes)) }
         }
-        return (data, (response as? HTTPURLResponse)?.statusCode ?? 0)
+        return (data, response as? HTTPURLResponse)
+    }
+
+    /// A streamed response through this client's session: the proxy, secure DNS and the login-dropping redirect guard apply. `allowRedirect` can refuse a
+    /// redirect target (a caller's own address policy); a refused redirect is not followed, so the 3xx answer comes back as it is.
+    func bytes(_ request: URLRequest, allowRedirect: (@Sendable (URL) -> Bool)? = nil) async throws -> (URLSession.AsyncBytes, URLResponse) {
+        try await session.bytes(for: request, delegate: CheckedRedirectGuard(allow: allowRedirect))
+    }
+
+    /// A whole response held in memory, for bounded range reads. The size is checked after the read, so callers keep their windows small.
+    func fetch(_ request: URLRequest, maxBytes: Int = 8_000_000, allowRedirect: (@Sendable (URL) -> Bool)? = nil) async throws -> (data: Data, response: URLResponse) {
+        let (data, response) = try await session.data(for: request, delegate: CheckedRedirectGuard(allow: allowRedirect))
+        if data.count > maxBytes { throw NetworkError.tooLarge(limit: Int64(maxBytes)) }
+        return (data, response)
+    }
+
+    /// A session for a caller that needs delegate callbacks (pause and resume data, progress) but must still follow the person's proxy and DNS settings.
+    func makeTransferSession(configuration: URLSessionConfiguration, delegate: URLSessionDelegate?) -> URLSession {
+        if let dict = activeProxyDictionary { configuration.connectionProxyDictionary = dict }
+        return URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
     }
 
     static let tempDirectory: URL = {
@@ -160,5 +185,15 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unc
         let size = (file.flatMap { try? FileManager.default.attributesOfItem(atPath: $0.path)[.size] as? Int64 }) ?? 0
         cont.resume(returning: DownloadResult(fileURL: file, status: http.statusCode, etag: http.value(forHTTPHeaderField: "ETag"),
                                               lastModified: http.value(forHTTPHeaderField: "Last-Modified"), bytes: size))
+    }
+}
+
+/// The redirect guard with an optional address check on top: a redirect the check refuses is not followed.
+final class CheckedRedirectGuard: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    private let allow: (@Sendable (URL) -> Bool)?
+    init(allow: (@Sendable (URL) -> Bool)?) { self.allow = allow }
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        if let allow, let u = request.url, !allow(u) { completionHandler(nil); return }
+        completionHandler(RedirectPolicy.sanitized(request, after: task.originalRequest ?? request))
     }
 }

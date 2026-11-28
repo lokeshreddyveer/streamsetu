@@ -13,7 +13,7 @@ final class AppCoordinator {
     /// Which top-level destination is showing (StreamSetu or an outside service), and the registry of the web models that host the services on
     /// this Mac. A service's model (and its store and web view) is made only when it is first needed.
     let services = ServiceNavigation()
-    let hosts = ServiceHostRegistry()
+    let hosts = ServiceHostRegistry(ownership: .shared)
     /// The first service's model, for the call sites that have not moved to the registry yet.
     var netflix: ServiceWebModel { hosts.model(for: .netflix)! }
 
@@ -21,6 +21,23 @@ final class AppCoordinator {
         AppDelegate.coordinator = self
         services.hosts = hosts
         services.attach(to: router)
+    }
+
+    /// How the theme key last changed, so the window is rebuilt for a new theme but not for the container simply arriving (that rebuild restarted the opening's own view tree).
+    private(set) var themeChanges = 0
+    private var knownThemeKey: String?
+    func themeKeyChanged(_ key: String?) {
+        defer { knownThemeKey = key }
+        guard let key, let known = knownThemeKey, known != key else { return }
+        themeChanges += 1
+    }
+
+    /// Work that is not needed to show the first screens waits until the opening is gone (at most ten seconds), so the opening's frames are not competing with it.
+    private func afterOpening(_ work: @escaping @MainActor () -> Void) {
+        Task { @MainActor in
+            for _ in 0..<100 where OpeningCoordinator.shared.isVisible { try? await Task.sleep(nanoseconds: 100_000_000) }
+            work()
+        }
     }
 
     func boot() async {
@@ -39,10 +56,11 @@ final class AppCoordinator {
             case .remember: router.sidebarCollapsed = c.settings.sidebarWasCollapsed
             }
             router.rememberFolders = c.settings.rememberFolders
+            MusicFilmWatchBridgeHost.shared.install(MusicFilmWatchBridgeImpl(container: c, router: router))          // Music's Watch Movie button asks the app's library through this
             let s = AppState(container: c)
             state = s
-            c.artworkMatcher.start()          // artwork is matched in the background, on Wi-Fi, with a TMDB key (own or built in)
-            c.parental.onChange = { [weak self, weak s] in s?.reloadFolders(); s?.catalogVersion += 1; self?.services.enforcePodcastsRule() }
+            afterOpening { c.artworkMatcher.start() }          // artwork is matched in the background, on Wi-Fi, with a TMDB key (own or built in)
+            c.parental.onChange = { [weak self, weak s, weak c] in s?.reloadFolders(); s?.catalogVersion += 1; self?.services.enforcePodcastsRule(); self?.services.enforceMusicRule(); if c?.parental.kidsMode == true { self?.hosts.safetyStop(.kidsProfile) } }
             cleanLegacyFiles()
             let migrated = await c.sources.importLegacyPreferences()
             await s.start()
@@ -58,12 +76,11 @@ final class AppCoordinator {
             Task.detached { [artwork = c.artwork] in await artwork.trim() }
             phase = .ready                                  // the app opens now; iCloud starts in the background, it is never waited for
             if let note = recoveryNote { s.toasts.show(note, symbol: "lifepreserver", kind: .warning); recoveryNote = nil }
-            Task { await c.startCloudIfEnabled() }
+            afterOpening { Task { await c.startCloudIfEnabled() } }
             Task { try? await Task.sleep(nanoseconds: 12_000_000_000); await c.accounts.refresh()
                 if let w = c.accounts.warnings().first { s.toasts.show("\(w.sourceName): \(w.text)", symbol: "exclamationmark.triangle.fill", kind: .warning) } }
             Task { try? await Task.sleep(nanoseconds: 20_000_000_000); c.startPeopleIndex() }          // after the first screens are up and playing
-            c.autoBackup.runIfDue()
-            resumeLastChannelIfWanted(c, s)
+            afterOpening { c.autoBackup.runIfDue(); self.resumeLastChannelIfWanted(c, s) }
             Task { await AtlasSpotlight.reindexPlainItemsIfNeeded(AtlasSpotlight.indexable(Atlas.entries, platform: .mac, appStore: AtlasAssistant.appStore), suppressed: c.parental.kidsMode) }          // Spotlight finds screens and settings
         } catch {
             phase = .failed(error.localizedDescription)

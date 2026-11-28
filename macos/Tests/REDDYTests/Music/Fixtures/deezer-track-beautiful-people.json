@@ -1,0 +1,47 @@
+{
+ "id": 703496412,
+ "title": "Beautiful People (feat. Khalid)",
+ "title_short": "Beautiful People (feat. Khalid)",
+ "title_version": "",
+ "isrc": "GBAHS1900713",
+ "link": "https://www.deezer.com/track/703496412",
+ "duration": 197,
+ "track_position": 1,
+ "disk_number": 1,
+ "rank": 634871,
+ "release_date": "2019-06-28",
+ "explicit_lyrics": false,
+ "explicit_content_lyrics": 0,
+ "explicit_content_cover": 2,
+ "bpm": 0,
+ "contributors": [
+  {
+   "id": 384236,
+   "name": "Ed Sheeran",
+   "link": "https://www.deezer.com/artist/384236",
+   "type": "artist",
+   "role": "Main"
+  },
+  {
+   "id": 362326,
+   "name": "Khalid",
+   "link": "https://www.deezer.com/artist/362326",
+   "type": "artist",
+   "role": "Featured"
+  }
+ ],
+ "artist": {
+  "id": 384236,
+  "name": "Ed Sheeran",
+  "link": "https://www.deezer.com/artist/384236",
+  "type": "artist"
+ },
+ "album": {
+  "id": 101713032,
+  "title": "Beautiful People (feat. Khalid)",
+  "link": "https://www.deezer.com/album/101713032",
+  "release_date": "2019-06-28",
+  "type": "album"
+ },
+ "type": "track"
+}

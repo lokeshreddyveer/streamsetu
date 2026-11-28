@@ -36,6 +36,8 @@ struct PodcastScrubber: View {
     var fraction: Double
     var onChange: (Double) -> Void
     var thickness: CGFloat = 4
+    /// Reports every step of the drag, not just its end (a volume slider is heard as it moves; a seek bar seeks once, on release).
+    var live = false
     @State private var dragging: Double?
     @State private var hovering = false
     @Environment(\.reddyAccent) private var accent
@@ -50,7 +52,7 @@ struct PodcastScrubber: View {
             }
             .frame(maxHeight: .infinity).contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { v in dragging = min(1, max(0, v.location.x / max(1, g.size.width))) }
+                .onChanged { v in let r = min(1, max(0, v.location.x / max(1, g.size.width))); dragging = r; if live { onChange(r) } }
                 .onEnded { v in let r = min(1, max(0, v.location.x / max(1, g.size.width))); dragging = nil; onChange(r) })
             .onHover { hovering = $0 }
             .animation(AnimationTokens.hover, value: hovering)

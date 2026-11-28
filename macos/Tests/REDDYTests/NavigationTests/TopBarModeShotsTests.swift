@@ -11,7 +11,7 @@ import AppKit
         try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         let saved = ThemeStore.current; defer { ThemeStore.current = saved }
         let only = ProcessInfo.processInfo.environment["TOPBAR_MODE_THEMES"]?.split(separator: ",").map(String.init)
-        func modes(_ m: TabBarMode) -> TopBarTabModes { var t = TopBarTabModes(); NavTab.allCases.forEach { t.set(m, for: $0) }; return t }
+        func modes(_ m: TabBarMode) -> TopBarTabModes { var t = TopBarTabModes(); NavTab.baseTabs.forEach { t.set(m, for: $0) }; return t }
         var mixed = TopBarTabModes(); mixed.set(.iconOnly, for: .home); mixed.set(.nameOnly, for: .movies); mixed.set(.iconOnly, for: .guide)
         let variants: [(String, TopBarTabModes, TopLevelDestination)] = [("default", TopBarTabModes(), .streamSetu), ("icons", modes(.iconOnly), .streamSetu), ("names", modes(.nameOnly), .streamSetu),
                                                                           ("mixed", mixed, .streamSetu), ("stateB", TopBarTabModes(), .service(.hulu)), ("podcasts", TopBarTabModes(), .podcasts)]

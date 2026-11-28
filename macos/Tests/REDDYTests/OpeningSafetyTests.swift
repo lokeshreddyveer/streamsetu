@@ -33,10 +33,17 @@ import SwiftUI
         for i in 2..<40 { #expect(w.record(drawMs: i == 10 ? 30 : 3, at: Double(i) / 60) == nil) }
     }
 
+    @Test func oneLongStallDuringLaunchDoesNotCutTheOpening() {
+        var w = OpeningWatchdog()
+        var t = 0.0
+        for i in 0..<120 { t += (i == 40 ? 0.12 : 1.0 / 60); #expect(w.record(drawMs: 2, at: t) == nil) }
+        #expect(w.tripped == nil)
+    }
+
     @Test func framesThatArriveTooRarelyTrip() {
         var w = OpeningWatchdog()
         var tripped = false
-        for i in 0..<12 { if w.record(drawMs: 1, at: Double(i) * 0.1) != nil { tripped = true } }       // 10 fps with cheap draws: the main thread or GPU is starved
+        for i in 0..<40 { if w.record(drawMs: 1, at: Double(i) * 0.1) != nil { tripped = true } }       // 10 fps with cheap draws: the main thread or GPU is starved
         #expect(tripped)
     }
 
@@ -48,14 +55,16 @@ import SwiftUI
 
     // MARK: the hard stop
 
-    @Test func abortEndsTheOpeningAtOnceAndShowsTheApp() throws {
+    @Test func abortStopsTheStoryAndFadesTheFrameOutOverTheApp() throws {
         let c = coordinator()
         c.start(reduceMotion: false)
         #expect(c.isVisible && c.blocksInput)
         c.abort(reason: "test")
         #expect(c.abortReason == "test")
-        #expect(c.state == .completed)
-        #expect(!c.isVisible && !c.blocksInput)
+        // The app is revealed and the layer takes no input; the frame it stopped on fades out (no hard cut).
+        #expect(c.revealedAt != nil && !c.blocksInput)
+        let at = c.storyTime(at: Date())
+        #expect(c.storyTime(at: Date().addingTimeInterval(0.4)) == at, "the story does not carry on after an abort")
         c.abort(reason: "again")                                  // once
         #expect(c.abortReason == "test")
     }
@@ -64,8 +73,9 @@ import SwiftUI
         let c = coordinator()
         c.start(reduceMotion: false)
         c.abort(reason: "slow")
+        let revealed = c.revealedAt
         c.destinationReady(ok: true, hasSources: true)
-        #expect(c.state == .completed && !c.isVisible)
+        #expect(c.revealedAt == revealed && !c.blocksInput)
     }
 
     @Test func aFrozenReviewIsNeverAborted() {

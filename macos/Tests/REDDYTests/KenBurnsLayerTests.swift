@@ -65,7 +65,8 @@ import QuartzCore
         return nil
     }
 
-    @Test func noPerFrameSwiftUIWork() throws {
+    @Test func noPerFrameSwiftUIWork() async throws {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         UserDefaults.standard.removeObject(forKey: DefaultsKey.reduceMotion)
         let host = CountingHost(rootView: KenBurnsArtwork(url: nil).frame(width: 640, height: 360))
         let win = Self.window(host)

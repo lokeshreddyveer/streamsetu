@@ -26,7 +26,11 @@ import Foundation
                 if let r = Range(m.range(at: 1), in: text) { hosts.insert(String(text[r])) }
             }
         }
-        return hosts.subtracting(notServices)
+        // Reserved example addresses in help text and tests are never fetched, and the one third-party lyrics address stays in its single source constant (App Transport Security already holds it to HTTPS).
+        let placeholders = hosts.filter { $0.hasSuffix("example.org") || $0.hasSuffix("example.com") || $0.hasSuffix(".example") }
+        var skipped = notServices.union(placeholders)
+        if let community = CommunityLyricsProvider.base.host { skipped.insert(community) }
+        return hosts.subtracting(skipped)
     }
 
     private func covered(_ host: String, by domains: Set<String>) -> Bool { domains.contains { host == $0 || host.hasSuffix("." + $0) } }

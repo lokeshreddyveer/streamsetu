@@ -1,0 +1,38 @@
+{
+ "resultCount": 1,
+ "results": [
+  {
+   "wrapperType": "track",
+   "kind": "song",
+   "artistId": 18476802,
+   "collectionId": 1503618424,
+   "trackId": 1503618819,
+   "artistName": "Mukesh",
+   "collectionName": "Awara (The Bollywood Soundtrack)",
+   "trackName": "Awaara Hoon",
+   "collectionCensoredName": "Awara (The Bollywood Soundtrack)",
+   "trackCensoredName": "Awaara Hoon",
+   "collectionArtistId": 521559574,
+   "collectionArtistName": "Various Artists",
+   "artistViewUrl": "https://music.apple.com/in/artist/mukesh/18476802?uo=4",
+   "collectionViewUrl": "https://music.apple.com/in/album/awaara-hoon/1503618424?i=1503618819&uo=4",
+   "trackViewUrl": "https://music.apple.com/in/album/awaara-hoon/1503618424?i=1503618819&uo=4",
+   "artworkUrl60": "https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/14/68/88/1468884f-091a-ce09-b5d5-0e6526744bd2/cover.jpg/60x60bb.jpg",
+   "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/14/68/88/1468884f-091a-ce09-b5d5-0e6526744bd2/cover.jpg/100x100bb.jpg",
+   "collectionPrice": 110.0,
+   "trackPrice": 15.0,
+   "releaseDate": "2009-10-29T12:00:00Z",
+   "collectionExplicitness": "notExplicit",
+   "trackExplicitness": "notExplicit",
+   "discCount": 1,
+   "discNumber": 1,
+   "trackCount": 11,
+   "trackNumber": 3,
+   "trackTimeMillis": 188000,
+   "country": "IND",
+   "currency": "INR",
+   "primaryGenreName": "Bollywood",
+   "isStreamable": true
+  }
+ ]
+}

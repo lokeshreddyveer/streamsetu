@@ -1,3 +1,4 @@
+import os
 import SwiftUI
 import AppKit
 
@@ -22,9 +23,15 @@ struct TopBarState {
     /// The Services menu variant: pinned services plus one Services list instead of one tab per service. Off by default, and while it is off the bar is exactly the Netflix-only bar.
     var showsServicesMenu = false
     var servicesNav = ServicesNavigationBinding.empty
-    /// The search box always searches the person's own library; while a service is on screen its words say so (typing there goes back to StreamSetu first).
+    /// The app's own "Reduce animation" setting, so the header's symbol stops the moment it is switched on.
+    var appReduceMotion = false
+    /// Setu can take what is typed (false in a kids profile, where the assistant is off).
+    var askEnabled = true
+    /// The search box searches the person's own library and, where Setu is available, also takes questions ("Search or ask Setu"); while a service is on screen its words say it searches the library (typing there goes back to StreamSetu first).
     func searchPlaceholder(narrow: Bool) -> String {
-        destination.isNative ? (narrow ? "Search" : "Search everything") : (narrow ? "Search library" : "Search your library")
+        if !destination.isNative { return narrow ? "Search library" : "Search your library" }
+        if askEnabled { return narrow ? "Search or ask" : "Search or ask Setu" }
+        return narrow ? "Search" : "Search everything"
     }
     var searchLabel: String { destination.isNative ? "Search everything" : "Search your library" }
 }
@@ -37,6 +44,8 @@ struct TopBarMetrics: Equatable {
     var searchIdeal: CGFloat
     var searchMax: CGFloat
     var showShortcutHint: Bool
+    /// True in the narrowest tier: the search box is only its magnifier until it is used, so the tab names keep the room.
+    var searchIconOnly = false
 
     static let leadingInset: CGFloat = 78            // clears the traffic lights
     static let trailingInset: CGFloat = 16
@@ -52,7 +61,7 @@ struct TopBarMetrics: Equatable {
         (1360, TopBarMetrics(tabPadding: 15, searchMin: 150, searchIdeal: 250, searchMax: 280, showShortcutHint: true)),
         (1180, TopBarMetrics(tabPadding: 13, searchMin: 140, searchIdeal: 220, searchMax: 250, showShortcutHint: true)),
         (1100, TopBarMetrics(tabPadding: 11, searchMin: 130, searchIdeal: 180, searchMax: 210, showShortcutHint: false)),
-        (0, TopBarMetrics(tabPadding: 9, searchMin: 110, searchIdeal: 150, searchMax: 170, showShortcutHint: false)),
+        (0, TopBarMetrics(tabPadding: 9, searchMin: 110, searchIdeal: 150, searchMax: 170, showShortcutHint: false, searchIconOnly: true)),
     ]
     /// The tier a window width belongs to. The bar itself may pick a narrower tier when that keeps more names or pins (see `TopBarMenuRow.make`).
     static func metrics(for width: CGFloat) -> TopBarMetrics { tiers.first { width >= $0.from }!.metrics }
@@ -125,18 +134,24 @@ private struct TopBarLayout: Layout {
 
 /// Measured width of a tab label, so every tab has a fixed width that doesn't depend on which one is selected.
 enum TabLabelMetrics {
+    /// Every plan of the bar measures the same few titles again (once per width tier, on every layout); the text system is asked once per title instead.
+    private static let widths = OSAllocatedUnfairLock<[String: CGFloat]>(initialState: [:])
     static func textWidth(_ title: String) -> CGFloat {
+        if let w = widths.withLock({ $0[title] }) { return w }
         let font = NSFont.systemFont(ofSize: 14, weight: .semibold)        // the one weight every tab uses
-        return ceil((title as NSString).size(withAttributes: [.font: font]).width)
+        let w = ceil((title as NSString).size(withAttributes: [.font: font]).width)
+        widths.withLock { if $0.count > 512 { $0.removeAll() }; $0[title] = w }
+        return w
     }
-    static var brandWidth: CGFloat {
-        ceil(("StreamSetu" as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 20, weight: .bold)]).width) + 6
-    }
+    /// Measured once: it is asked for by every plan of the bar, on every layout.
+    static let brandWidth: CGFloat = {
+        ceil(("StreamSetu" as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 20, weight: .bold)]).width) + 6 + EclipseLayout.width
+    }()
 }
 
 /// What the one row shows for a destination: the five tabs and the services, or (with a service showing) the collapsed StreamSetu item and the services. Pure, so the identifiers, labels and the selected item are table-tested.
 struct TopBarItem: Identifiable, Equatable {
-    enum Kind: Equatable { case tab(AppTab), podcasts, streamSetu, service(ExternalService), servicesMenu }
+    enum Kind: Equatable { case tab(AppTab), podcasts, music, streamSetu, service(ExternalService), servicesMenu }
     var kind: Kind
     var title: String
     var identifier: String
@@ -154,7 +169,7 @@ struct TopBarItem: Identifiable, Equatable {
     var id: String { identifier }
     var isTab: Bool { if case .tab = kind { true } else { false } }
     /// The native item this is (a tab or Podcasts), nil for the StreamSetu chip, a service or the Services button.
-    var nativeTab: NavTab? { switch kind { case .tab(let t): NavTab(t); case .podcasts: .podcasts; default: nil } }
+    var nativeTab: NavTab? { switch kind { case .tab(let t): NavTab(t); case .podcasts: .podcasts; case .music: .music; default: nil } }
     var isService: Bool { if case .service = kind { true } else { false } }
 
     static let glyphWidth: CGFloat = 20
@@ -171,21 +186,27 @@ struct TopBarItem: Identifiable, Equatable {
 
     /// One native item in the requested mode. The full name is always the tooltip and the VoiceOver name, whatever is drawn.
     static func nativeItem(_ t: NavTab, mode: TabBarMode, selected: Bool) -> TopBarItem {
-        TopBarItem(kind: t.appTab.map { .tab($0) } ?? .podcasts, title: t.title, identifier: "tab." + t.title, label: mode == .iconOnly ? t.title : nil, selected: selected,
-                   atlas: t == .podcasts ? "screen.podcasts" : nil, glyph: mode == .nameOnly ? nil : t.symbol, compact: mode == .iconOnly, help: t.title)
+        TopBarItem(kind: t.appTab.map { .tab($0) } ?? (t == .music ? .music : .podcasts), title: t.title, identifier: "tab." + t.title, label: mode == .iconOnly ? t.title : nil, selected: selected,
+                   atlas: t == .podcasts ? "screen.podcasts" : (t == .music ? "screen.destination.music" : nil), glyph: mode == .nameOnly ? nil : t.symbol, compact: mode == .iconOnly, help: t.title)
     }
 
     /// The native items for a state, each in its requested mode. With a `budget` (the width the group may use), names drop to icon-only from the right-most
     /// item inward until the group fits; the result never wraps and an item never disappears. Pure.
-    static func nativeItems(destination: TopLevelDestination, tab: AppTab, modes: TopBarTabModes, includesPodcasts: Bool, tabPadding: CGFloat, budget: CGFloat?) -> [TopBarItem] {
-        let tabs = NavTab.allCases.filter { $0 != .podcasts || includesPodcasts }
+    static func nativeItems(destination: TopLevelDestination, tab: AppTab, modes: TopBarTabModes, includesPodcasts: Bool, includesMusic: Bool = false, tabPadding: CGFloat, budget: CGFloat?) -> [TopBarItem] {
+        let tabs = NavTab.allCases.filter { ($0 != .podcasts || includesPodcasts) && ($0 != .music || includesMusic) }
         var effective = tabs.map { modes.mode($0) }
         func build() -> [TopBarItem] {
-            zip(tabs, effective).map { t, m in nativeItem(t, mode: m, selected: t == .podcasts ? destination == .podcasts : (destination == .streamSetu && t.appTab == tab)) }
+            zip(tabs, effective).map { t, m in nativeItem(t, mode: m, selected: t == .podcasts ? destination == .podcasts : t == .music ? destination == .music : (destination == .streamSetu && t.appTab == tab)) }
         }
         if let budget {
-            var i = tabs.count - 1
-            while i >= 0, build().reduce(0, { $0 + $1.width(tabPadding: tabPadding) }) > budget { effective[i] = .iconOnly; i -= 1 }
+            // Names give way one item at a time, measured against the real width of each name (not a fixed breakpoint), so a longer translation or a wider font moves the point by itself.
+            // The right-most item goes first and the page you are on keeps its name longest, so the bar always says where you are.
+            let current = build().firstIndex { $0.selected }
+            let order = tabs.indices.reversed().filter { $0 != current } + (current.map { [$0] } ?? [])
+            for i in order {
+                if build().reduce(0, { $0 + $1.width(tabPadding: tabPadding) }) <= budget { break }
+                effective[i] = .iconOnly
+            }
         }
         return build()
     }
@@ -274,7 +295,7 @@ struct TopBarMenuRow: Equatable {
 
     private static func plan(_ state: TopBarState, metrics m: TopBarMetrics, brandWidth: CGFloat) -> TopBarMenuRow {
         let active: ProviderID? = { if case .service(let s) = state.destination { s } else { nil } }()
-        let services = TopBarItem(kind: .servicesMenu, title: "Services", identifier: "tab.Services", label: "Services", selected: false, atlas: "control.services.menu", glyph: "square.grid.2x2")
+        let services = TopBarItem(kind: .servicesMenu, title: "Services", identifier: "tab.Services", label: "Services", selected: false, atlas: "control.services.menu", glyph: "square.grid.2x2", compact: true, help: "Services")
         let center = m.centerBudget(width: state.width, brandWidth: brandWidth) - 2 * TopBarMetrics.navGroupPadding
         let nativeBudget = center - services.width(tabPadding: m.tabPadding)
         var leading: [TopBarItem]
@@ -284,10 +305,10 @@ struct TopBarMenuRow: Equatable {
             // do not fit even with no pins do names give way to icons, right-most first (and then the pins stay in the list, so a wider window brings the
             // names back before any pin).
             let nav = state.servicesNav
-            leading = TopBarItem.nativeItems(destination: state.destination, tab: state.tab, modes: nav.tabModes, includesPodcasts: nav.podcastsAvailable, tabPadding: m.tabPadding, budget: nil)
+            leading = TopBarItem.nativeItems(destination: state.destination, tab: state.tab, modes: nav.tabModes, includesPodcasts: nav.podcastsAvailable, includesMusic: nav.musicAvailable, tabPadding: m.tabPadding, budget: nil)
             if leading.reduce(0, { $0 + $1.width(tabPadding: m.tabPadding) }) > nativeBudget {
                 dropped = true
-                leading = TopBarItem.nativeItems(destination: state.destination, tab: state.tab, modes: nav.tabModes, includesPodcasts: nav.podcastsAvailable, tabPadding: m.tabPadding, budget: nativeBudget)
+                leading = TopBarItem.nativeItems(destination: state.destination, tab: state.tab, modes: nav.tabModes, includesPodcasts: nav.podcastsAvailable, includesMusic: nav.musicAvailable, tabPadding: m.tabPadding, budget: nativeBudget)
             }
         } else {
             leading = [TopBarItem.streamSetuChip()]
@@ -320,6 +341,8 @@ struct ReddyTopBar: View {
     /// A title page is open on top: the box must not take the cursor behind it.
     var titleOpen = false
     var onSubmit: () -> Void = {}
+    /// Shift+Return forces Setu, Option+Return forces a plain search (see `SearchIntent`).
+    var onSubmitMode: (SearchIntent.ReturnMode) -> Void = { _ in }
     var onResultsFocus: () -> Void = {}
     /// ⌘Return: hand what is typed to Setu instead of searching.
     var onAsk: (String) -> Void = { _ in }
@@ -328,6 +351,7 @@ struct ReddyTopBar: View {
     var onSelectService: (ExternalService) -> Void = { _ in }
     var onSelectStreamSetu: () -> Void = {}
     var onSelectPodcasts: () -> Void = {}
+    var onSelectMusic: () -> Void = {}
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.reddyAccent) private var accent
     /// The selected tab's underline slides from tab to tab.
@@ -344,13 +368,41 @@ struct ReddyTopBar: View {
         let row = TopBarMenuRow.make(for: state)
         return row.width > row.metrics.centerBudget(width: state.width, brandWidth: TabLabelMetrics.brandWidth, search: row.metrics.searchIdeal)
     }
-    private var metrics: TopBarMetrics { state.showsServicesMenu ? TopBarMenuRow.make(for: state).metrics : TopBarMetrics.metrics(for: state.width) }
+    private var baseMetrics: TopBarMetrics { state.showsServicesMenu ? TopBarMenuRow.make(for: state).metrics : TopBarMetrics.metrics(for: state.width) }
+    /// The search is only its icon when the layout is tight (the narrowest tier, or pinned services squeeze it) and it is not being used. Using it (a click, or Cmd-K) opens the box;
+    /// leaving it empty closes it again. The bar's layout follows, so the freed width goes to the tab names.
+    @State private var searchExpanded = false
+    private var searchCollapsed: Bool { (baseMetrics.searchIconOnly || searchIsSqueezed) && !searchExpanded && query.isEmpty && !searchFocused }
+    private var metrics: TopBarMetrics {
+        guard searchCollapsed else { return baseMetrics }
+        var m = baseMetrics
+        m.searchMin = TopBarMetrics.rowHeight; m.searchIdeal = TopBarMetrics.rowHeight; m.searchMax = TopBarMetrics.rowHeight
+        m.showShortcutHint = false
+        return m
+    }
+
+    @ViewBuilder private var searchSlot: some View { if searchCollapsed { searchIconButton } else { searchBox } }
+
+    private var searchIconButton: some View {
+        Button { searchExpanded = true; DispatchQueue.main.async { searchFocused = true } } label: {
+            Image(systemName: "magnifyingglass").font(.system(size: 13, weight: .medium)).foregroundStyle(ColorTokens.textSecondary)
+                .frame(width: TopBarMetrics.rowHeight, height: TopBarMetrics.rowHeight).contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .background(searchBackground)
+        .overlay(Circle().strokeBorder(Color.white.opacity(searchHover ? 0.20 : 0.11), lineWidth: 1))
+        .onHover { searchHover = $0 }
+        .help(Text(LocalizedStringKey(state.searchLabel)))
+        .accessibilityLabel(Text(LocalizedStringKey(state.searchLabel)))
+        .onChange(of: focusToken) { _, _ in searchExpanded = true; DispatchQueue.main.async { searchFocused = true } }
+        .atlas("control.nav.searchIcon")
+    }
 
     var body: some View {
         TopBarLayout(metrics: metrics) {
             brand.layoutValue(key: TopBarZoneKey.self, value: .leading)
             navZone.layoutValue(key: TopBarZoneKey.self, value: .center)
-            HStack(spacing: 8) { searchBox; accountButton }.layoutValue(key: TopBarZoneKey.self, value: .trailing)
+            HStack(spacing: 8) { searchSlot; accountButton }.layoutValue(key: TopBarZoneKey.self, value: .trailing)
         }
         .frame(height: LayoutTokens.headerHeight)
         .onReceive(NotificationCenter.default.publisher(for: .openServicesList)) { _ in if state.showsServicesMenu { servicesOpen = true } }
@@ -392,9 +444,17 @@ struct ReddyTopBar: View {
         }
     }
 
+    /// Motion is wanted while the app is live and the brand shows (not behind a service's website), unless Reduce Motion (the system's or the app's own) or Low Power Mode asks for stillness.
+    private var eclipseRuns: Bool {
+        state.destination.isNative && AppActivity.shared.isLive && !BrandMotion.reduced(reduceMotion) && !state.appReduceMotion && !ProcessInfo.processInfo.isLowPowerModeEnabled
+    }
+
     private var brand: some View {
-        (Text("Stream").foregroundColor(.white) + Text("Setu").foregroundColor(accent))
-            .font(.system(size: 20, weight: .bold)).tracking(-0.4)
+        HStack(spacing: EclipseLayout.gap) {
+            EclipseMark(size: EclipseLayout.size, run: eclipseRuns).frame(width: EclipseLayout.size, height: EclipseLayout.size)
+            (Text("Stream").foregroundColor(.white) + Text("Setu").foregroundColor(accent))
+                .font(.system(size: 20, weight: .bold)).tracking(-0.4)
+        }
             .lineLimit(1).fixedSize()
             .accessibilityElement(children: .ignore).accessibilityLabel("StreamSetu")
             // While a service is showing, the collapsed "StreamSetu" item in the row carries the name; the wordmark keeps its space so nothing moves.
@@ -477,6 +537,7 @@ struct ReddyTopBar: View {
         case .tab(let t): onSelectTab(t)
         case .streamSetu: onSelectStreamSetu()
         case .podcasts: onSelectPodcasts()
+        case .music: onSelectMusic()
         case .service(let s): onSelectService(s)
         case .servicesMenu: servicesOpen.toggle()
         }
@@ -485,7 +546,7 @@ struct ReddyTopBar: View {
     private func navItem(_ item: TopBarItem, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: item.icon != nil ? ServiceChip.iconGap : 6) {
-                if let id = item.icon { ServiceGlyph(id: id, size: ServiceChip.iconSize) }
+                if let id = item.icon { ServiceGlyph(id: id, size: ServiceChip.iconSize, playing: state.servicesNav.isPlaying(id)) }
                 else if let g = item.glyph { Image(systemName: g).font(.system(size: 12, weight: .semibold)).frame(width: TopBarItem.glyphWidth - 6) }
                 // an icon-only chip draws no label at all; the full name is its tooltip and its VoiceOver name
                 if !item.compact { Text(item.title).font(Typography.nav).fontWeight(selected ? .semibold : .medium).lineLimit(1).fixedSize() }
@@ -511,6 +572,7 @@ struct ReddyTopBar: View {
         .help(item.help.map { Text(verbatim: $0) } ?? Text(verbatim: ""))
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityLabel(Text(LocalizedStringKey(item.label ?? item.title)))
+        .accessibilityValue(Text(LocalizedStringKey(item.icon.map { state.servicesNav.isPlaying($0) } == true ? ServiceAccessibility.playingLabel : "")))
         .accessibilityIdentifier(item.identifier)
         .atlasCovers("control.nav.netflix")          // the tabs are covered by their screen entries, the service item by this one
         .atlasOptional(item.atlas)
@@ -525,11 +587,14 @@ struct ReddyTopBar: View {
                 .onKeyPress(.escape) { query = ""; searchFocused = false; return .handled }
                 .onKeyPress(.downArrow) { onResultsFocus(); return .handled }
                 .onKeyPress(.return, phases: .down) { press in
-                    guard press.modifiers.contains(.command), !query.trimmingCharacters(in: .whitespaces).isEmpty else { return .ignored }
-                    onAsk(query); return .handled
+                    guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return .ignored }
+                    if press.modifiers.contains(.command) { onAsk(query); return .handled }
+                    if press.modifiers.contains(.shift), state.askEnabled { onSubmitMode(.forceAsk); return .handled }
+                    if press.modifiers.contains(.option) { onSubmitMode(.forceSearch); return .handled }
+                    return .ignored
                 }
                 .onSubmit { onSubmit() }
-                .accessibilityLabel(Text(LocalizedStringKey(state.searchLabel))).accessibilityHint("Searches all playlists: channels, movies, series, episodes and the guide").accessibilityIdentifier("search.field")
+                .accessibilityLabel(Text(LocalizedStringKey(state.searchLabel))).accessibilityHint(state.askEnabled ? "Searches all playlists, or asks Setu when you type a question. Shift Return asks Setu, Option Return searches." : "Searches all playlists: channels, movies, series, episodes and the guide").accessibilityIdentifier("search.field")
             if !query.isEmpty {
                 Button { query = "" } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 12)) }
                     .buttonStyle(.plain).foregroundStyle(ColorTokens.textSecondary).accessibilityLabel("Clear search")
@@ -551,7 +616,10 @@ struct ReddyTopBar: View {
             if searchFocused { closeSearchPanel() } else if SearchFocusPolicy.allowsFocus(titleOpen: titleOpen) { searchFocused = true }
         }
         // AppKit falls back to the first text field when the clicked tile loses the cursor; a title page opening must not hand it to search.
-        .onChange(of: searchFocused) { _, f in if f && !SearchFocusPolicy.allowsFocus(titleOpen: titleOpen) { closeSearchPanel() } }
+        .onChange(of: searchFocused) { _, f in
+            if f && !SearchFocusPolicy.allowsFocus(titleOpen: titleOpen) { closeSearchPanel() }
+            if !f && query.isEmpty { searchExpanded = false }
+        }
         .onChange(of: titleOpen) { _, open in if open { closeSearchPanel() } }
         .background(SearchRegionAnchor(region: dismissRegion, isPanel: false))
         .background(SearchOutsideClickMonitor(region: dismissRegion, isActive: searchFocused, onOutsideClick: closeSearchPanel))

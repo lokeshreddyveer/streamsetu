@@ -20,7 +20,7 @@ struct AtlasAnswer: Sendable {
 
 /// Step 10: every sentence comes from an entry field or a live value. A template that needs a missing field is skipped, never guessed.
 enum Compose {
-    static let capabilities = "You can ask me about a screen, a setting or a shortcut."
+    static let capabilities = "I can explain any screen, setting, shortcut or fix in StreamSetu, show you where it is, and open it for you."
 
     static func join(_ path: [String]) -> String { path.joined(separator: " > ") }
 
@@ -83,8 +83,15 @@ enum Compose {
         AtlasAnswer(text: question(top), entryIDs: top.map(\.id), actions: chips(top), decision: .ambiguous, intent: intent)
     }
 
+    /// Never a dead end: say what is nearby (with where it lives), offer each as a button, and say what Setu can do. The first topic that has a screen also gets an Open button through the caller.
     static func fallback(_ top: [AtlasEntry], intent: AtlasIntent) -> AtlasAnswer {
-        let t = top.isEmpty ? "" : " Closest topics: " + top.map(\.title).joined(separator: ", ") + "."
-        return AtlasAnswer(text: "I am not sure what you mean." + t + " " + capabilities, entryIDs: top.map(\.id), actions: chips(top), decision: .weak, intent: intent)
+        guard !top.isEmpty else {
+            return AtlasAnswer(text: "I do not have a topic for that yet, and I would rather say so than guess. " + capabilities + " Try naming the screen, setting or problem, for example subtitles, the TV guide, backup or buffering.", entryIDs: [], actions: [], decision: .weak, intent: intent)
+        }
+        let near = top.prefix(3).map { e in e.path.isEmpty ? e.title : "\(e.title) (\(join(e.path)))" }.joined(separator: "; ")
+        let text = "I do not have an exact answer for that, but these are the closest things I know: " + near + ". Pick one below and I will explain it" + (top.contains { $0.reach != .none } ? " or open it" : "") + ", or tell me a bit more."
+        var actions = chips(Array(top.prefix(3)))
+        if let first = top.first(where: { $0.reach != .none }) { actions.insert(AtlasAction(kind: .openThis, entryID: first.id, label: "Open this"), at: 0) }
+        return AtlasAnswer(text: text, entryIDs: top.map(\.id), actions: actions, decision: .weak, intent: intent)
     }
 }

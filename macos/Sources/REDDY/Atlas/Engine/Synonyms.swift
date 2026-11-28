@@ -25,7 +25,11 @@ enum Synonyms {
         (["wrong", "artwork"], ["artwork", "tmdb"]), (["posters"], ["artwork", "tmdb"]), (["poster"], ["artwork", "tmdb"]), (["cast"], ["cast", "director"]),
         (["slow"], ["buffering"]), (["pixelated"], ["quality"]), (["blurry"], ["quality"]), (["sharp"], ["quality"]), (["resolution"], ["quality"]),
         (["reminders"], ["reminder"]), (["notification"], ["reminder"]), (["notifications"], ["reminder"]), (["alert"], ["reminder", "alert"]),
-        (["channel", "list"], ["channel", "manager"]), (["manage", "channels"], ["channel", "manager"]),
+        (["channel", "list"], ["channel", "manager"]),
+        // Hinglish and Telugu in Latin letters for topic words (question words are in Normalise.stopWords and IntentDetector).
+        (["awaaz"], ["audio", "volume"]), (["avaz"], ["audio", "volume"]), (["gaana"], ["song", "music"]), (["gaane"], ["song", "music"]), (["paata"], ["song", "music"]), (["patalu"], ["song", "music"]),
+        (["bada"], ["size"]), (["chota"], ["size"]), (["chhota"], ["size"]), (["bhasha"], ["language"]), (["basha"], ["language"]), (["bhaasha"], ["language"]),
+        (["chalu"], ["on", "start"]), (["sleap"], ["sleep"]), (["slep"], ["sleep"]), (["crosfade"], ["crossfade"]), (["manage", "channels"], ["channel", "manager"]),
     ]
 
     private static let index: [String: [Int]] = {

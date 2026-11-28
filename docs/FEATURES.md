@@ -71,7 +71,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Filter Movies and Series by language, quality, rating, decade and watch status, in the Sort menu on Mac, iPhone and iPad and in the Filter panel on TV (which also has a box to find a filter by name and can narrow by connection) | ✓ | ✓ | ✓ | – | ✓ |
 | "In folder …" on a movie or series page, showing where it sits and opening that folder (useful after a search) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Play the best version of a film first (4K, then 1080p, never a cinema recording first), with the next best tried if one does not play | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Opening: the television tuning in (about 7.5 seconds the first time, about 3 seconds after; Automatic or Off in Settings; a still picture with Reduce Motion; it cannot be skipped), and new start and setup screens with motion and haptics | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Opening: the television tuning in (about 7.5 seconds the first time, about 3 seconds after; Automatic or Off in Settings; a still picture with Reduce Motion; it cannot be skipped), and new start and setup screens with motion and haptics. On the Mac the opening is different: on pure black the app's destination icons (Live TV, Movies, Series, Podcasts, Music, Sports, Services, Library) cross the screen one at a time with their names, each lighting in your accent colour at the centre; they then come together, spin and become the StreamSetu symbol, and the name slides out from behind it (the first time only; every launch after it is a short version: the symbol turns once, like the top bar's, and the name slides out) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Smart Mix Home: Top This Week, Trending in Your Library, Because You Watched, Rediscover and a row in your preferred language, with a Shuffle recommendations button that never starts a sync | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Folders view for Movies, Series and Live TV: one row per folder, 20 at a time, a More tile, a Grid switch; a locked folder shows only its name and a lock | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Other languages and versions of a title, as a row on its page | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -90,6 +90,7 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Subscription end dates for playlists that report them (Xtream), with a warning from a week before | ✓ | ✓ | ✓ | ✓ | ✓ |
 | A live channel that stops working tries the same channel in your other playlists | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Podcasts: search, follow and play, with your place kept | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Podcasts charts for the country you pick, and a row of the categories you like (Mac: Help, Get Set Up) | ✓ | – | – | – | – |
 | Watch Privately: play one title, series or channel without leaving history, resume points, statistics, lock-screen details or anything to sync | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Your week: time watched, the most watched title, new episodes and subscriptions ending, with an optional Sunday evening notification | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Your usual time: what you often put on around the same hour, one tap to play, with an optional reminder ten minutes before | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -120,8 +121,18 @@ A tick means the app has it today. A dash means it does not have it yet. The tab
 | Hindi and Telugu, the main screens; some text is still English | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **More like this** | | | | | |
 | Suggestions under a movie or series by franchise, director, genre, cast and story, each with its reason | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Music** | | | | | |
+| Music tab: Listen Now built only from what you play, Explore charts by country and language with a full page behind every See all, Recently Added releases from your artists, Search, Radio and Downloads | ✓ | – | – | – | – |
+| Your Library: songs, albums and artists you saved or play, playlists, history and local files, with Combine to find songs by person, language and decade | ✓ | – | – | – | – |
+| Artist, album, film and song pages that link singers, composers, lyricists and actors, with credits, filmographies and soundtracks | ✓ | – | – | – | – |
+| Player: queue, shuffle styles, autoplay, crossfade, Automix, equalizer, tempo, pitch and reverb, normalised volume, output device, sleep timer, a mini player and a full-window player | ✓ | – | – | – | – |
+| Lyrics: many sources, word-by-word timing, translation and reading in your script, an editor and share cards, as a floating strip or in the side panel | ✓ | – | – | – | – |
+| Sources you choose: public music services, your own Subsonic or Navidrome server, local folders, plugins and addons; scrobbling to Last.fm and ListenBrainz | ✓ | – | – | – | – |
+| Listen Together, control from another device, global hotkeys, schedules, Shortcuts and a command line | ✓ | – | – | – | – |
+| Titles, artists and albums shown in their own script when the graph holds that name | ✓ | – | – | – | – |
 | **Assistant and your own services** | | | | | |
 | Streaming services inside the app: a Services menu (can be pinned to the top bar) that opens each provider's own site in the app; sign-in and data are the provider's, and you can clear a service's data, with a themed Services panel, a card for each service in Settings and a message that says why a service did not load (Mac only) | ✓ | – | – | – | – |
+| Get Set Up (Mac, Help menu, and once on first run), a full-window three-step screen in your theme: choose whether Music's own first run opens when you finish, the Podcasts chart country and categories, and which streaming services are pinned to the top bar; you can also skip adding a playlist and use Music, Podcasts and the services without one | ✓ | – | – | – | – |
 | Optional page options for two streaming services (Mac only): skipping a video service's ads and community-marked sponsor segments, and hiding ads and upgrade prompts or muting audio ads on a music service (best effort, and against that service's terms), each off by default, each asking first with the risks explained, shown once when the service is first opened and any time in Settings; never in a kids profile or while locked | ✓ | – | – | – | – |
 | Setu, an assistant in a chat bubble: finds something to watch, answers about your screen, settings and playback problems, and offers actions you tap to confirm (new; on iPhone and iPad it opens as a bottom sheet or popover; hidden in kids mode; on in iPhone and iPad 1.4) | ✓ | ✓ | ✓ | – | – |
 | Bring your own AI: Apple Intelligence, Gemini, OpenRouter, Claude, OpenAI, Groq, NVIDIA, Ollama Cloud, or Ollama on your network, with each one's price and free limit shown | ✓ | ✓ | ✓ | ✓ without Apple Intelligence | ✓ without Apple Intelligence |

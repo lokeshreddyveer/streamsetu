@@ -26,8 +26,8 @@ struct SearchResultsPage: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     header
-                    commandRows
-                    atlasRows
+                    // A question or request puts "Ask Setu" first; a plain title keeps the command rows on top as before.
+                    if SearchIntent.classify(model.term) == .ask { atlasRows; commandRows } else { commandRows; atlasRows }
                     if let container { SmartPicksCard(container: container, query: model.term, open: { PlayActions.open($0, router: router) }, openPerson: { person = $0 }, force: model.searched && model.visible.isEmpty && model.term.split(separator: " ").count >= 2).padding(.bottom, 8) }
                     tabs.padding(.bottom, 6)
                     content
@@ -202,7 +202,7 @@ extension SearchResult {
         case .movie(let id): id
         case .series(let id): id
         case .episode(let id, _): id
-        case .programme, .folder, .collection: ""
+        case .programme, .folder, .collection, .music, .podcast: ""
         }
     }
 }

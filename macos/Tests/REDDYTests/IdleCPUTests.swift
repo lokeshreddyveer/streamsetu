@@ -74,7 +74,7 @@ import AppKit
             let end = Date().addingTimeInterval(4); while Date() < end { try await Task.sleep(nanoseconds: 50_000_000) }
             let pct = (Self.cpu() - t0) / Date().timeIntervalSince(w0) * 100
             print("reduce app=\(c.settings.reduceMotion) std=\(UserDefaults.standard.bool(forKey: DefaultsKey.reduceMotion)) sys=\(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)"); print("ticks \(ctr.n)"); dl.invalidate(); print("screens \(NSScreen.screens.count) winscreen \(String(describing: win.screen?.frame)) frame \(win.frame) active \(NSApp.isActive) onActiveSpace \(win.isOnActiveSpace)"); print("hasLibrary \(state.hasLibrary) loaded \(state.loaded) win visible \(win.isVisible) occl \(win.occlusionState.contains(.visible))"); print("IDLECPU \(theme.rawValue): \(String(format: "%.1f", pct)) %")
-            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) { host.cacheDisplay(in: host.bounds, to: rep); try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "/private/tmp/claude-501/-Users-lokeshreddyveerabhadra-Desktop/15e886d1-784e-4b4a-ac5f-1b6e16917e13/scratchpad/cpu/home-\(theme.rawValue.replacingOccurrences(of: " ", with: "")).png")) }
+            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) { host.cacheDisplay(in: host.bounds, to: rep); try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("streamsetu-idlecpu-home-\(theme.rawValue.replacingOccurrences(of: " ", with: "")).png")) }
             win.orderOut(nil)
         }
     }

@@ -17,6 +17,8 @@ fi
 find "$APP/Contents/Frameworks" -maxdepth 1 -type f \( -name "*.dylib" -o -perm +111 \) 2>/dev/null | while read -r f; do
   codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$f"
 done
+# the packaged fingerprint tool, if there is one, is signed as its own code before the app
+[ -f "$APP/Contents/MacOS/fpcalc" ] && codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$APP/Contents/MacOS/fpcalc"
 ENTITLEMENTS="Configuration/REDDY.entitlements"
 PROFILE="Configuration/StreamSetu.provisionprofile"
 if [ -f "$PROFILE" ]; then

@@ -5,6 +5,9 @@ import AppKit
 
 /// The degrade order of State A: pinned services overflow into the Services list first; names drop to icons (right-most first) only when the six items
 /// at their chosen modes plus Services cannot fit even with no pins. Property-style over widths, per-item modes and pin counts. Pure planner, no window.
+// Changed: each sweep plans tens of thousands of rows on the main actor. Run as one synchronous block, a test held the main actor for 10 to 40 seconds in a full run, and every other
+// main-actor test (the assistant suite with its one-minute limit, the recording and web-model tests that measure wall time) waited behind it. The sweeps now yield between pin counts;
+// the assertions and the swept widths are unchanged.
 @Suite("Top bar: degrade order") @MainActor struct TopBarDegradeOrderTests {
     private let all: [ProviderID] = { let l = ProviderRegistry.standard.listed(on: .macOS).map(\.id); return l + ProviderID.allCases.filter { !l.contains($0) } }()
     private func state(_ w: CGFloat, modes: TopBarTabModes, pins: Int, destination: TopLevelDestination = .streamSetu) -> TopBarState {
@@ -12,7 +15,7 @@ import AppKit
         if case .service(let s) = destination { nav.active = s }
         return TopBarState(tab: .movies, initials: "LR", accountMenuOpen: false, width: w, destination: destination, services: [], showsServicesMenu: true, servicesNav: nav)
     }
-    private func modes(_ m: TabBarMode) -> TopBarTabModes { var t = TopBarTabModes(); NavTab.allCases.forEach { t.set(m, for: $0) }; return t }
+    private func modes(_ m: TabBarMode) -> TopBarTabModes { var t = TopBarTabModes(); NavTab.baseTabs.forEach { t.set(m, for: $0) }; return t }
     private var configs: [(String, TopBarTabModes)] {
         var a = TopBarTabModes(); a.set(.iconOnly, for: .home); a.set(.nameOnly, for: .movies); a.set(.iconOnly, for: .guide)
         var b = TopBarTabModes(); b.set(.nameOnly, for: .liveTV); b.set(.nameOnly, for: .series); b.set(.nameOnly, for: .podcasts)
@@ -22,7 +25,7 @@ import AppKit
     private func budget(_ row: TopBarMenuRow, _ w: CGFloat) -> CGFloat { row.metrics.centerBudget(width: w, brandWidth: TabLabelMetrics.brandWidth) }
     /// Items whose name was removed although the person did not choose Icon Only.
     private func degraded(_ row: TopBarMenuRow, _ t: TopBarTabModes) -> [Bool] {
-        row.leading.enumerated().map { $0.element.compact && t.mode(NavTab.allCases[$0.offset]) != .iconOnly }
+        row.leading.enumerated().map { $0.element.compact && t.mode(NavTab.baseTabs[$0.offset]) != .iconOnly }
     }
     /// Number of drawn names: items that show their title.
     private func names(_ row: TopBarMenuRow) -> Int { row.leading.filter { !$0.compact }.count }
@@ -34,9 +37,11 @@ import AppKit
         #expect(row.width <= budget(row, 1512) + 0.5)
     }
 
-    @Test func widerNeverShowsFewerPinsOrFewerNames() {
+    @Test func widerNeverShowsFewerPinsOrFewerNames() async {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         for (name, t) in configs {
             for pins in 0...12 {
+                await Task.yield()          // Changed: hands the main actor back between sweeps (see the suite note)
                 var lastPins = 0, lastNames = 0
                 for w in sweep {
                     let row = TopBarMenuRow.make(for: state(w, modes: t, pins: pins))
@@ -48,23 +53,27 @@ import AppKit
         }
     }
 
-    @Test func tabsKeepTheirChosenModeWhileAnyPinCanStillOverflow() {
+    @Test func tabsKeepTheirChosenModeWhileAnyPinCanStillOverflow() async {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         for (name, t) in configs {
             for pins in 0...12 {
+                await Task.yield()          // Changed: hands the main actor back between sweeps (see the suite note)
                 for w in sweep {
                     let row = TopBarMenuRow.make(for: state(w, modes: t, pins: pins))
                     if degraded(row, t).contains(true) {
                         #expect(row.pinned.isEmpty && row.overflow.count == pins, "\(name) pins=\(pins) w=\(w): names dropped while pins remain")
                     } else {
-                        for (i, item) in row.leading.enumerated() { #expect(item.compact == (t.mode(NavTab.allCases[i]) == .iconOnly), "\(name) w=\(w)") }
+                        for (i, item) in row.leading.enumerated() { #expect(item.compact == (t.mode(NavTab.baseTabs[i]) == .iconOnly), "\(name) w=\(w)") }
                     }
                 }
             }
         }
     }
 
-    @Test func namesDropFromTheRightMostItemInwardOnlyWhenEvenZeroPinsDoNotFit() {
+    @Test func namesDropFromTheRightMostItemInwardOnlyWhenEvenZeroPinsDoNotFit() async {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         for (name, t) in configs {
+            await Task.yield()
             for w in sweep {
                 let row = TopBarMenuRow.make(for: state(w, modes: t, pins: 12))
                 let d = degraded(row, t)
@@ -80,9 +89,11 @@ import AppKit
         }
     }
 
-    @Test func atLeastThreeFaviconsWhenTheyFitAndNeverMoreThanFit() {
+    @Test func atLeastThreeFaviconsWhenTheyFitAndNeverMoreThanFit() async {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         for (name, t) in configs {
             for pins in 0...12 {
+                await Task.yield()          // Changed: hands the main actor back between sweeps (see the suite note)
                 for w in sweep {
                     let row = TopBarMenuRow.make(for: state(w, modes: t, pins: pins))
                     if degraded(row, t).contains(true) { continue }   // names dropped: pins wait in the list so that a wider window restores names first
@@ -99,9 +110,11 @@ import AppKit
         }
     }
 
-    @Test func neverOverlapsSearchAndProfileAndKeepsAllSix() {
+    @Test func neverOverlapsSearchAndProfileAndKeepsAllSix() async {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         for (name, t) in configs {
             for pins in [0, 3, 7, 12] {
+                await Task.yield()
                 for w in sweep {
                     let row = TopBarMenuRow.make(for: state(w, modes: t, pins: pins))
                     #expect(row.leading.count == 6 && row.items.last?.kind == .servicesMenu)

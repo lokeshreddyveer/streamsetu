@@ -296,6 +296,8 @@ final class AppSettings {
     /// Everything except the sources, favorites and history, which are data rather than preferences.
     func resetAll() {
         resetAppearance(); resetPlayback()
+        MusicDefaultsKeys.resetPreferences(d)
+        Task { await MusicRecommenderRuntime.shared.resetAffinity() }
         clickBehavior = Defaults.click; collapseDuplicates = true; hideEmptyFolders = false
         defaultLibrarySort = .recentlyAdded; defaultChannelSort = .provider; rememberFolders = true; remindersEnabled = true; refreshOnOpen = true; language = .system; resumeLastChannel = false
         catalogRefresh = Defaults.catalogRefresh; guideRefresh = Defaults.guideRefresh; guideRetentionDays = Defaults.guideRetentionDays
@@ -310,6 +312,7 @@ final class AppSettings {
         for (k, v) in d.dictionaryRepresentation() where k.hasPrefix("settings.") && k != SettingsMigrator.versionKey {
             if let s = v as? String { out[k] = s } else if let b = v as? Bool { out[k] = b ? "true" : "false" } else if let n = v as? NSNumber { out[k] = n.stringValue }
         }
+        for (k, v) in MusicDefaultsKeys.snapshot(d) { out[k] = v }
         return out
     }
 
@@ -317,6 +320,9 @@ final class AppSettings {
     @discardableResult
     func apply(snapshot: [String: String]) -> Int {
         var applied = 0
+        for (key, value) in snapshot where MusicDefaultsKeys.portable.contains(key) {
+            if let typed = MusicDefaultsKeys.typedValue(key, value) { d.set(typed, forKey: key); applied += 1 }
+        }
         for (key, value) in snapshot where key.hasPrefix("settings.") && Self.knownKeys.contains(key) {
             if let typed = Self.typedValue(key, value) { d.set(typed, forKey: key); applied += 1 }
         }
@@ -343,7 +349,7 @@ final class AppSettings {
         "theme", "customtheme", "accent", "density", "reducemotion", "highcontrast", "sidebarlaunch", "click", "collapse", "hideemptyfolders", "libsort", "chansort", "rememberfolders", "reminders", "refreshonopen", "language", "resumelast",
         "engine", "hwdec2", "deinterlace2", "quality", "buffering", "alang", "audioproc", "slang", "subsdefault", "subsize", "subbg", "subcolor", "subpos",
         "autonext", "rememberpos", "autoresume", "diagoverlay", "rendering", "downmix", "suboutline", "tonemapping", "liverewind", "autobackup", "catalogrefresh", "guiderefresh", "guideretention", "guidehours",
-    ].reduce(into: Set<String>()) { $0.insert("settings." + $1) }
+    ].reduce(into: Set<String>()) { $0.insert("settings." + $1) }.union(MusicDefaultsKeys.portable)
 
     private static func typedValue(_ key: String, _ s: String) -> Any? {
         let bools: Set<String> = ["reducemotion", "highcontrast", "collapse", "hideemptyfolders", "rememberfolders", "reminders", "refreshonopen", "resumelast", "subsdefault", "autonext", "rememberpos", "autoresume", "diagoverlay", "downmix", "suboutline", "liverewind", "autobackup"].reduce(into: Set<String>()) { $0.insert("settings." + $1) }

@@ -4,7 +4,7 @@ import Foundation
 
 /// What a result is. The order here is the order of the groups on the results page.
 enum SearchResultKind: String, CaseIterable, Sendable, Hashable {
-    case channel, movie, series, episode, programme, folder, collection
+    case channel, movie, series, episode, programme, folder, collection, podcast, music
 
     var groupTitle: String {
         switch self {
@@ -15,6 +15,8 @@ enum SearchResultKind: String, CaseIterable, Sendable, Hashable {
         case .programme: "TV Guide"
         case .folder: "Folders"
         case .collection: "Collections"
+        case .music: "Music"
+        case .podcast: "Podcasts"
         }
     }
     var typeLabel: String {
@@ -26,6 +28,8 @@ enum SearchResultKind: String, CaseIterable, Sendable, Hashable {
         case .programme: "Programme"
         case .folder: "Folder"
         case .collection: "Collection"
+        case .music: "Music"
+        case .podcast: "Podcast"
         }
     }
     var symbol: String {
@@ -37,6 +41,8 @@ enum SearchResultKind: String, CaseIterable, Sendable, Hashable {
         case .programme: "calendar"
         case .folder: "folder"
         case .collection: "square.stack"
+        case .music: "music.note"
+        case .podcast: "mic"
         }
     }
 }
@@ -66,6 +72,10 @@ enum SearchDestination: Hashable, Sendable {
     case programme(channelID: String)
     case folder(categoryID: String, kind: ContentKind)
     case collection(id: String)
+    /// A track, album or artist from Music (only present when Music is switched on and consented).
+    case music(MusicSearchTarget)
+    /// A podcast show from the public directory; choosing it opens the show in Podcasts.
+    case podcast(feedURL: URL, title: String, author: String, artwork: URL?)
 }
 
 struct SearchResult: Identifiable, Hashable, Sendable {
@@ -147,7 +157,33 @@ final class GlobalSearchService: Sendable {
     static let pageSize = 24
 
     func search(_ query: String, tab: SearchTab = .all, limit: Int = pageSize) async throws -> GlobalSearchResults {
-        try await Task.detached(priority: .userInitiated) { [self] in try run(query, kinds: tab.kinds, limit: limit) }.value
+        let base = try await Task.detached(priority: .userInitiated) { [self] in try run(query, kinds: tab.kinds, limit: limit) }.value
+        return await Self.withExtras(base, query: query, kinds: tab.kinds, limit: limit)
+    }
+
+    /// Adds the rows of the other destinations (Music, Podcasts), fetched together so neither waits for the other.
+    static func withExtras(_ results: GlobalSearchResults, query: String, kinds: Set<SearchResultKind>, limit: Int) async -> GlobalSearchResults {
+        async let music = withMusic(results, query: query, kinds: kinds, limit: limit)
+        async let pods = podcastRows(query: query, kinds: kinds, limit: limit)
+        var out = await music
+        let p = await pods
+        if !p.isEmpty { out.byKind[.podcast] = p }
+        return out
+    }
+
+    private static func podcastRows(query: String, kinds: Set<SearchResultKind>, limit: Int) async -> [SearchResult] {
+        guard kinds.contains(.podcast), PodcastGlobalSearch.isInstalled else { return [] }
+        return await PodcastGlobalSearch.rows(for: query, limit: min(limit, PodcastGlobalSearch.limit))
+    }
+
+    /// Adds Music rows to a finished result when Music is connected and the tab includes them. A search that does not involve Music never calls it.
+    static func withMusic(_ results: GlobalSearchResults, query: String, kinds: Set<SearchResultKind>, limit: Int) async -> GlobalSearchResults {
+        guard kinds.contains(.music), MusicGlobalSearch.isInstalled else { return results }
+        let rows = await MusicGlobalSearch.rows(for: query, limit: min(limit, MusicGlobalSearch.limit))
+        guard !rows.isEmpty else { return results }
+        var out = results
+        out.byKind[.music] = rows
+        return out
     }
 
     /// The same search, published in stages: the titles (each of channels, movies and series as soon as it is ready), then episodes, folders and collections, then the final update with the
@@ -161,7 +197,8 @@ final class GlobalSearchService: Sendable {
                     let final = try run(query, kinds: tab.kinds, limit: limit) { stage, partial in
                         if !partial.isEmpty { continuation.yield(SearchUpdate(results: partial, stage: stage)) }
                     }
-                    continuation.yield(SearchUpdate(results: final, stage: .done))
+                    let withMusic = await Self.withExtras(final, query: query, kinds: tab.kinds, limit: limit)
+                    continuation.yield(SearchUpdate(results: withMusic, stage: .done))
                     continuation.finish()
                 } catch { continuation.finish(throwing: error) }
             }

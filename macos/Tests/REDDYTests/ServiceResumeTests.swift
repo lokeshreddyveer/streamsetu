@@ -46,10 +46,12 @@ import AppKit
         return Rig(server: server, hosts: hosts)
     }
 
-    /// What the app does on a switch: the navigation hides and shows, then the root view's change handler pauses every service except the new one.
-    private func go(_ r: Rig, to s: ProviderID?) {
+    /// What the app does on a switch: the navigation hides and shows. Changed: nothing is paused by the switch itself any more (services keep
+    /// playing in the background); `stopRule` stands for a stop rule firing (another service, the native player or Podcasts started), which
+    /// pauses every service except the new one, as the old switch did.
+    private func go(_ r: Rig, to s: ProviderID?, stopRule: Bool = true) {
         if let s { r.nav.select(s) } else { r.nav.returnToStreamSetu() }
-        r.hosts.pauseAll(except: s)
+        if stopRule { r.hosts.pauseAll(except: s) }
         attach(r, s)
     }
     private func attach(_ r: Rig, _ s: ProviderID?) {

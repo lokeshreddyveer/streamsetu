@@ -39,6 +39,9 @@ windows/native/dist/
 macos/Sources/REDDY/Generated/
 ios/StreamSetu/Generated/
 
+# the karaoke model, built on demand by macos/Scripts/fetch-karaoke-model.sh; never committed
+macos/Resources/Models/
+
 # local result cache of Scripts/checks/run_all.py
 Scripts/checks/.stamp.json
 Scripts/checks/.stamp.tmp

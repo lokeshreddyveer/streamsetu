@@ -113,9 +113,11 @@ final class PodcastPlayer {
     /// The expanded Now Playing panel for podcasts; opens only when asked.
     var panelOpen = false
 
-    /// Connected by the shell: starting a podcast stops the library's player and pauses services' media.
-    @ObservationIgnored var stopLibrary: () -> Void = {}
-    @ObservationIgnored var pauseServices: () -> Void = {}
+    /// Called BEFORE any audio starts (play and resume): takes the audio from every other participant through `AudioOwnership` (the native player stops,
+    /// services pause). Changed: this one hook replaces `stopLibrary` and `pauseServices`.
+    @ObservationIgnored var claimAudio: () -> Void = { AudioOwnership.shared.claim(.podcasts, reason: .podcastPlay) }
+    /// Called when the player is closed: the audio is no longer this player's.
+    @ObservationIgnored var releaseAudio: () -> Void = { AudioOwnership.shared.release(.podcasts, reason: .stopped) }
     @ObservationIgnored var loadData: @Sendable (URL) async throws -> Data = { url in try await HTTPClient.app.exchange(URLRequest(url: url, timeoutInterval: 20)).data }
     @ObservationIgnored var now: () -> Date = { Date() }
     @ObservationIgnored private var lastSave: TimeInterval = 0
@@ -132,7 +134,7 @@ final class PodcastPlayer {
 
     func play(_ ref: PodcastEpisodeRef) {
         saveNow()
-        stopLibrary(); pauseServices()
+        claimAudio()
         current = ref; position = library.startPosition(ref); duration = ref.duration ?? 0
         speed = library.speed(for: ref.feedURL)
         chapters = []; transcript = []
@@ -144,14 +146,11 @@ final class PodcastPlayer {
     }
 
     func pause() { guard current != nil, isPlaying else { return }; engine.pause(); isPlaying = false; saveNow() }
-    func resume() { guard current != nil, !isPlaying else { return }; stopLibrary(); pauseServices(); engine.play(rate: speed); isPlaying = true }
+    func resume() { guard current != nil, !isPlaying else { return }; claimAudio(); engine.play(rate: speed); isPlaying = true }
     func toggle() { isPlaying ? pause() : resume() }
 
-    /// The library's player (or a service) started: this one pauses.
-    func otherMediaStarted() { pause() }
-
     func close() {
-        saveNow(); engine.stop()
+        saveNow(); engine.stop(); releaseAudio()
         current = nil; isPlaying = false; position = 0; duration = 0; panelOpen = false; chapters = []; transcript = []; sleep = .off; sleepDeadline = nil
     }
 
@@ -268,39 +267,54 @@ struct PodcastNowPlayingSnapshot: Equatable {
     }
 }
 
-/// Registers the podcast player with the system's media keys and Now Playing, and keeps it up to date. It only answers while a podcast is the thing playing.
-@MainActor final class PodcastRemote {
+/// Podcasts' side of the media keys and Now Playing. It registers with the one `MediaCommandRouter`; commands reach it, and its Now Playing is
+/// published, only while Podcasts owns the audio. Enabled-state is event driven (told to the router when it changes), not rewritten every second.
+@MainActor final class PodcastRemote: RemoteCommandHandling {
     private weak var player: PodcastPlayer?
     private let artwork: ArtworkService?
+    private let router: MediaCommandRouter
     private var task: Task<Void, Never>?
     private var artworkFor: String?
     private var artworkItem: MPMediaItemArtwork?
-    private var published = false
+    private var last: PodcastNowPlayingSnapshot?
+    private var lastSupport: RemoteCommandSupport?
     var isLocked: () -> Bool = { false }
 
-    init(player: PodcastPlayer, artwork: ArtworkService?) {
-        self.player = player; self.artwork = artwork
-        register()
+    init(player: PodcastPlayer, artwork: ArtworkService?, router: MediaCommandRouter = .shared) {
+        self.player = player; self.artwork = artwork; self.router = router
+        router.register(self, for: .podcasts)
+        // Publishing the elapsed time only when it changed or drifted; the system extrapolates in between.
         task = Task { [weak self] in while !Task.isCancelled { self?.refresh(); try? await Task.sleep(nanoseconds: 1_000_000_000) } }
     }
     deinit { task?.cancel() }
 
+    var remoteSupport: RemoteCommandSupport {
+        guard let s = player?.snapshot, !isLocked() else { return .none }
+        var set: Set<RemoteCommandKind> = [.play, .pause, .toggle, .skipForward, .skipBackward, .seek, .previous]
+        if s.hasNext { set.insert(.next) }
+        return RemoteCommandSupport(enabled: set, skipForward: s.skipForward, skipBackward: s.skipBack)
+    }
+
+    func remoteOwnershipChanged(isOwner: Bool) {
+        last = nil
+        if isOwner { refresh() } else { artworkItem = nil; artworkFor = nil }
+    }
+
     func refresh() {
-        let center = MPNowPlayingInfoCenter.default()
         guard let s = player?.snapshot, !isLocked() else {
-            if published { center.nowPlayingInfo = nil; center.playbackState = .stopped; published = false; artworkItem = nil; artworkFor = nil }
+            if last != nil { router.ownerStopped(.podcasts); last = nil; artworkItem = nil; artworkFor = nil }
             return
         }
+        let support = remoteSupport
+        if support != lastSupport { lastSupport = support; router.supportChanged(for: .podcasts) }
+        let drift = last.map { abs(($0.position + ($0.isPlaying ? $0.speed : 0)) - s.position) } ?? 99
+        var changed = last.map { var a = $0, b = s; a.position = 0; b.position = 0; return a != b } ?? true
+        if drift > 2.5 { changed = true }
+        guard changed else { last = s; return }
         var info = s.info
         if artworkFor == s.artworkURL, let artworkItem { info[MPMediaItemPropertyArtwork] = artworkItem }
-        center.nowPlayingInfo = info
-        center.playbackState = s.isPlaying ? .playing : .paused
-        published = true
-        let r = MPRemoteCommandCenter.shared()
-        r.playCommand.isEnabled = true; r.pauseCommand.isEnabled = true; r.togglePlayPauseCommand.isEnabled = true
-        r.skipForwardCommand.isEnabled = true; r.skipBackwardCommand.isEnabled = true; r.changePlaybackPositionCommand.isEnabled = true
-        r.skipForwardCommand.preferredIntervals = [NSNumber(value: s.skipForward)]; r.skipBackwardCommand.preferredIntervals = [NSNumber(value: s.skipBack)]
-        r.nextTrackCommand.isEnabled = s.hasNext; r.previousTrackCommand.isEnabled = true
+        guard router.publish(info, playing: s.isPlaying, from: .podcasts) else { return }          // not the owner: nothing is published
+        last = s
         if artworkFor != s.artworkURL { loadArtwork(s.artworkURL) }
     }
 
@@ -311,32 +325,28 @@ struct PodcastNowPlayingSnapshot: Equatable {
             guard let image = await artwork.image(url, kind: .poster) else { return }
             let item = NowPlayingService.makeArtwork(image)
             await MainActor.run {
-                guard let self, self.artworkFor == url, self.player?.current != nil else { return }
+                guard let self, self.artworkFor == url, self.player?.current != nil, let s = self.last else { return }
                 self.artworkItem = item
-                var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+                var info = s.info
                 info[MPMediaItemPropertyArtwork] = item
-                MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+                self.router.publish(info, playing: s.isPlaying, from: .podcasts)
             }
         }
     }
 
-    private func register() {
-        let r = MPRemoteCommandCenter.shared()
-        func add(_ cmd: MPRemoteCommand, _ handler: @escaping @MainActor (PodcastPlayer, MPRemoteCommandEvent) -> Void) {
-            _ = cmd.addTarget { [weak self] event in
-                guard let p = MainActor.assumeIsolated({ self?.player }), MainActor.assumeIsolated({ p.current != nil }) else { return .noActionableNowPlayingItem }
-                if MainActor.assumeIsolated({ self?.isLocked() == true }) { return .commandFailed }
-                MainActor.assumeIsolated { handler(p, event) }
-                return .success
-            }
+    func handleRemote(_ event: RemoteCommandEvent) -> RemoteCommandResult {
+        guard let p = player, p.current != nil else { return .noActionable }
+        if isLocked() { return .failed }
+        switch event.kind {
+        case .play: p.resume()
+        case .pause: p.pause()
+        case .toggle: p.toggle()
+        case .skipForward: p.skipForward()
+        case .skipBackward: p.skipBack()
+        case .next: p.next()
+        case .previous: p.seek(to: 0)
+        case .seek: if let t = event.position { p.seek(to: t) }
         }
-        add(r.playCommand) { p, _ in p.resume() }
-        add(r.pauseCommand) { p, _ in p.pause() }
-        add(r.togglePlayPauseCommand) { p, _ in p.toggle() }
-        add(r.skipForwardCommand) { p, _ in p.skipForward() }
-        add(r.skipBackwardCommand) { p, _ in p.skipBack() }
-        add(r.nextTrackCommand) { p, _ in p.next() }
-        add(r.previousTrackCommand) { p, _ in p.seek(to: 0) }
-        add(r.changePlaybackPositionCommand) { p, e in if let e = e as? MPChangePlaybackPositionCommandEvent { p.seek(to: e.positionTime) } }
+        return .success
     }
 }

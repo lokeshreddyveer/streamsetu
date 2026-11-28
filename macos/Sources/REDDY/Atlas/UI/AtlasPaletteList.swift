@@ -26,14 +26,14 @@ struct AtlasPaletteList: View {
     }
 
     private var askRow: some View {
-        let question = AtlasPaletteSource.isQuestion(trimmed)
+        let question = SearchIntent.classify(trimmed) == .ask
         return Button { ask(trimmed) } label: {
             HStack(spacing: 10) {
                 Image(systemName: "sparkles").frame(width: 20).foregroundStyle(ColorTokens.accent)
                 Text(AtlasPaletteSource.askTitle(trimmed)).font(.body.weight(.medium)).lineLimit(1)
                 Spacer(minLength: 8)
                 #if os(macOS)
-                Text(question ? "↩" : "⌘↩").font(.caption).foregroundStyle(.secondary)
+                Text(question ? "↩" : "⌘↩").font(.caption).help(question ? "Return asks Setu. ⇧Return always asks, ⌥Return always searches." : "⌘Return asks Setu. ⇧Return also asks.").foregroundStyle(.secondary)
                 #else
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
                 #endif
@@ -41,7 +41,7 @@ struct AtlasPaletteList: View {
             .padding(.horizontal, 12).padding(.vertical, 9).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .background(ColorTokens.accent.opacity(question ? 0.18 : 0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous)).contentShape(Rectangle())
         }
-        .buttonStyle(.plain).accessibilityLabel("Ask Setu: \(trimmed)").accessibilityHint("Opens Setu with this question")
+        .buttonStyle(.plain).accessibilityLabel("Ask Setu: \(trimmed)").accessibilityHint("Opens Setu with this question").atlas("control.search.askSetuRow")
     }
 
     private func row(_ r: AtlasPaletteRow, index: Int, of count: Int) -> some View {

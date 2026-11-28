@@ -7,6 +7,8 @@ import Foundation
 @Suite("Accent and theme tokens only") struct ThemeAccentScanTests {
     /// File name (or folder) to the reason its literal colours stay.
     static let allowed: [String: String] = [
+        "MusicVisualizerViews.swift": "the visualizer colour schemes (fire, ocean, mono) are fixed palettes the person picks; Theme uses the accent",
+        "MusicTokens.swift": "the Music tokens file is the one place for Music colours; the unloaded-cover wash derives its hue from the address",
         "SettingsModels.swift": "the named accent choices are fixed colours by design",
         "StartScreenStyle.swift": "the branded start screen uses the logo's own teal and silver",
         "Opening": "the opening animation is fixed brand art",

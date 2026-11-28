@@ -233,5 +233,8 @@ import Foundation
         "LanSyncView.swift": ["gesture.ios.swipePeer"], "LibrarySettingsView.swift": ["gesture.ios.swipeFolderHide"], "PlayerControlsOverlay.swift": ["gesture.mac.playerClick"],
         "ReddyBottomPlayer.swift": ["gesture.mac.playerHover"], "PodcastTheme.swift": ["control.podcasts.player"], "SeekBar.swift": ["gesture.mac.seekBarDrag"], "FilesView.swift": ["gesture.mac.windowDrop"], "OnYourDeviceView.swift": ["gesture.mac.windowDrop"],
         "LiveTVScreen.swift": ["gesture.mac.channelListDivider"], "MultiViewWindow.swift": ["gesture.mac.multiViewDoubleClick"],
+        "MusicSetupSheet.swift": ["control.music.setupGenre"], "MusicTrackMarksSheet.swift": ["control.music.marksWaveform"],
+        "MusicEqualizerView.swift": ["control.music.eqPad"], "MusicLyricsEditorView.swift": ["control.music.lyricsEditWordEdge"],
+        "MusicLyricsView.swift": ["control.music.lyricsLongPress", "control.music.lyricsBrowse"], "MusicPanelResize.swift": ["control.music.panelResize"], "MusicPlayerFollowUpViews.swift": ["control.music.playerWaveSeek"], "MusicPlayerBar.swift": ["control.music.playerWaveSeek"],
     ]
 }

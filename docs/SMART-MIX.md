@@ -124,7 +124,7 @@ Neither file is read by the generic case runner. The expected values were produc
 
 ## 10. Home v2: names, order, composition, collections, default view (all apps)
 
-Research: `scratchpad/home/research.md` summary. One large streaming service describes the page as thematically coherent rows where choosing and ordering rows is part of personalisation, with diversity and novelty as page-level
+Research summary: one large streaming service describes the page as thematically coherent rows where choosing and ordering rows is part of personalisation, with diversity and novelty as page-level
 metrics; Plex and Jellyfin keep Continue Watching first and users dislike row sprawl; MMR is the standard cheap re-ranker. Gaps (no source found, so these are design choices): maximum rows before fatigue (12 here),
 time-of-day rules, the "one in six" exploration slot. Owner rule: nothing is tuned to one library; every new row hides when it cannot fill 6 tiles, and thresholds scale with the library.
 Machine-readable contract: `smartmix/fixtures/home-layout.json`, written by `smartmix/tools/make_home_fixtures.py` (integer-only reference of the pure parts). Not read by the generic case runner.

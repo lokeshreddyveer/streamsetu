@@ -59,21 +59,44 @@ struct AtlasReply {
     static func reply(_ text: String, conversation: inout AtlasConversation, container c: AppContainer, misses: AtlasMisses = .shared) -> AtlasReply? {
         guard !c.parental.kidsMode else { return nil }
         let route = AssistantRouter.route(text)
-        guard !toolBacked.contains(route) else { return nil }
+        guard !toolBacked.contains(route) else {
+            SetuRouterLog.decision(text: text, route: route, intent: .other, decision: .weak, confidence: 0, top: [], outcome: "tool-backed, engine skipped")
+            return nil
+        }
         let engine = Atlas.engine
         var scratch = conversation
         let a = engine.answer(text, conversation: &scratch, platform: platform, appStore: appStore, current: { current($0, settings: c.settings) })
+        let r = engine.retrieve(text, platform: platform, appStore: appStore, limit: 3)
+        // A question about the app is never sent on as a media search; with no model ready it gets the nearest topics instead of a dead end.
+        let asksToPlay = text.trimmingCharacters(in: .whitespaces).lowercased().hasPrefix("play ")
+        let isQuestion = AssistantRouter.isAppHelp(text) || (SearchIntent.classify(text) == .ask && !asksToPlay)
+        func log(_ outcome: String) { SetuRouterLog.decision(text: text, route: route, intent: a.intent, decision: a.decision, confidence: r.confidence, top: r.hits.map(\.entry.id), outcome: outcome) }
+        func nearby() -> AtlasReply? {
+            guard isQuestion, c.assistantModelChain().isEmpty else { return nil }
+            misses.recordMiss(words: r.correctedQuery)
+            return nearbyReply(for: text, engine: engine, container: c)
+        }
         // A bare name or a phrase with no question in it ("bigg boss") is a library search unless the match is very strong.
         let detected = IntentDetector.detect(text)
-        if detected.intent == .other, a.decision != .confident || engine.retrieve(text, platform: platform, appStore: appStore).confidence < 0.8 {
-            return nil
+        if detected.intent == .other, a.decision != .confident || r.confidence < 0.8 {
+            if let n = nearby() { log("nearby topics (no cue, low confidence)"); return n }
+            log("handed on (not a question or low confidence)"); return nil
         }
         guard a.decision != .weak else {
-            misses.recordMiss(words: engine.retrieve(text, platform: platform, appStore: appStore, limit: 1).correctedQuery)
-            return nil
+            if let n = nearby() { log("nearby topics (weak)"); return n }
+            misses.recordMiss(words: r.correctedQuery)
+            log("handed on (weak)"); return nil
         }
         conversation = scratch
         misses.recordAnswered()
+        log("answered")
+        return package(a, engine: engine, container: c)
+    }
+
+    /// The closest topics for a question Setu has no exact answer for: each is a chip, the first one with a screen also gets Open this, and the text says what Setu can do. Never a media search.
+    static func nearbyReply(for text: String, engine: SetuEngine, container c: AppContainer) -> AtlasReply {
+        let hits = engine.retrieve(text, platform: platform, appStore: appStore, limit: 6).hits.map(\.entry).filter { visible($0) }
+        let a = Compose.fallback(Array(hits.prefix(3)), intent: IntentDetector.detect(text).intent)
         return package(a, engine: engine, container: c)
     }
 

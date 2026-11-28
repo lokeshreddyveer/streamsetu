@@ -16,7 +16,7 @@ struct FolderRowsSection: View {
         self.kind = kind; self.memoryKey = memoryKey; _topRow = topRow; _model = State(initialValue: model ?? FolderRowsModel(kind: kind))
     }
 
-    private var reloadKey: String { "\(kind.rawValue)-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(container?.parental.restrictionRevision ?? 0)-\(container?.profiles.activeID ?? "")" }
+    private var reloadKey: String { "\(kind.rawValue)-\(state.activeSourceID?.uuidString ?? "")-\(state.catalogVersion)-\(state.folderLayoutRevision)-\(container?.parental.restrictionRevision ?? 0)-\(container?.profiles.activeID ?? "")" }
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 22) {

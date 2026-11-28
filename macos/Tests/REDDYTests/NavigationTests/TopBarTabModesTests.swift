@@ -9,7 +9,7 @@ import Foundation
         if case .service(let s) = destination { nav.active = s }
         return TopBarState(tab: .movies, initials: "LR", accountMenuOpen: false, width: w, destination: destination, services: [], showsServicesMenu: true, servicesNav: nav)
     }
-    private func modes(_ m: TabBarMode) -> TopBarTabModes { var t = TopBarTabModes(); NavTab.allCases.forEach { t.set(m, for: $0) }; return t }
+    private func modes(_ m: TabBarMode) -> TopBarTabModes { var t = TopBarTabModes(); NavTab.baseTabs.forEach { t.set(m, for: $0) }; return t }
     private let widths: [CGFloat] = [1024, 1100, 1180, 1280, 1440, 1728, 2200]
 
     @Test func defaultIsIconAndNameForAllSixWithTheSymbolsListed() {
@@ -43,7 +43,7 @@ import Foundation
         #expect(combos.count == 729)
         for w in widths {
             for (n, combo) in combos.enumerated() where n % 7 == 0 || combo.allSatisfy({ $0 == .iconAndName }) || combo.allSatisfy({ $0 == .nameOnly }) {
-                var t = TopBarTabModes(); for (i, tab) in NavTab.allCases.enumerated() { t.set(combo[i], for: tab) }
+                var t = TopBarTabModes(); for (i, tab) in NavTab.baseTabs.enumerated() { t.set(combo[i], for: tab) }
                 let row = TopBarMenuRow.make(for: state(w, modes: t, pinned: [.netflix]))
                 let budget = row.metrics.centerBudget(width: w, brandWidth: TabLabelMetrics.brandWidth) - 2 * TopBarMetrics.navGroupPadding
                 #expect(row.leading.count == 6, "no item is ever hidden")
@@ -52,12 +52,12 @@ import Foundation
                 // degrade order: once an item had to become icon-only that the person did not ask for, everything to its right is icon-only too
                 var degraded = false
                 for (i, item) in row.leading.enumerated() {
-                    let asked = t.mode(NavTab.allCases[i])
+                    let asked = t.mode(NavTab.baseTabs[i])
                     if item.compact && asked != .iconOnly { degraded = true }
                     if degraded { #expect(item.compact, "names drop from the right-most item inward") }
                 }
                 // the left items keep what was asked unless degraded
-                for (i, item) in row.leading.enumerated() where !degraded { #expect(item.compact == (t.mode(NavTab.allCases[i]) == .iconOnly)) }
+                for (i, item) in row.leading.enumerated() where !degraded { #expect(item.compact == (t.mode(NavTab.baseTabs[i]) == .iconOnly)) }
             }
         }
     }
@@ -118,6 +118,9 @@ import Foundation
 
     @Test func modeTitlesAreTheThreeOffered() {
         #expect(TabBarMode.allCases.map(\.title) == ["Icon and Name", "Icon Only", "Name Only"])
-        #expect(NavTab.allCases.count == 6 && NavTab.allCases.map(\.title) == ["Home", "Live TV", "Movies", "Series", "TV Guide", "Podcasts"])
+        #expect(NavTab.allCases.map(\.title) == ["Home", "Live TV", "Movies", "Series", "TV Guide", "Podcasts", "Music"] && NavTab.baseTabs.count == 6)
     }
 }
+
+/// The six items the top bar always has; Music is the seventh and is offered only where it is allowed.
+extension NavTab { static var baseTabs: [NavTab] { allCases.filter { $0 != .music } } }

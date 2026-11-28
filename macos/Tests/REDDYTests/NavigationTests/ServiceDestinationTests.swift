@@ -290,7 +290,7 @@ import AppKit
     @Test func theSearchBoxStaysAndSaysItSearchesTheLibraryWhileAServiceShows() {
         let native = TopBarState(tab: .home, initials: "LR", accountMenuOpen: false, width: 1024)
         let web = TopBarState(tab: .home, initials: "LR", accountMenuOpen: false, width: 1024, destination: .service(.netflix), services: [.netflix])
-        #expect(native.searchPlaceholder(narrow: false) == "Search everything" && native.searchPlaceholder(narrow: true) == "Search")
+        #expect(native.searchPlaceholder(narrow: false) == "Search or ask Setu" && native.searchPlaceholder(narrow: true) == "Search or ask")
         #expect(web.searchPlaceholder(narrow: false) == "Search your library" && web.searchPlaceholder(narrow: true) == "Search library")
         #expect(native.searchLabel == "Search everything" && web.searchLabel == "Search your library")
         // the bar still lays out, with the account control at the right edge, in both states

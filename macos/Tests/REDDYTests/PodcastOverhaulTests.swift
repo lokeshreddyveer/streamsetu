@@ -247,11 +247,12 @@ private let lookupJSON = #"{"resultCount":2,"results":[{"collectionId":22,"colle
 
     @Test func podcastStopsLibraryAndServicesAndOtherMediaPausesPodcast() {
         let (p, _, _) = makePlayer()
-        var stopped = 0, paused = 0
-        p.stopLibrary = { stopped += 1 }; p.pauseServices = { paused += 1 }
-        p.play(ref(1)); #expect(stopped == 1 && paused == 1)
-        p.otherMediaStarted(); #expect(!p.isPlaying && p.current != nil)
-        p.resume(); #expect(p.isPlaying && stopped == 2 && paused == 2)
+        // Changed: one `claimAudio` hook (called before any audio starts) replaces stopLibrary and pauseServices; another source pauses the player via `pause()`.
+        var claims = 0
+        p.claimAudio = { claims += 1 }
+        p.play(ref(1)); #expect(claims == 1)
+        p.pause(); #expect(!p.isPlaying && p.current != nil)
+        p.resume(); #expect(p.isPlaying && claims == 2)
         p.close(); #expect(p.current == nil && !p.panelOpen)
     }
 
@@ -370,11 +371,14 @@ private let lookupJSON = #"{"resultCount":2,"results":[{"collectionId":22,"colle
         let c = try AppContainer(databasePath: FileManager.default.temporaryDirectory.appendingPathComponent("pod-\(UUID()).sqlite").path, credentials: InMemoryCredentialStore())
         let (p, _, _) = makePlayer()
         p.play(ref(1))
-        FilesPlayer.play(file: URL(fileURLWithPath: "/nonexistent/film.mp4"), title: "Film", container: c)
-        if c.playback.isActive { p.otherMediaStarted() }          // what the shell does when `isActive` turns on
+        // Changed: the library player claims the audio before it starts; the shell's native/podcast participants pause the podcast. Here the participant is wired by hand.
+        let o = AudioOwnership()
+        o.register(ClosureAudioParticipant(.podcasts, isPlaying: { p.isPlaying }, pause: { p.pause() }))
+        c.playback.claimAudio = { o.claim(.nativePlayer, reason: .nativePlay) }
+        FilesPlayer.play(file: URL(fileURLWithPath: "/nonexistent/film2.mp4"), title: "Film2", container: c)
         #expect(!p.isPlaying)
-        var libraryStopped = false; p.stopLibrary = { libraryStopped = true }
-        p.resume(); #expect(libraryStopped)
+        var libraryClaimed = false; p.claimAudio = { libraryClaimed = true }
+        p.resume(); #expect(libraryClaimed)
         c.playback.stop()
     }
 

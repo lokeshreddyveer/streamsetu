@@ -1,0 +1,1797 @@
+{
+ "seed": 202,
+ "fetchedAt": "2026-11-26T04:16:00.568027Z",
+ "source": "rss.marketingtools.apple.com most-played",
+ "regions": [
+  {
+   "code": "kr",
+   "name": "South Korea",
+   "songs": [
+    {
+     "id": "6818511627",
+     "name": "체포하겠어",
+     "artist": "아일릿",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/%EC%B2%B4%ED%8F%AC%ED%95%98%EA%B2%A0%EC%96%B4/6818511623?i=6818511627"
+    },
+    {
+     "id": "6820428730",
+     "name": "NEON",
+     "artist": "A2O & A2O LITE",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/neon/6820428726?i=6820428730"
+    },
+    {
+     "id": "6828335406",
+     "name": "With",
+     "artist": "리센느",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/with/6828335122?i=6828335406"
+    },
+    {
+     "id": "913803072",
+     "name": "Love Options",
+     "artist": "베스티",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/love-options/913802950?i=913803072"
+    },
+    {
+     "id": "6822679368",
+     "name": "삐그덕 (feat. 아이유)",
+     "artist": "Crush",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/%EC%82%90%EA%B7%B8%EB%8D%95-feat-%EC%95%84%EC%9D%B4%EC%9C%A0/6822679187?i=6822679368"
+    },
+    {
+     "id": "6828335411",
+     "name": "백화요란 (Inside Out)",
+     "artist": "리센느",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/%EB%B0%B1%ED%99%94%EC%9A%94%EB%9E%80-inside-out/6828335122?i=6828335411"
+    },
+    {
+     "id": "6781521710",
+     "name": "꿈꾸던 어른이 되었나요?",
+     "artist": "머무르",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/%EA%BF%88%EA%BE%B8%EB%8D%98-%EC%96%B4%EB%A5%B8%EC%9D%B4-%EB%90%98%EC%97%88%EB%82%98%EC%9A%94/6781521706?i=6781521710"
+    },
+    {
+     "id": "6815062086",
+     "name": "Angel Bite",
+     "artist": "투모로우바이투게더",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/angel-bite/6815062084?i=6815062086"
+    },
+    {
+     "id": "1887671067",
+     "name": "REDRED",
+     "artist": "코르티스",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/redred/1887671065?i=1887671067"
+    },
+    {
+     "id": "1764485170",
+     "name": "LOVE ATTACK",
+     "artist": "리센느",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/love-attack/1764485168?i=1764485170"
+    },
+    {
+     "id": "6834436963",
+     "name": "기립 (GiiiRIP)",
+     "artist": "BIGBANG",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/%EA%B8%B0%EB%A6%BD-giiirip/6834436962?i=6834436963"
+    },
+    {
+     "id": "1875146815",
+     "name": "RUDE!",
+     "artist": "Hearts2Hearts",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/rude/1875146814?i=1875146815"
+    },
+    {
+     "id": "6795782855",
+     "name": "SUN KISS",
+     "artist": "튜이드",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/sun-kiss/6795782851?i=6795782855"
+    },
+    {
+     "id": "6820422075",
+     "name": "Looks Can Kill",
+     "artist": "아이브",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/looks-can-kill/6820421860?i=6820422075"
+    },
+    {
+     "id": "1887194026",
+     "name": "It's Me",
+     "artist": "아일릿",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/its-me/1887194024?i=1887194026"
+    },
+    {
+     "id": "942517540",
+     "name": "하지하지마",
+     "artist": "GOT7",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/%ED%95%98%EC%A7%80%ED%95%98%EC%A7%80%EB%A7%88/942517529?i=942517540"
+    },
+    {
+     "id": "585972803",
+     "name": "All I Want for Christmas Is You",
+     "artist": "Mariah Carey",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/all-i-want-for-christmas-is-you/585972750?i=585972803"
+    },
+    {
+     "id": "1644821665",
+     "name": "Ling Ling",
+     "artist": "검정치마",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/ling-ling/1644821406?i=1644821665"
+    },
+    {
+     "id": "1453379466",
+     "name": "Rose (feat. Skinny Brown & Homeboy)",
+     "artist": "양홍원",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/rose-feat-skinny-brown-homeboy/1453379457?i=1453379466"
+    },
+    {
+     "id": "6770401926",
+     "name": "BAD",
+     "artist": "에이티즈",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/bad/6770401924?i=6770401926"
+    },
+    {
+     "id": "854908536",
+     "name": "첫 눈",
+     "artist": "EXO",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/%EC%B2%AB-%EB%88%88/854908527?i=854908536"
+    },
+    {
+     "id": "6766741789",
+     "name": "외사랑 (feat. 최유리)",
+     "artist": "진영",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/%EC%99%B8%EC%82%AC%EB%9E%91-feat-%EC%B5%9C%EC%9C%A0%EB%A6%AC/6766741783?i=6766741789"
+    },
+    {
+     "id": "1717383449",
+     "name": "생각을 멈추다 보면",
+     "artist": "최유리",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/%EC%83%9D%EA%B0%81%EC%9D%84-%EB%A9%88%EC%B6%94%EB%8B%A4-%EB%B3%B4%EB%A9%B4/1717383448?i=1717383449"
+    },
+    {
+     "id": "1734500896",
+     "name": "Magnetic",
+     "artist": "아일릿",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/magnetic/1734500886?i=1734500896"
+    },
+    {
+     "id": "1822439986",
+     "name": "Deja Vu",
+     "artist": "리센느",
+     "kind": "songs",
+     "url": "https://music.apple.com/kr/album/deja-vu/1822439985?i=1822439986"
+    }
+   ],
+   "albums": [
+    {
+     "id": "6830586251",
+     "name": "33",
+     "artist": "혁오",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/33/6830586251"
+    },
+    {
+     "id": "6828335122",
+     "name": "PULSE - EP",
+     "artist": "리센느",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/pulse-ep/6828335122"
+    },
+    {
+     "id": "6815062084",
+     "name": "PERFECT STORM - EP",
+     "artist": "투모로우바이투게더",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/perfect-storm-ep/6815062084"
+    },
+    {
+     "id": "6812476961",
+     "name": "Grand Theft Auto VI: The Album",
+     "artist": "Various Artists",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/grand-theft-auto-vi-the-album/6812476961"
+    },
+    {
+     "id": "6827483714",
+     "name": "DREAM AFTER DREAM",
+     "artist": "NCT DREAM",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/dream-after-dream/6827483714"
+    },
+    {
+     "id": "1463936919",
+     "name": "킁",
+     "artist": "씨잼",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/keung/1463936919"
+    },
+    {
+     "id": "6831544902",
+     "name": "The Ship Of Theseus",
+     "artist": "Various Artists",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/the-ship-of-theseus/6831544902"
+    },
+    {
+     "id": "1242154383",
+     "name": "TEAM BABY",
+     "artist": "검정치마",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/team-baby/1242154383"
+    },
+    {
+     "id": "1573192793",
+     "name": "오보에",
+     "artist": "양홍원",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/3-steps-forward-2-steps-back/1573192793"
+    },
+    {
+     "id": "6818511623",
+     "name": "BREAK EVEN - EP",
+     "artist": "아일릿",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/break-even-ep/6818511623"
+    },
+    {
+     "id": "6821311332",
+     "name": "S.W.I.S.H. - EP",
+     "artist": "LNGSHOT",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/s-w-i-s-h-ep/6821311332"
+    },
+    {
+     "id": "6837136776",
+     "name": "風流苦生 - EP",
+     "artist": "술탄 오브 더 디스코",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/the-art-of-suffering-ep/6837136776"
+    },
+    {
+     "id": "6811808019",
+     "name": "새천년",
+     "artist": "Unofficialboyy",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/saecheonnyeon/6811808019"
+    },
+    {
+     "id": "6795782851",
+     "name": "TUNE & PLAY - EP",
+     "artist": "튜이드",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/tune-play-ep/6795782851"
+    },
+    {
+     "id": "1644821406",
+     "name": "TEEN TROUBLES",
+     "artist": "검정치마",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/teen-troubles/1644821406"
+    },
+    {
+     "id": "1887671065",
+     "name": "GREENGREEN - EP",
+     "artist": "코르티스",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/greengreen-ep/1887671065"
+    },
+    {
+     "id": "6835801718",
+     "name": "Gleam Hour - EP",
+     "artist": "웬디",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/gleam-hour-ep/6835801718"
+    },
+    {
+     "id": "1146195596",
+     "name": "Blonde",
+     "artist": "Frank Ocean",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/blonde/1146195596"
+    },
+    {
+     "id": "6786626161",
+     "name": "SS-POP 3",
+     "artist": "SYSTEM SEOUL",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/ss-pop-3/6786626161"
+    },
+    {
+     "id": "1783280221",
+     "name": "rosie",
+     "artist": "로제",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/rosie/1783280221"
+    },
+    {
+     "id": "6797773845",
+     "name": "WhyKiiiKiii - EP",
+     "artist": "키키",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/whykiiikiii-ep/6797773845"
+    },
+    {
+     "id": "6816842802",
+     "name": "I SPY - The 4th Mini Album - EP",
+     "artist": "NCT WISH",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/i-spy-the-4th-mini-album-ep/6816842802"
+    },
+    {
+     "id": "6830057356",
+     "name": "SUPERSTAR - EP",
+     "artist": "A2O & A2O SOUL",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/superstar-ep/6830057356"
+    },
+    {
+     "id": "1558959940",
+     "name": "THIRSTY",
+     "artist": "검정치마",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/thirsty/1558959940"
+    },
+    {
+     "id": "6766741783",
+     "name": "Said & Done - EP",
+     "artist": "진영",
+     "kind": "albums",
+     "url": "https://music.apple.com/kr/album/said-done-ep/6766741783"
+    }
+   ]
+  },
+  {
+   "code": "ae",
+   "name": "United Arab Emirates",
+   "songs": [
+    {
+     "id": "6819802968",
+     "name": "Flower In A Hurricane [From GTAVI: Original Score]",
+     "artist": "Justice, Tame Impala, SZA & King Gizzard & The Lizard Wizard",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/flower-in-a-hurricane-from-gtavi-original-score/6819802963?i=6819802968"
+    },
+    {
+     "id": "6796864754",
+     "name": "BbY WOW",
+     "artist": "KAROL G, Judeline & rusowsky",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/bby-wow/6796864741?i=6796864754"
+    },
+    {
+     "id": "6822497774",
+     "name": "Housewife",
+     "artist": "Tate McRae",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/housewife/6822497770?i=6822497774"
+    },
+    {
+     "id": "6795697687",
+     "name": "Stop The Wedding!",
+     "artist": "Ashe",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/stop-the-wedding/6795697684?i=6795697687"
+    },
+    {
+     "id": "6828537514",
+     "name": "Shotta's.",
+     "artist": "Season 25",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/shottas/6828537513?i=6828537514"
+    },
+    {
+     "id": "6792884088",
+     "name": "Nicole Kidman",
+     "artist": "ADÉLA",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/nicole-kidman/6792883860?i=6792884088"
+    },
+    {
+     "id": "6780842658",
+     "name": "Alfaaz",
+     "artist": "Hamza Malik & Zain Zohaib",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/alfaaz/6780842656?i=6780842658"
+    },
+    {
+     "id": "6824473553",
+     "name": "Veezha Veera (From \"OM Chapter 1: Udhiram  - The Blood Wood\") [Tamil]",
+     "artist": "Sai Abhyankkar, Tippu & Arun Srinivasan",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/veezha-veera-from-om-chapter-1-udhiram-the-blood-wood-tamil/6824473544?i=6824473553"
+    },
+    {
+     "id": "6837508830",
+     "name": "Burn This Shit Down (from GTAVI: The Album)",
+     "artist": "Travis Scott",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/burn-this-shit-down-from-gtavi-the-album/6837508827?i=6837508830"
+    },
+    {
+     "id": "6769568596",
+     "name": "Janice STFU",
+     "artist": "Drake",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/janice-stfu/6769568449?i=6769568596"
+    },
+    {
+     "id": "1889992123",
+     "name": "the cure",
+     "artist": "Olivia Rodrigo",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/the-cure/1889992111?i=1889992123"
+    },
+    {
+     "id": "1847992612",
+     "name": "Raindance",
+     "artist": "Dave & Tems",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/raindance/1847992481?i=1847992612"
+    },
+    {
+     "id": "1889992115",
+     "name": "stupid song",
+     "artist": "Olivia Rodrigo",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/stupid-song/1889992111?i=1889992115"
+    },
+    {
+     "id": "6792884101",
+     "name": "Ain't In LA",
+     "artist": "ADÉLA",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/aint-in-la/6792883860?i=6792884101"
+    },
+    {
+     "id": "6829145293",
+     "name": "Tu Mil Jaaye (From \"KING\")",
+     "artist": "Sachin-Jigar, Arijit Singh, Ed Sheeran, Madhubanti Bagchi & Kumaar",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/tu-mil-jaaye-from-king/6829145292?i=6829145293"
+    },
+    {
+     "id": "6793679161",
+     "name": "Shoft Kalam",
+     "artist": "Marwan Pablo, Lege-Cy & HatemBas",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/shoft-kalam/6793678943?i=6793679161"
+    },
+    {
+     "id": "6832237877",
+     "name": "FA FA FA (From \"O.M: Operation Mole\")",
+     "artist": "Sai Abhyankkar & Thamizh Aadhavan",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/fa-fa-fa-from-o-m-operation-mole/6832237869?i=6832237877"
+    },
+    {
+     "id": "1584281493",
+     "name": "Fair Trade (feat. Travis Scott)",
+     "artist": "Drake",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/fair-trade-feat-travis-scott/1584281467?i=1584281493"
+    },
+    {
+     "id": "1451903882",
+     "name": "Flashing Lights (feat. Dwele)",
+     "artist": "Kanye West",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/flashing-lights-feat-dwele/1451901307?i=1451903882"
+    },
+    {
+     "id": "1440829630",
+     "name": "Hold On, We're Going Home (feat. Majid Jordan)",
+     "artist": "Drake",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/hold-on-were-going-home-feat-majid-jordan/1440829462?i=1440829630"
+    },
+    {
+     "id": "1676999857",
+     "name": "Starboy (feat. Daft Punk)",
+     "artist": "The Weeknd",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/starboy-feat-daft-punk/1676999839?i=1676999857"
+    },
+    {
+     "id": "6763656876",
+     "name": "hate that i made you love me",
+     "artist": "Ariana Grande",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/hate-that-i-made-you-love-me/1895420989?i=6763656876"
+    },
+    {
+     "id": "1440650961",
+     "name": "Beauty and a Beat (feat. Nicki Minaj)",
+     "artist": "Justin Bieber",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/beauty-and-a-beat-feat-nicki-minaj/1440650852?i=1440650961"
+    },
+    {
+     "id": "1609149063",
+     "name": "Heartless",
+     "artist": "Kanye West",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/heartless/1609149054?i=1609149063"
+    },
+    {
+     "id": "1762656732",
+     "name": "Die With A Smile",
+     "artist": "Lady Gaga & Bruno Mars",
+     "kind": "songs",
+     "url": "https://music.apple.com/ae/album/die-with-a-smile/1762656724?i=1762656732"
+    }
+   ],
+   "albums": [
+    {
+     "id": "6812476961",
+     "name": "Grand Theft Auto VI: The Album",
+     "artist": "Various Artists",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/grand-theft-auto-vi-the-album/6812476961"
+    },
+    {
+     "id": "6817733404",
+     "name": "Jailer 2 (Original Motion Picture Soundtrack)",
+     "artist": "Vignesh Shivan, Thamizh Aadhavan, Anirudh Ravichander, Ritesh G Rao, Arunraja Kamaraj, Super Subu & HEISENBERG",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/jailer-2-original-motion-picture-soundtrack/6817733404"
+    },
+    {
+     "id": "1889992111",
+     "name": "you seem pretty sad for a girl so in love",
+     "artist": "Olivia Rodrigo",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/you-seem-pretty-sad-for-a-girl-so-in-love/1889992111"
+    },
+    {
+     "id": "6769568449",
+     "name": "ICEMAN",
+     "artist": "Drake",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/iceman/6769568449"
+    },
+    {
+     "id": "1065946325",
+     "name": "Baby Lullaby: Relaxing Piano Lullabies and Natural Sleep Aid for Baby Sleep Music",
+     "artist": "Baby Lullaby Academy",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/baby-lullaby-relaxing-piano-lullabies-and-natural/1065946325"
+    },
+    {
+     "id": "1451901307",
+     "name": "Graduation",
+     "artist": "Kanye West",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/graduation/1451901307"
+    },
+    {
+     "id": "6818209777",
+     "name": "HABIBTI (FOMO)",
+     "artist": "Drake",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/habibti-fomo/6818209777"
+    },
+    {
+     "id": "6825518480",
+     "name": "Elissar",
+     "artist": "Elissa",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/elissar/6825518480"
+    },
+    {
+     "id": "1895420989",
+     "name": "petal",
+     "artist": "Ariana Grande",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/petal/1895420989"
+    },
+    {
+     "id": "6827357170",
+     "name": "Daughter from Hell (Deluxe)",
+     "artist": "Gracie Abrams",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/daughter-from-hell-deluxe/6827357170"
+    },
+    {
+     "id": "6831048832",
+     "name": "Scene (Original Motion Picture Soundtrack)",
+     "artist": "Sushin Shyam",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/scene-original-motion-picture-soundtrack/6831048832"
+    },
+    {
+     "id": "1817609404",
+     "name": "The Art of Loving",
+     "artist": "Olivia Dean",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/the-art-of-loving/1817609404"
+    },
+    {
+     "id": "913583065",
+     "name": "The Holy Quran",
+     "artist": "Saad El Ghamidi",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/%D8%A7%D9%84%D9%82%D8%B1%D8%A2%D9%86-%D8%A7%D9%84%D9%83%D8%B1%D9%8A%D9%85/913583065"
+    },
+    {
+     "id": "6832523736",
+     "name": "AMEN",
+     "artist": "Icegergert",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/amen/6832523736"
+    },
+    {
+     "id": "6796408980",
+     "name": "Supernova",
+     "artist": "Cairokee",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/supernova/6796408980"
+    },
+    {
+     "id": "6796864741",
+     "name": "NO ME ARREPIENTO DE SENTIR TANTO",
+     "artist": "KAROL G",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/no-me-arrepiento-de-sentir-tanto/6796864741"
+    },
+    {
+     "id": "6814002539",
+     "name": "AUJLA SZN 1 - EP",
+     "artist": "Karan Aujla",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/aujla-szn-1-ep/6814002539"
+    },
+    {
+     "id": "6831560084",
+     "name": "E-Mortal Boy",
+     "artist": "Rema",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/e-mortal-boy/6831560084"
+    },
+    {
+     "id": "6792883860",
+     "name": "PRIMA",
+     "artist": "ADÉLA",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/prima/6792883860"
+    },
+    {
+     "id": "6814997249",
+     "name": "The Life of a Showgirl: The Encore",
+     "artist": "Taylor Swift",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/the-life-of-a-showgirl-the-encore/6814997249"
+    },
+    {
+     "id": "1440621197",
+     "name": "My Beautiful Dark Twisted Fantasy (Deluxe Edition (Explicit))",
+     "artist": "Kanye West",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/my-beautiful-dark-twisted-fantasy-deluxe-edition-explicit/1440621197"
+    },
+    {
+     "id": "1868862375",
+     "name": "ARIRANG",
+     "artist": "BTS",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/arirang/1868862375"
+    },
+    {
+     "id": "1871258329",
+     "name": "OCTANE",
+     "artist": "Don Toliver",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/octane/1871258329"
+    },
+    {
+     "id": "1440642493",
+     "name": "Take Care (Deluxe Version)",
+     "artist": "Drake",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/take-care-deluxe-version/1440642493"
+    },
+    {
+     "id": "1739659134",
+     "name": "HIT ME HARD AND SOFT",
+     "artist": "Billie Eilish",
+     "kind": "albums",
+     "url": "https://music.apple.com/ae/album/hit-me-hard-and-soft/1739659134"
+    }
+   ]
+  },
+  {
+   "code": "nl",
+   "name": "Netherlands",
+   "songs": [
+    {
+     "id": "6819802968",
+     "name": "Flower In A Hurricane [From GTAVI: Original Score]",
+     "artist": "Justice, Tame Impala, SZA & King Gizzard & The Lizard Wizard",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/flower-in-a-hurricane-from-gtavi-original-score/6819802963?i=6819802968"
+    },
+    {
+     "id": "6822497774",
+     "name": "Housewife",
+     "artist": "Tate McRae",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/housewife/6822497770?i=6822497774"
+    },
+    {
+     "id": "6795697687",
+     "name": "Stop The Wedding!",
+     "artist": "Ashe",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/stop-the-wedding/6795697684?i=6795697687"
+    },
+    {
+     "id": "6812477282",
+     "name": "Go Easy",
+     "artist": "Dua Lipa",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/go-easy/6812476961?i=6812477282"
+    },
+    {
+     "id": "6794168373",
+     "name": "Babydoll",
+     "artist": "Jamie Miller",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/babydoll/6794168372?i=6794168373"
+    },
+    {
+     "id": "6834007065",
+     "name": "Mijn Mo (feat. Henkie T)",
+     "artist": "Kevin",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/mijn-mo-feat-henkie-t/6834007064?i=6834007065"
+    },
+    {
+     "id": "202117984",
+     "name": "Last Christmas (Single Version)",
+     "artist": "Wham!",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/last-christmas-single-version/202117886?i=202117984"
+    },
+    {
+     "id": "6834007068",
+     "name": "Rook (feat. Willem)",
+     "artist": "Kevin",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/rook-feat-willem/6834007064?i=6834007068"
+    },
+    {
+     "id": "6834007067",
+     "name": "Raadsel",
+     "artist": "Kevin",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/raadsel/6834007064?i=6834007067"
+    },
+    {
+     "id": "1889992123",
+     "name": "the cure",
+     "artist": "Olivia Rodrigo",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/the-cure/1889992111?i=1889992123"
+    },
+    {
+     "id": "6834007071",
+     "name": "Belangrijk",
+     "artist": "Kevin",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/belangrijk/6834007064?i=6834007071"
+    },
+    {
+     "id": "6769552411",
+     "name": "Great Expectation",
+     "artist": "SIENNA SPIRO",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/great-expectation/6769552402?i=6769552411"
+    },
+    {
+     "id": "6819742169",
+     "name": "Spijt Komt Later",
+     "artist": "Isabèl Usher & Kraantje Pappie",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/spijt-komt-later/6819742155?i=6819742169"
+    },
+    {
+     "id": "6834007270",
+     "name": "Wildeburg",
+     "artist": "Kevin",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/wildeburg/6834007064?i=6834007270"
+    },
+    {
+     "id": "6834007069",
+     "name": "Monogaam (feat. Milolaathetlukken)",
+     "artist": "Kevin",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/monogaam-feat-milolaathetlukken/6834007064?i=6834007069"
+    },
+    {
+     "id": "6834007272",
+     "name": "Op Tilt (2015) [Bonus Track]",
+     "artist": "Kevin",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/op-tilt-2015-bonus-track/6834007064?i=6834007272"
+    },
+    {
+     "id": "1889992115",
+     "name": "stupid song",
+     "artist": "Olivia Rodrigo",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/stupid-song/1889992111?i=1889992115"
+    },
+    {
+     "id": "6796864754",
+     "name": "BbY WOW",
+     "artist": "KAROL G, Judeline & rusowsky",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/bby-wow/6796864741?i=6796864754"
+    },
+    {
+     "id": "669854831",
+     "name": "It's Beginning To Look a Lot Like Christmas",
+     "artist": "Michael Bublé",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/its-beginning-to-look-a-lot-like-christmas/669854820?i=669854831"
+    },
+    {
+     "id": "1844932150",
+     "name": "Choosin' Texas",
+     "artist": "Ella Langley",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/choosin-texas/1844932149?i=1844932150"
+    },
+    {
+     "id": "6834007070",
+     "name": "Amazonico",
+     "artist": "Kevin",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/amazonico/6834007064?i=6834007070"
+    },
+    {
+     "id": "1817609509",
+     "name": "Man I Need",
+     "artist": "Olivia Dean",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/man-i-need/1817609404?i=1817609509"
+    },
+    {
+     "id": "6813491235",
+     "name": "Pijnstiller",
+     "artist": "Suzan & Freek",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/pijnstiller/6813491233?i=6813491235"
+    },
+    {
+     "id": "1440098017",
+     "name": "Snowman",
+     "artist": "Sia",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/snowman/1440098012?i=1440098017"
+    },
+    {
+     "id": "585972803",
+     "name": "All I Want for Christmas Is You",
+     "artist": "Mariah Carey",
+     "kind": "songs",
+     "url": "https://music.apple.com/nl/album/all-i-want-for-christmas-is-you/585972750?i=585972803"
+    }
+   ],
+   "albums": [
+    {
+     "id": "6834007064",
+     "name": "DE GIER",
+     "artist": "Kevin",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/de-gier/6834007064"
+    },
+    {
+     "id": "6812476961",
+     "name": "Grand Theft Auto VI: The Album",
+     "artist": "Verschillende artiesten",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/grand-theft-auto-vi-the-album/6812476961"
+    },
+    {
+     "id": "1487968057",
+     "name": "De Leukste Traditionele Sinterklaasliedjes, Deel 1",
+     "artist": "De Club van Sinterklaas",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/de-leukste-traditionele-sinterklaasliedjes-deel-1/1487968057"
+    },
+    {
+     "id": "6831229071",
+     "name": "Pijnstiller",
+     "artist": "Suzan & Freek",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/pijnstiller/6831229071"
+    },
+    {
+     "id": "6833589758",
+     "name": "Carnaval De Luz (Deluxe Edition)",
+     "artist": "U2",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/carnaval-de-luz-deluxe-edition/6833589758"
+    },
+    {
+     "id": "6827357170",
+     "name": "Daughter from Hell (Deluxe)",
+     "artist": "Gracie Abrams",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/daughter-from-hell-deluxe/6827357170"
+    },
+    {
+     "id": "1889992111",
+     "name": "you seem pretty sad for a girl so in love",
+     "artist": "Olivia Rodrigo",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/you-seem-pretty-sad-for-a-girl-so-in-love/1889992111"
+    },
+    {
+     "id": "1842589472",
+     "name": "Sinterklaasliedjes",
+     "artist": "Sinterklaasliedjes",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/sinterklaasliedjes/1842589472"
+    },
+    {
+     "id": "6792085051",
+     "name": "Dopamine Chamber",
+     "artist": "Fontaines D.C.",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/dopamine-chamber/6792085051"
+    },
+    {
+     "id": "1894997820",
+     "name": "The Great Divide: The Last Of The Bugs",
+     "artist": "Noah Kahan",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/the-great-divide-the-last-of-the-bugs/1894997820"
+    },
+    {
+     "id": "1817609404",
+     "name": "The Art of Loving",
+     "artist": "Olivia Dean",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/the-art-of-loving/1817609404"
+    },
+    {
+     "id": "1633418944",
+     "name": "Juf Roos Sinterklaasliedjes",
+     "artist": "Juf Roos",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/juf-roos-sinterklaasliedjes/1633418944"
+    },
+    {
+     "id": "6813114279",
+     "name": "Live in Mexico City",
+     "artist": "Rammstein",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/live-in-mexico-city/6813114279"
+    },
+    {
+     "id": "6809728106",
+     "name": "DWARS",
+     "artist": "Bente",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/dwars/6809728106"
+    },
+    {
+     "id": "1439640317",
+     "name": "Christmas Hits",
+     "artist": "Verschillende artiesten",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/christmas-hits/1439640317"
+    },
+    {
+     "id": "1895420989",
+     "name": "petal",
+     "artist": "Ariana Grande",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/petal/1895420989"
+    },
+    {
+     "id": "6814997249",
+     "name": "The Life of a Showgirl: The Encore",
+     "artist": "Taylor Swift",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/the-life-of-a-showgirl-the-encore/6814997249"
+    },
+    {
+     "id": "6815964539",
+     "name": "Party in het Pietendorp",
+     "artist": "De Club van Sinterklaas",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/party-in-het-pietendorp/6815964539"
+    },
+    {
+     "id": "1885607338",
+     "name": "The Wow! Signal",
+     "artist": "Muse",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/the-wow-signal/1885607338"
+    },
+    {
+     "id": "6769552402",
+     "name": "Visitor (Deluxe)",
+     "artist": "SIENNA SPIRO",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/visitor-deluxe/6769552402"
+    },
+    {
+     "id": "6837496123",
+     "name": "Grand Theft Auto VI: The Album (Deluxe Edition)",
+     "artist": "Verschillende artiesten",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/grand-theft-auto-vi-the-album-deluxe-edition/6837496123"
+    },
+    {
+     "id": "6800802919",
+     "name": "The Road To Escondido: Enhanced Edition",
+     "artist": "Eric Clapton & J.J. Cale",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/the-road-to-escondido-enhanced-edition/6800802919"
+    },
+    {
+     "id": "1831874210",
+     "name": "Christmas (Deluxe 10th Anniversary Edition)",
+     "artist": "Michael Bublé",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/christmas-deluxe-10th-anniversary-edition/1831874210"
+    },
+    {
+     "id": "6802662655",
+     "name": "I: Keep The Fire On",
+     "artist": "DI-RECT",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/i-keep-the-fire-on/6802662655"
+    },
+    {
+     "id": "1870984032",
+     "name": "Kiss All The Time. Disco, Occasionally.",
+     "artist": "Harry Styles",
+     "kind": "albums",
+     "url": "https://music.apple.com/nl/album/kiss-all-the-time-disco-occasionally/1870984032"
+    }
+   ]
+  },
+  {
+   "code": "fr",
+   "name": "France",
+   "songs": [
+    {
+     "id": "6816216698",
+     "name": "BANTU MENTALITÉ",
+     "artist": "SDM & Ninho",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/bantu-mentalit%C3%A9/6816215989?i=6816216698"
+    },
+    {
+     "id": "6829004300",
+     "name": "Dedans",
+     "artist": "L2B",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/dedans/6829004154?i=6829004300"
+    },
+    {
+     "id": "6819802968",
+     "name": "Flower In A Hurricane [From GTAVI: Original Score]",
+     "artist": "Justice, Tame Impala, SZA & King Gizzard & The Lizard Wizard",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/flower-in-a-hurricane-from-gtavi-original-score/6819802963?i=6819802968"
+    },
+    {
+     "id": "6816216709",
+     "name": "ÇA CHAUFFE",
+     "artist": "SDM",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/%C3%A7a-chauffe/6816215989?i=6816216709"
+    },
+    {
+     "id": "6809781929",
+     "name": "Fille à Papa",
+     "artist": "Vacra & La Rvfleuze",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/fille-a-papa/6809781922?i=6809781929"
+    },
+    {
+     "id": "6775967738",
+     "name": "Mélo Décalé",
+     "artist": "Tiakola",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/m%C3%A9lo-d%C3%A9cal%C3%A9/6775967737?i=6775967738"
+    },
+    {
+     "id": "6809755256",
+     "name": "Jet Lag",
+     "artist": "Tiakola & Jorja Smith",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/jet-lag/6809754889?i=6809755256"
+    },
+    {
+     "id": "6830738481",
+     "name": "OCÉAN DE PROBLÈMES",
+     "artist": "Ninho",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/oc%C3%A9an-de-probl%C3%A8mes/6830737440?i=6830738481"
+    },
+    {
+     "id": "6803864930",
+     "name": "12",
+     "artist": "Mauvais Djo",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/12/6803864921?i=6803864930"
+    },
+    {
+     "id": "6813131762",
+     "name": "4",
+     "artist": "Mauvais Djo",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/4/6813131391?i=6813131762"
+    },
+    {
+     "id": "6816217185",
+     "name": "DES PHOTOS DE TOI",
+     "artist": "SDM",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/des-photos-de-toi/6816215989?i=6816217185"
+    },
+    {
+     "id": "6773819547",
+     "name": "Bodycount",
+     "artist": "Le Crime & TK",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/bodycount/6773818926?i=6773819547"
+    },
+    {
+     "id": "6816893848",
+     "name": "J'assume",
+     "artist": "RnBoi",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/jassume/6816893836?i=6816893848"
+    },
+    {
+     "id": "6816216702",
+     "name": "GRAND PALACE",
+     "artist": "SDM",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/grand-palace/6816215989?i=6816216702"
+    },
+    {
+     "id": "1565402015",
+     "name": "Sur paname",
+     "artist": "Ninho",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/sur-paname/1565400560?i=1565402015"
+    },
+    {
+     "id": "1536443643",
+     "name": "Tout en Gucci",
+     "artist": "Ninho",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/tout-en-gucci/1536443638?i=1536443643"
+    },
+    {
+     "id": "6818551658",
+     "name": "CYBERTESLA",
+     "artist": "L2B",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/cybertesla/6818551657?i=6818551658"
+    },
+    {
+     "id": "6809755258",
+     "name": "La Nocturne",
+     "artist": "Tiakola & Theodora",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/la-nocturne/6809754889?i=6809755258"
+    },
+    {
+     "id": "6831623788",
+     "name": "Ma préférée",
+     "artist": "Jul & J Balvin",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/ma-pr%C3%A9f%C3%A9r%C3%A9e/6831623783?i=6831623788"
+    },
+    {
+     "id": "1666897006",
+     "name": "Parfum quartier",
+     "artist": "Jul",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/parfum-quartier/1666896346?i=1666897006"
+    },
+    {
+     "id": "1840188177",
+     "name": "melodrama",
+     "artist": "disiz & Theodora",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/melodrama/1840188173?i=1840188177"
+    },
+    {
+     "id": "6816216434",
+     "name": "I.G",
+     "artist": "SDM",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/i-g/6816215989?i=6816216434"
+    },
+    {
+     "id": "1157195547",
+     "name": "Dis-moi que tu m'aimes",
+     "artist": "Ninho",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/dis-moi-que-tu-maimes/1157195356?i=1157195547"
+    },
+    {
+     "id": "1597121344",
+     "name": "Jefe",
+     "artist": "Ninho",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/jefe/1597121321?i=1597121344"
+    },
+    {
+     "id": "6816216707",
+     "name": "6.35",
+     "artist": "SDM & SCH",
+     "kind": "songs",
+     "url": "https://music.apple.com/fr/album/6-35/6816215989?i=6816216707"
+    }
+   ],
+   "albums": [
+    {
+     "id": "6816215989",
+     "name": "IN INFINITUM",
+     "artist": "SDM",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/in-infinitum/6816215989"
+    },
+    {
+     "id": "6830737440",
+     "name": "M.I.L.S 4 (Deluxe Edition)",
+     "artist": "Ninho",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/m-i-l-s-4-deluxe-edition/6830737440"
+    },
+    {
+     "id": "6812476961",
+     "name": "Grand Theft Auto VI: The Album",
+     "artist": "Multi-interprètes",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/grand-theft-auto-vi-the-album/6812476961"
+    },
+    {
+     "id": "6829004154",
+     "name": "FAST LIFE",
+     "artist": "L2B",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/fast-life/6829004154"
+    },
+    {
+     "id": "6809754889",
+     "name": "WpointM",
+     "artist": "Tiakola",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/wpointm/6809754889"
+    },
+    {
+     "id": "6820122684",
+     "name": "(Re)belle",
+     "artist": "Adèle Castillon",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/re-belle/6820122684"
+    },
+    {
+     "id": "6832504062",
+     "name": "Mentalité",
+     "artist": "Niro",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/mentalit%C3%A9/6832504062"
+    },
+    {
+     "id": "6812268278",
+     "name": "L'undertaker, Pt.2 (Deluxe)",
+     "artist": "Mauvais Djo",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/lundertaker-pt-2-deluxe/6812268278"
+    },
+    {
+     "id": "6821033923",
+     "name": "Alba, l'heure bleue",
+     "artist": "Bekar",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/alba-lheure-bleue/6821033923"
+    },
+    {
+     "id": "1453399177",
+     "name": "Destin",
+     "artist": "Ninho",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/destin/1453399177"
+    },
+    {
+     "id": "1850775422",
+     "name": "Et si j'échoue ??",
+     "artist": "Bouss",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/et-si-j%C3%A9choue/1850775422"
+    },
+    {
+     "id": "1597121321",
+     "name": "Jefe",
+     "artist": "Ninho",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/jefe/1597121321"
+    },
+    {
+     "id": "6791165361",
+     "name": "En Croix",
+     "artist": "Lagui",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/en-croix/6791165361"
+    },
+    {
+     "id": "1852566197",
+     "name": "Destinée",
+     "artist": "Aya Nakamura",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/destin%C3%A9e/1852566197"
+    },
+    {
+     "id": "6828030112",
+     "name": "Matière Noire",
+     "artist": "Djadja & Dinaz",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/mati%C3%A8re-noire/6828030112"
+    },
+    {
+     "id": "6810726342",
+     "name": "Le Plus Beau",
+     "artist": "TeddyBear",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/le-plus-beau/6810726342"
+    },
+    {
+     "id": "1663913990",
+     "name": "Deux frères",
+     "artist": "PNL",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/deux-fr%C3%A8res/1663913990"
+    },
+    {
+     "id": "6807920212",
+     "name": "ÉGRÉGORE",
+     "artist": "Mylène Farmer",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/%C3%A9gr%C3%A9gore/6807920212"
+    },
+    {
+     "id": "1810779084",
+     "name": "Diamant Noir",
+     "artist": "Werenoi",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/diamant-noir/1810779084"
+    },
+    {
+     "id": "6810186748",
+     "name": "la forteresse",
+     "artist": "Pomme",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/la-forteresse/6810186748"
+    },
+    {
+     "id": "1885120906",
+     "name": "404 (feat. Kokosvoice, MC YOSHI & Mauvais Djo)",
+     "artist": "TRIANGLE DES BERMUDES",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/404-feat-kokosvoice-mc-yoshi-mauvais-djo/1885120906"
+    },
+    {
+     "id": "6804661401",
+     "name": "Instinct",
+     "artist": "Angèle",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/instinct/6804661401"
+    },
+    {
+     "id": "1536443638",
+     "name": "M.I.L.S 3 (Réédition)",
+     "artist": "Ninho",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/m-i-l-s-3-r%C3%A9%C3%A9dition/1536443638"
+    },
+    {
+     "id": "1302387092",
+     "name": "Comme prévu",
+     "artist": "Ninho",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/comme-pr%C3%A9vu/1302387092"
+    },
+    {
+     "id": "1663880916",
+     "name": "Dans la légende",
+     "artist": "PNL",
+     "kind": "albums",
+     "url": "https://music.apple.com/fr/album/dans-la-l%C3%A9gende/1663880916"
+    }
+   ]
+  },
+  {
+   "code": "sg",
+   "name": "Singapore",
+   "songs": [
+    {
+     "id": "6829122414",
+     "name": "Hong Kong (feat. 王菲季候風)",
+     "artist": "The Weeknd",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/hong-kong-feat-%E7%8E%8B%E8%8F%B2%E5%AD%A3%E5%80%99%E9%A2%A8/6829122413?i=6829122414"
+    },
+    {
+     "id": "6822497774",
+     "name": "Housewife",
+     "artist": "Tate McRae",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/housewife/6822497770?i=6822497774"
+    },
+    {
+     "id": "6834436963",
+     "name": "GiiiRIP",
+     "artist": "BIGBANG",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/giiirip/6834436962?i=6834436963"
+    },
+    {
+     "id": "6819802968",
+     "name": "Flower In A Hurricane [From GTAVI: Original Score]",
+     "artist": "Justice, Tame Impala, SZA & King Gizzard & The Lizard Wizard",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/flower-in-a-hurricane-from-gtavi-original-score/6819802963?i=6819802968"
+    },
+    {
+     "id": "6820428730",
+     "name": "NEON",
+     "artist": "A2O & A2O LITE",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/neon/6820428726?i=6820428730"
+    },
+    {
+     "id": "6792884088",
+     "name": "Nicole Kidman",
+     "artist": "ADÉLA",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/nicole-kidman/6792883860?i=6792884088"
+    },
+    {
+     "id": "1889992115",
+     "name": "stupid song",
+     "artist": "Olivia Rodrigo",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/stupid-song/1889992111?i=1889992115"
+    },
+    {
+     "id": "1692508528",
+     "name": "海屿你",
+     "artist": "馬也_Crabbit & Cole先生",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/%E6%B5%B7%E5%B1%BF%E4%BD%A0/1692508526?i=1692508528"
+    },
+    {
+     "id": "1889992123",
+     "name": "the cure",
+     "artist": "Olivia Rodrigo",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/the-cure/1889992111?i=1889992123"
+    },
+    {
+     "id": "913803072",
+     "name": "Love Options",
+     "artist": "BESTie",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/love-options/913802950?i=913803072"
+    },
+    {
+     "id": "6763656876",
+     "name": "hate that i made you love me",
+     "artist": "Ariana Grande",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/hate-that-i-made-you-love-me/1895420989?i=6763656876"
+    },
+    {
+     "id": "6792884101",
+     "name": "Ain't In LA",
+     "artist": "ADÉLA",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/aint-in-la/6792883860?i=6792884101"
+    },
+    {
+     "id": "6818511627",
+     "name": "You’re Under Arrest",
+     "artist": "ILLIT",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/youre-under-arrest/6818511623?i=6818511627"
+    },
+    {
+     "id": "6795697687",
+     "name": "Stop The Wedding!",
+     "artist": "Ashe",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/stop-the-wedding/6795697684?i=6795697687"
+    },
+    {
+     "id": "6785801848",
+     "name": "甲乙丙丁Strangers",
+     "artist": "Jess Lee",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/%E7%94%B2%E4%B9%99%E4%B8%99%E4%B8%81strangers/6785801843?i=6785801848"
+    },
+    {
+     "id": "1790602218",
+     "name": "Jumping Machine (跳楼机)",
+     "artist": "LBI",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/jumping-machine-%E8%B7%B3%E6%A5%BC%E6%9C%BA/1790602217?i=1790602218"
+    },
+    {
+     "id": "1889992113",
+     "name": "drop dead",
+     "artist": "Olivia Rodrigo",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/drop-dead/1889992111?i=1889992113"
+    },
+    {
+     "id": "1868862384",
+     "name": "SWIM",
+     "artist": "BTS",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/swim/1868862375?i=1868862384"
+    },
+    {
+     "id": "1193701400",
+     "name": "Perfect",
+     "artist": "Ed Sheeran",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/perfect/1193701079?i=1193701400"
+    },
+    {
+     "id": "1833328840",
+     "name": "The Fate of Ophelia",
+     "artist": "Taylor Swift",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/the-fate-of-ophelia/1833328839?i=1833328840"
+    },
+    {
+     "id": "6796864754",
+     "name": "BbY WOW",
+     "artist": "KAROL G, Judeline & rusowsky",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/bby-wow/6796864741?i=6796864754"
+    },
+    {
+     "id": "1440650961",
+     "name": "Beauty and a Beat (feat. Nicki Minaj)",
+     "artist": "Justin Bieber",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/beauty-and-a-beat-feat-nicki-minaj/1440650852?i=1440650961"
+    },
+    {
+     "id": "1488408568",
+     "name": "Blinding Lights",
+     "artist": "The Weeknd",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/blinding-lights/1488408555?i=1488408568"
+    },
+    {
+     "id": "1817609507",
+     "name": "So Easy (To Fall In Love)",
+     "artist": "Olivia Dean",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/so-easy-to-fall-in-love/1817609404?i=1817609507"
+    },
+    {
+     "id": "1820264150",
+     "name": "Golden",
+     "artist": "HUNTR/X, EJAE, AUDREY NUNA, REI AMI & KPop Demon Hunters Cast",
+     "kind": "songs",
+     "url": "https://music.apple.com/sg/album/golden/1820264137?i=1820264150"
+    }
+   ],
+   "albums": [
+    {
+     "id": "1889992111",
+     "name": "you seem pretty sad for a girl so in love",
+     "artist": "Olivia Rodrigo",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/you-seem-pretty-sad-for-a-girl-so-in-love/1889992111"
+    },
+    {
+     "id": "6812476961",
+     "name": "Grand Theft Auto VI: The Album",
+     "artist": "Various Artists",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/grand-theft-auto-vi-the-album/6812476961"
+    },
+    {
+     "id": "1065946325",
+     "name": "Baby Lullaby: Relaxing Piano Lullabies and Natural Sleep Aid for Baby Sleep Music",
+     "artist": "Baby Lullaby Academy",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/baby-lullaby-relaxing-piano-lullabies-and-natural/1065946325"
+    },
+    {
+     "id": "6827357170",
+     "name": "Daughter from Hell (Deluxe)",
+     "artist": "Gracie Abrams",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/daughter-from-hell-deluxe/6827357170"
+    },
+    {
+     "id": "1868862375",
+     "name": "ARIRANG",
+     "artist": "BTS",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/arirang/1868862375"
+    },
+    {
+     "id": "6814997249",
+     "name": "The Life of a Showgirl: The Encore",
+     "artist": "Taylor Swift",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/the-life-of-a-showgirl-the-encore/6814997249"
+    },
+    {
+     "id": "6817733404",
+     "name": "Jailer 2 (Original Motion Picture Soundtrack)",
+     "artist": "Vignesh Shivan, Thamizh Aadhavan, Anirudh Ravichander, Ritesh G Rao, Arunraja Kamaraj, Super Subu & HEISENBERG",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/jailer-2-original-motion-picture-soundtrack/6817733404"
+    },
+    {
+     "id": "1895420989",
+     "name": "petal",
+     "artist": "Ariana Grande",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/petal/1895420989"
+    },
+    {
+     "id": "6829772542",
+     "name": "SUIATSU",
+     "artist": "Stray Kids",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/suiatsu/6829772542"
+    },
+    {
+     "id": "1156310650",
+     "name": "The Black Parade",
+     "artist": "My Chemical Romance",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/the-black-parade/1156310650"
+    },
+    {
+     "id": "6792883860",
+     "name": "PRIMA",
+     "artist": "ADÉLA",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/prima/6792883860"
+    },
+    {
+     "id": "6823506967",
+     "name": "Christmas Jazz 2026",
+     "artist": "Cafe Music BGM Channel",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/christmas-jazz-2026/6823506967"
+    },
+    {
+     "id": "6821311332",
+     "name": "S.W.I.S.H. - EP",
+     "artist": "LNGSHOT",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/s-w-i-s-h-ep/6821311332"
+    },
+    {
+     "id": "1831874210",
+     "name": "Christmas (Deluxe 10th Anniversary Edition)",
+     "artist": "Michael Bublé",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/christmas-deluxe-10th-anniversary-edition/1831874210"
+    },
+    {
+     "id": "6815062084",
+     "name": "PERFECT STORM - EP",
+     "artist": "TOMORROW X TOGETHER",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/perfect-storm-ep/6815062084"
+    },
+    {
+     "id": "1817609404",
+     "name": "The Art of Loving",
+     "artist": "Olivia Dean",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/the-art-of-loving/1817609404"
+    },
+    {
+     "id": "1870984032",
+     "name": "Kiss All The Time. Disco, Occasionally.",
+     "artist": "Harry Styles",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/kiss-all-the-time-disco-occasionally/1870984032"
+    },
+    {
+     "id": "1820264137",
+     "name": "KPop Demon Hunters (Soundtrack from the Netflix Film)",
+     "artist": "KPop Demon Hunters Cast, HUNTR/X & Saja Boys",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/kpop-demon-hunters-soundtrack-from-the-netflix-film/1820264137"
+    },
+    {
+     "id": "6835801718",
+     "name": "Gleam Hour - EP",
+     "artist": "WENDY",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/gleam-hour-ep/6835801718"
+    },
+    {
+     "id": "1440871397",
+     "name": "Starboy",
+     "artist": "The Weeknd",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/starboy/1440871397"
+    },
+    {
+     "id": "1742057774",
+     "name": "THE TORTURED POETS DEPARTMENT: THE ANTHOLOGY",
+     "artist": "Taylor Swift",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/the-tortured-poets-department-the-anthology/1742057774"
+    },
+    {
+     "id": "6827483714",
+     "name": "DREAM AFTER DREAM",
+     "artist": "NCT DREAM",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/dream-after-dream/6827483714"
+    },
+    {
+     "id": "1739659134",
+     "name": "HIT ME HARD AND SOFT",
+     "artist": "Billie Eilish",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/hit-me-hard-and-soft/1739659134"
+    },
+    {
+     "id": "1795692220",
+     "name": "Hurry Up Tomorrow (Video Album)",
+     "artist": "The Weeknd",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/hurry-up-tomorrow-video-album/1795692220"
+    },
+    {
+     "id": "6836422916",
+     "name": "Hallelujah! It's Christmas Again!",
+     "artist": "Phil Wickham",
+     "kind": "albums",
+     "url": "https://music.apple.com/sg/album/hallelujah-its-christmas-again/6836422916"
+    }
+   ]
+  }
+ ]
+}

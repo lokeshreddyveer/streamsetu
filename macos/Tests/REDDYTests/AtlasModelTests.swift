@@ -178,6 +178,7 @@ final class MockAtlasLanguageModel: AtlasLanguageModel, @unchecked Sendable {
 
     /// With a stand-in model, how often does the first reply pass the validator, and what does the pipeline change for the questions the engine was unsure about. Not a measure of a real model.
     @Test func bankRunWithAMockModelRecordsTheFirstTryPassRate() async throws {
+        await HeavyTestSlot.shared.acquire(); defer { Task { await HeavyTestSlot.shared.release() } }      // one heavy test at a time (see HeavyTestSlot)
         let bank = try AtlasBankTests.load()
         let m = MockAtlasLanguageModel(.overlap)
         var asked = 0, passed = 0, phrased = 0, phrasePassed = 0, changedTop = 0, improved = 0, worsened = 0

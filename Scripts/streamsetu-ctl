@@ -1,0 +1,23 @@
+#!/bin/bash
+# Controls StreamSetu Music from the command line, through its local control API (Settings, Automation, Local control).
+# The API is off until you turn it on, listens on this Mac only, and every request needs your token.
+#   streamsetu-ctl state
+#   streamsetu-ctl next | previous | playPause | pause | play | like | volumeUp | volumeDown
+#   streamsetu-ctl setVolume 40
+#   streamsetu-ctl playPlaylist "Road trip"
+# The token comes from $STREAMSETU_TOKEN, or from the file ~/.config/streamsetu/token (keep that file readable only by you: chmod 600).
+set -euo pipefail
+PORT="${STREAMSETU_PORT:-47600}"
+TOKEN="${STREAMSETU_TOKEN:-}"
+if [ -z "$TOKEN" ] && [ -f "$HOME/.config/streamsetu/token" ]; then TOKEN="$(tr -d '[:space:]' < "$HOME/.config/streamsetu/token")"; fi
+[ -n "$TOKEN" ] || { echo "No token: set STREAMSETU_TOKEN or put it in ~/.config/streamsetu/token" >&2; exit 2; }
+cmd="${1:-state}"
+if [ "$cmd" = "state" ]; then
+  curl -sS -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:$PORT/v1/state"; echo
+else
+  arg="${2:-}"
+  body=$(python3 -c 'import json,sys; d={"name":sys.argv[1]}; 
+if len(sys.argv)>2 and sys.argv[2]: d["arg"]=sys.argv[2]
+print(json.dumps(d))' "$cmd" "$arg")
+  curl -sS -X POST -H "Authorization: Bearer $TOKEN" -d "$body" "http://127.0.0.1:$PORT/v1/command"; echo
+fi

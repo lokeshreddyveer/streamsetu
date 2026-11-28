@@ -70,7 +70,10 @@ import AppKit
     @Test func rootViewUsesTheOneHostViewAndPausesEverything() throws {
         let root = try source("Application/RootView.swift")
         #expect(root.contains("ServiceHostView(model: model") && root.contains("IntegrationUnavailableView"))
-        #expect(root.contains("hosts.pauseAll") && !root.contains("netflix.pauseMedia"))
+        // changed: a switch no longer pauses; the shell routes through the media policy (otherMediaStarted / safetyStop)
+        // Changed: the native player claims through PlaybackCoordinator.claimAudio; the shell registers it as a participant and still routes stops through safetyStop.
+        #expect(root.contains("hosts.ownership.register") && root.contains("hosts.safetyStop") && !root.contains("netflix.pauseMedia"))
+        #expect(!root.contains("hosts.pauseAll(except: now)"), "switching never pauses")
         #expect(root.contains("showsServicesMenu: true") && root.contains("servicePrefs.pinned"))
         #expect(!root.contains("services: services.services"), "the bar gets pinned ids, not all eleven")
     }

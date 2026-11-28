@@ -98,6 +98,7 @@ extension AppContainer {
             if let m = playback.statusMessage, !m.isEmpty { p += " [\(m)]" }
             c.nowPlaying = p
         }
+        c.music = MusicAssistantRegistry.handler?.summary()
         let visible = (try? catalog.visibleCounts(sourceID: nil)) ?? CatalogCounts()          // what the assistant is told about the library never counts locked or hidden folders
         let counts = (visible.channels, visible.movies, visible.series)
         let sources = (try? catalog.sources().filter(\.enabled).count) ?? 0
@@ -152,8 +153,10 @@ extension AppContainer {
         guard !parental.kidsMode else { throw AIError.unavailable("The assistant is not available in a kids profile.") }
         let text = history.last?.text ?? ""
         // A name on its own is answered by the app's own search at once; no model is waited for.
-        if !skipInstant, let found = await AssistantToolbox(container: self, onStep: onStep).discoveryReply(text) { return found }
-        if !skipInstant, let fast = await AssistantToolbox(container: self, onStep: onStep).fastNameReply(text) { return fast }
+        // A question about the app is never answered with a library search (see AssistantRouter.isAppHelp).
+        let aboutTheApp = AssistantRouter.isAppHelp(text) || SearchIntent.classify(text) == .ask
+        if !skipInstant, !aboutTheApp, let found = await AssistantToolbox(container: self, onStep: onStep).discoveryReply(text) { return found }
+        if !skipInstant, !aboutTheApp, let fast = await AssistantToolbox(container: self, onStep: onStep).fastNameReply(text) { return fast }
         var hint = skipInstant ? "The person says the quick search results for this name were not what they meant. Look beyond them: it may be a person, another spelling, another language, a mood or something else. Check anything you suggest with the library tools." : nil
         // The model is asked only when Setu's own index was unsure (or the person chose it first), and it picks from the index's closest topics instead of recalling screens from memory.
         if !skipInstant, let picked = await atlasModelReply(text) { return picked }      // the optional model layer: picks among the index's own topics; nil changes nothing
@@ -245,6 +248,9 @@ extension AppContainer {
             UIPasteboard.general.string = text
             #endif
             return .done("Copied. It has no logins, addresses or tokens, so it is safe to share.")
+        case .music(let a):
+            guard let h = MusicAssistantRegistry.handler else { return .failed("Music is not available on this device.") }
+            return await h.run(a)
         case .command, .playItem, .toggleList, .openAtlas: return .failed("That is carried out by the screen's own runner.")      // see SearchCommandRunner.execute
         }
     }
